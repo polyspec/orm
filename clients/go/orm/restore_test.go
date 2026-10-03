@@ -83,7 +83,7 @@ func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 func restoreCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "restore")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func restoreCase(t *testing.T, driver, dsn string) {
 		}
 		return rows[0][0]
 	}
-	adb := db.Audit(auditOf(s, "default"))
+	adb := db
 	memberships := rowEntity("membership", s, "seq", "team_id", "member_id", "note", "audit_seq", "deleted_at")
 	labels := rowEntity("label", s, "id", "name", "color", "deleted_at")
 	core := func(entity *orm.Entity, values map[string]any) *orm.Core {

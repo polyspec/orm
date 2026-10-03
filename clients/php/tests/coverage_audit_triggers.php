@@ -11,7 +11,6 @@ require __DIR__ . '/coverage_cases.php';
 require __DIR__ . '/restore_case.php';
 require __DIR__ . '/audit_case.php';
 
-use CoverageAudit\Orm\Audit;
 use CoverageAudit\Orm\Item;
 use Orm\Code;
 use Orm\Config;
@@ -101,23 +100,23 @@ function auditModels(): void
 const AUDIT_TABLES = ['audit', 'item', 'item_history'];
 
 /**
- * 고른 database에 audit document를 설치하고 $body를 실행한 뒤, 실패해도 설치한 table과 function을
- * 지운다.
+ * actor 'default'를 주는 audit source로 고른 database에 연결해 audit document를 설치하고
+ * $body($db, $dsn)를 실행한 뒤, 실패해도 설치한 table과 function을 지운다.
  *
- * @param Closure(Db): void $body
+ * @param Closure(Db, string): void $body
  */
 function withAudit(Closure $body): void
 {
     [, $dsn] = coverageDatabase();
     auditModels();
-    $db = Orm::connect($dsn, new Config());
+    $db = Orm::connect($dsn, auditConfig('default'));
     try {
         foreach (AUDIT_TABLES as $table) {
             coverageWant(!auditTable($db, $table), "$table exists before the case");
         }
-        coverageRestoring(function () use ($db, $body): void {
+        coverageRestoring(function () use ($db, $dsn, $body): void {
             $db->utils()->schema()->install(\CoverageAudit\Orm\schema());
-            $body($db);
+            $body($db, $dsn);
         }, fn() => dropFixture($db, ['item_history', 'item', 'audit'], ['item']));
         foreach (AUDIT_TABLES as $table) {
             coverageWant(!auditTable($db, $table), "$table remains after the case");
@@ -130,16 +129,16 @@ function withAudit(Closure $body): void
 runCoverageCases($argv, [
     // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
     'audit_history' => function (): void {
-        withAudit(fn(Db $db) => auditCase($db, 'CoverageAudit\\Orm'));
+        withAudit(fn(Db $db, string $dsn) => auditCase($db, $dsn, 'CoverageAudit\\Orm'));
     },
-    // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit 기본값을 가진 handle의 Db::transaction
+    // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit source를 가진 연결의 Db::transaction
     // 하나이며, 두 transaction이 audit 기록을 하나씩 삽입하고 audit 대상 write가 그 key를 쓰고, 중첩
     // transaction은 audit을 받지 않는다.
     'audit_transaction_entry_points' => function (): void {
         withAudit(function (Db $db): void {
-            $adb = $db->audit((new Audit)->setActor('default'));
+            $adb = $db;
             $seq = $adb->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), audit: ['actor' => 'transaction'], retry: 0);
-            $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'handle'], retry: 0);
+            $adb->transaction(fn() => (new Item)($adb)->setSeq($seq)->setTitle('second')->update(), audit: ['actor' => 'connected'], retry: 0);
             $nested = auditErrorCode(fn() => $adb->transaction(fn() => $adb->transaction(fn() => null, audit: ['actor' => 'nested']), audit: [], retry: 0));
             coverageWant($nested === Code::CONFIG, "a nested transaction with an audit is $nested, want CONFIG");
             $s = (string) $seq;
@@ -150,7 +149,7 @@ runCoverageCases($argv, [
             ];
             coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
             $records = auditTextRows($db, 'SELECT seq, actor FROM audit ORDER BY seq');
-            coverageWant($records === [['1', 'transaction'], ['2', 'handle']], 'audit records ' . json_encode($records));
+            coverageWant($records === [['1', 'transaction'], ['2', 'connected']], 'audit records ' . json_encode($records));
         });
     },
     // soft delete한 행을 restore로 되돌린다(restore_case.php): unique key와 exclude 목록을 가진 audit table과
@@ -159,7 +158,7 @@ runCoverageCases($argv, [
         [, $dsn] = coverageDatabase();
         fixtureModels('restore', 'CoverageRestore\\Orm');
         $tables = ['audit', 'label', 'membership', 'membership_history'];
-        $db = Orm::connect($dsn, new Config());
+        $db = Orm::connect($dsn, auditConfig('default'));
         try {
             foreach ($tables as $table) {
                 coverageWant(!auditTable($db, $table), "$table exists before the case");

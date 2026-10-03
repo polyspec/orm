@@ -40,7 +40,6 @@ function restoreCase(Db $db, string $namespace): void
 {
     $membershipClass = "$namespace\\Membership";
     $labelClass = "$namespace\\Label";
-    $auditClass = "$namespace\\Audit";
     $membership = static fn() => (new $membershipClass)($db);
     $label = static fn() => (new $labelClass)($db);
     // audit 기록의 key는 실패한 transaction이 쓴 번호를 database마다 다르게 건너뛸 수 있으므로 actor로
@@ -52,7 +51,8 @@ function restoreCase(Db $db, string $namespace): void
         restoreWant(count($rows) === 1, "audit records of $actor " . json_encode($rows) . ', want one');
         return (string) $rows[0];
     };
-    $adb = $db->audit((new $auditClass)->setActor('default'));
+    // $db는 actor 'default'를 주는 audit source로 연 연결이다.
+    $adb = $db;
     [$seq, $id] = $adb->transaction(function () use ($membershipClass, $labelClass): array {
         $seq = (new $membershipClass)->setTeamId(1)->setMemberId(2)->setNote('n1')->create()->getSeq();
         $id = (new $labelClass)->setName('red')->setColor('x')->create()->getId();

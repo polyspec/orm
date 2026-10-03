@@ -92,7 +92,7 @@ func (b *builder) now(precision int) string {
 }
 
 // audit은 executor가 채우는 transaction의 audit 기록 key다. Name은 audit 기록
-// entity이며, executor는 transaction의 audit이 그 entity의 행인지 확인한다.
+// table이며, executor는 transaction의 audit이 그 table의 행인지 확인한다.
 func (b *builder) audit(ent *runtimemodel.Entity) string {
 	b.binds = append(b.binds, plan.BindSlot{From: "audit", Name: ent.Audit.Record})
 	b.n++

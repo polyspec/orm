@@ -9,9 +9,9 @@ import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
 import { modelOfManifest, type RuntimeModel } from './engine/model.js';
 import { decimalScaled, normalizeDecimal } from './decimal.js';
-import { CORE, isModel, type Core, type ModelLike } from './core.js';
-import type { Model } from './model.js';
-import { fieldOf } from './engine/model.js';
+import { CORE, type Core } from './core.js';
+import { Model } from './model.js';
+import { fieldOf, type Entity } from './engine/model.js';
 
 export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
 
@@ -32,6 +32,14 @@ export interface ConnectOptions {
   poolLifetimeMs?: number;
   /** bound of every statement of the connection in milliseconds; zero keeps the server default */
   statementTimeoutMs?: number;
+  /**
+   * Returns the audit values of the current request, an object from column
+   * name to value of the audit record table, such as the account and the
+   * request id. A transaction with the audit option calls it once before it
+   * begins; an error it throws fails the transaction. The ORM writes no audit
+   * value of its own.
+   */
+  auditSource?: () => Record<string, unknown>;
 }
 
 export interface TransactionOptions {
@@ -43,8 +51,10 @@ export interface TransactionOptions {
   /**
    * Makes the transaction one unit of work with an audit record. Before the
    * callback, in every attempt, the transaction inserts one row into the
-   * audit record table: the defaults of the handle (`db.audit(defaults)`)
-   * with these values, a value winning over the default of the same column.
+   * audit record table, the table that the audit settings of the sets
+   * registered on the connection name with references: the values of the
+   * auditSource connect option, called once for the transaction, with these
+   * values, a value winning over the source's value of the same column.
    * Every insert, update, soft delete and restore of an audited table in the
    * transaction writes the record's primary key into the table's audit
    * column. A nested transaction uses the audit of the outer one and does not
@@ -53,10 +63,17 @@ export interface TransactionOptions {
   audit?: Readonly<Record<string, unknown>>;
 }
 
-/** The audit record a transaction inserted: the entity of the audit record table and the primary key of the row. */
+/** The audit record a transaction inserted: the audit record table and the primary key of the row. */
 interface AuditRecord {
-  readonly entity: string;
+  readonly table: string;
   readonly key: unknown;
+}
+
+/** The audit record a transaction inserts: the entity of the audit record table, its set and the column values. */
+interface AuditInsert {
+  readonly model: RuntimeModel;
+  readonly entity: Entity;
+  readonly values: Readonly<Record<string, unknown>>;
 }
 
 const models = new Map<string, RuntimeModel>();
@@ -311,8 +328,8 @@ export class Db {
   // point의 failNextRollback이 설정하는 test fault다.
   private readonly shared = { closed: false, rollbackFault: false };
   public readonly signal: AbortSignal | undefined = undefined;
-  /** The model of the audit record table whose values every audit of this handle's transactions shares. */
-  public readonly auditDefaults: Model | undefined = undefined;
+  /** The audit values of the current request; the connection and its handles share it. */
+  private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
   public readonly aesKey: string;
@@ -334,6 +351,8 @@ export class Db {
     const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
     this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
     this.onQuery = options.onQuery;
+    if (options.auditSource !== undefined && typeof options.auditSource !== 'function') throw new OrmError('CONFIG', 'auditSource is a function that returns the audit values');
+    this.auditSource = options.auditSource;
     this.planCacheSize = options.planCacheSize ?? 256;
     if (!Number.isSafeInteger(this.planCacheSize) || this.planCacheSize < 1) throw new OrmError('CONFIG', 'plan cache size must be a positive integer');
   }
@@ -397,24 +416,6 @@ export class Db {
     return handle;
   }
 
-  /**
-   * Returns a handle on the same connection whose transactions record their
-   * audit with defaults: a model of the audit record table with the values
-   * that every audit of the handle shares, such as the account and the
-   * request. A transaction with the audit option inserts one audit record
-   * with these defaults and its own values, and the audited writes of the
-   * transaction refer to it. Models connect to the handle as they connect to
-   * the connection.
-   */
-  public audit(defaults: Model): Db {
-    if (!isModel(defaults)) throw new OrmError('CONFIG', 'the audit defaults are a model of the audit record table');
-    const handle: Db = Object.create(Db.prototype) as Db;
-    Object.assign(handle, this);
-    Object.defineProperty(handle, 'auditDefaults', { value: defaults, enumerable: true, writable: false });
-    Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
-    return handle;
-  }
-
   /** The connection this handle was derived from; a connection returns itself. */
   public root(): Db {
     return (this as { rootDb?: Db }).rootDb ?? this;
@@ -462,44 +463,58 @@ export class Db {
   }
 
   /**
-   * handle 의 기본값 model 에 transaction 의 값을 더한 audit 기록 model 이다. 같은 column 이면 transaction 의 값이
-   * 기본값을 이긴다. 기본값이 없거나, 기본값 model 이 다른 연결을 쓰거나, 값의 key 가 audit 기록 table 의 column 이
-   * 아니거나, 그 table 의 primary key 가 column 하나가 아니면 CONFIG 다.
+   * audit source 의 값에 transaction 의 값을 더한 audit 기록이다. 같은 column 이면 transaction 의 값이 이긴다. 기록
+   * table 은 연결에 등록한 set 의 audit setting 이 references 로 이름한 table 하나이며, 그 table 을 entity 로 가진 set
+   * 이 연결에 등록되어 있어야 한다. audit source 가 없거나, 기록 table 이 없거나 여럿이거나, 값의 key 가 그 table 의
+   * column 이 아니거나, 값이 하나도 없거나, primary key 가 column 하나가 아니면 CONFIG 이고, source 가 던진 오류는
+   * 그대로 전한다.
    */
-  private auditRecord(values: Readonly<Record<string, unknown>>): Core {
+  private auditRecord(values: Readonly<Record<string, unknown>>): AuditInsert {
     if (values === null || typeof values !== 'object' || Array.isArray(values)) throw new OrmError('CONFIG', 'transaction audit is an object of column values');
-    const defaults = this.auditDefaults;
-    if (defaults === undefined) {
-      throw new OrmError('CONFIG', 'the transaction has audit values but the connection has no audit defaults: set them with db.audit(defaults)');
+    if (this.auditSource === undefined) {
+      throw new OrmError('CONFIG', 'the transaction has audit values but the connection has no audit source: set the auditSource connect option');
     }
-    const core = defaults[CORE];
-    const entity = core.ent.entity;
-    if (core.conn !== undefined && core.conn.root().pool !== this.root().pool) {
-      throw new OrmError('CONFIG', `the audit defaults ${entity.name} connect to another connection than the transaction`);
+    const engines = [...this.engines.values()];
+    const tables = [...new Set(engines.flatMap(e => [...e.model.entities.values()].map(x => x.auditRecord).filter(t => t !== '')))].sort();
+    if (tables.length === 0) throw new OrmError('CONFIG', 'the transaction has audit values but no set of the connection has an audited table');
+    if (tables.length > 1) throw new OrmError('CONFIG', `the audited tables of the connection record their audits in ${tables.join(', ')}; one audit record table is required`);
+    const table = tables[0]!;
+    let target: { model: RuntimeModel; entity: Entity } | undefined;
+    for (const engine of engines) {
+      for (const entity of engine.model.entities.values()) if (entity.table === table) target = { model: engine.model, entity };
     }
-    if (entity.primaryKey.length !== 1) throw new OrmError('CONFIG', `the audit record table ${entity.name} needs a primary key of one column`);
-    const record = core.clone();
-    for (const column of Object.keys(values).sort()) {
-      if (fieldOf(entity, column) === undefined) throw new OrmError('CONFIG', `audit value ${column} is not a column of ${entity.name}`);
-      record.setValue(column, values[column]);
+    if (target === undefined) throw new OrmError('CONFIG', `the audit record table ${table} is not a table of a set registered on the connection`);
+    if (target.entity.primaryKey.length !== 1) throw new OrmError('CONFIG', `the audit record table ${table} needs a primary key of one column`);
+    const source = this.auditSource();
+    const merged: Record<string, unknown> = {};
+    for (const set of [source, values]) {
+      if (set === null || typeof set !== 'object' || Array.isArray(set)) throw new OrmError('CONFIG', 'the audit source returns an object of column values');
+      for (const column of Object.keys(set).sort()) {
+        if (fieldOf(target.entity, column) === undefined) throw new OrmError('CONFIG', `audit value ${column} is not a column of ${table}`);
+        merged[column] = set[column];
+      }
     }
-    return record;
+    if (Object.keys(merged).length === 0) throw new OrmError('CONFIG', `the audit record of ${table} has no value: the audit source and the transaction give none`);
+    return { ...target, values: merged };
   }
 
   /**
-   * transaction 의 audit 기록을 삽입하고 그 entity 와 primary key 값을 돌려준다. 시도마다 record 의 복사본을
-   * 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
+   * transaction 의 audit 기록을 삽입하고 그 table 과 primary key 값을 돌려준다. primary key 가 identity 이면 생성된
+   * key, 아니면 기록의 값이다. 시도마다 다시 삽입한다.
    */
-  private async insertAudit(record: Core): Promise<AuditRecord> {
-    const entity = record.ent.entity;
-    const model = record.clone().self as unknown as { create(): Promise<ModelLike> };
-    const created = (await model.create())[CORE];
+  private async insertAudit(record: AuditInsert): Promise<AuditRecord> {
+    const { model, entity } = record;
+    const cls = class extends Model {};
+    Object.assign(cls, { entity: { model, entity, create: (core: Core) => new cls(core) } });
+    const row = new cls();
+    for (const column of Object.keys(record.values).sort()) row[CORE].setValue(column, record.values[column]);
+    const created = (await row.create())[CORE];
     const key = created.values.get(entity.primaryKey[0]!);
-    if (key === undefined || key === null) throw new OrmError('CONFIG', `the audit record ${entity.name} has no ${entity.primaryKey[0]} after its insert`);
-    return { entity: entity.name, key };
+    if (key === undefined || key === null) throw new OrmError('CONFIG', `the audit record ${entity.table} has no ${entity.primaryKey[0]} after its insert`);
+    return { table: entity.table, key };
   }
 
-  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, record: Core | undefined): Promise<T> {
+  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, record: AuditInsert | undefined): Promise<T> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
     const tx = await this.pool.begin(options);
     const frame = new TxFrame(this, tx);
@@ -694,12 +709,12 @@ async function guarded<T>(ex: Executor, work: () => Promise<T>): Promise<T> {
 /**
  * The key of the transaction's audit record, bound to the audit column of an
  * audited table; a write without an audit, or whose table records its audits
- * in another entity than the transaction's audit record, is CONFIG.
+ * in another table than the transaction's audit record, is CONFIG.
  */
 function auditValue(slot: BindSlot, audit: AuditRecord | undefined): unknown {
   if (audit === undefined) throw new OrmError('CONFIG', 'a write of an audited table needs an audit: run it in a transaction with audit values');
-  if (audit.entity !== slot.name) {
-    throw new OrmError('CONFIG', `the audited table records its audits in ${slot.name}, but the audit of the transaction is a ${audit.entity}`);
+  if (audit.table !== slot.name) {
+    throw new OrmError('CONFIG', `the audited table records its audits in ${slot.name}, but the audit of the transaction is a row of ${audit.table}`);
   }
   return audit.key;
 }

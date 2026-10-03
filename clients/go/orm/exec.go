@@ -236,13 +236,13 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 }
 
 // auditValue는 audit slot의 값이다: transaction이 삽입한 audit 기록의 primary
-// key다. audit이 없거나 audit table이 다른 entity에 audit을 기록하면 CONFIG다.
+// key다. audit이 없거나 audit table이 다른 table에 audit을 기록하면 CONFIG다.
 func auditValue(a *auditRecord, record string) (any, error) {
 	if a == nil {
 		return nil, configErr("a write of an audited table needs an audit: run it in a transaction with orm.Audit(record)")
 	}
-	if a.entity != record {
-		return nil, configErr("the audited table records its audits in %s, but the audit of the transaction is a %s", record, a.entity)
+	if a.table != record {
+		return nil, configErr("the audited table records its audits in %s, but the audit of the transaction is a row of %s", record, a.table)
 	}
 	return a.key, nil
 }

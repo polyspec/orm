@@ -102,9 +102,10 @@ connection is a savepoint and accepts only `retry`. A deadlock or `Orm::transact
 runs the closure again, up to `retry` times. Row locks (`forUpdate()` and the other lock methods)
 and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
 
-`$db->audit($defaults)` returns a handle of the same connection whose transactions take `audit:`
-(column => value): before the closure the transaction inserts one row of the audit record table from
-the defaults and these values, and every audited write in it refers to that row (docs/usage.md).
+`Config(auditSource: fn (): array => [...])` gives the audit record values of the connection, such as
+the account and the request. A transaction with `audit:` (column => value) calls it once before it
+begins and inserts one row of the audit record table from its values and these values, of which the
+transaction's win; every audited write in the transaction refers to that row (docs/usage.md).
 
 ## Databases
 - PostgreSQL plans carry `$n` placeholders; the statement is prepared from its `?` form. Booleans

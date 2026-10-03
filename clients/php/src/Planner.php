@@ -1181,8 +1181,8 @@ final class PlanBinds
     }
 
     /**
-     * transaction의 audit 기록 key다. name은 audit 기록 entity이며, executor는 transaction의
-     * audit이 그 entity의 행인지 확인한다.
+     * transaction의 audit 기록 key다. name은 audit 기록 table이며, executor는 transaction의
+     * audit이 그 table의 행인지 확인한다.
      */
     public function audit(array $ent): string
     {

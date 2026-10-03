@@ -11,9 +11,9 @@ use std::sync::{Arc, Mutex};
 use futures_util::FutureExt as _;
 use sqlx::SqlSafeStr as _;
 
-use crate::core::Core;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
+use crate::schema::Schema;
 use crate::value::Param;
 use crate::{codes, Error, Result};
 
@@ -31,10 +31,10 @@ pub(crate) struct TxShared {
     sqlite_mode: Mutex<Option<(bool, bool)>>,
 }
 
-/// transaction이 시작할 때 삽입한 audit 기록의 entity와 primary key 값.
+/// transaction이 시작할 때 삽입한 audit 기록의 table과 primary key 값.
 #[derive(Clone, Debug)]
 pub(crate) struct AuditKey {
-    pub(crate) entity: String,
+    pub(crate) table: String,
     pub(crate) key: Param,
 }
 
@@ -46,39 +46,79 @@ fn audit_values<K: Into<String>, V: Into<Param>>(values: impl IntoIterator<Item 
     values.into_iter().map(|(k, v)| (k.into(), v.into())).collect()
 }
 
-/// handle의 audit 기본값 model에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이
-/// 기본값을 이긴다. 기본값이 없거나, 기본값 model이 다른 연결을 쓰거나, 값의 key가 audit 기록 table의
-/// column이 아니거나, 그 table의 primary key가 column 하나가 아니면 CONFIG다.
-fn audit_record(db: &Db, values: &AuditValues) -> Result<Core> {
-    let Some(defaults) = &db.audit_defaults else {
-        return Err(Error::Config("the transaction has audit values but the connection has no audit defaults: set them with db.audit(defaults)".into()));
-    };
-    let ent = defaults.ent.entity_schema()?;
-    if defaults.conn.as_ref().is_some_and(|conn| conn.id() != db.id()) {
-        return Err(Error::Config(format!("the audit defaults {} connect to another connection than the transaction", ent.name)));
-    }
-    if ent.primary_key.len() != 1 {
-        return Err(Error::Config(format!("the audit record table {} needs a primary key of one column", ent.name)));
-    }
-    let mut record = (**defaults).clone();
-    let mut sorted: Vec<&(String, Param)> = values.iter().collect();
-    sorted.sort_by(|a, b| a.0.cmp(&b.0));
-    for (column, value) in sorted {
-        if ent.field(column).is_none() {
-            return Err(Error::Config(format!("audit value {column} is not a column of {}", ent.name)));
-        }
-        record.set(column, value.clone());
-    }
-    match record.err() {
-        Some(e) => Err(e),
-        None => Ok(record),
-    }
+/// transaction이 삽입할 audit 기록: 기록 table을 entity로 가진 등록한 set의 schema, 그 entity, column
+/// 이름 순서의 값.
+pub(crate) struct AuditInsert {
+    pub(crate) schema: &'static Schema,
+    pub(crate) entity: orm_schema::dbspec::Entity,
+    pub(crate) values: AuditValues,
 }
 
-/// transaction의 audit 기록을 transaction frame 안에서 삽입하고 그 key를 transaction에 둔다. 시도마다
-/// record의 복사본을 삽입하므로 deadlock 뒤에 다시 실행해도 같은 값을 쓴다.
-async fn record_audit(tx: &TxShared, record: &Core) -> Result<()> {
-    let key = crate::model::insert_audit(record).await?;
+/// audit source의 값에 transaction의 값을 더한 audit 기록이다. 같은 column이면 transaction의 값이 이긴다.
+/// 기록 table은 연결에 등록한 set의 audit setting이 references로 이름한 table 하나이며, 그 table을 entity로
+/// 가진 set이 연결에 등록되어 있어야 한다. audit source가 없거나, 기록 table이 없거나 여럿이거나, 값의 key가
+/// 그 table의 column이 아니거나, primary key가 column 하나가 아니면 CONFIG이고, source의 오류는 그대로
+/// 돌려준다. source는 여기서 한 번, transaction을 시작하기 전에 부른다.
+fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
+    let Some(source) = &db.inner.cfg.audit_source else {
+        return Err(Error::Config("the transaction has audit values but the connection has no audit source: set Config::audit_source".into()));
+    };
+    let schemas: Vec<&'static Schema> = db.inner.schemas.read().unwrap().clone();
+    let mut models = Vec::new();
+    for schema in schemas {
+        models.push((schema, schema.manifest()?));
+    }
+    let mut tables: Vec<String> = Vec::new();
+    for (_, manifest) in &models {
+        for audit in manifest.model.entities.iter().filter_map(|e| e.audit.as_ref()) {
+            if !tables.contains(&audit.record) {
+                tables.push(audit.record.clone());
+            }
+        }
+    }
+    tables.sort();
+    let target = match tables.as_slice() {
+        [] => return Err(Error::Config("the transaction has audit values but no set of the connection has an audited table".into())),
+        [table] => models.iter().find_map(|(schema, manifest)| manifest.model.entities.iter().find(|e| &e.table == table).map(|e| (*schema, e.clone()))),
+        _ => {
+            return Err(Error::Config(format!(
+                "the audited tables of the connection record their audits in {}; one audit record table is required",
+                tables.join(", ")
+            )))
+        }
+    };
+    let Some((schema, entity)) = target else {
+        return Err(Error::Config(format!("the audit record table {} is not a table of a set registered on the connection", tables[0])));
+    };
+    if entity.primary_key.len() != 1 {
+        return Err(Error::Config(format!("the audit record table {} needs a primary key of one column", entity.table)));
+    }
+    let given = source()?;
+    let mut merged: Vec<(String, Param)> = Vec::new();
+    for set in [&given, values] {
+        let mut sorted: Vec<&(String, Param)> = set.iter().collect();
+        sorted.sort_by(|a, b| a.0.cmp(&b.0));
+        for (column, value) in sorted {
+            if entity.field(column).is_none() {
+                return Err(Error::Config(format!("audit value {column} is not a column of {}", entity.table)));
+            }
+            match merged.iter_mut().find(|(c, _)| c == column) {
+                Some(slot) => slot.1 = value.clone(),
+                None => merged.push((column.clone(), value.clone())),
+            }
+        }
+    }
+    merged.sort_by(|a, b| a.0.cmp(&b.0));
+    if merged.is_empty() {
+        return Err(Error::Config(format!("the audit record of {} has no value: the audit source and the transaction give none", entity.table)));
+    }
+    Ok(AuditInsert { schema, entity, values: merged })
+}
+
+/// transaction의 audit 기록을 transaction 안에서 삽입하고 그 key를 transaction에 둔다. 시도마다 다시
+/// 삽입한다.
+async fn record_audit(tx: &Arc<TxShared>, record: &AuditInsert) -> Result<()> {
+    let key = crate::model::insert_audit(&Executor::Tx(tx.clone()), record).await?;
     *tx.audit.lock().unwrap() = Some(key);
     Ok(())
 }
@@ -251,17 +291,6 @@ impl Db {
     /// callback. `audit(values)` records the audit of the transaction.
     pub fn transaction_once<F>(&self, f: F) -> TransactionOnce<'_, F> {
         TransactionOnce { db: self, f, audit: None }
-    }
-
-    /// Returns a handle on the same connection whose transactions record their
-    /// audit with `defaults`: a model of the audit record table with the values
-    /// that every audit of the handle shares, such as the account and the
-    /// request. A transaction with `audit(values)` inserts one audit record with
-    /// these defaults and its own values, and the audited writes of the
-    /// transaction refer to it. Models connect to the handle as they connect to
-    /// the connection.
-    pub fn audit<M: crate::model::Model>(&self, defaults: M) -> Db {
-        Db { inner: self.inner.clone(), audit_defaults: Some(Arc::new(defaults.into_core())) }
     }
 }
 

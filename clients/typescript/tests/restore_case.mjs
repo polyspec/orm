@@ -4,7 +4,7 @@
 // 결과다. owner test(dbspec_runtime_db.mjs)와 coverage case(coverage_audit_triggers.mjs)가 함께 쓴다.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { CORE, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { nativeQuery } from './coverage_case.mjs';
 
 export const restoreText = await readFile(new URL('../../../contracts/fixtures/restore.dbs', import.meta.url), 'utf8');
@@ -44,6 +44,11 @@ async function codeOf(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
+/** actor 를 audit 값으로 주는 audit source 다. 연결 option auditSource 로 쓴다. */
+export function auditSource(actor) {
+  return () => ({ actor });
+}
+
 /** cls 의 새 model 에 values 를 쓴다. */
 function modelWith(cls, values) {
   const m = new cls();
@@ -52,11 +57,14 @@ function modelWith(cls, values) {
 }
 
 /**
- * audit.dbs 가 설치되고 item 과 audit 에 행이 없는 db 에서 Go auditCase 를 실행한다.
- * - handle 의 audit 기본값과 transaction 의 audit 값을 합친 기록 하나를 transaction 이 callback 전에 삽입하고(같은
- *   column 이면 transaction 값이 이긴다), audit table 의 insert, update, soft delete 는 그 primary key 를 audit column
- *   에 쓴다. trigger 가 각 version 을 history table 에 남기고 previous 는 이전 version 의 audit key 다.
- * - 기본값이 없는 연결의 audit transaction 과 audit 기록 table 의 column 이 아닌 값은 CONFIG 다.
+ * audit.dbs 가 설치되고 item 과 audit 에 행이 없는 db 에서 Go auditCase 를 실행한다. db 의 auditSource 는
+ * auditSource('default')다.
+ * - 연결 option 의 audit source 가 준 값과 transaction 의 audit 값을 합친 기록 하나를 transaction 이 callback 전에
+ *   audit setting 의 references table 에 삽입하고(같은 column 이면 transaction 값이 이긴다), audit table 의 insert,
+ *   update, soft delete 는 그 primary key 를 audit column 에 쓴다. trigger 가 각 version 을 history table 에 남기고
+ *   previous 는 이전 version 의 audit key 다.
+ * - audit source 가 없는 연결의 audit transaction 과 audit 기록 table 의 column 이 아닌 값(transaction 이나 source 의
+ *   값)은 CONFIG 이고, source 가 던진 오류는 transaction 의 오류다.
  * - 중첩 transaction 은 바깥 audit 을 쓰며 자기 audit 을 받지 않는다(CONFIG).
  * - audit 없는 audit table write 는 CONFIG 다. 없는 audit 기록을 가리키는 raw write 는 foreign key 가 거부한다.
  * - callback 이 실패하면 audit 기록도 rollback 된다.
@@ -65,8 +73,18 @@ export async function auditCase(db, driver, dsn) {
   const { item: Item, item_history: ItemHistory, audit: Audit } = modelsOf(auditText);
   const item = values => modelWith(Item, values).connect(db);
   assert.equal(await codeOf(item({ title: 'outside' }).create()), 'CONFIG', 'insert without an audit');
-  assert.equal(await codeOf(db.transaction(async () => {}, { audit: { actor: 'x' } })), 'CONFIG', 'an audit transaction of a connection without audit defaults');
-  const adb = db.audit(modelWith(Audit, { actor: 'default' }));
+  for (const [name, options] of [['without an audit source', {}], ['with a source value that is no column', { auditSource: () => ({ reason: 'x' }) }]]) {
+    const other = await Db.connectSchema(dsn, auditSchema(), options);
+    try {
+      assert.equal(await codeOf(other.transaction(async () => {}, { audit: { actor: 'x' } })), 'CONFIG', `an audit transaction of a connection ${name}`);
+    } finally { await other.close(); }
+  }
+  const unavailable = new Error('no request');
+  const failing = await Db.connectSchema(dsn, auditSchema(), { auditSource: () => { throw unavailable; } });
+  let sourceError;
+  try { await failing.transaction(async () => {}, { audit: {} }); } catch (error) { sourceError = error; } finally { await failing.close(); }
+  assert.equal(sourceError, unavailable, 'an audit transaction whose source fails returns the source error');
+  const adb = db;
   assert.equal(await codeOf(adb.transaction(async () => {}, { audit: { reason: 'x' } })), 'CONFIG', 'an audit value that is no column');
   let seq;
   await adb.transaction(async () => {
@@ -100,7 +118,7 @@ export async function auditCase(db, driver, dsn) {
 }
 
 /**
- * restore.dbs 가 설치된 db 에서 Go restoreCase 를 실행한다. membership 은 unique key (team_id, member_id)와
+ * restore.dbs 가 설치되고 auditSource 가 auditSource('default')인 db 에서 Go restoreCase 를 실행한다. membership 은 unique key (team_id, member_id)와
  * exclude (note)를 가진 audit table 이고 label 은 unique key (name)를 가진 audit 없는 table 이다.
  * - soft delete 한 행의 unique key 값은 남으므로 같은 key 의 insert 는 DUPLICATE_KEY 다.
  * - 기본 read 는 지운 행을 읽지 않는다.
@@ -119,7 +137,7 @@ export async function restoreCase(db) {
     assert.equal(rows.length, 1, `audit records of ${actor}`);
     return rows.values()[0][CORE].column('seq');
   };
-  const adb = db.audit(modelWith(Audit, { actor: 'default' }));
+  const adb = db;
   const columns = (m, names) => Object.fromEntries(names.map(n => [n, m[CORE].column(n)]));
   const membershipColumns = ['seq', 'team_id', 'member_id', 'note', 'audit_seq', 'deleted_at'];
   let seq;

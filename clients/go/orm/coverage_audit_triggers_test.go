@@ -93,7 +93,7 @@ func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 }
 
 // TestCoverageAuditHistory는 고른 database에서 auditCase를 실행한다:
-// contracts/fixtures/audit.dbs를 설치하고, audit 기본값을 가진 handle의 audit
+// contracts/fixtures/audit.dbs를 설치하고, audit source를 가진 연결의 audit
 // transaction이 audit 기록 하나를 삽입하고 audit table의 insert, update, soft
 // delete가 그 key를 쓰며 trigger가 각 version을 item_history에 남기는지
 // 확인한다. 끝나면 설치한 table과 function을 지운다.
@@ -115,9 +115,10 @@ func TestCoverageAuditHistory(t *testing.T) {
 }
 
 // TestCoverageAuditTransactionEntryPoints는 모든 transaction 진입점이 audit
-// 값을 받는지 확인한다: audit 기본값을 가진 handle의 Transaction과 그
-// handle의 WithContext handle의 Transaction이 audit 기록을 하나씩 삽입하고
-// audit 대상 write가 그 key를 쓰며, 중첩 transaction은 audit을 받지 않는다.
+// 값을 받는지 확인한다: 연결의 Transaction과 WithContext handle의
+// Transaction이 audit 기록을 하나씩 삽입하고(audit source는 transaction의
+// context로 불린다) audit 대상 write가 그 key를 쓰며, 중첩 transaction은
+// audit을 받지 않는다.
 func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
@@ -132,7 +133,7 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	}
 	defer dropAudit(t, raw, driver)
 	s := fixtureSchema(t, "audit")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +154,7 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 		}
 		return c
 	}
-	adb := db.Audit(auditOf(s, "default"))
+	adb := db
 	var seq int64
 	if err := adb.Transaction(func() error {
 		row, err := item(adb, map[string]any{"title": "first"}).Create()
@@ -165,10 +166,11 @@ func TestCoverageAuditTransactionEntryPoints(t *testing.T) {
 	}, orm.Audit(map[string]any{"actor": "transaction"}), orm.Retry(0)); err != nil {
 		t.Fatal(err)
 	}
-	handle := adb.WithContext(context.Background())
+	// audit source는 transaction이 쓰는 context로 불린다.
+	handle := adb.WithContext(context.WithValue(context.Background(), actorKey{}, "context"))
 	if err := handle.Transaction(func() error {
 		return item(handle, map[string]any{"seq": seq, "title": "second"}).Update(nil)
-	}, orm.Audit(map[string]any{"actor": "context"}), orm.Retry(0)); err != nil {
+	}, orm.Audit(nil), orm.Retry(0)); err != nil {
 		t.Fatal(err)
 	}
 	nested := adb.Transaction(func() error {
@@ -274,7 +276,7 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 	defer dropAuditColumns(t, raw, driver)
 
 	s := fixtureSchema(t, "audit_columns")
-	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, auditConfig("default"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +298,7 @@ func TestCoverageAuditSelectedColumns(t *testing.T) {
 		}
 		return c
 	}
-	adb := db.Audit(auditOf(s, "default"))
+	adb := db
 	var seq, id int64
 	if err := adb.Transaction(func() error {
 		row, err := core(cards, map[string]any{"title": "first", "secret": "s1"}).Create()

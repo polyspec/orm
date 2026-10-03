@@ -151,8 +151,8 @@ fn runtime_model_names_entities_and_reads_settings() {
     let audit = member.audit.as_ref().unwrap();
     assert_eq!(
         (audit.history.as_str(), audit.column.as_str(), audit.record.as_str(), audit.action.as_str(), audit.previous.as_str()),
-        ("member_history", "audit_seq", "member_record", "change", "previous_audit_seq"),
-        "the audit record table is named by its entity"
+        ("member_history", "audit_seq", "member_audit", "change", "previous_audit_seq"),
+        "the audit record table is named by its table name"
     );
     assert!(!member.immutable);
     assert!(model.entity("member_history").unwrap().immutable);

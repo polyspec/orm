@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mjs';
 import { createCaseDatabase } from './case-database.mjs';
-import { auditCase, restoreCase, restoreSchema } from './restore_case.mjs';
+import { auditCase, auditSource, restoreCase, restoreSchema } from './restore_case.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 
@@ -95,7 +95,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
 
   caseTest(`${dialect}: connect takes the DSN and options without a schema path`, 30_000, async ({ step }) => {
     database = await createCaseDatabase(dialect, step);
-    db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key' });
+    db = await Db.connect(database.dsn, { aesKey: 'probe-aes-key', blindIndexKey: 'probe-blind-key', auditSource: auditSource('default') });
     assert.equal(db.driver, dialect);
   });
 
@@ -178,7 +178,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     const own = await createCaseDatabase(dialect, step);
     let restoreDb;
     try {
-      restoreDb = await Db.connect(own.dsn);
+      restoreDb = await Db.connect(own.dsn, { auditSource: auditSource('default') });
       await restoreDb.utils().schema().install(restoreSchema());
       await restoreCase(restoreDb);
     } finally {

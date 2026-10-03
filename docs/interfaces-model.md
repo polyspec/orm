@@ -104,7 +104,6 @@ classDiagram
         Cache_Sql_Statement statements
         connect()
         connectSchema()
-        audit()
         transaction()
         utils()
         close()

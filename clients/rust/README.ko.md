@@ -64,7 +64,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 | 0을 포함한 deadlock 재시도 횟수 | `db.transaction(callback).retry(count).await` |
 | 문장 또는 트랜잭션 callback 취소 | 해당 Future를 drop한다. `timeout_ms`는 기한 만료 시 callback을 취소하고 rollback을 기다린다. |
 | 모델 열 암호화 | 스키마에 `aes` codec stage와 `aes_version` setting을 선언하고 `Config::aes_key` 또는 `Config::aes_keys`와 `Config::aes_version`을 전달한다. |
-| 감사 쓰기 기록 | 스키마에 `audit` setting을 선언하고, `db.audit(Audit::new().set_…(…))`로 audit 기본값을 가진 handle을 받아, `transaction`, `transaction_send`, `transaction_once`의 `.audit([("action", …)])`로 작업 단위의 값을 준다([사용법](../../docs/usage.ko.md#audited-writes)). |
+| 감사 쓰기 기록 | 스키마에 `audit` setting을 선언하고, 연결할 때 `Config::audit_source`를 한 번 주고, `transaction`, `transaction_send`, `transaction_once`의 `.audit([("action", …)])`로 작업 단위의 값을 준다([사용법](../../docs/usage.ko.md#audited-writes)). |
 
 Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버전은 양수이며 키는 비어 있지 않아야 한다. `aes_keys`가 있으면 현재 버전을 포함해야 한다. 함께 제공한 `aes_key`는 그 버전의 키와 같아야 한다. 잘못된 키 설정이면 연결을 열기 전에 `Db::connect`가 `CONFIG`를 반환한다. AES 열이 없는 연결에는 두 키 필드를 비워 둘 수 있다.
 

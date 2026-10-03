@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { errorCode, featureDatabase, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
-import { auditCase, auditSchema, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
+import { auditCase, auditSchema, auditSource, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
 
@@ -67,7 +67,7 @@ async function withInstalled(schema, tables, audited, body) {
   for (const table of tables) {
     assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
   }
-  const db = await Db.connect(dsn);
+  const db = await Db.connect(dsn, { auditSource: auditSource('default') });
   try {
     assert.equal(db.driver, driver);
     await withCleanup(async () => {
@@ -80,24 +80,18 @@ async function withInstalled(schema, tables, audited, body) {
   }
 }
 
-/** audit 기록 table audit 의 새 model 에 actor 를 쓴다. 연결의 audit 기본값으로 쓴다. */
-function auditOf(Audit, actor) {
-  const m = new Audit();
-  m[CORE].setValue('actor', actor);
-  return m;
-}
-
 await runCases('coverage_audit_triggers.mjs', {
   // contracts/fixtures/audit.dbs: audit 기록을 받은 transaction 의 write 를 확인한다(tests/restore_case.mjs).
   async audit_history() {
     await withInstalled(auditSchema(), auditTables, ['item'], (db, driver, dsn) => auditCase(db, driver, dsn));
   },
-  // 모든 transaction 진입점이 audit 을 받는다: audit handle 의 transaction 과 그 handle 의 withSignal handle 의
-  // transaction 이 삽입한 audit 기록의 key 를 audit 대상 write 가 쓰고, 중첩 transaction 은 audit 을 받지 않는다.
+  // 모든 transaction 진입점이 audit 을 받는다: 연결의 transaction 과 그 연결의 withSignal handle 의 transaction 이
+  // 삽입한 audit 기록의 key 를 audit 대상 write 가 쓰고, 중첩 transaction 은 audit 을 받지 않는다. withSignal handle 은
+  // 연결의 audit source 를 함께 쓴다.
   async audit_transaction_entry_points() {
     const { item: Item, item_history: ItemHistory, audit: Audit } = auditModels();
     await withInstalled(auditSchema(), auditTables, ['item'], async db => {
-      const adb = db.audit(auditOf(Audit, 'default'));
+      const adb = db;
       const seq = await adb.transaction(async () => {
         const row = new Item();
         row[CORE].setValue('title', 'first');
@@ -129,7 +123,7 @@ await runCases('coverage_audit_triggers.mjs', {
   async audit_selected_columns() {
     const { card: Card, tag: Tag, audit: Audit } = auditModels(auditColumnsText);
     await withInstalled(schemaOf(auditColumnsText), auditColumnsTables, ['card', 'tag'], async (db, driver, dsn) => {
-      const adb = db.audit(auditOf(Audit, 'default'));
+      const adb = db;
       let seq;
       let id;
       await adb.transaction(async () => {

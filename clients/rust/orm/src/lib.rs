@@ -31,7 +31,7 @@ pub use args::{
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
 pub use core::Core;
-pub use db::{Config, Db, DbStats, OnQuery, Statement};
+pub use db::{AuditSource, Config, Db, DbStats, OnQuery, Statement};
 pub use engine::Dialect;
 pub use model::{AnyModel, Entity, Model};
 pub use ordered_json;

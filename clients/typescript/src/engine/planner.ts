@@ -58,7 +58,7 @@ class Builder {
   public now(precision: number): string { return this.push(slot({ from: 'now', precision })); }
   /**
    * The key of the transaction's audit record, written to the audit column of an audited table. name is the
-   * entity of the audit record table; the executor checks that the transaction's audit is a row of it.
+   * audit record table; the executor checks that the transaction's audit is a row of it.
    */
   public audit(ent: Entity): string {
     return this.push(slot({ from: 'audit', name: ent.auditRecord }));

@@ -38,6 +38,12 @@ type Config struct {
 	PlanCacheSize      int              // maximum compiled plans; zero uses the default
 	StatementCacheSize int              // maximum prepared statements; zero uses the default
 	OnQuery            func(Event)
+	// AuditSource returns the audit values of the current request, a map from
+	// column name to value of the audit record table, such as the account and
+	// the request id. A transaction with orm.Audit calls it once with the
+	// transaction's context; an error fails the transaction. The ORM writes no
+	// audit value of its own.
+	AuditSource func(ctx context.Context) (map[string]any, error)
 }
 
 // Event is emitted for every executed statement when Config.OnQuery is set.
@@ -94,8 +100,6 @@ type DB struct {
 	cfg      Config
 	driver   string
 	location *time.Location
-	// auditDefaults는 이 handle의 transaction이 audit 기록에 쓰는 기본값 model이다.
-	auditDefaults Model
 
 	plans map[uint64]*cached
 	stmts map[string]*sql.Stmt
@@ -106,6 +110,8 @@ type dbMutable struct {
 	// engines는 manifestHash마다 이 연결 dialect의 engine이다.
 	engineMu sync.RWMutex
 	engines  map[string]*engine.Engine
+	// schemas는 engines의 hash마다 등록한 schema다.
+	schemas map[string]*Schema
 
 	planMu    sync.RWMutex
 	planOrder []uint64
@@ -179,6 +185,7 @@ func (d *DB) register(s *Schema) error {
 		return err
 	}
 	d.m.engines[s.Hash] = eng
+	d.m.schemas[s.Hash] = s
 	return nil
 }
 
@@ -327,7 +334,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		s.Close()
 		return nil, configErr("AESKey differs from AESKeys[%d]", cfg.AESVersion)
 	}
-	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
+	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
 // checkSQLite rejects SQLite builds older than the supported minimum.
@@ -355,19 +362,6 @@ func (d *DB) WithContext(ctx context.Context) *DB {
 	}
 	handle := *d
 	handle.ctx = ctx
-	handle.root = d.Root()
-	return &handle
-}
-
-// Audit returns a handle on the same connection whose transactions record
-// their audit with defaults: a model of the audit record table with the values
-// that every audit of the handle shares, such as the account and the request.
-// A transaction with orm.Audit inserts one audit record with these defaults and
-// its own values, and the audited writes of the transaction refer to it.
-// Models connect to the handle as they connect to the connection.
-func (d *DB) Audit(defaults Model) *DB {
-	handle := *d
-	handle.auditDefaults = defaults
 	handle.root = d.Root()
 	return &handle
 }

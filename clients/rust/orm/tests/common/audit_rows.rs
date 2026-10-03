@@ -55,7 +55,6 @@ macro_rules! row_model {
 
 row_model!(Item, ITEM, "item", ["seq", "title", "audit_seq", "deleted_at"]);
 row_model!(History, HISTORY, "item_history", ["history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"]);
-row_model!(AuditRecord, AUDIT, "audit", ["seq", "actor"]);
 
 /// audit 값이 없는 transaction의 `.audit(...)` 인자.
 #[allow(dead_code)]
@@ -71,11 +70,22 @@ pub fn connected<M: Model>(db: &Db) -> M {
     M::from_core(core)
 }
 
-/// audit 기록 table audit에 actor를 쓴 새 model이다. 연결의 audit 기본값으로 쓴다.
-pub fn audit_of(actor: &str) -> AuditRecord {
-    let mut row: AuditRecord = model();
-    row.core_mut().set("actor", Param::from(actor));
-    row
+/// actor를 audit 값으로 주는 audit source다.
+pub fn audit_source(actor: &str) -> orm::AuditSource {
+    let actor = actor.to_owned();
+    std::sync::Arc::new(move || Ok(vec![("actor".to_owned(), Param::from(actor.as_str()))]))
+}
+
+/// actor를 audit 값으로 주는 연결 설정이다.
+pub fn audit_config(actor: &str) -> orm::Config {
+    orm::Config { audit_source: Some(audit_source(actor)), ..Default::default() }
+}
+
+/// dsn에 config로 연결하고 audit.dbs를 등록한다. table이 없으면 설치한다.
+pub async fn audit_db(dsn: &str, config: orm::Config) -> Db {
+    let db = Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("connect: {e}"));
+    db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("install: {e}"));
+    db
 }
 
 /// statement를 실행하고 그 결과를 돌려준다.
@@ -169,23 +179,42 @@ pub fn code<T>(r: orm::Result<T>) -> String {
 
 /// audit 기록을 받은 transaction의 write를 확인한다(clients/go/orm/audit_transaction_test.go의 auditCase와
 /// 같은 순서). db에는 audit.dbs가 설치되어 있고 table은 비어 있다. 확인하는 것:
-///   - handle의 audit 기본값과 transaction의 audit 값을 합친 기록 하나를 transaction이 callback 전에
-///     삽입하고(같은 column이면 transaction 값이 이긴다), audit table의 insert, update, soft delete는 그
+///   - 연결 설정의 audit source가 준 값과 transaction의 audit 값을 합친 기록 하나를 transaction이 callback 전에
+///     audit setting의 references table에 삽입하고(같은 column이면 transaction 값이 이긴다), audit table의
+///     insert, update, soft delete는 그
 ///     primary key를 audit column에 쓴다. trigger가 각 version을 history table에 남기고 previous는 이전
 ///     version의 audit key다.
-///   - 기본값이 없는 연결의 audit transaction과 audit 기록 table의 column이 아닌 값은 CONFIG다.
+///   - audit source가 없는 연결의 audit transaction, audit 기록 table의 column이 아닌 값(transaction이나
+///     source의 값)은 CONFIG이고, source의 오류는 transaction의 오류다.
 ///   - 중첩 transaction은 바깥 audit을 쓰며 자기 audit을 받지 않는다(CONFIG).
 ///   - audit 없는 audit table write는 CONFIG다. 없는 audit 기록을 가리키는 raw write는 foreign key가
 ///     거부한다.
 ///   - callback이 실패하면 audit 기록도 rollback된다.
 #[allow(dead_code)]
-pub async fn audit_case(db: &Db, driver: &str) {
+pub async fn audit_case(driver: &str, dsn: &str) {
+    let adb = audit_db(dsn, audit_config("default")).await;
+    let db = &adb;
     let mut outside = new_item("outside");
     outside.core_mut().connect(db);
     assert_eq!(code(orm::model::create(&mut outside).await), orm::codes::CONFIG, "{driver}: insert without an audit");
-    let without = db.transaction(async || Ok(())).audit([("actor", "x")]).await;
-    assert_eq!(code(without), orm::codes::CONFIG, "{driver}: an audit transaction of a connection without audit defaults");
-    let adb = db.audit(audit_of("default"));
+    let no_column: orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("reason".to_owned(), Param::from("x"))]));
+    for (name, config) in [
+        ("without an audit source", orm::Config::default()),
+        ("with a source value that is no column", orm::Config { audit_source: Some(no_column), ..Default::default() }),
+    ] {
+        let other = audit_db(dsn, config).await;
+        let failed = other.transaction(async || Ok(())).audit([("actor", "x")]).await;
+        other.close().await;
+        assert_eq!(code(failed), orm::codes::CONFIG, "{driver}: an audit transaction of a connection {name}");
+    }
+    let unavailable: orm::AuditSource = std::sync::Arc::new(|| Err(orm::Error::Engine { code: "UNAVAILABLE".into(), msg: "no request".into() }));
+    let failing = audit_db(dsn, orm::Config { audit_source: Some(unavailable), ..Default::default() }).await;
+    let failed = failing.transaction(async || Ok(())).audit(NO_VALUES).await;
+    failing.close().await;
+    assert!(
+        matches!(&failed, Err(orm::Error::Engine { code, msg }) if code == "UNAVAILABLE" && msg == "no request"),
+        "{driver}: an audit transaction whose source fails: {failed:?}"
+    );
     let unknown = adb.transaction(async || Ok(())).audit([("reason", "x")]).await;
     assert_eq!(code(unknown), orm::codes::CONFIG, "{driver}: an audit value that is no column");
     let seq = adb
@@ -228,14 +257,16 @@ pub async fn audit_case(db: &Db, driver: &str) {
         ],
         "{driver}: history rows"
     );
+    adb.close().await;
 }
 
-/// 모든 transaction 진입점이 audit 값을 받는다: transaction, transaction_send, transaction_once가 handle의
-/// 기본값과 자기 값으로 기록한 audit의 key를 audit 대상 write가 쓰고, 중첩 transaction_once는 audit을 받지
+/// 모든 transaction 진입점이 audit 값을 받는다: transaction, transaction_send, transaction_once가 연결의 audit
+/// source와 자기 값으로 기록한 audit의 key를 audit 대상 write가 쓰고, 중첩 transaction_once는 audit을 받지
 /// 않는다(CONFIG). db에는 audit.dbs가 설치되어 있고 table은 비어 있다.
 #[allow(dead_code)]
-pub async fn entry_points_case(db: &Db, driver: &str) {
-    let adb = db.audit(audit_of("default"));
+pub async fn entry_points_case(driver: &str, dsn: &str) {
+    let adb = audit_db(dsn, audit_config("default")).await;
+    let db = &adb;
     let seq = adb
         .transaction(async || orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64())
         .audit([("actor", "transaction")])
@@ -277,4 +308,5 @@ pub async fn entry_points_case(db: &Db, driver: &str) {
         ],
         "{driver}: history rows"
     );
+    adb.close().await;
 }

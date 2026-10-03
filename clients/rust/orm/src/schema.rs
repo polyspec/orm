@@ -93,6 +93,19 @@ impl Schema {
         })
     }
 
+    /// 같은 manifest text와 hash의 schema 하나. 연결이 등록한 set의 schema를 request에 쓰도록 process에서
+    /// hash마다 한 번 만들고 둔다.
+    pub(crate) fn interned(&self) -> &'static Schema {
+        static INTERNED: std::sync::Mutex<Vec<&'static Schema>> = std::sync::Mutex::new(Vec::new());
+        let mut interned = INTERNED.lock().unwrap();
+        if let Some(found) = interned.iter().find(|s| s.hash == self.hash && s.text == self.text) {
+            return found;
+        }
+        let schema: &'static Schema = Box::leak(Box::new(Schema::new(self.text, self.hash)));
+        interned.push(schema);
+        schema
+    }
+
     /// runtime model.
     pub fn manifest(&self) -> Result<Arc<Manifest>> {
         self.manifest

@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:cae485e93701a2ab9a51fdf330a64dd26a7a44a94ee6b54172304ca4d22050b1",
-    "php": "sha256:f5af22b1b7f2872404aec5fc6d3a2d504ff078987c5097bd5bff78ec4861d3bc",
-    "rust": "sha256:c9760a6122977999985b7791805c0a5f84b290cc671066055ccc5cb892c0a9fc",
-    "typescript": "sha256:887962e20257f2c2c89cc35d94439a629635a2c0e44a8fcf4a35fdbc4f60c1aa"
+    "go": "sha256:a61ea50060b1821eb9002adfa319ba0dc940992a96d31d0243409f8b8d779d6e",
+    "php": "sha256:64e992f2286243e7864d6bedf674cf46f3aefe52aa8bdd58d71873ee20031aec",
+    "rust": "sha256:842bd6480521b432eb8d44e96f2173c32fc4358f1ff4925c49ff774bd311de85",
+    "typescript": "sha256:8f6defa3da18a1bfa7bef5eff4f012134c5205b7e45922fee9fab85e10c0c863"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -213,7 +213,6 @@
       "methods": [
         "connect",
         "connectSchema",
-        "audit",
         "transaction",
         "utils",
         "close",

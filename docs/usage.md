@@ -296,39 +296,46 @@ let row = master.transaction(async || Author::new().set_name("x")./*…*/.create
 
 ### Audited writes
 
-A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that records its unit of work in the audit record table. Two calls name the record:
+A table with an `audit` setting ([audit](dbspec.md#audit)) is written only inside a transaction that records its unit of work in the audit record table, the table that the setting names with `references`. Two places give the record its values:
 
-- `audit(defaults)` on a connection returns a handle of the same connection that carries the audit defaults: a model of the audit record table with the values every unit of work of the handle shares, such as the account and the request. It changes nothing on the connection itself, so set it once per request and pass the handle on. Models connect to the handle as they connect to the connection.
-- The `audit` option of a transaction on that handle holds the values of this unit of work, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `.audit(pairs)` on `transaction`, `transaction_send` and `transaction_once`, TypeScript `{ audit: {...} }`). An empty map records the defaults alone.
+- The connection configuration takes `auditSource` once per process ([configuration](config.md)): a function that returns the audit values of the current request, a map from column name to value of the audit record table, such as the account and the request id. The ORM writes no audit value of its own.
+- The `audit` option of a transaction holds the values of this change, a map from column name to value (Go `orm.Audit(map[string]any)`, PHP `audit:` array, Rust `.audit(pairs)` on `transaction`, `transaction_send` and `transaction_once`, TypeScript `{ audit: {...} }`). An empty map records the source's values alone.
 
 ```go
-db := master.Audit(model.Audit().SetAccountSeq(accountSeq).SetRequestId(requestID)) // once per request
-err := db.Transaction(func() error {
+master, err := model.Connect(dsn, orm.Config{AuditSource: func(ctx context.Context) (map[string]any, error) {
+    r := requestOf(ctx) // the request context of the calling code
+    return map[string]any{"account_seq": r.AccountSeq, "request_id": r.ID}, nil
+}})
+err = master.WithContext(ctx).Transaction(func() error {
     _, err := model.Service().SetName("renamed").Create()
     return err
 }, orm.Audit(map[string]any{"action": "service.rename", "reason": reason}))
 ```
 ```php
-$db = $master->audit((new Audit)->setAccountSeq($accountSeq)->setRequestId($requestId)); // once per request
-$db->transaction(function (): void {
+$master = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(auditSource: fn (): array => ['account_seq' => $request->accountSeq(), 'request_id' => $request->id()]));
+$master->transaction(function (): void {
     (new Service)->setName('renamed')->create();
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-let db = master.audit(Audit::new().set_account_seq(account_seq).set_request_id(request_id)); // once per request
-db.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
+let master = model::connect(&dsn, pool_size, orm::Config {
+    audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
+    ..Default::default()
+}).await?;
+master.transaction(async || Service::new().set_name("renamed").create().await.map(|_| ()))
     .audit([("action", "service.rename"), ("reason", reason.as_str())])
     .await?;
 ```
 ```typescript
-const db = master.audit(new Audit().setAccountSeq(accountSeq).setRequestId(requestId)); // once per request
-await db.transaction(async () => {
+const master = await connect(dsn, { auditSource: () => ({ account_seq: currentRequest().accountSeq, request_id: currentRequest().id }) });
+await master.transaction(async () => {
   await new Service().setName('renamed').create();
 }, { audit: { action: 'service.rename', reason } });
 ```
 
-- Before the callback, in every attempt of a retried transaction, the transaction inserts one row into the audit record table: the defaults with the transaction's values, where a value wins over the default of the same column. Every insert, update, soft delete and restore of an audited table in the transaction writes that row's primary key into the table's audit column, and the database triggers copy each version into the history table. A failed callback rolls the audit row back with the changes.
-- The transaction fails with `CONFIG` before it begins when the handle has no defaults or a value names a column that the audit record table does not have. A write of an audited table outside a transaction with audit values fails with `CONFIG`, as does a write of a table whose audit record table is another table than the defaults' one. A nested transaction uses the audit of the outer one and does not take `audit`; a request that assigns the audit column itself fails with `IR_INVALID`.
+- A transaction with `audit` calls the source once, before it begins, and before the callback, in every attempt of a retried transaction, inserts one row into the audit record table with the source's values and its own, where a value of the transaction wins over the source's value of the same column. Every insert, update, soft delete and restore of an audited table in the transaction writes that row's primary key (the generated identity, or the given value) into the table's audit column, and the database triggers copy each version into the history table. A failed callback rolls the audit row back with the changes.
+- The audit record table is the one table that the `references` of the audited tables of the sets registered on the connection name, and it is a table of a set registered on the connection; no such table, several of them, or a primary key of more than one column fail with `CONFIG`. The transaction fails with `CONFIG` before it begins when the connection has no audit source, a value of the source or the transaction names a column that the audit record table does not have, or no value is given at all; an error of the source fails the transaction with that error.
+- A write of an audited table outside a transaction with `audit` fails with `CONFIG`. A nested transaction uses the audit of the outer one and does not take `audit`; a request that assigns the audit column itself fails with `IR_INVALID`.
 
 ### Restore a soft-deleted row
 

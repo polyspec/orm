@@ -4,7 +4,7 @@ declare(strict_types=1);
 // database에 설치하고, client가 쓴 insert, update, soft delete를 audit trigger가
 // 고른 column만으로 기록하는지 확인한다. card는 exclude (secret)로 secret을 빼고,
 // tag는 include (label)로 label과 audit column만 기록하며, history table에는
-// 기록하는 column만 있다. 두 table은 audit 기본값을 가진 handle의 audit transaction으로
+// 기록하는 column만 있다. 두 table은 audit source를 가진 연결의 audit transaction으로
 // 쓴다. 끝에 설치한 table과 PostgreSQL function을 지운다.
 // document의 model은 임시 directory에 생성한다: 한 process는 한 document set의
 // model만 가진다.
@@ -12,7 +12,6 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
-use CoverageAuditColumns\Orm\Audit;
 use CoverageAuditColumns\Orm\Card;
 use CoverageAuditColumns\Orm\Tag;
 use Orm\Config;
@@ -76,11 +75,11 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
         }
     });
     require "$work/gen/bootstrap.php";
-    $db = Orm::connect($dsn, new Config());
+    $db = Orm::connect($dsn, new Config(auditSource: static fn(): array => ['actor' => 'default']));
     try {
         coverageRestoring(function () use ($db): void {
             $db->utils()->schema()->install(\CoverageAuditColumns\Orm\schema());
-            $adb = $db->audit((new Audit)->setActor('default'));
+            $adb = $db;
             [$seq, $id] = $adb->transaction(function (): array {
                 $seq = (new Card)->setTitle('first')->setSecret('s1')->create()->getSeq();
                 $id = (new Tag)->setLabel('x')->setColor('red')->create()->getId();
