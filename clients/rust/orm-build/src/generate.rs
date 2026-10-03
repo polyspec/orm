@@ -694,12 +694,16 @@ impl<'m> Gen<'m> {
         let typ = format!("super::{module}::{ctyp}");
         let g = if many {
             Getter {
-                result: format!("Option<&orm::Collection<{typ}>>"),
+                result: format!("orm::Result<Option<&orm::Collection<{typ}>>>"),
                 expr: format!("self.__orm.related_many::<{typ}>({key:?})"),
                 origin: format!("the {table} result {key}"),
             }
         } else {
-            Getter { result: format!("Option<&{typ}>"), expr: format!("self.__orm.related_one::<{typ}>({key:?})"), origin: format!("the {table} result {key}") }
+            Getter {
+                result: format!("orm::Result<Option<&{typ}>>"),
+                expr: format!("self.__orm.related_one::<{typ}>({key:?})"),
+                origin: format!("the {table} result {key}"),
+            }
         };
         self.add_getter(parent, r, &r.call.name.clone(), g);
     }

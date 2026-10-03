@@ -262,7 +262,7 @@ async fn joins_and_relations(t: &Target) {
         .await
         .unwrap();
     assert_eq!(names(&rows), "alpha,gamma,delta", "placed join conditions");
-    assert_eq!(rows.first().and_then(|b| b.get_user_model()).map(|u| u.get_name().unwrap().to_owned()).as_deref(), Some("kim"), "join result");
+    assert_eq!(rows.first().and_then(|b| b.get_user_model().unwrap()).map(|u| u.get_name().unwrap().to_owned()).as_deref(), Some("kim"), "join result");
     let member = ServiceMember::new();
     let cmp = Author::new().connect(db).join_service_member_seq_with_seq(member.clone()).read_count_gt_seq(&member).get_count().await.unwrap();
     assert_eq!(cmp, 3, "column comparison with a joined model");
@@ -278,17 +278,17 @@ async fn joins_and_relations(t: &Target) {
         .await
         .unwrap();
     let b = loaded.first().unwrap();
-    assert_eq!(b.get_writer().map(|u| u.get_name().unwrap()), Some("kim"), "relation alias");
-    assert_eq!(b.get_members().map(|c| c.len()), Some(1), "relations");
-    assert_eq!(b.get_service_region_model().map(|m| m.get_name().unwrap()), Some("module"), "relation");
+    assert_eq!(b.get_writer().unwrap().map(|u| u.get_name().unwrap()), Some("kim"), "relation alias");
+    assert_eq!(b.get_members().unwrap().map(|c| c.len()), Some(1), "relations");
+    assert_eq!(b.get_service_region_model().unwrap().map(|m| m.get_name().unwrap()), Some("module"), "relation");
     let limited =
         User::new().connect(db).relations(Author::new().match_seq_with_user_seq().order_by_seq_desc().group_limit(1)).order_by_seq_asc().gets().await.unwrap();
-    let got = limited.first().and_then(|u| u.get_author_models()).expect("author models");
+    let got = limited.first().and_then(|u| u.get_author_models().unwrap()).expect("author models");
     assert_eq!(names(got), "gamma", "group_limit");
 
     let other = model::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
     let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
-    assert_eq!(external.get_owner().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
+    assert_eq!(external.get_owner().unwrap().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
     assert_eq!(code(Author::new().connect(db).join_user_seq_with_seq(User::new().connect(db)).gets().await), "CONFIG", "join child with connection");
     assert_eq!(code(Author::new().connect(db).name("a").or(&User::new()).gets().await), "CONFIG", "unjoined model placement");

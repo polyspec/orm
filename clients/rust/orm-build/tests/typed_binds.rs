@@ -123,6 +123,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                             GridCell::Text(_) => "text",
                             GridCell::Boolean(_) => "boolean",
                             GridCell::Binary(_) => "binary",
+                            GridCell::Date(_) => "date",
+                            GridCell::Time(_) => "time",
+                            GridCell::DateTime(_) => "datetime",
                         };
                         eprintln!("failed typed_roundtrip:{dialect}:column-{index}:kind-{kind}");
                     }
@@ -165,6 +168,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                 ParamType::Float32,
                 ParamType::Decimal,
                 ParamType::Unsigned,
+                ParamType::Date,
+                ParamType::Time,
+                ParamType::DateTime,
             ];
             for kind in kinds {
                 let supported =
@@ -181,6 +187,9 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                             ParamType::Float32 => "float4",
                             ParamType::Decimal => "numeric",
                             ParamType::Unsigned => "int8",
+                            ParamType::Date => "date",
+                            ParamType::Time => "time",
+                            ParamType::DateTime => "timestamp",
                         }
                     )
                 } else {

@@ -1061,7 +1061,8 @@ func (g *goGen) relationGetter(pos string, parent, child *goModel, many bool, al
 	if many {
 		result = "*orm.Collection[*" + child.typ + "]"
 	}
-	expr := fmt.Sprintf("v, _ := x.m.Related(%q).(%s)\n\treturn v", key, result)
+	expr := fmt.Sprintf("return orm.RelatedAs[%s](x.m, %q)", result, key)
+	result = "(" + result + ", error)"
 	origin := "the " + child.e.Name + " relation result"
 	g.addGetter(pos, parent, name, getter{result: result, expr: expr, origin: origin})
 }

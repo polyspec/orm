@@ -1,4 +1,5 @@
 use super::{params, ParamType, P};
+use orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use sqlx::{mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments, MySql, Postgres, Sqlite};
 
 pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeInfo>, sqlx::Error> {
@@ -15,6 +16,9 @@ pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeI
                 P::Decimal(_) => ParamType::Decimal,
                 P::Boolean(_) => ParamType::Boolean,
                 P::Binary(_) => ParamType::Binary,
+                P::Date(_) => ParamType::Date,
+                P::Time(_) => ParamType::Time,
+                P::DateTime(_) => ParamType::DateTime,
                 P::Null(kind) => *kind,
             };
             Ok(match kind {
@@ -25,6 +29,9 @@ pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeI
                 ParamType::Decimal => <bigdecimal::BigDecimal as Type<Postgres>>::type_info(),
                 ParamType::Boolean => <bool as Type<Postgres>>::type_info(),
                 ParamType::Binary => <Vec<u8> as Type<Postgres>>::type_info(),
+                ParamType::Date => <NaiveDate as Type<Postgres>>::type_info(),
+                ParamType::Time => <NaiveTime as Type<Postgres>>::type_info(),
+                ParamType::DateTime => <NaiveDateTime as Type<Postgres>>::type_info(),
                 ParamType::Unsigned => return Err(params::invalid()),
             })
         })
@@ -42,7 +49,13 @@ pub(super) fn mysql<'q>(mut q: Query<'q, MySql, MySqlArguments>, values: &[P]) -
             P::Decimal(v) => q.bind(params::decimal(v)?),
             P::Boolean(v) => q.bind(*v),
             P::Binary(v) => q.bind(v.clone()),
+            P::Date(v) => q.bind(params::date(v)?),
+            P::Time(v) => q.bind(params::time(v)?),
+            P::DateTime(v) => q.bind(params::datetime(v)?),
             P::Null(kind) => match kind {
+                ParamType::Date => q.bind(None::<NaiveDate>),
+                ParamType::Time => q.bind(None::<NaiveTime>),
+                ParamType::DateTime => q.bind(None::<NaiveDateTime>),
                 ParamType::Text => q.bind(None::<String>),
                 ParamType::Integer => q.bind(None::<i64>),
                 ParamType::Unsigned => q.bind(None::<u64>),
@@ -67,7 +80,13 @@ pub(super) fn postgres<'q>(mut q: Query<'q, Postgres, PgArguments>, values: &[P]
             P::Decimal(v) => q.bind(params::decimal(v)?),
             P::Boolean(v) => q.bind(*v),
             P::Binary(v) => q.bind(v.clone()),
+            P::Date(v) => q.bind(params::date(v)?),
+            P::Time(v) => q.bind(params::time(v)?),
+            P::DateTime(v) => q.bind(params::datetime(v)?),
             P::Null(kind) => match kind {
+                ParamType::Date => q.bind(None::<NaiveDate>),
+                ParamType::Time => q.bind(None::<NaiveTime>),
+                ParamType::DateTime => q.bind(None::<NaiveDateTime>),
                 ParamType::Text => q.bind(None::<String>),
                 ParamType::Integer => q.bind(None::<i64>),
                 ParamType::Unsigned => return Err(params::invalid()),
@@ -89,9 +108,11 @@ pub(super) fn sqlite<'q>(mut q: Query<'q, Sqlite, SqliteArguments>, values: &[P]
             P::Float64(v) => q.bind(f64::from_bits(*v)),
             P::Boolean(v) => q.bind(*v),
             P::Binary(v) => q.bind(v.clone()),
+            // SQLite에는 temporal storage class가 없으므로 dbspec text를 그대로 쓴다.
+            P::Date(v) | P::Time(v) | P::DateTime(v) => q.bind(v.clone()),
             P::Unsigned(_) | P::Float32(_) | P::Decimal(_) => return Err(params::invalid()),
             P::Null(kind) => match kind {
-                ParamType::Text => q.bind(None::<String>),
+                ParamType::Text | ParamType::Date | ParamType::Time | ParamType::DateTime => q.bind(None::<String>),
                 ParamType::Integer => q.bind(None::<i64>),
                 ParamType::Float64 => q.bind(None::<f64>),
                 ParamType::Boolean => q.bind(None::<bool>),

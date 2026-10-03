@@ -39,6 +39,9 @@ pub(super) fn cell(value: &P) -> GridCell {
         P::Decimal(v) => GridCell::Decimal(v.clone()),
         P::Boolean(v) => GridCell::Boolean(*v),
         P::Binary(v) => GridCell::Binary(v.clone()),
+        P::Date(v) => GridCell::Date(v.clone()),
+        P::Time(v) => GridCell::Time(v.clone()),
+        P::DateTime(v) => GridCell::DateTime(v.clone()),
         P::Null(_) => GridCell::Null,
     }
 }
@@ -53,6 +56,9 @@ pub(super) fn bind(value: &GridCell) -> Result<P, String> {
         GridCell::Boolean(v) => P::Boolean(*v),
         GridCell::Binary(v) => P::Binary(v.clone()),
         GridCell::Null => return Err("ROW_UPDATE_INVALID: NULL row identity".into()),
+        GridCell::Date(v) => P::Date(v.clone()),
+        GridCell::Time(v) => P::Time(v.clone()),
+        GridCell::DateTime(v) => P::DateTime(v.clone()),
     })
 }
 pub(super) fn placeholder(index: usize, dialect: &str) -> String {
@@ -78,7 +84,7 @@ pub(super) async fn lookup(connection: &mut Conn, metadata: &TableMetadata, dial
     let columns = metadata.columns.iter().map(|column| quote(&column.name, dialect)).collect::<Result<Vec<_>, _>>()?.join(",");
     let suffix = if lock && dialect != "sqlite" { " FOR UPDATE" } else { "" };
     let sql = format!("SELECT {columns} FROM {} WHERE {} LIMIT 2{suffix}", qualified(metadata, dialect)?, predicate(metadata, dialect, 1)?);
-    connection.grid_query_bounded(&sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await.map_err(|error| error.to_string())
+    super::temporal::read(connection, metadata, dialect, &sql, keys, QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 }).await
 }
 pub(super) async fn mysql_safety(connection: &mut Conn, metadata: &TableMetadata) -> Result<(), String> {
     let revokes = connection

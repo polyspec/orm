@@ -8,6 +8,18 @@
 
 - T8.9.1: each client checks the dbspec signature on bytes that the caller read, with the name its messages use: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes` and Rust `dbspec::read_bytes`, and the path readers use it. Bytes that are not UTF-8 after the signature are one `encoding` error `<name> is not valid UTF-8` at the first invalid byte in every client; TypeScript no longer replaces them with U+FFFD and Rust no longer returns an I/O error.
 
+- T21.2: the Rust catalog writes `date`, `time` and `datetime` columns with `Date`, `Time` and `DateTime` binds in the dbspec text form, including temporal row identities, and reads back the written cell on MySQL, PostgreSQL and SQLite instead of failing with `ROW_WRITE_MISMATCH`.
+
+- T21.1: on SQLite a described `DATE`, `TIME` or `DATETIME` column reads as the same `Date`, `Time` or `DateTime` grid cell as on MySQL and PostgreSQL, a value outside the dbspec form fails with `GRID_TEMPORAL_VALUE`, and a read-only grid query keeps the stored text.
+
+- T22: the root package.json no longer has the `schema:check` script, whose script file was removed, and `make repo-check` fails when a root npm script names a path that is not a tracked file or directory.
+
+- T21: the Rust catalog grid decodes MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`, `time` and `timestamp` cells as `Date`, `Time` and `DateTime` in the dbspec text forms, with exactly the declared fraction digits in a table page and six in a read-only grid query, so a table with a datetime column pages on every database.
+
+- T20: the Rust `client_bench` and the bench/rust `native` and `driver_compare` require their iterations argument; a missing argument or a value that is not an integer of at least the program's minimum ends the program with status 1 and an error naming the argument and the value, instead of running 3000 or 1000 iterations.
+
+- T19: a generated Go relation getter returns `(<result>, error)` and a Rust relation getter `orm::Result<Option<..>>`; a row without a related row reads as no result, and a stored relation value of another type is `INTERNAL` instead of a dropped type assertion or a `None`.
+
 - T8.8.3: main is merged into the dbspec branch again with N17: the PHP client requires no PDO driver extension, and `make php-without-mysql-check` installs `schema/bench.dbs` and creates and reads a row on SQLite in the official PHP image, which has no `pdo_mysql`.
 
 - T8.9: dbspec document files use the extension `.dbs` instead of `.dbspec`, and the header `dbspec 1 <document>` is the file signature. Every tool reads a document file with the one reader of its client (Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`), which rejects a file that does not start with the bytes `dbspec `, such as a DbSchema project file or an empty file, with one `signature` error `<path> is not a dbspec document` before parsing.

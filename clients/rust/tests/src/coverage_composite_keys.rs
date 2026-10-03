@@ -44,7 +44,7 @@ async fn coverage_composite_key_rows() {
         for (path, loaded) in [("same statement", same), ("own connection", own)] {
             let mut got = Vec::new();
             for a in loaded.models() {
-                for m in a.get_memberships().expect("the memberships relation").models() {
+                for m in a.get_memberships().unwrap().expect("the memberships relation").models() {
                     got.push(format!(
                         "{}/{}:{}/{}/{}",
                         a.get_tenant_id().unwrap(),

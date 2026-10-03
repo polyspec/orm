@@ -14,7 +14,7 @@ async fn coverage_model_query_rows() {
         assert_eq!(names, ["author-99906", "author-99806", "author-99706"], "service 7 by seq desc");
         assert_eq!(Author::new().connect(&db).service_seq(7).sum_read_count().get_sum().await.unwrap(), 456000.0, "read_count sum of service 7");
         let author = Author::new().connect(&db).relation(User::new().match_user_seq_with_seq()).get_by_seq(5000).await.unwrap();
-        let user = author.get_user_model().expect("the user relation of author 5000");
+        let user = author.get_user_model().unwrap().expect("the user relation of author 5000");
         assert_eq!(user.get_name().unwrap(), "user-1", "user of author 5000");
         db.close().await;
     })
