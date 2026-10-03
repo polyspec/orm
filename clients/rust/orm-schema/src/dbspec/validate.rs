@@ -521,11 +521,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     // The longest of the immutable trigger names stands for both.
                     self.generated_name(line.pos, "immutable_update", false);
                 }
-                Setting::Audit { into, operation, action, previous } => {
+                Setting::Audit { into, operation, action, previous, lists } => {
                     if changes_rows {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
-                    self.audit(into, operation, action, previous);
+                    self.audit(&line.setting, into, operation, action, previous, lists);
                     // The longest of the audit trigger names stands for all three.
                     self.generated_name(line.pos, "audit_insert", false);
                 }
@@ -562,13 +562,20 @@ impl<'s, 'd> TableRules<'s, 'd> {
         }
     }
 
-    fn audit(&mut self, into: &Name, operation: &Name, action: &Name, previous: &Name) {
+    /// audit setting과 history table의 모양을 검사한다(docs/dbspec.md "Audit"). history table은
+    /// i64 identity primary key, action과 previous column, 기록하는 column과 같은 이름과 type의
+    /// column만 가지며, 어긋난 곳마다 하나씩 보고한다.
+    fn audit(&mut self, setting: &Setting, into: &Name, operation: &Name, action: &Name, previous: &Name, lists: &[AuditList]) {
         let table = self.own.table;
         let operation_column = self.setting_column(operation);
         if let Some(column) = operation_column {
             if !matches!(column.ty, Type::I64 | Type::Uuid) || column.nullable {
                 self.report(operation.pos, "setting", "the operation column is a non-null i64 or uuid column");
             }
+        }
+        let listed = self.audit_lists(operation, lists);
+        if !well_formed(&into.text) {
+            return;
         }
         let Some(history) = self.scope.table(&into.text) else {
             if !self.scope.unresolved(&into.text) {
@@ -585,54 +592,103 @@ impl<'s, 'd> TableRules<'s, 'd> {
         if audited {
             self.report(into.pos, "setting", format!("history table '{}' is audited itself", into.text));
         }
-        match history.column(&action.text) {
-            Some(column) if column.ty == Type::Varchar(8) && !column.nullable && table.column(&action.text).is_none() => {}
-            _ => self.report(
-                action.pos,
-                "setting",
-                format!("history table '{}' has no non-null varchar(8) action column '{}' of its own", into.text, action.text),
-            ),
-        }
-        match history.column(&previous.text) {
-            Some(column)
-                if column.nullable
-                    && operation_column.is_none_or(|o| o.ty == column.ty)
-                    && table.column(&previous.text).is_none()
-                    && previous.text != action.text => {}
-            _ => self.report(
-                previous.pos,
-                "setting",
-                format!("history table '{}' has no nullable previous column '{}' of the operation column type", into.text, previous.text),
-            ),
-        }
-        let mut problems = Vec::new();
         let identity = history.primary.first().and_then(|key| match key.columns.as_slice() {
             [only] => history.column(&only.text).filter(|c| c.identity.is_some() && c.ty == Type::I64),
             _ => None,
         });
+        let mut reserved: HashSet<&str> = HashSet::new();
         match identity {
-            Some(column) if table.column(&column.name.text).is_some() || column.name.text == action.text || column.name.text == previous.text => {
-                problems.push(format!("identity column '{}' repeats another column", column.name.text))
+            Some(column) => {
+                reserved.insert(&column.name.text);
             }
-            Some(_) => {}
-            None => problems.push("it has no i64 identity primary key".into()),
+            None => self.report(into.pos, "setting", format!("history table '{}' needs an i64 identity primary key", into.text)),
+        }
+        if well_formed(&action.text) {
+            match history.column(&action.text) {
+                None => self.report(action.pos, "setting", format!("column '{}' is not a column of history table '{}'", action.text, into.text)),
+                Some(_) if reserved.contains(action.text.as_str()) => {
+                    self.report(action.pos, "setting", "the action column is a separate column of the history table")
+                }
+                Some(column) if column.ty != Type::Varchar(8) || column.nullable => {
+                    self.report(action.pos, "setting", "the action column is a non-null varchar(8)")
+                }
+                Some(_) => {}
+            }
+            reserved.insert(&action.text);
+        }
+        if well_formed(&previous.text) {
+            match history.column(&previous.text) {
+                None => self.report(previous.pos, "setting", format!("column '{}' is not a column of history table '{}'", previous.text, into.text)),
+                Some(_) if reserved.contains(previous.text.as_str()) => {
+                    self.report(previous.pos, "setting", "the previous column is a separate column of the history table")
+                }
+                Some(column) if !column.nullable => self.report(previous.pos, "setting", "the previous column is nullable"),
+                Some(column) if operation_column.is_some_and(|o| o.ty != column.ty) => {
+                    self.report(previous.pos, "setting", "the previous column has the operation column type")
+                }
+                Some(_) => {}
+            }
+            reserved.insert(&previous.text);
+        }
+        // 두 목록을 다 쓴 setting은 기록하는 column이 정해지지 않으므로 history table의 column을 맞추어 보지 않는다.
+        if !listed {
+            return;
         }
         for column in &table.columns {
+            if !setting.records(&column.name.text) {
+                continue;
+            }
             match history.column(&column.name.text) {
-                Some(copy) if copy.ty == column.ty => {}
-                Some(_) => problems.push(format!("column '{}' has another type", column.name.text)),
-                None => problems.push(format!("column '{}' is missing", column.name.text)),
+                Some(copy) if !reserved.contains(column.name.text.as_str()) => {
+                    if copy.ty != column.ty {
+                        self.report(
+                            into.pos,
+                            "setting",
+                            format!("history column '{}' has another type than the column of '{}'", column.name.text, table.name.text),
+                        );
+                    }
+                }
+                _ => self.report(into.pos, "setting", format!("history table '{}' has no copy of column '{}'", into.text, column.name.text)),
             }
         }
         for column in &history.columns {
             let name = column.name.text.as_str();
-            let known = table.column(name).is_some() || name == action.text || name == previous.text || identity.is_some_and(|c| c.name.text == name);
-            if !known {
-                problems.push(format!("column '{name}' is not part of the history"));
+            if reserved.contains(name) {
+                continue;
+            }
+            if table.column(name).is_none() {
+                self.report(into.pos, "setting", format!("history table '{}' has column '{name}', which is not a column of '{}'", into.text, table.name.text));
+            } else if !setting.records(name) {
+                self.report(into.pos, "setting", format!("history table '{}' has column '{name}', which '{}' does not record", into.text, table.name.text));
             }
         }
-        if !problems.is_empty() {
-            self.report(into.pos, "setting", format!("history table '{}': {}", into.text, problems.join("; ")));
+    }
+
+    /// audit의 exclude나 include 목록을 검사하고, 기록하는 column이 정해지는지 알린다. 두 목록을
+    /// 다 쓰면 둘째 목록의 keyword에서 거부하고 false다. 목록의 column은 table의 column이고, 한
+    /// 번만 나오며, operation column이 아니다. operation column은 언제나 기록하므로 어느 목록에도
+    /// 쓰지 않는다.
+    fn audit_lists(&mut self, operation: &Name, lists: &[AuditList]) -> bool {
+        if let [_, second, ..] = lists {
+            self.report(second.keyword.pos, "setting", "audit names its recorded columns by exclude or by include, not both");
+            return false;
         }
+        let mut listed = HashSet::new();
+        for list in lists {
+            for column in &list.columns {
+                if !listed.insert(column.text.as_str()) {
+                    self.report(column.pos, "setting", format!("column '{}' repeats in audit {}", column.text, list.keyword.text));
+                } else if column.text == operation.text {
+                    self.report(
+                        column.pos,
+                        "setting",
+                        format!("the operation column '{}' is always recorded and is not listed in exclude or include", column.text),
+                    );
+                } else {
+                    self.setting_column(column);
+                }
+            }
+        }
+        true
     }
 }

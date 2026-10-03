@@ -11,7 +11,8 @@ namespace Orm\Dbspec;
  */
 final class CatalogTriggers
 {
-    private const AUDIT_INSERT = '/^INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"],/';
+    private const AUDIT_INSERT = '/^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES /';
+    private const AUDIT_COLUMN = '/^[`"]([a-z0-9_]+)[`"]$/D';
     private const AUDIT_UPDATE = '/VALUES \(\'update\', OLD\.[`"]([a-z0-9_]+)[`"],/';
 
     /**
@@ -68,8 +69,10 @@ final class CatalogTriggers
             $update = $names[$t->name . '$audit_update'] ?? null;
             if (preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
                 && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)) {
-                // audit 의 인자는 history table, operation, action, previous 순이다.
-                $candidates[] = new Setting('audit', [$m[1], $u[1], $m[2], $m[3]]);
+                $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1]);
+                if ($audit !== null) {
+                    $candidates[] = $audit;
+                }
             }
         }
         foreach ($candidates as $setting) {
@@ -88,11 +91,41 @@ final class CatalogTriggers
                 if ($setting->kind === 'immutable') {
                     return ['immutable'];
                 }
-                [$history, $operation, $action, $previous] = $setting->arguments;
-                return ["audit into $history operation $operation action $action previous $previous"];
+                return [$setting->auditLine('exclude', $setting->exclude)];
             }
         }
         return null;
+    }
+
+    /**
+     * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
+     * operation column으로 audit setting을 만든다. 기록하지 않는 column은 table의 column 순서로
+     * exclude 목록이 된다. 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면
+     * null이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+     *
+     * @param list<string> $quoted
+     */
+    private static function audit(CatalogTable $t, string $history, array $quoted, string $operation): ?Setting
+    {
+        $names = [];
+        foreach ($quoted as $q) {
+            if (preg_match(self::AUDIT_COLUMN, $q, $m) !== 1) {
+                return null;
+            }
+            $names[] = $m[1];
+        }
+        $recorded = array_slice($names, 2);
+        if ($recorded === [] || !in_array($operation, $recorded, true)) {
+            return null;
+        }
+        $excluded = [];
+        foreach ($t->columns as $column) {
+            if (!in_array($column['name'], $recorded, true)) {
+                $excluded[] = $column['name'];
+            }
+        }
+        // audit 의 인자는 history table, operation, action, previous 순이다.
+        return new Setting('audit', [$history, $operation, $names[0], $names[1]], [], $excluded === [] ? null : $excluded);
     }
 
     /**

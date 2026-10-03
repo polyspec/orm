@@ -579,7 +579,7 @@ final class Renderer
             if ($setting->kind === 'immutable') {
                 $immutable = true;
             } elseif ($setting->kind === 'audit') {
-                $audit = $setting->arguments;
+                $audit = $setting;
             }
         }
         $out = [];
@@ -589,9 +589,9 @@ final class Renderer
             array_push($out, ...$this->reject($t, 'immutable_delete', 'BEFORE DELETE', $message));
         }
         if ($audit !== null) {
-            [$history, $operation, $action, $previous] = $audit;
-            array_push($out, ...$this->history($t, $history, $action, $previous, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
-            array_push($out, ...$this->history($t, $history, $action, $previous, 'audit_update', 'AFTER UPDATE', "'update'", 'OLD.' . $this->q($operation)));
+            $operation = $audit->arguments[1];
+            array_push($out, ...$this->history($t, $audit, 'audit_insert', 'AFTER INSERT', "'insert'", 'NULL'));
+            array_push($out, ...$this->history($t, $audit, 'audit_update', 'AFTER UPDATE', "'update'", 'OLD.' . $this->q($operation)));
             array_push($out, ...$this->reject($t, 'audit_delete', 'BEFORE DELETE', "table {$t->name} deletes through its soft delete column"));
         }
         return $out;
@@ -628,11 +628,15 @@ final class Renderer
     }
 
     /** @return list<string> */
-    private function history(Table $t, string $history, string $action, string $previous, string $event, string $timing, string $actionValue, string $previousValue): array
+    private function history(Table $t, Setting $audit, string $event, string $timing, string $actionValue, string $previousValue): array
     {
+        [$history, , $action, $previous] = $audit->arguments;
         $columns = [$this->q($action), $this->q($previous)];
         $values = [$actionValue, $previousValue];
         foreach ($t->columns as $column) {
+            if (!$audit->records($column->name)) {
+                continue;
+            }
             $columns[] = $this->q($column->name);
             $values[] = 'NEW.' . $this->q($column->name);
         }

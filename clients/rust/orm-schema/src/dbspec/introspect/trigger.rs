@@ -1,7 +1,7 @@
 //! renderer가 쓰는 `immutable`과 `audit` trigger를 catalog trigger와 정확히
 //! 비교해 그 setting을 알아본다.
 
-use super::super::model::{Column, Name, Setting, SettingLine, Settings, Table};
+use super::super::model::{audit_line, AuditList, Column, Name, Setting, SettingLine, Settings, Table};
 use super::super::render::{Dialect, Renderer};
 use super::{group, Catalog, ITable};
 use regex::Regex;
@@ -15,8 +15,8 @@ pub(super) struct ITrigger {
     pub statements: Vec<String>,
 }
 
-static AUDIT_INSERT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"^INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"],"#).expect("audit insert pattern"));
+static AUDIT_INSERT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES "#).expect("audit insert pattern"));
+static AUDIT_COLUMN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"^[`"]([a-z0-9_]+)[`"]$"#).expect("audit column pattern"));
 static AUDIT_UPDATE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],"#).expect("audit update pattern"));
 
 impl Catalog {
@@ -54,11 +54,8 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<St
         let update = names.get(format!("{}$audit_update", t.name).as_str()).map_or(&[][..], |u| &u.statements[..]);
         let m = AUDIT_INSERT.captures(statement_body(&insert.statements));
         let u = AUDIT_UPDATE.captures(statement_body(update));
-        if let (Some(m), Some(u)) = (m, u) {
-            let (history, action, previous, operation) = (group(&m, 1), group(&m, 2), group(&m, 3), group(&u, 1));
-            let line = format!("audit into {history} operation {operation} action {action} previous {previous}");
-            let setting = Setting::Audit { into: name(history), operation: name(operation), action: name(action), previous: name(previous) };
-            candidates.push((setting, line));
+        if let Some(candidate) = m.zip(u).and_then(|(m, u)| audit_of(t, group(&m, 1), group(&m, 2), group(&u, 1))) {
+            candidates.push(candidate);
         }
     }
     let r = Renderer { d: dialect };
@@ -79,6 +76,24 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<St
         }
     }
     None
+}
+
+/// audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
+/// operation column으로 audit setting과 그 줄을 만든다. 기록하지 않는 column은 table의 column
+/// 순서로 exclude 목록이 된다. 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면
+/// None이다. 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+fn audit_of(t: &ITable, history: &str, quoted: &str, operation: &str) -> Option<(Setting, String)> {
+    let names = quoted.split(", ").map(|q| AUDIT_COLUMN.captures(q).map(|m| group(&m, 1).to_owned())).collect::<Option<Vec<String>>>()?;
+    let [action, previous, recorded @ ..] = names.as_slice() else { return None };
+    if !recorded.iter().any(|c| c == operation) {
+        return None;
+    }
+    let excluded: Vec<&str> = t.columns.iter().map(|c| c.name.as_str()).filter(|c| !recorded.iter().any(|r| r == c)).collect();
+    let line = audit_line(history, operation, action, previous, "exclude", &excluded);
+    let lists =
+        if excluded.is_empty() { Vec::new() } else { vec![AuditList { keyword: name("exclude"), columns: excluded.iter().map(|c| name(c)).collect() }] };
+    let setting = Setting::Audit { into: name(history), operation: name(operation), action: name(action), previous: name(previous), lists };
+    Some((setting, line))
 }
 
 fn name(text: &str) -> Name {

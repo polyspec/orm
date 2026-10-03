@@ -2,6 +2,7 @@
 // (docs/dialects.md "Introspection", "Triggers").
 import { byteOrder, type Catalog, type ITable } from './introspect_catalog.js';
 import type { DbspecSetting, DbspecTable } from './model.js';
+import { auditLine } from './audit.js';
 import { Renderer, type DbspecDialect } from './render.js';
 
 /** catalog trigger 하나를 renderer가 쓰는 statement 형식으로 다시 쓴 것이다. PostgreSQL은 function과 trigger statement 두 개다. */
@@ -10,7 +11,8 @@ export interface ITrigger {
   readonly statements: readonly string[];
 }
 
-const AUDIT_INSERT_PATTERN = /^INSERT INTO [`"]([a-z0-9_]+)[`"] \([`"]([a-z0-9_]+)[`"], [`"]([a-z0-9_]+)[`"],/;
+const AUDIT_INSERT_PATTERN = /^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES /;
+const AUDIT_COLUMN_PATTERN = /^[`"]([a-z0-9_]+)[`"]$/;
 const AUDIT_UPDATE_PATTERN = /VALUES \('update', OLD\.[`"]([a-z0-9_]+)[`"],/;
 
 /**
@@ -45,9 +47,8 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
     const update = names.get(`${t.name}$audit_update`);
     const m = AUDIT_INSERT_PATTERN.exec(statementBody(insert.statements));
     const u = AUDIT_UPDATE_PATTERN.exec(statementBody(update?.statements ?? []));
-    if (m !== null && u !== null) {
-      candidates.push({ comments: [], kind: 'audit', into: m[1]!, action: m[2]!, previous: m[3]!, operation: u[1]! });
-    }
+    const audit = m !== null && u !== null ? auditOf(t, m[1]!, m[2]!.split(', '), u[1]!) : null;
+    if (audit !== null) candidates.push(audit);
   }
   const r = new Renderer(dialect);
   for (const setting of candidates) {
@@ -64,11 +65,28 @@ function triggerSetting(dialect: DbspecDialect, t: ITable, list: readonly ITrigg
     }
     if (!complete || got.length !== want.length || got.some((s, i) => s !== want[i])) continue;
     if (setting.kind === 'immutable') return 'immutable';
-    if (setting.kind === 'audit') {
-      return `audit into ${setting.into} operation ${setting.operation} action ${setting.action} previous ${setting.previous}`;
-    }
+    if (setting.kind === 'audit') return auditLine(setting, 'exclude', setting.exclude);
   }
   return null;
+}
+
+/**
+ * audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의 operation
+ * column으로 audit setting을 만든다. 기록하지 않는 column은 table의 column 순서로 exclude 목록이 된다.
+ * 목록이 renderer 형식이 아니거나 operation column을 기록하지 않으면 null이다. 만든 setting은 다시
+ * 렌더링해 catalog trigger와 비교한다.
+ */
+function auditOf(t: ITable, into: string, quoted: readonly string[], operation: string): DbspecSetting | null {
+  const names: string[] = [];
+  for (const q of quoted) {
+    const m = AUDIT_COLUMN_PATTERN.exec(q);
+    if (m === null) return null;
+    names.push(m[1]!);
+  }
+  const recorded = names.slice(2);
+  if (recorded.length === 0 || !recorded.includes(operation)) return null;
+  const excluded = t.columns.filter(c => !recorded.includes(c.name)).map(c => c.name);
+  return { comments: [], kind: 'audit', into, action: names[0]!, previous: names[1]!, operation, exclude: excluded.length === 0 ? null : excluded, include: null };
 }
 
 /** renderer가 trigger를 쓰는 데 필요한 table: 이름, column 이름과 type, setting 하나다. */

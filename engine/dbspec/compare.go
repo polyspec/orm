@@ -140,12 +140,20 @@ func compareTables(s, t *Table, add func(kind, name string)) {
 		}
 		return []string{"immutable"}
 	}
+	// audit은 두 쪽에 다 있는 column 가운데 기록하지 않는 column까지 비교한다.
+	// 한쪽에만 있는 column은 add_column이나 drop_column이 차이로 남긴다.
 	audit := func(x *Table) []string {
 		if x.Settings == nil || x.Settings.Audit == nil {
 			return nil
 		}
 		a := x.Settings.Audit
-		return []string{a.History + " " + a.Operation + " " + a.Action + " " + a.Previous}
+		def := []string{a.History + " " + a.Operation + " " + a.Action + " " + a.Previous}
+		for _, c := range t.Columns {
+			if columnOf(s, c.Name) != nil && !a.Records(c.Name) {
+				def = append(def, c.Name)
+			}
+		}
+		return def
 	}
 	compareSettings(add, "immutable", immutable(s), immutable(t))
 	compareSettings(add, "audit", audit(s), audit(t))

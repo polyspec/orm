@@ -2,6 +2,7 @@
 // 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
+import { auditRecords, type DbspecAuditSetting } from './audit.js';
 import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
 
 export type DbspecDialect = 'mysql' | 'postgres' | 'sqlite';
@@ -383,14 +384,15 @@ export class Renderer {
 
   history(
     t: DbspecTable,
-    a: { readonly into: string; readonly action: string; readonly previous: string },
+    a: DbspecAuditSetting,
     event: string,
     timing: string,
     action: string,
     previous: string,
   ): string[] {
-    const columns = [this.q(a.action), this.q(a.previous), ...t.columns.map(c => this.q(c.name))];
-    const values = [action, previous, ...t.columns.map(c => `NEW.${this.q(c.name)}`)];
+    const recorded = t.columns.filter(c => auditRecords(a, c.name));
+    const columns = [this.q(a.action), this.q(a.previous), ...recorded.map(c => this.q(c.name))];
+    const values = [action, previous, ...recorded.map(c => `NEW.${this.q(c.name)}`)];
     const body = `INSERT INTO ${this.q(a.into)} (${columns.join(', ')}) VALUES (${values.join(', ')})`;
     return this.trigger(t, event, timing, body, false);
   }

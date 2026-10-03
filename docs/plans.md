@@ -73,7 +73,7 @@ A comparison lists every difference between two schemas without a plan, for a to
 | `change_primary_key` | the primary key has other columns or another column order |
 | `drop_unique`, `add_unique`, `drop_index`, `add_index`, `drop_foreign_key`, `add_foreign_key`, `drop_check`, `add_check` | an object only in the source or only in the target; both when its definition differs |
 | `drop_immutable`, `add_immutable` | the `immutable` setting only in the source or only in the target |
-| `drop_audit`, `add_audit` | the `audit` setting only in the source or only in the target; both when it differs |
+| `drop_audit`, `add_audit` | the `audit` setting only in the source or only in the target; both when its history table, operation, action or previous column differs or it records another set of the columns that both tables have (a column on one side only is an `add_column` or `drop_column`) |
 
 The kinds that a plan diff also has keep their meaning, and widening is that of "Diff"; `change_column_type`, `change_column_identity`, `reorder_columns` and `change_primary_key` name the changes that a plan refuses. A column can have several kinds, such as `alter_column` and `change_column_type` when its `null` and its type change. A definition compares as written, so an object whose definition stays is not dropped and added again, and a setting is compared instead of its rendered triggers. A created or dropped table lists nothing more. The differences come in table name order; within a table in the order of the table above, read row by row and left to right; within a kind in name order. The comparison is empty exactly when the two schema texts, and so their `schemaHash`, are equal.
 

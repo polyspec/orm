@@ -14,7 +14,8 @@ type itrigger struct {
 }
 
 var (
-	auditInsertPattern = regexp.MustCompile("^INSERT INTO [`\"]([a-z0-9_]+)[`\"] \\([`\"]([a-z0-9_]+)[`\"], [`\"]([a-z0-9_]+)[`\"],")
+	auditInsertPattern = regexp.MustCompile("^INSERT INTO [`\"]([a-z0-9_]+)[`\"] \\(([^)]*)\\) VALUES ")
+	auditColumnPattern = regexp.MustCompile("^[`\"]([a-z0-9_]+)[`\"]$")
 	auditUpdatePattern = regexp.MustCompile("VALUES \\('update', OLD\\.[`\"]([a-z0-9_]+)[`\"],")
 )
 
@@ -68,7 +69,9 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (s
 		m := auditInsertPattern.FindStringSubmatch(body)
 		u := auditUpdatePattern.FindStringSubmatch(statementBody(update.statements))
 		if m != nil && u != nil {
-			candidates["audit"] = &Settings{Audit: &AuditSetting{History: m[1], Action: m[2], Previous: m[3], Operation: u[1]}}
+			if a := auditOf(t, m[1], strings.Split(m[2], ", "), u[1]); a != nil {
+				candidates["audit"] = &Settings{Audit: a}
+			}
 		}
 	}
 	for kind, settings := range candidates {
@@ -88,10 +91,36 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (s
 				return kind, []string{"immutable"}
 			}
 			a := settings.Audit
-			return kind, []string{"audit into " + a.History + " operation " + a.Operation + " action " + a.Action + " previous " + a.Previous}
+			return kind, []string{a.line("exclude", a.Exclude)}
 		}
 	}
 	return "", nil
+}
+
+// auditOf는 audit insert trigger의 column 목록(action, previous, 기록하는
+// column)과 update trigger의 operation column으로 audit setting을 만든다.
+// 기록하지 않는 column은 table의 column 순서로 exclude 목록이 된다. 목록이
+// renderer 형식이 아니거나 operation column을 기록하지 않으면 nil이다.
+// 만든 setting은 다시 렌더링해 catalog trigger와 비교한다.
+func auditOf(t *itable, history string, quoted []string, operation string) *AuditSetting {
+	var names []string
+	for _, q := range quoted {
+		m := auditColumnPattern.FindStringSubmatch(q)
+		if m == nil {
+			return nil
+		}
+		names = append(names, m[1])
+	}
+	if len(names) < 3 || !slices.Contains(names[2:], operation) {
+		return nil
+	}
+	a := &AuditSetting{History: history, Action: names[0], Previous: names[1], Operation: operation}
+	for _, col := range t.columns {
+		if !slices.Contains(names[2:], col.name) {
+			a.Exclude = append(a.Exclude, col.name)
+		}
+	}
+	return a
 }
 
 // triggerOrder는 renderer statement 목록에서 trigger 이름을 순서대로 꺼낸다.

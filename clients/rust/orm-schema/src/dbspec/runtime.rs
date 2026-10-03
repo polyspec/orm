@@ -178,7 +178,7 @@ fn entity(table: &Table) -> Entity {
         soft_delete: column(|s| if let Setting::SoftDelete(n) = s { Some(n) } else { None }),
         aes_version: column(|s| if let Setting::AesVersion(n) = s { Some(n) } else { None }),
         audit: lines.iter().find_map(|s| match s {
-            Setting::Audit { into, operation, action, previous } => {
+            Setting::Audit { into, operation, action, previous, .. } => {
                 Some(Audit { history: into.text.clone(), operation: operation.text.clone(), action: action.text.clone(), previous: previous.text.clone() })
             }
             _ => None,

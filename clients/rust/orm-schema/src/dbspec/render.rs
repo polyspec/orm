@@ -354,8 +354,8 @@ impl Renderer {
             out.extend(self.reject(t, "immutable_delete", "BEFORE DELETE", &message));
         }
         for line in &settings.lines {
-            if let Setting::Audit { into, operation, action, previous } = &line.setting {
-                let audit = Audit { history: &into.text, action: &action.text, previous: &previous.text };
+            if let Setting::Audit { into, operation, action, previous, .. } = &line.setting {
+                let audit = Audit { history: &into.text, action: &action.text, previous: &previous.text, setting: &line.setting };
                 out.extend(self.history(t, &audit, "audit_insert", "AFTER INSERT", "'insert'", "NULL"));
                 let old = format!("OLD.{}", self.q(&operation.text));
                 out.extend(self.history(t, &audit, "audit_update", "AFTER UPDATE", "'update'", &old));
@@ -396,7 +396,7 @@ impl Renderer {
     fn history(&self, t: &Table, a: &Audit, event: &str, timing: &str, action: &str, previous: &str) -> Vec<String> {
         let mut columns = vec![self.q(a.action), self.q(a.previous)];
         let mut values = vec![action.to_owned(), previous.to_owned()];
-        for c in &t.columns {
+        for c in t.columns.iter().filter(|c| a.setting.records(&c.name.text)) {
             columns.push(self.q(&c.name.text));
             values.push(format!("NEW.{}", self.q(&c.name.text)));
         }
@@ -405,11 +405,12 @@ impl Renderer {
     }
 }
 
-/// The history table and columns of an `audit` setting.
+/// The history table and columns of an `audit` setting. `setting`은 기록하는 column을 정한다.
 struct Audit<'a> {
     history: &'a str,
     action: &'a str,
     previous: &'a str,
+    setting: &'a Setting,
 }
 
 /// The type of the column `name` of table `t`.

@@ -36,7 +36,7 @@
 - `authenticated_encryption`: 인증과 버전이 있는 AES 값과 blind index를 인코딩하고, 섞인 key version을 읽으며, 테이블의 모든 암호화 컬럼을 배치로 회전한다.
 - `parameter_chunking`: 관계 key 목록을 크기 등급으로 채우고, 관계 key와 큰 root IN 목록을 driver bind 한도에서 나누어 결과를 합치며, 병합이 결과를 바꾸는 root 모양은 거부한다.
 - `constraints_and_relations`: CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.
-- `audit_triggers`: 테이블의 audit 설정은 행 trigger를 설치해, 삽입·갱신·삭제된 모든 행을 트랜잭션이 정한 작업 id와 함께 선언한 history 테이블에 복사한다.
+- `audit_triggers`: 테이블의 audit 설정은 행 trigger를 설치해, 삽입·갱신된 모든 행을 트랜잭션이 정한 작업 id와 함께 선언한 history 테이블에 복사한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다.
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
 - `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.

@@ -164,6 +164,15 @@ type settingNode struct {
 	comments []string
 	keyword  token
 	args     []token
+	// lists는 audit의 exclude와 include 목록이다. 둘 다 쓴 setting은 검사가
+	// 거부한다.
+	lists []columnList
+}
+
+// columnList는 `exclude (<column>, ...)`나 `include (<column>, ...)`다.
+type columnList struct {
+	keyword token
+	columns []token
 }
 
 type diagramNode struct {
@@ -925,6 +934,14 @@ func (p *parser) settingsLine(c *cursor) {
 			c.keyword("operation") && arg("the operation column") &&
 			c.keyword("action") && arg("the action column") &&
 			c.keyword("previous") && arg("the previous column")
+		for ok && (c.peekIs(tokenWord, "exclude") || c.peekIs(tokenWord, "include")) {
+			list := columnList{keyword: c.next()}
+			list.columns, _, ok = c.names(false)
+			line.lists = append(line.lists, list)
+		}
+		if ok && c.more() && c.lexErr == nil {
+			ok = c.fail("'exclude', 'include' or the end of the line")
+		}
 	default:
 		if c.lexErr != nil {
 			c.fail("a setting")

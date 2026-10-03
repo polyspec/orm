@@ -10,6 +10,7 @@ import type {
   DbspecTable,
   DbspecType,
 } from './model.js';
+import { auditExcluded, auditLine } from './audit.js';
 
 const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'entity',
@@ -70,7 +71,7 @@ function settingKey(setting: DbspecSetting): string {
   return '';
 }
 
-function settingText(setting: DbspecSetting): string {
+function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string {
   switch (setting.kind) {
     case 'entity':
       return `entity ${setting.name}`;
@@ -89,7 +90,10 @@ function settingText(setting: DbspecSetting): string {
     case 'immutable':
       return 'immutable';
     case 'audit':
-      return `audit into ${setting.into} operation ${setting.operation} action ${setting.action} previous ${setting.previous}`;
+      // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude 목록으로
+      // 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
+      if (view === 'schema') return auditLine(setting, 'exclude', auditExcluded(setting, t));
+      return setting.include !== null ? auditLine(setting, 'include', setting.include) : auditLine(setting, 'exclude', setting.exclude);
   }
 }
 
@@ -145,7 +149,7 @@ function table(out: string[], t: DbspecTable, view: View): void {
     );
     for (const s of settings) {
       comments(out, s.comments, '    ', view);
-      out.push(`    ${settingText(s)}`);
+      out.push(`    ${settingText(s, t, view)}`);
     }
     comments(out, t.settings.closingComments, '    ', view);
     out.push('  }');

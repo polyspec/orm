@@ -223,6 +223,74 @@
         ]
       },
       "main": "shop"
+    },
+    {
+      "id": "audit-exclude",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop"
+    },
+    {
+      "id": "audit-include",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop"
     }
   ],
   "normalize": [
@@ -564,6 +632,68 @@
         "  check ck_t_a (qty > 1 and name <> 'a' and big > 2)",
         "  check ck_t_b ((qty > 1 or big > 2) and name <> 'a')",
         "  check ck_t_c (qty > 1 or big > 2 and name <> 'a')",
+        "}"
+      ]
+    },
+    {
+      "id": "audit-list-spacing",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include( seq ,title,  deleted_at )",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "canonical": [
+        "dbspec 1 shop",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    soft_delete deleted_at",
+        "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
         "}"
       ]
     }
@@ -3757,6 +3887,380 @@
       ]
     },
     {
+      "id": "audit-list-unknown-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, missing)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-repeated-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-both-lists",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret) include (title)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-excludes-operation",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret, operation_id)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-includes-operation",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, operation_id, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 118,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-history-has-excluded-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-history-differs-from-included-columns",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        },
+        {
+          "line": 12,
+          "column": 16,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-without-parentheses",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude secret",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 105,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "audit-list-trailing-word",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret) now",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 114,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
       "id": "reserved-predicate-keywords",
       "main": "shop",
       "documents": {
@@ -4203,6 +4707,159 @@
       ],
       "manifestHash": "sha256:a1c2006b964f3f3694899b5cbdb3903b905283340de3216e6f572d13e320745c",
       "schemaHash": "sha256:9d2367df806c4aba30bbb9939b1eae2e84f95dec1b2ba65c63d9d65aea14f140"
+    },
+    {
+      "id": "audit-list-in-schema-text",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  operation_id i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}",
+          "",
+          "table tag {",
+          "  id i64 identity",
+          "  label varchar(64)",
+          "  color varchar(16) null",
+          "  operation_id i64",
+          "  primary key (id)",
+          "  settings {",
+          "    audit into tag_history operation operation_id action change previous previous_operation_id include (id, label)",
+          "  }",
+          "}",
+          "",
+          "table tag_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_operation_id i64 null",
+          "  id i64",
+          "  label varchar(64)",
+          "  operation_id i64",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 shop",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    soft_delete deleted_at",
+        "    audit into card_history operation operation_id action change previous previous_operation_id include (seq, title, deleted_at)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
+        "}",
+        "",
+        "table tag {",
+        "  id i64 identity",
+        "  label varchar(64)",
+        "  color varchar(16) null",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into tag_history operation operation_id action change previous previous_operation_id include (id, label)",
+        "  }",
+        "}",
+        "",
+        "table tag_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  label varchar(64)",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table card {",
+        "  seq i64 identity",
+        "  title varchar(191)",
+        "  secret text null",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (seq)",
+        "  settings {",
+        "    audit into card_history operation operation_id action change previous previous_operation_id exclude (secret)",
+        "  }",
+        "}",
+        "",
+        "table card_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  seq i64",
+        "  title varchar(191)",
+        "  operation_id i64",
+        "  deleted_at datetime(6) null",
+        "  primary key (history_id)",
+        "  index ix_card_history_row (seq)",
+        "}",
+        "",
+        "table tag {",
+        "  id i64 identity",
+        "  label varchar(64)",
+        "  color varchar(16) null",
+        "  operation_id i64",
+        "  primary key (id)",
+        "  settings {",
+        "    audit into tag_history operation operation_id action change previous previous_operation_id exclude (color)",
+        "  }",
+        "}",
+        "",
+        "table tag_history {",
+        "  history_id i64 identity",
+        "  change varchar(8)",
+        "  previous_operation_id i64 null",
+        "  id i64",
+        "  label varchar(64)",
+        "  operation_id i64",
+        "  primary key (history_id)",
+        "}"
+      ],
+      "manifestHash": "sha256:2e3f6bddd2860484d1393c69f1619a16bb13263ba356e97531fdfb6b1063bbd9",
+      "schemaHash": "sha256:e222d2bef332282626629e62f347b002d4b384cbe4638e137b60447bbd08500b"
     }
   ],
   "sets": [

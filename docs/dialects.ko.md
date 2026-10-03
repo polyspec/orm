@@ -311,7 +311,7 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 생성 trigger 이름은 `<table>$<event>`이다: `immutable_update`, `immutable_delete`, `audit_insert`, `audit_update`, `audit_delete`. PostgreSQL trigger는 renderer가 소유한 같은 이름의 function을 실행한다. 거부는 `table <table> is immutable`이나 `table <table> deletes through its soft delete column` message를 일으킨다: MySQL `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '…'`, PostgreSQL `RAISE EXCEPTION '…'`, SQLite `SELECT RAISE(ABORT, '…')`.
 
 - `immutable`: 거부하는 `BEFORE UPDATE`와 `BEFORE DELETE` row trigger.
-- `audit`: `AFTER INSERT` row trigger는 이력 table에 action `'insert'`, NULL 이전 operation, 모든 `NEW` column을 넣는다. `AFTER UPDATE` row trigger는 `'update'`, `OLD.<operation column>`, 모든 `NEW` column을 넣는다. `BEFORE DELETE` row trigger는 거부한다. insert는 action, previous, 감사 column 순으로 column을 적고 이력 key는 identity에 맡긴다.
+- `audit`: `AFTER INSERT` row trigger는 이력 table에 action `'insert'`, NULL 이전 operation, 기록하는 모든 column의 `NEW` 값을 넣는다. `AFTER UPDATE` row trigger는 `'update'`, `OLD.<operation column>`, 기록하는 모든 column의 `NEW` 값을 넣는다. `BEFORE DELETE` row trigger는 거부한다. insert는 action, previous, 기록하는 column 순으로, 기록하는 column은 table의 column 순서로 적고 이력 key는 identity에 맡긴다([audit](dbspec.md#audit)).
 - MySQL trigger 본문은 statement 하나다. PostgreSQL function 본문은 `LANGUAGE plpgsql`의 `BEGIN … RETURN NULL; END`다(`BEFORE` 거부는 반환하지 않는다). SQLite 본문은 `BEGIN …; END`다.
 
 ## Introspection
@@ -366,7 +366,7 @@ literal은 만나는 column의 값으로 읽어 canonical default 형식으로 �
 
 ### Trigger
 
-`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
+`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. insert는 action, previous, 기록하는 column을 적고, 기록하는 column은 operation column을 포함하며, insert가 적지 않은 table의 column은 schema text가 쓰는 대로 column 순서의 `exclude` 목록이 된다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
 
 ### 미지원 객체
 

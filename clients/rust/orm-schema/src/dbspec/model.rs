@@ -297,7 +297,31 @@ pub enum Setting {
     BlindIndex(Name, Name),
     Navigation(Name, Name, Name),
     Immutable,
-    Audit { into: Name, operation: Name, action: Name, previous: Name },
+    /// `lists`는 exclude와 include 목록이다. 유효한 문서는 많아야 하나를 가진다(docs/dbspec.md "Audit").
+    Audit {
+        into: Name,
+        operation: Name,
+        action: Name,
+        previous: Name,
+        lists: Vec<AuditList>,
+    },
+}
+
+/// audit의 `exclude (<column>, ...)`나 `include (<column>, ...)` 목록. `keyword`는 `exclude`나 `include`다.
+#[derive(Clone, Debug)]
+pub struct AuditList {
+    pub keyword: Name,
+    pub columns: Vec<Name>,
+}
+
+/// audit setting 줄. `list`의 column이 비면 목록 없이, 아니면 list keyword와 그 column을 쓴다.
+pub fn audit_line(into: &str, operation: &str, action: &str, previous: &str, list: &str, columns: &[&str]) -> String {
+    let line = format!("audit into {into} operation {operation} action {action} previous {previous}");
+    if columns.is_empty() {
+        line
+    } else {
+        format!("{line} {list} ({})", columns.join(", "))
+    }
 }
 
 impl Setting {
@@ -314,6 +338,21 @@ impl Setting {
             Setting::Navigation(..) => 7,
             Setting::Immutable => 8,
             Setting::Audit { .. } => 9,
+        }
+    }
+
+    /// audit trigger가 column을 복사하는지 알린다. operation column은 언제나, exclude 목록의
+    /// column은 언제나 아니며, include 목록이 있으면 그 column만 복사한다. audit이 아닌 setting은
+    /// 참이다.
+    pub fn records(&self, column: &str) -> bool {
+        let Setting::Audit { operation, lists, .. } = self else { return true };
+        if column == operation.text {
+            return true;
+        }
+        match lists.first() {
+            Some(list) if list.keyword.text == "include" => list.columns.iter().any(|c| c.text == column),
+            Some(list) => list.columns.iter().all(|c| c.text != column),
+            None => true,
         }
     }
 

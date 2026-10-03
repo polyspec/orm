@@ -182,3 +182,157 @@ func TestCoverageAuditHistory(t *testing.T) {
 		t.Fatalf("history = %+v\nwant      %+v", got, want)
 	}
 }
+
+// auditColumnsTables는 audit_columns fixture가 만드는 table이다.
+var auditColumnsTables = []string{"card", "card_history", "tag", "tag_history"}
+
+// dropAuditColumns는 audit_columns fixture가 만든 table과 PostgreSQL trigger
+// function을 지운다. trigger는 table과 함께 지워진다.
+func dropAuditColumns(t *testing.T, raw *sql.DB, driver string) {
+	t.Helper()
+	quote := func(name string) string { return `"` + name + `"` }
+	if driver == "mysql" {
+		quote = func(name string) string { return "`" + name + "`" }
+	}
+	var statements []string
+	for _, table := range []string{"card_history", "card", "tag_history", "tag"} {
+		statements = append(statements, "DROP TABLE IF EXISTS "+quote(table))
+	}
+	if driver == "postgres" {
+		for _, table := range []string{"card", "tag"} {
+			for _, event := range []string{"audit_insert", "audit_update", "audit_delete"} {
+				statements = append(statements, `DROP FUNCTION IF EXISTS "`+table+"$"+event+`"()`)
+			}
+		}
+	}
+	for _, statement := range statements {
+		if _, err := raw.Exec(statement); err != nil {
+			t.Errorf("%s: %v", statement, err)
+		}
+	}
+}
+
+// auditColumnsRows는 query의 column 이름과 모든 row를 문자열로 읽는다.
+func auditColumnsRows(t *testing.T, raw *sql.DB, query string) ([]string, [][]string) {
+	t.Helper()
+	rows, err := raw.Query(query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	columns, err := rows.Columns()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out [][]string
+	for rows.Next() {
+		values := make([]sql.NullString, len(columns))
+		targets := make([]any, len(columns))
+		for i := range values {
+			targets[i] = &values[i]
+		}
+		if err := rows.Scan(targets...); err != nil {
+			t.Fatal(err)
+		}
+		row := make([]string, len(columns))
+		for i, v := range values {
+			row[i] = "NULL"
+			if v.Valid {
+				row[i] = v.String
+			}
+		}
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return columns, out
+}
+
+// TestCoverageAuditSelectedColumns는 contracts/fixtures/audit_columns.dbs를 고른
+// database에 설치하고, client가 쓴 insert, update, soft delete를 audit trigger가
+// 고른 column만으로 기록하는지 확인한다. card는 exclude (secret)로 secret을 빼고,
+// tag는 include (label)로 label과 operation column만 기록한다. history table에는
+// 기록하는 column만 있다. 끝나면 설치한 table과 function을 지운다.
+func TestCoverageAuditSelectedColumns(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	driver, dsn := featureDatabase(t)
+	raw := openFeatureNative(t, driver, dsn)
+	defer func() {
+		if err := raw.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	defer dropAuditColumns(t, raw, driver)
+
+	s := fixtureSchema(t, "audit_columns")
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := db.Utils().Schema().Install(s); err != nil {
+		t.Fatal(err)
+	}
+	cards := rowEntity("card", s, "seq", "title", "secret", "operation_id", "deleted_at")
+	tags := rowEntity("tag", s, "id", "label", "color", "operation_id")
+	core := func(entity *orm.Entity, values map[string]any) *orm.Core {
+		c := orm.NewCore(entity)
+		c.Connect(db)
+		for column, value := range values {
+			c.Set(column, value)
+		}
+		return c
+	}
+	var seq, id int64
+	if err := db.Transaction(func() error {
+		row, err := core(cards, map[string]any{"title": "first", "secret": "s1"}).Create()
+		if err != nil {
+			return err
+		}
+		seq = row.(*keywordRow).vals["seq"].(int64)
+		if row, err = core(tags, map[string]any{"label": "x", "color": "red"}).Create(); err != nil {
+			return err
+		}
+		id = row.(*keywordRow).vals["id"].(int64)
+		return core(cards, map[string]any{"seq": seq, "title": "second", "secret": "s2"}).Update(nil)
+	}, orm.Operation(int64(7)), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Transaction(func() error {
+		if err := core(cards, map[string]any{"seq": seq}).Delete(nil); err != nil {
+			return err
+		}
+		return core(tags, map[string]any{"id": id, "color": "blue"}).Update(nil)
+	}, orm.Operation(int64(8)), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+
+	quote := map[bool]string{true: "`change`", false: `"change"`}[driver == "mysql"]
+	columns, rows := auditColumnsRows(t, raw, "SELECT * FROM card_history ORDER BY history_id")
+	if want := []string{"history_id", "change", "previous_operation_id", "seq", "title", "operation_id", "deleted_at"}; fmt.Sprint(columns) != fmt.Sprint(want) {
+		t.Fatalf("card_history columns = %v, want %v", columns, want)
+	}
+	_, rows = auditColumnsRows(t, raw, "SELECT "+quote+", previous_operation_id, seq, title, operation_id, CASE WHEN deleted_at IS NULL THEN 'live' ELSE 'deleted' END FROM card_history ORDER BY history_id")
+	s1 := fmt.Sprint(seq)
+	if want := [][]string{
+		{"insert", "NULL", s1, "first", "7", "live"},
+		{"update", "7", s1, "second", "7", "live"},
+		{"update", "7", s1, "second", "8", "deleted"},
+	}; fmt.Sprint(rows) != fmt.Sprint(want) {
+		t.Fatalf("card_history = %v\nwant           %v", rows, want)
+	}
+	columns, _ = auditColumnsRows(t, raw, "SELECT * FROM tag_history ORDER BY history_id")
+	if want := []string{"history_id", "change", "previous_operation_id", "label", "operation_id"}; fmt.Sprint(columns) != fmt.Sprint(want) {
+		t.Fatalf("tag_history columns = %v, want %v", columns, want)
+	}
+	_, rows = auditColumnsRows(t, raw, "SELECT "+quote+", previous_operation_id, label, operation_id FROM tag_history ORDER BY history_id")
+	if want := [][]string{{"insert", "NULL", "x", "7"}, {"update", "7", "x", "8"}}; fmt.Sprint(rows) != fmt.Sprint(want) {
+		t.Fatalf("tag_history = %v\nwant          %v", rows, want)
+	}
+}

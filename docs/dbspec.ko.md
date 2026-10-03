@@ -161,7 +161,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `blind_index <aes column> <index column>` | executor가 AES column 평문의 HMAC을 index column에 쓰고 같음 조건에 쓴다 | manifest |
 | `navigation <foreign key> <child name> <parent name>` | 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 | manifest |
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
-| `audit into <history table> operation <column> action <history column> previous <history column>` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`를 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
+| `audit into <history table> operation <column> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
 
 `schemaHash`는 table 정의와 schema로 표시한 settings를 포함하며, database를 바꿔야 할 때 정확히 바뀐다. `manifestHash`는 정의와 모든 settings를 포함하며 생성 코드가 확인한다. diagram과 comment는 어느 쪽에도 속하지 않는다. 두 hash는 [Manifest와 hash](#manifest-and-hashes)에서 정한다.
 
@@ -197,8 +197,11 @@ table service_history {
 ```
 
 - **Operation column.** `operation <column>`은 감사 대상 table의 non-null `i64` 또는 `uuid` column의 이름이다. executor는 그 table의 모든 `INSERT`와 `UPDATE`에서 현재 operation의 id를 이 column에 쓴다. `NEW.<column>`은 변경하는 operation이고 `OLD.<column>`은 이전 version을 만든 operation이다.
-- **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 감사 대상과 다른 table이다. `i64 identity` primary key, `action` column(non-null `varchar(8)`), `previous` column(nullable, operation column의 type), 그리고 감사 대상 table의 모든 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
-- **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 모든 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 모든 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
+- **기록하는 column.** 목록이 없으면 trigger는 감사 대상 table의 모든 column을 기록한다. `exclude (<column>, ...)`는 적은 column 말고 모든 column을, `include (<column>, ...)`는 적은 column만 기록한다. operation column은 언제나 기록하므로 어느 목록에도 쓰지 않는다. setting은 목록을 많아야 하나 가지며, 목록의 column은 감사 대상 table의 column이고 한 번만 나온다. 없는 column, 두 번 적은 column, 두 목록, 목록에 적은 operation column은 적은 column이나 둘째 목록의 keyword에서 `setting` error다. 나중에 table에 더한 column은 `exclude`에서는 기록하고 `include`에서는 기록하지 않는다.
+- **이력 table.** `into <history table>`은 이 문서의 table이나 쓰는 table의 이름이다. 이력 table은 감사 대상과 다른 table이다. `i64 identity` primary key, `action` column(non-null `varchar(8)`), `previous` column(nullable, operation column의 type), 그리고 감사 대상 table의 기록하는 column마다 같은 이름과 type의 column을 하나씩 갖고, 다른 column은 없다. 기록하는 column의 사본이 없거나, type이 다른 column이 있거나, 기록하지 않는 감사 대상 column을 포함해 다른 column이 있는 이력 table은 어긋난 곳마다 하나씩 이력 table 이름에서 `setting` error다. 이력 column은 nullable일 수 있다. 이력 table 자신은 감사하지 않는다.
+- **Trigger.** `AFTER INSERT` row trigger는 `action = 'insert'`, `previous = NULL`과 기록하는 모든 column의 `NEW` 값을 쓴다. `AFTER UPDATE` row trigger는 `action = 'update'`, `previous = OLD.<operation column>`과 기록하는 모든 column의 `NEW` 값을 쓴다. `BEFORE DELETE` row trigger는 삭제를 거부한다. 값을 column 대 column으로 복사하므로 이력 row는 세 database에서 같다. row를 JSON으로 만들지 않는다.
+- **Schema text와 introspection.** database는 trigger가 적은 기록하는 column만 갖는다. 그래서 schema text는 setting을 기록하지 않는 column을 column 순서로 적은 `exclude`로 쓰고, 모든 column을 기록하면 목록 없이 쓴다. `include (title)`과 나머지 column의 `exclude` 목록은 같은 `schemaHash`를 주며, manifest text는 쓴 목록을 그대로 둔다. introspection은 `audit_insert` trigger에서 기록하는 column을 읽어 setting을 schema text 형식으로 되살린다. database에 다른 것은 저장하지 않는다.
+- **암호화한 값.** 암호화가 필요한 값은 `aes` stage가 있는 codec을 갖고, executor가 쓰기 전에 그 값을 encode한다([codecs](codec.md)). 그래서 row는 ciphertext를 갖고 trigger는 그 ciphertext를 이력 table에 복사하며, trigger가 평문을 보는 일은 없다. 그 이력 column은 같은 storage type이다. 이력에서 그 값을 빼려면 그 column을 exclude한다.
 - **삭제.** `BEFORE DELETE` trigger 때문에 physical `DELETE`는 실패한다. `soft_delete`를 선언한 table은 soft delete column의 `UPDATE`로 삭제하며, 이력이 그 operation과 함께 기록한다. `audit`은 `soft_delete`를 요구하지 않는다. schema setting은 database에서 다시 읽히고 manifest setting은 읽히지 않으므로, schema setting은 manifest setting에 의존하지 않는다.
 - **한계.** `cascade`나 `set_null` foreign key의 자식 table에서는 이 setting을 거부한다. MySQL trigger는 foreign key action이 바꾼 row에서 실행되지 않기 때문이다. `TRUNCATE`는 포함하지 않는다. operation column을 쓰지 않는 raw SQL은 이전 operation의 id를 다시 기록한다. 이 column을 쓰는 것은 executor뿐이다. binary logging이 켜진 MySQL에서 trigger를 만들려면 `SUPER` 또는 `log_bin_trust_function_creators=ON`이 필요하며, apply가 이를 먼저 확인한다.
 
@@ -209,7 +212,7 @@ table service_history {
 manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합의 parse된 문서를 받는다. 집합은 각 문서를 한 번씩, 그리고 그 문서들이 쓰는 모든 문서를 담는다. 반복된 문서 이름은 `name.duplicate` diagnostic, 집합에 없는 쓰이는 문서는 `use` diagnostic이며, 둘 다 뒤쪽 문서나 쓰는 문서의 header 이름(1줄 10열)에 위치하고 message에 문서 이름을 담는다. 문서는 이름 순으로, 한 문서가 쓰는 이름도 이름 순으로 확인한다. diagnostic이 있는 집합에는 manifest도 statement도 없다.
 
 - 문서의 **manifest text**는 모든 comment와 diagram을 뺀 canonical emission이다. 문서 집합의 manifest text는 문서들의 manifest text를 문서 이름 순으로 이어 붙인 것이다. 각 text는 header로 시작하고 줄 끝으로 끝나므로 이어 붙인 결과는 모호하지 않다.
-- **schema text**는 집합의 모든 table을 table 이름 순으로 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지운다. 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄, comment, diagram이 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
+- **schema text**는 집합의 모든 table을 table 이름 순으로 담은 `schema`라는 문서 하나의 canonical emission이며, `immutable`과 `audit`을 뺀 모든 setting을 지우고, `audit` setting은 기록하지 않는 column을 column 순서로 적은 `exclude` 목록으로, 모든 column을 기록하면 목록 없이 쓴다([Audit](#audit)). 비게 된 `settings` block은 canonical form처럼 쓰지 않는다. `use` 줄, comment, diagram이 없으므로 table에만 달려 있다. table을 다른 문서로 옮기거나 문서 이름을 바꾸거나 나눠도 같고, 집합을 렌더링한 database를 introspect해도 같다.
 - `manifestHash`는 `sha256:` 뒤에 manifest text의 UTF-8 bytes에 대한 SHA-256을 소문자 16진수로 붙인 것이고, `schemaHash`는 schema text에 대해 같은 방식으로 계산한다.
 
 생성 코드는 자신을 만든 문서 집합의 manifest text와 `manifestHash`를 담고, 모든 request에 그 hash를 포함한다. runtime은 process가 시작할 때 한 번 내장된 text로 model을 만든다. PHP generator는 그 model을 PHP array로 쓰므로 opcode cache가 이를 유지하고, 어떤 request도 text를 parse하지 않는다. `schemaHash`는 migration plan과 그 이력이 기록하는 database 상태의 식별자다.
@@ -256,7 +259,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - default와 action은 모두 쓰고(`on delete restrict on update restrict`), `asc`는 생략
 - literal은 한 형식으로 쓴다: 정수는 0의 부호나 앞자리 0 없이, decimal은 column scale만큼의 소수 자리로(`decimal(13,2)`이면 `0.00`), 문자열은 작은따옴표 안에 따옴표를 `''`로, `true`와 `false`, `date`는 `'YYYY-MM-DD'`, `time(p)`와 `datetime(p)`는 정확히 p자리 소수로(`datetime(6)`이면 `'2026-01-01 00:00:00.000000'`), `uuid`는 소문자로
 - table과 diagram은 문서 순서, diagram 줄도 문서 순서
-- `select explicit` column과 `use` 줄 안의 table은 적힌 순서로
+- `select explicit` column, `audit`의 `exclude`나 `include` 목록의 column, `use` 줄 안의 table은 적힌 순서로, 목록은 `exclude (a, b)`처럼
 - `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 만나는 column의 canonical default 형식을 따르고, predicate는 `and` 안의 `or`가 필요로 하는 괄호만 남긴다
 - comment 줄은 바로 다음 줄에 붙고 그 줄의 들여쓰기를 따른다. 닫는 `}` 앞의 comment는 그 block 안 줄의 들여쓰기를 따른다. 마지막 block 뒤의 comment는 빈 줄 하나 뒤에 온다. comment는 `#`부터 줄 끝까지의 text를 바꾸지 않는다
 
