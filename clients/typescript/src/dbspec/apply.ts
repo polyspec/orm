@@ -259,7 +259,7 @@ class Applier {
   readonly r: Renderer;
   history = new Map<string, HistoryRow>();
   // lock을 잡은 server session의 id다(MySQL CONNECTION_ID, PostgreSQL pg_backend_pid).
-  serverSession = 0;
+  serverSession: number = 0;
 
   constructor(
     readonly connection: unknown,
