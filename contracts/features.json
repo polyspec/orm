@@ -99,7 +99,7 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test zone --test sqlite_file_name"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name"
         },
         {
           "id": "dsn-php-without-mysql",
@@ -520,7 +520,7 @@
         },
         {
           "id": "queries-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test model_output"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output"
         },
         {
           "id": "queries-typescript",
@@ -564,7 +564,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin decimal_physical"
+          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
         },
         {
           "id": "decimal-typescript-unit",
@@ -892,7 +892,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin decimal_physical"
+          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
         },
         {
           "id": "decimal-typescript-unit",
@@ -1499,7 +1499,7 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm-build"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::"
         }
       ],
       "coverage": {
@@ -2636,7 +2636,7 @@
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked -p orm --test aes_keys"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys"
         }
       ],
       "coverage": {
@@ -4173,7 +4173,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "cd clients/rust && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked -p orm-build --features live-db"
+          "command": "cd clients/rust && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::"
         }
       ],
       "coverage": {

@@ -326,15 +326,29 @@ async function buildNative(plans, directory, buildTimeoutMs) {
       go(['test', '-c', '-tags', 'featurecoverage', '-o', binary, '.'], cwd, step));
     builds.go.set(cwd, error ? { error } : { binary });
   }
+  // Rust test binary는 crate가 속한 workspace마다 한 번 build한다. `--workspace`와
+  // ORM_RUST_TEST_FEATURES(Makefile)는 client DB test와 다른 Rust 검사가 쓰는 것과 같은 feature
+  // 결정을 만들어 그 build를 함께 쓴다. crate 하나만 고르면(`-p`, manifest) feature가 달라져 같은
+  // crate를 다시 compile한다.
+  const workspaces = new Map();
   for (const crate of new Set(specs.filter(spec => spec.format === 'cargo').map(spec => spec.cwd))) {
+    const located = await run('cargo', ['locate-project', '--workspace', '--message-format', 'plain',
+      '--manifest-path', resolve(crate, 'Cargo.toml')], crate, buildTimeoutMs);
+    const workspace = located.error ? null : dirname(located.stdout.trim());
+    if (!workspace) {
+      builds.cargo.set(crate, { error: `cargo locate-project: ${located.error}` });
+      continue;
+    }
+    if (!workspaces.has(workspace)) workspaces.set(workspace, []);
+    workspaces.get(workspace).push(crate);
+  }
+  const features = process.env.ORM_RUST_TEST_FEATURES ? ['--features', process.env.ORM_RUST_TEST_FEATURES] : [];
+  for (const [workspace, crates] of workspaces) {
     const files = new Map();
-    const error = await build(`cargo/${relative(plans.root, crate)}`, async step => {
-      const located = await run('cargo', ['locate-project', '--workspace', '--message-format', 'plain',
-        '--manifest-path', resolve(crate, 'Cargo.toml')], crate, buildTimeoutMs);
-      if (located.error) throw new Error(located.error);
-      const workspace = dirname(located.stdout.trim());
-      const result = await run('cargo', ['test', '--no-run', '--manifest-path', resolve(crate, 'Cargo.toml'),
-        '--message-format=json-render-diagnostics'], crate, buildTimeoutMs, process.env, step, 100_000_000);
+    const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
+      const result = await run('cargo', ['test', '--no-run', '--workspace', ...features,
+        '--manifest-path', resolve(workspace, 'Cargo.toml'), '--message-format=json-render-diagnostics'],
+        workspace, buildTimeoutMs, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
       for (const line of result.stdout.split('\n')) {
         if (!line.startsWith('{')) continue;
@@ -347,7 +361,7 @@ async function buildNative(plans, directory, buildTimeoutMs) {
       }
       step(`${new Set([...files.values()].flat()).size} test binaries`);
     });
-    builds.cargo.set(crate, error ? { error } : { files });
+    for (const crate of crates) builds.cargo.set(crate, error ? { error } : { files });
   }
   return builds;
 }

@@ -32,6 +32,13 @@ export RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)
 export CARGO_TARGET_DIR := $(abspath clients/rust/target)
 export CARGO_INCREMENTAL := 0
 export CARGO_PROFILE_DEV_DEBUG := line-tables-only
+# ORM_RUST_TEST_FEATURES는 Rust test가 쓰는 feature다. 모든 cargo test 명령(client DB test,
+# feature coverage와 검증 명령, dbspec Rust check)은 `--workspace --features
+# $(ORM_RUST_TEST_FEATURES)`로 의존성 feature를 같게 정해 test build 하나를 함께 쓰고, `--test`와
+# 이름 filter로 자기 test만 실행한다. `-p`로 package를 고르면 feature가 달라져 같은 crate를 다시
+# compile한다. test-faults는 fault 주입 module만 더하고, live-db는 orm-tests의 dev-dependency가
+# 이미 켜는 feature다.
+export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
 # WITH_TEST_ENV는 TEST_ENV를 읽고, pooler를 거치지 않는 server DSN을 ORM_TEST_MYSQL_SERVER_DSN과
 # ORM_TEST_POSTGRES_SERVER_DSN으로 남긴다. client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로
 # 바꾸어도 rollback 실패 case는 이 DSN으로 server에서 transaction의 session을 끝낸다. ProxySQL은
@@ -73,10 +80,14 @@ bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
-# go-test-check는 모든 Go package의 test를 실행한다.
+# go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. clients/go의
+# package는 client-db-check(scripts/client-db-test.sh), engine과 generator는 feature-check의
+# 검증 명령(planner-go, generation-go), internal/testcase는 testcase-check가 같은 명령으로
+# 실행한다.
+GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/clients/go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
 .PHONY: go-test-check
 go-test-check:
-	$(WITH_TEST_ENV) $(GO_TEST) ./...
+	$(WITH_TEST_ENV) $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
 
 # testcase-check는 각 언어의 공유 case 보고 형식이 case마다 시작(RUN, 기한), 단계(STEP),
 # 결과(PASS, FAIL과 이유)와 경과 시간을 이 순서로 출력하고, 기한이 지난 case를 FAIL로
@@ -146,7 +157,7 @@ dbspec-introspect-php-check:
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check:
-	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_introspect -- --nocapture
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
 # 적용해 plan의 target을, rollback statement로 source를, 다시 적용해 target을, finalize 뒤 target과
@@ -185,7 +196,7 @@ dbspec-apply-pairs-check:
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check:
-	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply -- --nocapture
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
 # 그 renderDbspec, planSteps, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
@@ -205,7 +216,7 @@ dbspec-apply-ts-check:
 # orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check:
-	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_plan_apply -- --nocapture
+	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
 # Dbspec::introspect로 적용한다.
@@ -277,10 +288,10 @@ dbspec-stress-bench:
 	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 dbspec-rust-check:
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-schema --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
-	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --test dbspec_apply_cleanup -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
+	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check:
@@ -349,7 +360,7 @@ php-without-mysql-check:
 	$(RUN_CASE) php-without-mysql $(TOOL_DEADLINE) -- ./scripts/php-without-mysql.sh
 
 client-db-check:
-	$(WITH_TEST_ENV) ./scripts/client-db-test.sh
+	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel ./scripts/client-db-test.sh
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
