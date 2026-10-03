@@ -78,14 +78,19 @@ async function awaitReplica(dialect, primary, replica) {
     } finally { await client.end(); }
     return;
   }
-  // replica에 case database가 아직 없을 수 있으므로 두 연결 모두 database 없이 연다.
-  const source = await mysqlConnection(primary, undefined);
-  const target = await mysqlConnection(replica, undefined);
+  // replica에 case database가 아직 없을 수 있으므로 두 연결 모두 database 없이 연다. 한 연결이
+  // 실패해도 열린 연결은 닫는다. 열린 연결은 test process가 끝나지 못하게 한다.
+  const source = await mysqlConnection(primary, null);
   try {
-    const [[status]] = await source.query('SHOW BINARY LOG STATUS');
-    const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
-    if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
-  } finally { await source.end(); await target.end(); }
+    const target = await mysqlConnection(replica, null);
+    try {
+      const [[{ current }]] = await target.query('SELECT DATABASE() AS current');
+      if (current !== null) throw new Error(`the replica wait connection opened database ${current}`);
+      const [[status]] = await source.query('SHOW BINARY LOG STATUS');
+      const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
+      if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
+    } finally { await target.end(); }
+  } finally { await source.end(); }
 }
 
 /**
