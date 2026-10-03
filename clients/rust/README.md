@@ -59,7 +59,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Add the missing tables and columns of an installed set | `db.utils().schema().add_tables_and_columns(&model::SCHEMA)` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | Run a callback with a `Send` future | `db.transaction_send(callback).await` |
-| Preserve a one-time callback's own error | `db.transaction_once(callback).await`; returns `TransactionOnceError::Callback(error)` after rollback |
+| Preserve a one-time callback's own error | `db.transaction_once(callback).await`, with `.operation(id)` for an audited write; returns `TransactionOnceError::Callback(error)` after rollback |
 | Bound a transaction callback | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | Set a deadlock retry count, including zero | `db.transaction(callback).retry(count).await` |
 | Cancel a statement or transaction callback | Drop its future; `timeout_ms` cancels the callback on expiry and awaits rollback |
@@ -70,7 +70,7 @@ and have a nonempty key. If `aes_keys` is present, it must contain the current v
 `aes_key` supplied alongside it must equal that version's key. `Db::connect` returns `CONFIG`
 before opening a connection for invalid key configuration. A connection without AES columns may
 leave both key fields empty.
-| Record audited writes | Declare the `audit` setting in the schema and name the operation of the unit of work with `db.transaction(callback).operation(id).await` ([usage](../../docs/usage.md#rust)) |
+| Record audited writes | Declare the `audit` setting in the schema and name the operation of the unit of work with `operation(id)` on `db.transaction(callback)`, `db.transaction_send(callback)` or `db.transaction_once(callback)` ([usage](../../docs/usage.md#rust)) |
 
 `timeout_ms(0)` disables the callback deadline. A positive deadline covers callback execution,
 including statements it starts. Expiry returns `CANCELED` only after rollback succeeds; if

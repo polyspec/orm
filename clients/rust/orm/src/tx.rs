@@ -221,31 +221,195 @@ impl Db {
         }
     }
 
-    /// Runs a callback once in a transaction and preserves its own error.
-    /// A nested call uses a savepoint. This call does not retry the callback.
-    pub async fn transaction_once<F, T, E>(&self, f: F) -> std::result::Result<T, TransactionOnceError<E>>
-    where
-        F: AsyncFnOnce() -> std::result::Result<T, E>,
-    {
-        if let Some(outer) = active_for(self) {
-            return savepoint_once(outer, f).await;
+    /// Runs a callback once in a transaction and preserves its own error when
+    /// awaited. A nested call uses a savepoint. This call does not retry the
+    /// callback. `operation(id)` sets the operation id of the transaction.
+    pub fn transaction_once<F>(&self, f: F) -> TransactionOnce<'_, F> {
+        TransactionOnce { db: self, f, operation: None }
+    }
+}
+
+/// A transaction that runs its callback once: set the operation id with
+/// `operation` and await it.
+pub struct TransactionOnce<'a, F> {
+    db: &'a Db,
+    f: F,
+    operation: Option<OperationId>,
+}
+
+impl<F> TransactionOnce<'_, F> {
+    /// unit of work의 operation id를 정한다. transaction 안의 audit 대상 table insert와
+    /// update는 이 값을 operation column에 쓴다. 바깥 transaction만 정할 수 있다.
+    pub fn operation(mut self, id: impl Into<OperationId>) -> Self {
+        self.operation = Some(id.into());
+        self
+    }
+}
+
+impl<'a, F, Fut, T, E> IntoFuture for TransactionOnce<'a, F>
+where
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = std::result::Result<T, E>>,
+{
+    type Output = std::result::Result<T, TransactionOnceError<E>>;
+    type IntoFuture = TransactionOnceFuture<'a, F, Fut, T, E>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        TransactionOnceFuture { state: OnceState::Start { db: self.db, f: self.f, operation: self.operation } }
+    }
+}
+
+/// ORM이 내부에서 기다리는 단계(begin, savepoint, commit, rollback)의 future. 이 단계들은 Send이므로
+/// `TransactionOnceFuture`는 callback, 그 future, 결과와 오류 type이 Send일 때 Send다.
+type OnceStep<'a, R> = Pin<Box<dyn Future<Output = R> + Send + 'a>>;
+
+/// transaction의 task-local frame 안에서 panic을 잡으며 실행하는 callback future.
+type OnceCallback<Fut> = futures_util::future::CatchUnwind<std::panic::AssertUnwindSafe<tokio::task::futures::TaskLocalFuture<Vec<Arc<TxShared>>, Fut>>>;
+
+/// callback이 실행되는 곳: 새 transaction이나 바깥 transaction의 savepoint.
+enum OnceScope<'a> {
+    Transaction { db: &'a Db, tx: Arc<TxShared> },
+    Savepoint { tx: Arc<TxShared>, name: String },
+}
+
+impl<'a> OnceScope<'a> {
+    fn tx(&self) -> &Arc<TxShared> {
+        match self {
+            OnceScope::Transaction { tx, .. } | OnceScope::Savepoint { tx, .. } => tx,
         }
-        let tx = Arc::new(begin(self, None, false, None).await.map_err(TransactionOnceError::Orm)?);
-        let mut stack = frames();
-        stack.push(tx.clone());
-        let result = match std::panic::AssertUnwindSafe(FLOW.scope(stack, f())).catch_unwind().await {
-            Ok(result) => result,
-            Err(payload) => match rollback_and_resume(&tx, payload).await {},
-        };
-        match result {
-            Ok(value) => {
-                commit(&tx).await.map_err(TransactionOnceError::Orm)?;
-                Ok(value)
+    }
+
+    /// callback이 성공한 뒤 transaction을 commit하거나 savepoint를 푼다.
+    fn close(self) -> OnceStep<'a, Result<()>> {
+        match self {
+            OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
+            OnceScope::Savepoint { tx, name } => Box::pin(async move {
+                let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+                released
+            }),
+        }
+    }
+
+    /// callback이 실패하거나 panic한 뒤 transaction이나 savepoint 뒤의 작업을 되돌린다. transaction의
+    /// rollback은 설정된 test fault를 소비한다.
+    fn undo(self, fault: bool) -> OnceStep<'a, Result<()>> {
+        match self {
+            OnceScope::Transaction { db, tx } => Box::pin(async move {
+                let rolled_back = rollback(&tx).await;
+                if fault {
+                    rolled_back.and_then(|()| rollback_fault(db))
+                } else {
+                    rolled_back
+                }
+            }),
+            OnceScope::Savepoint { tx, name } => Box::pin(async move {
+                let undone = rollback_savepoint(&tx, &name).await;
+                tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+                undone
+            }),
+        }
+    }
+}
+
+/// callback의 결과로, scope를 끝낸 뒤 돌려준다.
+enum OnceOutcome<T, E> {
+    Returned(T),
+    Failed(E),
+    Panicked(Box<dyn std::any::Any + Send>),
+}
+
+enum OnceState<'a, F, Fut, T, E> {
+    Start { db: &'a Db, f: F, operation: Option<OperationId> },
+    Opening { f: F, open: OnceStep<'a, Result<OnceScope<'a>>> },
+    Running { scope: OnceScope<'a>, callback: Pin<Box<OnceCallback<Fut>>> },
+    Ending { outcome: OnceOutcome<T, E>, end: OnceStep<'a, Result<()>> },
+    Done,
+}
+
+/// The future of a `TransactionOnce`.
+pub struct TransactionOnceFuture<'a, F, Fut, T, E> {
+    state: OnceState<'a, F, Fut, T, E>,
+}
+
+// callback future는 Box 안에서만 pin되고, 다른 field(callback, 결과, 오류)는 pin된 적 없이 옮겨진다.
+impl<F, Fut, T, E> Unpin for TransactionOnceFuture<'_, F, Fut, T, E> {}
+
+impl<'a, F, Fut, T, E> Future for TransactionOnceFuture<'a, F, Fut, T, E>
+where
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = std::result::Result<T, E>>,
+{
+    type Output = std::result::Result<T, TransactionOnceError<E>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        use std::task::Poll;
+        let this = self.get_mut();
+        loop {
+            match std::mem::replace(&mut this.state, OnceState::Done) {
+                OnceState::Start { db, f, operation } => {
+                    let open: OnceStep<'a, Result<OnceScope<'a>>> = match active_for(db) {
+                        Some(_) if operation.is_some() => {
+                            return Poll::Ready(Err(TransactionOnceError::Orm(Error::Config(
+                                "a nested transaction of the same connection does not take an operation id; it uses the operation id of the outer transaction"
+                                    .into(),
+                            ))));
+                        }
+                        Some(tx) => Box::pin(async move {
+                            let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
+                            let name = format!("orm_sp_{n}");
+                            match tx.raw(&format!("SAVEPOINT {name}")).await {
+                                Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
+                                Err(error) => {
+                                    tx.savepoints.fetch_sub(1, Ordering::AcqRel);
+                                    Err(error)
+                                }
+                            }
+                        }),
+                        None => Box::pin(async move { Ok(OnceScope::Transaction { db, tx: Arc::new(begin(db, None, false, operation).await?) }) }),
+                    };
+                    this.state = OnceState::Opening { f, open };
+                }
+                OnceState::Opening { f, mut open } => match open.as_mut().poll(cx) {
+                    Poll::Pending => {
+                        this.state = OnceState::Opening { f, open };
+                        return Poll::Pending;
+                    }
+                    Poll::Ready(Err(error)) => return Poll::Ready(Err(TransactionOnceError::Orm(error))),
+                    Poll::Ready(Ok(scope)) => {
+                        let mut stack = frames();
+                        stack.push(scope.tx().clone());
+                        let callback = Box::pin(std::panic::AssertUnwindSafe(FLOW.scope(stack, f())).catch_unwind());
+                        this.state = OnceState::Running { scope, callback };
+                    }
+                },
+                OnceState::Running { scope, mut callback } => match callback.as_mut().poll(cx) {
+                    Poll::Pending => {
+                        this.state = OnceState::Running { scope, callback };
+                        return Poll::Pending;
+                    }
+                    Poll::Ready(Ok(Ok(value))) => this.state = OnceState::Ending { outcome: OnceOutcome::Returned(value), end: scope.close() },
+                    Poll::Ready(Ok(Err(error))) => this.state = OnceState::Ending { outcome: OnceOutcome::Failed(error), end: scope.undo(true) },
+                    Poll::Ready(Err(payload)) => this.state = OnceState::Ending { outcome: OnceOutcome::Panicked(payload), end: scope.undo(false) },
+                },
+                OnceState::Ending { outcome, mut end } => {
+                    let ended = match end.as_mut().poll(cx) {
+                        Poll::Pending => {
+                            this.state = OnceState::Ending { outcome, end };
+                            return Poll::Pending;
+                        }
+                        Poll::Ready(ended) => ended,
+                    };
+                    return Poll::Ready(match (outcome, ended) {
+                        (OnceOutcome::Returned(value), Ok(())) => Ok(value),
+                        (OnceOutcome::Returned(_), Err(error)) => Err(TransactionOnceError::Orm(error)),
+                        (OnceOutcome::Failed(callback), Ok(())) => Err(TransactionOnceError::Callback(callback)),
+                        (OnceOutcome::Failed(callback), Err(rollback)) => Err(TransactionOnceError::Rollback { callback, rollback }),
+                        (OnceOutcome::Panicked(payload), ended) => resume_panic(payload, ended.err()),
+                    });
+                }
+                OnceState::Done => panic!("TransactionOnceFuture polled after completion"),
             }
-            Err(callback) => match rollback(&tx).await.and_then(|()| rollback_fault(self)) {
-                Ok(()) => Err(TransactionOnceError::Callback(callback)),
-                Err(rollback) => Err(TransactionOnceError::Rollback { callback, rollback }),
-            },
         }
     }
 }
@@ -467,17 +631,6 @@ where
         Ok(value) => Ok(value),
         Err((callback, None)) => Err(callback),
         Err((callback, Some(rollback))) => Err(Error::rollback(callback, rollback)),
-    }
-}
-
-async fn savepoint_once<F, T, E>(tx: Arc<TxShared>, f: F) -> std::result::Result<T, TransactionOnceError<E>>
-where
-    F: AsyncFnOnce() -> std::result::Result<T, E>,
-{
-    match run_savepoint(tx, f()).await.map_err(TransactionOnceError::Orm)? {
-        Ok(value) => Ok(value),
-        Err((callback, None)) => Err(TransactionOnceError::Callback(callback)),
-        Err((callback, Some(rollback))) => Err(TransactionOnceError::Rollback { callback, rollback }),
     }
 }
 

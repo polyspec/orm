@@ -3,6 +3,7 @@
 package orm_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -177,6 +178,87 @@ func TestCoverageAuditHistory(t *testing.T) {
 		{change: "insert", seq: seq, title: "first", operation: 7},
 		{change: "update", previous: sql.NullInt64{Int64: 7, Valid: true}, seq: seq, title: "second", operation: 7},
 		{change: "update", previous: sql.NullInt64{Int64: 7, Valid: true}, seq: seq, title: "second", operation: 8, deleted: true},
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("history = %+v\nwant      %+v", got, want)
+	}
+}
+
+// installedAudit은 고른 database에 contracts/fixtures/audit.dbs를 설치하고 연결,
+// item entity, native 연결을 돌려준다. 설치한 table과 function은 case가 끝날 때
+// 지운다.
+func installedAudit(t *testing.T) (string, string, *orm.DB, *orm.Entity) {
+	t.Helper()
+	driver, dsn := featureDatabase(t)
+	raw := openFeatureNative(t, driver, dsn)
+	if present := auditTables(t, raw, driver); len(present) > 0 {
+		t.Fatalf("audit tables exist before the case: %v", present)
+	}
+	// 설치가 일부만 적용되어도 지우도록 설치 전에 정리를 등록한다.
+	t.Cleanup(func() {
+		dropAudit(t, raw, driver)
+		if err := raw.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	s := fixtureSchema(t, "audit")
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := db.Utils().Schema().Install(s); err != nil {
+		t.Fatal(err)
+	}
+	return driver, dsn, db, rowEntity("item", s, "seq", "title", "operation_id", "deleted_at")
+}
+
+// TestCoverageAuditOperationEntryPoints는 모든 transaction 진입점이 operation
+// id를 받는지 확인한다: 연결의 Transaction과 WithContext handle의 Transaction이
+// orm.Operation으로 정한 id를 audit 대상 write가 쓰고, 중첩 transaction은
+// operation id를 받지 않는다.
+func TestCoverageAuditOperationEntryPoints(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	driver, dsn, db, items := installedAudit(t)
+	item := func(conn *orm.DB, values map[string]any) *orm.Core {
+		c := orm.NewCore(items)
+		c.Connect(conn)
+		for column, value := range values {
+			c.Set(column, value)
+		}
+		return c
+	}
+	var seq int64
+	if err := db.Transaction(func() error {
+		row, err := item(db, map[string]any{"title": "first"}).Create()
+		if err != nil {
+			return err
+		}
+		seq = row.(*keywordRow).vals["seq"].(int64)
+		return nil
+	}, orm.Operation(int64(7)), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	handle := db.WithContext(context.Background())
+	if err := handle.Transaction(func() error {
+		return item(handle, map[string]any{"seq": seq, "title": "second"}).Update(nil)
+	}, orm.Operation(int64(8)), orm.Retry(0)); err != nil {
+		t.Fatal(err)
+	}
+	nested := db.Transaction(func() error {
+		return db.Transaction(func() error { return nil }, orm.Operation(int64(10)))
+	}, orm.Operation(int64(9)), orm.Retry(0))
+	if orm.ErrorCode(nested) != orm.CodeConfig {
+		t.Fatalf("nested transaction with an operation id = %v, want CONFIG", nested)
+	}
+	got := readHistory(t, driver, dsn, sqliteFeaturePath(dsn))
+	want := []historyRow{
+		{change: "insert", seq: seq, title: "first", operation: 7},
+		{change: "update", previous: sql.NullInt64{Int64: 7, Valid: true}, seq: seq, title: "second", operation: 8},
 	}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("history = %+v\nwant      %+v", got, want)

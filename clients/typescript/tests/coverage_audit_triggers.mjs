@@ -60,6 +60,38 @@ async function textRows(driver, dsn, sql) {
   return { columns: Object.keys(rows[0] ?? {}), rows: rows.map(r => Object.values(r).map(v => (v === null ? 'NULL' : String(v)))) };
 }
 
+/**
+ * 고른 database에 audit.dbs 를 설치하고 body(db, models, driver, dsn)를 실행한 뒤, 실패해도 설치한 table 과
+ * PostgreSQL trigger function 을 지운다.
+ */
+async function withAudit(body) {
+  const { driver, dsn } = featureDatabase();
+  for (const table of ['item', 'item_history']) {
+    assert.equal(await tableExists(driver, dsn, table), false, `table ${table} does not exist before the case`);
+  }
+  const models = auditModels();
+  const db = await Db.connect(dsn);
+  try {
+    assert.equal(db.driver, driver);
+    await withCleanup(async () => {
+      await db.utils().schema().install(schemaOf(auditText));
+      await body(db, models, driver, dsn);
+    }, () => dropAudit(driver, dsn));
+  } finally { await db.close(); }
+  for (const table of ['item', 'item_history']) {
+    assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
+  }
+}
+
+/** item_history 의 [change, previous, seq, title, operation, deleted]를 history_id 순서로 읽는다. */
+async function itemHistory(db, ItemHistory) {
+  const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
+  return history.values().map(h => [
+    h[CORE].column('change'), h[CORE].column('previous_operation_id'), h[CORE].column('seq'),
+    h[CORE].column('title'), h[CORE].column('operation_id'), h[CORE].column('deleted_at') !== null,
+  ]);
+}
+
 await runCases('coverage_audit_triggers.mjs', {
   async audit_history() {
     const { driver, dsn } = featureDatabase();
@@ -155,5 +187,28 @@ await runCases('coverage_audit_triggers.mjs', {
     for (const table of ['card', 'card_history', 'tag', 'tag_history']) {
       assert.equal(await tableExists(driver, dsn, table), false, `table ${table} is dropped after the case`);
     }
+  },
+  // 모든 transaction 진입점이 operation id 를 받는다: 연결의 transaction 과 withSignal handle 의 transaction 이
+  // 정한 id 를 audit 대상 write 가 쓰고, 중첩 transaction 은 operation id 를 받지 않는다.
+  async audit_operation_entry_points() {
+    await withAudit(async (db, { item: Item, item_history: ItemHistory }) => {
+      const seq = await db.transaction(async () => {
+        const row = new Item();
+        row[CORE].setValue('title', 'first');
+        return (await row.create())[CORE].column('seq');
+      }, { operation: 7, retry: 0 });
+      const handle = db.withSignal(new AbortController().signal);
+      await handle.transaction(async () => {
+        const row = await new Item().raw('{seq} = ?', seq).get();
+        row[CORE].setValue('title', 'second');
+        await row.update();
+      }, { operation: 8, retry: 0 });
+      const nested = db.transaction(async () => { await db.transaction(async () => {}, { operation: 10 }); }, { operation: 9, retry: 0 });
+      assert.equal(await errorCode(nested), 'CONFIG', 'a nested transaction with an operation id');
+      assert.deepEqual(await itemHistory(db, ItemHistory), [
+        ['insert', null, seq, 'first', 7, false],
+        ['update', 7, seq, 'second', 8, false],
+      ], 'item_history in history_id order');
+    });
   },
 }, 300_000);

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T31: Rust `Db::transaction_once(callback)`는 `transaction`, `transaction_send`처럼 `operation(id)`를 받는 builder이므로, 감사 대상 write가 모든 transaction 진입점을 거쳐 실행된다. 기존 `.await` 호출부는 그대로이고, callback과 그 future가 `Send`이면 future도 `Send`다. operation id를 가진 중첩 `transaction_once`는 `CONFIG`를 담은 `TransactionOnceError::Orm`을 돌려준다.
+
 - T31.1: `go run ./tests/interfaces/check`는 cargo가 build했다고 보고한 위치에서 Rust symbol 도구를 찾는다. Makefile이 모든 cargo 명령에 주는 것처럼 `CARGO_TARGET_DIR`이 다른 target directory를 정해도 이 검사는 현재 도구를 실행한다.
 
 - T30: `audit` setting은 기록할 column을 `exclude (col, ...)`나 `include (col, ...)` 목록 하나로 고를 수 있다. operation column은 언제나 기록한다. 이력 table은 identity key, action, previous column 말고는 기록하는 column만 갖고, trigger는 MySQL, PostgreSQL, SQLite에서 그 column만 복사하며, schema text는 setting을 기록하지 않는 column의 `exclude` 목록으로 쓰고, introspection은 trigger에서 그것을 되살린다. 없거나 두 번 적은 목록 column, 두 목록, 목록에 적은 operation column은 `setting` error이고, PHP와 Rust의 이력 table 검사는 Go와 TypeScript처럼 어긋난 곳마다 error 하나를 낸다. 암호화가 필요한 값은 쓰기 전에 codec이 암호화하므로 trigger는 그 ciphertext를 복사한다.

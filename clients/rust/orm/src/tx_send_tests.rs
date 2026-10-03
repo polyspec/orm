@@ -77,6 +77,15 @@ async fn behavior(driver: &str, dsn: &str) {
     assert_eq!(state(&db).await, [1, 2, 4], "{driver}: outer rollback includes released nested savepoint");
     assert!(active_for(&db).is_none(), "{driver}: transaction frame removed");
     db.transaction_send(|| async { Ok::<_, Error>(()) }).retry(0).await.expect("connection remains usable");
+    // transaction_once의 future는 callback과 그 future가 Send이면 Send다. operation(id)를 정해도 같다.
+    require_send(
+        db.transaction_once(async || active_for(&db).expect("once frame").raw("INSERT INTO orm_send_savepoint_probe (id) VALUES (7)").await)
+            .operation(7)
+            .into_future(),
+    )
+    .await
+    .expect("once commit must succeed");
+    assert_eq!(state(&db).await, [1, 2, 4, 7], "{driver}: transaction_once commits");
     db.close().await;
 }
 async fn check(driver: &str, key: &str) {

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T31: Rust `Db::transaction_once(callback)` is a builder that takes `operation(id)`, like `transaction` and `transaction_send`, so an audited write runs through every transaction entry point; existing `.await` call sites stay unchanged and the future is `Send` when the callback and its future are. A nested `transaction_once` with an operation id returns `TransactionOnceError::Orm` with `CONFIG`.
+
 - T31.1: `go run ./tests/interfaces/check` finds the Rust symbol tool where cargo reports that it built it, so the check runs the current tool when `CARGO_TARGET_DIR` names another target directory, as the Makefile does for every cargo command.
 
 - T30: an `audit` setting may select the recorded columns with `exclude (col, ...)` or `include (col, ...)`, one list at most; the operation column is always recorded. The history table holds exactly the recorded columns besides its identity key, action and previous columns, the triggers copy only those columns on MySQL, PostgreSQL and SQLite, the schema text writes the setting with the `exclude` list of the unrecorded columns, and introspection restores it from the triggers. An unknown or repeated list column, both lists and a listed operation column are `setting` errors, and the PHP and Rust history table checks report one error per mismatch, as Go and TypeScript do. A value that needs encryption is encrypted by the codec before the write, so the triggers copy its ciphertext.

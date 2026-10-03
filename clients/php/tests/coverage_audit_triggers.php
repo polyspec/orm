@@ -76,21 +76,68 @@ function auditHistory(Db $db): array
     ], $rows);
 }
 
-/** audit document의 model을 $work에 생성하고 설치, 쓰기, history 확인, 정리를 실행한다. */
-function auditCase(string $dsn, string $document, string $work): void
+/**
+ * audit document의 model을 임시 directory에 한 번 생성하고 autoload에 등록한다. 한 process의 여러
+ * case가 같은 model을 쓴다. directory는 process가 끝날 때 지운다.
+ */
+function auditModels(): void
 {
+    static $work = null;
+    if ($work !== null) {
+        return;
+    }
+    $root = dirname(__DIR__, 3);
+    $document = file_get_contents("$root/contracts/fixtures/audit.dbs");
+    if ($document === false) {
+        throw new RuntimeException('cannot read contracts/fixtures/audit.dbs');
+    }
+    $work = sys_get_temp_dir() . '/orm-php-coverage-audit-' . getmypid();
+    if (!mkdir($work, 0o700, true)) {
+        throw new RuntimeException("cannot create $work");
+    }
+    $dir = $work;
+    register_shutdown_function(static function () use ($dir): void {
+        exec('rm -rf ' . escapeshellarg($dir), $output, $status);
+        if ($status !== 0) {
+            fwrite(STDERR, "cannot remove $dir\n");
+            exit(1);
+        }
+    });
     Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit.dbs' => $document])), "$work/gen", 'CoverageAudit\\Orm');
-    spl_autoload_register(static function (string $class) use ($work): void {
+    spl_autoload_register(static function (string $class) use ($dir): void {
         if (str_starts_with($class, 'CoverageAudit\\Orm\\')) {
-            require "$work/gen/" . substr($class, strlen('CoverageAudit\\Orm\\')) . '.php';
+            require "$dir/gen/" . substr($class, strlen('CoverageAudit\\Orm\\')) . '.php';
         }
     });
     require "$work/gen/bootstrap.php";
+}
+
+/**
+ * 고른 database에 audit document를 설치하고 $body를 실행한 뒤, 실패해도 설치한 table과 function을
+ * 지운다.
+ *
+ * @param Closure(Db): void $body
+ */
+function withAudit(Closure $body): void
+{
+    [, $dsn] = coverageDatabase();
+    auditModels();
     $db = Orm::connect($dsn, new Config());
     try {
         coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'item or item_history exists before the case');
-        coverageRestoring(function () use ($db, $document): void {
+        coverageRestoring(function () use ($db, $body): void {
             $db->utils()->schema()->install(\CoverageAudit\Orm\schema());
+            $body($db);
+        }, fn() => dropAudit($db));
+        coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'the audit tables remain');
+    } finally {
+        $db->close();
+    }
+}
+
+runCoverageCases($argv, [
+    'audit_history' => function (): void {
+        withAudit(function (Db $db): void {
             $outside = coverageCode(fn() => (new Item)($db)->setTitle('outside')->create());
             coverageWant($outside === Code::CONFIG, "an insert without an operation id is $outside, want CONFIG");
             $seq = $db->transaction(function () use ($db): int {
@@ -109,32 +156,22 @@ function auditCase(string $dsn, string $document, string $work): void
                 ['update', 7, $seq, 'second', 8, true],
             ];
             coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
-        }, fn() => dropAudit($db));
-        coverageWant(!auditTable($db, 'item') && !auditTable($db, 'item_history'), 'the audit tables remain');
-    } finally {
-        $db->close();
-    }
-}
-
-runCoverageCases($argv, [
-    'audit_history' => function (): void {
-        [, $dsn] = coverageDatabase();
-        $root = dirname(__DIR__, 3);
-        $document = file_get_contents("$root/contracts/fixtures/audit.dbs");
-        if ($document === false) {
-            throw new RuntimeException('cannot read contracts/fixtures/audit.dbs');
-        }
-        $work = sys_get_temp_dir() . '/orm-php-coverage-audit-' . getmypid();
-        if (!mkdir($work, 0o700, true)) {
-            throw new RuntimeException("cannot create $work");
-        }
-        try {
-            auditCase($dsn, $document, $work);
-        } finally {
-            exec('rm -rf ' . escapeshellarg($work), $output, $status);
-            if ($status !== 0) {
-                throw new RuntimeException("cannot remove $work");
-            }
-        }
+        });
+    },
+    // 모든 transaction 진입점이 operation id를 받는다: PHP의 진입점은 Db::transaction 하나이며, 정한 id를
+    // audit 대상 write가 쓰고 중첩 transaction은 operation id를 받지 않는다.
+    'audit_operation_entry_points' => function (): void {
+        withAudit(function (Db $db): void {
+            $seq = $db->transaction(fn(): int => (new Item)->setTitle('first')->create()->getSeq(), operation: 7, retry: 0);
+            $db->transaction(fn() => (new Item)->getBySeq($seq)->setTitle('second')->update(), operation: 8, retry: 0);
+            $nested = coverageCode(fn() => $db->transaction(fn() => $db->transaction(fn() => null, operation: 10), operation: 9, retry: 0));
+            coverageWant($nested === Code::CONFIG, "a nested transaction with an operation id is $nested, want CONFIG");
+            $history = auditHistory($db);
+            $want = [
+                ['insert', null, $seq, 'first', 7, false],
+                ['update', 7, $seq, 'second', 8, false],
+            ];
+            coverageWant($history === $want, 'history ' . json_encode($history) . ', want ' . json_encode($want));
+        });
     },
 ]);

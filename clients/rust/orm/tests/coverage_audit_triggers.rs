@@ -290,3 +290,83 @@ async fn coverage_audit_selected_columns() {
         panic!("audit_selected_columns: not finished within {DEADLINE:?}");
     }
 }
+
+/// 고른 database에 연결하고 audit.dbs를 설치한다. item과 item_history가 미리 있으면 실패한다.
+async fn installed_audit() -> (String, Db) {
+    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
+    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
+    for table in ["item", "item_history"] {
+        assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
+    }
+    db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    (driver, db)
+}
+
+/// item_history의 (change, previous, operation, title, deleted)를 history_id 순서로 읽는다.
+async fn history_summary(db: &Db) -> Vec<(String, Option<i64>, i64, String, bool)> {
+    history(db)
+        .await
+        .iter()
+        .map(|r| {
+            let previous = if r["previous_operation_id"].is_null() { None } else { Some(r["previous_operation_id"].as_i64().unwrap()) };
+            let text = |column: &str| r[column].as_string().unwrap();
+            (text("change"), previous, r["operation_id"].as_i64().unwrap(), text("title"), !r["deleted_at"].is_null())
+        })
+        .collect()
+}
+
+/// 모든 transaction 진입점이 operation id를 받는다: transaction, transaction_send, transaction_once가 정한
+/// id를 audit 대상 write가 쓰고, 중첩 transaction_once는 operation id를 받지 않는다.
+async fn audit_operation_entry_points() {
+    let (driver, db) = installed_audit().await;
+    let seq = db
+        .transaction(async || orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64())
+        .operation(7)
+        .retry(0)
+        .await
+        .unwrap_or_else(|e| panic!("{driver}: transaction: {e}"));
+    db.transaction_send(|| async { orm::model::update(&mut changed_item(seq, "second"), false).await })
+        .operation(8)
+        .retry(0)
+        .await
+        .unwrap_or_else(|e| panic!("{driver}: transaction_send: {e}"));
+    db.transaction_once(async || orm::model::update(&mut changed_item(seq, "third"), false).await)
+        .operation(9)
+        .await
+        .unwrap_or_else(|e| panic!("{driver}: transaction_once: {e}"));
+    let nested = db
+        .transaction(async || match db.transaction_once(async || Ok::<(), orm::Error>(())).operation(11).await {
+            Err(orm::TransactionOnceError::Orm(e)) => Err::<(), orm::Error>(e),
+            other => panic!("{driver}: nested transaction_once with an operation id: {other:?}"),
+        })
+        .operation(10)
+        .retry(0)
+        .await;
+    assert_eq!(code(nested), orm::codes::CONFIG, "{driver}: a nested transaction_once operation id");
+    assert_eq!(
+        history_summary(&db).await,
+        [
+            ("insert".to_owned(), None, 7, "first".to_owned(), false),
+            ("update".to_owned(), Some(7), 8, "second".to_owned(), false),
+            ("update".to_owned(), Some(8), 9, "third".to_owned(), false),
+        ],
+        "{driver}: history rows"
+    );
+    drop_tables(&db, &driver).await;
+    for table in ["item", "item_history"] {
+        assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
+    }
+    db.close().await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
+async fn coverage_audit_operation_entry_points() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    if tokio::time::timeout(DEADLINE, audit_operation_entry_points()).await.is_err() {
+        panic!("audit_operation_entry_points: not finished within {DEADLINE:?}");
+    }
+}
