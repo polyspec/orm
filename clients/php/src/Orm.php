@@ -9,6 +9,13 @@ final class Orm
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
+    /** The parameters that a DSN of each scheme accepts (docs/config.md); another one returns CONFIG. */
+    private const DSN_PARAMETERS = [
+        'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
+        'postgres' => ['timezone', 'host', 'sslmode'],
+        'sqlite' => ['timezone', '_pragma', '_txlock'],
+    ];
+
     /**
      * Opens the database selected by the DSN URI (mysql://, postgres://, sqlite://).
      * The optional `timezone` parameter sets the connection time zone; without
@@ -17,7 +24,8 @@ final class Orm
     public static function connect(string $dsn, Config $config): Db
     {
         [$driver, $pdoDsn, $user, $password, $zone, $zoneName] = $parsed = self::parseDsn($dsn);
-        $pragmas = $parsed[6] ?? [];
+        $pragmas = $driver === 'sqlite' ? $parsed[6] : [];
+        $sslCa = $driver === 'mysql' ? $parsed[6] : null;
         $engine = Engine::for($config->schemaPath, $driver, $config->planCacheSize);
         if (!Registry::loaded($engine->manifest->schemaHash)) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "no loaded models were generated from schema {$engine->manifest->schemaHash} of {$config->schemaPath}: generate the models again");
@@ -39,6 +47,7 @@ final class Orm
         }
         try {
             $options = $driver === 'mysql' ? [\Pdo\Mysql::ATTR_FOUND_ROWS => true] : [];
+            $options += self::mysqlTlsOptions($sslCa);
             $pdo = new \PDO($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             switch ($driver) {
@@ -80,9 +89,9 @@ final class Orm
     }
 
     /**
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string, 6?: list<array{0: string, 1: string}>}
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: \DateTimeZone, 5: ?string, 6?: list<array{0: string, 1: string}>|?string}
      *     driver, PDO DSN, user, password, time zone, the time zone parameter, and the SQLite
-     *     `_pragma=name(value)` parameters
+     *     `_pragma=name(value)` parameters or the MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY
      */
     public static function parseDsn(string $dsn): array
     {
@@ -99,6 +108,13 @@ final class Orm
         }
         $query = [];
         parse_str((string) ($parts['query'] ?? ''), $query);
+        $accepted = self::DSN_PARAMETERS[$driver];
+        foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
+            $key = urldecode(explode('=', $pair, 2)[0]);
+            if ($pair !== '' && !in_array($key, $accepted, true)) {
+                throw new OrmException(Code::CONFIG, "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
+            }
+        }
         $zoneName = isset($query['timezone']) ? (string) $query['timezone'] : null;
         try {
             $zone = new \DateTimeZone($zoneName ?? date_default_timezone_get());
@@ -117,7 +133,7 @@ final class Orm
                 $pdo = isset($query['socket'])
                     ? 'mysql:unix_socket=' . $query['socket']
                     : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
-                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', $zone, $zoneName];
+                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', $zone, $zoneName, self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
             case 'postgres':
                 if ($name === '') {
                     throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
@@ -153,6 +169,56 @@ final class Orm
                 }
                 return [$driver, 'sqlite:' . $path, null, null, $zone, $zoneName, $pragmas];
         }
+    }
+
+    /**
+     * Checks the MySQL TLS parameters: `ssl-mode=VERIFY_IDENTITY` with the absolute path of the CA
+     * file in `ssl-ca`, over TCP to a host name, or neither. Returns the CA path or null.
+     *
+     * @param array<array-key, mixed> $query
+     */
+    private static function mysqlTls(array $query, string $host): ?string
+    {
+        $mode = isset($query['ssl-mode']) ? (string) $query['ssl-mode'] : null;
+        $ca = isset($query['ssl-ca']) ? (string) $query['ssl-ca'] : null;
+        if ($mode === null && $ca === null) {
+            return null;
+        }
+        if ($mode !== 'VERIFY_IDENTITY') {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . json_encode($mode) . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
+        }
+        if ($ca === null || $ca === '') {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+        }
+        if ($ca[0] !== '/') {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $ca is not an absolute path");
+        }
+        if (isset($query['socket'])) {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+        }
+        // The identity check compares a host name with the certificate.
+        if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
+        }
+        return $ca;
+    }
+
+    /**
+     * The PDO options of the `ssl-ca` path of ssl-mode=VERIFY_IDENTITY, or none: TLS that checks the
+     * server certificate against the CA and the host name. The password then travels only inside
+     * TLS, and the client sets no server public key, so it makes no RSA password exchange.
+     *
+     * @return array<int, mixed>
+     */
+    public static function mysqlTlsOptions(?string $sslCa): array
+    {
+        if ($sslCa === null) {
+            return [];
+        }
+        if (!is_file($sslCa) || !is_readable($sslCa)) {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $sslCa is not a readable file");
+        }
+        return [\Pdo\Mysql::ATTR_SSL_CA => $sslCa, \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true];
     }
 
     /**

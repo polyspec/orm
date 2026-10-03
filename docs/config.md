@@ -26,6 +26,20 @@ sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
 
 Database credentials and AES keys must not be committed, written to runtime files, or included in logs. Pass them through the client connection options after resolving them from the deployment secret source.
 
+## DSN parameters and MySQL TLS
+
+A MySQL DSN connects with TLS through one mode, which every client implements:
+
+```text
+mysql://user:password@db.example:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/etc/orm/mysql-ca.pem
+```
+
+- `ssl-mode=VERIFY_IDENTITY` with `ssl-ca`, the absolute path of a PEM file of the certificate authority, connects with TLS that checks the server certificate against that authority and the host of the DSN against the certificate. A certificate that another authority signed or that names another host fails the connection. The password then travels only inside TLS; the client requests no RSA public key of the server.
+- The host is a host name that the server certificate names, not an IP address, because the TypeScript driver checks an address host against the name `localhost`; every client returns `CONFIG` for an address with `ssl-mode`. The mode connects over TCP and does not accept `socket`.
+- Another value of `ssl-mode`, such as `VERIFY_CA` or `REQUIRED`, `ssl-mode` without `ssl-ca`, `ssl-ca` without `ssl-mode`, a relative `ssl-ca` path and an unreadable CA file return `CONFIG` in the Go, PHP and TypeScript clients.
+- The PHP and TypeScript clients accept only these parameters and return `CONFIG` for another one: `timezone`, `socket`, `ssl-mode` and `ssl-ca` for MySQL; `timezone`, `host` and `sslmode` for PostgreSQL; `timezone`, `_pragma` and `_txlock`, which returns `CONFIG` itself, for SQLite.
+- The clients differ in the other parameters that they accept. The Go client passes another MySQL parameter to go-sql-driver/mysql, which sets a session variable or a driver option of that name, and another PostgreSQL parameter to pgx. The Rust client passes every parameter except `timezone` to sqlx, which also accepts other `ssl-mode` values such as `verify_ca`, in any case. A DSN that names only the parameters of this page behaves the same in every client.
+
 ## Primary and replicas
 
 The ORM does not route statements between servers. Reads from replicas use one connection per server, one to the primary and one to each replica, and `connect` gives the model or row the connection that a statement uses:

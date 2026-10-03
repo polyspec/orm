@@ -1,4 +1,4 @@
-.PHONY: check checklist-check ts-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check conformance-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check db-test perf-check interface-check go-model-check ts-check schema-check schema-cross-language-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-stop
+.PHONY: check checklist-check ts-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check conformance-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check db-test perf-check interface-check go-model-check ts-check schema-check schema-cross-language-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -171,6 +171,12 @@ physical-graph-check: physical-key-check
 
 test-servers:
 	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
+
+# make test-servers-tls loads the TLS files of the MySQL TLS cases into running
+# servers and writes their DSNs into TEST_ENV; make test-servers does it at the
+# start.
+test-servers-tls:
+	./scripts/test-servers.sh tls $(TEST_MYSQL_PORT) $(TEST_MYSQL_REPLICA_PORT)
 
 test-servers-stop:
 	./scripts/test-servers.sh stop

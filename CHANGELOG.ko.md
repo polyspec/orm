@@ -1,5 +1,14 @@
 # 변경 이력
 
+네 클라이언트에서 `ssl-mode=VERIFY_IDENTITY`와 절대 `ssl-ca`로 MySQL에 TLS
+연결한다(N18). 연결은 server 인증서를 CA와 DSN의 host 이름으로 검사하며,
+password는 RSA 교환 없이 TLS 안에서만 전달된다. Go, PHP, TypeScript
+클라이언트는 다른 `ssl-mode`, 없거나 상대인 `ssl-ca`, `ssl-mode`와 함께 쓴
+`socket`, IP 주소 host에 CONFIG를 반환한다. PHP와 TypeScript 클라이언트는 scheme의
+밝힌 집합 밖의 DSN 매개변수에도 CONFIG를 반환한다. Rust 클라이언트는 이전처럼
+`ssl-mode`를 sqlx에 전달한다. `make test-servers`는 MySQL TLS case를 위한 test CA와
+server 인증서를 발급한다.
+
 PHP 클라이언트에서 PDO driver 확장을 요구하지 않는다(N17). `composer.json`이
 `ext-pdo_mysql`을 요구했으므로, 클라이언트가 MySQL driver를 `mysql://` DSN에서만
 참조하는데도 공식 PHP image처럼 그것이 없는 PHP에서 `composer install`이

@@ -1,5 +1,15 @@
 # Changelog
 
+Connect to MySQL with TLS through `ssl-mode=VERIFY_IDENTITY` and an absolute
+`ssl-ca` in the four clients (N18). The connection checks the server
+certificate against the CA and the host name of the DSN, and the password
+travels only inside TLS, with no RSA exchange. The Go, PHP and TypeScript
+clients return CONFIG for another `ssl-mode`, a missing or relative `ssl-ca`,
+`socket` with `ssl-mode` and an IP address host; the PHP and TypeScript clients
+also return CONFIG for a DSN parameter outside the documented set of its
+scheme. The Rust client passes `ssl-mode` to sqlx as before. `make
+test-servers` issues a test CA and server certificates for the MySQL TLS cases.
+
 Require no PDO driver extension in the PHP client (N17). `composer.json`
 required `ext-pdo_mysql`, so `composer install` refused a PHP without it,
 such as the official PHP image, although the client references the MySQL

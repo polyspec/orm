@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { connect as netConnect } from 'node:net';
+import { readFileSync } from 'node:fs';
+import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
 import { OrmError } from './runtime_error.js';
@@ -472,18 +473,61 @@ class SqliteTx implements DriverTransaction {
   }
 }
 
-export interface ParsedDsn { driver: DriverName; zone: string; }
+export interface ParsedDsn { driver: DriverName; zone: string; sslCa?: string; }
+
+/** The parameters that a DSN of each scheme accepts (docs/config.md); another one returns CONFIG. */
+const DSN_PARAMETERS: Record<string, readonly string[]> = {
+  'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
+  'postgres:': ['timezone', 'host', 'sslmode'],
+  'sqlite:': ['timezone', '_pragma', '_txlock'],
+};
+
+/**
+ * Checks the MySQL TLS parameters: `ssl-mode=VERIFY_IDENTITY` with the absolute path of the CA
+ * file in `ssl-ca`, over TCP, or neither. Returns the CA path or none.
+ */
+function mysqlTls(url: URL): string | undefined {
+  const mode = url.searchParams.get('ssl-mode');
+  const ca = url.searchParams.get('ssl-ca');
+  if (mode === null && ca === null) return undefined;
+  if (mode !== 'VERIFY_IDENTITY') throw new OrmError('CONFIG', `mysql DSN ssl-mode ${JSON.stringify(mode)} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
+  if (ca === null || ca === '') throw new OrmError('CONFIG', 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+  if (!ca.startsWith('/')) throw new OrmError('CONFIG', `mysql DSN ssl-ca ${ca} is not an absolute path`);
+  if (url.searchParams.has('socket')) throw new OrmError('CONFIG', 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+  // The identity check compares a host name with the certificate; the driver checks an IP address host against the name localhost.
+  if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError('CONFIG', `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
+  return ca;
+}
+
+/**
+ * The mysql2 TLS options of ssl-mode=VERIFY_IDENTITY, or none: the CA of `ssl-ca`, rejection of a
+ * certificate that the CA did not sign, and the check of the host name.
+ */
+export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
+  if (parsed.sslCa === undefined) return undefined;
+  try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
+    throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${(error as Error).message}`, error);
+  }
+}
 
 /** Splits a DSN URI into the dialect and the connection time zone. */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
   try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
+  const accepted = DSN_PARAMETERS[url.protocol];
+  if (accepted !== undefined) {
+    for (const name of url.searchParams.keys()) {
+      if (!accepted.includes(name)) throw new OrmError('CONFIG', `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
+    }
+  }
   const zone = url.searchParams.get('timezone') ?? '';
   if (zone !== '') zoneOffset(zone, new Date());
   switch (url.protocol) {
-    case 'mysql:':
+    case 'mysql:': {
       if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
-      return { driver: 'mysql', zone };
+      const sslCa = mysqlTls(url);
+      return sslCa === undefined ? { driver: 'mysql', zone } : { driver: 'mysql', zone, sslCa };
+    }
     case 'postgres:':
       if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'postgres DSN must include host and database');
       return { driver: 'postgres', zone };
@@ -577,8 +621,13 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
   switch (parsed.driver) {
     case 'mysql': {
       const socket = url.searchParams.get('socket');
+      // ssl-mode=VERIFY_IDENTITY: TLS that checks the server certificate against the CA and the
+      // host name, the Node TLS default with rejectUnauthorized; the password then travels only
+      // inside TLS and the client requests no RSA public key of the server.
+      const ssl = mysqlSsl(parsed);
       const created = mysql.createPool({
         ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
+        ...(ssl ? { ssl } : {}),
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
         database: decodeURIComponent(url.pathname.slice(1)),

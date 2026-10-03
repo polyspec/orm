@@ -24,7 +24,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 ## Current behavior
 
-- `dsn_connection`: Open a database from one URI DSN. The URI scheme selects the driver, the timezone parameter sets the connection time zone, and the client plans statements in its own process.
+- `dsn_connection`: Open a database from one URI DSN. The URI scheme selects the driver, the timezone parameter sets the connection time zone, and the client plans statements in its own process. A MySQL DSN connects with TLS through ssl-mode=VERIFY_IDENTITY and ssl-ca, which checks the server certificate against the CA and the host name.
 - `model_queries`: Build conditions, joins, relations, columns, subqueries, aggregates, and pages with the generated model methods and read the rows as models and collections.
 - `model_writes`: Create, create many, update with optional optimistic locking, save, and delete with optional recursive relation deletion, including the duplication assignments of an upsert.
 - `transactions`: Run a callback in a transaction shared by the current execution flow, with savepoints for nested calls, deadlock retry, isolation, read-only mode, timeoutMs, row locks, named locks, and transaction-local values. A SQLite write transaction takes the write lock at its start and waits for it up to busy_timeout. A test entry point of each client arms a rollback fault: the next rollback of a transaction whose callback failed runs and is reported as FAULT, so the transaction returns ROLLBACK.
