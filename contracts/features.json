@@ -3442,7 +3442,8 @@
         "clients/php/tests/restore_case.php",
         "clients/typescript/tests/restore_case.mjs",
         "clients/rust/orm/tests/common/restore_rows.rs",
-        "clients/php/tests/audit_case.php"
+        "clients/php/tests/audit_case.php",
+        "contracts/fixtures/external/board.dbs"
       ],
       "tests": [
         "clients/php/tests/model_test.php",
@@ -3457,7 +3458,8 @@
         "clients/typescript/tests/coverage_audit_triggers.mjs",
         "clients/php/tests/coverage_audit_columns.php",
         "clients/go/orm/restore_test.go",
-        "clients/rust/orm/tests/restore.rs"
+        "clients/rust/orm/tests/restore.rs",
+        "clients/php/tests/audit_external_sets_test.php"
       ],
       "docs": [
         "docs/dbspec.md",

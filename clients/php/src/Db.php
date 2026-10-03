@@ -58,6 +58,7 @@ final class Db
     public function registerSet(Schema $schema): void
     {
         $schema->verify();
+        Registry::schema($schema);
         $this->sets[$schema->manifestHash] = true;
     }
 

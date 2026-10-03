@@ -1464,6 +1464,7 @@
   "clients/php/src/Registry.php::Orm\\Registry::model": "public static function model(string $hash): Orm\\RuntimeModel",
   "clients/php/src/Registry.php::Orm\\Registry::models": "public static function models(string $hash): array",
   "clients/php/src/Registry.php::Orm\\Registry::register": "public static function register(string $class): void",
+  "clients/php/src/Registry.php::Orm\\Registry::schema": "public static function schema(Orm\\Schema $schema): void",
   "clients/php/src/Registry.php::Orm\\Registry::unloaded": "private static function unloaded(string $hash): Orm\\OrmException",
   "clients/php/src/RuntimeModel.php::Orm\\RuntimeModel": "final class Orm\\RuntimeModel extends  implements  uses ",
   "clients/php/src/RuntimeModel.php::Orm\\RuntimeModel::$entities": "public readonly array",

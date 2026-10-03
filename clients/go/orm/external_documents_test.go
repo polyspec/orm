@@ -84,6 +84,12 @@ func externalCase(t *testing.T, driver, dsn string) {
 		t.Fatal(err)
 	}
 
+	// board는 같은 core를 쓰는 다른 module set이다. schema 값으로만 등록된 set이 있어도
+	// audit 기록 table은 그것을 소유한 core에서 찾는다.
+	board := externalSchema(t, []string{"external/board"}, []string{"external/core"})
+	if err := schema.Install(board); err != nil {
+		t.Fatalf("install of board: %v", err)
+	}
 	posts := rowEntity("ext_post", member, "seq", "account_seq", "title", "audit_seq")
 	err = db.Transaction(func() error {
 		c := orm.NewCore(posts)

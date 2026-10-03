@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T35.4: PHP는 생성 class 없이 schema 값으로 등록한 set의 audit 기록을 plan한다: 그런 set은 Go, Rust, TypeScript처럼 manifest text와 external text에서 runtime model을 얻는다.
+
 - T36: `make owner-check`는 바뀐 file을 소유한 검사를 골라 실행한다: 선언한 fixture나 test에 바뀐 file이 있거나 fixture file이 그 file을 적는 모든 기능의 검증 명령과 coverage를 저마다 기한을 가진 단계로 실행한다(`scripts/features/owners.mjs`).
 
 - T37: utility의 internal helper는 네 client에서 한 이름과 한 자리를 갖는다: `Utils`가 `active`, `run`, `read`를 갖고 schema, privilege, AES utility는 그것을 거쳐 부른다(PHP `UtilsSql`과 TypeScript `inTx`는 제거, Rust `reader`는 `read`). 동작은 바뀌지 않는다.

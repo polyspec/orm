@@ -152,6 +152,10 @@ async fn external_case(driver: &str, dsn: &str) {
     let connected = Db::connect_schema(dsn, member, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect with core installed: {e}"));
     connected.close().await;
 
+    // board는 같은 core를 쓰는 다른 module set이다. schema 값으로만 등록된 set이 있어도 audit 기록 table은
+    // 그것을 소유한 core에서 찾는다.
+    let board = set_schema(&["external/board"], &["external/core"]);
+    schema.install(board).await.unwrap_or_else(|e| panic!("{driver}: install of board: {e}"));
     db.transaction(async || {
         let mut post = Post::from_core(Core::new(&POST));
         post.core_mut().set("account_seq", Param::I64(1));
