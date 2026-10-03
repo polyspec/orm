@@ -9,6 +9,13 @@ final class Orm
     /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
     private const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
+    /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
+    private const DSN_PARAMETERS = [
+        'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
+        'postgres' => ['timezone', 'host', 'sslmode'],
+        'sqlite' => ['timezone', '_pragma', '_txlock'],
+    ];
+
     /**
      * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 열고 generated
      * schema의 set을 그 연결에 등록한다. generated code의 connect helper가 부른다.
@@ -30,7 +37,7 @@ final class Orm
      */
     public static function connect(string $dsn, Config $config): Db
     {
-        [$driver, $pdoDsn, $user, $password, $pragmas] = self::parseDsn($dsn);
+        [$driver, $pdoDsn, $user, $password, $pragmas, $sslCa] = self::parseDsn($dsn);
         if ($config->poolSize < 0) {
             throw new OrmException(Code::CONFIG, 'pool size must not be negative');
         }
@@ -48,6 +55,7 @@ final class Orm
         }
         try {
             $options = $driver === 'mysql' ? [\Pdo\Mysql::ATTR_FOUND_ROWS => true] : [];
+            $options += self::mysqlTlsOptions($sslCa);
             $pdo = new \PDO($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             switch ($driver) {
@@ -82,8 +90,9 @@ final class Orm
      * `timezone` parameter는 UTC(`+00:00`, `UTC`)만 받는다. 다른 zone은 UTC 규칙과
      * 맞지 않으므로 CONFIG로 실패한다.
      *
-     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>}
-     *     driver, PDO DSN, user, password, and the SQLite `_pragma=name(value)` parameters
+     * @return array{0: string, 1: string, 2: ?string, 3: ?string, 4: list<array{0: string, 1: string}>, 5: ?string}
+     *     driver, PDO DSN, user, password, the SQLite `_pragma=name(value)` parameters, and the
+     *     MySQL `ssl-ca` path of ssl-mode=VERIFY_IDENTITY
      */
     public static function parseDsn(string $dsn): array
     {
@@ -100,6 +109,13 @@ final class Orm
         }
         $query = [];
         parse_str((string) ($parts['query'] ?? ''), $query);
+        $accepted = self::DSN_PARAMETERS[$driver];
+        foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
+            $key = urldecode(explode('=', $pair, 2)[0]);
+            if ($pair !== '' && !in_array($key, $accepted, true)) {
+                throw new OrmException(Code::CONFIG, "$driver DSN has the unknown parameter $key; it accepts " . implode(', ', $accepted));
+            }
+        }
         if (isset($query['timezone']) && !in_array($query['timezone'], ['+00:00', 'UTC'], true)) {
             throw new OrmException(Code::CONFIG, 'dsn timezone ' . (is_string($query['timezone']) ? $query['timezone'] : '') . ': every connection reads and writes datetime values in UTC');
         }
@@ -115,7 +131,7 @@ final class Orm
                 $pdo = isset($query['socket'])
                     ? 'mysql:unix_socket=' . $query['socket']
                     : 'mysql:host=' . $parts['host'] . (isset($parts['port']) ? ';port=' . $parts['port'] : '');
-                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', []];
+                return [$driver, $pdo . ';dbname=' . $name . ';charset=utf8mb4', $user ?? '', $password ?? '', [], self::mysqlTls($query, (string) ($parts['host'] ?? ''))];
             case 'postgres':
                 if ($name === '') {
                     throw new OrmException(Code::CONFIG, 'postgres DSN must include host and database');
@@ -128,7 +144,7 @@ final class Orm
                 if (isset($query['sslmode'])) {
                     $pdo .= ';sslmode=' . $query['sslmode'];
                 }
-                return [$driver, $pdo, $user, $password, []];
+                return [$driver, $pdo, $user, $password, [], null];
             default:
                 if (!str_starts_with($dsn, 'sqlite:///') || $path === '') {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN must include an absolute database path');
@@ -161,8 +177,59 @@ final class Orm
                 if (preg_match('//u', $path) !== 1) {
                     throw new OrmException(Code::CONFIG, 'sqlite DSN path must be UTF-8 after percent-decoding');
                 }
-                return [$driver, 'sqlite:' . $path, null, null, $pragmas];
+                return [$driver, 'sqlite:' . $path, null, null, $pragmas, null];
         }
+    }
+
+    /**
+     * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
+     * `ssl-mode=VERIFY_IDENTITY`로 host 이름에 TCP 연결하거나, 둘 다 없다. CA 경로나 null을
+     * 돌려준다.
+     *
+     * @param array<array-key, mixed> $query
+     */
+    private static function mysqlTls(array $query, string $host): ?string
+    {
+        $mode = isset($query['ssl-mode']) ? (string) $query['ssl-mode'] : null;
+        $ca = isset($query['ssl-ca']) ? (string) $query['ssl-ca'] : null;
+        if ($mode === null && $ca === null) {
+            return null;
+        }
+        if ($mode !== 'VERIFY_IDENTITY') {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode ' . json_encode($mode) . ' is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca');
+        }
+        if ($ca === null || $ca === '') {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+        }
+        if ($ca[0] !== '/') {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $ca is not an absolute path");
+        }
+        if (isset($query['socket'])) {
+            throw new OrmException(Code::CONFIG, 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+        }
+        // identity 검사는 host 이름을 인증서와 비교한다.
+        if (filter_var(trim($host, '[]'), FILTER_VALIDATE_IP) !== false) {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address $host");
+        }
+        return $ca;
+    }
+
+    /**
+     * ssl-mode=VERIFY_IDENTITY의 `ssl-ca` 경로로 만드는 PDO option이거나 빈 배열이다: server
+     * 인증서를 CA와 host 이름으로 검사하는 TLS다. password는 TLS 안에서만 오가고, client는
+     * server public key를 두지 않으므로 RSA password 교환을 하지 않는다.
+     *
+     * @return array<int, mixed>
+     */
+    public static function mysqlTlsOptions(?string $sslCa): array
+    {
+        if ($sslCa === null) {
+            return [];
+        }
+        if (!is_file($sslCa) || !is_readable($sslCa)) {
+            throw new OrmException(Code::CONFIG, "mysql DSN ssl-ca $sslCa is not a readable file");
+        }
+        return [\Pdo\Mysql::ATTR_SSL_CA => $sslCa, \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT => true];
     }
 
     /** The retryable DEADLOCK error. */

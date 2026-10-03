@@ -1,0 +1,175 @@
+//! addColumns를 SQLite, MySQL, PostgreSQL에서 확인한다(docs/schema.md, "Adding columns"). case
+//! database는 다른 set addcol_log의 table과 addcol set version 1의 table을 row와 함께 가진다.
+//! version 2로 add_columns를 부르면 있는 table에 빠진 null이거나 default가 있는 column을
+//! 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을 만들지
+//! 않으며, 다른 set의 table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가
+//! 있는 set은 아무것도 바꾸기 전에 SCHEMA_DIFFERS다. fixture는
+//! contracts/fixtures/add_columns/*.dbs다. 각 case는 자기 case database(orm-case-database)에서
+//! 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
+
+use std::collections::BTreeMap;
+
+use orm::db::Pool;
+use orm::dbspec;
+use orm::{Db, Schema};
+use orm_case_database::CaseDatabase;
+
+const ADDED: [&str; 9] = [
+    "addcol_item.note",
+    "addcol_item.priority",
+    "addcol_item.archived",
+    "addcol_item.status",
+    "addcol_item_history.note",
+    "addcol_item_history.priority",
+    "addcol_item_history.archived",
+    "addcol_item_history.status",
+    "addcol_tag.color",
+];
+const DIFFERS: [&str; 8] = ["required", "removed", "changed", "nullable", "default", "index", "unique", "reorder"];
+
+/// contracts/fixtures/add_columns/<name>.dbs의 schema 값. generated code처럼 manifest text와
+/// 그 manifestHash를 가진다.
+fn fixture(name: &str) -> &'static Schema {
+    let path = format!("{}/../../../contracts/fixtures/add_columns/{name}.dbs", env!("CARGO_MANIFEST_DIR"));
+    let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    let document = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    edited(&manifest.manifest_text, &manifest.manifest_hash)
+}
+
+/// manifest text와 선언한 hash로 만든 schema 값.
+fn edited(text: &str, hash: &str) -> &'static Schema {
+    Box::leak(Box::new(Schema::new(Box::leak(text.to_owned().into_boxed_str()), Box::leak(hash.to_owned().into_boxed_str()))))
+}
+
+/// 연결의 pool에서 statement 하나를 실행한다.
+async fn exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
+    let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
+    match db.pool() {
+        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
+        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
+        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
+    }
+}
+
+/// 연결의 pool에서 query가 돌려주는 수를 읽는다.
+async fn count(db: &Db, query: &str) -> Result<i64, sqlx::Error> {
+    let sql = || sqlx::AssertSqlSafe(query.to_owned());
+    match db.pool() {
+        Pool::MySql(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
+        Pool::Postgres(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
+        Pool::Sqlite(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
+    }
+}
+
+fn code<T>(r: orm::Result<T>) -> String {
+    match r {
+        Ok(_) => "ok".into(),
+        Err(e) => e.code().to_owned(),
+    }
+}
+
+/// case database에 addcol_log와 version 1을 설치하고 log row 하나, operation 1로 item 하나, 그
+/// item의 tag와 그 tag의 자식 tag를 쓴 연결. pool은 연결 하나라 add_columns가 쓴 연결을 다음
+/// statement가 다시 쓴다.
+async fn installed(database: &CaseDatabase) -> Db {
+    let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap();
+    db.utils().schema().install(fixture("log")).await.unwrap();
+    db.utils().schema().install(fixture("v1")).await.unwrap();
+    for statement in [
+        "INSERT INTO addcol_log_entry (message) VALUES ('kept')",
+        "INSERT INTO addcol_item (ref, label, created_at, operation_id) VALUES ('item-1', 'first', '2026-01-01 00:00:00.000000', 1)",
+        "INSERT INTO addcol_tag (item_id, name) VALUES (1, 'red')",
+        "INSERT INTO addcol_tag (item_id, parent_id, name) VALUES (1, 1, 'child')",
+    ] {
+        exec(&db, statement).await.unwrap_or_else(|e| panic!("{statement}: {e}"));
+    }
+    db
+}
+
+fn added(r: orm::Result<Vec<String>>) -> Vec<String> {
+    r.unwrap_or_else(|e| panic!("add_columns: {e}"))
+}
+
+#[tokio::test]
+async fn add_columns() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = installed(&database).await;
+        assert_eq!(added(db.utils().schema().add_columns(fixture("v2")).await), ADDED, "{driver}: add_columns");
+        // row는 그대로이고 새 column은 NULL이거나 default다.
+        let items = "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'";
+        assert_eq!(count(&db, items).await.unwrap(), 1, "{driver}: items with their values and the new defaults");
+        assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL").await.unwrap(), 2, "{driver}: tags with a null color");
+        assert_eq!(count(&db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'").await.unwrap(), 1, "{driver}: log entries");
+        // SQLite는 foreign key를 끄고 table을 다시 만들었다. 연결이 다시 켰는지 본다.
+        assert!(exec(&db, "INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')").await.is_err(), "{driver}: a tag of a missing item was written");
+        // audit trigger는 새 column을 기록한다.
+        exec(&db, "UPDATE addcol_item SET note = 'later', priority = 4, operation_id = 2 WHERE id = 1").await.unwrap();
+        let history = "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_operation_id = 1 AND operation_id = 2 AND note = 'later' AND priority = 4 AND status = 'new'";
+        assert_eq!(count(&db, history).await.unwrap(), 1, "{driver}: history rows of the update with the new columns");
+        assert!(count(&db, "SELECT COUNT(*) FROM addcol_extra").await.is_err(), "{driver}: add_columns created the missing table addcol_extra");
+        assert!(added(db.utils().schema().add_columns(fixture("v2")).await).is_empty(), "{driver}: repeated add_columns");
+        // install은 set을 통째로만 만든다(docs/schema.md, "Schema installation").
+        assert_eq!(code(db.utils().schema().install(fixture("v2")).await), orm::codes::CONFIG, "{driver}: install of version 2 over its existing tables");
+        db.close().await;
+        database.drop().await;
+    }
+}
+
+#[tokio::test]
+async fn add_columns_differs() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = installed(&database).await;
+        for name in DIFFERS {
+            let result = db.utils().schema().add_columns(fixture(name)).await;
+            assert_eq!(code(result), orm::codes::SCHEMA_DIFFERS, "{driver}: {name}");
+        }
+        assert_eq!(added(db.utils().schema().add_columns(fixture("v2")).await), ADDED, "{driver}: add_columns after the differences");
+        db.close().await;
+        database.drop().await;
+    }
+}
+
+#[tokio::test]
+async fn add_columns_transaction() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = installed(&database).await;
+        let v2 = fixture("v2");
+        if driver == "postgres" {
+            let result: orm::Result<()> = db
+                .transaction(async || {
+                    assert_eq!(added(db.utils().schema().add_columns(v2).await), ADDED, "{driver}: add_columns in the transaction");
+                    Err(orm::Error::Config("roll back".into()))
+                })
+                .await;
+            assert!(matches!(&result, Err(orm::Error::Config(m)) if m == "roll back"), "{driver}: the transaction did not roll back: {result:?}");
+        } else {
+            let inside = db.transaction(async || Ok(code(db.utils().schema().add_columns(v2).await))).await.unwrap();
+            assert_eq!(inside, orm::codes::CONFIG, "{driver}: add_columns in a transaction");
+        }
+        assert_eq!(added(db.utils().schema().add_columns(v2).await), ADDED, "{driver}: add_columns after the transaction");
+        db.close().await;
+        database.drop().await;
+    }
+}
+
+#[tokio::test]
+async fn add_columns_edited_manifest() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = installed(&database).await;
+        let v2 = fixture("v2");
+        let changed = edited(&v2.text().replace(" note ", " memo "), v2.hash());
+        assert_eq!(code(db.utils().schema().add_columns(changed).await), orm::codes::CONFIG, "{driver}: add_columns of an edited manifest");
+        assert_eq!(added(db.utils().schema().add_columns(v2).await), ADDED, "{driver}: add_columns after the edited manifest");
+        db.close().await;
+        database.drop().await;
+    }
+}

@@ -5,9 +5,12 @@ package orm
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -429,6 +432,20 @@ func openSQL(sqlDriver string, dsn parsedDSN) (*sql.DB, error) {
 		return nil, err
 	}
 	cfg.Loc = dsn.location
+	if dsn.sslCA != "" {
+		// ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는
+		// TLS다. password는 TLS 안에서만 오간다: driver는 caching_sha2_password
+		// secret을 TLS로 보내고, TLS가 없을 때만 server의 RSA public key를 요청한다.
+		pem, err := os.ReadFile(dsn.sslCA)
+		if err != nil {
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s cannot be read: %w", dsn.sslCA, err)
+		}
+		roots := x509.NewCertPool()
+		if !roots.AppendCertsFromPEM(pem) {
+			return nil, fmt.Errorf("mysql DSN ssl-ca %s holds no PEM certificate", dsn.sslCA)
+		}
+		cfg.TLS = &tls.Config{RootCAs: roots, ServerName: dsn.sslHost, MinVersion: tls.VersionTLS12}
+	}
 	connector, err := mysql.NewConnector(cfg)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,48 @@
+dbspec 1 addcol
+
+table addcol_item {
+  id i64 identity
+  ref varchar(36)
+  label varchar(64)
+  enabled bool default true
+  price decimal(10,2) default 0.00
+  created_at datetime(6) default now
+  payload bytes null
+  operation_id i64
+  note varchar(64) null
+  primary key (id)
+  unique uq_addcol_item_ref (ref)
+  index ix_addcol_item_enabled_created_at_at_the_sixty_three_byte_limit (enabled, created_at)
+  settings {
+    audit into addcol_item_history operation operation_id action history_action previous previous_operation_id
+  }
+}
+
+table addcol_item_history {
+  history_id i64 identity
+  history_action varchar(8)
+  previous_operation_id i64 null
+  id i64
+  ref varchar(36)
+  label varchar(64)
+  enabled bool
+  price decimal(10,2)
+  created_at datetime(6)
+  payload bytes null
+  operation_id i64
+  note varchar(64) null
+  primary key (history_id)
+  index ix_addcol_item_history_row (id)
+}
+
+table addcol_tag {
+  id i64 identity
+  item_id i64
+  parent_id i64 null
+  name varchar(32)
+  primary key (id)
+  index ix_addcol_tag_item (item_id)
+  index ix_addcol_tag_parent (parent_id)
+  foreign key fk_addcol_tag_item (item_id) references addcol_item (id) on delete restrict on update restrict
+  foreign key fk_addcol_tag_parent (parent_id) references addcol_tag (id) on delete restrict on update restrict
+}

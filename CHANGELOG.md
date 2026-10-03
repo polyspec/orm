@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T8.8.4: main is merged into the dbspec branch again with N18, N19 and N19.1. A MySQL DSN connects with TLS through `ssl-mode=VERIFY_IDENTITY` and an absolute `ssl-ca` in the four clients, and the PHP and TypeScript clients refuse a DSN parameter outside the set of each scheme. `utils().schema().addColumns(schema)` (Go `AddColumns`, Rust `add_columns`) takes the generated schema value, introspects the database, compares only the existing tables of the document set and, when every difference is a missing column that is null or has a default, runs the plan steps from those tables to the set (`AddColumnSteps` in each client's dbspec module), which also replace the audit triggers of a changed table; every other difference returns the new code `SCHEMA_DIFFERS` before any statement. MySQL and SQLite add the columns outside a transaction, SQLite in one `BEGIN IMMEDIATE` transaction with foreign keys off.
+
 - T28: the version is 0.0.2. The new VERSION file states it, and `make version-check` (part of `make check`) fails when any Rust manifest or lockfile entry of the orm crates, the PHP composer file, the TypeScript package or lockfile, contracts/features.json or the documented version differs from it.
 
 - T27: every check finishes within minutes and `make check` reports each step; one full run passes 43 steps in 15 minutes, against about 100 minutes before.

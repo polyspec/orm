@@ -50,6 +50,7 @@ var outputs = map[string]map[string]string{
 	"DbspecText":           {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
 	"DbspecRenderResult":   {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
 	"DbspecManifestResult": {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
+	"AddedColumns":         {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
 }
 
 // inputs maps a common argument list to the native parameters of each

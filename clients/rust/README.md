@@ -47,6 +47,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 `model::connect(dsn, pool_size, config)` and `Db::connect(dsn, pool_size, config)` take a DSN URI; `Db::connect` opens a connection without any registered set. the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
 `db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist.
+`db.utils().schema().add_columns(&model::SCHEMA).await` adds the missing columns of the existing tables of the set that are null or have a default with the plan steps of the dialect (`orm_schema::dbspec::add_column_steps`), which also replace the audit triggers of each changed table, and returns them as `table.column`; every other difference returns `SCHEMA_DIFFERS` before any statement (docs/schema.md, "Adding columns"). MySQL and SQLite add them outside a transaction.
 
 ## Required calls
 
@@ -55,6 +56,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 | Validate a generated manifest hash | `Schema::manifest()` builds the runtime model from the embedded manifest text and checks its `manifestHash`; `Manifest::load(text, hash)` does the same for another manifest text |
 | Select an engine and expose models | `model::connect` selects the dialect from the DSN and registers the set of the generated models on the connection; a request of a set that is not registered on its connection returns `SCHEMA_HASH_MISMATCH` |
 | Install schema objects | `db.utils().schema().install(&model::SCHEMA)` |
+| Add the missing columns of existing tables | `db.utils().schema().add_columns(&model::SCHEMA)` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | Run a callback with a `Send` future | `db.transaction_send(callback).await` |
 | Preserve a one-time callback's own error | `db.transaction_once(callback).await`; returns `TransactionOnceError::Callback(error)` after rollback |

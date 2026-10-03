@@ -242,6 +242,110 @@ final class Dbspec
     }
 
     /**
+     * 연결의 addColumns가 실행할 step이다(docs/schema.md "Adding columns"). `$live`는
+     * 연결의 database를 introspect한 문서, `$unsupported`는 introspection이 읽지 못한
+     * 객체, `$target`은 document set의 schema text 문서다. 두 쪽에 다 있는 table만
+     * 비교하므로 database에 없는 set의 table과 set에 없는 database의 table은 그대로
+     * 둔다. 차이가 null이거나 default가 있는 column의 add_column뿐이면, 그 table들의
+     * live 문서에서 target까지의 plan step(docs/plans.md "Steps")과 더하는 column을
+     * table 이름, column 순서로 "table.column"으로 돌려준다. 다른 차이는 step 없이
+     * "<kind> <table>[.<name>]"로 돌려준다.
+     *
+     * @param list<Unsupported> $unsupported
+     * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} 더하는 column, step, 차이
+     */
+    public static function addColumnSteps(Document $live, array $unsupported, Document $target, string $dialect): array
+    {
+        $qualified = static fn(string $table, string $name): string => $name === '' ? $table : "$table.$name";
+        $declared = [];
+        foreach ($target->tables as $table) {
+            $declared[$table->name] = $table;
+        }
+        $differences = [];
+        // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+        foreach ($unsupported as $u) {
+            if (isset($declared[$u->table])) {
+                $differences[] = "unsupported_{$u->kind} " . $qualified($u->table, $u->name) . ": {$u->reason}";
+            }
+        }
+        $existing = [];
+        $source = new Document('schema');
+        foreach ($live->tables as $table) {
+            if (isset($declared[$table->name])) {
+                $existing[$table->name] = true;
+                $source->tables[] = $table;
+            }
+        }
+        $part = new Document('schema');
+        foreach ($target->tables as $table) {
+            if (isset($existing[$table->name])) {
+                $part->tables[] = $table;
+            }
+        }
+        if ($differences !== [] || $part->tables === []) {
+            return [[], [], $differences];
+        }
+        $comparison = self::compareSchemas($source, $part);
+        foreach ($comparison->diagnostics as $d) {
+            $differences[] = "{$d->rule}: {$d->message}";
+        }
+        $adding = [];
+        foreach ($comparison->differences ?? [] as $d) {
+            if ($d->kind === 'add_column') {
+                $column = null;
+                foreach ($declared[$d->table]->columns as $c) {
+                    if ($c->name === $d->name) {
+                        $column = $c;
+                    }
+                }
+                if ($column === null || $column->identity || (!$column->nullable && $column->default === null)) {
+                    $differences[] = 'add_column ' . $qualified($d->table, $d->name) . ' without null or default';
+                    continue;
+                }
+                $adding[$qualified($d->table, $d->name)] = true;
+                continue;
+            }
+            $differences[] = "{$d->kind} " . $qualified($d->table, $d->name);
+        }
+        if ($differences !== [] || $adding === []) {
+            return [[], [], $differences];
+        }
+        // 더하는 column은 table 이름 순, table 안에서는 column 순서다.
+        $added = [];
+        foreach ($part->tables as $table) {
+            foreach ($table->columns as $c) {
+                if (isset($adding[$qualified($table->name, $c->name)])) {
+                    $added[] = $qualified($table->name, $c->name);
+                }
+            }
+        }
+        // 더하는 column은 plan 하나로 쓴다. plan은 source schema에서 시작하므로 step은
+        // docs/plans.md의 순서와 rollback을 그대로 갖는다.
+        $diagnostics = [];
+        $steps = [];
+        $manifest = self::manifest([$source]);
+        if ($manifest->manifest === null) {
+            $diagnostics = $manifest->diagnostics;
+        } else {
+            $plan = self::parsePlan("dbplan 1 add_columns\nfrom {$manifest->manifest->schemaHash}\n\n" . self::emit($part));
+            if ($plan->plan === null) {
+                $diagnostics = $plan->diagnostics;
+            } else {
+                $written = self::planSteps($source, $plan->plan, $dialect);
+                $diagnostics = $written->diagnostics;
+                $steps = $written->steps ?? [];
+            }
+        }
+        foreach ($diagnostics as $d) {
+            $differences[] = "{$d->rule}: {$d->message}";
+        }
+        if ($differences !== []) {
+            return [[], [], $differences];
+        }
+        return [$added, $steps, []];
+    }
+
+    /**
      * The steps of the plan from the source schema, null for the empty
      * database, in one dialect, `mysql`, `postgres` or `sqlite`, each with its
      * statement, rollback statement or irreversible reason, effect, restore

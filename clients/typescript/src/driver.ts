@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { createHash } from 'node:crypto';
-import { connect as netConnect } from 'node:net';
+import { readFileSync } from 'node:fs';
+import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
@@ -39,11 +40,19 @@ export interface DriverConnection {
 
 export interface DriverPool extends DriverConnection {
   begin(options: DriverTransactionOptions): Promise<DriverTransaction>;
-  /** Runs statements that are not prepared on one connection outside a transaction (MySQL schema statements). */
-  unprepared?(statements: readonly string[]): Promise<void>;
+  /**
+   * Runs run with statements that are not prepared on one reserved connection
+   * outside a transaction: MySQL schema statements and the catalog reads they
+   * depend on, and SQLite statements that turn foreign keys off, which a
+   * transaction cannot change.
+   */
+  session?<T>(run: (control: DriverControl) => Promise<T>): Promise<T>;
   stats(): PoolStats;
   close(): Promise<void>;
 }
+
+/** Runs a statement that is not prepared and returns its rows in column order. */
+export type DriverControl = (sql: string, params?: readonly DriverValue[]) => Promise<DriverResult>;
 
 export interface DriverTransaction extends DriverConnection {
   /** Runs a statement that is not prepared (savepoints, locks, session values). */
@@ -127,6 +136,14 @@ async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string
   } catch (error) { throw driverError('mysql', error); }
 }
 
+async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
+  try {
+    const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
+    if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+    return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
+  } catch (error) { throw driverError('mysql', error); }
+}
+
 /** Stops the statement running on connection from another connection of the pool. */
 async function mysqlKill(pool: MySqlPool, connection: MySqlConnection): Promise<void> {
   const id = (connection as unknown as { threadId: number }).threadId;
@@ -165,13 +182,11 @@ class MySqlPoolDriver implements DriverPool {
       connection.release();
     }
   }
-  public async unprepared(statements: readonly string[]): Promise<void> {
+  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
     let connection: MySqlConnection;
     try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
     try {
-      for (const sql of statements) await connection.query(sql);
-    } catch (error) {
-      throw driverError(this.name, error);
+      return await run((sql, params = []) => mysqlControl(connection, sql, params));
     } finally {
       connection.release();
     }
@@ -206,13 +221,7 @@ class MySqlTx implements DriverTransaction {
     const work = mysqlExecute(this.connection, sql, params);
     return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection), work);
   }
-  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
-    try {
-      const [value] = await this.connection.query({ sql, rowsAsArray: true }, [...params]);
-      if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
-      return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
-    } catch (error) { throw driverError(this.name, error); }
-  }
+  public control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return mysqlControl(this.connection, sql, params); }
   public async commit(): Promise<void> {
     try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
   }
@@ -397,6 +406,14 @@ class SqlitePoolDriver implements DriverPool {
     if (signal?.aborted) throw canceled(this.name);
     return sqliteExecute(this.state, sql, params);
   }
+  /** transaction이 쓰지 않을 때 하나뿐인 SQLite 연결을 잡고 run을 transaction 밖에서 실행한다. */
+  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
+    await this.idle();
+    this.state.busy = true;
+    try {
+      return await run(async (sql, params = []) => sqliteExecute(this.state, sql, params));
+    } finally { this.release(); }
+  }
   /** Waits until no transaction holds the single SQLite connection. */
   private async idle(): Promise<void> {
     while (this.state.busy) await new Promise<void>(resolve => this.waiters.push(resolve));
@@ -503,7 +520,42 @@ class SqliteTx implements DriverTransaction {
   }
 }
 
-export interface ParsedDsn { driver: DriverName; zone: string; }
+export interface ParsedDsn { driver: DriverName; zone: string; sslCa?: string; }
+
+/** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
+const DSN_PARAMETERS: Record<string, readonly string[]> = {
+  'mysql:': ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
+  'postgres:': ['timezone', 'host', 'sslmode'],
+  'sqlite:': ['timezone', '_pragma', '_txlock'],
+};
+
+/**
+ * MySQL TLS parameter를 검사한다: `ssl-ca`에 CA file의 절대 경로를 둔
+ * `ssl-mode=VERIFY_IDENTITY`로 TCP 연결하거나, 둘 다 없다. CA 경로나 undefined를 돌려준다.
+ */
+function mysqlTls(url: URL): string | undefined {
+  const mode = url.searchParams.get('ssl-mode');
+  const ca = url.searchParams.get('ssl-ca');
+  if (mode === null && ca === null) return undefined;
+  if (mode !== 'VERIFY_IDENTITY') throw new OrmError('CONFIG', `mysql DSN ssl-mode ${JSON.stringify(mode)} is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca`);
+  if (ca === null || ca === '') throw new OrmError('CONFIG', 'mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file');
+  if (!ca.startsWith('/')) throw new OrmError('CONFIG', `mysql DSN ssl-ca ${ca} is not an absolute path`);
+  if (url.searchParams.has('socket')) throw new OrmError('CONFIG', 'mysql DSN ssl-mode connects over TCP and does not accept socket');
+  // identity 검사는 host 이름을 인증서와 비교한다. driver는 IP 주소 host를 이름 localhost와 비교한다.
+  if (isIP(url.hostname.replace(/^\[|\]$/g, '')) !== 0) throw new OrmError('CONFIG', `mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address ${url.hostname}`);
+  return ca;
+}
+
+/**
+ * ssl-mode=VERIFY_IDENTITY의 mysql2 TLS option이거나 undefined다: `ssl-ca`의 CA, 그 CA가
+ * 서명하지 않은 인증서의 거부, host 이름 검사다.
+ */
+export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
+  if (parsed.sslCa === undefined) return undefined;
+  try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
+    throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${(error as Error).message}`, error);
+  }
+}
 
 /**
  * Splits a DSN URI into the dialect and the connection time zone. Every
@@ -513,13 +565,21 @@ export interface ParsedDsn { driver: DriverName; zone: string; }
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
   try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
+  const accepted = DSN_PARAMETERS[url.protocol];
+  if (accepted !== undefined) {
+    for (const name of url.searchParams.keys()) {
+      if (!accepted.includes(name)) throw new OrmError('CONFIG', `${url.protocol.replace(/:$/, '')} DSN has the unknown parameter ${name}; it accepts ${accepted.join(', ')}`);
+    }
+  }
   const requested = url.searchParams.get('timezone');
   if (requested !== null && requested !== 'UTC' && requested !== '+00:00') throw new OrmError('CONFIG', `dsn timezone ${requested}: every connection reads and writes datetime values in UTC`);
   const zone = '+00:00';
   switch (url.protocol) {
-    case 'mysql:':
+    case 'mysql:': {
       if (url.hostname === '' || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'mysql DSN must include host and database');
-      return { driver: 'mysql', zone };
+      const sslCa = mysqlTls(url);
+      return sslCa === undefined ? { driver: 'mysql', zone } : { driver: 'mysql', zone, sslCa };
+    }
     case 'postgres:':
       if ((url.hostname === '' && !url.searchParams.has('host')) || url.pathname.replace(/\//g, '') === '') throw new OrmError('CONFIG', 'postgres DSN must include host and database');
       return { driver: 'postgres', zone };
@@ -609,8 +669,13 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
   switch (parsed.driver) {
     case 'mysql': {
       const socket = url.searchParams.get('socket');
+      // ssl-mode=VERIFY_IDENTITY: server 인증서를 CA와 host 이름으로 검사하는 TLS이며,
+      // rejectUnauthorized를 둔 Node TLS 기본값이다. password는 TLS 안에서만 오가고 client는
+      // server의 RSA public key를 요청하지 않는다.
+      const ssl = mysqlSsl(parsed);
       const created = mysql.createPool({
         ...(socket ? { socketPath: socket } : { host: url.hostname, port: url.port ? Number(url.port) : undefined }),
+        ...(ssl ? { ssl } : {}),
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
         database: decodeURIComponent(url.pathname.slice(1)),

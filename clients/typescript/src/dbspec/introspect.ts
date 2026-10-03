@@ -43,16 +43,33 @@ export async function introspectDbspec(
   name: string,
 ): Promise<DbspecIntrospection> {
   if (typeof name !== 'string') throw new TypeError('dbspec document name must be a string');
+  switch (dialect) {
+    case 'mysql':
+      return introspectCatalog(mysqlQuery(connection as DbspecMySqlConnection), dialect, name);
+    case 'postgres':
+      return introspectCatalog(postgresQuery(connection as DbspecPostgresConnection), dialect, name);
+    case 'sqlite':
+      return introspectCatalog(sqliteQuery(connection as DbspecSqliteConnection), dialect, name);
+    default:
+      throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
+  }
+}
+
+/**
+ * catalog query를 query로 보내 introspectDbspec과 같은 문서를 읽는다. client의 연결처럼 driver
+ * 객체가 아닌 query 함수로 catalog을 읽는 쪽이 쓴다.
+ */
+export async function introspectCatalog(query: CatalogQuery, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection> {
   let catalog: Catalog;
   switch (dialect) {
     case 'mysql':
-      catalog = await readMySQL(mysqlQuery(connection as DbspecMySqlConnection));
+      catalog = await readMySQL(query);
       break;
     case 'postgres':
-      catalog = await readPostgres(postgresQuery(connection as DbspecPostgresConnection));
+      catalog = await readPostgres(query);
       break;
     case 'sqlite':
-      catalog = await readSQLite(sqliteQuery(connection as DbspecSqliteConnection));
+      catalog = await readSQLite(query);
       break;
     default:
       throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);

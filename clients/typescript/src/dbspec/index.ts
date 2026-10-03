@@ -55,6 +55,7 @@ export {
 export { exportMermaid, importMermaid, type DbspecMermaidExport, type DbspecMermaidImport } from './mermaid.js';
 export { diffPlan, type DbspecChange, type DbspecDiffResult } from './plan_diff.js';
 export { compareSchemas, type DbspecComparisonResult, type DbspecDifference } from './compare.js';
+export { addColumnSteps, type DbspecAddColumnSteps } from './add_columns.js';
 export { planSteps, effectText, type DbspecPlanStepsResult, type DbspecPlanStep, type DbspecEffect, type DbspecNullCheck } from './plan_steps.js';
 
 export type * from './model.js';
