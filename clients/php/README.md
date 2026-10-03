@@ -30,7 +30,8 @@ the client on SQLite in the official PHP image, which has no `pdo_mysql`.
   `manifestHash` fails with `SCHEMA_HASH_MISMATCH` before any statement.
 - `tests/` — `model_test.php` (the model integration test), `runtime_model_test.php` and
   `runtime_db_test.php` (the runtime model, installation and audit), `schema_set_test.php` (several
-  document sets in one process), `clock_test.php`, `driver_error_test.php`, `rollback_test.php`,
+  document sets in one process), `add_columns_test.php` (columns added to existing tables),
+  `mysql_tls.php` (the DSN parameters and MySQL TLS), `clock_test.php`, `driver_error_test.php`, `rollback_test.php`,
   `engine_test.php`, `hostcodec.php`, `dsn.php`,
   `relation_keys.php`, `perf_gate.php`, `orm_gen_test.php` (the command line), and the `dbspec_*`
   tests of `Dbspec/`. The conformance runner is
@@ -117,6 +118,12 @@ and `utils()->lock()`, `setLocal()`, `local()` require a transaction.
   registers the set on the connection. When every table of the set exists it does nothing;
   when only some exist it is a `CONFIG` error. MySQL commits each DDL statement itself, so there
   the statements run outside a transaction and `install` inside one is a `CONFIG` error.
+- `utils()->schema()->addColumns($schema)` adds the missing columns of the existing tables of a
+  generated schema value that are null or have a default, with the plan steps of the dialect
+  (`Dbspec::addColumnSteps`), which also replace the audit triggers of each changed table, and
+  returns the added columns as `table.column`; every other difference is a `SCHEMA_DIFFERS` error
+  before any change (docs/schema.md "Adding columns"). MySQL and SQLite add them outside a
+  transaction.
 
 ## Errors
 `Orm\OrmException::$code_` is one of `Orm\Code::*`. Driver errors map per driver to `DEADLOCK`

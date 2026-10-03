@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T8.8.4: N18, N19, N19.1과 함께 main을 dbspec branch에 다시 merge했다. 네 client에서 MySQL DSN은 `ssl-mode=VERIFY_IDENTITY`와 절대 경로 `ssl-ca`로 TLS 연결하고, PHP와 TypeScript client는 scheme마다 정한 집합 밖의 DSN parameter를 거부한다. `utils().schema().addColumns(schema)`(Go `AddColumns`, Rust `add_columns`)는 generated schema 값을 받아 database를 introspect하고 document set의 기존 table만 비교하며, 모든 차이가 null이거나 default가 있는 빠진 column이면 그 table들에서 set까지의 plan step(각 client dbspec module의 `AddColumnSteps`)을 실행한다. 이 step은 바뀐 table의 audit trigger도 바꾼다. 다른 차이는 어떤 statement보다 먼저 새 code `SCHEMA_DIFFERS`를 반환한다. MySQL과 SQLite는 transaction 밖에서, SQLite는 foreign key를 끈 `BEGIN IMMEDIATE` transaction 하나에서 column을 더한다.
+
 - T28: version은 0.0.2다. 새 VERSION 파일이 이를 적고, `make version-check`(`make check`의 일부)는 orm crate의 Rust manifest나 lockfile 항목, PHP composer 파일, TypeScript package나 lockfile, contracts/features.json, 문서의 version이 이와 다르면 실패한다.
 
 - T27: 모든 check가 몇 분 안에 끝나고 `make check`가 step마다 보고한다. 전체 실행 한 번이 step 43개를 15분에 통과한다(이전 약 100분).

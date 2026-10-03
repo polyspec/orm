@@ -180,7 +180,7 @@ await master.transaction(async () => {
 
 `orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. `transaction`의 `operation` 옵션은 작업 단위의 operation id다. 트랜잭션 안에서 `audit` setting이 있는 테이블의 모든 insert와 update는 soft delete를 포함해 이 값을 operation column에 쓴다. `i64` operation column에는 safe integer, `uuid` operation column에는 문자열을 쓴다. 이 값이 없거나 다른 타입이면 audit 테이블의 insert와 update는 `CONFIG`로 실패하고, operation column을 직접 지정하면 `IR_INVALID`로 실패한다. 중첩 트랜잭션은 바깥 트랜잭션의 operation을 그대로 쓴다.
 
-각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치한다([schema.md](schema.md#_4-schema-installation)).
+각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addColumns(schema)`는 그 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하며 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema.md](schema.md#_5-adding-columns)).
 
 ---
 
@@ -374,6 +374,7 @@ $b->getJsonSetting()['a'];
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
+| 기존 테이블에 빠진 컬럼 추가 | `connection.utils().schema().addColumns(...)` ([schema.md](schema.md#_5-adding-columns)) |
 
 ---
 

@@ -54,3 +54,18 @@ SQLite catalog connections require an existing regular database file and disable
 | PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | the schema value of the generated models (`Orm\Schema`) |
 | TypeScript | `utils().schema().install(SCHEMA)` | the schema value of the generated module (`{ manifestText, manifestHash }`) |
 | Rust | `utils().schema().install(&model::SCHEMA).await` | the schema value of the generated models (`orm::Schema`) |
+
+## 5. Adding columns
+
+`connection.utils().schema().addColumns(schema)` adds the missing columns of the existing tables of the document set of a generated schema value, when each of them is `null` or has a default, and returns them as `table.column` in table name order and then column order. It introspects the database of the connection ([dialects](dialects.md#introspection)) and compares only the tables of the set that exist, as a [comparison](plans.md#comparison) of their schema texts; a table of the set that does not exist and every table outside the set are neither compared nor changed, so one database can hold the tables of several sets. When every difference is an `add_column` of such a column, it runs the [steps](plans.md#steps) of one plan from those tables to their target: on MySQL and PostgreSQL `ADD COLUMN` with the renderer CHECK of the column, on SQLite a rebuild of the table, and for an audited table the replacement of its triggers, which then copy the new columns into the history table. A repeated call adds nothing and returns an empty list. It records no plan history and registers no set; the connect helper of generated code registers the set.
+
+Every other difference returns `SCHEMA_DIFFERS`, which names each difference as `<kind> <table>[.<name>]`, before any statement: a missing column that is non-null without a default, a column that the set does not declare, a changed type, `null`, default or identity, a missing column before an existing one (`reorder_columns`, because PostgreSQL appends a column), a changed primary key, unique key, index, foreign key, check or setting, and an object of a table of the set that introspection cannot read. A manifest text that does not hash to its declared `manifestHash` fails with `CONFIG` first, and a set with a diagnostic with `SCHEMA_INVALID`. PostgreSQL applies the steps in the active transaction of the connection or in a new one. MySQL commits each schema statement implicitly and SQLite rebuilds a table with foreign keys off, which a transaction cannot change, so both apply the steps outside a transaction and return `CONFIG` inside one; SQLite runs them in one `BEGIN IMMEDIATE` transaction on one connection, requires `PRAGMA foreign_key_check` to return no row before it commits, and turns foreign keys on again.
+
+| Language | Call | Steps |
+|---|---|---|
+| Go | `Utils().Schema().AddColumns(model.Schema)` | `dbspec.AddColumnSteps` |
+| PHP | `utils()->schema()->addColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addColumnSteps` |
+| TypeScript | `utils().schema().addColumns(SCHEMA)` | `addColumnSteps` |
+| Rust | `utils().schema().add_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_column_steps` |
+
+`install` creates a set only whole: a set that gains a table over a database that holds its other tables returns `CONFIG` from `install`, and `addColumns` leaves that table missing.

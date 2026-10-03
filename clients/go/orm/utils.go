@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"slices"
@@ -263,6 +264,117 @@ func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
 		return apply(d.ctx, d.sql)
 	}
 	return s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+}
+
+// AddColumns는 generated schema의 document set에서 database에 이미 있는 table에
+// 빠진 column 가운데 null이거나 default가 있는 column을 더한다(docs/schema.md
+// "Adding columns"). 연결의 database를 introspect해 set의 table만 비교하고,
+// dbspec.AddColumnSteps의 plan step을 실행하므로 바뀐 table의 audit trigger도
+// 새 column을 기록하도록 바뀐다. database에 없는 set의 table과 다른 set의
+// table은 그대로 두며 set을 등록하지 않는다. 다른 차이는 어떤 statement보다
+// 먼저 SCHEMA_DIFFERS다. manifest text가 선언한 hash로 hash되지 않으면 먼저
+// CONFIG다. PostgreSQL은 진행 중인 transaction이나 새 transaction에서 적용한다.
+// MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈
+// 채 table을 다시 만들어 column을 더하는데 foreign key 설정은 transaction
+// 안에서 바뀌지 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다.
+// 더한 column을 table 이름, column 순서로 "table.column"으로 돌려준다.
+func (s *SchemaUtils) AddColumns(schema *Schema) ([]string, error) {
+	d := s.u.db
+	m, err := schema.registered()
+	if err != nil {
+		return nil, err
+	}
+	manifest, diagnostics := dbspec.ManifestOf(m.Documents)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	target, diagnostics := dbspec.Parse(manifest.SchemaText, nil)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	dialect := dbspec.Dialect(d.driver)
+	var added []string
+	apply := func(ctx context.Context, q dbspec.Execer) error {
+		live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
+		if err != nil {
+			return mapDriverErr(err)
+		}
+		columns, steps, differences := dbspec.AddColumnSteps(live, unsupported, target, dialect)
+		if len(differences) > 0 {
+			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing columns that are null or have a default: " + strings.Join(differences, "; ")}
+		}
+		for _, step := range steps {
+			if _, err := q.ExecContext(ctx, step.Statement); err != nil {
+				return mapDriverErr(err)
+			}
+		}
+		added = columns
+		return nil
+	}
+	switch {
+	case d.driver == "postgres":
+		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+	case activeFor(d) != nil:
+		return nil, configErr("%s adds columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
+	case d.driver == "mysql":
+		err = apply(d.ctx, d.sql)
+	default:
+		err = sqliteWithoutForeignKeys(d, apply)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return added, nil
+}
+
+// sqliteWithoutForeignKeys는 연결 하나에서 foreign key를 끄고 BEGIN IMMEDIATE
+// transaction으로 fn을 실행한 뒤 foreign key 검사가 row를 돌려주지 않을 때만
+// commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
+// foreign key를 다시 켜지 못한 연결은 pool에 돌려주지 않고 닫는다.
+func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Execer) error) (err error) {
+	ctx := d.ctx
+	conn, err := d.sql.Conn(ctx)
+	if err != nil {
+		return mapDriverErr(err)
+	}
+	restored := false
+	defer func() {
+		if !restored {
+			// foreign key가 꺼졌을 수 있는 연결은 버린다.
+			err = errors.Join(err, conn.Raw(func(any) error { return driver.ErrBadConn }))
+		}
+		if closeErr := conn.Close(); closeErr != nil && !errors.Is(closeErr, driver.ErrBadConn) {
+			err = errors.Join(err, mapDriverErr(closeErr))
+		}
+	}()
+	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
+		return mapDriverErr(err)
+	}
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return mapDriverErr(err)
+	}
+	err = fn(ctx, tx)
+	if err == nil {
+		var broken int
+		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM pragma_foreign_key_check").Scan(&broken); err != nil {
+			err = mapDriverErr(err)
+		} else if broken > 0 {
+			err = &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("the rebuilt tables break %d foreign keys", broken)}
+		}
+	}
+	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			err = rollbackFailed(err, mapDriverErr(rollbackErr))
+		}
+	} else if err = tx.Commit(); err != nil {
+		err = mapDriverErr(err)
+	}
+	if _, onErr := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); onErr != nil {
+		return errors.Join(err, mapDriverErr(onErr))
+	}
+	restored = true
+	return err
 }
 
 // tableExists는 연결의 현재 database나 schema에 table이 있는지 알린다.

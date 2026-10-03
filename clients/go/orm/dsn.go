@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -18,6 +19,10 @@ type parsedDSN struct {
 	driver   string
 	native   string
 	location *time.Location
+	// sslCA는 ssl-mode=VERIFY_IDENTITY의 ssl-ca 경로이고 sslHost는 server
+	// 인증서가 이름으로 가져야 하는 host 이름이다. TLS가 없으면 둘 다 비어 있다.
+	sslCA   string
+	sslHost string
 }
 
 // parseDSN reads the DSN URI; the scheme is the only database selector.
@@ -40,6 +45,9 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	case "mysql":
 		if u.Host == "" || strings.Trim(u.Path, "/") == "" {
 			return parsedDSN{}, configErr("mysql DSN must include host and database")
+		}
+		if err := mysqlTLS(u, q, &out); err != nil {
+			return parsedDSN{}, err
 		}
 		network, address := "tcp", u.Host
 		if socket := q.Get("socket"); socket != "" {
@@ -113,6 +121,38 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
 	}
 	return out, nil
+}
+
+// mysqlTLS는 MySQL DSN의 ssl-mode와 ssl-ca를 읽는다(docs/config.md):
+// ssl-ca에 CA file의 절대 경로를 둔 ssl-mode=VERIFY_IDENTITY로 host 이름에
+// TCP 연결하거나, 둘 다 없다. driver가 session variable로 읽지 않도록 두
+// parameter를 query에서 지운다.
+func mysqlTLS(u *url.URL, q url.Values, out *parsedDSN) error {
+	mode, hasMode := q["ssl-mode"]
+	ca, hasCA := q["ssl-ca"]
+	q.Del("ssl-mode")
+	q.Del("ssl-ca")
+	if !hasMode && !hasCA {
+		return nil
+	}
+	if !hasMode || len(mode) != 1 || mode[0] != "VERIFY_IDENTITY" {
+		return configErr("mysql DSN ssl-mode %q is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca", strings.Join(mode, ","))
+	}
+	if !hasCA || len(ca) != 1 || ca[0] == "" {
+		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs ssl-ca, the absolute path of the CA file")
+	}
+	if !strings.HasPrefix(ca[0], "/") {
+		return configErr("mysql DSN ssl-ca %s is not an absolute path", ca[0])
+	}
+	if q.Has("socket") {
+		return configErr("mysql DSN ssl-mode connects over TCP and does not accept socket")
+	}
+	// identity 검사는 host 이름을 인증서와 비교한다.
+	if net.ParseIP(u.Hostname()) != nil {
+		return configErr("mysql DSN ssl-mode=VERIFY_IDENTITY needs a host name, not the address %s", u.Hostname())
+	}
+	out.sslCA, out.sslHost = ca[0], u.Hostname()
+	return nil
 }
 
 // DriverFromDSN returns the database selected by a DSN URI.

@@ -1,11 +1,13 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
-import type { DriverValue, PoolStats } from './driver.js';
+import type { DriverControl, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
-import { renderDbspec } from './dbspec/index.js';
+import { addColumnSteps, dbspecManifest, parseDbspec, renderDbspec } from './dbspec/index.js';
+import { introspectCatalog } from './dbspec/introspect.js';
+import { CatalogRow } from './dbspec/introspect_catalog.js';
 import { parseDocumentSet, splitDocuments } from './engine/model.js';
-import { OrmError } from './runtime_error.js';
+import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 
 export interface AesRotationStatus {
   current: number;
@@ -32,6 +34,34 @@ function versionOf(value: unknown): number {
 }
 
 /** Runs fn in the active transaction of db, or in a new one. */
+/**
+ * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 fn을 실행한 뒤 foreign key 검사가
+ * row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시
+ * 만들기).
+ */
+async function withoutForeignKeys<T>(control: DriverControl, fn: (control: DriverControl) => Promise<T>): Promise<T> {
+  await control('PRAGMA foreign_keys = OFF');
+  let result: T;
+  try {
+    await control('BEGIN IMMEDIATE');
+    try {
+      result = await fn(control);
+      const broken = Number((await control('SELECT COUNT(*) FROM pragma_foreign_key_check')).rows[0]?.[0]);
+      if (broken !== 0) throw new OrmError('INTERNAL', `the rebuilt tables break ${broken} foreign keys`);
+    } catch (error) {
+      try { await control('ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+      throw error;
+    }
+    await control('COMMIT');
+  } catch (error) {
+    // foreign key를 다시 켜지 못하면 두 오류를 함께 돌려준다.
+    try { await control('PRAGMA foreign_keys = ON'); } catch (restore) { throw joinedErrors([error, restore]); }
+    throw error;
+  }
+  await control('PRAGMA foreign_keys = ON');
+  return result;
+}
+
 async function inTx<T>(db: Db, fn: (frame: TxFrame) => Promise<T>): Promise<T> {
   const frame = activeFor(db);
   if (frame) return fn(frame);
@@ -137,7 +167,7 @@ export class SchemaUtils {
     }
     const statements = rendered.statements;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
-    if (this.db.pool.unprepared && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
+    if (this.db.driver === 'mysql' && activeFor(this.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
     const tables = documents.flatMap(d => d.tables.map(t => t.name));
     const present: string[] = [];
     for (const table of tables) if (await this.table(table)) present.push(table);
@@ -146,14 +176,53 @@ export class SchemaUtils {
       return;
     }
     if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
-    if (this.db.pool.unprepared) {
-      await this.db.pool.unprepared(statements);
+    if (this.db.driver === 'mysql') {
+      await this.db.pool.session!(async control => {
+        for (const statement of statements) await control(statement);
+      });
     } else {
       await inTx(this.db, async frame => {
         for (const statement of statements) await frame.tx.control(statement);
       });
     }
     registerSet(this.db, model);
+  }
+
+  /**
+   * generated schema의 document set에서 database에 이미 있는 table에 빠진 column 가운데 null이거나
+   * default가 있는 column을 더한다(docs/schema.md "Adding columns"). 연결의 database를 introspect해
+   * set의 table만 비교하고 addColumnSteps의 plan step을 실행하므로 바뀐 table의 audit trigger도 새
+   * column을 기록하도록 바뀐다. database에 없는 set의 table과 다른 set의 table은 그대로 두며 set을
+   * 등록하지 않는다. 다른 차이는 어떤 statement보다 먼저 SCHEMA_DIFFERS다. manifest text가 선언한
+   * hash로 hash되지 않으면 먼저 CONFIG다. PostgreSQL은 진행 중인 transaction이나 새 transaction에서
+   * 적용한다. MySQL은 schema statement를 암묵적으로 commit하고, SQLite는 foreign key를 끈 채 table을
+   * 다시 만들어 column을 더하는데 foreign key 설정은 transaction 안에서 바뀌지 않으므로, 둘 다
+   * transaction 밖에서 적용하고 안에서는 CONFIG다. 더한 column을 table 이름, column 순서로
+   * "table.column"으로 돌려준다.
+   */
+  public async addColumns(schema: Schema): Promise<string[]> {
+    schemaModel(schema);
+    const manifest = dbspecManifest(parseDocumentSet(splitDocuments(schema.manifestText)));
+    const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, {});
+    const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
+    if (failed.length > 0) {
+      const d = failed[0]!;
+      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+    }
+    const target = parsed!.document!;
+    const driver = this.db.driver;
+    const apply = async (control: DriverControl): Promise<string[]> => {
+      const query = async (sql: string) => (await control(sql)).rows.map(values => new CatalogRow(sql, values));
+      const live = await introspectCatalog(query, driver, 'schema');
+      const { added, steps, differences } = addColumnSteps(live.document, live.unsupported, target, driver);
+      if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing columns that are null or have a default: ${differences.join('; ')}`);
+      for (const step of steps) await control(step.statement);
+      return [...added];
+    };
+    if (driver === 'postgres') return inTx(this.db, frame => apply((sql, params) => frame.tx.control(sql, params)));
+    if (activeFor(this.db)) throw config(`${driver} adds columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
+    if (driver === 'mysql') return this.db.pool.session!(apply);
+    return this.db.pool.session!(control => withoutForeignKeys(control, apply));
   }
 
   /** Reports whether a table of the connected database or schema exists. */

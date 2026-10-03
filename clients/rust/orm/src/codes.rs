@@ -57,6 +57,8 @@ pub const CANCELED: &str = "CANCELED";
 pub const ROLLBACK: &str = "ROLLBACK";
 /// executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
 pub const FAULT: &str = "FAULT";
+/// executor: addColumns found a difference between the existing tables of a document set and the set other than a missing column that is null or has a default
+pub const SCHEMA_DIFFERS: &str = "SCHEMA_DIFFERS";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";
 /// driver: a NOWAIT lock could not be acquired immediately

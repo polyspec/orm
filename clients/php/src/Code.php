@@ -63,6 +63,8 @@ final class Code
     public const ROLLBACK = 'ROLLBACK';
     /** executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran */
     public const FAULT = 'FAULT';
+    /** executor: addColumns found a difference between the existing tables of a document set and the set other than a missing column that is null or has a default */
+    public const SCHEMA_DIFFERS = 'SCHEMA_DIFFERS';
     /** executor */
     public const INTERNAL = 'INTERNAL';
     /** driver: a NOWAIT lock could not be acquired immediately */

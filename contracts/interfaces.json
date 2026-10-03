@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:5ceeb37f8811f9887e4b13aca7ae78241801f07622c09fbec963d92573e7098f",
-    "php": "sha256:e5d0c443e2d682490907e04bb4714bf37969ed29324326841baa7fcf914e9e78",
-    "rust": "sha256:de0dedd5cb116ef5b3340e73628ad4695f3d5d8f81e99a431a24610a9260a070",
-    "typescript": "sha256:87312821c3e7bbdf8c2d7208ebdddafa6763d1deeca83813b87500cd633d2bf2"
+    "go": "sha256:6f900835b843275c81394ac91e376bc72828c366dcd49fa079cb5ade05d761c4",
+    "php": "sha256:4a2755ea2a68a9c9907e0dfc820fdde7e27dca00a3b19b49f3e9c923a828c155",
+    "rust": "sha256:2fffcd4c57dd1ff9d396038fd0b1a5ea974b59f2dc872e435b885204c622b3c3",
+    "typescript": "sha256:178e764f54ac8171e677205588a68c046b5c0b267a16c3f1128cbb238b2a8221"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -1242,6 +1242,39 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
           "signature": "public async install(schema: Schema): Promise<void>"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.addColumns",
+      "for": "once",
+      "inputs": [
+        "GeneratedSchema"
+      ],
+      "output": "AddedColumns",
+      "errors": [
+        "CONFIG",
+        "SCHEMA_INVALID",
+        "SCHEMA_DIFFERS",
+        "driver error"
+      ],
+      "state": "Adds the missing null or defaulted columns of the existing tables of the document set of a generated schema with the plan steps of the dialect, which also replace the audit triggers of each changed table; leaves the missing tables and the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.AddColumns",
+          "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addColumns",
+          "signature": "public function addColumns(Orm\\Schema $schema): array"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_columns",
+          "signature": "pub async fn add_columns(&self, schema: &Schema) -> Result<Vec<String>>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addColumns",
+          "signature": "public async addColumns(schema: Schema): Promise<string[]>"
         }
       }
     },
