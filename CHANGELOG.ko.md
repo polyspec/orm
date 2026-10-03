@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T27.6: 기한에 GRACE를 더한 시간까지 끝나지 않은 JavaScript case는 FAIL 줄과 함께 process를 끝내고, pcntl이 없는 PHP case는 같은 일을 하는 watchdog process를 가진다.
+
 - T27.4: `make bench`는 2000 table stress case와 시간 budget case(네 stress parse budget, 2000 table plan 적용, release Rust runner로 하는 2000 table introspection 비교, 2000 table runner 비교, `make timing-check`)를 그 assertion 그대로 실행한다. `make check`는 runner 비교와 introspection 비교를 같은 모양의 20 table 문서(`node tests/dbspec/stress.mjs 20`)로 실행하고, dbspec, integration, conformance, example runner는 debug build다.
 
 - T27.3: `make check`는 scripts/check/run.mjs로 target마다 남은 disk와 함께 보고하는 묶음으로 실행하고, 실패한 뒤에도 계속해 모든 결과를 출력한다. 실행마다 자기 bench database와 decimal database를 만들어 seed하고 끝에 지운다(`make decimal-db-setup`은 `DECIMAL_ENV`와 `DECIMAL_DATABASE`를 받는다). 모든 cargo 명령은 toolchain 하나와 target directory 하나를 incremental 결과 없이, 줄 번호 debug 정보로 쓰고, build 한도는 8분이다. Rust `tx` probe table은 case database에 있고, case-database-check는 끝난 process가 남긴 것만 남은 것으로 본다. target 합계는 약 100분 대신 약 36분이다.

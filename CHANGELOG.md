@@ -1,5 +1,7 @@
 # Changelog
 
+- T27.6: a JavaScript case that has not ended at its limit plus GRACE ends its process with a FAIL line, and a PHP case without pcntl has a watchdog process that does the same.
+
 - T27.4: `make bench` runs the 2000-table stress cases and the timing-budget cases (the four stress parse budgets, the 2000-table plan apply, the 2000-table introspection comparison with the release Rust runner, the 2000-table runner comparison and `make timing-check`) with their assertions; `make check` runs the runner comparison and the introspection comparison on a 20-table document of the same shape (`node tests/dbspec/stress.mjs 20`), and the dbspec, integration, conformance and example runners are debug builds.
 
 - T27.3: `make check` runs each target through scripts/check/run.mjs as a reported group with the free disk space, continues after a failure and prints every result; each run creates, seeds and finally drops its own bench and decimal databases (`make decimal-db-setup` takes `DECIMAL_ENV` and `DECIMAL_DATABASE`); every cargo command uses one toolchain and one target directory without incremental data and with line-table debug info; build limits are 8 minutes. The Rust `tx` probe tables live in case databases, and case-database-check counts only the leftovers of finished processes. The targets take about 36 minutes instead of about 100.

@@ -51,8 +51,10 @@ function reason(error) {
 
 // runCase는 case 하나를 deadline(ms) 아래에서 실행하고 시작, 결과, 경과 시간을 출력한다.
 // body는 { signal, step }을 받는다. signal은 deadline에 abort되고, step(text)은 단계 줄을
-// 출력한다. deadline에 GRACE를 더한 시간이 지나도 body가 끝나지 않으면 FAIL로 보고한다.
-// 통과하면 true, 실패하면 false를 돌려준다. process의 종료 코드는 호출자가 정한다.
+// 출력한다. 통과하면 true, 실패하면 false를 돌려준다. process의 종료 코드는 호출자가 정한다.
+// deadline에 GRACE를 더한 시간이 지나도 body가 끝나지 않으면 FAIL 줄을 출력하고 process를
+// 종료 코드 1로 끝낸다. 멈춘 body가 쥔 timer나 연결 같은 handle은 풀 수 없고, 남겨 두면
+// process가 끝나지 않기 때문이다. 같은 process의 뒤 case는 실행되지 않는다.
 export async function runCase(name, deadline, body) {
   if (!(deadline > 0)) throw new Error(`runCase ${name}: deadline ${deadline} is not positive`);
   const started = performance.now();
@@ -61,12 +63,12 @@ export async function runCase(name, deadline, body) {
   const step = text => console.log(`STEP ${name} elapsed=${elapsed()}: ${text}`);
   console.log(`RUN ${name} deadline=${duration(deadline)}`);
   const abort = setTimeout(() => controller.abort(new Error(`deadline ${duration(deadline)} exceeded`)), deadline);
-  let expire;
-  const expired = new Promise((_, reject) => {
-    expire = setTimeout(() => reject(new Error(`deadline ${duration(deadline)} exceeded`)), deadline + GRACE);
-  });
+  const expire = setTimeout(() => {
+    console.log(`FAIL ${name} elapsed=${elapsed()}: deadline ${duration(deadline)} exceeded and the case did not stop`);
+    process.exit(1);
+  }, deadline + GRACE);
   try {
-    await Promise.race([Promise.resolve().then(() => body({ signal: controller.signal, step })), expired]);
+    await body({ signal: controller.signal, step });
     console.log(`PASS ${name} elapsed=${elapsed()}`);
     return true;
   } catch (error) {

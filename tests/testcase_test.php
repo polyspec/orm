@@ -13,6 +13,9 @@ require __DIR__ . '/testcase.php';
 const ELAPSED = 'elapsed=[0-9.]+(µs|ms|s|m[0-9.]+s)';
 
 /**
+ * fixture를 하위 PHP process로 실행한다. 멈춘 fixture가 이 test를 붙잡지 않도록 30초 안에
+ * 끝나지 않으면 process를 끝내고 실패한다.
+ *
  * @param list<string> $options php 명령의 option(-d 설정)
  * @return array{int, string} 종료 코드와 stdout
  */
@@ -22,11 +25,33 @@ function fixture(string $source, array $options = []): array
     file_put_contents($file, "<?php\ndeclare(strict_types=1);\nrequire " . var_export(__DIR__ . '/testcase.php', true) . ";\n" . $source);
     try {
         $process = proc_open([PHP_BINARY, ...$options, $file], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        $stdout = stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        return [proc_close($process), $stdout];
+        $output = ['', ''];
+        $limit = hrtime(true) + 30 * 1_000_000_000;
+        $open = [1 => $pipes[1], 2 => $pipes[2]];
+        while ($open !== []) {
+            $left = ($limit - hrtime(true)) / 1e9;
+            if ($left <= 0) {
+                proc_terminate($process, 9);
+                proc_close($process);
+                throw new RuntimeException("fixture did not exit within 30s\n{$output[0]}");
+            }
+            $read = array_values($open);
+            $write = $except = null;
+            if (stream_select($read, $write, $except, (int) $left, (int) (($left - floor($left)) * 1e6)) === false) {
+                throw new RuntimeException('stream_select failed');
+            }
+            foreach ($read as $stream) {
+                $index = array_search($stream, $open, true);
+                $chunk = fread($stream, 65536);
+                if ($chunk === '' || $chunk === false) {
+                    fclose($stream);
+                    unset($open[$index]);
+                    continue;
+                }
+                $output[$index - 1] .= $chunk;
+            }
+        }
+        return [proc_close($process), $output[0]];
     } finally {
         unlink($file);
     }
@@ -75,9 +100,13 @@ PHP);
 });
 $cases->run('testcase/stuck-past-grace', TESTCASE_PROCESS, static function (): void {
     [$code, $stdout] = fixture(<<<'PHP'
+// 끊김을 무시하는 case다. handler는 TestCaseDeadline을 한 번만 던지므로, 그 error가 어느
+// 반복에서 오든 try 안에 있도록 loop 전체를 try에 둔다.
 testcase_run('fixture/ignores', 1.0, static function (): void {
-    while (true) {
-        try { usleep(1000); } catch (TestCaseDeadline) { /* 끊김을 무시하는 case */ }
+    try {
+        while (true) { usleep(1000); }
+    } catch (TestCaseDeadline) {
+        while (true) { usleep(1000); }
     }
 });
 PHP);
@@ -127,5 +156,20 @@ PHP, ['-d', 'disable_functions=pcntl_alarm,pcntl_signal,pcntl_async_signals']);
     in_order($stdout, 'RUN fixture/fast deadline=1m0s', 'PASS fixture/fast ' . ELAPSED);
     in_order($stdout, 'RUN fixture/late deadline=1s', 'FAIL fixture/late ' . ELAPSED . ': deadline 1s exceeded');
     in_order($stdout, 'RUN fixture/late-section deadline=1s', 'FAIL fixture/late-section ' . ELAPSED . ': deadline 1s exceeded');
+    // 끊을 signal이 없으므로 기한에 TESTCASE_GRACE를 더한 시간까지 끝나지 않은 case는 FAIL 줄과
+    // 함께 process가 끝난다.
+    foreach ([
+        'fixture/stuck' => "testcase_run('fixture/stuck', 1.0, static function (): void { while (true) { usleep(1000); } });\necho \"after stuck\\n\";",
+        'fixture/stuck-section' => "testcase_begin('fixture/stuck-section', 1.0);\nwhile (true) { usleep(1000); }",
+    ] as $name => $source) {
+        [$code, $stdout] = fixture($source, ['-d', 'disable_functions=pcntl_alarm,pcntl_signal,pcntl_async_signals']);
+        if ($code === 0) {
+            throw new RuntimeException("$name fixture exit 0, want a failure\n$stdout");
+        }
+        in_order($stdout, "RUN $name deadline=1s", "FAIL $name " . ELAPSED . ': deadline 1s exceeded and the case did not stop');
+        if (str_contains($stdout, 'after stuck')) {
+            throw new RuntimeException("$name: the script continued after the stuck case\n$stdout");
+        }
+    }
 });
 $cases->finish();
