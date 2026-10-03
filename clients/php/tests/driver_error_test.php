@@ -4,14 +4,15 @@
 // refuse every update with a database error that the catalog does not list;
 // the client reports it as an OrmException with the code DRIVER, the driver
 // message, and the driver error as its previous exception. Its CHECK
-// constraint refuses a nonpositive amount with CONSTRAINT. ORM_TEST_MYSQL_DSN
-// and ORM_TEST_POSTGRES_DSN name test databases; the test fails when either is
-// unset.
+// constraint refuses a nonpositive amount with CONSTRAINT. Each case runs in a case
+// database of its own (case_database.php) created through ORM_TEST_MYSQL_DSN or
+// ORM_TEST_POSTGRES_DSN; the test fails when either is unset.
 // Usage: php clients/php/tests/driver_error_test.php [case ...]
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -22,7 +23,7 @@ use Orm\OrmException;
 use Orm\RuntimeModel;
 use RefusalCase\Orm\RefusedRow;
 
-// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 table을 지우고 refusal 문서를 설치해 거부되는 쓰기 몇 개를 실행한 뒤 지운다.
+// CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 refusal 문서를 설치해 거부되는 쓰기 몇 개를 실행한 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
 
 $work = sys_get_temp_dir() . '/orm-php-driver-error-' . getmypid();
@@ -62,18 +63,6 @@ function raised(callable $f): ?Throwable
     return null;
 }
 
-function dropTable(string $dsn): void
-{
-    [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $pdo->exec('DROP TABLE IF EXISTS refused_row');
-    if ($driver === 'postgres') {
-        // PostgreSQL trigger function은 table과 함께 지워지지 않는다.
-        foreach (['update', 'delete'] as $event) {
-            $pdo->exec("DROP FUNCTION IF EXISTS \"refused_row\$immutable_$event\"()");
-        }
-    }
-}
 
 function connect(string $dsn): Db
 {
@@ -122,28 +111,16 @@ function checkRefused(string $dsn): void
 
 $cases = ['trigger_refused' => triggerRefused(...), 'check_refused' => checkRefused(...)];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
-$targets = ['sqlite' => "sqlite://$work/driver-error.sqlite"];
-foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
-    $v = getenv($env);
-    if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
-    }
-    $targets[$driver] = $v;
-}
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach ($targets as $driver => $dsn) {
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
-        $passed = testcase_run("driver_error/$current", CASE_DEADLINE_SECONDS, static function () use ($cases, $case, $dsn, $before): void {
-            try {
-                dropTable($dsn);
-                $cases[$case]($dsn);
-            } finally {
-                dropTable($dsn);
-            }
+        // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.
+        $passed = testcase_run("driver_error/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before): void {
+            with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn));
             if ($GLOBALS['failures'] > $before) {
                 throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
             }

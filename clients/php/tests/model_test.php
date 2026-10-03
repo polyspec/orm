@@ -1,11 +1,15 @@
 <?php
-// Model integration test on SQLite, MySQL and PostgreSQL. ORM_TEST_MYSQL_DSN and
-// ORM_TEST_POSTGRES_DSN name empty test databases; the test fails when either is unset.
+// Model integration test on SQLite, MySQL and PostgreSQL. A case that installs
+// the schema runs in a case database of its own (case_database.php) created
+// through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
+// connect use those databases and create nothing there. The test fails when
+// either is unset.
 // Usage: php clients/php/tests/model_test.php
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;
@@ -20,27 +24,50 @@ use Orm\Code;
 use Orm\Collection;
 use Orm\Config;
 use Orm\Db;
+use Orm\Generator;
 use Orm\Model;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\RuntimeModel;
 use Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
 $documents = [(string) file_get_contents("$root/schema/bench.dbs")];
 $work = sys_get_temp_dir() . '/orm-php-model-' . getmypid();
 @mkdir($work, 0o700, true);
-$tables = ['account_project', 'composite_membership', 'composite_account', 'author', 'service_member', 'service_region', 'soft_record', 'account', 'project', 'user', 'service', 'task'];
 
 $failures = 0;
 /** 각 구역은 case 하나다. 기한은 TESTCASE_DATABASE다: 구역은 schema를 설치하고 statement 수백 개 이하를 실행한다. */
 function modelBegin(string $name): void
 {
     $GLOBALS['caseFailures'] = $GLOBALS['failures'];
+    $GLOBALS['caseDatabases'] = [];
     testcase_begin("model/$name", TESTCASE_DATABASE);
+}
+
+/** 열린 case의 case database다. modelEnd가 case가 실패했어도 지운다. */
+function caseDatabase(string $driver): CaseDatabase
+{
+    $database = case_database($driver, 'testcase_step');
+    $GLOBALS['caseDatabases'][] = $database;
+    return $database;
+}
+
+function caseDsn(string $driver): string
+{
+    return caseDatabase($driver)->dsn;
 }
 
 function modelEnd(): void
 {
+    foreach (array_reverse($GLOBALS['caseDatabases']) as $database) {
+        try {
+            $database->drop();
+        } catch (Throwable $e) {
+            check(false, $e->getMessage());
+        }
+    }
+    $GLOBALS['caseDatabases'] = [];
     $failed = $GLOBALS['failures'] - $GLOBALS['caseFailures'];
     testcase_end($failed > 0 ? "$failed check(s) failed; each FAIL line above names one" : null);
 }
@@ -65,45 +92,25 @@ function code(callable $fn): string
 }
 
 register_shutdown_function(static function () use ($work): void {
-    foreach (glob("$work/*") ?: [] as $file) {
-        @unlink($file);
-    }
-    @rmdir($work);
+    exec('rm -rf ' . escapeshellarg($work));
 });
 
-function dropTables(string $driver, string $dsn): void
-{
-    global $tables;
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-    $raw = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    if ($driver === 'mysql') {
-        $raw->exec('SET FOREIGN_KEY_CHECKS = 0');
-    }
-    foreach ($tables as $table) {
-        $raw->exec($driver === 'postgres' ? "DROP TABLE IF EXISTS \"$table\" CASCADE" : ($driver === 'mysql' ? "DROP TABLE IF EXISTS `$table`" : "DROP TABLE IF EXISTS \"$table\""));
-    }
-    if ($driver === 'mysql') {
-        $raw->exec('SET FOREIGN_KEY_CHECKS = 1');
-    }
-}
-
+/** $dsn의 database(case database)에 bench schema를 설치한 connection이다. */
 function database(string $driver, string $dsn): Db
 {
     global $documents;
-    dropTables($driver, $dsn);
     $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
     $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
     return $db;
 }
 
 /**
- * Checks schema()->empty() on the test database without the test tables, with
- * an empty PostgreSQL schema other than public, and with the installed tables.
+ * Checks schema()->empty() on a new case database, with an empty PostgreSQL
+ * schema other than public, and with the installed tables.
  */
 function schemaEmpty(string $driver, string $dsn): void
 {
     global $documents;
-    dropTables($driver, $dsn);
     $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     check($db->utils()->schema()->empty() === true, 'a database without tables');
     if ($driver === 'postgres') {
@@ -120,6 +127,8 @@ function schemaEmpty(string $driver, string $dsn): void
     $db->close();
 }
 
+// 공유 test database다. schema를 설치하지 않고 연결만 하는 case가 쓰며, 그 database에는 아무것도
+// 만들지 않는다. schema를 설치하는 case는 caseDsn()으로 자기 case database를 받는다.
 $targets = ['sqlite' => "sqlite://$work/model.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
@@ -553,7 +562,7 @@ foreach ($targets as $driver => $dsn) {
     $current = "schema empty/$driver";
     modelBegin($current);
     try {
-        schemaEmpty($driver, $dsn);
+        schemaEmpty($driver, caseDsn($driver));
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
@@ -587,10 +596,11 @@ foreach ($targets as $driver => $dsn) {
         // bounds every statement, and SQLite has no session timeout.
         $slow = ['mysql' => 'SLEEP(5) = 0', 'postgres' => 'pg_sleep(5) IS NULL'][$driver] ?? null;
         if ($slow !== null) {
-            $db = database($driver, $dsn);
+            $caseDsn = caseDsn($driver);
+            $db = database($driver, $caseDsn);
             seed($db);
             $db->close();
-            $bounded = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
+            $bounded = \Polyspec\Orm\Tests\Model\connect($caseDsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
             // The condition is evaluated per row, so the table holds rows.
             check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'a statement past the timeout');
             $bounded->close();
@@ -606,28 +616,57 @@ foreach ($targets as $driver => $dsn) {
 // turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
 // connection, so the statement timeout of one connection must bound only the
 // statements of that connection.
+// PgBouncer의 orm_test_single은 ORM_TEST_POSTGRES_DSN의 database에 묶여 있어 case database에 닿지
+// 않는다. 그래서 이 case는 그 database에 자기 이름(case_name())의 table 하나만 만들고, 끝나면(실패해도)
+// 그 table만 지운다. table의 model은 실행 중에 만든 dbspec 문서에서 생성한다.
 $current = 'statement timeout through a pooler/postgres';
 modelBegin($current);
+$probeSetup = null;
+$probeTable = null;
 try {
     $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
     if ($single === false || $single === '') {
         throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
     }
-    $db = database('postgres', $targets['postgres']);
-    seed($db);
-    $db->close();
+    $table = case_name();
+    $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])), "$work/pooler", 'PoolerProbe\\Orm');
+    spl_autoload_register(static function (string $class) use ($work): void {
+        if (str_starts_with($class, 'PoolerProbe\\Orm\\')) {
+            require "$work/pooler/" . substr($class, strlen('PoolerProbe\\Orm\\')) . '.php';
+        }
+    });
+    require "$work/pooler/bootstrap.php";
+    $model = 'PoolerProbe\\Orm\\' . str_replace('_', '', ucwords($table, '_'));
+    $probeSetup = \PoolerProbe\Orm\connect($targets['postgres'], new Config());
+    $probeTable = $table;
+    $probeSetup->utils()->schema()->install(\PoolerProbe\Orm\schema());
+    testcase_step("table $table created");
+    for ($i = 0; $i < 4; $i++) {
+        (new $model)($probeSetup)->setLabel("probe-$i")->create();
+    }
     // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
     $slow = 'pg_sleep(0.1) IS NOT NULL';
-    $bounded = \Polyspec\Orm\Tests\Model\connect($single, new Config(statementTimeoutMs: 200));
-    check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
-    $plain = \Polyspec\Orm\Tests\Model\connect($single, new Config());
-    check((new Author)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
-    check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
+    $bounded = \PoolerProbe\Orm\connect($single, new Config(statementTimeoutMs: 200));
+    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
+    $plain = \PoolerProbe\Orm\connect($single, new Config());
+    check((new $model)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
+    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
     $bounded->close();
     $plain->close();
 } catch (Throwable $e) {
     $failures++;
     fwrite(STDERR, "FAIL $current: $e\n");
+} finally {
+    if ($probeTable !== null) {
+        try {
+            $probeSetup->pdo()->exec("DROP TABLE IF EXISTS \"$probeTable\"");
+            testcase_step("table $probeTable dropped");
+        } catch (Throwable $e) {
+            check(false, "drop table $probeTable: {$e->getMessage()}");
+        }
+        $probeSetup->close();
+    }
 }
 modelEnd();
 
@@ -635,7 +674,7 @@ if (isset($targets['mysql'])) {
     $current = 'install inside a transaction/mysql';
     modelBegin($current);
     try {
-        $db = database('mysql', $targets['mysql']);
+        $db = database('mysql', caseDsn('mysql'));
         $inside = null;
         $db->transaction(function () use ($db, $documents, &$inside): void {
             try {
@@ -657,9 +696,11 @@ foreach ($targets as $driver => $base) {
         $current = "connection time zone $zoneName/$driver";
         modelBegin($current);
         try {
-            $base = preg_replace('/[?&]timezone=[^&]*/', '', $base);
-            $dsn = $zoneName === '' ? $base : $base . (str_contains($base, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
-            if (in_array($zoneName, ['', '+00:00', 'UTC'], true)) {
+            $utc = in_array($zoneName, ['', '+00:00', 'UTC'], true);
+            // UTC 연결은 schema를 설치하므로 자기 case database를, 거부되는 연결은 공유 database를 쓴다.
+            $plain = preg_replace('/[?&]timezone=[^&]*/', '', $utc ? caseDsn($driver) : $base);
+            $dsn = $zoneName === '' ? $plain : $plain . (str_contains($plain, '?') ? '&' : '?') . 'timezone=' . rawurlencode($zoneName);
+            if ($utc) {
                 connectionUtc(database($driver, $dsn));
             } else {
                 check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config())) === Code::CONFIG, 'a time zone other than UTC');
@@ -672,11 +713,12 @@ foreach ($targets as $driver => $base) {
     }
 }
 
-foreach ($targets as $driver => $dsn) {
+foreach (array_keys($targets) as $driver) {
     foreach ($tests as $name => $test) {
         $current = "$name/$driver";
         modelBegin($current);
         try {
+            $dsn = caseDsn($driver);
             $db = database($driver, $dsn);
             $test($db, $dsn);
         } catch (Throwable $e) {
@@ -731,11 +773,14 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
         if ($replica === false || $replica === '') {
             throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip");
         }
-        $master = database($driver, $targets[$driver]);
+        // replica는 primary의 case database를 같은 이름으로 복제한다. MySQL은 그 database가 replica에
+        // 생긴 뒤에야 연결할 수 있으므로 공유 replica database로 기다린 뒤 연결한다.
+        $primary = caseDatabase($driver);
+        $master = database($driver, $primary->dsn);
         $name = 'replica-' . hrtime(true);
         (new User)($master)->setName($name)->create();
-        awaitReplica($driver, $targets[$driver], $replica);
-        $slave1 = \Polyspec\Orm\Tests\Model\connect($replica, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
+        awaitReplica($driver, $primary->dsn, $replica);
+        $slave1 = \Polyspec\Orm\Tests\Model\connect($primary->related($replica), new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));
         check((new User)($slave1)->name($name)->getCount() === 1, 'the replica reads the row written through the primary');
         check(code(fn() => (new User)($slave1)->setName("$name-replica")->create()) === Code::READ_ONLY, 'a write through the replica connection is rejected');
         check((new User)($master)->name("$name-replica")->getCount() === 0, 'a write through the replica connection does not reach the primary');
@@ -746,7 +791,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
             check((new User)($master)->name("$name-tx")->getCount() === 1, 'the primary connection inside its transaction');
             check((new User)($slave1)->name("$name-tx")->getCount() === 0, 'the replica connection reads no uncommitted row');
         });
-        awaitReplica($driver, $targets[$driver], $replica);
+        awaitReplica($driver, $primary->dsn, $replica);
         check((new User)($slave1)->name(["$name-renamed", "$name-tx"])->getCount() === 2, 'the replica reads the committed rows');
         $slave1->close();
         $master->close();

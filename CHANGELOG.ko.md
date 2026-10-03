@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T25.2: schema를 설치하거나 빈 database를 확인하는 PHP database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(clients/php/tests/case_database.php)을 만들고, case가 끝날 때 실패한 뒤에도 지운다.
+
 - T25.1: schema를 설치하거나 빈 database를 확인하는 Go database test는 공유 test database의 table을 지우고 설치하는 대신 자기 database `orm_case_<pid>_<n>`이나 SQLite file(internal/testdb)을 만들고, test가 끝날 때 실패한 뒤에도 지운다.
 
 - T24.6: JavaScript, PHP, Rust case 보고는 다음 단위로 반올림되는 시간을 Go처럼 그 단위로 쓴다(`1000ms`가 아니라 `1s`).
