@@ -644,5 +644,6 @@ async fn apply_chain_on_three_databases() {
     let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
     assert_eq!(runs, want, "apply runs");
     orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
-    assert!(started.elapsed() < Duration::from_secs(600), "apply exceeded 600s");
+    // 세 database의 apply scenario는 개발 machine에서 1분 안에 끝난다(T27 측정 41 s, build 포함). 5분이 지나면 멈춘 것이다.
+    assert!(started.elapsed() < Duration::from_secs(300), "apply exceeded 300s");
 }

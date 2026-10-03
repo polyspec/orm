@@ -13,6 +13,25 @@ TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
+# DECIMAL_ENV는 decimal database의 DSN을 담은 file이고, DECIMAL_DATABASE는 그 MySQL과
+# PostgreSQL database 이름이다. make decimal-db-setup이 둘을 만들고, decimal 검사와 feature-check의
+# decimal 명령이 DECIMAL_ENV를 읽는다. make check는 실행마다 자기 file과 database를 준다.
+DECIMAL_ENV = $(abspath .runtime/decimal-env)
+DECIMAL_DATABASE = orm_decimal_case
+export DECIMAL_ENV
+
+# 모든 cargo 명령(cargo +$(PHYSICAL_RUST_TOOLCHAIN), PATH의 cargo, feature coverage와 conformance
+# check가 실행하는 cargo)은 한 toolchain과 한 target directory를 쓴다. toolchain이나 target이
+# 둘이면 같은 crate를 다시 compile하고 target이 커진다(T27 측정: check 한 번에 clients/rust/target
+# 10.4 GiB와 bench/rust/target 1.4 GiB).
+# check는 한 번 build한 artifact를 실행하므로 incremental compile의 중간 결과(T27 측정: debug
+# target 7.9 GiB 가운데 1.6 GiB)를 남기지 않고, debug build의 debug 정보는 panic과 backtrace의
+# 줄 번호만 둔다.
+PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
+export RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)
+export CARGO_TARGET_DIR := $(abspath clients/rust/target)
+export CARGO_INCREMENTAL := 0
+export CARGO_PROFILE_DEV_DEBUG := line-tables-only
 # WITH_TEST_ENV는 TEST_ENV를 읽고, pooler를 거치지 않는 server DSN을 ORM_TEST_MYSQL_SERVER_DSN과
 # ORM_TEST_POSTGRES_SERVER_DSN으로 남긴다. client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로
 # 바꾸어도 rollback 실패 case는 이 DSN으로 server에서 transaction의 session을 끝낸다. ProxySQL은
@@ -28,14 +47,27 @@ GO_TEST = go test -v -timeout 0
 # 실행한다(tests/run-case.mjs): RUN과 기한, 명령의 출력 줄을 STEP으로, PASS나 FAIL을 출력하고
 # 기한이 지나면 명령을 끝낸다. 기한의 기준:
 # BUILD_DEADLINE: Rust release build, clippy, `go test -c`는 target이나 build cache가 비면
-# 의존성 전체를 compile한다(개발 machine에서 2.5-4분). 30분은 멈춘 build만 끝낸다.
+# 의존성 전체를 compile한다(개발 machine에서 가장 긴 것이 2.5-4분, T27 측정 2m38s). 그 두 배다.
 # TOOL_DEADLINE: tsc, gofmt, cargo fmt, go generate 같은 도구 한 번의 실행(몇 초에서 1분).
 RUN_CASE = node tests/run-case.mjs
-BUILD_DEADLINE = 30m
+BUILD_DEADLINE = 8m
 TOOL_DEADLINE = 5m
 TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 
-check: checklist-check testcase-check repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent interface-check go-model-check client-unit-check php-without-mysql-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check perf-check package-check dbspec-go-check dbspec-php-check dbspec-ts-check dbspec-rust-check dbspec-compare-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
+# check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
+# database와 decimal database를 만들어 TEST_ENV와 DECIMAL_ENV로 넘기고 끝에 지우며, target마다
+# RUN, 출력 줄(STEP), PASS나 FAIL과 경과 시간을 보고한다. feature-check의 검증 명령이 실행하는
+# target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
+# dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
+# 목록에 다시 넣지 않는다.
+CHECK_TARGETS = checklist-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
+check:
+	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
+	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+
+# go-test-check는 모든 Go package의 test를 실행한다.
+.PHONY: go-test-check
+go-test-check:
 	$(WITH_TEST_ENV) $(GO_TEST) ./...
 
 # testcase-check는 각 언어의 공유 case 보고 형식이 case마다 시작(RUN, 기한), 단계(STEP),
@@ -56,8 +88,6 @@ client-pooler-check:
 checklist-check:
 	node --test scripts/checklist/check.test.mjs
 	node scripts/checklist/check.mjs
-
-PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행하고, tests/dbspec/stress.mjs의 stress
@@ -245,6 +275,8 @@ test-servers:
 test-servers-stop:
 	./scripts/test-servers.sh stop
 
+# feature-check는 TypeScript client를 한 번 build한 뒤 coverage(native test binary를 한 번 build해
+# 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다.
 feature-check:
 	node scripts/features/build.mjs --check
 	node --test scripts/features/coverage.test.mjs
@@ -312,19 +344,17 @@ case-database-check:
 	$(WITH_TEST_ENV) node scripts/case-database-check.mjs
 
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check
-	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN"
-	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver postgres -dsn "$$BENCH_POSTGRES_DSN"
-	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 
 decimal-bench-sqlite:
 	./scripts/decimal-bench-sqlite.sh
 
 decimal-db-setup:
-	$(WITH_TEST_ENV) php scripts/decimal-db-setup.php
+	$(WITH_TEST_ENV) ORM_DECIMAL_DATABASE=$(DECIMAL_DATABASE) php scripts/decimal-db-setup.php
 
 decimal-physical-check:
-	test -f .runtime/decimal-env || { echo '.runtime/decimal-env is missing; run make decimal-db-setup' >&2; exit 1; }
-	. .runtime/decimal-env && node scripts/decimal-physical-check.mjs
+	test -f $(DECIMAL_ENV) || { echo '$(DECIMAL_ENV) is missing; run make decimal-db-setup' >&2; exit 1; }
+	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
 interface-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test

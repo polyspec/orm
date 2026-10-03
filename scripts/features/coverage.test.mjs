@@ -12,8 +12,8 @@ const ownerTests = {
 };
 const dependentTest = 'clients/go/model/model_test.go';
 
-// 각 case의 기한: memory 안의 검사는 1 s, node process 몇 개를 실행하는 case는 8 s, go test나
-// cargo test를 compile하고 실행하거나 state reader(`go run`)를 부르는 case는 120 s다.
+// 각 case의 기한: memory 안의 검사는 1 s, node process 몇 개를 실행하는 case는 8 s, Go test
+// binary, Rust test binary나 state reader를 build하고 실행하는 case는 120 s다.
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
@@ -257,6 +257,16 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
         assert.match((await executeCoverage(manifest, root, 30000)).join('\n'), /invalid native test command/);
       }
     }
+    // 선언된 Rust test file을 compile하는 test binary가 없으면 같은 symbol이 다른 file에 있어도
+    // 실행 증거가 아니다.
+    const unused = 'clients/rust/orm/src/unused.rs';
+    await writeFile(join(root, unused), '#[test] fn first() {}\n');
+    const uncompiled = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial' },
+      coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+        rust: { part: 'clients/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused,
+          cases: ['first'], symbols: { first: 'tests::first' } }] } },
+      } } }] };
+    assert.match((await executeCoverage(uncompiled, root, 30000)).join('\n'), /no test binary compiles .*unused\.rs/);
     const go = cases[0];
     await writeFile(join(root, go.file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) { t.Skip("no executed pass") }\n');
     const skipped = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },

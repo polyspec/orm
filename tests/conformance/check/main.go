@@ -3,6 +3,7 @@
 // with exact JSON number comparison and sorted object keys in diagnostics.
 //
 //	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
+//	go run ./tests/conformance/check run -driver mysql -dsn … -driver postgres -dsn … -driver sqlite -dsn …  # build once, check each database
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
 //	go run ./tests/conformance/check record [-driver …] out/{go,php,rust,typescript}.json       # record agreed expectations
 //
@@ -10,14 +11,17 @@
 // tests/conformance/vectors.<driver>.json for the other databases: statements
 // differ per dialect, results must not.
 //
-// `run` holds the directory lock /tmp/orm-conformance.lock while the runners
-// use the shared bench database; a second run fails instead of waiting.
+// `run` holds a directory lock per bench database (/tmp/orm-conformance-<DSN hash>.lock)
+// while the runners use it; a second run on the same database fails instead of
+// waiting, and runs on other databases do not conflict.
 package main
 
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -28,27 +32,32 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// runner와 build 명령의 기한이다.
+// runner와 build 명령의 기한이다. build는 run 한 번에 한 번만 하고, 모든 database와 두 번의
+// 실행이 build된 runner를 실행한다.
 const (
 	// rustBuildDeadline: orm-tests의 conformance binary를 release로 build한다. target이
-	// 비었으면 의존성 전체를 compile하므로 30분을 준다.
-	rustBuildDeadline = 30 * time.Minute
-	// typescriptBuildDeadline: TypeScript client를 tsc로 build한다.
-	typescriptBuildDeadline = 10 * time.Minute
-	// runnerDeadline: runner process 하나가 모든 vector를 실행한다. Go runner는 `go run`
-	// compile을 포함한다.
-	runnerDeadline = 10 * time.Minute
-	// stateDeadline: database state digest와 counter를 읽고 되돌리는 일 하나의 기한이다
-	// (state.go의 2분과 counters.go의 30초).
-	stateDeadline = 2 * time.Minute
+	// 비었으면 의존성 전체를 compile한다(개발 machine에서 release 의존성 전체의 compile이 2.5-4분).
+	rustBuildDeadline = 8 * time.Minute
+	// typescriptBuildDeadline: TypeScript client를 tsc로 build한다(개발 machine에서 약 11 s).
+	typescriptBuildDeadline = 2 * time.Minute
+	// goBuildDeadline: Go runner를 binary로 build한다. build cache가 비었으면 driver와 engine
+	// package를 compile한다(개발 machine에서 cache가 있으면 1 s 안, 비었으면 1분 안팎).
+	goBuildDeadline = 3 * time.Minute
+	// runnerDeadline: build된 runner process 하나가 bench database에서 모든 vector를 실행한다
+	// (개발 machine에서 1-3 s). 1분이 지난 runner는 멈춘 것이다.
+	runnerDeadline = time.Minute
+	// stateDeadline: database state digest(state.go)나 counter(counters.go의 30 s)를 읽고
+	// 되돌리는 일 하나의 기한이다. bench database의 digest는 1 s 안에 읽힌다.
+	stateDeadline = time.Minute
 	// languageDeadline: 한 언어의 case는 runner를 두 번 실행하고, 실행마다 state를 앞뒤로
-	// 읽고 counter를 되돌린다.
+	// 읽고 counter를 되돌린다(8분).
 	languageDeadline = 2*runnerDeadline + 6*stateDeadline
 	// compareDeadline: 네 output을 vector 기대값과 비교하는 memory 안의 계산이다.
 	compareDeadline = testcase.Compute
@@ -71,6 +80,16 @@ var (
 	dsn    string
 )
 
+// listFlag는 여러 번 줄 수 있는 flag다. run은 -driver와 -dsn을 순서대로 짝짓는다.
+type listFlag []string
+
+func (l *listFlag) String() string { return strings.Join(*l, ",") }
+
+func (l *listFlag) Set(value string) error {
+	*l = append(*l, value)
+	return nil
+}
+
 var requiredLanguages = []string{"go", "php", "rust", "typescript"}
 
 func vectorsPath() string {
@@ -85,11 +104,24 @@ func main() {
 		usage()
 	}
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
-	fs.StringVar(&driver, "driver", "mysql", "mysql|postgres|sqlite")
-	fs.StringVar(&dsn, "dsn", "", "bench database DSN URI for every runner (required by run)")
+	var drivers, dsns listFlag
+	fs.Var(&drivers, "driver", "mysql|postgres|sqlite (default mysql); run takes one -driver per -dsn")
+	fs.Var(&dsns, "dsn", "bench database DSN URI for every runner (required by run and state)")
 	fs.Parse(os.Args[2:])
-	if driver != "mysql" && driver != "postgres" && driver != "sqlite" {
-		must(fmt.Errorf("unsupported database %q", driver))
+	if len(drivers) == 0 {
+		drivers = listFlag{"mysql"}
+	}
+	for _, name := range drivers {
+		if name != "mysql" && name != "postgres" && name != "sqlite" {
+			must(fmt.Errorf("unsupported database %q", name))
+		}
+	}
+	if len(dsns) > len(drivers) || (len(drivers) > 1 && len(dsns) != len(drivers)) || (len(drivers) > 1 && os.Args[1] != "run") {
+		usage()
+	}
+	driver = drivers[0]
+	if len(dsns) > 0 {
+		dsn = dsns[0]
 	}
 	root, err := os.Getwd()
 	must(err)
@@ -105,49 +137,21 @@ func main() {
 		must(stateDB.Close())
 		fmt.Printf("%s state %s\n", driver, digest)
 	case "run":
-		if dsn == "" {
+		if len(dsns) != len(drivers) || slices.Contains(dsns, "") {
 			usage()
 		}
-		out := filepath.Join(root, "tests", "conformance", "out", driverDir())
-		must(os.MkdirAll(out, 0o755))
-		if err := os.Mkdir(lockDir, 0o755); err != nil {
-			must(fmt.Errorf("another conformance run holds %s: %w", lockDir, err))
-		}
-		held = true
-		must(removeVerifiedOutputs(out))
-		pending, err := os.MkdirTemp(out, ".run-")
+		must(lockDatabases(dsns...))
+		binaries, err := os.MkdirTemp("", "orm-conformance-runners-")
 		must(err)
-		must(testcase.Run("conformance/"+driver+"/build", rustBuildDeadline+typescriptBuildDeadline, func(c *testcase.Case) error {
-			return buildRunners(c, root)
+		must(testcase.Run("conformance/build", rustBuildDeadline+typescriptBuildDeadline+goBuildDeadline, func(c *testcase.Case) error {
+			return buildRunners(c, root, binaries)
 		}))
-		stateDB, err := openStateDatabase(driver, dsn)
-		must(err)
-		for _, language := range requiredLanguages {
-			first := filepath.Join(pending, language+".json")
-			repeated := filepath.Join(pending, language+".repeat.json")
-			must(testcase.Run("conformance/"+driver+"/"+language, languageDeadline, func(c *testcase.Case) error {
-				return runLanguage(c, stateDB, root, language, first, repeated)
-			}))
-			must(os.Remove(repeated))
+		for index := range drivers {
+			driver, dsn = drivers[index], dsns[index]
+			runDatabase(root)
 		}
-		must(stateDB.Close())
-		var files []string
-		for _, l := range requiredLanguages {
-			files = append(files, filepath.Join(pending, l+".json"))
-		}
-		must(testcase.Run("conformance/"+driver+"/compare", compareDeadline, func(*testcase.Case) error {
-			if compare(root, files) != 0 {
-				return fmt.Errorf("conformance comparison failed; output retained in %s", pending)
-			}
-			return nil
-		}))
-		for _, language := range requiredLanguages {
-			must(os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")))
-		}
-		must(os.Remove(pending))
-		held = false
-		must(os.Remove(lockDir))
-		fmt.Printf("conformance: verified outputs saved in %s\n", out)
+		must(os.RemoveAll(binaries))
+		must(releaseLocks())
 	case "compare":
 		os.Exit(compare(root, fs.Args()))
 	case "record":
@@ -155,6 +159,42 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+// runDatabase는 driver와 dsn의 database에서 네 runner를 두 번씩 실행해 state를 확인하고,
+// output을 vector 기대값과 비교한 뒤 검증된 output을 tests/conformance/out에 남긴다.
+func runDatabase(root string) {
+	out := filepath.Join(root, "tests", "conformance", "out", driverDir())
+	must(os.MkdirAll(out, 0o755))
+	must(removeVerifiedOutputs(out))
+	pending, err := os.MkdirTemp(out, ".run-")
+	must(err)
+	stateDB, err := openStateDatabase(driver, dsn)
+	must(err)
+	for _, language := range requiredLanguages {
+		first := filepath.Join(pending, language+".json")
+		repeated := filepath.Join(pending, language+".repeat.json")
+		must(testcase.Run("conformance/"+driver+"/"+language, languageDeadline, func(c *testcase.Case) error {
+			return runLanguage(c, stateDB, root, language, first, repeated)
+		}))
+		must(os.Remove(repeated))
+	}
+	must(stateDB.Close())
+	var files []string
+	for _, l := range requiredLanguages {
+		files = append(files, filepath.Join(pending, l+".json"))
+	}
+	must(testcase.Run("conformance/"+driver+"/compare", compareDeadline, func(*testcase.Case) error {
+		if compare(root, files) != 0 {
+			return fmt.Errorf("conformance comparison failed; output retained in %s", pending)
+		}
+		return nil
+	}))
+	for _, language := range requiredLanguages {
+		must(os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")))
+	}
+	must(os.Remove(pending))
+	fmt.Printf("conformance: verified outputs saved in %s\n", out)
 }
 
 func runAndCheckState(db *sql.DB, database, language, phase string, run func() error) error {
@@ -176,7 +216,40 @@ func runAndCheckState(db *sql.DB, database, language, phase string, run func() e
 	return errors.Join(runErr, restoreErr, snapshotErr, stateErr)
 }
 
-const lockDir = "/tmp/orm-conformance.lock"
+// lockPath는 bench database 하나를 쓰는 동안 잡는 lock directory다. runner가 database에 쓰고
+// 되돌리므로 같은 database를 쓰는 두 실행만 겹치면 안 된다. 이름은 DSN의 hash다.
+func lockPath(dsn string) string {
+	sum := sha256.Sum256([]byte(dsn))
+	return "/tmp/orm-conformance-" + hex.EncodeToString(sum[:8]) + ".lock"
+}
+
+// held는 이 process가 잡은 lock directory다. must가 실패할 때 놓는다.
+var held []string
+
+// lockDatabases는 dsns의 database마다 lock을 잡는다. 이미 잡힌 lock이 있으면 기다리지 않고
+// 실패한다.
+func lockDatabases(dsns ...string) error {
+	for _, value := range dsns {
+		path := lockPath(value)
+		if slices.Contains(held, path) {
+			continue
+		}
+		if err := os.Mkdir(path, 0o755); err != nil {
+			return fmt.Errorf("another conformance run holds %s: %w", path, err)
+		}
+		held = append(held, path)
+	}
+	return nil
+}
+
+func releaseLocks() error {
+	var errs []error
+	for _, path := range held {
+		errs = append(errs, os.Remove(path))
+	}
+	held = nil
+	return errors.Join(errs...)
+}
 
 func driverDir() string {
 	if driver == "mysql" {
@@ -186,20 +259,15 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check state|run -dsn x [-driver mysql|postgres|sqlite] | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
+	fmt.Fprintln(os.Stderr, "usage: check state -dsn x [-driver d] | check run [-driver d] -dsn x [-driver d -dsn x]... | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
 	os.Exit(2)
 }
-
-// held is set while run owns the lock directory, so a failure releases it.
-var held bool
 
 func must(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "check:", err)
-		if held {
-			if cleanupErr := os.Remove(lockDir); cleanupErr != nil {
-				fmt.Fprintln(os.Stderr, "check: release conformance lock:", cleanupErr)
-			}
+		if cleanupErr := releaseLocks(); cleanupErr != nil {
+			fmt.Fprintln(os.Stderr, "check: release conformance lock:", cleanupErr)
 		}
 		os.Exit(1)
 	}
@@ -220,18 +288,34 @@ func runLanguage(c *testcase.Case, stateDB *sql.DB, root, language, first, repea
 	return compareRepeatedEvidence(first, repeated)
 }
 
-func buildRunners(c *testcase.Case, root string) error {
+// goRunner는 buildRunners가 build한 Go runner binary다.
+var goRunner string
+
+// buildRunners는 Rust runner, TypeScript client와 Go runner를 한 번 build한다. Go runner는
+// directory에 binary로 남는다.
+func buildRunners(c *testcase.Case, root, directory string) error {
 	if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
 		return err
 	}
-	return runCommand(c, root, "", typescriptBuildDeadline, "npm", "run", "build", "--prefix", "clients/typescript")
+	if err := runCommand(c, root, "", typescriptBuildDeadline, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
+		return err
+	}
+	binary := filepath.Join(directory, "runner_go")
+	if err := runCommand(c, root, "", goBuildDeadline, "go", "build", "-o", binary, "./tests/conformance/runner_go"); err != nil {
+		return err
+	}
+	goRunner = binary
+	return nil
 }
 
 func runOne(c *testcase.Case, root, output, language string) error {
 	flags := []string{"--dsn", dsn}
 	switch language {
 	case "go":
-		return runCommand(c, root, output, runnerDeadline, "go", "run", "./tests/conformance/runner_go", "-dsn", dsn)
+		if goRunner == "" {
+			return fmt.Errorf("go runner is not built")
+		}
+		return runCommand(c, root, output, runnerDeadline, goRunner, "-dsn", dsn)
 	case "php":
 		return runCommand(c, root, output, runnerDeadline, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
 	case "typescript":

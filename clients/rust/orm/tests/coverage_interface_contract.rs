@@ -7,7 +7,8 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 /// interface check의 기한. 다른 process(go build와 symbol 추출)가 하는 일이므로 wall-clock 시간이다.
-const DEADLINE: Duration = Duration::from_secs(540);
+/// 그 check는 개발 machine에서 10 s 안에 끝나고(T27 측정 8 s), go build cache가 비면 1-2분 걸린다.
+const DEADLINE: Duration = Duration::from_secs(300);
 
 #[test]
 #[ignore = "run by feature-check"]

@@ -13,14 +13,7 @@ import (
 
 func TestPhysicalRustGroupBoolean(t *testing.T) {
 	testcase.Group(t)
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	lockBench(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)

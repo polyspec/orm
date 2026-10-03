@@ -1,13 +1,23 @@
 <?php
 declare(strict_types=1);
 
+// DECIMAL_ENV는 이 script가 DSN을 쓰는 file이고, 그 directory에 SQLite file과 소유 표시를 둔다.
+// ORM_DECIMAL_DATABASE는 MySQL과 PostgreSQL에 만드는 database 이름이다. make decimal-db-setup은
+// .runtime/decimal-env와 orm_decimal_case를, make check는 실행마다 자기 file과 이름을 준다.
 $root = dirname(__DIR__);
 require "$root/clients/php/tests/autoload.php";
-$runtime = "$root/.runtime";
+$envFile = getenv('DECIMAL_ENV');
+$name = getenv('ORM_DECIMAL_DATABASE');
+if (!is_string($envFile) || !str_starts_with($envFile, '/')) {
+    throw new RuntimeException('DECIMAL_ENV must be an absolute file path');
+}
+if (!is_string($name) || preg_match('/^[a-z][a-z0-9_]*$/', $name) !== 1) {
+    throw new RuntimeException('ORM_DECIMAL_DATABASE must be a lowercase database name');
+}
+$runtime = dirname($envFile);
 if (!is_dir($runtime) && !mkdir($runtime, 0700, true) && !is_dir($runtime)) {
     throw new RuntimeException('cannot create decimal test runtime directory');
 }
-$name = 'orm_decimal_case';
 $marker = "$runtime/decimal-owned";
 $owned = is_file($marker) && trim((string) file_get_contents($marker)) === $name;
 if (is_file($marker) && !$owned) {
@@ -134,6 +144,6 @@ foreach ($uris as $key => $value) {
     $lines[] = 'export ' . $key . "='" . str_replace("'", "'\\''", $value) . "'";
 }
 umask(0077);
-if (file_put_contents("$runtime/decimal-env", implode("\n", $lines) . "\n", LOCK_EX) === false) {
+if (file_put_contents($envFile, implode("\n", $lines) . "\n", LOCK_EX) === false) {
     throw new RuntimeException('cannot write decimal test environment');
 }

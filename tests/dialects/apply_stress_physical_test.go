@@ -20,8 +20,9 @@ import (
 )
 
 // stressDeadline은 2000 table plan 하나를 한 database에 적용하는 기한이다. MySQL은
-// statement와 history step 22000개씩을 따로 commit한다.
-const stressDeadline = 20 * time.Minute
+// statement와 history step 22000개씩을 따로 commit하고, 개발 machine에서 8분 남짓 걸린다(T27
+// 측정 8m10s). database가 하는 일이므로 줄일 수 없고, 측정값의 약 1.5배다.
+const stressDeadline = 12 * time.Minute
 
 // stressCaseDeadline은 database 하나의 case 기한이다. 적용 기한에 database를 만들고 지우고
 // history를 읽는 1분을 더했다.

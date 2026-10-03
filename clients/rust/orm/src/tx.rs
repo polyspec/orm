@@ -789,11 +789,12 @@ mod tests {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-once-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
-        let targets = [
-            ("sqlite", format!("sqlite://{}", tmp.join("once.sqlite").display())),
-            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
-            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
-        ];
+        // probe table은 공유 test database가 아니라 case 자신의 database에 둔다. 다른 실행이 같은
+        // 이름의 table을 지우거나 panic한 실행이 남긴 table이 이 case를 흔들지 않는다.
+        let mysql = orm_case_database::CaseDatabase::create("mysql").await;
+        let postgres = orm_case_database::CaseDatabase::create("postgres").await;
+        let targets =
+            [("sqlite", format!("sqlite://{}", tmp.join("once.sqlite").display())), ("mysql", mysql.dsn().to_owned()), ("postgres", postgres.dsn().to_owned())];
         for (driver, dsn) in targets {
             let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
             execute(&db, "DROP TABLE IF EXISTS orm_once_probe").await;
@@ -840,6 +841,8 @@ mod tests {
             execute(&db, "DROP TABLE orm_once_probe").await;
             db.close().await;
         }
+        mysql.drop().await;
+        postgres.drop().await;
         std::fs::remove_dir_all(tmp).unwrap();
     }
 
@@ -870,10 +873,13 @@ mod tests {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-timeout-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
+        // probe table은 case 자신의 database에 둔다(one_shot_transaction_preserves_callback_error_and_rolls_back과 같다).
+        let mysql = orm_case_database::CaseDatabase::create("mysql").await;
+        let postgres = orm_case_database::CaseDatabase::create("postgres").await;
         let targets = [
             ("sqlite", format!("sqlite://{}", tmp.join("timeout.sqlite").display())),
-            ("mysql", required_dsn("ORM_TEST_MYSQL_DSN")),
-            ("postgres", required_dsn("ORM_TEST_POSTGRES_DSN")),
+            ("mysql", mysql.dsn().to_owned()),
+            ("postgres", postgres.dsn().to_owned()),
         ];
         for (driver, dsn) in targets {
             let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
@@ -917,6 +923,8 @@ mod tests {
             execute(&db, "DROP TABLE orm_timeout_probe").await;
             db.close().await;
         }
+        mysql.drop().await;
+        postgres.drop().await;
         std::fs::remove_dir_all(tmp).unwrap();
     }
 
