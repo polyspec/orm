@@ -1,5 +1,7 @@
 # 변경 이력
 
+- T27.1: `make feature-check`는 case 앞에서 state reader, package마다 Go test binary 하나, Rust crate마다 test binary를 한 번 build하고, 모든 coverage 실행은 그 binary를 process마다 10분 대신 2분 한도로 실행한다(Rust entry는 선언된 file을 compile한 test binary마다 process 하나에서 모든 symbol을 실행한다). 세 database는 함께 진행하고, state digest는 JSON 대신 type을 붙인 값을 hash하며, 같은 검증 명령은 한 번 실행하고, 검증 명령은 target이 한 번 build한 TypeScript client를 쓴다. check는 다시 통과하고(T25 case database helper는 `schema_install`에 속한다), 빈 Rust target에서 34분 대신 17분 걸린다.
+
 - T26: 모든 client의 rollback 실패 case는 ProxySQL이 자기 명령으로 받는 `KILL` 대신, make target이 export하고 pooler check가 그대로 두는 server DSN `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로 transaction의 server session을 종료한다. Rust session 연결은 `extra_float_digits`를 보내지 않는 client 연결이다. 그래서 이 case들은 ProxySQL과 PgBouncer를 거쳐도 통과한다.
 
 - T25: 빈 database를 확인하거나 schema를 설치하는 모든 client database case는 자기 database `orm_case_<pid>_<n>`(MySQL과 PostgreSQL)이나 SQLite file을 만들고 끝날 때 실패한 뒤에도 지우므로, 공유 test database에 남은 table이 더는 그 case를 실패시키지 않는다. `make case-database-check`는 두 공유 database에 table 하나를 남겨 둔 채 네 client의 model case가 통과하고 공유 database를 그대로 두는지 확인한다.

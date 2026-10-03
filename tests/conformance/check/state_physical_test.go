@@ -14,14 +14,7 @@ import (
 
 func TestPhysicalCounterCleanup(t *testing.T) {
 	testcase.Group(t)
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	lockBench(t)
 	for _, test := range []struct {
 		driver, env string
 	}{
@@ -135,14 +128,7 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 
 func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 	testcase.Group(t)
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	lockBench(t)
 	for _, test := range []struct {
 		driver, env string
 	}{
@@ -214,4 +200,17 @@ func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+// lockBench는 TEST_ENV의 세 bench database의 conformance lock을 test가 끝날 때까지 잡는다.
+func lockBench(t *testing.T) {
+	t.Helper()
+	if err := lockDatabases(os.Getenv("BENCH_MYSQL_DSN"), os.Getenv("BENCH_POSTGRES_DSN"), os.Getenv("BENCH_SQLITE_DSN")); err != nil {
+		t.Fatalf("conformance database lock: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := releaseLocks(); err != nil {
+			t.Error(err)
+		}
+	})
 }

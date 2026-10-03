@@ -166,13 +166,26 @@ for (const [language, files] of Object.entries(existing)) {
 if (onlyFeature !== undefined && !(manifest.features ?? []).some(feature => feature.id === onlyFeature)) errors.push(`unknown feature ${onlyFeature}`);
 log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
+  // 여러 기능이 같은 directory에서 같은 명령으로 검증하면(decimal, styled value, engine 검사)
+  // 명령은 처음 한 번만 실행하고, 다음 기능은 그 실행의 결과를 자기 결과로 보고한다. 같은
+  // 명령을 같은 tree에서 다시 실행해도 같은 일을 다시 할 뿐이다.
+  const executed = new Map();
   for (const feature of (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)) {
     for (const check of feature.verification ?? []) {
-      const passed = await runGroup(`features/${feature.id}/${check.id}`, async ({ step }) => {
+      const name = `features/${feature.id}/${check.id}`;
+      const key = JSON.stringify([check.cwd ?? '.', check.command]);
+      const previous = executed.get(key);
+      const passed = await runGroup(name, async ({ step }) => {
         step(check.command);
+        if (previous) {
+          step(`the same command ran as ${previous.name}`);
+          if (!previous.passed) throw new Error(`${previous.name} failed`);
+          return;
+        }
         const result = await execute(check.command, resolve(root, check.cwd ?? '.'), step);
         if (result.code !== 0) throw new Error(`command exited ${result.code}${result.output ? `: ${result.output}` : ''}`);
       });
+      if (!previous) executed.set(key, { name, passed });
       if (!passed) errors.push(`${feature.id}/${check.id}: command failed; its output is in the STEP lines above`);
     }
   }

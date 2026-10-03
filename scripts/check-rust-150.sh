@@ -59,5 +59,6 @@ RS
   echo '}'
 } > "$WORK/crate/src/lib.rs"
 cp clients/rust/Cargo.lock "$WORK/crate/Cargo.lock"
-CARGO_TARGET_DIR="$ROOT/clients/rust/target/rust-150" cargo check --manifest-path "$WORK/crate/Cargo.toml"
+# 생성한 crate는 workspace의 target을 함께 써서 orm과 의존성을 다시 compile하지 않는다.
+CARGO_TARGET_DIR="$ROOT/clients/rust/target" cargo check --manifest-path "$WORK/crate/Cargo.toml"
 printf '%s\n' "rust-150: 150 generated entities compiled"

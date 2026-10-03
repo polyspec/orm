@@ -32,10 +32,12 @@ const introspectBudget = 5 * time.Second
 // compile을 포함하고, budget을 넘긴 runner도 끝까지 기다려 그 시간을 보고한다.
 const compareRunnerDeadline = 5 * time.Minute
 
-// compareDeadline은 database 하나의 case 기한이다. 2000 table 문서를 statement마다 따로
-// 실행해 적용하는 일(MySQL에서 몇 분)과 네 runner를 차례로 실행하는 일을 담는다. 세
-// database의 check 전체가 5-11분 걸렸으므로 database 하나에 15분은 멈춘 case만 끝낸다.
-const compareDeadline = 15 * time.Minute
+// compareDeadline은 database 하나의 case 기한이다. 2000 table 문서의 statement 22000개를
+// 따로 실행해 적용하는 일과 네 runner를 차례로 실행하는 일을 담는다. 가장 긴 MySQL이 이
+// machine에서 6-7.7분 걸린다(T27 측정: 공유 server 5m57s, 부하가 있는 별도 server 7m44s).
+// MySQL DDL은 table이 늘수록 statement 하나가 느려지는 database의 일이고, durability 설정을
+// 낮춰도 14%만 줄었다. 측정값의 약 1.3배다.
+const compareDeadline = 10 * time.Minute
 
 // applyProgressEvery는 statement를 몇 개 적용할 때마다 단계 줄을 출력하는지다.
 const applyProgressEvery = 1000

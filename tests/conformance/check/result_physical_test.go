@@ -18,21 +18,16 @@ func TestPhysicalResultRunners(t *testing.T) {
 	if !slices.Equal(resultRunnerLanguages, requiredLanguages) {
 		t.Fatalf("physical result runners %v differ from required languages %v", resultRunnerLanguages, requiredLanguages)
 	}
-	if err := os.Mkdir(lockDir, 0o755); err != nil {
-		t.Fatalf("conformance database lock: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := os.Remove(lockDir); err != nil {
-			t.Error(err)
-		}
-	})
+	lockBench(t)
 	root, err := filepath.Abs("../../..")
 	if err != nil {
 		t.Fatal(err)
 	}
+	// build된 Go runner는 언어 case가 모두 끝날 때까지 남아야 하므로 test 전체의 directory에 둔다.
+	binaries := t.TempDir()
 	if !t.Run("build", func(t *testing.T) {
-		c := testcase.Start(t, rustBuildDeadline+typescriptBuildDeadline)
-		if err := buildRunners(c, root); err != nil {
+		c := testcase.Start(t, rustBuildDeadline+typescriptBuildDeadline+goBuildDeadline)
+		if err := buildRunners(c, root, binaries); err != nil {
 			t.Fatal(err)
 		}
 	}) {
