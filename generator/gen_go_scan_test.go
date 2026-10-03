@@ -65,7 +65,13 @@ func Brands() *model.ProductModel {
 	return model.Product().Relations(model.Brand().MatchBrandSeqWithSeq())
 }
 
-func Count(p *model.ProductModel) int { return p.GetBrandModels().Len() }
+func Count(p *model.ProductModel) (int, error) {
+	brands, err := p.GetBrandModels()
+	if err != nil {
+		return 0, err
+	}
+	return brands.Len(), nil
+}
 `)
 	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
 		t.Fatal(err)
@@ -126,6 +132,52 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 	}
 	if strings.Contains(string(product), "Title") {
 		t.Fatal("a method of another package's Product result was generated on ProductModel")
+	}
+	buildScannedModule(t)
+}
+
+// TestGoRelationGetterReportsMismatch는 generated relation getter가 type
+// assertion 실패를 버리지 않고 orm.RelatedAs로 error와 함께 돌려주는지 확인한다.
+func TestGoRelationGetterReportsMismatch(t *testing.T) {
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Load() *model.ProductModel {
+	return model.Product().
+		Relation(model.Brand().MatchBrandSeqWithSeq().AliasOwner()).
+		Relations(model.Brand().MatchBrandSeqWithSeq())
+}
+
+func Owner(p *model.ProductModel) (*model.BrandModel, error) { return p.GetOwner() }
+
+func Count(p *model.ProductModel) (int, error) {
+	brands, err := p.GetBrandModels()
+	if err != nil {
+		return 0, err
+	}
+	return brands.Len(), nil
+}
+`)
+	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(product)
+	for _, want := range []string{
+		"func (x *ProductModel) GetOwner() (*BrandModel, error) {\n\treturn orm.RelatedAs[*BrandModel](x.m, \"owner\")\n}",
+		"func (x *ProductModel) GetBrandModels() (*orm.Collection[*BrandModel], error) {\n\treturn orm.RelatedAs[*orm.Collection[*BrandModel]](x.m, \"brand_models\")\n}",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("generated product.go lacks\n%s", want)
+		}
+	}
+	if strings.Contains(text, "v, _ :=") {
+		t.Error("generated product.go drops a failed relation type assertion with v, _ :=")
 	}
 	buildScannedModule(t)
 }

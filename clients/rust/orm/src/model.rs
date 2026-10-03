@@ -127,21 +127,38 @@ impl RowState {
 }
 
 impl Core {
-    /// The related row of a relation or join result.
-    pub fn related_one<M: Model>(&self, name: &str) -> Option<&M> {
-        match &self.row.as_ref()?.related.get(name)?.value {
-            RelatedValue::One(Some(m)) => m.as_any().downcast_ref::<M>(),
-            _ => None,
+    /// The related row of a relation or join result. A row without the result
+    /// or without a related row is `None`; a stored value of another model type
+    /// or a collection is `INTERNAL`.
+    pub fn related_one<M: Model>(&self, name: &str) -> Result<Option<&M>> {
+        let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
+        match &related.value {
+            RelatedValue::One(None) => Ok(None),
+            // 다른 model type을 None으로 버리지 않고 보고한다.
+            RelatedValue::One(Some(m)) => {
+                m.as_any().downcast_ref::<M>().map(Some).ok_or_else(|| related_mismatch::<M>(name, &format!("a row of {}", m.core_dyn().ent.name)))
+            }
+            RelatedValue::Many(_) => Err(related_mismatch::<M>(name, "a collection")),
         }
     }
 
-    /// The related rows of a relation result.
-    pub fn related_many<M: Model>(&self, name: &str) -> Option<&Collection<M>> {
-        match &self.row.as_ref()?.related.get(name)?.value {
-            RelatedValue::Many(c) => c.as_any().downcast_ref::<Collection<M>>(),
-            _ => None,
+    /// The related rows of a relation result. A row without the result is
+    /// `None`; a stored collection of another model type or a single row is
+    /// `INTERNAL`.
+    pub fn related_many<M: Model>(&self, name: &str) -> Result<Option<&Collection<M>>> {
+        let Some(related) = self.row.as_ref().and_then(|r| r.related.get(name)) else { return Ok(None) };
+        match &related.value {
+            RelatedValue::Many(c) => {
+                c.as_any().downcast_ref::<Collection<M>>().map(Some).ok_or_else(|| related_mismatch::<Collection<M>>(name, "a collection of another model"))
+            }
+            RelatedValue::One(_) => Err(related_mismatch::<Collection<M>>(name, "a single row")),
         }
     }
+}
+
+/// relation result name에 저장된 값이 요청한 type T와 다를 때의 INTERNAL error.
+fn related_mismatch<T>(name: &str, stored: &str) -> Error {
+    Error::internal(format!("relation result {name} holds {stored}, not {}", std::any::type_name::<T>()))
 }
 
 pub(crate) fn val_param(v: &Val) -> Param {
@@ -1310,5 +1327,86 @@ mod column_decode_tests {
         let error = column_decode_error("author", "jsons_tags", error);
         assert_eq!(error.code(), codes::CODEC_DECODE);
         assert_eq!(error.to_string(), "CODEC_DECODE: author.jsons_tags: non-null JSON column received NULL");
+    }
+}
+#[cfg(test)]
+mod related_tests {
+    use super::{collect_boxed, new_boxed, Core, Entity, Model, Related, RelatedValue, RowState, Schema, Val};
+    use crate::{codes, Result};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    static SCHEMA: Schema = Schema::new("", "");
+    static LEFT: Entity = Entity { name: "left", schema: &SCHEMA, new: new_boxed::<Left>, collect: collect_boxed::<Left> };
+    static RIGHT: Entity = Entity { name: "right", schema: &SCHEMA, new: new_boxed::<Right>, collect: collect_boxed::<Right> };
+
+    macro_rules! test_model {
+        ($name:ident, $entity:ident) => {
+            #[derive(Clone)]
+            struct $name(Core);
+            impl Model for $name {
+                fn entity() -> &'static Entity {
+                    &$entity
+                }
+                fn core(&self) -> &Core {
+                    &self.0
+                }
+                fn core_mut(&mut self) -> &mut Core {
+                    &mut self.0
+                }
+                fn from_core(core: Core) -> Self {
+                    $name(core)
+                }
+                fn into_core(self) -> Core {
+                    self.0
+                }
+                fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
+                    Ok(false)
+                }
+                fn value(&self, _: &str) -> Option<Val> {
+                    None
+                }
+            }
+        };
+    }
+    test_model!(Left, LEFT);
+    test_model!(Right, RIGHT);
+
+    /// one, 빈 one, many relation result를 가진 Left row.
+    fn parent() -> Core {
+        let mut row = RowState::default();
+        let mut put = |name: &str, value: RelatedValue| {
+            row.related.insert(name.to_owned(), Related { value, cascade: false, flat: false });
+        };
+        put("one", RelatedValue::One(Some(Arc::new(Right(Core::new(&RIGHT))))));
+        put("empty", RelatedValue::One(None));
+        put("many", RelatedValue::Many(collect_boxed::<Right>(Vec::new(), HashMap::new())));
+        let mut core = Core::new(&LEFT);
+        core.row = Some(row);
+        core
+    }
+
+    /// 저장된 relation 값을 다른 model type이나 다른 relation 종류로 읽으면 INTERNAL이다.
+    #[test]
+    fn relation_results_report_a_mismatched_value() {
+        let core = parent();
+        assert!(core.related_one::<Right>("one").unwrap().is_some());
+        assert!(core.related_one::<Right>("empty").unwrap().is_none());
+        assert!(core.related_one::<Right>("absent").unwrap().is_none());
+        assert!(core.related_many::<Right>("many").unwrap().is_some());
+        assert!(core.related_many::<Right>("absent").unwrap().is_none());
+        assert!(Core::new(&LEFT).related_one::<Right>("one").unwrap().is_none());
+        for (error, names) in [
+            (core.related_one::<Left>("one").map(|_| ()).unwrap_err(), ["one", "Left"]),
+            (core.related_one::<Right>("many").map(|_| ()).unwrap_err(), ["many", "Right"]),
+            (core.related_many::<Left>("many").map(|_| ()).unwrap_err(), ["many", "Left"]),
+            (core.related_many::<Right>("one").map(|_| ()).unwrap_err(), ["one", "Right"]),
+            (core.related_many::<Right>("empty").map(|_| ()).unwrap_err(), ["empty", "Right"]),
+        ] {
+            assert_eq!(error.code(), codes::INTERNAL, "{error}");
+            for name in names {
+                assert!(error.to_string().contains(name), "{error} does not name {name}");
+            }
+        }
     }
 }

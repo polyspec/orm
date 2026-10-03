@@ -193,7 +193,7 @@ Assembly uses `{alias, column, output_name, index}`. Join aliases remain separat
 
 A model row stores declared fields, added columns, relation results, and values attached with `new<Name>` in one name space; duplicate names are rejected. Getters return the declared type. Setters update the field and mark it dirty. Update operations send dirty fields only, except fields required by optimistic locking. The original version is read before mutation and is used in the update predicate.
 
-A relation result is either one row or a collection according to the schema. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
+A relation result is either one row or a collection according to the schema. The Go and Rust relation getters also return an error: a row without a related row reads as no result, and a stored relation value of another type than the getter's result is `INTERNAL`. Collection keying is deterministic. A duplicate key follows the declared key policy; an undeclared key function is invalid.
 
 ## 9. Collection, key, and page — IF-25 to IF-27
 
@@ -312,6 +312,23 @@ binary floats or fixed-precision model codecs. SQLite has no native decimal
 storage class: its actual text/integer/real values keep their existing tags.
 Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.
 
+Temporal grid cells hold the dbspec text forms: `Date` is `YYYY-MM-DD`, `Time`
+is `HH:MM:SS` and `DateTime` is `YYYY-MM-DD HH:MM:SS` in UTC, the latter two with
+fraction digits. MySQL `DATE`, `TIME` and `DATETIME` and PostgreSQL `date`,
+`time` and `timestamp` without time zone decode into them; MySQL `TIMESTAMP` and
+PostgreSQL `timestamptz` and `timetz` remain unsupported. A read of a described
+table (table page, row lookup, insert reads) writes exactly the declared
+precision p of the column, where MySQL `time` and `datetime` without p have 0 and
+PostgreSQL `time` and `timestamp` without p have 6; a read-only grid query has
+no column declaration and writes six digits. A time outside 00:00:00 to
+23:59:59.999999, a date outside 0001-01-01 to 9999-12-31 and a PostgreSQL
+infinity fail. SQLite has no temporal storage class: a read of
+a described table turns the stored text of a `DATE`, `TIME` or `DATETIME`
+column into the same temporal cell as MySQL and PostgreSQL, whose fraction
+digits the dbspec CHECK fixes at p, and a value that is not in the dbspec form
+fails with `GRID_TEMPORAL_VALUE`; a read-only grid query has no declaration and
+keeps the stored text.
+
 ### Qualified native Rust table metadata
 
 `CatalogConnection::current_namespace()` reports the selected namespace.
@@ -352,6 +369,11 @@ nonfinite MySQL floats and SQLite NaN before execution; SQLite infinities remain
 native float64 values. Reject malformed decimals, PostgreSQL text NUL, more than
 65535 parameters or total value bytes exceeding 16 MiB before preparing/executing.
 Typed NULLs use the selected native bind kind, not empty text or zero.
+`Date`, `Time` and `DateTime` binds take the dbspec text of the grid cells and
+reject any other form before execution; MySQL and PostgreSQL bind them as native
+date, time and timestamp values and SQLite binds the text, so a catalog write of
+a temporal column, a temporal row identity included, reads back the written
+cell when the value has the column's declared fraction digits.
 Native Boolean binding uses SQLx bool; PostgreSQL grid reads preserve Boolean,
 while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
 inventing a distinct native boolean type. SQLite storage class is owner-tested.

@@ -8,6 +8,18 @@
 
 - T8.9.1: 각 client가 호출자가 읽은 bytes에서 message에 쓸 이름과 함께 dbspec signature를 확인한다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`이며 path reader가 이것을 쓴다. signature 뒤의 UTF-8이 아닌 bytes는 모든 client에서 첫 잘못된 byte의 `encoding` error 하나(`<name> is not valid UTF-8`)다. TypeScript는 더 이상 U+FFFD로 바꾸지 않고 Rust는 더 이상 I/O error를 돌려주지 않는다.
 
+- T21.2: Rust catalog는 dbspec text 형식의 `Date`, `Time`, `DateTime` bind로 temporal row identity를 포함한 `date`, `time`, `datetime` column에 쓰고, MySQL, PostgreSQL, SQLite에서 `ROW_WRITE_MISMATCH`로 실패하지 않고 쓴 cell을 다시 읽는다.
+
+- T21.1: SQLite에서 기술된 `DATE`, `TIME`, `DATETIME` column은 MySQL, PostgreSQL과 같은 `Date`, `Time`, `DateTime` grid cell로 읽히고, dbspec 형식 밖의 값은 `GRID_TEMPORAL_VALUE`로 실패하며, read-only grid query는 저장된 text를 유지한다.
+
+- T22: root package.json에 script file이 제거된 `schema:check` script가 더 이상 없고, root npm script가 tracked file이나 directory가 아닌 path를 쓰면 `make repo-check`가 실패한다.
+
+- T21: Rust catalog grid는 MySQL `DATE`, `TIME`, `DATETIME`과 PostgreSQL `date`, `time`, `timestamp` cell을 dbspec text 형식의 `Date`, `Time`, `DateTime`으로 decode한다. table page는 선언된 소수 자릿수를, read-only grid query는 여섯 자리를 쓰므로 datetime column이 있는 table의 page를 모든 database에서 읽는다.
+
+- T20: Rust `client_bench`와 bench/rust의 `native`, `driver_compare`는 iterations 인자를 요구한다. 인자가 없거나 program의 최소값 이상의 정수가 아니면 3000번이나 1000번을 반복하는 대신 인자 이름과 값을 담은 error와 함께 status 1로 끝난다.
+
+- T19: 생성된 Go relation getter는 `(<result>, error)`를, Rust relation getter는 `orm::Result<Option<..>>`를 돌려준다. related row가 없는 row는 결과 없음으로 읽히고, 다른 type으로 저장된 relation 값은 버려지는 type assertion이나 `None` 대신 `INTERNAL`이다.
+
 - T8.8.3: N17과 함께 main을 dbspec branch에 다시 merge했다. PHP client는 PDO driver 확장을 요구하지 않고, `make php-without-mysql-check`는 `pdo_mysql`이 없는 공식 PHP image의 SQLite에서 `schema/bench.dbs`를 설치하고 row를 만들고 읽는다.
 
 - T8.9: dbspec 문서 파일의 확장자가 `.dbspec` 대신 `.dbs`이고, header `dbspec 1 <document>`가 파일 signature다. 모든 tool은 자기 client의 reader 하나(Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`)로 문서 파일을 읽으며, reader는 DbSchema project 파일이나 빈 파일처럼 `dbspec ` bytes로 시작하지 않는 파일을 parse 전에 `signature` error `<path> is not a dbspec document` 하나로 거부한다.

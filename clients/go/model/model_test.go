@@ -275,7 +275,7 @@ func TestJoinsAndRelations(t *testing.T) {
 		if names(rows) != "alpha,gamma,delta" {
 			t.Fatalf("placed join conditions: %s", names(rows))
 		}
-		if u := rows.First().GetUserModel(); u == nil || u.GetName() != "kim" {
+		if u := must(rows.First().GetUserModel()); u == nil || u.GetName() != "kim" {
 			t.Fatalf("join result: %+v", u)
 		}
 		member := model.ServiceMember()
@@ -295,17 +295,17 @@ func TestJoinsAndRelations(t *testing.T) {
 			OrderBySeqAsc().
 			Gets())
 		b := loaded.First()
-		if b.GetWriter() == nil || b.GetWriter().GetName() != "kim" {
-			t.Fatalf("relation alias: %+v", b.GetWriter())
+		if w := must(b.GetWriter()); w == nil || w.GetName() != "kim" {
+			t.Fatalf("relation alias: %+v", w)
 		}
-		if b.GetMembers().Len() != 1 || b.GetServiceRegionModel().GetName() != "module" {
-			t.Fatalf("relations: %d %+v", b.GetMembers().Len(), b.GetServiceRegionModel())
+		if members, module := must(b.GetMembers()), must(b.GetServiceRegionModel()); members.Len() != 1 || module.GetName() != "module" {
+			t.Fatalf("relations: %d %+v", members.Len(), module)
 		}
 		limited := must(model.User().Connect(db).
 			Relations(model.Author().MatchSeqWithUserSeq().OrderBySeqDesc().GroupLimit(1)).
 			OrderBySeqAsc().
 			Gets())
-		if got := limited.First().GetAuthorModels(); got.Len() != 1 || got.First().GetName() != "gamma" {
+		if got := must(limited.First().GetAuthorModels()); got.Len() != 1 || got.First().GetName() != "gamma" {
 			t.Fatalf("groupLimit: %s", names(got))
 		}
 		other := must(model.Connect(dsnOf(t, db), orm.Config{}))
@@ -313,8 +313,8 @@ func TestJoinsAndRelations(t *testing.T) {
 		external := must(model.Author().Connect(db).
 			Relation(model.User().Connect(other).MatchUserSeqWithSeq().AliasOwner()).
 			GetByName("beta"))
-		if external.GetOwner() == nil || external.GetOwner().GetName() != "lee" {
-			t.Fatalf("relation on another connection: %+v", external.GetOwner())
+		if owner := must(external.GetOwner()); owner == nil || owner.GetName() != "lee" {
+			t.Fatalf("relation on another connection: %+v", owner)
 		}
 		if _, err := model.Author().Connect(db).JoinUserSeqWithSeq(model.User().Connect(db)).Gets(); orm.ErrorCode(err) != orm.CodeConfig {
 			t.Fatalf("join child with connection: %v", err)

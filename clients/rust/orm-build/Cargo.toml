@@ -74,6 +74,10 @@ name = "grid_decimals"
 required-features = ["live-db"]
 
 [[test]]
+name = "grid_temporal"
+required-features = ["live-db"]
+
+[[test]]
 name = "table_metadata"
 required-features = ["live-db"]
 

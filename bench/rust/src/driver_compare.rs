@@ -114,16 +114,17 @@ fn bench_dsn() -> String {
     }
 }
 
-/// 첫 인자는 반복 횟수다. 없으면 `default`를 쓰고, `minimum` 이상의 정수가 아니면 그 값을
-/// 출력하며 끝난다.
-fn iterations(default: usize, minimum: usize) -> usize {
+/// 첫 인자는 반복 횟수다. 없거나 `minimum` 이상의 정수가 아니면 인자 이름과 받은 값을
+/// 출력하며 끝난다. 기본 반복 횟수는 없다.
+fn iterations(minimum: usize) -> usize {
     let Some(arg) = std::env::args().nth(1) else {
-        return default;
+        eprintln!("usage: driver_compare <iterations>; the iterations argument is required");
+        std::process::exit(1)
     };
     match arg.parse::<usize>() {
         Ok(n) if n >= minimum => n,
         _ => {
-            eprintln!("iterations must be an integer of at least {minimum}, got {arg:?}");
+            eprintln!("the iterations argument must be an integer of at least {minimum}, got {arg:?}");
             std::process::exit(1)
         }
     }
@@ -137,7 +138,7 @@ fn invalid_dsn(error: impl std::fmt::Display) -> ! {
 
 #[tokio::main]
 async fn main() {
-    let iterations = iterations(1_000, 10);
+    let iterations = iterations(10);
 
     let dsn = bench_dsn();
     let sqlx_options = MySqlConnectOptions::from_str(&dsn).unwrap_or_else(|e| invalid_dsn(e)).statement_cache_capacity(256);

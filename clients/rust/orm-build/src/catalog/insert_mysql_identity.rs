@@ -38,14 +38,15 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
         }
     }
     let columns = metadata.columns.iter().map(|column| quote(&column.name, "mysql")).collect::<Result<Vec<_>, _>>()?.join(",");
-    let result = connection
-        .grid_query_bounded(
-            &format!("SELECT {columns} FROM {} WHERE {} LIMIT 2 FOR UPDATE", qualified(metadata, "mysql")?, predicates.join(" AND ")),
-            &bound,
-            QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 },
-        )
-        .await
-        .map_err(|e| e.to_string())?;
+    let result = super::temporal::read(
+        connection,
+        metadata,
+        "mysql",
+        &format!("SELECT {columns} FROM {} WHERE {} LIMIT 2 FOR UPDATE", qualified(metadata, "mysql")?, predicates.join(" AND ")),
+        &bound,
+        QueryLimits { max_rows: 2, max_bytes: 8 * 1024 * 1024 },
+    )
+    .await?;
     row_snapshot::projection(metadata, &result)?;
     if result.rows.len() != 1 {
         return Err("ROW_WRITE_MISMATCH: expected one generated-key row".into());

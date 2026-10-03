@@ -88,6 +88,22 @@ func (c *Core) Related(name string) any {
 	return c.row.related[name]
 }
 
+// RelatedAs는 relation result name의 값을 T로 돌려준다. row나 related row가
+// 없으면 T의 zero value이고, 저장된 값의 type이 T가 아니면 INTERNAL error다.
+// generated relation getter가 이 함수로 읽어 type assertion 실패를 버리지 않는다.
+func RelatedAs[T any](c *Core, name string) (T, error) {
+	var zero T
+	v := c.Related(name)
+	if v == nil {
+		return zero, nil
+	}
+	r, ok := v.(T)
+	if !ok {
+		return zero, codecErr(CodeInternal, "relation result %s holds %T, not %T", name, v, zero)
+	}
+	return r, nil
+}
+
 // entityModel은 model의 runtime model entity를 반환한다.
 func (c *Core) entityModel(d *DB) (*runtimemodel.Entity, error) {
 	eng, err := d.engineFor(c.ent.Schema)

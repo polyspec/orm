@@ -58,7 +58,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 			Gets())
 		var got []string
 		for _, a := range loaded.Slice() {
-			for _, m := range a.GetMemberships().Slice() {
+			for _, m := range must(a.GetMemberships()).Slice() {
 				got = append(got, fmt.Sprintf("%d/%d:%d/%d/%s", a.GetTenantId(), a.GetAccountId(), m.GetTenantId(), m.GetAccountId(), m.GetRole()))
 			}
 		}

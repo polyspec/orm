@@ -33,9 +33,9 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:00368510c2b9c4c36b2b9cbf4091492a6c592cbd7516821246e539346eaee026",
+    "go": "sha256:15d13e1c739bc271bc69823a643f75f209a2d6f3c5953b99480481808ba84cfc",
     "php": "sha256:e9de3548ef59e93de1a11d417fe1ec7d71291c279bf86c5fdaefbb89a6503476",
-    "rust": "sha256:53a3b24edd61624e80e4ab5cc7a84ca9250fced15c2164be92299881fbb3a442",
+    "rust": "sha256:8be4c56eff263d869ba5a7eb489716c8ab1cafa8ea4501c83e84ef3a6ca1e4be",
     "typescript": "sha256:e5088b8d9dcd85f69dbf6b6ad36d80d69256cb3204b7fba5da886e0e5c7605f5"
   },
   "prohibited_symbols": [

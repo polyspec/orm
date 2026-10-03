@@ -230,3 +230,19 @@ fn bound_setter_results_preserve_model_calls_after_extraction() {
     assert!(error.contains("missing_method"), "{error}");
     assert!(!error.contains("MapErr"), "{error}");
 }
+
+/// relation getter는 실패한 downcast를 None으로 버리지 않고 `orm::Result`로 보고한다.
+#[test]
+fn relation_getters_report_a_mismatched_relation_value() {
+    let text = generate_with_schema(
+        bench(),
+        "fn main() { let b = Author::new().relation(User::new().match_user_seq_with_seq().alias_owner()).relations(ServiceMember::new().match_service_seq_with_service_seq().alias_members()); let _ = b.get_owner(); let _ = b.get_members(); }",
+    )
+    .unwrap();
+    for want in [
+        "pub fn get_owner(&self) -> orm::Result<Option<&super::user::User>> {\n        self.__orm.related_one::<super::user::User>(\"owner\")\n    }",
+        "pub fn get_members(&self) -> orm::Result<Option<&orm::Collection<super::service_member::ServiceMember>>> {\n        self.__orm.related_many::<super::service_member::ServiceMember>(\"members\")\n    }",
+    ] {
+        assert!(text.contains(want), "generated source lacks\n{want}");
+    }
+}

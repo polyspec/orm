@@ -28,7 +28,7 @@ func TestCoverageModelQueryRows(t *testing.T) {
 		t.Fatalf("read_count sum of service_seq 7 = %v, want 456000", sum)
 	}
 	author := must(model.Author().Connect(db).Relation(model.User().MatchUserSeqWithSeq()).GetBySeq(5000))
-	if u := author.GetUserModel(); u == nil || u.GetName() != "user-1" {
+	if u := must(author.GetUserModel()); u == nil || u.GetName() != "user-1" {
 		t.Fatalf("user of author 5000 = %+v, want user-1", u)
 	}
 }

@@ -377,10 +377,14 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
+		module, err := left.First().GetModule()
+		if err != nil {
+			return nil, err
+		}
 		return map[string]any{
 			"rows":     rows.ToArray(),
 			"compared": compared,
-			"module":   pick(left.First().GetModule(), "seq", "name"),
+			"module":   pick(module, "seq", "name"),
 		}, nil
 	})
 	run("relations", func() (any, error) {
@@ -672,7 +676,11 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		members := loaded.GetServiceMemberModels().Len()
+		related, err := loaded.GetServiceMemberModels()
+		if err != nil {
+			return nil, err
+		}
+		members := related.Len()
 		mask(seqs)
 		if err := loaded.Delete(true); err != nil {
 			return nil, err

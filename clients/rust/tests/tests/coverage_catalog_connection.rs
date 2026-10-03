@@ -1,5 +1,5 @@
 //! catalog_connection: orm-build의 live-db catalog가 시드된 bench database의 table metadata,
-//! user table page, read-only query를 읽고, identity column이 없는 composite_account에 row를
+//! author table page, read-only query를 읽고, identity column이 없는 composite_account에 row를
 //! 넣고 고치고 지운다. database는 시작한 상태로 끝난다.
 use orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
 use orm_build::tool_db::{GridCell, QueryLimits, Val, P};
@@ -62,16 +62,16 @@ async fn coverage_catalog_read() {
         assert_eq!(metadata.primary_key, ["seq"], "{driver}: author key");
         assert!(metadata.reliable_row_identity, "{driver}: author row identity");
 
-        // grid cell은 정수, 문자열, boolean, decimal, binary만 decode한다(docs/schema.md
-        // section 3). datetime column이 있는 author 대신 user의 page를 읽는다.
-        let user = TableRef { namespace: author.namespace.clone(), name: "user".into() };
-        let page = catalog.table_page(&user, 3, 0).await.expect("user page");
+        // author의 page는 세 database에서 datetime(6) column을 dbspec text 형식의 같은
+        // DateTime cell로 읽는다(docs/interfaces.md).
+        let page = catalog.table_page(&author, 3, 0).await.expect("author page");
         assert_eq!(page.order_by, ["seq"], "{driver}: page order");
-        assert!(page.has_more, "{driver}: more user rows follow");
-        let (seq, name) = (column(&page, "seq"), column(&page, "name"));
-        let rows: Vec<(GridCell, GridCell)> = page.result.rows.iter().map(|row| (row[seq].clone(), row[name].clone())).collect();
-        let want: Vec<(GridCell, GridCell)> = (1..=3).map(|i| (GridCell::Integer(i), GridCell::Text(format!("user-{i}")))).collect();
-        assert_eq!(rows, want, "{driver}: first user page");
+        assert!(page.has_more, "{driver}: more author rows follow");
+        let (seq, name, start) = (column(&page, "seq"), column(&page, "name"), column(&page, "start_dt"));
+        let rows: Vec<[GridCell; 3]> = page.result.rows.iter().map(|row| [row[seq].clone(), row[name].clone(), row[start].clone()]).collect();
+        let start_cell = GridCell::DateTime("2026-06-01 00:00:00.000000".into());
+        let want: Vec<[GridCell; 3]> = (1..=3).map(|i| [GridCell::Integer(i), GridCell::Text(format!("author-{i}")), start_cell.clone()]).collect();
+        assert_eq!(rows, want, "{driver}: first author page");
 
         let count =
             catalog.read_only_query(&format!("SELECT COUNT(*) FROM {}", quote("user", &driver)), &[], QueryLimits::default()).await.expect("user count");
