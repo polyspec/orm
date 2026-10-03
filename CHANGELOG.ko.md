@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T36: `make owner-check`는 바뀐 file을 소유한 검사를 골라 실행한다: 선언한 fixture나 test에 바뀐 file이 있거나 fixture file이 그 file을 적는 모든 기능의 검증 명령과 coverage를 저마다 기한을 가진 단계로 실행한다(`scripts/features/owners.mjs`).
+
 - T37: utility의 internal helper는 네 client에서 한 이름과 한 자리를 갖는다: `Utils`가 `active`, `run`, `read`를 갖고 schema, privilege, AES utility는 그것을 거쳐 부른다(PHP `UtilsSql`과 TypeScript `inTx`는 제거, Rust `reader`는 `read`). 동작은 바뀌지 않는다.
 
 - T35.1: 문서 집합은 다른 집합의 table을 소유하지 않고 쓸 수 있다. Go와 PHP `orm-gen gen --use`, TypeScript `orm-gen gen --use`, Rust `Builder::uses`로 주는 외부 문서는 집합과 함께 검사하지만 렌더링, 설치, 변경, 비교, 생성하지 않는다. `manifestHash`는 쓰는 외부 table을 포함하고, install, addTablesAndColumns, 생성한 schema 값의 연결은 그 table이 database와 다르면 `CONFIG`로 실패하며, target이 외부 문서를 쓰는 plan은 잘못이다.

@@ -346,9 +346,16 @@ test-servers-stop:
 
 # feature-check는 TypeScript client를 한 번 build한 뒤 coverage(native test binary를 한 번 build해
 # 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다.
+# owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
+# 기능의 검증 명령과 coverage를 실행한다(AGENTS.md "Owner checks").
+.PHONY: owner-check
+owner-check:
+	$(WITH_TEST_ENV) node scripts/features/owners.mjs $(PATHS)
+
 feature-check:
 	node scripts/features/build.mjs --check
 	node --test scripts/features/coverage.test.mjs
+	node --test scripts/features/owners.test.mjs
 	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run

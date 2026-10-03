@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T36: `make owner-check` selects and runs the checks that own the changed files: every feature whose declared fixtures or tests contain a changed file, or whose fixture files name one, with its verification commands and coverage as steps with a deadline each (`scripts/features/owners.mjs`).
+
 - T37: the internal helpers of the utilities have one name and one place in the four clients: `Utils` owns `active`, `run` and `read`, and the schema, privilege and AES utilities call them through it (PHP `UtilsSql` and TypeScript `inTx` are removed, Rust `reader` is `read`). No behavior changes.
 
 - T35.1: a document set can use tables of another set without owning them. External documents, given with Go and PHP `orm-gen gen --use`, TypeScript `orm-gen gen --use` and Rust `Builder::uses`, are validated with the set but never rendered, installed, altered, compared or generated; `manifestHash` covers the used external tables, install, addTablesAndColumns and the connect of a generated schema value fail with `CONFIG` when those tables differ from the database, and a plan whose target uses an external document is invalid.
