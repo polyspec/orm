@@ -9,3 +9,7 @@ Go와 Rust의 `symbols`는 각 공통 사례 ID를 선언한 소스 파일의 �
 
 `scripts/features/coverage.test.mjs`의 테스트는 필요한 차원을 하나씩 바꾸고 만들어 낸 JSON 성공, 누락된 소유자, 사용자, 테스트 경로, client, 데이터베이스, 사례, 반복 실행, 상태 비교 또는 선언되지 않은 결과에서 실패를 요구한다. 주장한 모든 동작에 현재 실행 증거가 생길 때까지 `make feature-check`는 실패한다. 검사기 자체 테스트가 성공해도 client 동작의 완료를 주장하지 않는다.
 `node scripts/features/coverage.mjs --feature dsn_connection`은 다른 기능의 coverage 선언이 완성되는 동안 DSN 연결 기능만 실행한다. 전체 명령은 모든 기능을 계속 검사하며 선언이 빠질 때마다 실패한다. DSN 기능은 세 데이터베이스에서 네 client의 읽기 전용 소유 사례와 Go·Rust client 부분의 생성 모델 사용 사례를 실행한다. 선택한 URI는 `ORM_FEATURE_DSN`으로 전달하고 검사기는 두 실행의 전후 데이터베이스 상태를 읽는다.
+
+## Owner 검사 {#owner-checks}
+
+`make owner-check`는 바뀐 file을 소유한 검사를 실행한다. 기본은 `HEAD`와 다른 file과 추적하지 않는 file이고, `PATHS="<paths>"`로 file을 줄 수 있다. `scripts/features/owners.mjs`는 선언한 `fixtures`나 `tests`에 바뀐 file이 있는 기능과, 선언한 fixture file 하나가 바뀐 file을 적는 기능을 고른다. 예를 들어 `contracts/fixtures/schema_definition.json`은 `contracts/fixtures/audit.dbs`를 적는다. 고른 기능마다 그것을 고른 path를 출력한다. 기능마다 검증 명령(`scripts/features/check.mjs --run --feature <id>`)을, 기능이 coverage를 선언하면 그 coverage(`scripts/features/coverage.mjs --feature <id>`)를 실행한다. 각각은 RUN, PASS나 FAIL, 경과 시간, 그리고 그 단계의 process group 전체를 끝내는 10분 기한을 가진 단계 하나다. `node scripts/features/owners.mjs --list [<paths>]`는 실행하지 않고 고른 것만 출력한다. 어느 기능도 선언하지 않은 file은 아무것도 고르지 않으므로, 새 fixture나 test는 그 동작을 정하는 기능에 선언한다. `scripts/features/owners.test.mjs`는 `make feature-check`에서 실행한다.
