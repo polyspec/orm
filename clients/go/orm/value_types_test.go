@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const valueTypesDocument = `dbspec 1 value_types
@@ -30,6 +31,7 @@ table typed_value {
 // gz codec, select explicit 없는 text column을 쓰고 docs/dbspec.md "Runtime
 // model"의 Go value type으로 다시 읽는다.
 func TestRuntimeValueTypes(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, valueTypesDocument)
 	columns := []string{"seq", "small", "ref", "clock", "day", "address", "packed", "note"}
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {

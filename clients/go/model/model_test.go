@@ -16,6 +16,8 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var tables = []string{"task", "account_project", "composite_membership", "composite_account", "author", "service_member", "service_region", "soft_record", "account", "project", "user", "service"}
@@ -165,6 +167,7 @@ func names(c *orm.Collection[*model.AuthorModel]) string {
 }
 
 func TestConditions(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		svc := f.service.GetSeq()
@@ -241,6 +244,7 @@ func TestConditions(t *testing.T) {
 }
 
 func TestGetMissingReturnsNoRows(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	path := filepath.Join(t.TempDir(), "model.sqlite")
 	db, err := model.Connect("sqlite://"+path, orm.Config{AESKey: "test-aes-key", BlindIndexKey: "test-blind-key"})
 	if err != nil {
@@ -261,6 +265,7 @@ func TestGetMissingReturnsNoRows(t *testing.T) {
 }
 
 func TestJoinsAndRelations(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		author := model.User().
@@ -341,6 +346,7 @@ func dsnOf(t *testing.T, db *orm.DB) string {
 }
 
 func TestColumnsAndSubqueries(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		users := must(model.User().Connect(db).
@@ -417,6 +423,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 }
 
 func TestWrites(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		b := must(model.Author().Connect(db).GetBySeq(f.authors[0].GetSeq()))
@@ -464,6 +471,7 @@ func TestWrites(t *testing.T) {
 }
 
 func TestTransactions(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		boom := errors.New("boom")
 		err := db.Transaction(func() error {
@@ -552,6 +560,7 @@ func TestTransactions(t *testing.T) {
 }
 
 func TestAESRotation(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		email := "person@example.com"

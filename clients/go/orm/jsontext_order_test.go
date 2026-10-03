@@ -10,6 +10,8 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // jsonTextRow is a model for a table with a jsontext column.
@@ -67,6 +69,7 @@ table json_data {
 // back, ensuring that {"b":1,"a":2} stays as {"b":1,"a":2} and not reordered
 // to {"a":2,"b":1}.
 func TestJsonTextOrderPreservation(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, jsonTextSchema)
 	manifest := s
 	targets := map[string]string{

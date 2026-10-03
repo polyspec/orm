@@ -9,6 +9,8 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // keywordRow is a hand-written model for a table and columns named with SQL
@@ -65,6 +67,7 @@ table order {
 // TestSQLKeywordNames creates, reads, groups, updates, and deletes rows of a
 // table whose table and column names are SQL keywords.
 func TestSQLKeywordNames(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, keywordSchema)
 	manifest := s
 	targets := map[string]string{

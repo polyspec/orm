@@ -17,6 +17,8 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	_ "github.com/polyspec/orm/clients/go/orm/pg"
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // schemaSetDatabase는 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 가리키는
@@ -123,9 +125,18 @@ func schemaSet(t *testing.T, driver string) {
 	}
 }
 
-func TestSchemaSetSQLite(t *testing.T)   { schemaSet(t, "sqlite") }
-func TestSchemaSetMySQL(t *testing.T)    { schemaSet(t, "mysql") }
-func TestSchemaSetPostgres(t *testing.T) { schemaSet(t, "postgres") }
+func TestSchemaSetSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSet(t, "sqlite")
+}
+func TestSchemaSetMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSet(t, "mysql")
+}
+func TestSchemaSetPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSet(t, "postgres")
+}
 
 // counted는 실행한 statement 수를 세는 Config다.
 func counted(n *int) orm.Config { return orm.Config{OnQuery: func(orm.Event) { *n++ }} }
@@ -188,9 +199,18 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	}
 }
 
-func TestSchemaSetUnregisteredSQLite(t *testing.T)   { schemaSetUnregistered(t, "sqlite") }
-func TestSchemaSetUnregisteredMySQL(t *testing.T)    { schemaSetUnregistered(t, "mysql") }
-func TestSchemaSetUnregisteredPostgres(t *testing.T) { schemaSetUnregistered(t, "postgres") }
+func TestSchemaSetUnregisteredSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetUnregistered(t, "sqlite")
+}
+func TestSchemaSetUnregisteredMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetUnregistered(t, "mysql")
+}
+func TestSchemaSetUnregisteredPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetUnregistered(t, "postgres")
+}
 
 // schemaSetEditedManifest는 text가 선언한 manifestHash로 hash되지 않는 schema를
 // 확인한다. 그 schema의 설치와 connect는 어떤 statement보다 먼저 CONFIG이고
@@ -235,6 +255,15 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 	}
 }
 
-func TestSchemaSetEditedManifestSQLite(t *testing.T)   { schemaSetEditedManifest(t, "sqlite") }
-func TestSchemaSetEditedManifestMySQL(t *testing.T)    { schemaSetEditedManifest(t, "mysql") }
-func TestSchemaSetEditedManifestPostgres(t *testing.T) { schemaSetEditedManifest(t, "postgres") }
+func TestSchemaSetEditedManifestSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetEditedManifest(t, "sqlite")
+}
+func TestSchemaSetEditedManifestMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetEditedManifest(t, "mysql")
+}
+func TestSchemaSetEditedManifestPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	schemaSetEditedManifest(t, "postgres")
+}

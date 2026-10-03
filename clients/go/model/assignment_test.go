@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGeneratedAssignmentRejectsInvalidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	m := Author()
 	if _, err := m.assign("seq", int64(7)); err != nil {
 		t.Fatal(err)

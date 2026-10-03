@@ -42,10 +42,12 @@ version을 기록한다.
 `<dir>/bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00`을 열고
 자기 임시 디렉터리에 생긴 파일 이름을 확인한다.
 
-각 probe는 `start`, `observed` 값, `result … PASS|FAIL after <elapsed>`를
-기록한다. `go test -v`도 각 subtest와 경과 시간을 출력한다. 각 probe는
-자기 30초 deadline을 가지며 정리 단계도 별도 30초를 가지므로 go test
-binary는 `-timeout 0`으로 실행한다. 연결할 수 없는 서버의 probe는 각각
+각 probe는 `internal/testcase`의 case다. 실행 중에 `RUN <probe>
+deadline=1m0s`, 시작과 각 `observed` 값의 `STEP` 줄, `PASS <probe>
+elapsed=<elapsed>` 또는 `FAIL <probe> elapsed=<elapsed>: <reason>`을
+출력한다. 각 probe는 자기 30초 deadline을 가지며 정리 단계도 별도 30초를
+가지고, 둘을 더한 것이 case deadline이므로 go test binary는 `-timeout 0`으로
+실행한다. 연결할 수 없는 서버의 probe는 각각
 연결 오류로 실패한다. 다른 데이터베이스는 계속 실행하며 summary 줄에
 데이터베이스별 통과·실패 수를 기록한다.
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // writeTenant는 이 case가 쓰는 composite_account의 tenant_id다.
@@ -16,6 +17,7 @@ const writeTenant = 990002
 // 여러 행을 만들고, 고치고, duplication으로 upsert하고, 세고, 지운다. 쓴
 // 행은 모두 지워 database가 처음과 같아진다.
 func TestCoverageModelWriteCycle(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {

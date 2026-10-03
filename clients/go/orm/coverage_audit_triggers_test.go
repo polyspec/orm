@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // featureDatabase는 feature coverage checker가 고른 database와 DSN이다.
@@ -95,6 +96,7 @@ func dropAudit(t *testing.T, raw *sql.DB, driver string) {
 // delete의 operation column에 쓰이며 trigger가 각 version을 item_history에
 // 남기는지 확인한다. 끝나면 설치한 table과 function을 지운다.
 func TestCoverageAuditHistory(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	driver, dsn := featureDatabase(t)
 	raw := openFeatureNative(t, driver, dsn)
 	defer func() {

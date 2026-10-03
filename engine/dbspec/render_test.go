@@ -5,6 +5,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // ddlFile은 tests/dbspec/ddl.json이다. 문서 집합과 Render가 dialect마다 쓰는 statement를
@@ -74,6 +76,7 @@ func parseDDLSet(c ddlCase) ([]*Document, error) {
 }
 
 func TestRenderVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, c := range loadDDL(t).Cases {
 		for _, dialect := range []Dialect{DialectMySQL, DialectPostgres, DialectSQLite} {
 			t.Run(c.ID+"/"+string(dialect), func(t *testing.T) {

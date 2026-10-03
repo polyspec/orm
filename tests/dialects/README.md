@@ -43,10 +43,12 @@ openers keep a DSN query in the file name: it opens
 `modernc.org/sqlite`, PHP PDO, `node:sqlite` and the `sqlite3` shell and
 asserts the file names created in its own temporary directory.
 
-Every probe logs `start`, `observed` values, and `result … PASS|FAIL after
-<elapsed>`; `go test -v` also reports each subtest with its elapsed time.
-Each probe has its own 30-second deadline and its cleanup has another 30
-seconds, so the go test binary runs with `-timeout 0`. A server that cannot
+Every probe is a case of `internal/testcase`: it prints `RUN <probe>
+deadline=1m0s`, a `STEP` line for its start and for each `observed` value,
+and `PASS <probe> elapsed=<elapsed>` or `FAIL <probe> elapsed=<elapsed>:
+<reason>` while the run continues. Each probe has its own 30-second deadline
+and its cleanup has another 30 seconds, which make the case deadline, so the
+go test binary runs with `-timeout 0`. A server that cannot
 be reached fails each of its probes with the connection error; the other
 databases still run and the summary lines report passed and failed counts
 per database.

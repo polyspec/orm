@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // scannedModule creates a module that requires the ORM of this repository,
@@ -56,6 +58,7 @@ func buildScannedModule(t *testing.T) {
 // on a relation getter result is not requested as a model method while the
 // getter does not exist yet.
 func TestGoGenerationIgnoresMethodsOfRelationResults(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 
@@ -83,6 +86,7 @@ func Count(p *model.ProductModel) (int, error) {
 // hand-written files of the output package, such as its tests, are scanned
 // like every other package named by the scan patterns.
 func TestGoGenerationScansHandWrittenFilesOfTheModelPackage(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("model/doc.go", "// Package model holds the generated models.\npackage model\n")
 	write("model/price_test.go", `package model
@@ -103,6 +107,7 @@ func TestPrice(t *testing.T) { _ = Product().GtPrice(1) }
 // whose name equals a model constructor but belongs to another package does not
 // start a model chain.
 func TestGoGenerationIgnoresConstructorNamesOfOtherPackages(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("other/other.go", `package other
 
@@ -139,6 +144,7 @@ func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
 // TestGoRelationGetterReportsMismatch는 generated relation getter가 type
 // assertion 실패를 버리지 않고 orm.RelatedAs로 error와 함께 돌려주는지 확인한다.
 func TestGoRelationGetterReportsMismatch(t *testing.T) {
+	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)
 	write("example/example.go", `package example
 

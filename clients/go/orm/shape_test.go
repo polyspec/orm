@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/ir"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestShapeCoversEveryField mutates every reachable field of ir.Request (through
@@ -13,6 +14,7 @@ import (
 // and requires each mutation to change the shape key and to differ from every
 // other mutation. A field added to the IR that shapeKey does not walk fails here.
 func TestShapeCoversEveryField(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	base := shapeKey(&ir.Request{})
 	seen := map[uint64]string{}
 	jsons := map[string]string{}
@@ -87,6 +89,7 @@ func eachMutation(v reflect.Value, path string, depth int, fn func(string)) {
 }
 
 func TestShapeIgnoresParamValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	a := &request{}
 	b := &request{}
 	for _, r := range []*request{a, b} {

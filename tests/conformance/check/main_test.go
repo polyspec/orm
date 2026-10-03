@@ -6,9 +6,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestRecordRequiresFourEqualOutputs(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	root := t.TempDir()
 	directory := filepath.Join(root, "tests", "conformance")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -82,6 +85,7 @@ func assertFileEquals(t *testing.T, path string, want []byte) {
 }
 
 func TestCompareRejectsUndeclaredDialectExpectation(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	root := t.TempDir()
 	directory := filepath.Join(root, "tests", "conformance")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -118,6 +122,7 @@ func TestCompareRejectsUndeclaredDialectExpectation(t *testing.T) {
 }
 
 func TestLoadRejectsIncompleteOrDuplicateVectorSets(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	root := t.TempDir()
 	directory := filepath.Join(root, "tests", "conformance")
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -154,6 +159,7 @@ func TestLoadRejectsIncompleteOrDuplicateVectorSets(t *testing.T) {
 }
 
 func TestCompleteLanguageEvidence(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
 	all := []string{}
 	for _, name := range []string{"go", "php", "rust", "typescript"} {
@@ -179,6 +185,7 @@ func TestCompleteLanguageEvidence(t *testing.T) {
 }
 
 func TestRepeatedEvidenceRejectsChangedOutput(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.json")
 	second := filepath.Join(dir, "second.json")
@@ -209,6 +216,7 @@ func TestRepeatedEvidenceRejectsChangedOutput(t *testing.T) {
 }
 
 func TestExactNumericConformance(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, test := range []struct {
 		left, right string
 		equal       bool
@@ -228,6 +236,7 @@ func TestExactNumericConformance(t *testing.T) {
 }
 
 func TestDuplicateJSONKeysFail(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, raw := range []string{
 		`{"vector":{"result":1},"vector":{"result":2}}`,
 		`{"vector":{"result":{"field":1,"field":2}}}`,
@@ -239,6 +248,7 @@ func TestDuplicateJSONKeysFail(t *testing.T) {
 }
 
 func TestRunRemovesStaleVerifiedOutputs(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
 	for _, language := range requiredLanguages {
 		if err := os.WriteFile(filepath.Join(dir, language+".json"), []byte(`{}`), 0o600); err != nil {
@@ -256,12 +266,14 @@ func TestRunRemovesStaleVerifiedOutputs(t *testing.T) {
 }
 
 func TestRunnerDeadlineFails(t *testing.T) {
-	if err := runCommand(t.TempDir(), "", 20*time.Millisecond, "/bin/sleep", "1"); err == nil {
+	c := testcase.Start(t, testcase.Process)
+	if err := runCommand(c, t.TempDir(), "", 20*time.Millisecond, "/bin/sleep", "1"); err == nil {
 		t.Fatal("timed-out runner reported success")
 	}
 }
 
 func TestCommandLogDoesNotExposeDSN(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, flag := range []string{"--dsn", "-dsn"} {
 		got := displayCommand([]string{"runner", flag, "mysql://user:secret@db/test", "bench.dbs"})
 		want := "runner " + flag + " <redacted> bench.dbs"

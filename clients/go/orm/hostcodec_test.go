@@ -3,9 +3,12 @@ package orm
 import (
 	"bytes"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestHostAESUsesAuthenticatedVersionTwoEnvelope(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	stored, err := HostEncode("member@example.test", []string{"aes"}, "key-v1")
 	if err != nil {
 		t.Fatal(err)
@@ -35,6 +38,7 @@ func TestHostAESUsesAuthenticatedVersionTwoEnvelope(t *testing.T) {
 }
 
 func TestHostAESReadsSharedFixedVector(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	got, err := hostDecode([]byte("4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24"), []string{"aes", "hex"}, "bench-salt")
 	if err != nil || got != "user42@example.com" {
 		t.Fatalf("fixed vector: %#v, %v", got, err)
@@ -42,6 +46,7 @@ func TestHostAESReadsSharedFixedVector(t *testing.T) {
 }
 
 func TestBlindIndexIsStableAndKeyed(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	a, err := BlindIndex("member@example.test", "blind-key")
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +65,7 @@ func TestBlindIndexIsStableAndKeyed(t *testing.T) {
 }
 
 func TestHostEncodingRejectsUnsupportedInput(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, input := range []any{int64(7), true, struct{ Text string }{Text: "seven"}} {
 		if _, err := HostEncode(input, []string{"aes"}, "key"); ErrorCode(err) != CodeCodecEncode {
 			t.Errorf("HostEncode(%T) error = %v", input, err)
@@ -77,6 +83,7 @@ func TestHostEncodingRejectsUnsupportedInput(t *testing.T) {
 }
 
 func TestHostAESDecodesByStoredVersion(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	oldValue, err := HostEncode("old@example.test", []string{"aes"}, "old-key")
 	if err != nil {
 		t.Fatal(err)

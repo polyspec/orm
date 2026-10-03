@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var errRollbackFaultCallback = errors.New("rollback fault callback failed")
@@ -60,6 +61,15 @@ func rollbackFault(t *testing.T, driver string) {
 	}
 }
 
-func TestRollbackFaultSQLite(t *testing.T)   { rollbackFault(t, "sqlite") }
-func TestRollbackFaultMySQL(t *testing.T)    { rollbackFault(t, "mysql") }
-func TestRollbackFaultPostgres(t *testing.T) { rollbackFault(t, "postgres") }
+func TestRollbackFaultSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "sqlite")
+}
+func TestRollbackFaultMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "mysql")
+}
+func TestRollbackFaultPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	rollbackFault(t, "postgres")
+}

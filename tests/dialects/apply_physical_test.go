@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // planCaseText는 tests/dbspec/plans.json case의 source와 plan text다.
@@ -164,6 +165,7 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 // representative plan의 모든 step 뒤 중단에서 recover와 rollback, 중단된 rollback의
 // 계속, 그사이 쓴 row를 지키는 rollback과 다시 적용, null 검사, finalize.
 func TestApplyChain(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -427,17 +429,7 @@ func TestApplyChain(t *testing.T) {
 				e.Exec(connectionRules[db]...)
 				s.run(e, db)
 			}}
-			t.Run(probe.ID, func(t *testing.T) {
-				begin := time.Now()
-				t.Logf("start %s", probe.ID)
-				_, err := runWithDeadline(servers, probe, index)
-				elapsed := time.Since(begin).Round(time.Millisecond)
-				if err != nil {
-					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-					return
-				}
-				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
-			})
+			t.Run(probe.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })
 		}
 	}
 	t.Logf("apply runs: %d", index)

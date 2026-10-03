@@ -8,6 +8,7 @@ import (
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // testModel은 dbspec document 하나의 runtime model이다.
@@ -78,6 +79,7 @@ func intp(i int) *int { return &i }
 // default select set은 select explicit column만 뺀다. text, bytes, codec
 // column은 스스로 빠지지 않는다.
 func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
 	if err != nil {
 		t.Fatal(err)
@@ -93,6 +95,7 @@ func TestDefaultSelectSetLeavesOutOnlySelectExplicit(t *testing.T) {
 
 // i16 field는 i16 value type으로 읽히고 plus를 받는다.
 func TestI16FieldPlansAsI16(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p, err := compileRuntime(t, dialect.MySQL{}, &ir.Request{Kind: "all", Query: ir.Query{Entity: "note"}})
 	if err != nil {
 		t.Fatal(err)
@@ -110,6 +113,7 @@ func TestI16FieldPlansAsI16(t *testing.T) {
 // clock은 millisecond만 가지므로 `default now` column에는 executor의
 // microsecond clock을 now slot으로 쓴다(docs/protocol.md).
 func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, d := range []dialect.Dialect{dialect.MySQL{}, dialect.Postgres{}, dialect.SQLite{}} {
 		p, err := compileRuntime(t, d, &ir.Request{Kind: "insert", Query: ir.Query{Entity: "note"}, Set: []ir.Assign{{Column: "rank", P: intp(0)}, {Column: "body", P: intp(1)}}, NParams: 2})
 		if err != nil {
@@ -135,6 +139,7 @@ func TestInsertLeavesDefaultsToTheDatabase(t *testing.T) {
 // audit table의 insert, update, soft delete는 operation column에 operation
 // slot을 쓰고, 사용자는 그 column을 쓰지 못한다.
 func TestAuditedWritesCarryTheOperationSlot(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	where := &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: intp(0)}}}}
 	operation := func(p *plan.Plan) int {
 		n := 0

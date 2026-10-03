@@ -10,11 +10,13 @@ import (
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestMySQLInstallInsideTransaction rejects a MySQL install in a transaction,
 // where the implicit commit of schema statements would end the transaction.
 func TestMySQLInstallInsideTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	dsn := requireDSN(t, "ORM_TEST_MYSQL_DSN")
 	s := fixtureSchema(t, "zone")
 	manifest := s
@@ -50,6 +52,7 @@ func TestMySQLInstallInsideTransaction(t *testing.T) {
 // packages run in parallel against the databases that ORM_TEST_MYSQL_DSN and
 // ORM_TEST_POSTGRES_DSN name.
 func TestSchemaEmpty(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
@@ -100,6 +103,7 @@ func dbName(t *testing.T, dsn string) string {
 // dialect로 render한 statement를 적용하는지 확인한다. 두 번째 install은 아무것도
 // 바꾸지 않고, set의 table이 일부만 있으면 CONFIG다.
 func TestInstallAppliesRenderedStatements(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "audit")
 	m, diagnostics := runtimemodel.Load(s.Text)
 	if len(diagnostics) > 0 {

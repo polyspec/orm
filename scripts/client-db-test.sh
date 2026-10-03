@@ -15,8 +15,8 @@ cd "$ROOT"
 LANGS=,${ORM_CLIENT_DB_LANGS:-go,php,rust,typescript},
 
 case "$LANGS" in *,go,*)
-  go test -count=1 ./clients/go/...
-  go test -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
+  go test -v -timeout 0 -count=1 ./clients/go/...
+  go test -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
 esac
 case "$LANGS" in *,php,*)
   php clients/php/tests/model_test.php

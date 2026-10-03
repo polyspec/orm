@@ -9,6 +9,7 @@ import (
 
 	"github.com/polyspec/orm/engine/plan"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // benchModel은 schema/bench.dbs의 runtime model이다.
@@ -45,6 +46,7 @@ func compile(t *testing.T, e *Engine, irBody string) *plan.Plan {
 }
 
 func TestSelectAll(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author",
 	 "where":{"items":[
@@ -97,6 +99,7 @@ func TestSelectAll(t *testing.T) {
 }
 
 func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	m := benchModel(t)
 	for _, tc := range []struct {
 		dialect string
@@ -121,6 +124,7 @@ func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
 }
 
 func TestRowLock(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"author","lock":"update","limit":{"offset":0,"count":1}`)
 	if !strings.HasSuffix(p.Steps[0].SQL, " LIMIT 0, 1 FOR UPDATE") {
@@ -161,6 +165,7 @@ func mustCompileError(t *testing.T, e *Engine, input string) error {
 }
 
 func TestJoinAndPlacement(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"count","entity":"author",
 	 "joins":[{"rel":"service_region","kind":"left","left":"service_region_seq","right":"seq","query":{"entity":"service_region",
@@ -180,6 +185,7 @@ func TestJoinAndPlacement(t *testing.T) {
 }
 
 func TestWrites(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"author","set":[
 	  {"column":"name","p":0},{"column":"aes_hex_email","p":1},{"column":"user_seq","p":2},
@@ -211,6 +217,7 @@ func TestWrites(t *testing.T) {
 }
 
 func TestUpsertAndCascade(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"insert","entity":"author","set":[{"column":"uuid","p":0},{"column":"name","p":1},{"column":"user_seq","p":2},{"column":"service_seq","p":2},{"column":"service_region_seq","p":2},{"column":"service_member_seq","p":2},{"column":"start_dt","p":3},{"column":"end_dt","p":3}],
 	  "on_duplicate":[{"column":"name","p":1},{"column":"read_count","plus_p":4}]`)
@@ -250,6 +257,7 @@ func TestUpsertAndCascade(t *testing.T) {
 }
 
 func TestAggregates(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	cases := map[string]string{
 		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`:                                                                                           "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
@@ -292,6 +300,7 @@ func testEngineFor(t *testing.T, dialect string) *Engine {
 }
 
 func TestPostgresAndSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	pg := testEngineFor(t, "postgres")
 	p := compile(t, pg, `"kind":"all","entity":"author","columns":{"mode":"none"},"n_params":3,
 	 "where":{"items":[{"pred":{"column":"name","op":"contains","p":0}},{"pred":{"conn":"and","column":"name","op":"contains_binary","p":1}},{"pred":{"conn":"and","column":"aes_hex_email","op":"eq","p":2}}]},
@@ -348,6 +357,7 @@ func TestPostgresAndSQLite(t *testing.T) {
 // Joins nest by relation name and aliases are path-derived, so two levels of the
 // same target stay distinct and each keeps its own projection namespace.
 func TestJoinAliasNamespaces(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","expr":{"author_name":{"sql":"{name}"}}},"n_params":1,
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
@@ -406,6 +416,7 @@ func TestJoinAliasNamespaces(t *testing.T) {
 }
 
 func TestCompileErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	h := e.M.ManifestHash
 	cases := map[string]string{
@@ -450,6 +461,7 @@ func BenchmarkCompileList(b *testing.B) {
 }
 
 func TestRelations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	// root author → one user (if_parent, flatten) ; join service → many modules (key_by, limit_per_parent, nested one service)
 	p := compile(t, e, `"kind":"all","entity":"author",
@@ -531,6 +543,7 @@ func TestRelations(t *testing.T) {
 // 이어 composite_account에서 composite_membership을 (tenant_id, account_id)로
 // 함께 읽는지, 그리고 잘못된 key 목록을 거절하는지 확인한다.
 func TestCompositeRelationKeys(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"all","entity":"composite_account","relations":[{"rel":"memberships","kind":"many","keys":[{"left":"tenant_id","right":"tenant_id"},{"left":"account_id","right":"account_id"}],"query":{"entity":"composite_membership"}}]`)
 	if len(p.Steps) != 2 || p.Steps[1].Parent == nil || len(p.Steps[1].Parent.Keys) != 2 {
@@ -566,6 +579,7 @@ func TestCompositeRelationKeys(t *testing.T) {
 // TestAllColumnsSelectAESVersionOnce는 모든 column을 고른 node가 AES key
 // version column을 한 번만 읽고, 그 column을 version으로 표시하는지 확인한다.
 func TestAllColumnsSelectAESVersionOnce(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"all"},
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]}`)

@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	manifest := sampleModel(t)
 	out := filepath.Join(t.TempDir(), "model")
 	if err := Generate(Options{Model: manifest, OutputDir: out}); err != nil {
@@ -21,6 +23,7 @@ func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 }
 
 func TestGenerateUsesRequestedGoPackageName(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	manifest := sampleModel(t)
 	out := t.TempDir()
 	if err := Generate(Options{Model: manifest, OutputDir: out, PackageName: "storage"}); err != nil {

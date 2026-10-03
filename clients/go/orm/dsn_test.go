@@ -1,8 +1,13 @@
 package orm
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
+)
 
 func TestParseDSN(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	tests := []struct {
 		name, input, driver, native, zone string
 	}{
@@ -25,6 +30,7 @@ func TestParseDSN(t *testing.T) {
 }
 
 func TestParseDSNRejectsInvalidInput(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, input := range []string{
 		"mysql://root@localhost",
 		"postgres://root@localhost",

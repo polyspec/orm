@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 var clockColumns = []string{"seq", "label", "created_ts"}
@@ -82,9 +83,18 @@ func clockMicroseconds(t *testing.T, driver string) {
 	}
 }
 
-func TestClockMicrosecondsSQLite(t *testing.T)   { clockMicroseconds(t, "sqlite") }
-func TestClockMicrosecondsMySQL(t *testing.T)    { clockMicroseconds(t, "mysql") }
-func TestClockMicrosecondsPostgres(t *testing.T) { clockMicroseconds(t, "postgres") }
+func TestClockMicrosecondsSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "sqlite")
+}
+func TestClockMicrosecondsMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "mysql")
+}
+func TestClockMicrosecondsPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockMicroseconds(t, "postgres")
+}
 
 // openClockMark은 clock_mark document를 설치하고 DSN과 model 생성 함수를 돌려준다.
 func openClockMark(t *testing.T, driver string) (string, *orm.DB, func() *orm.Core) {
@@ -198,11 +208,27 @@ func clockNowCondition(t *testing.T, driver string) {
 	}
 }
 
-func TestClockSoftDeleteMicrosecondsSQLite(t *testing.T) { clockSoftDeleteMicroseconds(t, "sqlite") }
-func TestClockSoftDeleteMicrosecondsMySQL(t *testing.T)  { clockSoftDeleteMicroseconds(t, "mysql") }
+func TestClockSoftDeleteMicrosecondsSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockSoftDeleteMicroseconds(t, "sqlite")
+}
+func TestClockSoftDeleteMicrosecondsMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockSoftDeleteMicroseconds(t, "mysql")
+}
 func TestClockSoftDeleteMicrosecondsPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	clockSoftDeleteMicroseconds(t, "postgres")
 }
-func TestClockNowConditionSQLite(t *testing.T)   { clockNowCondition(t, "sqlite") }
-func TestClockNowConditionMySQL(t *testing.T)    { clockNowCondition(t, "mysql") }
-func TestClockNowConditionPostgres(t *testing.T) { clockNowCondition(t, "postgres") }
+func TestClockNowConditionSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "sqlite")
+}
+func TestClockNowConditionMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "mysql")
+}
+func TestClockNowConditionPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	clockNowCondition(t, "postgres")
+}

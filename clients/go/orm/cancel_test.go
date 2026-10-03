@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestWithContextCancels cancels the context of a connection handle while a
 // statement is running: the statement returns CANCELED, and the connection the
 // handle was derived from stays usable.
 func TestWithContextCancels(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	slow := map[string]string{
 		"mysql":    "SLEEP(5) = 0",
 		"postgres": "pg_sleep(5) IS NULL",
@@ -82,6 +84,7 @@ func TestWithContextCancels(t *testing.T) {
 // TestWithContextCancelsTransaction cancels a transaction started on a context
 // handle: the transaction fails with CANCELED and its writes are rolled back.
 func TestWithContextCancelsTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"sqlite":   "sqlite://" + filepath.Join(t.TempDir(), "cancel-tx.sqlite"),
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
@@ -135,6 +138,7 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 // driver가 취소된 statement의 connection을 닫으므로 transaction은 취소를
 // 유지한 ROLLBACK을 보고한다.
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	targets := map[string]string{
 		"mysql":    os.Getenv("ORM_TEST_MYSQL_DSN"),
 		"postgres": os.Getenv("ORM_TEST_POSTGRES_DSN"),
@@ -244,6 +248,7 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 // TestRootIdentifiesTheConnection checks that handles derived from one
 // connection report the same connection, so callers can compare them.
 func TestRootIdentifiesTheConnection(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "root.sqlite"), s, orm.Config{})
 	if err != nil {

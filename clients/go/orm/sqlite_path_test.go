@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // sqlitePathCase는 tests/dsn/sqlite-paths.json의 case 하나다.
@@ -22,6 +23,7 @@ type sqlitePathCase struct {
 // TestSQLitePathCases는 공유 case의 DSN path가 percent-decode한 file을 여는지,
 // 잘못된 path가 CONFIG인지 확인한다(docs/config.md "Runtime connection").
 func TestSQLitePathCases(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "tests", "dsn", "sqlite-paths.json"))
 	if err != nil {
 		t.Fatal(err)

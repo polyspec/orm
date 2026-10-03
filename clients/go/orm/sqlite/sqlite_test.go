@@ -9,9 +9,11 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestMapErrPreservesSQLiteConstraintContract(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := sql.Open("sqlite", "file:orm-sqlite-error-contract?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatal(err)

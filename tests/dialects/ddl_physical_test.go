@@ -5,6 +5,7 @@ package dialects
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // ddlVectors is tests/dbspec/ddl.json (docs/dialects.md "Rendered
@@ -48,6 +51,7 @@ var connectionRules = map[string][]string{
 // tests/dbspec/ddl.json to its own MySQL database, PostgreSQL schema and
 // SQLite file of TEST_ENV, then runs the vector's behavior steps.
 func TestDDLVectors(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -107,18 +111,7 @@ func TestDDLVectors(t *testing.T) {
 			}
 			index++
 			t.Run(probe.ID, func(t *testing.T) {
-				begin := time.Now()
-				t.Logf("start %s: %d statements, %d behavior steps", probe.ID, len(statements), len(steps))
-				notes, err := runWithDeadline(servers, probe, index)
-				for _, note := range notes {
-					t.Logf("observed %s: %s", probe.ID, note)
-				}
-				elapsed := time.Since(begin).Round(time.Millisecond)
-				if err != nil {
-					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-					return
-				}
-				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
+				runProbeCase(t, servers, probe, index, fmt.Sprintf("%d statements, %d behavior steps", len(statements), len(steps)))
 			})
 		}
 	}

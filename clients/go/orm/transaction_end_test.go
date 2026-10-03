@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // connectBench는 schema/bench.dbs의 manifest로 dsn에 연결한다.
@@ -51,6 +52,7 @@ func recovered(fn func()) (value any) {
 // RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
 // 돌려주는지 확인한다. 풀리지 않은 named lock은 pool connection에 남는다.
 func TestTransactionReportsFailedLockRelease(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN is required; database tests never skip")
@@ -96,6 +98,7 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 // 오류, panic, 끝나 버린 callback, 실패한 begin이 그 오류를 함께 보고하는지
 // 확인한다.
 func TestTransactionReportsFailedRollback(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "rollback.sqlite"))
 
@@ -140,6 +143,7 @@ func TestTransactionReportsFailedRollback(t *testing.T) {
 // PRAGMA가 실패하면 commit과 rollback이 그 오류를 돌려주는지 확인한다. 되돌리지
 // 못한 query_only는 connection에 남는다.
 func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "mode.sqlite"))
 	modeRejected := injectedFailure{statement: func(query string) bool { return query == "PRAGMA query_only = 0" }}
@@ -162,6 +166,7 @@ func TestTransactionReportsFailedSQLiteModeReset(t *testing.T) {
 // 끝나 버린 callback이 그 오류를 함께 보고하고 성공한 callback은 실패한
 // RELEASE SAVEPOINT를 돌려주는지 확인한다.
 func TestSavepointReportsFailedEnd(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")
 	db := connectBench(t, "sqlite://"+filepath.Join(t.TempDir(), "savepoint.sqlite"))
 	rejected := func(prefix string) injectedFailure {

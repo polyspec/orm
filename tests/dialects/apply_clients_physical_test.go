@@ -17,10 +17,16 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // runnerDeadline은 apply runner process 하나의 기한이다.
 const runnerDeadline = 2 * time.Minute
+
+// pairDeadline은 순서쌍 case 하나의 기한이다. 한 case는 runner process를 많아야 세 번
+// (stop, apply, recover) 실행하고, database를 만들고 history와 schema를 읽고 지우는 데
+// 1분을 더 준다.
+const pairDeadline = 3*runnerDeadline + time.Minute
 
 // applyClients는 tests/dbspec/apply의 runner를 가진 client다.
 var applyClients = []string{"go", "php", "typescript", "rust"}
@@ -32,6 +38,7 @@ var applyClients = []string{"go", "php", "typescript", "rust"}
 // 중간에 멈춘 apply를 B가 interrupted로 거부하고 recover로 끝내야 하며, 다시 멈춘
 // apply를 B가 rollback으로 되돌려야 한다.
 func TestApplyChainAcrossClients(t *testing.T) {
+	testcase.Group(t)
 	rustRunner := os.Getenv("DBSPEC_APPLY_RUST")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if rustRunner == "" || mysqlDSN == "" || postgresDSN == "" {
@@ -48,9 +55,13 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	}
 	vectors := filepath.Join(root, "tests", "dbspec", "plans.json")
 	goRunner := filepath.Join(t.TempDir(), "apply-go")
-	build := exec.Command("go", "build", "-o", goRunner, "./tests/dbspec/apply/go")
+	// Go runner build는 testcase.Process 기한을 가진다(build cache가 비면 몇 분 걸린다).
+	building, cancelBuild := context.WithTimeout(context.Background(), testcase.Process)
+	build := exec.CommandContext(building, "go", "build", "-o", goRunner, "./tests/dbspec/apply/go")
 	build.Dir = root
-	if out, err := build.CombinedOutput(); err != nil {
+	out, err := build.CombinedOutput()
+	cancelBuild()
+	if err != nil {
 		t.Fatalf("build the Go apply runner: %v\n%s", err, out)
 	}
 	runners := map[string][]string{
@@ -67,7 +78,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
 
 	// step은 client의 runner로 action을 실행하고 결과 줄이 want인지 확인한다.
-	step := func(t *testing.T, client, action, dialect, uri, want string) {
+	step := func(t *testing.T, c *testcase.Case, client, action, dialect, uri, want string) {
 		t.Helper()
 		begin := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
@@ -85,15 +96,15 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		if got := strings.TrimSuffix(stdout.String(), "\n"); got != want {
 			t.Fatalf("%s %s: %q after %s, want %q\n%s", client, action, got, elapsed, want, stderr.String())
 		}
-		t.Logf("%s %s: %s after %s", client, action, want, elapsed)
+		c.Step("%s %s: %s after %s", client, action, want, elapsed)
 	}
 	runs := 0
-	pair := func(id, dialect string, body func(t *testing.T, uri string)) {
+	pair := func(id, dialect string, body func(t *testing.T, c *testcase.Case, uri string)) {
 		runs++
 		name := fmt.Sprintf("dbspec_pair_%s_%02d", token, runs)
 		t.Run(id, func(t *testing.T) {
-			begin := time.Now()
-			t.Logf("start %s on %s", id, name)
+			c := testcase.Start(t, pairDeadline)
+			c.Step("database %s", name)
 			uri, cleanup := compareDatabase(t, dialect, name, mysqlDSN, postgresDSN)
 			defer cleanup()
 			if dialect == "sqlite" {
@@ -102,12 +113,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			body(t, uri)
-			result := "PASS"
-			if t.Failed() {
-				result = "FAIL"
-			}
-			t.Logf("result %s: %s after %s", id, result, time.Since(begin).Round(time.Millisecond))
+			body(t, c, uri)
 		})
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
@@ -117,9 +123,9 @@ func TestApplyChainAcrossClients(t *testing.T) {
 				if a == b {
 					continue
 				}
-				pair(dialect+".chain."+a+"-"+b, dialect, func(t *testing.T, uri string) {
-					step(t, a, "apply-first", dialect, uri, "ok")
-					step(t, b, "apply", dialect, uri, "ok")
+				pair(dialect+".chain."+a+"-"+b, dialect, func(t *testing.T, c *testcase.Case, uri string) {
+					step(t, c, a, "apply-first", dialect, uri, "ok")
+					step(t, c, b, "apply", dialect, uri, "ok")
 					checkChainState(t, dialect, uri, want, target.SchemaText)
 				})
 			}
@@ -137,17 +143,17 @@ func TestApplyChainAcrossClients(t *testing.T) {
 				if a == b {
 					continue
 				}
-				pair(dialect+".recover."+a+"-"+b, dialect, func(t *testing.T, uri string) {
-					step(t, a, "stop", dialect, uri, "stopped")
+				pair(dialect+".recover."+a+"-"+b, dialect, func(t *testing.T, c *testcase.Case, uri string) {
+					step(t, c, a, "stop", dialect, uri, "stopped")
 					checkHistory(t, dialect, uri, running)
-					step(t, b, "apply", dialect, uri, "error interrupted")
-					step(t, b, "recover", dialect, uri, "ok")
+					step(t, c, b, "apply", dialect, uri, "error interrupted")
+					step(t, c, b, "recover", dialect, uri, "ok")
 					checkChainState(t, dialect, uri, want, target.SchemaText)
 				})
-				pair(dialect+".rollback."+a+"-"+b, dialect, func(t *testing.T, uri string) {
-					step(t, a, "stop", dialect, uri, "stopped")
+				pair(dialect+".rollback."+a+"-"+b, dialect, func(t *testing.T, c *testcase.Case, uri string) {
+					step(t, c, a, "stop", dialect, uri, "stopped")
 					checkHistory(t, dialect, uri, running)
-					step(t, b, "rollback", dialect, uri, "ok")
+					step(t, c, b, "rollback", dialect, uri, "ok")
 					checkChainState(t, dialect, uri, first, firstTarget.SchemaText)
 				})
 			}

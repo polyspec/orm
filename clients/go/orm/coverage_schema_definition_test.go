@@ -11,6 +11,7 @@ import (
 
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // schemaDocuments는 fixture input이 repository root 기준으로 나열한 dbspec
@@ -53,6 +54,7 @@ func schemaDocuments(t *testing.T, c fixtureCase) ([]string, []*dbspec.Document)
 // TestCoverageDbspecEmitRoundTrip는 각 document를 parse해 emit하면 원문이
 // byte 단위로 그대로인지 확인한다.
 func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_emit_round_trip", "parse_emit")
 	var expected struct {
 		Identical bool `json:"identical"`
@@ -69,6 +71,7 @@ func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
 // TestCoverageDbspecManifestHash는 document set의 manifest hash가 fixture의
 // 값인지 확인한다.
 func TestCoverageDbspecManifestHash(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_manifest_hash", "manifest")
 	var expected struct {
 		ManifestHash string `json:"manifest_hash"`
@@ -87,6 +90,7 @@ func TestCoverageDbspecManifestHash(t *testing.T) {
 // TestCoverageDbspecRenderDdl는 document set을 각 dialect로 render한
 // statement가 fixture의 배열과 같은지 확인한다.
 func TestCoverageDbspecRenderDdl(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_render_ddl", "render")
 	var expected struct {
 		MySQL    []string `json:"mysql"`

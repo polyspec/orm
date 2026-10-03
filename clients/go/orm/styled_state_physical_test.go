@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const styledStateSchema = `dbspec 1 styled_state
@@ -33,6 +34,7 @@ table styled_case {
 `
 
 func TestStyledFixturePhysicalCells(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	data, err := os.ReadFile("../../../contracts/fixtures/styled_column_states.json")
 	if err != nil {
 		t.Fatal(err)

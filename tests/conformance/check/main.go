@@ -30,6 +30,28 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
+)
+
+// runner와 build 명령의 기한이다.
+const (
+	// rustBuildDeadline: orm-tests의 conformance binary를 release로 build한다. target이
+	// 비었으면 의존성 전체를 compile하므로 30분을 준다.
+	rustBuildDeadline = 30 * time.Minute
+	// typescriptBuildDeadline: TypeScript client를 tsc로 build한다.
+	typescriptBuildDeadline = 10 * time.Minute
+	// runnerDeadline: runner process 하나가 모든 vector를 실행한다. Go runner는 `go run`
+	// compile을 포함한다.
+	runnerDeadline = 10 * time.Minute
+	// stateDeadline: database state digest와 counter를 읽고 되돌리는 일 하나의 기한이다
+	// (state.go의 2분과 counters.go의 30초).
+	stateDeadline = 2 * time.Minute
+	// languageDeadline: 한 언어의 case는 runner를 두 번 실행하고, 실행마다 state를 앞뒤로
+	// 읽고 counter를 되돌린다.
+	languageDeadline = 2*runnerDeadline + 6*stateDeadline
+	// compareDeadline: 네 output을 vector 기대값과 비교하는 memory 안의 계산이다.
+	compareDeadline = testcase.Compute
 )
 
 type vec struct {
@@ -95,15 +117,17 @@ func main() {
 		must(removeVerifiedOutputs(out))
 		pending, err := os.MkdirTemp(out, ".run-")
 		must(err)
-		must(buildRunners(root))
+		must(testcase.Run("conformance/"+driver+"/build", rustBuildDeadline+typescriptBuildDeadline, func(c *testcase.Case) error {
+			return buildRunners(c, root)
+		}))
 		stateDB, err := openStateDatabase(driver, dsn)
 		must(err)
 		for _, language := range requiredLanguages {
 			first := filepath.Join(pending, language+".json")
 			repeated := filepath.Join(pending, language+".repeat.json")
-			must(runAndCheckState(stateDB, driver, language, "first", func() error { return runOne(root, first, language) }))
-			must(runAndCheckState(stateDB, driver, language, "repeated", func() error { return runOne(root, repeated, language) }))
-			must(compareRepeatedEvidence(first, repeated))
+			must(testcase.Run("conformance/"+driver+"/"+language, languageDeadline, func(c *testcase.Case) error {
+				return runLanguage(c, stateDB, root, language, first, repeated)
+			}))
 			must(os.Remove(repeated))
 		}
 		must(stateDB.Close())
@@ -111,9 +135,12 @@ func main() {
 		for _, l := range requiredLanguages {
 			files = append(files, filepath.Join(pending, l+".json"))
 		}
-		if compare(root, files) != 0 {
-			must(fmt.Errorf("conformance comparison failed; output retained in %s", pending))
-		}
+		must(testcase.Run("conformance/"+driver+"/compare", compareDeadline, func(*testcase.Case) error {
+			if compare(root, files) != 0 {
+				return fmt.Errorf("conformance comparison failed; output retained in %s", pending)
+			}
+			return nil
+		}))
 		for _, language := range requiredLanguages {
 			must(os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")))
 		}
@@ -178,22 +205,37 @@ func must(err error) {
 	}
 }
 
-func buildRunners(root string) error {
-	if err := runCommand(root, "", 30*time.Minute, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+// runLanguage는 한 언어의 runner를 두 번 실행해 매번 database state가 그대로인지 확인하고
+// 두 output이 같은지 비교한다.
+func runLanguage(c *testcase.Case, stateDB *sql.DB, root, language, first, repeated string) error {
+	c.Step("first run")
+	if err := runAndCheckState(stateDB, driver, language, "first", func() error { return runOne(c, root, first, language) }); err != nil {
 		return err
 	}
-	return runCommand(root, "", 10*time.Minute, "npm", "run", "build", "--prefix", "clients/typescript")
+	c.Step("repeated run")
+	if err := runAndCheckState(stateDB, driver, language, "repeated", func() error { return runOne(c, root, repeated, language) }); err != nil {
+		return err
+	}
+	c.Step("compare the two outputs")
+	return compareRepeatedEvidence(first, repeated)
 }
 
-func runOne(root, output, language string) error {
+func buildRunners(c *testcase.Case, root string) error {
+	if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--release", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+		return err
+	}
+	return runCommand(c, root, "", typescriptBuildDeadline, "npm", "run", "build", "--prefix", "clients/typescript")
+}
+
+func runOne(c *testcase.Case, root, output, language string) error {
 	flags := []string{"--dsn", dsn}
 	switch language {
 	case "go":
-		return runCommand(root, output, 10*time.Minute, "go", "run", "./tests/conformance/runner_go", "-dsn", dsn)
+		return runCommand(c, root, output, runnerDeadline, "go", "run", "./tests/conformance/runner_go", "-dsn", dsn)
 	case "php":
-		return runCommand(root, output, 10*time.Minute, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
+		return runCommand(c, root, output, runnerDeadline, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
 	case "typescript":
-		return runCommand(root, output, 10*time.Minute, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
+		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
 	case "rust":
 		target := os.Getenv("CARGO_TARGET_DIR")
 		if target == "" {
@@ -201,26 +243,31 @@ func runOne(root, output, language string) error {
 		} else if !filepath.IsAbs(target) {
 			target = filepath.Join(root, target)
 		}
-		return runCommand(root, output, 10*time.Minute, filepath.Join(target, "release", "conformance"), flags...)
+		return runCommand(c, root, output, runnerDeadline, filepath.Join(target, "release", "conformance"), flags...)
 	default:
 		return fmt.Errorf("unsupported language %q", language)
 	}
 }
 
-func runCommand(root, output string, timeout time.Duration, name string, args ...string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+// runCommand는 명령 하나를 timeout과 case c의 기한 가운데 먼저 오는 것 안에 실행하고, 시작을
+// c의 단계로 출력한다.
+func runCommand(c *testcase.Case, root, output string, timeout time.Duration, name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(c.Context(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = root
-	cmd.Stderr = os.Stderr
+	// 명령의 진행 출력(cargo의 Compiling 줄, runner의 log)은 경과 시간과 함께 case의 단계로 보인다.
+	steps := c.StepWriter()
+	cmd.Stderr = steps
 	var buf bytes.Buffer
 	if output == "" {
-		cmd.Stdout = os.Stderr
+		cmd.Stdout = steps
 	} else {
 		cmd.Stdout = &buf
 	}
-	fmt.Fprintf(os.Stderr, "check: %s\n", displayCommand(cmd.Args))
+	c.Step("run %s", displayCommand(cmd.Args))
 	err := cmd.Run()
+	steps.Flush()
 	if ctx.Err() != nil {
 		return fmt.Errorf("%s: %w", name, ctx.Err())
 	}

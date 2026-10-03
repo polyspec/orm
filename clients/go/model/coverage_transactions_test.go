@@ -8,6 +8,7 @@ import (
 
 	"github.com/polyspec/orm/clients/go/model"
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // transactionTenant는 이 case들이 쓰는 composite_account의 tenant_id다.
@@ -39,6 +40,7 @@ func accountExists(t *testing.T, db *orm.DB, tenant, account int64) bool {
 // TestCoverageTransactionRollback는 callback이 error를 반환한 transaction이
 // 그 error를 호출자에게 전하고 callback의 쓰기를 되돌리는지 확인한다.
 func TestCoverageTransactionRollback(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	requireNoTransactionRows(t, db)
 	boom := errors.New("transaction_rollback")
@@ -59,6 +61,7 @@ func TestCoverageTransactionRollback(t *testing.T) {
 // TestCoverageTransactionSavepoint는 실패한 nested transaction이 savepoint까지만
 // 되돌리고 바깥 transaction은 commit되는지 확인한다.
 func TestCoverageTransactionSavepoint(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	requireNoTransactionRows(t, db)
 	boom := errors.New("transaction_savepoint")

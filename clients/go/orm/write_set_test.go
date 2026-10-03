@@ -7,9 +7,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestWasInsertedTracksGeneratedRows(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, "dbspec 1 write_set\n\ntable record {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n")
 	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "write-set.sqlite"), s, orm.Config{})
 	if err != nil {

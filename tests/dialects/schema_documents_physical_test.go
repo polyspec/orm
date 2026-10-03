@@ -4,6 +4,7 @@ package dialects
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // schemaDocumentPatterns finds the dbspec documents that the clients and
@@ -25,6 +27,7 @@ var schemaDocumentPatterns = []string{
 // PostgreSQL and SQLite and applies the statements to its own database,
 // schema or file of TEST_ENV.
 func TestSchemaDocumentsApply(t *testing.T) {
+	testcase.Group(t)
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
 	if mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV")
@@ -85,15 +88,7 @@ func TestSchemaDocumentsApply(t *testing.T) {
 			}
 			index++
 			t.Run(probe.ID, func(t *testing.T) {
-				begin := time.Now()
-				t.Logf("start %s: %d statements", probe.ID, len(statements))
-				_, err := runWithDeadline(servers, probe, index)
-				elapsed := time.Since(begin).Round(time.Millisecond)
-				if err != nil {
-					t.Errorf("result %s: FAIL after %s: %v", probe.ID, elapsed, err)
-					return
-				}
-				t.Logf("result %s: PASS after %s", probe.ID, elapsed)
+				runProbeCase(t, servers, probe, index, fmt.Sprintf("%d statements", len(statements)))
 			})
 		}
 	}

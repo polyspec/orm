@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // planVectors는 tests/dbspec/plans.json이다(docs/plans.md).
@@ -178,6 +180,7 @@ func planSourceOf(lines []string) (*Document, error) {
 // TestPlanVectors는 모든 case의 diff와 세 dialect의 statement, 그리고 invalid
 // case의 diagnostic이 vector와 같은지 확인한다.
 func TestPlanVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
 	for _, c := range v.Cases {
 		t.Run(c.ID, func(t *testing.T) { checkPlanCase(t, c) })
@@ -258,6 +261,7 @@ func checkPlanInvalid(t *testing.T, c planInvalidCase) {
 // TestPlanChains는 chains case의 순서나 chain diagnostic이 vector와 같은지
 // 확인한다.
 func TestPlanChains(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
 	if len(v.Chains) == 0 {
 		t.Fatal("tests/dbspec/plans.json has no chains")
@@ -303,6 +307,7 @@ func checkPlanChain(t *testing.T, c planChainCase) {
 // TestPlanParseErrors는 parse case가 plan diagnostic을 rule, 줄, 칸, message까지,
 // target diagnostic을 rule, 줄, 칸까지 vector와 같게 보고하는지 확인한다.
 func TestPlanParseErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
 	if len(v.Parse) == 0 {
 		t.Fatal("tests/dbspec/plans.json has no parse cases")
@@ -330,6 +335,7 @@ func checkPlanParse(t *testing.T, c planParseCase) {
 // TestCompareSchemas는 comparison case의 차이와 diagnostic이 vector와 같은지
 // 확인한다.
 func TestCompareSchemas(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	v := loadPlanVectors(t)
 	if len(v.Comparisons) == 0 {
 		t.Fatal("tests/dbspec/plans.json has no comparisons")

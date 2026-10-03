@@ -12,6 +12,8 @@ import (
 	"time"
 
 	orderedjson "github.com/polyspec/ordered-json/go"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 type codecVector struct {
@@ -44,6 +46,7 @@ func canonStyled(t *testing.T, v StyledValue) string {
 // deterministic styles re-encode to the same bytes. Go's encodings are written
 // to tests/codec/out/go.json for the PHP cross-check.
 func TestCodecVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../tests/codec/vectors.json")
 	if err != nil {
 		t.Fatal(err)
@@ -146,6 +149,7 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if encoded, err := Encode([]string{"ordered_json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
 	}
@@ -192,6 +196,7 @@ func TestCodecErrors(t *testing.T) {
 }
 
 func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1}}`
 	decoded, err := Decode([]string{"ordered_json"}, source)
 	if err != nil {
@@ -235,6 +240,7 @@ func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
 }
 
 func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	type value struct {
 		ID      string         `json:"id"`
 		Empty   string         `json:"empty,omitempty"`
@@ -258,6 +264,7 @@ func TestOrderedJSONCodecConvertsTaggedGoStructs(t *testing.T) {
 }
 
 func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	type value struct {
 		Config json.RawMessage `json:"config"`
 	}
@@ -271,6 +278,7 @@ func TestOrderedJSONCodecParsesJSONRawMessage(t *testing.T) {
 }
 
 func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	type value struct {
 		Body customJSONValue `json:"body"`
 	}
@@ -285,6 +293,7 @@ func TestOrderedJSONCodecUsesCustomJSONMarshaler(t *testing.T) {
 }
 
 func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	type value struct {
 		Body    string     `json:"body"`
 		Revoked *time.Time `json:"revokedAt"`
@@ -300,6 +309,7 @@ func TestOrderedJSONCodecEncodesNilMarshalerPointersAsNull(t *testing.T) {
 }
 
 func TestOrderedJSONCodecFlattensAnonymousStruct(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	type Details struct {
 		ID string `json:"id"`
 	}

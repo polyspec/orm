@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // compositeTenant와 compositeOtherTenant는 이 case가 쓰는 composite_account의
@@ -23,6 +24,7 @@ const (
 // (tenant_id, account_id)으로 잇는 memberships relation으로 함께 읽고,
 // account를 지우면 ON DELETE CASCADE로 membership이 지워지는지 확인한다.
 func TestCoverageCompositeKeyRows(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
 	membership := func() *model.CompositeMembershipModel { return model.CompositeMembership().Connect(db) }

@@ -5,9 +5,11 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestPickRejectsUnselectedField(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	row := model.Author().SetName("present")
 	defer func() {
 		if recover() == nil {
@@ -18,6 +20,7 @@ func TestPickRejectsUnselectedField(t *testing.T) {
 }
 
 func TestUnexpectedVectorErrorAndWriteTransaction(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	cause := errors.New("invalid row")
 	_, err := executeVector("invalid", func() (any, error) { return nil, cause }, nil)
 	if !errors.Is(err, cause) {
@@ -34,6 +37,7 @@ func TestUnexpectedVectorErrorAndWriteTransaction(t *testing.T) {
 }
 
 func TestBindRenderingRejectsInvalidBytes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, input := range []any{
 		[]byte{0xff},
 		"\xff",
@@ -57,6 +61,7 @@ func TestBindRenderingRejectsInvalidBytes(t *testing.T) {
 }
 
 func TestVectorSelection(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	uri, selected, err := parseArgs([]string{"-dsn", "sqlite://x", "-vector", "relations", "-vector", "columns"})
 	if err != nil || uri != "sqlite://x" || len(selected) != 2 || !selected["relations"] || !selected["columns"] {
 		t.Fatalf("parseArgs = %q %v %v", uri, selected, err)

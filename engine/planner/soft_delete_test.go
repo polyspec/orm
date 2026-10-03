@@ -8,6 +8,7 @@ import (
 	"github.com/polyspec/orm/engine/dialect"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func softDeleteManifest(t *testing.T) *runtimemodel.Model {
@@ -16,6 +17,7 @@ func softDeleteManifest(t *testing.T) *runtimemodel.Model {
 }
 
 func TestSoftDeleteFiltersReads(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	plan, err := p.Compile(&ir.Request{Kind: "all", Query: ir.Query{Entity: "account"}})
 	if err != nil {
@@ -27,6 +29,7 @@ func TestSoftDeleteFiltersReads(t *testing.T) {
 }
 
 func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
 	param := 0
 	plan, err := p.Compile(&ir.Request{
@@ -49,6 +52,7 @@ func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 // TestSoftDeleteClockPrecision는 soft delete가 column에 선언된 소수 자리로
 // database clock을 쓰는지 확인한다.
 func TestSoftDeleteClockPrecision(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
 		column  string
 		dialect dialect.Dialect
@@ -79,6 +83,7 @@ func TestSoftDeleteClockPrecision(t *testing.T) {
 // 자리를 가지는지 확인한다. executor는 그 자리로 clock을 잘라 SQLite의
 // datetime(p) CHECK를 만족한다.
 func TestSoftDeleteClockSlotPrecision(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, precision := range []int{0, 3, 6} {
 		m := testModel(t, fmt.Sprintf("dbspec 1 soft\n\ntable account {\n  id i64\n  deleted_at datetime(%d) null\n  primary key (id)\n  settings {\n    soft_delete deleted_at\n  }\n}\n", precision))
 		param := 0

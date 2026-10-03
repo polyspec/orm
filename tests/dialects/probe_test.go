@@ -3,11 +3,14 @@ package dialects
 import (
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestProbeIDs verifies that probe IDs are unique, well formed and name the
 // database each probe runs on.
 func TestProbeIDs(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	begin := time.Now()
 	probes := All()
 	if err := Validate(probes); err != nil {

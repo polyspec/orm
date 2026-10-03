@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const aesKeysSchema = `dbspec 1 aes_keys
@@ -26,6 +27,7 @@ table secret_note {
 // and AESVersion configured. The write uses AESKeys[AESVersion], and a
 // connection with only that version's key reads the value.
 func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, aesKeysSchema)
 	manifest := s
 	dsn := "sqlite://" + filepath.Join(t.TempDir(), "aes-keys.sqlite")
@@ -71,6 +73,7 @@ func TestAESWriteUsesKeyOfCurrentVersion(t *testing.T) {
 // TestAESKeyMustMatchKeyOfCurrentVersion rejects a configuration whose AESKey
 // differs from AESKeys[AESVersion].
 func TestAESKeyMustMatchKeyOfCurrentVersion(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := documentSchema(t, aesKeysSchema)
 	_, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "aes-conflict.sqlite"), s,
 		orm.Config{AESKey: "other-key", AESKeys: map[int32]string{1: "note-key-one"}, AESVersion: 1})

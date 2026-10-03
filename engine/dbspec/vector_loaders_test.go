@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // vectorCaseOf는 object의 section key에서 index번째 case object다.
@@ -15,6 +17,7 @@ func vectorCaseOf(object map[string]any, key string, index int) map[string]any {
 // 없거나 type이 다른 section과 field를 "<file>: <location> <problem>" error로
 // 거부하는지 확인한다.
 func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	decoders := map[string]func(vectorReader, map[string]any) error{
 		"plans.json":   func(r vectorReader, o map[string]any) error { _, err := decodePlanVectors(r, o); return err },
 		"mermaid.json": func(r vectorReader, o map[string]any) error { _, err := decodeMermaidVectors(r, o); return err },

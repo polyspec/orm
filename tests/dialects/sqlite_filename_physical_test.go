@@ -11,7 +11,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // sqliteQuery is the query part of the BENCH_SQLITE_DSN that test-servers.sh
@@ -24,6 +25,7 @@ const sqliteQuery = "?_pragma=busy_timeout(5000)&timezone=%2B00:00"
 // that appear in its own directory. A DSN parser must remove the query before
 // it names the file.
 func TestSQLiteFileNameWithQuery(t *testing.T) {
+	testcase.Group(t)
 	cases := []struct {
 		id      string
 		literal bool // true: the query becomes part of the file name
@@ -50,13 +52,13 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.id, func(t *testing.T) {
-			begin := time.Now()
-			t.Logf("start %s", c.id)
-			ctx, cancel := context.WithTimeout(context.Background(), probeDeadline)
+			// 각 opener는 probeDeadline 안에 file 하나를 만드는 process나 connection 하나다.
+			tc := testcase.Start(t, probeCaseDeadline)
+			ctx, cancel := context.WithTimeout(tc.Context(), probeDeadline)
 			defer cancel()
 			dir := t.TempDir()
 			if err := c.open(ctx, filepath.Join(dir, "bench.sqlite")+sqliteQuery); err != nil {
-				t.Fatalf("result %s: FAIL after %s: open: %v", c.id, time.Since(begin).Round(time.Millisecond), err)
+				t.Fatalf("open: %v", err)
 			}
 			entries, err := os.ReadDir(dir)
 			if err != nil {
@@ -72,9 +74,9 @@ func TestSQLiteFileNameWithQuery(t *testing.T) {
 				want = "bench.sqlite" + sqliteQuery
 			}
 			if strings.Join(names, ",") != want {
-				t.Fatalf("result %s: FAIL after %s: files %q; want %q", c.id, time.Since(begin).Round(time.Millisecond), names, want)
+				t.Fatalf("files %q; want %q", names, want)
 			}
-			t.Logf("result %s: PASS after %s: files %q", c.id, time.Since(begin).Round(time.Millisecond), names)
+			tc.Step("files %q", names)
 		})
 	}
 }

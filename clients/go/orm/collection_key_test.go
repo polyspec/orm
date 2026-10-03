@@ -8,9 +8,11 @@ import (
 
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestTypedKeyValuesCannotCollide(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, pair := range [][2]any{
 		{int64(1), "1"},
 		{true, int64(1)},
@@ -29,6 +31,7 @@ func TestTypedKeyValuesCannotCollide(t *testing.T) {
 }
 
 func TestUnsupportedKeyIsAnError(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, value := range []any{nil, []byte(nil), struct{ Name string }{"a"}, uint64(math.MaxUint64), math.NaN()} {
 		if _, err := KeyOf(value); err == nil {
 			t.Errorf("unsupported key %T %v was accepted", value, value)
@@ -37,6 +40,7 @@ func TestUnsupportedKeyIsAnError(t *testing.T) {
 }
 
 func TestScalarComparisonPreservesTypesAndRejectsInvalidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, pair := range [][2]any{{true, int64(1)}, {"1", int64(1)}, {[]byte("a"), "a"}} {
 		match, err := SameScalar(pair[0], pair[1])
 		if err != nil || match {
@@ -52,6 +56,7 @@ func TestScalarComparisonPreservesTypesAndRejectsInvalidValues(t *testing.T) {
 }
 
 func TestKeyValuesPreserveTheirTypes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	instant := time.Date(2026, 1, 2, 3, 4, 5, 6, time.UTC)
 	for _, value := range []any{int64(7), true, "text", []byte("bytes"), float64(1.25), instant} {
 		key, err := KeyOf(value)
@@ -72,6 +77,7 @@ func TestKeyValuesPreserveTheirTypes(t *testing.T) {
 }
 
 func TestSelectedByteKeyPreservesByteType(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	values := []any{"\xff\x00"}
 	step := &plan.Step{Assemble: &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "payload", Type: "bytes"}}}}
 	if err := decodeSelectedRow(values, &scanInfo{}, step, AESKeyring{}); err != nil {
@@ -91,6 +97,7 @@ func TestSelectedByteKeyPreservesByteType(t *testing.T) {
 }
 
 func TestJoinedByteColumnsAndInvalidValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	child := &plan.Assemble{Columns: []plan.OutCol{{Index: 1, Name: "child_bytes", Type: "bytes"}}}
 	root := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Name: "id", Type: "i64"}}, Children: []*plan.Child{{Kind: "join", Assemble: child}}}
 	values := []any{int64(1), "\x00\xff"}
@@ -107,6 +114,7 @@ func TestJoinedByteColumnsAndInvalidValues(t *testing.T) {
 }
 
 func TestCompositeTypedKeyPreservesBoundaries(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, pair := range [][2][]any{
 		{{"1", "23"}, {"12", "3"}},
 		{{int64(1), "2"}, {"1", "2"}},
@@ -124,6 +132,7 @@ func TestCompositeTypedKeyPreservesBoundaries(t *testing.T) {
 }
 
 func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	collection := NewCollection[*rejectingModel]()
 	value := struct{ ID int }{1}
 	if _, err := collection.Get(value); err == nil {
@@ -138,6 +147,7 @@ func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
 }
 
 func TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	core := NewCore(nil)
 	core.fetchKey = func(Model) any { return struct{}{} }
 	if _, err := core.collectionKey(&Core{self: &rejectingModel{}}, nil, nil); err == nil {
@@ -151,6 +161,7 @@ func TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn(t *testing.T) 
 }
 
 func TestRelationKeyCollectionPropagatesInvalidValue(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	ref := &plan.ParentRef{Keys: []plan.KeyRef{{Index: 0}}}
 	if _, err := parentValues(ref, [][]any{{struct{ ID int }{1}}}, nil); err == nil {
 		t.Fatal("relation parent accepted unsupported key")
@@ -169,6 +180,7 @@ func TestRelationKeyCollectionPropagatesInvalidValue(t *testing.T) {
 }
 
 func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const count = 1000
 	params := make([]any, count)
 	indexes := make([]int, count)
@@ -186,6 +198,7 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 }
 
 func TestSplitQueryRetainsDistinctTypedValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const count = 1000
 	params := make([]any, count)
 	indexes := make([]int, count)

@@ -7,11 +7,13 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/model"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCoverageModelQueryRows는 seed bench database의 author을 generated
 // model로 세고, 정렬해 읽고, 합하고, 선언된 match로 user를 함께 읽는다.
 func TestCoverageModelQueryRows(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	if n := must(model.Author().Connect(db).UserSeq(1).GetCount()); n != 20 {
 		t.Fatalf("author count with user_seq 1 = %d, want 20", n)

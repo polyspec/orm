@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestTransactionRollsBackWhenTheCallbackLeaves checks a callback that ends
 // its goroutine instead of returning, which is what t.Fatal does: the
 // transaction rolls back and the connection serves the next statement.
 func TestTransactionRollsBackWhenTheCallbackLeaves(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "goexit.sqlite"), s, orm.Config{})

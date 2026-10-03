@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestLogicalContractRejectsNativeDrift(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	if _, err := load(); err != nil {
 		t.Fatal(err)
 	}
@@ -59,6 +62,7 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 }
 
 func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	var d document
 	if err := json.Unmarshal(source, &d); err != nil {
 		t.Fatal(err)
@@ -98,6 +102,7 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 }
 
 func TestComponentDiagramsUseRequestedLanguage(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	english, err := Diagram()
 	if err != nil {
 		t.Fatal(err)

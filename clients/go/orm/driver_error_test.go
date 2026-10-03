@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{3819, 4025} {
 		err := mapMySQLErr(&mysql.MySQLError{Number: number, Message: "check constraint violated"})
 		if got := ErrorCode(err); got != CodeConstraint {
@@ -19,6 +21,7 @@ func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 }
 
 func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	err := mapMySQLErr(&mysql.MySQLError{Number: 3572, Message: "lock not available"})
 	if got := ErrorCode(err); got != CodeLockNotAvailable {
 		t.Fatalf("mapped MySQL lock error code = %q, want %q: %v", got, CodeLockNotAvailable, err)
@@ -29,6 +32,7 @@ func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
 }
 
 func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{1290, 1792} {
 		err := mapMySQLErr(&mysql.MySQLError{Number: number, Message: "read-only"})
 		if got := ErrorCode(err); got != CodeReadOnly {

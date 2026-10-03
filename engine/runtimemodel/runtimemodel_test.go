@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 const parentDocument = `dbspec 1 accounts
@@ -50,6 +52,7 @@ table member_row {
 // TestLoadRebuildsTheModelOfTheManifestText는 document set의 manifest text를
 // 다시 읽으면 같은 manifestHash와 entity가 나오는지 확인한다.
 func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	built, diagnostics := LoadDocuments([]string{childDocument, parentDocument})
 	if len(diagnostics) > 0 {
 		t.Fatal(DiagnosticsError(diagnostics))
@@ -79,6 +82,7 @@ func TestLoadRebuildsTheModelOfTheManifestText(t *testing.T) {
 // TestLoadRejectsInvalidManifestText는 header 없는 text와 같은 document가 두
 // 번 있는 text를 diagnostic으로 거부한다.
 func TestLoadRejectsInvalidManifestText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for text, rule := range map[string]string{
 		"":                              "header",
 		"table x {\n}\n":                "header",
@@ -93,6 +97,7 @@ func TestLoadRejectsInvalidManifestText(t *testing.T) {
 // TestLoadFilesRejectsFileWithoutSignature는 signature가 없는 파일(DbSchema project XML,
 // 빈 파일)을 parse하지 않고 SCHEMA_INVALID signature diagnostic 하나로 거부하는지 확인한다.
 func TestLoadFilesRejectsFileWithoutSignature(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, name := range []string{"dbschema.dbs", "empty.dbs"} {
 		path := filepath.Join("..", "..", "tests", "dbspec", "files", name)
 		_, err := LoadFiles(path)

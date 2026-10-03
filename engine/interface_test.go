@@ -2,9 +2,12 @@ package engine
 
 import (
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 func TestRequestRejectsUnspecifiedStructure(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	for _, body := range []string{
 		`"controller_data":{},"entity":"author"`,
