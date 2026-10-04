@@ -10,7 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { nodeTestErrors } from './testcases.mjs';
+import { goTestCaseErrors, nodeTestErrors, rustTestCaseErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -501,4 +501,45 @@ caseTest('a JavaScript test that declares tests with node:test directly fails', 
     'd.test.mjs': "import { after } from 'node:test';\nimport { caseTest } from '../testcase.mjs';\n",
     'tests/testcase.mjs': "import test from 'node:test';\n",
   }), [message('a.test.mjs'), message('b.test.mjs'), message('c.test.mjs')]);
+});
+
+caseTest('every Go and Rust test starts its case with the shared testcase package', COMPUTE, () => {
+  assert.deepEqual(goTestCaseErrors(trackedTexts(trackedFiles('*_test.go'))), []);
+  assert.deepEqual(rustTestCaseErrors(trackedTexts(trackedFiles('*.rs'))), []);
+});
+
+caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
+  const go = [
+    'package orm',
+    'func TestStarted(t *testing.T) {',
+    '\ttestcase.Start(t, testcase.Compute)',
+    '}',
+    'func TestBare(t *testing.T) {',
+    '\tt.Log("no case")',
+    '}',
+    'func TestGenerated(t *testing.T) {',
+    '\ttestcase.Start(t, testcase.Compute)',
+    '\twrite(`package model',
+    'func TestInside(t *testing.T) { _ = 1 }',
+    '`)',
+    '}',
+    '',
+  ].join('\n');
+  assert.deepEqual(goTestCaseErrors({ 'clients/go/orm/a_test.go': go, 'internal/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
+    'clients/go/orm/a_test.go: TestBare does not start its case with internal/testcase, so it runs without a deadline or RUN line',
+  ]);
+  const rust = [
+    '#[tokio::test]',
+    'async fn started() {',
+    '    let _case = orm_testcase::case!(orm_testcase::DATABASE);',
+    '}',
+    '#[test]',
+    'fn bare() {',
+    '    assert!(true);',
+    '}',
+    '',
+  ].join('\n');
+  assert.deepEqual(rustTestCaseErrors({ 'clients/rust/orm/tests/a.rs': rust }), [
+    'clients/rust/orm/tests/a.rs: bare does not start its case with orm_testcase, so it runs without a deadline or RUN line',
+  ]);
 });

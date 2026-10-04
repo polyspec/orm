@@ -8,21 +8,15 @@
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\Config;
 use Orm\Orm;
 use Orm\OrmException;
 
-$started = hrtime(true);
-$elapsed = static fn (): string => sprintf('%.3fms', (hrtime(true) - $started) / 1e6);
-// test의 deadline이며, 약 1초인 실행 시간보다 훨씬 길다.
-pcntl_async_signals(true);
-pcntl_signal(SIGALRM, static function () use ($elapsed): void {
-    echo 'TIMEOUT php mysql tls ' . $elapsed() . "\n";
-    exit(1);
-});
-pcntl_alarm(60);
+// 각 case는 실패를 모아 그 case의 끝에 보고한다. parameter case는 memory 안의 parse이고, connection
+// case는 TLS server에 세 번 연결한다.
 $failures = [];
 
 $refused = static function (string $dsn, string $wanted) use (&$failures): void {
@@ -36,7 +30,7 @@ $refused = static function (string $dsn, string $wanted) use (&$failures): void 
     }
 };
 
-echo "START php mysql tls: parameters\n";
+testcase_begin('mysql_tls/parameters', TESTCASE_COMPUTE);
 $refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
 $refused('mysql://root@db.local/orm_example?sslmode=disable', 'unknown parameter sslmode');
 $refused('postgres://root@db.local/orm_example?application_name=orm', 'unknown parameter application_name');
@@ -65,7 +59,10 @@ foreach (['postgres://orm@127.0.0.1/orm_example?sslmode=disable&timezone=UTC', '
     }
 }
 
-echo "START php mysql tls: connections\n";
+testcase_end($failures === [] ? null : implode('; ', $failures));
+$parameterFailures = count($failures);
+
+testcase_begin('mysql_tls/connections', TESTCASE_DATABASE);
 $config = new Config();
 $sslVersion = static function (string $dsn) use ($config): string {
     $db = Orm::connect($dsn, $config);
@@ -98,11 +95,5 @@ foreach (['another CA' => $dsns[1], 'a certificate of another host' => $dsns[2]]
     }
 }
 
-if ($failures !== []) {
-    echo 'FAIL php mysql tls ' . $elapsed() . "\n";
-    foreach ($failures as $failure) {
-        echo "  $failure\n";
-    }
-    exit(1);
-}
-echo 'PASS php mysql tls ' . $elapsed() . "\n";
+testcase_end(count($failures) === $parameterFailures ? null : implode('; ', array_slice($failures, $parameterFailures)));
+exit($failures === [] ? 0 : 1);

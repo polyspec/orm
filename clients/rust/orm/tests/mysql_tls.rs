@@ -25,12 +25,14 @@ async fn ssl_version(dsn: &str) -> Result<String, String> {
 
 #[tokio::test]
 async fn verify_identity_connects_with_tls() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let version = ssl_version(&require_dsn("ORM_TEST_MYSQL_TLS_DSN")).await.unwrap();
     assert!(version == "TLSv1.2" || version == "TLSv1.3", "the VERIFY_IDENTITY connection has Ssl_version {version:?}");
 }
 
 #[tokio::test]
 async fn verify_identity_refuses_another_ca_and_another_host() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for (name, var) in [("another CA", "ORM_TEST_MYSQL_TLS_OTHER_CA_DSN"), ("a certificate of another host", "ORM_TEST_MYSQL_TLS_MISMATCH_DSN")] {
         let error = ssl_version(&require_dsn(var)).await.expect_err(&format!("the connection with {name} was accepted"));
         assert!(error.to_lowercase().contains("certificate") || error.contains("tls"), "the connection with {name} failed for another cause: {error}");

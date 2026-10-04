@@ -1,12 +1,15 @@
 package orm
 
 import (
+	"context"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestParseDSNMySQLTLS는 docs/config.md의 MySQL TLS parameter를 검사한다:
@@ -14,6 +17,7 @@ import (
 // mode이고, 다른 ssl-mode, 없거나 상대 경로인 ssl-ca, socket, 주소 host는
 // CONFIG다.
 func TestParseDSNMySQLTLS(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
 	if err != nil || parsed.sslCA != "/tmp/ca.pem" || parsed.sslHost != "db.local" || strings.Contains(parsed.native, "ssl") {
 		t.Fatalf("parseDSN() = %+v, %v; want the CA /tmp/ca.pem for db.local and no ssl parameter in the native DSN", parsed, err)
@@ -44,7 +48,8 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 // ssl-mode=VERIFY_IDENTITY로 연결해 TLS를 요구하고, 다른 CA가 서명했거나 다른
 // host를 이름으로 가진 인증서의 server를 거부한다.
 func TestMySQLTLSConnection(t *testing.T) {
-	version := func(dsn string) (string, error) {
+	ctx := testcase.Start(t, testcase.Database).Context()
+	version := func(ctx context.Context, dsn string) (string, error) {
 		parsed, err := parseDSN(dsn, 0)
 		if err != nil {
 			return "", err
@@ -55,7 +60,7 @@ func TestMySQLTLSConnection(t *testing.T) {
 		}
 		defer db.Close()
 		var name, value string
-		if err := db.QueryRow("SHOW SESSION STATUS LIKE 'Ssl_version'").Scan(&name, &value); err != nil {
+		if err := db.QueryRowContext(ctx, "SHOW SESSION STATUS LIKE 'Ssl_version'").Scan(&name, &value); err != nil {
 			return "", err
 		}
 		return value, nil
@@ -66,12 +71,12 @@ func TestMySQLTLSConnection(t *testing.T) {
 			t.Fatalf("%s is required; run make test-servers", env)
 		}
 	}
-	got, err := version(dsns["ORM_TEST_MYSQL_TLS_DSN"])
+	got, err := version(ctx, dsns["ORM_TEST_MYSQL_TLS_DSN"])
 	if err != nil || !regexp.MustCompile(`^TLSv1\.[23]$`).MatchString(got) {
 		t.Fatalf("the VERIFY_IDENTITY connection has Ssl_version %q, %v", got, err)
 	}
 	for name, env := range map[string]string{"another CA": "ORM_TEST_MYSQL_TLS_OTHER_CA_DSN", "a certificate of another host": "ORM_TEST_MYSQL_TLS_MISMATCH_DSN"} {
-		if _, err := version(dsns[env]); err == nil || !strings.Contains(err.Error(), "certificate") {
+		if _, err := version(ctx, dsns[env]); err == nil || !strings.Contains(err.Error(), "certificate") {
 			t.Errorf("the connection with %s: %v; want a refused certificate", name, err)
 		}
 	}
