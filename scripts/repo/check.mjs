@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors } from './ci.mjs';
+import { ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
@@ -36,6 +36,8 @@ const nodeVersionPath = join(root, '.node-version');
 const workflowDirectory = join(root, '.github/workflows');
 const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
+// 모든 workflow의 step은 자기 timeout-minutes를 가진다.
+failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));
 failures.push(...nodeVersionErrors(existsSync(nodeVersionPath) ? readFileSync(nodeVersionPath, 'utf8') : '',

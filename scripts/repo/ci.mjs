@@ -7,7 +7,7 @@ export function serverVariables(serversScript) {
   return [...new Set([...serversScript.matchAll(/export ([A-Z][A-Z0-9_]*)=/g)].map(match => match[1]))];
 }
 
-// workflowSteps는 workflow의 step마다 이름, id와 run text를 돌려준다. step은 `steps:` 아래 한 단계
+// workflowSteps는 workflow의 step마다 이름, id, timeout-minutes와 run text를 돌려준다. step은 `steps:` 아래 한 단계
 // 깊은 `- `로 시작하고, run text는 한 줄 값이거나 그 아래 더 깊은 block이다.
 export function workflowSteps(workflow) {
   const lines = workflow.split('\n');
@@ -28,8 +28,9 @@ export function workflowSteps(workflow) {
   return steps.map(({ lines: stepLines }) => {
     const name = stepLines.map(line => line.match(/^\s*name:\s*(.*)$/)).find(Boolean)?.[1] ?? stepLines[0].trim();
     const id = stepLines.map(line => line.match(/^\s*id:\s*(\S+)\s*$/)).find(Boolean)?.[1];
+    const timeout = stepLines.map(line => line.match(/^\s*timeout-minutes:\s*(\S+)\s*$/)).find(Boolean)?.[1];
     const start = stepLines.findIndex(line => /^\s*run:/.test(line));
-    if (start === -1) return { name, id, run: '' };
+    if (start === -1) return { name, id, timeout, run: '' };
     const runIndent = stepLines[start].match(/^\s*/)[0].length;
     const inline = stepLines[start].replace(/^\s*run:\s*/, '');
     const block = [];
@@ -37,7 +38,7 @@ export function workflowSteps(workflow) {
       if (line.trim() !== '' && line.match(/^\s*/)[0].length <= runIndent) break;
       block.push(line.trim());
     }
-    return { name, id, run: /^[|>][-+]?$/.test(inline) ? block.join('\n').trim() : inline };
+    return { name, id, timeout, run: /^[|>][-+]?$/.test(inline) ? block.join('\n').trim() : inline };
   });
 }
 
@@ -214,5 +215,17 @@ export function runnerErrors(declared, workflows) {
     for (const label of labels)
       if (label !== runner) errors.push(`${path} runs on ${label}; .github/runner declares ${runner}`);
   }
+  return errors;
+}
+
+// stepTimeoutErrors는 workflow의 step마다 자기 기한(timeout-minutes, 양의 정수)이 없으면 오류 하나를
+// 돌려준다. 모든 검사는 자기 기한을 가지며(AGENTS.md), job 전체의 기한(GitHub 기본 360분)에 맡기지
+// 않는다.
+export function stepTimeoutErrors(workflows) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows))
+    for (const step of workflowSteps(workflow))
+      if (!/^[1-9][0-9]*$/.test(step.timeout ?? ''))
+        errors.push(`${path} step "${step.name}" has no timeout-minutes of its own`);
   return errors;
 }

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.13: `make test-servers`는 각 pooler의 준비 줄을 선언한 기한까지만 기다린 뒤 서버, 기한, 마지막 log 줄과 함께 실패하고, 모든 workflow step은 `make repo-check`가 요구하는 자기 `timeout-minutes`를 선언한다.
+
 - G5.15: cargo를 `--offline`으로 실행하는 모든 make target은 먼저 `clients/rust`와 `bench/rust`의 고정된 crate를 받는 `make rust-fetch`를 실행하므로, 새 runner가 더 이상 `no matching package`로 실패하지 않는다.
 
 - G5.14: `make docs-rules-check`는 문서 page의 code 밖에 `<br>` 외의 HTML element가 있으면 실패한다. VitePress는 이를 닫히지 않은 element로 compile한다. `make docs-check`를 깨뜨린 T40 checklist 메시지는 inline code가 되었다.

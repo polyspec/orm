@@ -2,7 +2,10 @@
 # and SQLite, with the common interfaces and the hot-path regression check of
 # feature-check, then the decoder fuzz checks, Go tests, and codec vectors.
 # make test-servers starts the database servers and writes their DSNs, as it
-# does for the local checks.
+# does for the local checks. Every step has its own timeout-minutes: the time
+# the step took in a run on ubuntu-26.04-arm (4 vCPU, 16 GB;
+# make check 19 min, the others under 2 min) with room for cold caches and
+# downloads; make repo-check fails on a step without one.
 name: ci
 on:
   push:
@@ -18,56 +21,68 @@ jobs:
       # git-check reads history from the recorded subject-format baseline, so
       # the checkout must carry the full commit graph.
       - uses: actions/checkout@v5
+        timeout-minutes: 10
         with:
           fetch-depth: 0
       - uses: actions/setup-go@v6
+        timeout-minutes: 10
         with: { go-version: "1.27" }
       # .node-version declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
       - uses: actions/setup-node@v7
+        timeout-minutes: 10
         with:
           node-version-file: .node-version
           cache: npm
       - name: install Node dependencies
+        timeout-minutes: 20
         run: |
           npm ci
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
       - name: Rust toolchain of rust-toolchain.toml
+        timeout-minutes: 15
         # rustup installs the channel and components that rust-toolchain.toml
         # declares; every cargo and rustc run of the repository uses them.
         run: rustup toolchain install && rustc --version
       - uses: Swatinem/rust-cache@v2
+        timeout-minutes: 15
         with:
           workspaces: |
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
       - name: lowest PHP release of the PHP client
+        timeout-minutes: 2
         # make php-min-check runs the PHP client unit tests on the lowest release
         # of require.php in clients/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
         run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
+        timeout-minutes: 10
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
+        timeout-minutes: 10
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
       - name: PHP releases and their SQLite
+        timeout-minutes: 5
         # Every client requires SQLite 3.46; PHP links the system SQLite of
         # the runner.
         run: |
           "$(./scripts/php/php-min.sh)" --version
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
+        timeout-minutes: 10
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: programs of the database servers
+        timeout-minutes: 20
         # make test-servers starts the servers of the database checks from these
         # programs, as it does locally: MySQL 8.4.11 from the Ubuntu packages,
         # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
@@ -93,15 +108,18 @@ jobs:
           proxysql --version | grep -F 'ProxySQL version 3.0.9-'
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
       - name: database servers
+        timeout-minutes: 15
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment
         # file .runtime/servers/env that the database checks read.
         run: make test-servers
       - name: environment of the database servers
+        timeout-minutes: 2
         # Steps that run go test, cargo test or php without make read the same
         # variables from the process environment.
         run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
       - name: make check
+        timeout-minutes: 90
         # The targets of CHECK_TARGETS through the runner of the local checks,
         # with its own bench and decimal databases; make repo-check fails
         # when this workflow omits or repeats one of them or a verification
@@ -109,18 +127,22 @@ jobs:
         # one run reports every result.
         run: make check
       - name: decoder fuzz smoke checks
+        timeout-minutes: 10
         if: ${{ !cancelled() }}
         run: make fuzz-check
       - name: Go
+        timeout-minutes: 30
         if: ${{ !cancelled() }}
         run: go vet ./... && go test -v -timeout 0 ./...
       - name: common state and execution contracts
+        timeout-minutes: 10
         if: ${{ !cancelled() }}
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
           go run ./tests/interfaces/check --results tests/conformance/out/postgres
           go run ./tests/interfaces/check --results tests/conformance/out/sqlite
       - name: codec vectors
+        timeout-minutes: 30
         if: ${{ !cancelled() }}
         run: |
           go test -v -timeout 0 ./clients/go/orm -run TestCodec
