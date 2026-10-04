@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, serverVariables } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
@@ -192,6 +192,7 @@ caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('php-version-file: .php-version', 'php-version: "8.4"') }, '8.5'), [
     'ci.yml declares php-version itself; .php-version declares it',
     'ci.yml does not read php-version-file .php-version in shivammathur/setup-php',
+    'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
   ]);
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }, '8.5'), [
     'ci.yml runs PHP without shivammathur/setup-php',
@@ -298,4 +299,48 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'ci.yml step "checks" runs ./scripts/perf-test.sh, which make check runs in feature-check',
   ]);
   assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make fuzz-check'), make, commands), []);
+});
+
+// runner case는 저장소의 .github/runner와 workflow, 그리고 최소 workflow를 검사한다.
+caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {
+  assert.equal(text('.github/runner'), 'ubuntu-26.04-arm\n');
+  assert.deepEqual(runnerErrors(text('.github/runner'), workflows), []);
+});
+
+caseTest('a job on another runner fails', COMPUTE, () => {
+  const job = 'jobs:\n  test:\n    runs-on: ubuntu-26.04-arm\n    steps:\n      - run: true\n';
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job }), []);
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('ubuntu-26.04-arm', 'ubuntu-24.04') }), [
+    'ci.yml runs on ubuntu-24.04; .github/runner declares ubuntu-26.04-arm',
+  ]);
+  assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml declares no runs-on']);
+  assert.deepEqual(runnerErrors('', {}), ['.github/runner must hold one runner label and a newline, found ""']);
+});
+
+caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () => {
+  const minimum = [
+    'jobs:',
+    '  test:',
+    '    steps:',
+    '      - name: lowest PHP release of the PHP client',
+    '        id: php-min',
+    '        run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"',
+    '      - uses: shivammathur/setup-php@v2',
+    '        with:',
+    '          php-version: ${{ steps.php-min.outputs.version }}',
+    '      - uses: shivammathur/setup-php@v2',
+    '        with:',
+    '          php-version-file: .php-version',
+    '      - run: composer install --working-dir=clients/php',
+    '',
+  ].join('\n');
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }, '8.5'), []);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum.replace('        id: php-min\n', '') }, '8.5'), [
+    'ci.yml reads steps.php-min.outputs.version without the step that writes it from ./scripts/php/php-min.sh',
+  ]);
+  const reversed = minimum.replace('          php-version: ${{ steps.php-min.outputs.version }}', '          php-version-file: .php-version#')
+    .replace('          php-version-file: .php-version\n      - run', '          php-version: ${{ steps.php-min.outputs.version }}\n      - run').replace('.php-version#', '.php-version');
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': reversed }, '8.5'), [
+    'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
+  ]);
 });

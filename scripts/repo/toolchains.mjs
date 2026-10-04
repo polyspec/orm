@@ -8,6 +8,8 @@
 
 import { actionSteps, workflowSteps } from './ci.mjs';
 
+// MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
+const MINIMUM_SCRIPT = './scripts/php/php-min.sh';
 const runs = (workflow, pattern) => workflowSteps(workflow).some(step => pattern.test(step.run));
 const numbers = text => text.split('.').map(Number);
 const below = (a, b) => (numbers(a).map((part, index) => part - (numbers(b)[index] ?? 0)).find(d => d !== 0) ?? 0) < 0;
@@ -17,7 +19,10 @@ const below = (a, b) => (numbers(a).map((part, index) => part - (numbers(b)[inde
 // {path: text}, running은 실행 중인 php의 PHP_MAJOR_VERSION.PHP_MINOR_VERSION이다.
 //   - declared는 정확한 x.y 하나이고 minimum(">=x.y")보다 낮지 않다.
 //   - shivammathur/setup-php step은 `php-version-file: .php-version`으로 읽고 `php-version`을
-//     직접 적지 않는다. php나 composer를 실행하는 workflow는 setup-php를 쓴다.
+//     직접 적지 않는다. 예외 하나는 make php-min-check의 최저 release를 설치하는 step으로,
+//     scripts/php/php-min.sh --version을 쓰는 step `php-min`의 output만 읽는다. 마지막
+//     setup-php step은 .php-version을 읽어 그 PHP가 PATH의 php가 된다. php나 composer를
+//     실행하는 workflow는 setup-php를 쓴다.
 //   - running은 declared와 같다.
 export function phpVersionErrors(declared, minimum, workflows, running) {
   const errors = [];
@@ -31,11 +36,24 @@ export function phpVersionErrors(declared, minimum, workflows, running) {
     const steps = actionSteps(workflow, 'shivammathur/setup-php');
     if (runs(workflow, /(^|[\s;&|(])(php|composer)\s/m) && steps.length === 0)
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
+    // php-min step은 composer.json의 최저 release를 output version으로 쓰고, 그 release를
+    // 설치하는 setup-php step은 그 output만 읽는다.
+    const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
+      step.run === `echo "version=$(${MINIMUM_SCRIPT} --version)" >> "$GITHUB_OUTPUT"`);
+    const readsFile = step => /^\s*php-version-file:\s*["']?\.php-version["']?\s*$/m.test(step);
+    const readsMinimum = step => /^\s*php-version:\s*\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}\s*$/m.test(step);
     for (const step of steps) {
+      if (readsMinimum(step)) {
+        if (!minimumStep) errors.push(`${path} reads steps.php-min.outputs.version without the step that writes it from ${MINIMUM_SCRIPT}`);
+        continue;
+      }
       if (/^\s*php-version:/m.test(step)) errors.push(`${path} declares php-version itself; .php-version declares it`);
-      if (!/^\s*php-version-file:\s*["']?\.php-version["']?\s*$/m.test(step))
+      if (!readsFile(step))
         errors.push(`${path} does not read php-version-file .php-version in shivammathur/setup-php`);
     }
+    if (steps.filter(readsMinimum).length > 1) errors.push(`${path} installs the lowest PHP release more than once`);
+    if (steps.length > 0 && !readsFile(steps.at(-1)))
+      errors.push(`${path} must set up the PHP of .php-version last, so that it is php on PATH`);
   }
   if (exact && running !== declared.trim())
     errors.push(`PHP ${running} runs the checks; .php-version declares ${declared.trim()}`);

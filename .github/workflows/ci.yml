@@ -11,7 +11,9 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-24.04
+    # .github/runner declares the runner of every job; make repo-check
+    # requires it.
+    runs-on: ubuntu-26.04-arm
     steps:
       # git-check reads history from the recorded subject-format baseline, so
       # the checkout must carry the full commit graph.
@@ -42,55 +44,53 @@ jobs:
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
+      - name: lowest PHP release of the PHP client
+        # make php-min-check runs the PHP client unit tests on the lowest release
+        # of require.php in clients/php/composer.json; setup-php installs it
+        # first, and the PHP of .php-version after it becomes php on PATH.
+        id: php-min
+        run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ steps.php-min.outputs.version }}
+          extensions: pdo_sqlite, openssl
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
-      - name: SQLite 3.46+ for PHP
-        # PHP links the system SQLite (3.45 on Ubuntu 24.04); every client
-        # requires 3.46, so a newer library in /usr/local/lib takes its place.
-        # pdo_sqlite needs the column metadata functions the system build has.
+      - name: PHP releases and their SQLite
+        # Every client requires SQLite 3.46; PHP links the system SQLite of
+        # the runner.
         run: |
-          curl -fsSL https://www.sqlite.org/2024/sqlite-autoconf-3460100.tar.gz | tar -xz -C /tmp
-          (cd /tmp/sqlite-autoconf-3460100 && CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA" ./configure --prefix=/usr/local --quiet && make -s -j"$(nproc)" && sudo make -s install)
-          sudo ldconfig
-          php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
-      - name: lowest PHP release of the PHP client
-        # make php-min-check runs the PHP client unit tests on the lowest release
-        # of require.php in clients/php/composer.json; the PHP apt repository
-        # that setup-php added installs it beside the PHP of .php-version.
-        run: |
-          sudo apt-get install -y -q "php$(./scripts/php/php-min.sh --version)-cli" >/dev/null
           "$(./scripts/php/php-min.sh)" --version
+          php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: programs of the database servers
         # make test-servers starts the servers of the database checks from these
-        # programs, as it does locally: MySQL 8.4.11 from the five packages of
-        # its Ubuntu 24.04 deb bundle, PostgreSQL 17 and PgBouncer from the
-        # PostgreSQL apt repository, and ProxySQL 3.0.9 from its package. apt
-        # installs the dependencies of each package, such as libaio1t64 for
-        # mysqld, and replaces the MySQL 8.0 packages of the image, so
-        # make test-servers finds mysqld at its package path /usr/sbin/mysqld on
-        # PATH. The image loads an AppArmor profile for /usr/sbin/mysqld that
-        # allows only /var/lib/mysql; it is removed because the servers keep
-        # their data in .runtime/servers.
+        # programs, as it does locally: MySQL 8.4.11 from the Ubuntu packages,
+        # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
+        # ProxySQL 3.0.9 from its Ubuntu 24.04 arm64 package, checked by its
+        # sha256, whose dependencies Ubuntu 26.04 provides. make test-servers
+        # finds mysqld at its package path /usr/sbin/mysqld on PATH. The image
+        # loads an AppArmor profile for /usr/sbin/mysqld that allows only
+        # /var/lib/mysql; it is removed because the servers keep their data in
+        # .runtime/servers.
         run: |
           sudo apt-get update -q >/dev/null
-          sudo apt-get install -y -q postgresql-common sqlite3 >/dev/null
+          sudo apt-get install -y -q postgresql-common sqlite3 mysql-server-core mysql-client-core >/dev/null
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
           sudo apt-get install -y -q postgresql-17 pgbouncer >/dev/null
-          curl -fsSL -o /tmp/proxysql.deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_amd64.deb
+          curl -fsSL -o /tmp/proxysql.deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_arm64.deb
+          echo 'e12b272107f1ac65ae8a9f9015a9c696b7b2f78b6ad35f84b5ce086449eb2a0f  /tmp/proxysql.deb' | sha256sum -c -
           sudo apt-get install -y -q /tmp/proxysql.deb >/dev/null
-          mkdir /tmp/mysql
-          curl -fsSL https://dev.mysql.com/get/Downloads/MySQL-8.4/mysql-server_8.4.11-1ubuntu24.04_amd64.deb-bundle.tar | tar -xf - -C /tmp/mysql
           if sudo grep -qs '^/usr/sbin/mysqld ' /sys/kernel/security/apparmor/profiles; then
             printf /usr/sbin/mysqld | sudo tee /sys/kernel/security/apparmor/.remove >/dev/null
           fi
-          sudo apt-get install -y -q $(for package in mysql-common mysql-community-client-plugins mysql-community-client-core mysql-community-client mysql-community-server-core; do echo "/tmp/mysql/${package}_8.4.11-1ubuntu24.04_amd64.deb"; done) >/dev/null
           test "$(command -v mysqld)" = /usr/sbin/mysqld
-          mysqld --version | grep -F ' Ver 8.4.11 '
+          mysqld --version | grep -E ' Ver 8\.4\.11[- ]'
+          proxysql --version | grep -F 'ProxySQL version 3.0.9-'
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
