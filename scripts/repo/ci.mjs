@@ -1,3 +1,5 @@
+import { segments } from './testcases.mjs';
+
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
 // (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
 // 서버를 시작하고 그 모든 변수를 검사 단계에 준다.
@@ -218,14 +220,28 @@ export function runnerErrors(declared, workflows) {
   return errors;
 }
 
-// stepTimeoutErrors는 workflow의 step마다 자기 기한(timeout-minutes, 양의 정수)이 없으면 오류 하나를
-// 돌려준다. 모든 검사는 자기 기한을 가지며(AGENTS.md), job 전체의 기한(GitHub 기본 360분)에 맡기지
-// 않는다.
+// reportsCases는 step의 run text가 case를 보고하는 suite를 실행하는지다: 명령 조각이 repository의 make
+// target이나 test runner(go test, cargo test)로 시작한다. 그 case는 저마다 기한을 가진다.
+export function reportsCases(run) {
+  return run.split('\n').flatMap(segments).some(segment => /^(?:make\s|go\s+test\b|cargo\s+test\b)/.test(segment));
+}
+
+// stepTimeoutErrors는 workflow의 step 기한(timeout-minutes)이 규칙과 다를 때마다 오류 하나를 돌려준다
+// (AGENTS.md testing rule).
+//   - case를 보고하는 suite를 실행하는 step(reportsCases)은 timeout-minutes를 두지 않는다. 그 기한은 suite
+//     전체의 기한이고, suite의 case가 저마다 기한을 가진다.
+//   - 그 밖의 step(action, 설치, 도구 하나)은 자기 기한(양의 정수 timeout-minutes)을 가진다. 그 안에는
+//     기한을 가진 case가 없으므로 job 전체의 기한(GitHub 기본 360분)에 맡기지 않는다.
 export function stepTimeoutErrors(workflows) {
   const errors = [];
   for (const [path, workflow] of Object.entries(workflows))
-    for (const step of workflowSteps(workflow))
-      if (!/^[1-9][0-9]*$/.test(step.timeout ?? ''))
+    for (const step of workflowSteps(workflow)) {
+      if (reportsCases(step.run)) {
+        if (step.timeout !== undefined)
+          errors.push(`${path} step "${step.name}" runs cases that carry their own deadlines and has timeout-minutes, a deadline for the whole suite; remove it`);
+      } else if (!/^[1-9][0-9]*$/.test(step.timeout ?? '')) {
         errors.push(`${path} step "${step.name}" has no timeout-minutes of its own`);
+      }
+    }
   return errors;
 }

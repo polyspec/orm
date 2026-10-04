@@ -442,7 +442,7 @@ caseTest('start_logged reports a ready line, an exit or its deadline', COMPUTE, 
 });
 
 // timeout case는 저장소의 workflow와 최소 workflow의 step마다 timeout-minutes를 검사한다.
-caseTest('every workflow step declares its own timeout-minutes', COMPUTE, () => {
+caseTest('a suite step has no timeout-minutes and every other step has its own', COMPUTE, () => {
   assert.deepEqual(stepTimeoutErrors(workflows), []);
   const timed = [
     'jobs:',
@@ -451,13 +451,25 @@ caseTest('every workflow step declares its own timeout-minutes', COMPUTE, () => 
     '      - uses: actions/checkout@v5',
     '        timeout-minutes: 5',
     '      - name: checks',
-    '        timeout-minutes: 30',
     '        run: make check',
+    '      - name: tool',
+    '        timeout-minutes: 2',
+    '        run: sed -e s/a/b/ file',
+    '      - name: go',
+    '        run: go vet ./... && go test -v -timeout 0 ./...',
+    '      - name: codec',
+    '        run: |',
+    '          (cd clients/rust && cargo test --locked -p orm codec)',
     '',
   ].join('\n');
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed }), []);
-  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('        timeout-minutes: 30\n', '') }), [
-    'ci.yml step "checks" has no timeout-minutes of its own',
+  const suite = name => `ci.yml step "${name}" runs cases that carry their own deadlines and has timeout-minutes, a deadline for the whole suite; remove it`;
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed
+    .replace('        run: make check', '        timeout-minutes: 90\n        run: make check')
+    .replace('        run: go vet', '        timeout-minutes: 30\n        run: go vet')
+    .replace('        run: |', '        timeout-minutes: 30\n        run: |') }), [suite('checks'), suite('go'), suite('codec')]);
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('        timeout-minutes: 2\n', '') }), [
+    'ci.yml step "tool" has no timeout-minutes of its own',
   ]);
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('timeout-minutes: 5', 'timeout-minutes: 0') }), [
     'ci.yml step "uses: actions/checkout@v5" has no timeout-minutes of its own',

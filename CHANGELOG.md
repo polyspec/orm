@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-1: CI steps that run `make` or a test runner have no `timeout-minutes`, since their cases carry their own deadlines; other steps keep their own, and `make repo-check` enforces both.
+
 - G5.29-10: the TypeScript builds of `scripts/typescript/sqlite-test.sh`, `npm run typescript:test` and `make conformance-result-check` run under `tests/run-case.mjs` with a deadline and show their output, and `make repo-check` checks the build tools of the Makefile recipes, the `package.json` scripts and the shell scripts too.
 
 - G5.29-9: every `cargo test` run of the Makefile, the feature verification commands and `scripts/client-db-test.sh` first builds its test binaries with `cargo test --no-run` as a case with a deadline, and `make repo-check` fails a `cargo test` run without that build.

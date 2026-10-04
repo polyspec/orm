@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-1: `make`나 test runner를 실행하는 CI step에는 `timeout-minutes`가 없다. 그 case가 저마다 기한을 가지기 때문이다. 다른 step은 자기 기한을 유지하고, `make repo-check`가 둘 다 강제한다.
+
 - G5.29-10: `scripts/typescript/sqlite-test.sh`, `npm run typescript:test`, `make conformance-result-check`의 TypeScript build는 기한과 함께 `tests/run-case.mjs` 아래에서 실행하고 출력을 보이며, `make repo-check`는 Makefile recipe, `package.json` script, shell script의 build 도구도 검사한다.
 
 - G5.29-9: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test` 실행은 먼저 기한을 가진 case로 `cargo test --no-run` test binary를 build하고, `make repo-check`는 그 build 없는 `cargo test` 실행을 실패시킨다.
