@@ -1058,6 +1058,7 @@ dependencies = [
  "hmac 0.12.1",
  "indexmap",
  "libsqlite3-sys",
+ "log",
  "ordered-json",
  "orm-case-clock",
  "orm-case-database",

@@ -49,3 +49,5 @@ libsqlite3-sys = { version = "0.37", default-features = false }
 orm-case-clock = { path = "../case-clock" }
 # database case가 자기만의 database를 만들고 끝날 때 지운다.
 orm-case-database = { path = "../case-database" }
+# 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
+log = "0.4"

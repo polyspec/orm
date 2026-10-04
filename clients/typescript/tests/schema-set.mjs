@@ -170,8 +170,8 @@ async function thrown(run) {
 /**
  * clients/go/orm/external_documents_test.go 의 externalCase 다. member set 은 ext_core 의 ext_account 와 ext_audit 을
  * use 로 쓰고 ext_post 와 ext_post_history 만 소유한다(contracts/fixtures/external).
- * - 외부 table 이 없으면 connect, install, addTablesAndColumns 가 어떤 statement 보다 먼저 CONFIG 이고 member 의 table 을
- *   만들지 않는다.
+ * - 외부 table 이 없으면 install, addTablesAndColumns 가 어떤 statement 보다 먼저 CONFIG 이고 member 의 table 을
+ *   만들지 않는다. 등록은 database 를 읽지 않으므로 connectSchema 는 외부 table 이 없거나 달라도 연결한다.
  * - core 를 설치한 뒤 member install 은 소유한 table 만 만들고, 다시 하면 아무것도 바꾸지 않는다. addTablesAndColumns 는
  *   소유한 table 에만 column 을 더한다.
  * - member 의 audit transaction 은 core 가 소유한 ext_audit 에 기록을 삽입한다.
@@ -188,7 +188,7 @@ async function externalDocuments(dsn, driver) {
     check(error instanceof OrmError && error.code === 'CONFIG' && error.message.includes(message), `${step}: ${error?.code ?? ''} ${error?.message ?? 'no error'}, want CONFIG with ${message}`);
   };
   const missing = 'the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist';
-  expectConfig('connect before core', await thrown(async () => (await Db.connectSchema(dsn, member, options)).close()), missing);
+  await (await Db.connectSchema(dsn, member, options)).close();
   const db = await Db.connect(dsn, options);
   try {
     const schema = db.utils().schema();
@@ -222,13 +222,90 @@ async function externalDocuments(dsn, driver) {
     check(Number(accounts.n) === 1, `ext_account has ${accounts.n} rows after the member changes, want 1`);
 
     const differs = 'the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist';
-    expectConfig('connect with a drifted external table', await thrown(async () => (await Db.connectSchema(dsn, drifted, options)).close()), differs);
+    await (await Db.connectSchema(dsn, drifted, options)).close();
     expectConfig('install with a drifted external table', await thrown(() => schema.install(drifted)), differs);
     expectConfig('addTablesAndColumns with a drifted external table', await thrown(() => schema.addTablesAndColumns(drifted)), differs);
   } finally { await db.close(); }
 }
 
-const cases = { several_schemas: severalSchemas, unregistered_schema: unregisteredSchema, edited_manifest: editedManifest, external_documents: externalDocuments };
+/**
+ * db 의 pool 이 database 에 보낸 statement, transaction 시작, 예약한 session 을 모두 센다. 등록이 driver 를 부르면
+ * 그 수가 는다.
+ */
+function countStatements(db) {
+  const counter = { sent: 0 };
+  const pool = db.pool;
+  for (const method of ['execute', 'begin', 'session']) {
+    const original = pool[method];
+    if (typeof original !== 'function') continue;
+    pool[method] = (...args) => { counter.sent++; return original.apply(pool, args); };
+  }
+  return counter;
+}
+
+/**
+ * 등록은 database 에 아무 statement 도 보내지 않는다(docs/schema.md "Schema registration"). register 는 외부 문서를
+ * 쓰는 set 도 database 를 읽지 않고, 선언한 hash 로 hash 되지 않는 text 는 statement 없이 CONFIG 다. 등록한 bench
+ * set 의 요청은 그 연결에서 실행된다. connectSchema 는 외부 table 이 없는 database 에서도 연결한다.
+ */
+async function registerSendsNoStatement(dsn) {
+  const member = externalSchema(['member'], ['core']);
+  const installer = await Db.connect(dsn);
+  try { await installer.utils().schema().install(benchSchema); } finally { await installer.close(); }
+  const db = await Db.connect(dsn);
+  try {
+    const counter = countStatements(db);
+    check(await code(() => new User().connect(db).getCount()) === 'SCHEMA_HASH_MISMATCH', 'bench read before the register');
+    const before = counter.sent;
+    db.utils().schema().register(benchSchema);
+    db.utils().schema().register(benchSchema);
+    db.utils().schema().register(member);
+    const edited = { manifestText: decimal.manifestText.replaceAll('decimal(13,4)', 'decimal(14,4)'), manifestHash: decimal.manifestHash };
+    check(await code(() => db.utils().schema().register(edited)) === 'CONFIG', 'register of a text that does not hash to its declared hash');
+    check(counter.sent === before, `register sent ${counter.sent - before} statements, want 0`);
+    const users = await new User().connect(db).getCount();
+    check(users === 0, `bench read after the register: ${users} rows`);
+  } finally { await db.close(); }
+  // connectSchema 는 외부 table 이 없는 이 database 에서도 연결한다: 등록은 외부 table 을 읽지 않는다.
+  const connected = await Db.connectSchema(dsn, member);
+  await connected.close();
+}
+
+/**
+ * install 은 table 이름만이 아니라 database 전체를 set 과 비교한다(docs/schema.md "Schema installation").
+ * contracts/fixtures/install/changed_database.json 의 case 마다 statement 로 ORM 밖에서 바꾼 database 에 같은 set 을
+ * 다시 install 하면 dialect 의 message 인 CONFIG 이고 database 는 그대로다.
+ */
+async function installVerifiesTheDatabase(dsn, driver) {
+  const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/install/changed_database.json', import.meta.url), 'utf8'));
+  check(fixture.cases.length > 0, 'contracts/fixtures/install/changed_database.json has no cases');
+  for (const c of fixture.cases) {
+    check(c.operation === 'install', `${c.id}: the operation ${c.operation}, want install`);
+    const text = await readFile(new URL(`../../../contracts/fixtures/${c.document}`, import.meta.url), 'utf8');
+    const note = manifestOf(text);
+    const schema = { manifestText: note.manifestText, manifestHash: note.manifestHash };
+    const db = await Db.connect(dsn);
+    try {
+      await db.utils().schema().install(schema);
+      await nativeQuery(driver, dsn, [c.statement]);
+      const want = `${c.expected.code}: ${c.expected.message[driver]}`;
+      const error = await thrown(() => db.utils().schema().install(schema));
+      check(error instanceof OrmError && error.code === c.expected.code && error.message === want, `${c.id}: install over the changed database: ${error?.code ?? ''} ${error?.message ?? 'no error'}, want ${want}`);
+      await nativeQuery(driver, dsn, [c.remaining]);
+      // 다음 case 는 같은 case database 를 쓰므로 이 case 의 table 을 지운다.
+      await nativeQuery(driver, dsn, parseDbspec(text, {}).document.tables.map(t => `DROP TABLE ${t.name}`));
+    } finally { await db.close(); }
+  }
+}
+
+const cases = {
+  several_schemas: severalSchemas,
+  unregistered_schema: unregisteredSchema,
+  edited_manifest: editedManifest,
+  external_documents: externalDocuments,
+  register_sends_no_statement: registerSendsNoStatement,
+  install_verifies_the_database: installVerifiesTheDatabase,
+};
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
   if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);

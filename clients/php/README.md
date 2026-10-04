@@ -79,7 +79,10 @@ accepts `?socket=`, PostgreSQL `?host=` (a socket directory) and `?sslmode=`.
 
 A connection plans only the document sets registered on it (docs/protocol.md). The connect helper
 `connect($dsn, $config)` of the generated models opens the connection with `Orm::connectSchema`
-and registers their set; `utils()->schema()->install($schema)` registers the set it installs.
+and registers their set; `utils()->schema()->register($schema)` registers a set on an open
+connection, and `utils()->schema()->install($schema)` registers the set it installs. Registering
+reads nothing from the database, so a server that opens a connection per request registers every
+set it uses on it without a statement; `install` and `addTablesAndColumns` verify the database.
 `Orm::connect` opens a connection without any set. Every request carries the `manifestHash` of its
 model class, and a request whose set is not registered on its connection fails with
 `SCHEMA_HASH_MISMATCH` before execution, also when another connection installed the set.
@@ -119,8 +122,9 @@ transaction's win; every audited write in the transaction refers to that row (do
 - `utils()->schema()->install($schema)` takes the generated schema value (`schema()`, an
   `Orm\Schema`), fails with `CONFIG` when its manifest text does not hash to its `manifestHash`,
   renders the dbspec document set (`Dbspec::render`), applies the statements in one transaction and
-  registers the set on the connection. When every table of the set exists it does nothing;
-  when only some exist it is a `CONFIG` error. MySQL commits each DDL statement itself, so there
+  registers the set on the connection. When every table of the set exists it creates nothing;
+  when only some exist it is a `CONFIG` error. It then compares the tables of the set in the
+  database with the set and fails with `CONFIG` naming each difference. MySQL commits each DDL statement itself, so there
   the statements run outside a transaction and `install` inside one is a `CONFIG` error.
 - `utils()->schema()->addTablesAndColumns($schema)` upgrades the installed set of a generated
   schema value: it creates the tables the database lacks and adds the missing columns of the

@@ -178,7 +178,8 @@ classDiagram
 | `setLocal(key, value)`, `local(key)` | 트랜잭션 로컬 값. 활성 트랜잭션 필요. 없는 키의 `local`은 `NO_ROWS` 반환 |
 | `wasInserted(entity, sequence)` | 해당 sequence에 대한 생성된 ORM insert가 현재 트랜잭션에서 성공했는지 반환. 어댑터 중립적이며 savepoint rollback에 맞춰 복원 |
 | `backendWaitingForLock(ctx)` | PostgreSQL pool backend의 lock 대기를 반환. MySQL과 SQLite는 driver 전용 호출을 노출하지 않고 `false` 반환 |
-| `schema().install(schema)` | generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
+| `schema().register(schema)` | generated schema 값을 받아 데이터베이스를 읽거나 쓰지 않고 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG` |
+| `schema().install(schema)` | generated schema 값을 받는다. manifest text가 `manifestHash`로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`. 연결의 dialect로 dbspec document set을 렌더링하고 테이블이 하나도 없으면 모두 만들며, 그 set을 연결에 등록한다. 모두 있으면 아무것도 바꾸지 않고 일부만 있으면 `CONFIG`. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`. MySQL에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().addTablesAndColumns(schema)` | generated schema 값을 받아 설치한 그 document set에 데이터베이스에 없는 테이블과, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step으로 더하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환하고, 다른 set의 테이블은 바꾸지 않으며 set을 등록하지 않는다. 다른 차이는 변경 전에 `SCHEMA_DIFFERS`. MySQL과 SQLite에서 트랜잭션 안의 호출은 `CONFIG` |
 | `schema().exists(schema)`, `schema().installed(schema, table)` | 스키마 확인 |
 | `schema().empty()` | 데이터베이스에 사용자 내용이 없는지 반환. PostgreSQL에서는 `public`, `information_schema`, `pg_` 스키마가 아닌 스키마가 객체 없이도 내용이고, `public`의 테이블, 파티션 테이블, 뷰, 구체화된 뷰, 외부 테이블도 내용이다. `public`의 함수, 타입, 시퀀스는 내용이 아니다. MySQL에서는 연결한 데이터베이스의 테이블과 뷰가 내용이고, SQLite에서는 `sqlite_` 테이블과 ORM의 `orm__` 테이블이 아닌 테이블과 뷰가 내용이다 |

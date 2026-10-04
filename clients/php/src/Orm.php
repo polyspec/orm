@@ -18,24 +18,15 @@ final class Orm
 
     /**
      * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 열고 generated
-     * schema의 set을 그 연결에 등록한다. generated code의 connect helper가 부른다.
-     * text가 선언한 hash로 hash되지 않으면 연결을 열기 전에 CONFIG이고, set이 외부 문서에서
-     * 쓰는 table이 database와 다르면 연결을 닫고 CONFIG다.
+     * schema의 set을 utils()->schema()->register처럼 그 연결에 등록한다. generated code의
+     * connect helper가 부른다. text가 선언한 hash로 hash되지 않으면 연결을 열기 전에
+     * CONFIG다. 등록은 database를 읽지 않는다: database는 install과 addTablesAndColumns가
+     * 확인한다.
      */
     public static function connectSchema(string $dsn, Schema $schema, Config $config): Db
     {
         $schema->verify();
         $db = self::connect($dsn, $config);
-        // 외부 문서를 쓰는 set은 그 table을 database에서 확인하고, 다르면 연결을 닫고 CONFIG다.
-        // 외부 문서가 없는 set은 database를 읽지 않는다.
-        if ($schema->externalText !== '') {
-            try {
-                SchemaUtils::checkExternal($db->pdo(), $db->driver(), $schema->documents());
-            } catch (\Throwable $e) {
-                $db->close();
-                throw $e;
-            }
-        }
         $db->registerSet($schema);
         return $db;
     }

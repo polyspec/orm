@@ -13,8 +13,9 @@ import (
 // externalCase는 외부 문서를 쓰는 set을 dsn의 database에서 확인한다
 // (contracts/fixtures/external). member set은 ext_core의 ext_account와 ext_audit을
 // use로 쓰고 ext_post와 ext_post_history만 소유한다.
-//   - 외부 table이 없으면 connect, install, addTablesAndColumns가 어떤 statement보다
-//     먼저 CONFIG이고 member의 table을 만들지 않는다.
+//   - 외부 table이 없으면 install과 addTablesAndColumns가 어떤 statement보다 먼저
+//     CONFIG이고 member의 table을 만들지 않는다. 등록은 database를 읽지 않으므로
+//     ConnectSchema는 외부 table이 없거나 달라도 연결한다.
 //   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도
 //     바꾸지 않는다. addTablesAndColumns는 소유한 table에만 column을 더한다.
 //   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
@@ -33,8 +34,13 @@ func externalCase(t *testing.T, driver, dsn string) {
 		}
 	}
 	missing := "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist"
-	_, err := orm.ConnectSchema(dsn, member, config)
-	expectConfig("connect before core", err, missing)
+	before, err := orm.ConnectSchema(dsn, member, config)
+	if err != nil {
+		t.Fatalf("connect before core: %v, want a connection that reads nothing", err)
+	}
+	if err := before.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	db, err := orm.Connect(dsn, config)
 	if err != nil {
@@ -137,8 +143,13 @@ func externalCase(t *testing.T, driver, dsn string) {
 	}
 
 	differs := "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist"
-	_, err = orm.ConnectSchema(dsn, drifted, config)
-	expectConfig("connect with a drifted external table", err, differs)
+	connected, err = orm.ConnectSchema(dsn, drifted, config)
+	if err != nil {
+		t.Fatalf("connect with a drifted external table: %v, want a connection that reads nothing", err)
+	}
+	if err := connected.Close(); err != nil {
+		t.Fatal(err)
+	}
 	expectConfig("install with a drifted external table", schema.Install(drifted), differs)
 	_, err = schema.AddTablesAndColumns(drifted)
 	expectConfig("addTablesAndColumns with a drifted external table", err, differs)

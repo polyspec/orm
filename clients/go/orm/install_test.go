@@ -2,7 +2,10 @@ package orm_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -162,5 +165,80 @@ func TestInstallAppliesRenderedStatements(t *testing.T) {
 				t.Fatalf("install over a partly installed set = %v, want CONFIG", err)
 			}
 		})
+	}
+}
+
+// changedDatabase는 contracts/fixtures/install/changed_database.json이다. case마다 document를
+// 설치한 database에 statement로 ORM 밖에서 바꾸면, 같은 set의 install은 dialect마다 message의
+// CONFIG이고 remaining query는 바뀐 database를 읽는다.
+type changedDatabase struct {
+	Feature string `json:"feature"`
+	Cases   []struct {
+		ID        string `json:"id"`
+		Operation string `json:"operation"`
+		Document  string `json:"document"`
+		Statement string `json:"statement"`
+		Remaining string `json:"remaining"`
+		Expected  struct {
+			Code    string            `json:"code"`
+			Message map[string]string `json:"message"`
+		} `json:"expected"`
+	} `json:"cases"`
+}
+
+// TestInstallVerifiesTheDatabase는 install이 table 이름만이 아니라 database 전체를 set과
+// 비교하는지 확인한다(docs/schema.md "Schema installation"). ORM 밖에서 바꾼 database에 같은
+// set을 다시 install하면 그 차이를 담은 CONFIG이고 database는 그대로다.
+func TestInstallVerifiesTheDatabase(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "install", "changed_database.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture changedDatabase
+	if err := json.Unmarshal(text, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if len(fixture.Cases) == 0 {
+		t.Fatal("contracts/fixtures/install/changed_database.json has no cases")
+	}
+	for _, c := range fixture.Cases {
+		if c.Operation != "install" {
+			t.Fatalf("case %s has the operation %s, want install", c.ID, c.Operation)
+		}
+		s := fixtureSchema(t, strings.TrimSuffix(c.Document, ".dbs"))
+		for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+			t.Run(c.ID+"/"+driver, func(t *testing.T) {
+				dsn := newDatabase(t, driver)
+				db, err := orm.Connect(dsn, orm.Config{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer db.Close()
+				if err := db.Utils().Schema().Install(s); err != nil {
+					t.Fatalf("install: %v", err)
+				}
+				var raw *sql.DB
+				if driver == "sqlite" {
+					if raw, err = sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://")); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					raw = openNative(t, driver, dsn)
+				}
+				defer raw.Close()
+				if _, err := raw.Exec(c.Statement); err != nil {
+					t.Fatal(err)
+				}
+				want := c.Expected.Code + ": " + c.Expected.Message[driver]
+				err = db.Utils().Schema().Install(s)
+				if orm.ErrorCode(err) != c.Expected.Code || err.Error() != want {
+					t.Fatalf("install over the changed database = %v, want %s", err, want)
+				}
+				if _, err := raw.Exec(c.Remaining); err != nil {
+					t.Fatalf("the rejected install changed the database: %v", err)
+				}
+			})
+		}
 	}
 }

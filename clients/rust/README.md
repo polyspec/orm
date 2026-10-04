@@ -46,7 +46,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 
 `model::connect(dsn, pool_size, config)` and `Db::connect(dsn, pool_size, config)` take a DSN URI; `Db::connect` opens a connection without any registered set. the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
-`db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist.
+`db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set. `db.utils().schema().register(&model::SCHEMA)` registers the set on an open connection without reading the database.
 `db.utils().schema().add_tables_and_columns(&model::SCHEMA).await` upgrades the installed set: it creates the tables the database lacks and adds the missing columns of the existing tables that are null or have a default with the plan steps of the dialect (`orm_schema::dbspec::add_tables_and_columns_steps`), which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table, and returns the created tables as `table` and the added columns as `table.column`; every other difference returns `SCHEMA_DIFFERS` before any statement (docs/schema.md, "Adding tables and columns"). MySQL and SQLite add them outside a transaction.
 
 ## Required calls
@@ -55,6 +55,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 |---|---|
 | Validate a generated manifest hash | `Schema::manifest()` builds the runtime model from the embedded manifest text and checks its `manifestHash`; `Manifest::load(text, hash)` does the same for another manifest text |
 | Select an engine and expose models | `model::connect` selects the dialect from the DSN and registers the set of the generated models on the connection; a request of a set that is not registered on its connection returns `SCHEMA_HASH_MISMATCH` |
+| Register a set on a connection without reading the database | `db.utils().schema().register(&model::SCHEMA)` |
 | Install schema objects | `db.utils().schema().install(&model::SCHEMA)` |
 | Add the missing tables and columns of an installed set | `db.utils().schema().add_tables_and_columns(&model::SCHEMA)` |
 | Run with isolation or read-only access | `db.transaction(callback).isolation(Isolation::…).read_only().await` |

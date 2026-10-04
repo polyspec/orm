@@ -251,21 +251,17 @@ func Connect(dsn string, cfg Config) (*DB, error) {
 }
 
 // ConnectSchema opens the database selected by the DSN URI scheme and
-// registers the set of a generated schema on the connection; the connect
-// helper of a generated package calls it. A manifest text that does not hash
-// to its declared hash fails with CONFIG before the connection opens, and so
-// does a set whose tables of external documents differ from the database.
+// registers the set of a generated schema on the connection, as
+// Utils().Schema().Register does; the connect helper of a generated package
+// calls it. A manifest text that does not hash to its declared hash fails
+// with CONFIG before the connection opens. Registering reads nothing from the
+// database: Install and AddTablesAndColumns verify the database.
 func ConnectSchema(dsn string, s *Schema, cfg Config) (*DB, error) {
 	if _, err := s.registered(); err != nil {
 		return nil, err
 	}
 	d, err := Connect(dsn, cfg)
 	if err != nil {
-		return nil, err
-	}
-	m, _ := s.Model()
-	if err := checkExternal(d.ctx, d.sql, d.driver, m); err != nil {
-		d.Close()
 		return nil, err
 	}
 	if err := d.register(s); err != nil {

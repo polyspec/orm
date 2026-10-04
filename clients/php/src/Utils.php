@@ -160,53 +160,74 @@ final class SchemaUtils
     public function __construct(private readonly Db $db, private readonly Utils $u) {}
 
     /**
-     * generated schema의 document set을 connection의 database에 설치하고 그 set을
-     * 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지 않으면 어떤
-     * statement보다 먼저 CONFIG다. client의 renderer가 만든 statement
-     * (docs/dialects.md "Rendered statements")로 table, key, index, foreign key,
-     * check, trigger를 만든다. 집합에 diagnostic이 있으면 SCHEMA_INVALID로
-     * 실패한다. 집합의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면
-     * CONFIG로 실패하므로 같은 집합의 반복 설치는 같은 상태를 남긴다. 있는
-     * table의 정의는 비교하지 않는다. statement는 한 transaction에서 실행하며,
-     * MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행한다.
+     * generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest
+     * text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을
+     * 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는 install과
+     * addTablesAndColumns가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
+     * register가 statement 없이 set을 등록한다(docs/schema.md "Schema registration").
+     */
+    public function register(Schema $schema): void
+    {
+        $this->db->registerSet($schema);
+    }
+
+    /**
+     * generated schema의 document set을 connection의 database에 설치하고, database가 set과
+     * 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
+     * 않으면 어떤 statement보다 먼저 CONFIG다. 집합에 diagnostic이 있으면 SCHEMA_INVALID다.
+     * 연결의 database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다.
+     * set이 소유한 table이 하나도 없으면 client의 renderer가 만든 statement(docs/dialects.md
+     * "Rendered statements")로 모두 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만 있으면
+     * CONFIG다. 그다음 database를 다시 읽어 set이 소유한 table을 set과 비교하고, 차이가 있으면
+     * 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema installation"). PostgreSQL과
+     * SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한 install은
+     * 아무것도 남기지 않는다. MySQL은 DDL마다 스스로 commit하므로 transaction 밖에서 실행하고
+     * 안에서는 CONFIG다.
      */
     public function install(Schema $schema): void
     {
         $schema->verify();
         $driver = $this->db->driver();
-        $parsed = $schema->documents();
-        $rendered = Dbspec::render($parsed, $driver);
+        $documents = $schema->documents();
+        $rendered = Dbspec::render($documents, $driver);
         if ($rendered->statements === null) {
-            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $rendered->diagnostics);
-            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
+            throw self::invalid($rendered->diagnostics);
         }
         $statements = $rendered->statements;
         if ($statements === []) {
             throw new OrmException(Code::CONFIG, 'the document set has no tables');
         }
-        $tables = [];
-        foreach ($parsed as $document) {
-            // 외부 문서의 table은 그 문서를 소유한 set이 설치한다.
-            if ($document->external) {
-                continue;
-            }
-            foreach ($document->tables as $table) {
-                $tables[] = $table->name;
-            }
-        }
-        $apply = function () use ($statements, $driver, $tables, $parsed): void {
-            self::checkExternal($this->db->pdo(), $driver, $parsed);
-            $present = array_values(array_filter($tables, $this->tableExists(...)));
-            if ($present === $tables) {
-                return;
-            }
-            if ($present !== []) {
-                throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
-            }
+        $target = self::target($documents);
+        $pdo = $this->db->pdo();
+        $apply = static function () use ($pdo, $statements, $driver, $documents, $target): void {
             try {
-                foreach ($statements as $statement) {
-                    $this->db->pdo()->exec($statement);
+                $live = self::introspectSet($pdo, $driver, $documents);
+                $found = [];
+                foreach ($live->document->tables as $table) {
+                    $found[$table->name] = true;
                 }
+                foreach ($live->unsupported as $u) {
+                    $found[$u->table] = true;
+                }
+                $present = [];
+                $missing = [];
+                foreach ($target->tables as $table) {
+                    if (isset($found[$table->name])) {
+                        $present[] = $table->name;
+                    } else {
+                        $missing[] = $table->name;
+                    }
+                }
+                if ($present !== [] && $missing !== []) {
+                    throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
+                }
+                if ($missing !== []) {
+                    foreach ($statements as $statement) {
+                        $pdo->exec($statement);
+                    }
+                    $live = Dbspec::introspect($pdo, $driver, 'schema');
+                }
+                self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $target));
             } catch (\PDOException $e) {
                 throw OrmException::fromDriver($e, $driver);
             }
@@ -243,29 +264,11 @@ final class SchemaUtils
         $schema->verify();
         $driver = $this->db->driver();
         $documents = $schema->documents();
-        $manifest = Dbspec::manifest($documents);
-        // schema text는 외부 문서를 use 줄로 쓰므로 외부 문서의 text를 집합으로 parse한다.
-        $externalTexts = [];
-        foreach ($documents as $document) {
-            if ($document->external) {
-                $externalTexts[$document->name] = Dbspec::emit($document);
-            }
-        }
-        $target = $manifest->manifest === null ? null : Dbspec::parse($manifest->manifest->schemaText, $externalTexts);
-        $diagnostics = $manifest->manifest === null ? $manifest->diagnostics : $target->diagnostics;
-        if ($diagnostics !== []) {
-            $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
-            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
-        }
-        $document = $target->document;
+        $document = self::target($documents);
         $pdo = $this->db->pdo();
         $apply = static function () use ($pdo, $driver, $document, $documents): array {
             try {
-                $live = Dbspec::introspect($pdo, $driver, 'schema');
-                $differences = Dbspec::externalDifferences($live->document, $documents);
-                if ($differences !== []) {
-                    throw self::externalError($differences);
-                }
+                $live = self::introspectSet($pdo, $driver, $documents);
                 [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
                 if ($differences !== []) {
                     throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ' . implode('; ', $differences));
@@ -273,6 +276,11 @@ final class SchemaUtils
                 foreach ($steps as $step) {
                     $pdo->exec($step->statement);
                 }
+                // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+                if ($steps !== []) {
+                    $live = Dbspec::introspect($pdo, $driver, 'schema');
+                }
+                self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $document));
                 return $added;
             } catch (\PDOException $e) {
                 throw OrmException::fromDriver($e, $driver);
@@ -291,29 +299,61 @@ final class SchemaUtils
     }
 
     /**
-     * @internal set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External
-     * documents"). 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
+     * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
+     * CONFIG다(docs/dbspec.md "External documents").
      *
-     * @param list<Dbspec\Document> $documents
+     * @param list<\Orm\Dbspec\Document> $documents
      */
-    public static function checkExternal(\PDO $pdo, string $driver, array $documents): void
+    private static function introspectSet(\PDO $pdo, string $driver, array $documents): \Orm\Dbspec\IntrospectResult
     {
-        $external = false;
-        foreach ($documents as $document) {
-            $external = $external || $document->external;
-        }
-        if (!$external) {
-            return;
-        }
-        try {
-            $live = Dbspec::introspect($pdo, $driver, 'schema');
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $driver);
-        }
+        $live = Dbspec::introspect($pdo, $driver, 'schema');
         $differences = Dbspec::externalDifferences($live->document, $documents);
         if ($differences !== []) {
             throw self::externalError($differences);
         }
+        return $live;
+    }
+
+    /**
+     * database가 set과 다르면 그 차이를 모두 담은 CONFIG다.
+     *
+     * @param list<string> $differences
+     */
+    private static function verifySet(array $differences): void
+    {
+        if ($differences !== []) {
+            throw new OrmException(Code::CONFIG, 'the database differs from the document set: ' . implode('; ', $differences));
+        }
+    }
+
+    /**
+     * set의 schema text 문서다. database와 비교하는 대상이다. schema text는 외부 문서를 use
+     * 줄로 쓰므로 외부 문서의 text를 집합으로 parse한다.
+     *
+     * @param list<\Orm\Dbspec\Document> $documents
+     */
+    private static function target(array $documents): \Orm\Dbspec\Document
+    {
+        $manifest = Dbspec::manifest($documents);
+        $externalTexts = [];
+        foreach ($documents as $document) {
+            if ($document->external) {
+                $externalTexts[$document->name] = Dbspec::emit($document);
+            }
+        }
+        $target = $manifest->manifest === null ? null : Dbspec::parse($manifest->manifest->schemaText, $externalTexts);
+        $diagnostics = $manifest->manifest === null ? $manifest->diagnostics : $target->diagnostics;
+        if ($diagnostics !== []) {
+            throw self::invalid($diagnostics);
+        }
+        return $target->document;
+    }
+
+    /** @param list<\Orm\Dbspec\Diagnostic> $diagnostics */
+    private static function invalid(array $diagnostics): OrmException
+    {
+        $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);
+        return new OrmException(Code::SCHEMA_INVALID, implode("\n", $lines));
     }
 
     /** @param list<string> $differences */
@@ -359,16 +399,6 @@ final class SchemaUtils
         } catch (\PDOException $e) {
             throw OrmException::fromDriver($e, 'sqlite');
         }
-    }
-
-    /** connection의 현재 database나 search_path에 table이 있는지 여부다. */
-    private function tableExists(string $table): bool
-    {
-        return match ($this->db->driver()) {
-            'postgres' => $this->bool('SELECT to_regclass(quote_ident(?)) IS NOT NULL', [$table]),
-            'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [$table]),
-            default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [$table]),
-        };
     }
 
     private function bool(string $sql, array $args): bool

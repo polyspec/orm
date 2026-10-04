@@ -146,6 +146,7 @@ classDiagram
     }
     class SchemaUtils {
         Db db
+        register()
         install()
         exists()
         installed()
@@ -227,7 +228,7 @@ classDiagram
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
-| SchemaUtils | Installs the set of a generated schema with the client DDL renderer and registers it on the connection. |
+| SchemaUtils | Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set. |
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |

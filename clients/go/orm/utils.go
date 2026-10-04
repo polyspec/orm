@@ -204,71 +204,88 @@ type SchemaUtils struct{ u *Utils }
 // Schema returns the schema utilities.
 func (u *Utils) Schema() *SchemaUtils { return &SchemaUtils{u: u} }
 
+// Register는 generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다:
+// manifest text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) runtime model로 set을
+// 등록할 뿐이다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는
+// Install과 AddTablesAndColumns가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
+// Register가 statement 없이 set을 등록한다(docs/schema.md "Schema registration").
+func (s *SchemaUtils) Register(schema *Schema) error {
+	return s.u.db.register(schema)
+}
+
 // Install은 generated schema의 document set을 이 연결의 dialect로 render해
-// 적용하고 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
-// 않으면 어떤 statement보다 먼저 CONFIG다. set의 table이 하나도 없으면 모두
-// 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG다. 이 table은
-// set이 소유한 table이다. 외부 문서를 쓰는 set은 먼저 쓰는 table을 database에서
-// 확인하며(checkExternal) 다르면 CONFIG다.
-// PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용한다.
-// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서
-// 적용하고 안에서는 CONFIG다.
+// 적용하고, database가 set과 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest
+// text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 CONFIG다. 연결의
+// database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다. set이
+// 소유한 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만
+// 있으면 CONFIG다. 그다음 database를 다시 읽어 set이 소유한 table을 set과 비교하고, 차이가
+// 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema installation").
+// PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한
+// install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로 commit하므로
+// transaction 밖에서 적용하고 안에서는 CONFIG다.
 func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
 	m, err := schema.registered()
 	if err != nil {
 		return err
 	}
-	if err := s.apply(m); err != nil {
-		return err
-	}
-	return d.register(schema)
-}
-
-// apply는 runtime model의 table을 만든다(Install 참고).
-func (s *SchemaUtils) apply(m *runtimemodel.Model) error {
-	d := s.u.db
 	statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(d.driver))
 	if len(diagnostics) > 0 {
 		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
+	target, err := schemaTarget(m)
+	if err != nil {
+		return err
+	}
 	if d.driver == "mysql" && activeFor(d) != nil {
 		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
 	}
+	dialect := dbspec.Dialect(d.driver)
 	apply := func(ctx context.Context, q querier) error {
-		if err := checkExternal(ctx, q, d.driver, m); err != nil {
+		live, unsupported, err := introspectSet(ctx, q, dialect, m)
+		if err != nil {
 			return err
 		}
+		found := map[string]bool{}
+		for _, t := range live.Tables {
+			found[t.Name] = true
+		}
+		for _, u := range unsupported {
+			found[u.Table] = true
+		}
 		var present, missing []string
-		for _, name := range m.Order {
-			table := m.Entities[name].Table
-			found, err := tableExists(ctx, q, d.driver, table)
-			if err != nil {
-				return err
-			}
-			if found {
-				present = append(present, table)
+		for _, t := range target.Tables {
+			if found[t.Name] {
+				present = append(present, t.Name)
 			} else {
-				missing = append(missing, table)
+				missing = append(missing, t.Name)
 			}
 		}
 		switch {
 		case len(missing) == 0:
-			return nil
 		case len(present) > 0:
 			return configErr("the manifest is partly installed: tables %s exist and %s do not", strings.Join(present, ", "), strings.Join(missing, ", "))
-		}
-		for _, statement := range statements {
-			if _, err := q.ExecContext(ctx, statement); err != nil {
+		default:
+			for _, statement := range statements {
+				if _, err := q.ExecContext(ctx, statement); err != nil {
+					return mapDriverErr(err)
+				}
+			}
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
 				return mapDriverErr(err)
 			}
 		}
-		return nil
+		return setDiffers(dbspec.InstalledDifferences(live, unsupported, target))
 	}
 	if d.driver == "mysql" {
-		return apply(d.ctx, d.sql)
+		err = apply(d.ctx, d.sql)
+	} else {
+		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
 	}
-	return s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+	if err != nil {
+		return err
+	}
+	return d.register(schema)
 }
 
 // AddTablesAndColumns는 설치한 document set을 generated schema의 새 version으로
@@ -291,23 +308,16 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	manifest, diagnostics := dbspec.ManifestOf(m.Documents)
-	if len(diagnostics) > 0 {
-		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
-	}
-	target, diagnostics := dbspec.Parse(manifest.SchemaText, externalTexts(m))
-	if len(diagnostics) > 0 {
-		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	target, err := schemaTarget(m)
+	if err != nil {
+		return nil, err
 	}
 	dialect := dbspec.Dialect(d.driver)
 	var added []string
 	apply := func(ctx context.Context, q dbspec.Execer) error {
-		live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
+		live, unsupported, err := introspectSet(ctx, q, dialect, m)
 		if err != nil {
-			return mapDriverErr(err)
-		}
-		if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
-			return externalErr(differences)
+			return err
 		}
 		additions, steps, differences := dbspec.AddTablesAndColumnsSteps(live, unsupported, target, dialect)
 		if len(differences) > 0 {
@@ -317,6 +327,15 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 			if _, err := q.ExecContext(ctx, step.Statement); err != nil {
 				return mapDriverErr(err)
 			}
+		}
+		// step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+		if len(steps) > 0 {
+			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
+				return mapDriverErr(err)
+			}
+		}
+		if err := setDiffers(dbspec.InstalledDifferences(live, unsupported, target)); err != nil {
+			return err
 		}
 		added = additions
 		return nil
@@ -337,20 +356,38 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	return added, nil
 }
 
-// checkExternal은 set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md
-// "External documents"). 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
-func checkExternal(ctx context.Context, q dbspec.Querier, driver string, m *runtimemodel.Model) error {
-	if len(externalTexts(m)) == 0 {
-		return nil
-	}
-	live, _, err := dbspec.Introspect(ctx, q, dbspec.Dialect(driver), "schema")
+// introspectSet은 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이
+// 외부 문서와 다르면 CONFIG다(docs/dbspec.md "External documents").
+func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
+	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 	if err != nil {
-		return mapDriverErr(err)
+		return nil, nil, mapDriverErr(err)
 	}
 	if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
-		return externalErr(differences)
+		return nil, nil, externalErr(differences)
 	}
-	return nil
+	return live, unsupported, nil
+}
+
+// setDiffers는 database가 set과 다를 때 그 차이를 모두 담은 CONFIG다.
+func setDiffers(differences []string) error {
+	if len(differences) == 0 {
+		return nil
+	}
+	return configErr("the database differs from the document set: %s", strings.Join(differences, "; "))
+}
+
+// schemaTarget은 set의 schema text 문서다. database와 비교하는 대상이다.
+func schemaTarget(m *runtimemodel.Model) (*dbspec.Document, error) {
+	manifest, diagnostics := dbspec.ManifestOf(m.Documents)
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	target, diagnostics := dbspec.Parse(manifest.SchemaText, externalTexts(m))
+	if len(diagnostics) > 0 {
+		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
+	}
+	return target, nil
 }
 
 func externalErr(differences []string) error {
@@ -417,24 +454,6 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Exece
 	}
 	restored = true
 	return err
-}
-
-// tableExists는 연결의 현재 database나 schema에 table이 있는지 알린다.
-func tableExists(ctx context.Context, q querier, driver, table string) (bool, error) {
-	var query string
-	switch driver {
-	case "postgres":
-		query = "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1)"
-	case "mysql":
-		query = "SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)"
-	default:
-		query = "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)"
-	}
-	var found bool
-	if err := q.QueryRowContext(ctx, query, table).Scan(&found); err != nil {
-		return false, mapDriverErr(err)
-	}
-	return found, nil
 }
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {

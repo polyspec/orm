@@ -103,8 +103,8 @@ fn external_schema(external: &str) -> &'static orm::Schema {
     Box::leak(Box::new(orm::Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
 
-/// 외부 문서를 쓰는 set의 연결이 외부 table을 database에서 확인하는지 본다. 같은 table이면 연결하고, 외부 문서의
-/// column이 database에 없으면 연결과 install이 CONFIG이며 소유한 table을 만들지 않는다.
+/// 외부 문서를 쓰는 set의 install이 외부 table을 database에서 확인하는지 본다. 외부 문서의 column이 database에
+/// 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지 않으므로 그 set으로도 연결한다.
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_external_documents() {
@@ -122,7 +122,11 @@ async fn coverage_schema_install_external_documents() {
             Err(e) if e.code() == orm::codes::CONFIG && e.to_string().contains(want) => {}
             other => panic!("{other:?}, want CONFIG with {want:?}"),
         };
-        config(orm::Db::connect_schema(&dsn, drifted, 2, orm::Config::default()).await.map(|_| ()));
+        orm::Db::connect_schema(&dsn, drifted, 2, orm::Config::default())
+            .await
+            .unwrap_or_else(|e| panic!("connect of a set whose external table differs, which registering does not read: {e}"))
+            .close()
+            .await;
         let db = connect().await;
         config(db.utils().schema().install(drifted).await);
         assert!(!table_exists(&db, "coverage_external_post").await, "the rejected install created table coverage_external_post");

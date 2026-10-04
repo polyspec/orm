@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T40: `utils().schema().register(schema)` registers a schema set on a connection without a statement, and `connectSchema` registers the same way, so a connection opened per request registers its sets without reading the database. `install` and `addTablesAndColumns` now end by comparing the tables of the set in the database with the set (`InstalledDifferences`) and fail with `CONFIG` naming each difference, such as a column changed outside the ORM; the database is verified at install and upgrade, not per request.
+
 - T7.D12: `make docs-rules-check` checks every tracked Korean document, including `AGENTS.ko.md`, `README.ko.md` and `CHANGELOG.ko.md`, and compares the list items of each section with the English source. The Korean rules, changelog, README and codec page are corrected to translate their English sources.
 
 - G5.9: `TestCIRequiresGeneratedChecks` requires that CI runs `make check`, whose `CHECK_TARGETS` hold the generated model checks and whose `feature-check` runs the common interface check, instead of the separate steps that G5.5 and G5.7 removed.

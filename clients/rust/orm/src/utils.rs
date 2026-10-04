@@ -91,40 +91,6 @@ impl<'a> Utils<'a> {
         }
     }
 
-    /// set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). 외부 문서가
-    /// 없는 set은 database를 읽지 않는다. introspection은 `read`의 executor에서 한다: 활성 transaction이 있으면 그
-    /// 연결, 없으면 pool 연결 하나다. 차이는 CONFIG다.
-    pub(crate) async fn check_external(&self, documents: &[&Document]) -> Result<()> {
-        if !documents.iter().any(|d| d.external) {
-            return Ok(());
-        }
-        let failed = |e: crate::dbspec::IntrospectError| match e {
-            crate::dbspec::IntrospectError::Query(e) => Error::from(e),
-            crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
-        };
-        let live = match self.read() {
-            Executor::Tx(t) => {
-                let mut guard = t.enter()?;
-                match guard.as_mut() {
-                    Some(TxInner::MySql(inner)) => {
-                        let conn = inner.conn.as_mut().expect("active MySQL transaction connection");
-                        crate::dbspec::introspect(&mut **conn, dbspec::Dialect::MySql, "schema").await
-                    }
-                    Some(TxInner::Postgres(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Postgres, "schema").await,
-                    Some(TxInner::Sqlite(conn)) => crate::dbspec::introspect(&mut **conn, dbspec::Dialect::Sqlite, "schema").await,
-                    None => return Err(Error::Config("transaction already finished".into())),
-                }
-            }
-            Executor::Db(db) => match db.pool() {
-                crate::db::Pool::MySql(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::MySql, "schema").await,
-                crate::db::Pool::Postgres(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Postgres, "schema").await,
-                crate::db::Pool::Sqlite(pool) => crate::dbspec::introspect(&mut *pool.acquire().await?, dbspec::Dialect::Sqlite, "schema").await,
-            },
-        }
-        .map_err(failed)?;
-        external_error(dbspec::external_differences(&live.document, documents))
-    }
-
     /// 읽기의 executor: 연결의 활성 transaction, 없으면 연결의 pool이다.
     fn read(&self) -> Executor {
         match active_for(self.db) {
@@ -238,66 +204,60 @@ pub struct SchemaUtils<'a> {
 }
 
 impl SchemaUtils<'_> {
-    /// generated schema의 dbspec document set을 연결의 dialect로 render한 statement를
-    /// 적용하고 그 set을 이 연결에 등록한다 (docs/dialects.md, "Rendered statements").
-    /// manifest text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 CONFIG다.
-    /// document set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 CONFIG를
-    /// 돌려준다. PostgreSQL과 SQLite는 활성 transaction이나 새 transaction에서 적용한다.
-    /// MySQL은 schema statement를 암묵적으로 commit하므로 transaction 밖에서 적용하고,
-    /// transaction 안에서는 CONFIG를 돌려준다.
-    pub async fn install(&self, schema: &Schema) -> Result<()> {
-        self.apply(schema).await?;
+    /// generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest
+    /// text가 선언한 hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을
+    /// 다시 등록하면 아무것도 바꾸지 않는다. database가 set과 같은지는 `install`과
+    /// `add_tables_and_columns`가 설치와 upgrade 때 확인하며, 요청마다 연 연결에도
+    /// `register`가 statement 없이 set을 등록한다(docs/schema.md, "Schema registration").
+    pub fn register(&self, schema: &Schema) -> Result<()> {
         self.u.db.register(schema)
     }
 
-    /// schema의 table을 만든다 (`install` 참고).
-    async fn apply(&self, schema: &Schema) -> Result<()> {
+    /// generated schema의 dbspec document set을 연결의 database에 설치하고, database가 set과
+    /// 같은지 확인한 뒤 그 set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지
+    /// 않으면 어떤 statement보다 먼저 CONFIG다. 연결의 database를 introspect해, 외부 문서에서
+    /// 쓰는 table이 외부 문서와 다르면 CONFIG다. set이 소유한 table이 하나도 없으면 연결의
+    /// dialect로 render한 statement(docs/dialects.md, "Rendered statements")로 모두 만들고, 모두
+    /// 있으면 아무것도 만들지 않으며, 일부만 있으면 CONFIG다. 그다음 database를 다시 읽어 set이
+    /// 소유한 table을 set과 비교하고, 차이가 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md,
+    /// "Schema installation"). PostgreSQL과 SQLite는 활성 transaction이나 새 transaction에서
+    /// 적용하므로 실패한 install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로
+    /// commit하므로 transaction 밖에서 적용하고, transaction 안에서는 CONFIG다.
+    pub async fn install(&self, schema: &Schema) -> Result<()> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
-        self.u.check_external(&refs).await?;
         let dialect = match self.u.db.driver() {
             "mysql" => dbspec::Dialect::MySql,
             "postgres" => dbspec::Dialect::Postgres,
             _ => dbspec::Dialect::Sqlite,
         };
-        let statements = dbspec::render(&refs, dialect).map_err(|errors| Error::Engine {
-            code: codes::SCHEMA_INVALID.into(),
-            msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
-        })?;
-        let tables: Vec<String> = schema.manifest()?.model.entities.iter().map(|e| e.table.clone()).collect();
-        let existing = self.existing_tables(&tables).await?;
-        if existing.len() == tables.len() {
-            return Ok(());
-        }
-        if !existing.is_empty() {
-            return Err(Error::Config(format!(
-                "schema install creates every table of the document set or none; {} of {} tables exist: {}",
-                existing.len(),
-                tables.len(),
-                existing.join(", ")
-            )));
-        }
-        if let crate::db::Pool::MySql(pool) = self.u.db.pool() {
-            // MySQL commits schema statements implicitly, so they run outside a transaction.
-            if active_for(self.u.db).is_some() {
-                return Err(Error::Config("MySQL commits schema statements implicitly; install outside a transaction".into()));
-            }
-            let mut conn = pool.acquire().await?;
-            for statement in &statements {
-                sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.clone()))).execute(&mut *conn).await?;
-            }
-            return Ok(());
-        }
-        self.u
-            .run(async |ex: &Executor| {
-                let Executor::Tx(t) = ex else { return Err(Error::internal("schema install outside a transaction")) };
-                for statement in &statements {
-                    t.raw(statement).await?;
+        let statements = dbspec::render(&refs, dialect).map_err(invalid)?;
+        let target = schema_target(&documents)?;
+        match self.u.db.pool() {
+            crate::db::Pool::MySql(pool) => {
+                // MySQL commits schema statements implicitly, so they run outside a transaction.
+                if active_for(self.u.db).is_some() {
+                    return Err(Error::Config("MySQL commits schema statements implicitly; install outside a transaction".into()));
                 }
-                Ok(())
-            })
-            .await
+                let mut conn = pool.acquire().await?;
+                install_on(&mut *conn, dialect, &statements, &target, &refs).await?;
+            }
+            _ => {
+                self.u
+                    .run(async |ex: &Executor| {
+                        let Executor::Tx(t) = ex else { return Err(Error::internal("schema install outside a transaction")) };
+                        let mut guard = t.enter()?;
+                        match guard.as_mut() {
+                            Some(TxInner::Postgres(conn)) => install_on(&mut **conn, dialect, &statements, &target, &refs).await,
+                            Some(TxInner::Sqlite(conn)) => install_on(&mut **conn, dialect, &statements, &target, &refs).await,
+                            _ => Err(Error::internal("a schema install transaction holds another connection")),
+                        }
+                    })
+                    .await?;
+            }
+        }
+        self.u.db.register(schema)
     }
 
     /// 설치한 document set을 generated schema의 새 version으로 더해서만 올린다(docs/schema.md,
@@ -316,14 +276,7 @@ impl SchemaUtils<'_> {
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
-        let invalid = |errors: Vec<dbspec::Diagnostic>| Error::Engine {
-            code: codes::SCHEMA_INVALID.into(),
-            msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "),
-        };
-        let manifest = dbspec::manifest(&refs).map_err(invalid)?;
-        // schema text의 use 줄은 외부 문서를 가리킨다.
-        let externals: BTreeMap<String, String> = documents.iter().filter(|d| d.external).map(|d| (d.name.text.clone(), dbspec::emit(d))).collect();
-        let target = dbspec::parse(&manifest.schema_text, &externals).map_err(invalid)?;
+        let target = schema_target(&documents)?;
         match self.u.db.pool() {
             crate::db::Pool::Postgres(_) => {
                 self.u
@@ -355,25 +308,6 @@ impl SchemaUtils<'_> {
                 result
             }
         }
-    }
-
-    /// `tables` 중 연결의 database(MySQL), current schema(PostgreSQL), file(SQLite)에 있는 table.
-    async fn existing_tables(&self, tables: &[String]) -> Result<Vec<String>> {
-        let marks: Vec<String> = (1..=tables.len()).map(|i| self.u.ph(i)).collect();
-        let sql = match self.u.db.driver() {
-            "postgres" => format!(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ({}) ORDER BY table_name",
-                marks.join(", ")
-            ),
-            "mysql" => format!(
-                "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ({}) ORDER BY TABLE_NAME",
-                marks.join(", ")
-            ),
-            _ => format!("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ({}) ORDER BY name", marks.join(", ")),
-        };
-        let params: Vec<Param> = tables.iter().map(|t| Param::Str(t.clone())).collect();
-        let rows = self.u.query(&self.u.read(), sql, &params).await?;
-        rows.into_iter().map(|mut row| row.swap_remove(0).take_string()).collect()
     }
 
     /// Whether a schema exists.
@@ -660,11 +594,7 @@ where
     C: crate::dbspec::CatalogQuerier + Send,
     for<'c> &'c mut C: sqlx::Executor<'c>,
 {
-    let live = crate::dbspec::introspect(conn, dialect, "schema").await.map_err(|e| match e {
-        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
-        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
-    })?;
-    external_error(dbspec::external_differences(&live.document, documents))?;
+    let mut live = introspect_set(&mut *conn, dialect, documents).await?;
     let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
     if !planned.differences.is_empty() {
         return Err(Error::Engine {
@@ -678,7 +608,82 @@ where
     for step in &planned.steps {
         sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(step.statement.clone()))).execute(&mut *conn).await?;
     }
+    // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+    if !planned.steps.is_empty() {
+        live = introspect_on(&mut *conn, dialect).await?;
+    }
+    verify_set(dbspec::installed_differences(&live.document, &live.unsupported, target))?;
     Ok(planned.added)
+}
+
+/// 연결에 set을 설치한다(`SchemaUtils::install` 참고). set이 소유한 table이 하나도 없을 때만
+/// `statements`를 실행하고, 그다음 database가 set과 같은지 확인한다.
+async fn install_on<C>(conn: &mut C, dialect: dbspec::Dialect, statements: &[String], target: &Document, documents: &[&Document]) -> Result<()>
+where
+    C: crate::dbspec::CatalogQuerier + Send,
+    for<'c> &'c mut C: sqlx::Executor<'c>,
+{
+    let mut live = introspect_set(&mut *conn, dialect, documents).await?;
+    let found: std::collections::BTreeSet<&str> =
+        live.document.tables.iter().map(|t| t.name.text.as_str()).chain(live.unsupported.iter().map(|u| u.table.as_str())).collect();
+    let present: Vec<&str> = target.tables.iter().map(|t| t.name.text.as_str()).filter(|t| found.contains(t)).collect();
+    if !present.is_empty() && present.len() < target.tables.len() {
+        return Err(Error::Config(format!(
+            "schema install creates every table of the document set or none; {} of {} tables exist: {}",
+            present.len(),
+            target.tables.len(),
+            present.join(", ")
+        )));
+    }
+    if present.is_empty() {
+        for statement in statements {
+            sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.clone()))).execute(&mut *conn).await?;
+        }
+        live = introspect_on(&mut *conn, dialect).await?;
+    }
+    verify_set(dbspec::installed_differences(&live.document, &live.unsupported, target))
+}
+
+/// 연결의 database를 introspect한다.
+async fn introspect_on<C: crate::dbspec::CatalogQuerier + Send>(conn: &mut C, dialect: dbspec::Dialect) -> Result<crate::dbspec::Introspection> {
+    crate::dbspec::introspect(conn, dialect, "schema").await.map_err(|e| match e {
+        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
+        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
+    })
+}
+
+/// 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
+/// CONFIG다(docs/dbspec.md "External documents").
+async fn introspect_set<C: crate::dbspec::CatalogQuerier + Send>(
+    conn: &mut C,
+    dialect: dbspec::Dialect,
+    documents: &[&Document],
+) -> Result<crate::dbspec::Introspection> {
+    let live = introspect_on(conn, dialect).await?;
+    external_error(dbspec::external_differences(&live.document, documents))?;
+    Ok(live)
+}
+
+/// database가 set과 다르면 그 차이를 모두 담은 CONFIG다.
+fn verify_set(differences: Vec<String>) -> Result<()> {
+    if differences.is_empty() {
+        return Ok(());
+    }
+    Err(Error::Config(format!("the database differs from the document set: {}", differences.join("; "))))
+}
+
+/// set의 schema text 문서다. database와 비교하는 대상이다. schema text의 use 줄은 외부 문서를
+/// 가리키므로 외부 문서를 집합으로 삼아 parse한다.
+fn schema_target(documents: &[Document]) -> Result<Document> {
+    let refs: Vec<&Document> = documents.iter().collect();
+    let manifest = dbspec::manifest(&refs).map_err(invalid)?;
+    let externals: BTreeMap<String, String> = documents.iter().filter(|d| d.external).map(|d| (d.name.text.clone(), dbspec::emit(d))).collect();
+    dbspec::parse(&manifest.schema_text, &externals).map_err(invalid)
+}
+
+/// document set의 diagnostic은 SCHEMA_INVALID다.
+fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
+    Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ") }
 }
 
 /// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
