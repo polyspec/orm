@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mjs';
-import { checkInputErrors, selectOwners, selectTargets } from './owners.mjs';
+import { checkInputErrors, makeArguments, selectOwners, selectTargets } from './owners.mjs';
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = JSON.parse(await readFile(new URL('contracts/features.json', `file://${root}`), 'utf8'));
@@ -62,4 +62,10 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
     'contracts/check-inputs.json declares b, which is not in CHECK_TARGETS',
     'contracts/check-inputs.json: b input nothing/** matches no tracked file',
   ]);
+});
+
+caseTest('a selected make target runs with the environments and the Rust target directory of owner-check', 5000, async () => {
+  assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', 'docs-check']);
+  assert.deepEqual(makeArguments('client-db-check', { ORM_OWNER_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', ORM_OWNER_CARGO_TARGET_DIR: '/main/cargo-target' }),
+    ['--no-print-directory', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'CARGO_TARGET_DIR=/main/cargo-target', 'client-db-check']);
 });

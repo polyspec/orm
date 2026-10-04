@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T41.1: the make targets that `make owner-check` selects run with the server environment, the decimal environment and the Rust target directory that owner-check receives, so a check in a worktree uses the servers and the target directory of the main checkout.
+
 - G5.22: every check runs the programs that cargo builds from the declared `CARGO_TARGET_DIR` and fails when it is unset, instead of naming `clients/rust/target`; `make repo-check` rejects a run command that names that directory.
 
 - G5.23: `TestWithContextCancelsInsideTransaction` cancels the blocked read when the server reports it waiting for the lock, instead of after a fixed delay that could end before the statement started.
