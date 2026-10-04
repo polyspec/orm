@@ -328,7 +328,11 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: " + strings.Join(differences, "; ")}
 		}
 		for _, step := range steps {
-			if _, err := r.exec(ctx, KindSchema, []string{step.Effect.Table}, step.Statement); err != nil {
+			var tables []string
+			if step.Effect.Table != "" {
+				tables = []string{step.Effect.Table}
+			}
+			if _, err := r.exec(ctx, KindSchema, tables, step.Statement); err != nil {
 				return err
 			}
 		}
