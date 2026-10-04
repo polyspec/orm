@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.26: 문서 page는 text와 code의 `{{`를 Vue interpolation으로 실행하지 않고 쓴 그대로 보이며, page의 server render가 실패하면 `make docs-build`가 실패한다. 본문 없이 render되던 checklist page에 G5.5가 다시 보인다.
+
 - D4: https://polyspec.github.io/orm/ 의 문서 사이트는 `docs-pages` workflow가 배포한 현재 커밋의 build다.
 
 - G5.25: conformance check는 PostgreSQL sequence를 `pg_depend`의 소유 table로 되돌리므로, PostgreSQL이 sequence 이름을 자른 table도 되돌린다.
