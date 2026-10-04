@@ -95,6 +95,37 @@ $tests['gen --use generates only the owned tables of a set with external documen
     check($code === 0 && $out === '', "gen --check with --use: $code $out");
 };
 
+$tests['gen writes the same models however the paths are written'] = function () use ($work): void {
+    // PHP 생성기는 소스를 scan하지 않으므로 document와 output path만 상대, 절대, `./`, 끝의 `/`로 바꿔 쓴다.
+    $dir = "$work/gen-path-spelling";
+    @mkdir($dir, 0o700, true);
+    file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n");
+    $spellings = [
+        'relative' => ['example.dbs', 'model'],
+        'absolute' => ["$dir/example.dbs", "$dir/model"],
+        'dot' => ['./example.dbs', './model'],
+        'trailing_slash' => ['example.dbs', 'model/'],
+    ];
+    $previous = getcwd();
+    chdir($dir);
+    try {
+        $first = null;
+        foreach ($spellings as $name => [$document, $out]) {
+            exec('rm -rf ' . escapeshellarg("$dir/model"));
+            [$code, , $err] = tool(['gen', '--out', $out, '--namespace', 'Example\\Model', $document]);
+            check($code === 0, "$name: $code $err");
+            $files = [];
+            foreach (glob("$dir/model/*.php") as $file) {
+                $files[basename($file)] = file_get_contents($file);
+            }
+            $first ??= $files;
+            check($files !== [] && $files === $first, "the models of the $name paths differ from the relative paths");
+        }
+    } finally {
+        chdir($previous);
+    }
+};
+
 $tests['gen is the only command'] = function (): void {
     foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
         [$code, $out, $err] = tool([$command]);

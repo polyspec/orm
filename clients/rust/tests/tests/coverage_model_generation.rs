@@ -20,7 +20,9 @@ fn generate(out: &Path) -> (String, String) {
 #[ignore = "run by feature-check"]
 fn coverage_model_generation_check() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let out = std::env::temp_dir().join(format!("orm-rust-model-generation-{}", std::process::id()));
+    // 생성기는 output directory를 canonical path로 include하므로 비교할 path도 canonical path로 만든다.
+    let temp = std::fs::canonicalize(std::env::temp_dir()).expect("canonical temp dir");
+    let out = temp.join(format!("orm-rust-model-generation-{}", std::process::id()));
     let fresh = |dir: &Path| {
         if dir.exists() {
             std::fs::remove_dir_all(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display()));
@@ -34,7 +36,7 @@ fn coverage_model_generation_check() {
     assert!(first == second, "two generations from the same input differ");
 
     // 생성된 model은 manifest file을 절대 경로로 include한다. build의 경로를 이 생성의 경로로 바꿔 비교한다.
-    let built_dir = Path::new(env!("OUT_DIR"));
+    let built_dir = &std::fs::canonicalize(env!("OUT_DIR")).expect("canonical OUT_DIR");
     let built_model = std::fs::read_to_string(built_dir.join(orm_build::MODEL_FILE)).expect("built model");
     let built_manifest = std::fs::read_to_string(built_dir.join(orm_build::MANIFEST_FILE)).expect("built manifest");
     let built_path = built_dir.join(orm_build::MANIFEST_FILE).display().to_string();

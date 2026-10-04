@@ -285,3 +285,40 @@ fn generation_leaves_external_tables_out() {
     assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
     assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
 }
+
+/// 같은 source와 schema는 scan과 output path를 어떻게 쓰든(package directory 기준 상대 path, 절대 path,
+/// `./`를 넣은 path, 끝에 `/`를 붙인 path) 같은 generated source를 만든다.
+#[test]
+fn scan_path_spelling_keeps_the_generated_source() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("src/main.rs"), "fn main() { let _ = ZoneEvent::new().gt_start_dt(now); }").unwrap();
+    std::fs::write(dir.join("tests/case.rs"), "fn case() { let _ = ZoneEvent::new().or_seq(vec![1, 2]); }").unwrap();
+    // 상대 path는 package directory(CARGO_MANIFEST_DIR) 기준이므로 그 directory에서 root까지 올라간 뒤 dir로 내려간다.
+    let base = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
+    let up: PathBuf = base.components().skip(1).map(|_| "..").collect();
+    let relative = up.join(dir.strip_prefix("/").expect("absolute temp dir"));
+    let dot = |name: &str| PathBuf::from(format!("{}/./{name}", dir.display()));
+    let slash = |name: &str| PathBuf::from(format!("{}/{name}/", dir.display()));
+    let spellings: [(&str, [PathBuf; 3]); 4] = [
+        ("relative", [relative.join("src"), relative.join("tests"), relative.join("out")]),
+        ("absolute", [dir.join("src"), dir.join("tests"), dir.join("out")]),
+        ("dot", [dot("src"), dot("tests"), dot("out")]),
+        ("trailing_slash", [slash("src"), slash("tests"), slash("out")]),
+    ];
+    let mut texts = Vec::new();
+    for (name, [src, tests, out]) in &spellings {
+        let _ = std::fs::remove_dir_all(dir.join("out"));
+        let text = orm_build::Builder::new([schema()]).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
+        texts.push((*name, text.unwrap_or_else(|e| panic!("generate {name}: {e}"))));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    let first = &texts[0].1;
+    assert!(first.contains("pub fn gt_start_dt<") && first.contains("pub fn or_seq<"), "the calls of src and tests are generated");
+    for (name, text) in &texts {
+        assert!(text == first, "the generated source of the {name} paths differs from the relative paths");
+    }
+}

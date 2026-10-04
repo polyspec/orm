@@ -3,7 +3,7 @@
 // nothing for a call whose receiver is not a model.
 // Usage: node clients/typescript/tests/generate-scan.mjs [case ...] (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCase } from '../../../tests/testcase.mjs';
@@ -96,7 +96,40 @@ export { typed };
   check(!members('Author').includes('neName') && !members('Service').includes('neName'), 'neName is declared beyond User');
 }
 
-const cases = { non_model_call: nonModelCall, model_calls: modelCalls };
+/**
+ * The same sources and schema give the same models.ts however the scan and
+ * output paths are written: relative, absolute, with `./` or with a trailing
+ * slash.
+ */
+async function scanPathSpelling() {
+  const work = await mkdtemp(join(tmpdir(), 'orm-ts-scan-paths-'));
+  try {
+    await mkdir(join(work, 'src'));
+    await mkdir(join(work, 'tests'));
+    await writeFile(join(work, 'src/example.ts'), `import { Author } from '../models/models.js';\ndeclare const db: unknown;\nnew Author().connect(db).gtReadCount(1);\n`);
+    await writeFile(join(work, 'tests/example.ts'), `import { User } from '../models/models.js';\ndeclare const db: unknown;\nnew User().connect(db).neName('x');\n`);
+    const spellings = {
+      relative: ['src', 'tests', 'models'],
+      absolute: [join(work, 'src'), join(work, 'tests'), join(work, 'models')],
+      dot: ['./src', './tests', './models'],
+      trailing_slash: ['src/', 'tests/', 'models/'],
+    };
+    const texts = {};
+    for (const [name, [src, tests, out]] of Object.entries(spellings)) {
+      await rm(join(work, 'models'), { recursive: true, force: true });
+      const result = spawnSync(process.execPath, [bin, 'gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out, '--scan', src, '--scan', tests], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+      if (result.status !== 0) throw new Error(`orm-gen ${name} exit ${result.status}: ${result.stderr}`);
+      texts[name] = await readFile(join(work, 'models/models.ts'), 'utf8');
+    }
+    check(/export interface Author \{[^}]*\bgtReadCount\(/.test(texts.relative), 'Author lacks gtReadCount of src');
+    check(/export interface User \{[^}]*\bneName\(/.test(texts.relative), 'User lacks neName of tests');
+    for (const name of Object.keys(spellings)) check(texts[name] === texts.relative, `models.ts of the ${name} paths differs from the relative paths`);
+  } finally {
+    await rm(work, { recursive: true, force: true });
+  }
+}
+
+const cases = { non_model_call: nonModelCall, model_calls: modelCalls, scan_path_spelling: scanPathSpelling };
 const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
 for (const name of selected) {
   const run = cases[name];
