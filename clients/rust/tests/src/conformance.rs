@@ -18,6 +18,8 @@ struct Log {
     statements: Vec<Value>,
     seqs: HashSet<i64>,
     times: HashSet<String>,
+    /// vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+    transactions: BTreeMap<u64, u64>,
 }
 
 type Shared = Arc<Mutex<Log>>;
@@ -233,17 +235,28 @@ async fn main() {
     });
     let shared: Shared = Arc::new(Mutex::new(Log::default()));
     let hook = shared.clone();
-    let config = orm::Config {
-        aes_key: "bench-salt".into(),
-        blind_index_key: "bench-blind-index".into(),
-        on_query: Some(Arc::new(move |sql: &str, binds: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
-            let mut log = hook.lock().unwrap();
-            let binds: Vec<Value> = binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
-            log.statements.push(json!({"sql": sql, "binds": binds}));
-        })),
-        ..Default::default()
-    };
+    let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
+    // 각 statement를 그 event로 기록한다(docs/usage.md "Statement events"). transaction은 vector
+    // 안에서 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는 statement의 오류
+    // code이거나 null이다.
+    let _recording = db.subscribe(move |e: &orm::StatementEvent<'_>| {
+        let mut log = hook.lock().unwrap();
+        let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
+        let transaction = e.transaction.map(|n| {
+            let next = log.transactions.len() as u64 + 1;
+            *log.transactions.entry(n).or_insert(next)
+        });
+        log.statements.push(json!({
+            "sql": e.sql,
+            "binds": binds,
+            "kind": e.kind,
+            "tables": e.tables,
+            "transaction": transaction,
+            "error": e.error.map(|error| error.code().to_owned()),
+        }));
+        Ok(())
+    });
     let out = match run_all(&db, &shared, &args.vectors).await {
         Ok(out) => out,
         Err(e) => {

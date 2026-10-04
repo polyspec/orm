@@ -4,7 +4,9 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::db::{Db, DbStats, Executor};
+use crate::dbspec::CatalogFetch;
 use crate::driver::TxInner;
+use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_ROLLBACK, KIND_SCHEMA, KIND_UTILITY};
 use crate::model::{val_param, Model};
 use crate::plan::{BindSlot, Step};
 use crate::row::read_row;
@@ -26,14 +28,14 @@ impl Db {
     }
 }
 
-fn step(sql: String, binds: usize, lock: &str) -> Step {
+fn step(sql: String, binds: usize) -> Step {
     Step {
         plan_id: 0,
         id: 0,
         role: "utils".into(),
         tables: Vec::new(),
         sql,
-        lock: lock.into(),
+        lock: String::new(),
         bind_slots: (0..binds)
             .map(|i| BindSlot {
                 from: "param".into(),
@@ -100,13 +102,15 @@ impl<'a> Utils<'a> {
         }
     }
 
-    async fn query(&self, ex: &Executor, sql: String, params: &[Param]) -> Result<Vec<Vec<Val>>> {
-        let rows = ex.query(&step(sql, params.len(), ""), params, Vec::new()).await?;
+    /// `kind`의 statement를 실행하고 행을 돌려준다. event는 `tables`를 싣는다.
+    async fn query(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param]) -> Result<Vec<Vec<Val>>> {
+        let rows = ex.query_as(Some(kind), Some(tables), &step(sql, params.len()), params, Vec::new()).await?;
         rows.iter().map(|r| read_row(r, r.len(), self.db.inner.zone)).collect()
     }
 
-    async fn exec(&self, ex: &Executor, sql: String, params: &[Param]) -> Result<u64> {
-        Ok(ex.execute(&step(sql, params.len(), ""), params).await?.1)
+    /// `kind`의 statement를 실행하고 바뀐 행 수를 돌려준다. event는 `tables`를 싣는다.
+    async fn exec(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param]) -> Result<u64> {
+        Ok(ex.execute_as(Some(kind), Some(tables), &step(sql, params.len()), params).await?.1)
     }
 
     /// Runs f in the active transaction of the connection, or in a new one.
@@ -124,7 +128,7 @@ impl<'a> Utils<'a> {
     }
 
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
-        let rows = self.query(&self.read(), sql.to_owned(), params).await?;
+        let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
@@ -137,7 +141,7 @@ impl<'a> Utils<'a> {
         let ex = Executor::Tx(t.clone());
         match self.db.driver() {
             "mysql" => {
-                let rows = self.query(&ex, "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())]).await?;
+                let rows = self.query(&ex, KIND_UTILITY, &[], "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())]).await?;
                 let got = rows.first().and_then(|r| r.first()).cloned().unwrap_or(Val::Null);
                 if !matches!(got, Val::I64(1)) {
                     return Err(transaction_conflict(format!("lock {key} was not acquired")));
@@ -145,11 +149,9 @@ impl<'a> Utils<'a> {
                 t.locks.lock().unwrap().push(key.to_owned());
             }
             "postgres" => {
-                self.exec(&ex, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))".into(), &[Param::Str(key.into())]).await?;
+                self.exec(&ex, KIND_UTILITY, &[], "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))".into(), &[Param::Str(key.into())]).await?;
             }
-            _ => {
-                ex.query(&step("SELECT 1".into(), 0, "update"), &[], Vec::new()).await?;
-            }
+            _ => ex.sqlite_row_lock("update").await?,
         }
         Ok(())
     }
@@ -164,10 +166,10 @@ impl<'a> Utils<'a> {
         let params = [Param::Str(key.into()), Param::Str(value.into())];
         match self.db.driver() {
             "postgres" => {
-                self.exec(&ex, "SELECT set_config($1, $2, true)".into(), &params).await?;
+                self.exec(&ex, KIND_UTILITY, &[], "SELECT set_config($1, $2, true)".into(), &params).await?;
             }
             "mysql" => {
-                self.exec(&ex, format!("SET @`orm.{key}` = ?"), &params[1..]).await?;
+                self.exec(&ex, KIND_UTILITY, &[], format!("SET @`orm.{key}` = ?"), &params[1..]).await?;
             }
             // SQLite에는 transaction-local 값을 담는 database 기능이 없어 transaction이 값을 갖는다.
             _ => {}
@@ -233,25 +235,27 @@ impl SchemaUtils<'_> {
             "postgres" => dbspec::Dialect::Postgres,
             _ => dbspec::Dialect::Sqlite,
         };
-        let statements = dbspec::render(&refs, dialect).map_err(invalid)?;
+        let statements = dbspec::render_statements(&refs, dialect).map_err(invalid)?;
         let target = schema_target(&documents)?;
-        match self.u.db.pool() {
+        let db = self.u.db;
+        match db.pool() {
             crate::db::Pool::MySql(pool) => {
                 // MySQL commits schema statements implicitly, so they run outside a transaction.
-                if active_for(self.u.db).is_some() {
+                if active_for(db).is_some() {
                     return Err(Error::Config("MySQL commits schema statements implicitly; install outside a transaction".into()));
                 }
                 let mut conn = pool.acquire().await?;
-                install_on(&mut *conn, dialect, &statements, &target, &refs).await?;
+                install_on(Observed { db, transaction: None }, &mut *conn, dialect, &statements, &target, &refs).await?;
             }
             _ => {
                 self.u
                     .run(async |ex: &Executor| {
                         let Executor::Tx(t) = ex else { return Err(Error::internal("schema install outside a transaction")) };
+                        let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
                         match guard.as_mut() {
-                            Some(TxInner::Postgres(conn)) => install_on(&mut **conn, dialect, &statements, &target, &refs).await,
-                            Some(TxInner::Sqlite(conn)) => install_on(&mut **conn, dialect, &statements, &target, &refs).await,
+                            Some(TxInner::Postgres(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
+                            Some(TxInner::Sqlite(conn)) => install_on(on, &mut **conn, dialect, &statements, &target, &refs).await,
                             _ => Err(Error::internal("a schema install transaction holds another connection")),
                         }
                     })
@@ -278,16 +282,18 @@ impl SchemaUtils<'_> {
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
         let target = schema_target(&documents)?;
-        match self.u.db.pool() {
+        let db = self.u.db;
+        match db.pool() {
             crate::db::Pool::Postgres(_) => {
                 self.u
                     .run(async |ex: &Executor| {
                         let Executor::Tx(t) = ex else { return Err(Error::internal("add columns outside a transaction")) };
+                        let on = Observed { db, transaction: Some(t.number) };
                         let mut guard = t.enter()?;
                         let Some(TxInner::Postgres(conn)) = guard.as_mut() else {
                             return Err(Error::internal("a PostgreSQL transaction holds another connection"));
                         };
-                        add_tables_and_columns_on(&mut **conn, dbspec::Dialect::Postgres, &target, &refs).await
+                        add_tables_and_columns_on(on, &mut **conn, dbspec::Dialect::Postgres, &target, &refs).await
                     })
                     .await
             }
@@ -297,11 +303,11 @@ impl SchemaUtils<'_> {
             ))),
             crate::db::Pool::MySql(pool) => {
                 let mut conn = pool.acquire().await?;
-                add_tables_and_columns_on(&mut *conn, dbspec::Dialect::MySql, &target, &refs).await
+                add_tables_and_columns_on(Observed { db, transaction: None }, &mut *conn, dbspec::Dialect::MySql, &target, &refs).await
             }
             crate::db::Pool::Sqlite(pool) => {
                 let mut conn = pool.acquire().await?;
-                let result = without_foreign_keys(&mut conn, &target, &refs).await;
+                let result = without_foreign_keys(db, &mut conn, &target, &refs).await;
                 if result.is_err() {
                     // foreign key가 꺼졌을 수 있는 연결은 pool에 돌려주지 않는다.
                     conn.close_on_drop();
@@ -408,10 +414,11 @@ impl PrivilegeUtils<'_> {
     pub async fn grant_table(&self, table: &str, role: &str) -> Result<()> {
         let (schema, qualified) = self.table(table)?;
         let role = Self::role(role)?;
+        let tables = [table.to_owned()];
         self.u
             .run(async |ex: &Executor| {
-                self.u.exec(ex, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[]).await?;
-                self.u.exec(ex, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[]).await?;
                 Ok(())
             })
             .await
@@ -421,13 +428,14 @@ impl PrivilegeUtils<'_> {
     pub async fn revoke_table(&self, table: &str, privilege: &str, role: &str) -> Result<()> {
         let (_, qualified) = self.table(table)?;
         let role = Self::role(role)?;
+        let tables = [table.to_owned()];
         let privilege = privilege.trim().to_uppercase();
         if !["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"].contains(&privilege.as_str()) {
             return Err(Error::Config(format!("unsupported table privilege {privilege:?}")));
         }
         self.u
             .run(async |ex: &Executor| {
-                self.u.exec(ex, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[]).await?;
                 Ok(())
             })
             .await
@@ -437,7 +445,7 @@ impl PrivilegeUtils<'_> {
     pub async fn inspect_table(&self, table: &str) -> Result<TablePrivileges> {
         let (_, qualified) = self.table(table)?;
         let sql = "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')";
-        let rows = self.u.query(&self.u.read(), sql.into(), &[Param::Str(qualified)]).await?;
+        let rows = self.u.query(&self.u.read(), KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)]).await?;
         let r = rows.into_iter().next().ok_or_else(|| Error::internal("privilege query returned no row"))?;
         Ok(TablePrivileges { insert: truthy(&r[0]), select: truthy(&r[1]), update: truthy(&r[2]), delete: truthy(&r[3]), truncate: truthy(&r[4]) })
     }
@@ -518,7 +526,7 @@ impl AesUtils<'_> {
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
-        for row in self.u.query(&self.u.read(), sql, &[]).await? {
+        for row in self.u.query(&self.u.read(), KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[]).await? {
             let stored = row_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {
@@ -557,11 +565,12 @@ impl AesUtils<'_> {
         wheres.push(format!("{} = {}", q(&spec.version), self.u.ph(n + 2 + spec.keys.len())));
         let update = format!("UPDATE {} SET {} WHERE {}", q(&spec.table), sets.join(", "), wheres.join(" AND "));
         let new_key = keyring.key(keyring.current)?;
+        let tables = std::slice::from_ref(&spec.table);
         self.u
             .run(async |ex: &Executor| {
                 let mut rotated = 0;
                 loop {
-                    let batch = self.u.query(ex, select.clone(), &[Param::I64(keyring.current as i64)]).await?;
+                    let batch = self.u.query(ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)]).await?;
                     if batch.is_empty() {
                         return Ok(rotated);
                     }
@@ -577,7 +586,7 @@ impl AesUtils<'_> {
                         args.push(Param::I64(keyring.current as i64));
                         args.extend(row[..k].iter().map(val_param));
                         args.push(Param::I64(version as i64));
-                        let affected = self.u.exec(ex, update.clone(), &args).await?;
+                        let affected = self.u.exec(ex, KIND_UTILITY, tables, update.clone(), &args).await?;
                         if affected != 1 {
                             return Err(transaction_conflict(format!("aes rotation of {} changed {affected} rows", spec.table)));
                         }
@@ -590,12 +599,18 @@ impl AesUtils<'_> {
 }
 
 /// 연결의 database를 introspect하고 `dbspec::add_tables_and_columns_steps`의 step을 실행한다.
-async fn add_tables_and_columns_on<C>(conn: &mut C, dialect: dbspec::Dialect, target: &Document, documents: &[&Document]) -> Result<Vec<String>>
+async fn add_tables_and_columns_on<C>(
+    on: Observed<'_>,
+    conn: &mut C,
+    dialect: dbspec::Dialect,
+    target: &Document,
+    documents: &[&Document],
+) -> Result<Vec<String>>
 where
-    C: crate::dbspec::CatalogQuerier + Send,
+    C: CatalogFetch,
     for<'c> &'c mut C: sqlx::Executor<'c>,
 {
-    let mut live = introspect_set(&mut *conn, dialect, documents).await?;
+    let mut live = introspect_set(on, &mut *conn, dialect, documents).await?;
     let planned = dbspec::add_tables_and_columns_steps(&live.document, &live.unsupported, target, dialect);
     if !planned.differences.is_empty() {
         return Err(Error::Engine {
@@ -607,11 +622,13 @@ where
         });
     }
     for step in &planned.steps {
-        sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(step.statement.clone()))).execute(&mut *conn).await?;
+        // effect에 table이 없는 step은 table을 싣지 않는다.
+        let tables: Vec<String> = Some(step.effect.table.clone()).filter(|t| !t.is_empty()).into_iter().collect();
+        events::raw(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &step.statement)).await?;
     }
     // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
     if !planned.steps.is_empty() {
-        live = introspect_on(&mut *conn, dialect).await?;
+        live = introspect_on(on, &mut *conn, dialect).await?;
     }
     verify_set(dbspec::installed_differences(&live.document, &live.unsupported, target))?;
     Ok(planned.added)
@@ -619,12 +636,19 @@ where
 
 /// 연결에 set을 설치한다(`SchemaUtils::install` 참고). set이 소유한 table이 하나도 없을 때만
 /// `statements`를 실행하고, 그다음 database가 set과 같은지 확인한다.
-async fn install_on<C>(conn: &mut C, dialect: dbspec::Dialect, statements: &[String], target: &Document, documents: &[&Document]) -> Result<()>
+async fn install_on<C>(
+    on: Observed<'_>,
+    conn: &mut C,
+    dialect: dbspec::Dialect,
+    statements: &[dbspec::RenderedStatement],
+    target: &Document,
+    documents: &[&Document],
+) -> Result<()>
 where
-    C: crate::dbspec::CatalogQuerier + Send,
+    C: CatalogFetch,
     for<'c> &'c mut C: sqlx::Executor<'c>,
 {
-    let mut live = introspect_set(&mut *conn, dialect, documents).await?;
+    let mut live = introspect_set(on, &mut *conn, dialect, documents).await?;
     let found: std::collections::BTreeSet<&str> =
         live.document.tables.iter().map(|t| t.name.text.as_str()).chain(live.unsupported.iter().map(|u| u.table.as_str())).collect();
     let present: Vec<&str> = target.tables.iter().map(|t| t.name.text.as_str()).filter(|t| found.contains(t)).collect();
@@ -638,29 +662,44 @@ where
     }
     if present.is_empty() {
         for statement in statements {
-            sqlx::raw_sql(sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.clone()))).execute(&mut *conn).await?;
+            let tables = [statement.table.clone()];
+            events::raw(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &statement.sql)).await?;
         }
-        live = introspect_on(&mut *conn, dialect).await?;
+        live = introspect_on(on, &mut *conn, dialect).await?;
     }
     verify_set(dbspec::installed_differences(&live.document, &live.unsupported, target))
 }
 
-/// 연결의 database를 introspect한다.
-async fn introspect_on<C: crate::dbspec::CatalogQuerier + Send>(conn: &mut C, dialect: dbspec::Dialect) -> Result<crate::dbspec::Introspection> {
-    crate::dbspec::introspect(conn, dialect, "schema").await.map_err(|e| match e {
-        crate::dbspec::IntrospectError::Query(e) => Error::from(e),
-        crate::dbspec::IntrospectError::Catalog(m) => Error::internal(m),
-    })
+/// schema statement를 실행하는 연결의 출처: 연결과 statement의 transaction 번호다.
+#[derive(Clone, Copy)]
+struct Observed<'a> {
+    db: &'a Db,
+    transaction: Option<u64>,
+}
+
+/// 연결의 database를 introspect한다. catalog query마다 그 행을 읽은 뒤 행을 바꾸기 전에
+/// event를 publish한다. 행을 바꾸지 못한 것은 statement의 오류가 아니다.
+async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect: dbspec::Dialect) -> Result<crate::dbspec::Introspection> {
+    let queries = dbspec::catalog_queries(dialect);
+    let mut results = Vec::with_capacity(queries.len());
+    for query in queries {
+        let start = std::time::Instant::now();
+        let rows = conn.fetch(query).await.map_err(Error::from);
+        let rows = on.db.statement_done(Sent::bare(KIND_SCHEMA, &[], on.transaction, query), start, rows)?;
+        results.push(C::values(&rows)?);
+    }
+    dbspec::read_catalog(dialect, &results, "schema").map_err(Error::internal)
 }
 
 /// 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
 /// CONFIG다(docs/dbspec.md "External documents").
-async fn introspect_set<C: crate::dbspec::CatalogQuerier + Send>(
+async fn introspect_set<C: CatalogFetch>(
+    on: Observed<'_>,
     conn: &mut C,
     dialect: dbspec::Dialect,
     documents: &[&Document],
 ) -> Result<crate::dbspec::Introspection> {
-    let live = introspect_on(conn, dialect).await?;
+    let live = introspect_on(on, conn, dialect).await?;
     external_error(dbspec::external_differences(&live.document, documents))?;
     Ok(live)
 }
@@ -690,13 +729,21 @@ fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
 /// SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 table과 column을 더한 뒤 foreign
 /// key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md,
 /// "Apply"의 SQLite 다시 만들기).
-async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
-    sqlx::raw_sql("PRAGMA foreign_keys = OFF").execute(&mut *conn).await?;
+async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
+    let outside = |sql| Sent::bare(KIND_UTILITY, &[], None, sql);
+    events::raw(db, &mut *conn, outside("PRAGMA foreign_keys = OFF")).await?;
+    // 이 transaction도 연결의 바깥 transaction이므로 번호를 하나 받는다.
+    let number = Some(db.next_transaction());
+    let inside = |kind, sql| Sent::bare(kind, &[], number, sql);
     let result = async {
-        sqlx::raw_sql("BEGIN IMMEDIATE").execute(&mut *conn).await?;
+        events::raw(db, &mut *conn, inside(KIND_BEGIN, "BEGIN IMMEDIATE")).await?;
         let applied = async {
-            let added = add_tables_and_columns_on(&mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
-            let broken: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM pragma_foreign_key_check").fetch_one(&mut *conn).await?;
+            let on = Observed { db, transaction: number };
+            let added = add_tables_and_columns_on(on, &mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
+            let check = "SELECT COUNT(*) FROM pragma_foreign_key_check";
+            let start = std::time::Instant::now();
+            let broken = sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from);
+            let broken = db.statement_done(inside(KIND_SCHEMA, check), start, broken)?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
             }
@@ -705,20 +752,20 @@ async fn without_foreign_keys(conn: &mut sqlx::SqliteConnection, target: &Docume
         .await;
         match applied {
             Ok(added) => {
-                sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
+                events::raw(db, &mut *conn, inside(KIND_COMMIT, "COMMIT")).await?;
                 Ok(added)
             }
-            Err(error) => match sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await {
-                Ok(_) => Err(error),
-                Err(rollback) => Err(Error::Rollback { callback: Box::new(error), rollback: Box::new(rollback.into()) }),
+            Err(error) => match events::raw(db, &mut *conn, inside(KIND_ROLLBACK, "ROLLBACK")).await {
+                Ok(()) => Err(error),
+                Err(rollback) => Err(Error::Rollback { callback: Box::new(error), rollback: Box::new(rollback) }),
             },
         }
     }
     .await;
-    let restored = sqlx::raw_sql("PRAGMA foreign_keys = ON").execute(&mut *conn).await;
+    let restored = events::raw(db, &mut *conn, outside("PRAGMA foreign_keys = ON")).await;
     match (result, restored) {
-        (result, Ok(_)) => result,
-        (Ok(_), Err(e)) => Err(e.into()),
+        (result, Ok(())) => result,
+        (Ok(_), Err(e)) => Err(e),
         // foreign key를 다시 켜지 못한 오류도 message에 남긴다.
         (Err(error), Err(restore)) => Err(Error::Engine { code: error.code().to_owned(), msg: format!("{error}; restoring foreign keys failed: {restore}") }),
     }

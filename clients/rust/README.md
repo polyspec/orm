@@ -131,9 +131,9 @@ of `Val::as_f64` for ordinary values.
 
 `orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried.
 
-## The statement hook
+## Statement events
 
-`Config.on_query` receives `(sql, binds, duration, plan_id, err)` for each model statement. Secret binds are shown as `$SECRET` and executor clock binds as `$NOW`. `plan_id` is the plan-cache key, FNV-1a 64 of the request shape.
+`db.subscribe(|e: &orm::StatementEvent<'_>| Ok(()))` registers a subscriber for every statement the connection and its clones send: model statements, transaction control, savepoints and the statements of utilities and schema utilities. The event has `sql`, `binds` (secret binds shown as `$SECRET`, executor clock binds as `$NOW`), `kind`, `tables`, `elapsed`, `transaction` (the number of the transaction on the connection, `None` outside one) and `error`. Subscribers run synchronously in registration order after the statement ends; an error a subscriber returns fails the operation with `Error::Subscriber` (`SUBSCRIBER`), whose source is that error. `subscription.unsubscribe()` removes the subscriber. [docs/usage.md](../../docs/usage.md#statement-events) states the events of every client.
 
 ## Build and test
 

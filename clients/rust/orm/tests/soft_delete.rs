@@ -6,7 +6,7 @@
 use std::sync::{Arc, Mutex};
 
 use chrono::NaiveDateTime;
-use orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
+use orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
 static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
@@ -73,16 +73,14 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let dsn = format!("sqlite://{}?_pragma=busy_timeout(5000)", path.display());
     let logged: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let hook = logged.clone();
-    let config = Config {
-        aes_key: "test-aes-key".into(),
-        blind_index_key: "test-blind-key".into(),
-        on_query: Some(Arc::new(move |sql: &str, _: &[Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
-            hook.lock().unwrap().push(sql.to_owned());
-        })),
-        ..Default::default()
-    };
+    let config = Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() };
     let db = Db::connect(&dsn, 1, config).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
+    // model statement만 모으도록 install 뒤에 구독한다.
+    let _logging = db.subscribe(move |e: &StatementEvent<'_>| {
+        hook.lock().unwrap().push(e.sql.to_owned());
+        Ok(())
+    });
     let mut keep = record(&db);
     keep.core_mut().set("name", Param::Str("keep".into()));
     orm::model::create(&mut keep).await.unwrap();

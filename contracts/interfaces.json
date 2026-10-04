@@ -35,7 +35,7 @@
   "symbol_hashes": {
     "go": "sha256:146f8a62725fc22923c4c311ad927b5229dd797f141969f5266e2f20f2dea45a",
     "php": "sha256:769aeaea5f3203229480340e256bc93d38d3bfa889c9f2a7ee7e6d11a515b59e",
-    "rust": "sha256:9831b3d2f6414ab63f6b94cad98fbbb3b1a62d2139c8a696b94322c67e87caf9",
+    "rust": "sha256:b7bd479ac78fbb79e87a7f2b750594187234ad7e08d7031180338d51e6c1c164",
     "typescript": "sha256:771075bb3d5841f79bb35e0e37140aa24ee7b73226c6d94f396af51b25a877df"
   },
   "prohibited_symbols": [
@@ -1212,7 +1212,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm/src/events.rs::Db::subscribe",
-          "signature": "pub fn subscribe<F>(&self, subscriber: F) -> Subscription"
+          "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Subscription"
         },
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.subscribe",

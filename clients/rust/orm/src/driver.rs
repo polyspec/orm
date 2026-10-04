@@ -482,41 +482,6 @@ pub(crate) async fn exec_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePoo
     result
 }
 
-pub(crate) async fn acquire_sqlite_row_lock(target: &mut Target<'_>, mode: &str) -> Result<()> {
-    if mode.is_empty() {
-        return Ok(());
-    }
-    let tx = match target {
-        Target::Tx(TxInner::Sqlite(tx)) => tx,
-        Target::Pool(Pool::Sqlite(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
-        _ => return Ok(()),
-    };
-    let nowait = mode.ends_with("_nowait");
-    let previous: i64 = sqlx::query_scalar("PRAGMA busy_timeout").fetch_one(&mut **tx).await?;
-    if nowait {
-        sqlx::raw_sql("PRAGMA busy_timeout=0").execute(&mut **tx).await?;
-    }
-    let result = async {
-        sqlx::raw_sql("CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))").execute(&mut **tx).await?;
-        sqlx::raw_sql("INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"").execute(&mut **tx).await?;
-        Ok::<(), sqlx::Error>(())
-    }
-    .await;
-    if nowait {
-        let statement = format!("PRAGMA busy_timeout={previous}");
-        let _ = sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut **tx).await;
-    }
-    result.map_err(|error| {
-        let busy = crate::sqlite_busy(&error);
-        let mapped = Error::from(error);
-        if nowait && busy {
-            Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
-        } else {
-            mapped
-        }
-    })
-}
-
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
 pub(crate) fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> (Cow<'_, str>, Vec<Param>) {
     if parent_vals.is_empty() {
@@ -586,25 +551,10 @@ pub(crate) enum Target<'a> {
 }
 
 /// A MySQL transaction whose pool connection is retained after the explicit
-/// `SET TRANSACTION` and `START TRANSACTION` statements.
+/// `SET TRANSACTION` and `START TRANSACTION` statements until its `COMMIT` or
+/// `ROLLBACK`.
 pub(crate) struct MySqlOwnedTx {
     pub(crate) conn: Option<CancellableConnection<MySql>>,
-}
-
-impl MySqlOwnedTx {
-    pub(crate) async fn commit(mut self) -> sqlx::Result<()> {
-        let mut conn = self.conn.take().expect("active MySQL transaction connection");
-        sqlx::raw_sql("COMMIT").execute(&mut *conn).await?;
-        conn.completed();
-        Ok(())
-    }
-
-    pub(crate) async fn rollback(mut self) -> sqlx::Result<()> {
-        let mut conn = self.conn.take().expect("active MySQL transaction connection");
-        sqlx::raw_sql("ROLLBACK").execute(&mut *conn).await?;
-        conn.completed();
-        Ok(())
-    }
 }
 
 impl Drop for MySqlOwnedTx {

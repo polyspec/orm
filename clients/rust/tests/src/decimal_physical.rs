@@ -147,16 +147,15 @@ async fn schema_set_sqlite() {
     schema_set("sqlite").await;
 }
 
-/// The number of statements a connection ran, counted by its query hook.
+/// Counts the statements a connection sends in `runs` with a statement event
+/// subscriber.
 #[cfg(test)]
-fn counted(runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> orm::Config {
+fn counted(db: &orm::Db, runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> orm::Subscription {
     let runs = runs.clone();
-    orm::Config {
-        on_query: Some(std::sync::Arc::new(move |_: &str, _: &[orm::Param], _: std::time::Duration, _: u64, _: Option<&orm::Error>| {
-            runs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        })),
-        ..Default::default()
-    }
+    db.subscribe(move |_: &orm::StatementEvent<'_>| {
+        runs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
+    })
 }
 
 /// A request of a set that is not registered on its connection fails with
@@ -171,11 +170,13 @@ async fn schema_set_unregistered(driver: &str) {
 
     let (dsn, name) = schema_set_database(driver).await;
     let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let raw = orm::Db::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let raw = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let _raw_counted = counted(&raw, &runs);
     let error = User::new().connect(&raw).get_count().await.expect_err("a bench read on a raw connection");
     assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
     raw.close().await;
-    let core = model::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let core = model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let _core_counted = counted(&core, &runs);
     let installer = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     installer.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     DecimalCase::new().connect(&installer).set_seq(1).set_amount("1.0000").unwrap().create().await.unwrap();
@@ -210,7 +211,8 @@ async fn schema_set_edited_manifest(driver: &str) {
     let error = orm::Db::connect_schema(&dsn, schema, 2, orm::Config::default()).await.err().expect("a connection with an edited manifest");
     assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
     let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let db = decimal_model::connect(&dsn, 2, counted(&runs)).await.unwrap();
+    let db = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let _counted = counted(&db, &runs);
     let error = db.utils().schema().install(schema).await.expect_err("an install of an edited manifest");
     assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of the edited install");

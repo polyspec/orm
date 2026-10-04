@@ -1481,7 +1481,7 @@
       "clients": {
         "go": "pass",
         "php": "pass",
-        "rust": "planned",
+        "rust": "pass",
         "typescript": "pass"
       },
       "fixtures": [
@@ -1491,7 +1491,8 @@
       "tests": [
         "clients/go/orm/statement_events_test.go",
         "clients/typescript/tests/statement-events.mjs",
-        "clients/php/tests/statement_events_test.php"
+        "clients/php/tests/statement_events_test.php",
+        "clients/rust/orm/tests/statement_events.rs"
       ],
       "docs": [
         "docs/usage.md",
@@ -1510,6 +1511,10 @@
         {
           "id": "statement-events-php",
           "command": "php clients/php/tests/statement_events_test.php"
+        },
+        {
+          "id": "statement-events-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events"
         }
       ],
       "public_constraints": [
