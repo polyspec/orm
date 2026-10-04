@@ -87,6 +87,15 @@ if ($canon(Codec::decode(['yaml'], "1: value\n")->payload()) !== '{"1":"value"}'
 testcase_end($fail > $vectorFailures ? ($fail - $vectorFailures) . " check(s) failed; each line above names one" : null);
 $beforeOutputs = $fail;
 testcase_begin('codec/other-language-outputs', TESTCASE_COMPUTE);
+// Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs)가 쓰는 출력은 모두 있어야 한다.
+// make check는 그 test를 실행하는 target(ts-check, client-db-check) 뒤에 codec-check를 실행한다. 없는
+// 출력을 건너뛰면 비교하지 않은 언어가 통과로 보인다.
+foreach (['go', 'rust', 'typescript'] as $required) {
+    if (!is_file("$root/out/$required.json")) {
+        $fail++;
+        fwrite(STDERR, "missing tests/codec/out/$required.json; its codec test did not run before this check\n");
+    }
+}
 $langs = 0;
 foreach (glob("$root/out/*.json") as $file) {
     $lang = basename($file, '.json');

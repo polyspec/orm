@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, featureCommands, runnerErrors, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
@@ -29,6 +29,8 @@ failures.push(...ciCheckTargetErrors(ci, makefile));
 // make check의 feature-check가 실행하는 검증 명령을 CI가 따로 다시 실행하지 않는다.
 const features = JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'));
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
+// make check를 실행하는 CI는 그 밖에서 test runner를 다시 실행하지 않는다(runner의 정체로 판단).
+failures.push(...ciRerunErrors(ci, makefile));
 
 // root npm script가 쓰는 path는 tracked file이나 directory다.
 const rootPackage = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

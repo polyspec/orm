@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, featureCommands, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
@@ -657,4 +657,44 @@ caseTest('every build tool of the Makefile, package.json and the scripts runs un
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.sh'));
   assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0]).length > 1), ...scripts]), []);
+});
+
+// 재실행 case는 저장소의 workflow와 최소 workflow를 runner의 정체로 검사한다.
+caseTest('the CI workflow runs no test runner outside make check', COMPUTE, () => {
+  assert.deepEqual(ciRerunErrors(workflow, text('Makefile')), []);
+});
+
+caseTest('a workflow that runs a test runner after make check fails by identity', COMPUTE, () => {
+  assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p orm codec'), 'cargo test');
+  assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
+  assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
+  const make = [
+    'CHECK_TARGETS = repo-check',
+    'GO_TEST = go test -v -timeout 0',
+    'fuzz-check:',
+    "\t$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
+    'vet-again:',
+    '\t$(GO_TEST) ./clients/go/orm -run TestCodec',
+    '',
+  ].join('\n');
+  const again = steps.replace('make repo-check', [
+    'make check',
+    '          make fuzz-check vet-again',
+    '          go vet ./... && go test -v -timeout 0 ./...',
+    '          (cd clients/rust && cargo test --locked -p orm codec)',
+    '          php tests/codec/check.php',
+    '          node --test scripts/x.test.mjs',
+    '          go run ./tests/interfaces/check --results tests/conformance/out',
+  ].join('\n'));
+  const message = (identity, via = '') => `ci.yml step "checks" runs ${identity}${via} outside make check; make check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`;
+  assert.deepEqual(ciRerunErrors(again, make), [
+    message('go test', ' through make vet-again'),
+    message('go vet'),
+    message('go test'),
+    message('cargo test'),
+    message('php tests/codec/check.php'),
+    message('node test'),
+    message('go test'),
+  ]);
+  assert.deepEqual(ciRerunErrors(steps.replace('make repo-check', 'make repo-check\n          go test ./...'), make), []);
 });
