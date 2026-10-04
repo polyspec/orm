@@ -224,13 +224,17 @@ start_logged() {
   # 끝나므로, shell이 signal로 멈춘 job을 보고하지 않는다. timer의 stderr는 버린다.
   ( exec 2>/dev/null; sleep "$deadline" && [ -p "$DIR/$name.ready" ] && echo timeout > "$DIR/$name.ready" ) &
   timer=$!
-  # FIFO를 여는 open은 reader가 끝날 때 오는 SIGCHLD에 끊길 수 있다(EINTR). 끊긴 open에는 writer가
-  # 짝지어지지 않았으므로 FIFO가 있는 동안 다시 열어 처음 보고된 한 줄을 읽는다.
+  # FIFO는 읽기와 쓰기로 한 번 열어 끝까지 둔다. read는 reader가 끝날 때 오는 SIGCHLD에 끊길 수
+  # 있다(EINTR). FIFO를 read마다 열고 닫으면, 끊긴 read가 닫은 뒤에 쓴 보고는 읽는 쪽이 없어
+  # 사라지고 기한의 timeout이 대신 읽혔다. 열린 fd가 남아 있으면 보고는 FIFO buffer에 남으므로 다시
+  # 읽으면 처음 보고된 한 줄을 받는다. timer가 기한에 반드시 쓰므로 반복은 끝난다.
+  exec 3<>"$DIR/$name.ready"
   state=
-  while [ -z "$state" ] && [ -p "$DIR/$name.ready" ]; do
-    read -r state 2>/dev/null < "$DIR/$name.ready" || state=
+  while [ -z "$state" ]; do
+    read -r state <&3 2>/dev/null || state=
   done
   rm "$DIR/$name.ready"
+  exec 3<&-
   # 끝난 쪽이 아닌 보고자를 멈춘다: timer의 sleep이다. reader는 서버가 끝나면 스스로 끝나며, 실패한
   # start의 stop_servers가 서버를 멈춘다.
   pkill -P "$timer" sleep 2>/dev/null || true
