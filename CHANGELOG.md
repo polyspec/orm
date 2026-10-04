@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-2: CI no longer runs Go and codec tests again after `make check`; `go vet` runs in the new `go-vet-check` and the PHP codec cross-check in the new `codec-check`, which fails when an output of the Go, Rust or TypeScript codec test is missing, and `make repo-check` finds a re-run by the test runner it starts instead of the exact command text.
+
 - G5.29-1: CI steps that run `make` or a test runner have no `timeout-minutes`, since their cases carry their own deadlines; other steps keep their own, and `make repo-check` enforces both.
 
 - G5.29-10: the TypeScript builds of `scripts/typescript/sqlite-test.sh`, `npm run typescript:test` and `make conformance-result-check` run under `tests/run-case.mjs` with a deadline and show their output, and `make repo-check` checks the build tools of the Makefile recipes, the `package.json` scripts and the shell scripts too.

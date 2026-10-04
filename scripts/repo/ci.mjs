@@ -245,3 +245,60 @@ export function stepTimeoutErrors(workflows) {
     }
   return errors;
 }
+
+// makeVariables는 Makefile의 한 줄 변수 정의(`NAME = value`, `NAME := value`)다.
+function makeVariables(makefile) {
+  return new Map([...makefile.matchAll(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*:?=\s*(.*)$/gm)].map(match => [match[1], match[2].trim()]));
+}
+
+// expand는 명령 안의 make 변수(`$(NAME)`)를 정의로 바꾼다. 정의가 다시 변수를 쓰면 몇 번 더 바꾼다.
+function expand(command, variables) {
+  let text = command;
+  for (let round = 0; round < 4; round++)
+    text = text.replace(/\$\(([A-Z_][A-Z0-9_]*)\)/g, (whole, name) => variables.get(name) ?? whole);
+  return text;
+}
+
+// runnerIdentity는 명령 조각이 실행하는 test runner의 정체다: `go test`(fuzzing만 하는 `-fuzz`는 test
+// 실행이 아니다), `go vet`, `cargo test`, `php <file>`, `node --test`나 test file을 실행하는 `node`.
+// 앞의 환경 변수 대입은 정체를 바꾸지 않는다. test runner가 아니면 undefined다.
+export function runnerIdentity(segment) {
+  const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
+  if (/^go\s+test\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
+  if (/^go\s+vet\b/.test(command)) return 'go vet';
+  if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
+  const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);
+  if (php) return `php ${php[1]}`;
+  if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:clients|tests)\/)/.test(command)) return 'node test';
+  return undefined;
+}
+
+// ciRerunErrors는 make check를 실행하는 workflow가 make check 밖에서 test runner를 실행하는 곳마다 오류
+// 하나를 돌려준다. make check는 모든 Go package, Rust crate, PHP와 TypeScript test를 한 번씩 실행하므로
+// (go-test-check, client-db-check, feature-check와 다른 target) 그런 step은 그 일부를 다시 실행하거나,
+// make check에 없는 check를 make check 밖에 둔다. 명령 text가 아니라 runner의 정체로 판단하고, step이
+// 실행하는 make target(CHECK_TARGETS 밖)의 recipe도 변수를 풀어 같은 방식으로 본다.
+export function ciRerunErrors(workflow, makefile) {
+  const steps = workflowSteps(workflow);
+  if (!steps.some(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)))) return [];
+  const targets = new Set(checkTargets(makefile));
+  const variables = makeVariables(makefile);
+  const errors = [];
+  const report = (step, identity, via) => errors.push(`ci.yml step "${step.name}" runs ${identity}${via} outside make check; make check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
+  for (const step of steps) {
+    for (const segment of step.run.split('\n').flatMap(segments)) {
+      const identity = runnerIdentity(segment);
+      if (identity) { report(step, identity, ''); continue; }
+      const make = /^make\s+(.*)$/.exec(segment)?.[1];
+      if (!make) continue;
+      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && word !== 'check' && !targets.has(word))) {
+        for (const line of recipe(makefile, target) ?? [])
+          for (const part of segments(expand(line, variables))) {
+            const inner = runnerIdentity(part);
+            if (inner) report(step, inner, ` through make ${target}`);
+          }
+      }
+    }
+  }
+  return errors;
+}
