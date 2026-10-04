@@ -107,7 +107,8 @@
         },
         {
           "id": "dsn-php-without-mysql",
-          "command": "make php-without-mysql-check"
+          "command": "make php-without-mysql-check",
+          "environment": "linux-runner"
         },
         {
           "id": "dsn-mysql-tls-go",

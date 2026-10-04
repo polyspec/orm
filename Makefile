@@ -383,8 +383,11 @@ client-unit-check:
 php-min-check:
 	PHP="$$(./scripts/php/php-min.sh)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
 
-# php-without-mysql-check는 pdo_mysql이 없는 공식 PHP image에서 PHP client를 SQLite로 실행한다(N17).
-# container image를 받고 PHP를 시작하는 데 몇 분이 걸릴 수 있다.
+# php-without-mysql-check는 MySQL driver(mysqlnd, pdo_mysql, mysqli)를 load하지 않은 PHP에서
+# PHP client를 SQLite로 실행한다(N17): `php -n`에 client가 쓰는 확장만 명시한다. driver가
+# shared module인 선언된 Linux runner(.github/runner)의 검사이며, driver가 compile된 PHP(macOS
+# Homebrew)에서는 그 이유로 실패한다. make check의 feature-check는 Linux가 아니면 이 검사를
+# 실행하지 않고 Linux runner에서 실행한다고 출력한다.
 php-without-mysql-check:
 	$(RUN_CASE) php-without-mysql $(TOOL_DEADLINE) -- ./scripts/php-without-mysql.sh
 

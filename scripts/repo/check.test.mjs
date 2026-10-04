@@ -315,6 +315,9 @@ caseTest('a job on another runner fails', COMPUTE, () => {
   ]);
   assert.deepEqual(runnerErrors('ubuntu-26.04-arm\n', { 'ci.yml': job.replace('    runs-on: ubuntu-26.04-arm\n', '') }), ['ci.yml declares no runs-on']);
   assert.deepEqual(runnerErrors('', {}), ['.github/runner must hold one runner label and a newline, found ""']);
+  assert.deepEqual(runnerErrors('macos-26\n', {}), [
+    '.github/runner macos-26 is not a Linux runner; the linux-runner checks of contracts/features.json run only there',
+  ]);
 });
 
 caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () => {

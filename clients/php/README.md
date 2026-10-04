@@ -6,7 +6,8 @@ the runtime model of the dbspec document set (docs/dbspec.md), planned once, and
 bounded process-local plan cache. No service or extension
 runs beside it. PHP 8.4 or later. Version 0.0.2. The scheme of a DSN selects its PDO driver, so
 `composer.json` requires none of the three and suggests each one; `scripts/php-without-mysql.sh` runs
-the client on SQLite in the official PHP image, which has no `pdo_mysql`.
+the client on SQLite with `php -n` and only the extensions it needs, so that `mysqlnd`, `pdo_mysql` and
+`mysqli` are not loaded, on the Linux runner of `.github/runner`, where they are shared modules.
 
 ## Layout
 - `src/` — the runtime, PSR-4 `Orm\` (`composer.json`): the model syntax (`Model.php`,

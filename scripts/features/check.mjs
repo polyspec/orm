@@ -63,6 +63,7 @@ for (const feature of manifest.features ?? []) {
     for (const [index, check] of (feature.verification ?? []).entries()) {
       if (!check.id || !check.command) errors.push(`${feature.id}: verification ${index} is incomplete`);
       if (check.exclusive !== undefined && typeof check.exclusive !== 'boolean') errors.push(`${feature.id}: verification ${index} exclusive is not a boolean`);
+      if (check.environment !== undefined && check.environment !== 'linux-runner') errors.push(`${feature.id}: verification ${index} environment must be linux-runner`);
     }
   }
   for (const relative of [...feature.fixtures, ...feature.tests, ...feature.docs]) {
@@ -179,8 +180,16 @@ if (runVerification && errors.length === 0) {
   const checks = (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)
     .flatMap(feature => (feature.verification ?? []).map(check => ({ feature, check })));
   const executed = new Map();
+  // environment linux-runner인 명령은 선언된 Linux runner(.github/runner)의 검사다: CI가
+  // 그 runner의 Linux에서 make check로 실행한다. Linux가 아닌
+  // machine에서는 실행하지 않고 그 사실을 RUNNER 줄로 출력한다. 통과로 세지 않는다.
+  const runner = (await readFile(resolve(root, '.github/runner'), 'utf8')).trim();
   const verify = async ({ feature, check }) => {
     const name = `features/${feature.id}/${check.id}`;
+    if (check.environment === 'linux-runner' && process.platform !== 'linux') {
+      console.log(`RUNNER ${name}: ${check.command} runs on the Linux runner ${runner}; CI runs it there`);
+      return;
+    }
     const key = JSON.stringify([check.cwd ?? '.', check.command]);
     const previous = executed.get(key);
     let settle;

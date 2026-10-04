@@ -3,8 +3,8 @@
 // scheme이 PDO driver를 고르므로 composer.json은 driver 확장을 요구하지 않고
 // pdo_mysql, pdo_pgsql, pdo_sqlite를 제안한다. schema/bench.dbs를 dbspec file reader로
 // 읽어 설치하고, generated model로 row 하나를 만들고 읽는다.
-// Usage: scripts/php-without-mysql.sh, which runs this file in the official PHP
-// image; a PHP that loads pdo_mysql fails the case.
+// Usage: scripts/php-without-mysql.sh, which runs this file with php -n and only the
+// extensions the client needs; a PHP that loads mysqlnd, pdo_mysql or mysqli fails the case.
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -22,8 +22,10 @@ function fail(string $message): never
 
 // case는 SQLite file 하나에 schema를 설치하고 row 하나를 쓰고 읽는다.
 testcase_begin('sqlite_without_mysql', TESTCASE_DATABASE);
-if (extension_loaded('pdo_mysql')) {
-    fail('this PHP loads pdo_mysql; run scripts/php-without-mysql.sh');
+foreach (['mysqlnd', 'pdo_mysql', 'mysqli'] as $driver) {
+    if (extension_loaded($driver)) {
+        fail("this PHP loads $driver; run scripts/php-without-mysql.sh");
+    }
 }
 $root = dirname(__DIR__, 3);
 $manifest = json_decode((string) file_get_contents("$root/clients/php/composer.json"), true, 512, JSON_THROW_ON_ERROR);
