@@ -116,7 +116,7 @@ export function reportingScriptErrors(commands, read) {
 }
 
 // segments는 shell 명령을 따옴표 밖의 &&, ||, ;, |, 괄호에서 나눈 명령들이다. 따옴표 안(예:
-// `sh -c '... && ...'`)은 나누지 않는다.
+// `sh -c '... && ...'`)과 `$(...)`는 나누지 않는다.
 export function segments(command) {
   const out = [];
   let current = '';
@@ -129,6 +129,16 @@ export function segments(command) {
       continue;
     }
     if (char === '"' || char === "'") { quote = char; current += char; continue; }
+    // make 변수와 command substitution(`$(NAME)`, `$(cmd)`)은 나누지 않는다.
+    if (char === '$' && command[index + 1] === '(') {
+      let depth = 0;
+      for (; index < command.length; index++) {
+        current += command[index];
+        if (command[index] === '(') depth++;
+        else if (command[index] === ')' && --depth === 0) break;
+      }
+      continue;
+    }
     const two = command.slice(index, index + 2);
     if (two === '&&' || two === '||') { out.push(current); current = ''; index++; continue; }
     if (char === ';' || char === '|' || char === '(' || char === ')') { out.push(current); current = ''; continue; }
@@ -151,6 +161,15 @@ const tools = [
 ];
 const wrapper = /(?:\brun-case\.mjs|\$\(RUN_CASE\)|\$\(TSC_BUILD\))/;
 
+// cargoArguments는 segment의 `cargo test` 인자 가운데 `--` 앞의 것을 `--no-run`과 toolchain(`+x`) 없이
+// 돌려준다. build와 실행이 같은 test binary를 쓰는지 비교한다.
+function cargoArguments(segment) {
+  const match = /\bcargo\s+(?:\+\S+\s+)?test\b(.*)$/.exec(segment);
+  if (!match) return undefined;
+  const before = match[1].split(/\s--(?:\s|$)/)[0];
+  return before.trim().split(/\s+/).filter(token => token && token !== '--no-run').join(' ');
+}
+
 // unwrappedToolErrors는 units(이름과 차례로 실행하는 명령 목록)에서 tools의 도구를 RUN_CASE 밖에서
 // 실행하는 segment마다 오류 하나를 돌려준다.
 export function unwrappedToolErrors(units) {
@@ -167,4 +186,60 @@ export function unwrappedToolErrors(units) {
     }
   }
   return errors;
+}
+
+// unbuiltCargoTestErrors는 units에서 `cargo test` 실행(--no-run 없음) 앞에 같은 인자의 `cargo test
+// --no-run` build가 같은 단위 안에 없을 때마다 오류 하나를 돌려준다. cargo test는 test를 실행하기 전에
+// compile하고, 그 compile은 case로 보고되지 않으며 기한도 없다. build는 unwrappedToolErrors가
+// RUN_CASE 아래에 있는지 본다.
+export function unbuiltCargoTestErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units) {
+    const built = new Set();
+    for (const command of commands) {
+      for (const segment of segments(command)) {
+        const cargo = cargoArguments(segment);
+        if (cargo === undefined) continue;
+        if (/\s--no-run\b/.test(segment)) built.add(cargo);
+        else if (!built.has(cargo))
+          errors.push(`${name} runs cargo test ${cargo} without a build of cargo test --no-run ${cargo} before it, so its compile has no deadline or RUN line`);
+      }
+    }
+  }
+  return errors;
+}
+
+// makeRecipes는 Makefile의 target마다 recipe 줄을 단위 하나로 돌려준다. 변수 정의(`:=`, `=`)는 target이
+// 아니다.
+export function makeRecipes(makefile) {
+  const units = [];
+  for (const line of makefile.split('\n')) {
+    const target = /^([A-Za-z0-9_.-]+):(?!=)/.exec(line);
+    if (target) units.push({ name: `Makefile ${target[1]}`, commands: [] });
+    else if (line.startsWith('\t') && units.length) units.at(-1).commands.push(line.slice(1));
+    else if (line.trim() !== '' && !line.startsWith('#')) units.push({ name: 'Makefile', commands: [] });
+  }
+  return units.filter(unit => unit.commands.length);
+}
+
+// reachedScripts는 명령(commands: {command})이 tests/run-case.mjs 밖에서 실행하는 scripts/의 shell
+// script와, 그 script가 다시 그렇게 실행하는 script다. run-case 아래의 script는 전체가 그 기한을
+// 가진다. read(path)는 tracked file의 text이거나 없으면 undefined다.
+export function reachedScripts(commands, read) {
+  const reached = new Map();
+  const visit = command => {
+    for (const segment of segments(command)) {
+      if (wrapper.test(segment)) continue;
+      for (const match of segment.matchAll(/(?:^|[\s"'/])(scripts\/[\w/.-]+\.sh)\b/g)) {
+        const path = match[1];
+        if (reached.has(path)) continue;
+        const text = read(path);
+        if (text === undefined) continue;
+        reached.set(path, text);
+        text.split('\n').forEach(visit);
+      }
+    }
+  };
+  commands.forEach(({ command }) => visit(command));
+  return [...reached].map(([path, text]) => ({ name: path, commands: text.split('\n').filter(line => !/^\s*#/.test(line)) }));
 }

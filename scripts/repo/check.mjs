@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -64,6 +64,12 @@ failures.push(...reportingScriptErrors(runCommands, path => trackedSet.has(path)
 const featureUnits = features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
   .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] })));
 failures.push(...unwrappedToolErrors(featureUnits));
+// cargo test 실행 앞에는 같은 인자의 RUN_CASE `cargo test --no-run` build가 있다. Makefile recipe,
+// 검증 명령, 그리고 그 명령이 run-case 밖에서 실행하는 scripts/의 shell script를 본다.
+const readTracked = path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined;
+const recipeUnits = makeRecipes(makefile);
+const scriptUnits = reachedScripts(runCommands, readTracked);
+failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...scriptUnits]));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

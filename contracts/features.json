@@ -104,7 +104,7 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/dsn-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name"
         },
         {
           "id": "dsn-php-without-mysql",
@@ -125,7 +125,7 @@
         },
         {
           "id": "dsn-mysql-tls-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/dsn-mysql-tls-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls"
         }
       ],
       "coverage": {
@@ -542,7 +542,7 @@
         },
         {
           "id": "queries-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/queries-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output"
         },
         {
           "id": "queries-typescript",
@@ -586,7 +586,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
+          "command": ". \"$DECIMAL_ENV\" && node tests/run-case.mjs rust-build/decimal-rust-physical 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
         },
         {
           "id": "decimal-typescript-unit",
@@ -919,7 +919,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
+          "command": ". \"$DECIMAL_ENV\" && node tests/run-case.mjs rust-build/decimal-rust-physical 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical"
         },
         {
           "id": "decimal-typescript-unit",
@@ -1522,7 +1522,7 @@
         },
         {
           "id": "statement-events-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/statement-events-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events"
         }
       ],
       "public_constraints": [
@@ -1798,7 +1798,7 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/generation-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/generation-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate:: && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::"
         }
       ],
       "coverage": {
@@ -2257,7 +2257,7 @@
         },
         {
           "id": "install-add-tables-and-columns-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/install-add-tables-and-columns-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns"
         },
         {
           "id": "install-register-go",
@@ -2273,7 +2273,7 @@
         },
         {
           "id": "install-register-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/install-register-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents"
         }
       ],
       "coverage": {
@@ -3044,7 +3044,7 @@
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/encryption-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/encryption-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys"
         }
       ],
       "coverage": {
@@ -4679,7 +4679,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "cd clients/rust && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::"
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/catalog-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/catalog-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::"
         }
       ],
       "coverage": {
