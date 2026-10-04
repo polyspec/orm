@@ -30,18 +30,22 @@
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
   subject git writes.
 - Owner checks: before each commit run `make owner-check` (or `make owner-check PATHS="<paths>"`),
-  which selects every feature of `contracts/features.json` whose declared fixtures or tests are a
-  changed file, whose declared fixture files name a changed file, or whose entry in
-  `contracts/features.json` changed, and runs only that feature's verification commands and
-  coverage (`--feature <id>`). It also runs every make target that `contracts/check-inputs.json`
+  Every verification command of `contracts/features.json` declares `inputs`, and every coverage
+  part (an owner client or a dependent part) declares its `tests` and optional `inputs`. The command runs
+  only the commands and parts whose inputs are a changed file or whose declared fixture data names
+  one, and the commands and parts of a feature whose entry in `contracts/features.json` changed. A
+  helper that several features use is declared under `helpers` with its own check and is an input
+  of nothing: its change runs only that check, and `make check` runs every feature that uses it.
+  The declaration check fails on a verification command without inputs, an input that matches no
+  tracked file and a helper declared as an input. It also runs every make target that `contracts/check-inputs.json`
   declares with scope `owner` and whose inputs match a changed path, such as `docs-check` and
   `docs-verify-idempotent` for a changed document. An owner target is a per-file check: a format,
   checklist, document or checker unit test. A target that runs a whole client, database or
   conformance suite has scope `suite` and runs only in `make check`. Every target of
   `CHECK_TARGETS` declares its scope; `make owner-check` and `make repo-check` fail on a target
-  without one. Do not choose owner checks by hand. A changed file that no feature declares selects
-  no feature; declare it in the feature whose behavior it defines, and declare a new make target's
-  scope. Before a commit, also search the tests and scripts for the name of every changed file and
+  without one. Do not choose owner checks by hand. A changed file that is no input selects nothing,
+  and `make owner-check` prints that; declare it as an input of the command that runs it, and
+  declare a new make target's scope. Before a commit, also search the tests and scripts for the name of every changed file and
   run those that read it. State the commands and their pass counts in the item's evidence.
 - A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on

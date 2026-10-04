@@ -36,6 +36,18 @@ caseTest('selecting one feature requires only the coverage specs of that feature
   assert.deepEqual(missing.toSorted(), expected.toSorted());
 });
 
+caseTest('selecting coverage parts requires only those parts', 1000, async () => {
+  // owner-check는 바뀐 file이 입력인 단위(--part)만 실행한다. 다른 client의 항목은 요구하지 않는다.
+  const manifest = JSON.parse(await readFile(new URL('../../contracts/features.json', import.meta.url), 'utf8'));
+  const selected = selectFeatures(manifest, 'statement_events', ['owner/php']);
+  assert.deepEqual(checkCoverage(selected, {}).toSorted(),
+    databases.map(database => `statement_events/owner/php/${database}: no executed report`).toSorted());
+  assert.equal(checkCoverage(selectFeatures(manifest, 'statement_events'), {}).length, 4 * databases.length);
+  assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
+    { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/rust, owner/typescript' });
+  assert.throws(() => selectFeatures(manifest, undefined, ['owner/php']), { message: '--part needs --feature' });
+});
+
 caseTest('an unknown feature name fails with the list of valid names', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.throws(() => selectFeatures(manifest, 'missing'),

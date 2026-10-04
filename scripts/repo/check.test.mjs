@@ -595,8 +595,12 @@ caseTest('a PHP or TypeScript test without the shared case report fails', COMPUT
 });
 
 // 도구 case는 저장소의 검증 명령과 최소 명령을 검사한다.
-const featureUnits = () => JSON.parse(text('contracts/features.json')).features.flatMap(feature => feature.verification
-  .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] })));
+const featureUnits = () => {
+  const manifest = JSON.parse(text('contracts/features.json'));
+  return [...manifest.features.flatMap(feature => feature.verification
+    .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] }))),
+  ...(manifest.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command] }))];
+};
 
 caseTest('every build tool of a verification command runs under run-case', COMPUTE, () => {
   assert.deepEqual(unwrappedToolErrors(featureUnits()), []);

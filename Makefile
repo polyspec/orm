@@ -85,8 +85,8 @@ bench:
 
 # go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. clients/go의
 # package는 client-db-check(scripts/client-db-test.sh), engine과 generator는 feature-check의
-# 검증 명령(planner-go, generation-go), internal/testcase는 testcase-check가 같은 명령으로
-# 실행한다.
+# 검증 명령(engine package마다 planner-go-*, engine/dbspec은 schema-go의 dbspec-go-check,
+# generator는 generation-go), internal/testcase는 testcase-check가 같은 명령으로 실행한다.
 GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/clients/go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
 .PHONY: go-test-check
 go-test-check:
@@ -500,14 +500,13 @@ dbspec-ts-check:
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs clients/typescript/tests/dbspec-apply-cleanup.mjs
 
-# dbspec-go-check는 Go dbspec engine으로 tests/dbspec/cases.json의 공유 vector, 자기 rule case,
-# manifest, statement, plan, comparison,
-# Mermaid vector, apply 정리 error, case harness를 실행하고, 모든 vector file의 빠지거나 type이
-# 틀린 field를 위치와 함께 거부하는지 확인한다. stress 문서(TestStressDocument, build tag bench)는
-# make bench가 실행한다.
+# dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
+# 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
+# case harness, 그리고 모든 vector file의 빠지거나 type이 틀린 field를 위치와 함께 거부하는지. stress
+# 문서(TestStressDocument, build tag bench)는 make bench가 실행한다.
 .PHONY: dbspec-go-check
 dbspec-go-check:
-	$(GO_TEST) ./engine/dbspec -run '^(TestSharedVectors|TestFileVectors|TestRuleDiagnostics|TestEncodingAndLimitDiagnostics|TestCanonicalForms|TestParseReturnsModel|TestManifestVectors|TestManifestRejectsRepeatedDocumentName|TestRenderVectors|TestDocumentSets|TestPlanVectors|TestPlanChains|TestPlanParseErrors|TestCompareSchemas|TestVectorLoadersRejectMalformedVectors|TestMermaidVectors|TestApplyReportsCleanupErrors|TestMySQLEffectRequiresRow|TestCaseHarnessReportsOnlyFailure)$$' -count=1
+	$(GO_TEST) ./engine/dbspec -count=1
 
 docs-dev:
 	npm run docs:dev

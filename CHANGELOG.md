@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-3: `make owner-check` runs only the verification commands and coverage parts whose declared inputs contain a changed file; shared helpers such as the PHP and TypeScript coverage runners run only their own checks, `planner-go` runs per engine package, and a verification command without inputs fails the feature check.
+
 - G5.29-2: CI no longer runs Go and codec tests again after `make check`; `go vet` runs in the new `go-vet-check` and the PHP codec cross-check in the new `codec-check`, which fails when an output of the Go, Rust or TypeScript codec test is missing, and `make repo-check` finds a re-run by the test runner it starts instead of the exact command text.
 
 - G5.29-1: CI steps that run `make` or a test runner have no `timeout-minutes`, since their cases carry their own deadlines; other steps keep their own, and `make repo-check` enforces both.

@@ -63,8 +63,9 @@ const runCommands = [
 ];
 failures.push(...reportingScriptErrors(runCommands, path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
 // build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 tests/run-case.mjs 아래에서 실행한다.
-const featureUnits = features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
-  .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] })));
+const featureUnits = [...features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
+  .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] }))),
+  ...(features.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command] }))];
 failures.push(...unwrappedToolErrors(featureUnits));
 // cargo test 실행 앞에는 같은 인자의 RUN_CASE `cargo test --no-run` build가 있다. Makefile recipe,
 // 검증 명령, 그리고 그 명령이 run-case 밖에서 실행하는 scripts/의 shell script를 본다.
