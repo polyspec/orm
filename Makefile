@@ -100,6 +100,7 @@ testcase-check: rust-fetch
 	$(GO_TEST) ./internal/testcase -count=1
 	node --test tests/testcase.test.mjs
 	php tests/testcase_test.php
+	$(RUN_CASE) rust-build/testcase-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm-testcase
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -160,6 +161,7 @@ dbspec-introspect-php-check:
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check: rust-fetch
+	$(RUN_CASE) rust-build/dbspec-introspect-rust-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
@@ -199,6 +201,7 @@ dbspec-apply-pairs-check: rust-fetch
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check: rust-fetch
+	$(RUN_CASE) rust-build/dbspec-apply-rust-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
@@ -219,6 +222,7 @@ dbspec-apply-ts-check:
 # orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check: rust-fetch
+	$(RUN_CASE) rust-build/dbspec-plan-rust-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
@@ -291,14 +295,17 @@ dbspec-stress-bench: rust-fetch
 	$(CARGO_TARGET_DIR)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 dbspec-rust-check: rust-fetch
+	$(RUN_CASE) rust-build/dbspec-rust-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	$(RUN_CASE) rust-build/dbspec-rust-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check: rust-fetch
 	$(RUN_CASE) rust-clippy/orm-lib $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
+	$(RUN_CASE) rust-build/rust-send-savepoint-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm --lib tx::send_tests::
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 
@@ -550,6 +557,7 @@ rust-fetch:
 # rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
 rust-driver-check: rust-fetch
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/rust-driver-check $(BUILD_DEADLINE) --cwd bench/rust -- cargo test --no-run --locked --offline
 	$(WITH_TEST_ENV) cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --offline -- --test-threads=1
 
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된

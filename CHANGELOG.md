@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-9: every `cargo test` run of the Makefile, the feature verification commands and `scripts/client-db-test.sh` first builds its test binaries with `cargo test --no-run` as a case with a deadline, and `make repo-check` fails a `cargo test` run without that build.
+
 - G5.29-8: the tsc, go generate, go vet and cargo build steps of the feature verification commands run under `tests/run-case.mjs` with their deadlines, and `make repo-check` fails a verification command that runs such a tool outside it.
 
 - G5.29-7: the PHP and TypeScript decimal database tests report each case with its deadline and elapsed time, and `make repo-check` fails a PHP or TypeScript test that a check runs without the shared case report.

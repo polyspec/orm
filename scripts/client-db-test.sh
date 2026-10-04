@@ -47,6 +47,9 @@ typescript_lane() {
   ./scripts/typescript/sqlite-test.sh
 }
 rust_lane() {
+  # cargo test의 compile은 case를 보고하지 않으므로 같은 인자의 --no-run build를 tests/run-case.mjs로
+  # 먼저 실행한다. 기한 8분은 Makefile의 BUILD_DEADLINE과 같다.
+  node tests/run-case.mjs rust-build/workspace-tests 8m --cwd clients/rust -- cargo test --no-run --locked --workspace --features "$ORM_RUST_TEST_FEATURES"
   (cd clients/rust && cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES")
   # build는 자기 case를 보고하지 않으므로 tests/run-case.mjs로 감싼다. 기한 8분의 기준은
   # Makefile의 BUILD_DEADLINE과 같다.

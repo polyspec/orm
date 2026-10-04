@@ -10,7 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -613,4 +613,30 @@ caseTest('a build tool outside run-case fails', COMPUTE, () => {
     message('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     message('later', 'go vet', 'go vet ./b'),
   ]);
+});
+
+// cargo test case는 저장소의 Makefile, 검증 명령, script와 최소 단위를 검사한다.
+const runUnits = () => {
+  const recipes = makeRecipes(text('Makefile'));
+  const packageUnits = Object.entries(JSON.parse(text('package.json')).scripts).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+  const files = new Set(trackedFiles('*'));
+  const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
+  return { recipes, packageUnits, scripts: reachedScripts(commands, path => files.has(path) ? text(path) : undefined) };
+};
+
+caseTest('every cargo test run follows a run-case build of the same test binaries', COMPUTE, () => {
+  const { recipes, scripts } = runUnits();
+  assert.ok(scripts.some(unit => unit.name === 'scripts/client-db-test.sh'));
+  assert.ok(!scripts.some(unit => unit.name === 'scripts/package-check.sh'), 'package-check.sh runs under run-case');
+  assert.deepEqual(unbuiltCargoTestErrors([...recipes, ...featureUnits(), ...scripts]), []);
+});
+
+caseTest('a cargo test run without its build fails', COMPUTE, () => {
+  assert.deepEqual(makeRecipes('A = 1\nx: y\n\tcd a && cargo test\n\n# c\nz:\n\techo\n').map(unit => unit.name), ['Makefile x', 'Makefile z']);
+  const message = (name, args) => `${name} runs cargo test ${args} without a build of cargo test --no-run ${args} before it, so its compile has no deadline or RUN line`;
+  assert.deepEqual(unbuiltCargoTestErrors([
+    { name: 'bare', commands: ['$(WITH_TEST_ENV) cd clients/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
+    { name: 'built', commands: ['$(RUN_CASE) b 8m --cwd clients/rust -- cargo +$(T) test --no-run --locked --test a', 'cd clients/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
+    { name: 'other', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a && cargo test --locked --test b'] },
+  ]), [message('bare', '--locked --test a'), message('other', '--locked --test b')]);
 });
