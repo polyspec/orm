@@ -3,6 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
 // orm이 내는 Rust package. Cargo.lock에서 이 package의 version만 orm version이다.
 const RUST_PACKAGES = ['orm', 'orm-schema', 'orm-build', 'orm-case-clock', 'orm-case-database', 'orm-testcase', 'orm-tests', 'orm-bench', 'orm-interface-symbols'];
@@ -54,9 +55,13 @@ export async function versionErrors(root) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // version check는 선언 file을 읽고 비교하는 case 하나다.
+  const log = sections();
+  log.begin('version', COMPUTE);
   const root = resolve(import.meta.dirname, '..', '..');
   const errors = await versionErrors(root);
   for (const error of errors) console.error(`version: ${error}`);
-  if (errors.length > 0) process.exit(1);
-  console.log(`version: ${DECLARATIONS.length} declarations agree on ${(await readFile(join(root, 'VERSION'), 'utf8')).trim()}`);
+  if (errors.length === 0) console.log(`version: ${DECLARATIONS.length} declarations agree on ${(await readFile(join(root, 'VERSION'), 'utf8')).trim()}`);
+  log.end(errors.length ? `${errors.length} declaration(s) differ; each is listed above` : undefined);
+  if (errors.length > 0) process.exitCode = 1;
 }
