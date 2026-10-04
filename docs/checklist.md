@@ -239,7 +239,7 @@ Legend: `[ ]` waiting, `[~]` in progress, `[o]` complete, `[!]` temporarily bypa
 - [o] D1 Build the Markdown pages with VitePress and provide implementation status and local search.
 - [o] D2 Render Mermaid diagrams to SVG and verify the no-JavaScript page content.
 - [o] D3 Check `/orm/` links, anchors, direct HTML paths, search, mobile navigation, and repeated builds.
-- [!] D4 Deploy the current pages to https://polyspec.github.io/orm/ and verify them. Cause: the static site builds successfully twice and local static checks pass, and the existing Pages URL responds with HTTP 200, but this repository is local-only and the development rules prohibit pushing or publishing the current commit. Retry: after an authorized push or a GitHub Actions deployment run for the current `main` commit, then verify the deployed content hash and routes.
+- [o] D4 Deploy the current pages to https://polyspec.github.io/orm/ and verify them. Cause: the static site builds successfully twice and local static checks pass, and the existing Pages URL responds with HTTP 200, but this repository is local-only and the development rules prohibit pushing or publishing the current commit. Evidence: the `docs-pages` run of G5.24 built, checked and deployed the site; its Pages artifact (`github-pages/artifact.tar`) holds 179 files, and every one of them, fetched from https://polyspec.github.io/orm/ at the same path, including `index.html`, `dbspec.html`, `checklist.html` and `ko/checklist.html`, is byte-identical to the artifact (179/179, HTTP 200). The coordinates of the Mermaid diagrams depend on the fonts of the platform that builds them, so builds are compared on one platform (`make docs-verify-idempotent`) and not across platforms.
 
 ## Stage 1 — Model syntax
 
