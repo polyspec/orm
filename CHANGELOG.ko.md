@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.19: `docs-pages.yml`은 idempotence 검사 전에 자기 step에서 정적 site를 build하고 브라우저 검사를 결과물의 smoke test로 실행하므로, workflow가 build와 smoke stage를 가진다.
+
 - T41: `make owner-check`는 `contracts/check-inputs.json`에 선언한 입력이 바뀐 path를 맞추는 `CHECK_TARGETS`의 모든 make target도 실행하므로, 바뀐 문서는 `make docs-check`와 `make docs-verify-idempotent`를 실행한다. `make repo-check`는 모든 target의 입력을 요구한다.
 
 - G5.17: CI는 `make repo-check`가 요구하는 `coverage: none`으로 PHP를 설치하고, PHP hot-path regression 검사는 Xdebug나 pcov가 load되어 있으면 측정을 거부한다.
