@@ -640,3 +640,9 @@ caseTest('a cargo test run without its build fails', COMPUTE, () => {
     { name: 'other', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a && cargo test --locked --test b'] },
   ]), [message('bare', '--locked --test a'), message('other', '--locked --test b')]);
 });
+
+caseTest('every build tool of the Makefile, package.json and the scripts runs under run-case', COMPUTE, () => {
+  const { recipes, packageUnits, scripts } = runUnits();
+  assert.ok(scripts.some(unit => unit.name === 'scripts/typescript/sqlite-test.sh'));
+  assert.deepEqual(unwrappedToolErrors([...recipes, ...packageUnits.filter(unit => segments(unit.commands[0]).length > 1), ...scripts]), []);
+});
