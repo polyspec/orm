@@ -19,5 +19,5 @@ func TestCoverageStatementEvents(t *testing.T) {
 	if !slices.Contains([]string{"mysql", "postgres", "sqlite"}, driver) {
 		t.Fatal("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required")
 	}
-	runEventCases(t, driver)
+	runEventCases(t, driver, false)
 }
