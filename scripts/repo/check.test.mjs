@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -382,5 +382,39 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
     }
   } finally {
     rmSync(base, { recursive: true, force: true });
+  }
+});
+
+// start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버가 준비
+// 줄을 쓰고 계속 실행하면 start_logged는 서버가 끝나기 전에 돌아와야 한다(Ubuntu의 mawk처럼 pipe를
+// block 단위로 읽는 reader는 서버가 끝날 때까지 줄을 넘기지 않는다). 준비 줄 없이 끝나면 실패한다.
+caseTest('start_logged reports a ready line while the server keeps running', COMPUTE, () => {
+  const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
+  const start = script.indexOf('start_logged() {');
+  const body = script.slice(start, script.indexOf('\n}\n', start) + 3);
+  assert.ok(start >= 0 && body.endsWith('}\n'), 'start_logged is absent from scripts/test-servers.sh');
+  const dir = mkdtempSync(join(tmpdir(), 'orm-logged-'));
+  try {
+    // 출력은 file로 받는다: 계속 실행하는 가짜 서버와 reader는 pipe를 열어 두므로, pipe로 받으면
+    // spawnSync가 shell이 끝난 뒤에도 서버가 끝날 때까지 기다린다.
+    const run = server => {
+      const out = join(dir, 'stdout'), err = join(dir, 'stderr');
+      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
+        { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
+      return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
+    };
+    const started = Date.now();
+    const ready = run('echo starting; echo now accepting connections; exec sleep 30');
+    assert.equal(ready.status, 0, ready.stderr);
+    assert.equal(ready.stdout, 'returned\n');
+    assert.ok(Date.now() - started < 10_000, `start_logged returned after ${Date.now() - started} ms`);
+    assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
+    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
+    rmSync(join(dir, 'fake.log'));
+    const exited = run('echo starting; exit 3');
+    assert.equal(exited.status, 1);
+    assert.match(exited.stderr, /test-servers: fake exited before it accepted connections; see .*fake\.log/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
