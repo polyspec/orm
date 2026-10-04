@@ -304,6 +304,36 @@ tls_env() {
   printf "export ORM_TEST_MYSQL_TLS_MISMATCH_DSN='mysql://root@localhost.:%s/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=%s/tls/ca.pem'\n" "$MYSQL_REPLICA_PORT" "$DIR"
 }
 
+# write_env writes the environment file from the ports and $DIR. It is the one
+# definition of every variable the checks read, including the server DSNs
+# ORM_TEST_MYSQL_SERVER_DSN and ORM_TEST_POSTGRES_SERVER_DSN, which name the
+# servers without a pooler even where a check points ORM_TEST_*_DSN at one.
+# start writes it again for running servers, so the file always matches this
+# definition.
+write_env() {
+  mysql="mysql://root@127.0.0.1:$MYSQL_PORT"
+  postgres="postgres://orm@127.0.0.1:$POSTGRES_PORT"
+  cat > "$ENV_FILE.tmp" <<EOF
+export ORM_TEST_MYSQL_DSN='$mysql/orm_test'
+export ORM_TEST_POSTGRES_DSN='$postgres/orm_test?sslmode=disable'
+export ORM_TEST_MYSQL_SERVER_DSN='$mysql/orm_test'
+export ORM_TEST_POSTGRES_SERVER_DSN='$postgres/orm_test?sslmode=disable'
+export ORM_TEST_MYSQL_REPLICA_DSN='mysql://root@127.0.0.1:$MYSQL_REPLICA_PORT/orm_test'
+export ORM_TEST_POSTGRES_REPLICA_DSN='postgres://orm@127.0.0.1:$POSTGRES_REPLICA_PORT/orm_test?sslmode=disable'
+export ORM_TEST_PROXYSQL_DSN='mysql://orm:orm@127.0.0.1:$PROXYSQL_PORT/orm_test'
+export ORM_TEST_PGBOUNCER_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test?sslmode=disable'
+export ORM_TEST_PGBOUNCER_SINGLE_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test_single?sslmode=disable'
+export ORM_TOOLS_MYSQL_DSN='$mysql/orm_tools'
+export ORM_TOOLS_POSTGRES_DSN='$postgres/orm_tools?sslmode=disable'
+export ORM_BENCH_MYSQL_DSN='$mysql/orm_bench'
+export BENCH_MYSQL_DSN='$mysql/orm_bench?timezone=%2B00:00'
+export BENCH_POSTGRES_DSN='$postgres/orm_bench?sslmode=disable&timezone=%2B00:00'
+export BENCH_SQLITE_DSN='sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00'
+EOF
+  tls_env >> "$ENV_FILE.tmp"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
 # start_proxysql pools the connections of the user orm to the MySQL primary
 # and multiplexes them over at most four server connections. The admin and
 # PostgreSQL interfaces listen on Unix sockets only.
@@ -387,6 +417,7 @@ start() {
     # The running servers keep their data; a MySQL setting that differs from
     # the declared one moves the data into newly initialized directories.
     node "$ROOT/scripts/test-servers-mysql.mjs" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
+    write_env
     echo "test-servers: running; environment $ENV_FILE"
     cat "$ENV_FILE"
     return
@@ -418,25 +449,7 @@ start() {
   start_proxysql
   start_pgbouncer
 
-  mysql="mysql://root@127.0.0.1:$MYSQL_PORT"
-  postgres="postgres://orm@127.0.0.1:$POSTGRES_PORT"
-  cat > "$ENV_FILE.tmp" <<EOF
-export ORM_TEST_MYSQL_DSN='$mysql/orm_test'
-export ORM_TEST_POSTGRES_DSN='$postgres/orm_test?sslmode=disable'
-export ORM_TEST_MYSQL_REPLICA_DSN='mysql://root@127.0.0.1:$MYSQL_REPLICA_PORT/orm_test'
-export ORM_TEST_POSTGRES_REPLICA_DSN='postgres://orm@127.0.0.1:$POSTGRES_REPLICA_PORT/orm_test?sslmode=disable'
-export ORM_TEST_PROXYSQL_DSN='mysql://orm:orm@127.0.0.1:$PROXYSQL_PORT/orm_test'
-export ORM_TEST_PGBOUNCER_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test?sslmode=disable'
-export ORM_TEST_PGBOUNCER_SINGLE_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test_single?sslmode=disable'
-export ORM_TOOLS_MYSQL_DSN='$mysql/orm_tools'
-export ORM_TOOLS_POSTGRES_DSN='$postgres/orm_tools?sslmode=disable'
-export ORM_BENCH_MYSQL_DSN='$mysql/orm_bench'
-export BENCH_MYSQL_DSN='$mysql/orm_bench?timezone=%2B00:00'
-export BENCH_POSTGRES_DSN='$postgres/orm_bench?sslmode=disable&timezone=%2B00:00'
-export BENCH_SQLITE_DSN='sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00'
-EOF
-  tls_env >> "$ENV_FILE.tmp"
-  mv "$ENV_FILE.tmp" "$ENV_FILE"
+  write_env
   trap - EXIT
   echo "test-servers: started; environment $ENV_FILE"
 }

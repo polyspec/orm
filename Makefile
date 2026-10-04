@@ -40,11 +40,12 @@ export CARGO_PROFILE_DEV_DEBUG := line-tables-only
 # compile한다. test-faults는 fault 주입 module만 더하고, live-db는 orm-tests의 dev-dependency가
 # 이미 켜는 feature다.
 export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
-# WITH_TEST_ENV는 TEST_ENV를 읽고, pooler를 거치지 않는 server DSN을 ORM_TEST_MYSQL_SERVER_DSN과
-# ORM_TEST_POSTGRES_SERVER_DSN으로 남긴다. client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로
-# 바꾸어도 rollback 실패 case는 이 DSN으로 server에서 transaction의 session을 끝낸다. ProxySQL은
-# text protocol의 KILL을 자기 client session의 명령으로 가로채기 때문이다.
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" ORM_TEST_MYSQL_SERVER_DSN="$$ORM_TEST_MYSQL_DSN" ORM_TEST_POSTGRES_SERVER_DSN="$$ORM_TEST_POSTGRES_DSN" &&
+# WITH_TEST_ENV는 TEST_ENV를 읽는다. pooler를 거치지 않는 server DSN ORM_TEST_MYSQL_SERVER_DSN과
+# ORM_TEST_POSTGRES_SERVER_DSN도 TEST_ENV가 정의한다(make 밖의 go test도 같은 file을 읽는다).
+# client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로 바꾸어도 rollback 실패 case는 이 DSN으로
+# server에서 transaction의 session을 끝낸다. ProxySQL은 text protocol의 KILL을 자기 client session의
+# 명령으로 가로채기 때문이다.
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. -v는 각 case가 internal/testcase로 내는
 # RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을 가지므로 -timeout 0이
