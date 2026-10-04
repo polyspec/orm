@@ -8,7 +8,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | model_queries | Model queries | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | model_writes | Model writes | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | transactions | Transactions | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| statement_events | Statement events | partial | go: pass<br>php: planned<br>rust: planned<br>typescript: planned |
+| statement_events | Statement events | partial | go: pass<br>php: planned<br>rust: planned<br>typescript: pass |
 | model_generation | Model generation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_install | Schema installation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |

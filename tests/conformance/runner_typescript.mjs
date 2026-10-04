@@ -1,6 +1,9 @@
 // Conformance runner (TypeScript). Runs every vector against the bench
-// database and prints {"<vector>": {"statements": [{"sql", "binds"}], "result": …}}
-// with the same chains, result shapes, and masking as runner_go.
+// database and prints {"<vector>": {"statements": [{"sql", "binds", "kind", "tables",
+// "transaction", "error"}], "result": …}} with the same chains, result shapes, and masking
+// as runner_go. Each statement is its statement event (docs/usage.md "Statement events"):
+// transaction is renumbered from 1 in order of appearance within the vector, null outside
+// a transaction, and error is the code of the statement's error or null.
 //
 // Usage: node runner_typescript.mjs --dsn URI [--vector NAME]...
 // Each --vector selects one vector by name; without one every vector runs.
@@ -36,6 +39,8 @@ try { parsed = parseArgs(process.argv.slice(2)); } catch (error) {
 const { dsn, vectors: selected } = parsed;
 
 let log = [];
+// transactions는 vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+let transactions = new Map();
 let maskSeqs = new Set();
 let maskTs = new Set();
 
@@ -116,7 +121,14 @@ async function main() {
   const db = await connect(dsn, {
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
-    onQuery: e => { log.push({ sql: e.sql, binds: e.binds.map(norm) }); },
+  });
+  db.subscribe(e => {
+    let transaction = null;
+    if (e.transaction !== null) {
+      if (!transactions.has(e.transaction)) transactions.set(e.transaction, transactions.size + 1);
+      transaction = transactions.get(e.transaction);
+    }
+    log.push({ sql: e.sql, binds: e.binds.map(norm), kind: e.kind, tables: [...e.tables], transaction, error: e.error === null ? null : code(e.error) });
   });
   const out = {};
   const writeVectors = new Set(['write_cycle', 'now_defaults', 'required_columns', 'creates_and_save', 'delete_recursive']);
@@ -124,10 +136,10 @@ async function main() {
   const run = async (name, fn) => {
     declared.add(name);
     if (selected.length > 0 && !selected.includes(name)) return;
-    log = []; maskSeqs = new Set(); maskTs = new Set();
+    log = []; transactions = new Map(); maskSeqs = new Set(); maskTs = new Set();
     let res;
     res = resultValue(await executeVector(name, fn, writeVectors.has(name) ? task => db.transaction(task, { retry: 0 }) : null));
-    out[name] = { statements: log.map(s => ({ sql: s.sql, binds: s.binds })), result: res };
+    out[name] = { statements: log.map(s => ({ sql: s.sql, binds: s.binds, kind: s.kind, tables: s.tables, transaction: s.transaction, error: s.error })), result: res };
   };
   const author = () => new Author().connect(db);
   const cols = ['seq', 'name', 'is_close', 'is_display', 'read_count'];

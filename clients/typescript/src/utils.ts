@@ -1,9 +1,10 @@
 import { hostDecode, hostEncode } from './codec.js';
 import { CORE, isModel } from './core.js';
-import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
-import type { DriverControl, DriverName, DriverValue, PoolStats } from './driver.js';
+import { activeFor, registerSet, schemaModel, type Db, type Runner, type Schema, type TxFrame } from './database.js';
+import type { DriverName, DriverSession, DriverValue, PoolStats } from './driver.js';
+import type { StatementKind } from './events.js';
 import { AesKeyring } from './aes.js';
-import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspec, type DbspecDocument } from './dbspec/index.js';
+import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspecStatements, type DbspecDocument } from './dbspec/index.js';
 import { introspectCatalog, type DbspecIntrospection } from './dbspec/introspect.js';
 import { CatalogRow } from './dbspec/introspect_catalog.js';
 import type { RuntimeModel } from './engine/model.js';
@@ -33,32 +34,33 @@ function versionOf(value: unknown): number {
   return version;
 }
 
-/** Runs fn in the active transaction of db, or in a new one. */
 /**
  * SQLite 연결의 foreign key를 끄고 BEGIN IMMEDIATE transaction으로 fn을 실행한 뒤 foreign key 검사가
  * row를 돌려주지 않을 때만 commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시
- * 만들기).
+ * 만들기). transaction은 연결의 다음 번호를 받고, foreign key를 바꾸는 statement는 transaction 밖이다.
  */
-async function withoutForeignKeys<T>(control: DriverControl, fn: (control: DriverControl) => Promise<T>): Promise<T> {
-  await control('PRAGMA foreign_keys = OFF');
+async function withoutForeignKeys<T>(db: Db, session: DriverSession, fn: (run: Runner) => Promise<T>): Promise<T> {
+  const outside = db.runner(session, null);
+  await outside('utility', [], 'PRAGMA foreign_keys = OFF');
   let result: T;
   try {
-    await control('BEGIN IMMEDIATE');
+    const inside = db.runner(session, db.nextTransaction());
+    await inside('begin', [], 'BEGIN IMMEDIATE');
     try {
-      result = await fn(control);
-      const broken = Number((await control('SELECT COUNT(*) FROM pragma_foreign_key_check')).rows[0]?.[0]);
+      result = await fn(inside);
+      const broken = Number((await inside('schema', [], 'SELECT COUNT(*) FROM pragma_foreign_key_check')).rows[0]?.[0]);
       if (broken !== 0) throw new OrmError('INTERNAL', `the rebuilt tables break ${broken} foreign keys`);
     } catch (error) {
-      try { await control('ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+      try { await inside('rollback', [], 'ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
       throw error;
     }
-    await control('COMMIT');
+    await inside('commit', [], 'COMMIT');
   } catch (error) {
     // foreign key를 다시 켜지 못하면 두 오류를 함께 돌려준다.
-    try { await control('PRAGMA foreign_keys = ON'); } catch (restore) { throw joinedErrors([error, restore]); }
+    try { await outside('utility', [], 'PRAGMA foreign_keys = ON'); } catch (restore) { throw joinedErrors([error, restore]); }
     throw error;
   }
-  await control('PRAGMA foreign_keys = ON');
+  await outside('utility', [], 'PRAGMA foreign_keys = ON');
   return result;
 }
 
@@ -72,17 +74,17 @@ function externalTexts(model: RuntimeModel): Record<string, string> {
   return Object.fromEntries(model.documents.filter(d => d.external === true).map(d => [d.name, emitDbspec(d)]));
 }
 
-/** 연결의 database를 introspect한다. control은 연결의 statement를 실행한다. */
-async function introspect(control: DriverControl, driver: DriverName): Promise<DbspecIntrospection> {
-  return introspectCatalog(async sql => (await control(sql)).rows.map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
+/** 연결의 database를 introspect한다. run은 연결의 statement를 보낸다. catalog query는 table을 가리키지 않는 schema statement다. */
+async function introspect(run: Runner, driver: DriverName): Promise<DbspecIntrospection> {
+  return introspectCatalog(async sql => (await run('schema', [], sql)).rows.map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
 }
 
 /**
  * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다(docs/dbspec.md
  * "External documents").
  */
-async function introspectSet(control: DriverControl, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
-  const live = await introspect(control, driver);
+async function introspectSet(run: Runner, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
+  const live = await introspect(run, driver);
   const differences = externalDifferences(live.document, model.documents);
   if (differences.length > 0) throw externalError(differences);
   return live;
@@ -142,13 +144,15 @@ export class Utils {
   }
 
   /**
-   * Reads the rows of a statement through the active transaction of the connection, or through the pool.
+   * Reads the rows of a statement through the active transaction of the connection, or through the pool;
+   * kind and tables are those of its statement event.
    *
    * @internal
    */
-  public async read(sql: string, params: readonly DriverValue[] = []): Promise<unknown[][]> {
+  public async read(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<unknown[][]> {
     const frame = activeFor(this.db);
-    return frame ? (await frame.tx.control(sql, params)).rows : (await this.db.pool.execute(sql, params)).rows;
+    if (frame) return (await frame.run(kind, tables, sql, params)).rows;
+    return (await this.db.pool.execute(sql, params, undefined, this.db.statementDone(kind, tables, null, params))).rows;
   }
 
   /** Takes a named lock that is released when the transaction ends. */
@@ -157,16 +161,16 @@ export class Utils {
     if (!validKey(key)) throw config(`lock key ${key} is invalid`);
     switch (this.db.driver) {
       case 'mysql': {
-        const got = (await frame.tx.control('SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
+        const got = (await frame.run('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
         if (Number(got) !== 1) throw new OrmError('DEADLOCK', `lock ${key} was not acquired`);
         frame.locks.push(key);
         return;
       }
       case 'postgres':
-        await frame.tx.control('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+        await frame.run('utility', [], 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
         return;
       default:
-        await frame.tx.rowLock('update');
+        await this.db.rowLock(frame, 'update');
     }
   }
 
@@ -180,10 +184,10 @@ export class Utils {
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
     switch (this.db.driver) {
       case 'postgres':
-        await frame.tx.control('SELECT set_config($1, $2, true)', [key, value]);
+        await frame.run('utility', [], 'SELECT set_config($1, $2, true)', [key, value]);
         break;
       case 'mysql':
-        await frame.tx.control(`SET @\`orm.${key}\` = ?`, [value]);
+        await frame.run('utility', [], `SET @\`orm.${key}\` = ?`, [value]);
         break;
     }
     frame.locals.set(key, value);
@@ -207,7 +211,7 @@ export class SchemaUtils {
   public constructor(private readonly u: Utils) {}
 
   private async check(sql: string, params: readonly DriverValue[] = []): Promise<boolean> {
-    const value = (await this.u.read(sql, params))[0]?.[0];
+    const value = (await this.u.read('schema', [], sql, params))[0]?.[0];
     return value === true || Number(value) === 1;
   }
 
@@ -235,7 +239,7 @@ export class SchemaUtils {
    */
   public async install(schema: Schema): Promise<void> {
     const model = schemaModel(schema);
-    const rendered = renderDbspec(model.documents, this.u.db.driver);
+    const rendered = renderDbspecStatements(model.documents, this.u.db.driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
@@ -245,19 +249,20 @@ export class SchemaUtils {
     const driver = this.u.db.driver;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
     if (driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-    const apply = async (control: DriverControl): Promise<void> => {
-      let live = await introspectSet(control, driver, model);
+    const apply = async (run: Runner): Promise<void> => {
+      let live = await introspectSet(run, driver, model);
       const found = new Set([...live.document.tables.map(t => t.name), ...live.unsupported.map(u => u.table)]);
       const present = target.tables.filter(t => found.has(t.name)).map(t => t.name);
       if (present.length > 0 && present.length < target.tables.length) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
       if (present.length === 0) {
-        for (const statement of statements) await control(statement);
-        live = await introspect(control, driver);
+        for (const statement of statements) await run('schema', [statement.table], statement.sql);
+        live = await introspect(run, driver);
       }
       verifySet(installedDifferences(live.document, live.unsupported, target));
     };
-    if (driver === 'mysql') await this.u.db.pool.session!(apply);
-    else await this.u.run(frame => apply((sql, params) => frame.tx.control(sql, params)));
+    const db = this.u.db;
+    if (driver === 'mysql') await db.withSession(session => apply(db.runner(session, null)));
+    else await this.u.run(frame => apply((kind, tables, sql, params) => frame.run(kind, tables, sql, params)));
     registerSet(this.u.db, model);
   }
 
@@ -278,20 +283,22 @@ export class SchemaUtils {
     const model = schemaModel(schema);
     const target = schemaTarget(model);
     const driver = this.u.db.driver;
-    const apply = async (control: DriverControl): Promise<string[]> => {
-      let live = await introspectSet(control, driver, model);
+    const apply = async (run: Runner): Promise<string[]> => {
+      let live = await introspectSet(run, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
       if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ${differences.join('; ')}`);
-      for (const step of steps) await control(step.statement);
+      // step의 statement는 그 효과가 가리키는 table을 만들거나 바꾼다.
+      for (const step of steps) await run('schema', step.effect.table === '' ? [] : [step.effect.table], step.statement);
       // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
-      if (steps.length > 0) live = await introspect(control, driver);
+      if (steps.length > 0) live = await introspect(run, driver);
       verifySet(installedDifferences(live.document, live.unsupported, target));
       return [...added];
     };
-    if (driver === 'postgres') return this.u.run(frame => apply((sql, params) => frame.tx.control(sql, params)));
+    const db = this.u.db;
+    if (driver === 'postgres') return this.u.run(frame => apply((kind, tables, sql, params) => frame.run(kind, tables, sql, params)));
     if (activeFor(this.u.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
-    if (driver === 'mysql') return this.u.db.pool.session!(apply);
-    return this.u.db.pool.session!(control => withoutForeignKeys(control, apply));
+    if (driver === 'mysql') return db.withSession(session => apply(db.runner(session, null)));
+    return db.withSession(session => withoutForeignKeys(db, session, apply));
   }
 
   public async exists(name: string): Promise<boolean> {
@@ -349,8 +356,8 @@ export class PrivilegeUtils {
     const qualified = this.table(table);
     const r = this.role(role);
     await this.u.run(async frame => {
-      await frame.tx.control(`GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
-      await frame.tx.control(`GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
+      await frame.run('utility', [table], `GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
+      await frame.run('utility', [table], `GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
     });
   }
 
@@ -359,12 +366,12 @@ export class PrivilegeUtils {
     const r = this.role(role);
     const upper = privilege.trim().toUpperCase();
     if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${privilege}`);
-    await this.u.run(async frame => { await frame.tx.control(`REVOKE ${upper} ON ${qualified} FROM ${r}`); });
+    await this.u.run(async frame => { await frame.run('utility', [table], `REVOKE ${upper} ON ${qualified} FROM ${r}`); });
   }
 
   public async inspectTable(table: string): Promise<TablePrivileges> {
     const qualified = this.table(table);
-    const row = (await this.u.read(`SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
+    const row = (await this.u.read('utility', [table], `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
  has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, [qualified]))[0]!;
     return { insert: row[0] === true, select: row[1] === true, update: row[2] === true, delete: row[3] === true, truncate: row[4] === true };
   }
@@ -389,7 +396,7 @@ export class AesUtils {
   public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus> {
     const spec = this.spec(model);
     const q = (name: string) => quote(this.u.db.driver, name);
-    const rows = await this.u.read(`SELECT ${q(spec.version)}, COUNT(*) FROM ${q(spec.table)} GROUP BY ${q(spec.version)} ORDER BY ${q(spec.version)}`, []);
+    const rows = await this.u.read('utility', [spec.table], `SELECT ${q(spec.version)}, COUNT(*) FROM ${q(spec.table)} GROUP BY ${q(spec.version)} ORDER BY ${q(spec.version)}`, []);
     const versions = new Map<number, number>();
     let total = 0;
     let pending = 0;
@@ -421,7 +428,7 @@ export class AesUtils {
     return this.u.run(async frame => {
       let rotated = 0;
       for (;;) {
-        const rows = (await frame.tx.control(select, [keyring.currentVersion])).rows;
+        const rows = (await frame.run('utility', [spec.table], select, [keyring.currentVersion])).rows;
         if (rows.length === 0) return rotated;
         for (const values of rows) {
           const before: Record<string, unknown> = {};
@@ -431,7 +438,7 @@ export class AesUtils {
           spec.columns.forEach((c, i) => { before[c.name] = values[spec.keys.length + 1 + i]; });
           const after = keyring.rotateRow(before, spec.version, spec.columns, keyring.currentVersion, codec);
           const params = [...spec.columns.map(c => after[c.name]), keyring.currentVersion, ...spec.keys.map(k => before[k]), version] as DriverValue[];
-          const result = await frame.tx.control(updateSql, params);
+          const result = await frame.run('utility', [spec.table], updateSql, params);
           if (result.affected !== 1) throw new OrmError('DEADLOCK', `aes rotation of ${spec.table} changed ${result.affected} rows`);
           rotated++;
         }

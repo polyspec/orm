@@ -1,7 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
-import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
+import { isolationSql, openDriver, parseDsn, sqliteBusy, unobserved, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
+import { Subscribers, statementKind, type StatementEvent, type StatementKind, type StatementSubscriber } from './events.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
@@ -13,15 +14,12 @@ import { CORE, type Core } from './core.js';
 import { Model } from './model.js';
 import { fieldOf, type Entity } from './engine/model.js';
 
-export interface QueryEvent { sql: string; binds: readonly unknown[]; seconds: number; planId: string; error?: unknown; }
-
 export interface ConnectOptions {
   /** key of aesVersion for aes writes; absent takes aesKeys[aesVersion] */
   aesKey?: string;
   blindIndexKey?: string;
   aesVersion?: number;
   aesKeys?: ReadonlyMap<number, string>;
-  onQuery?: (event: QueryEvent) => void;
   planCacheSize?: number;
   statementCacheSize?: number;
   /** maximum open connections; zero uses 10 */
@@ -137,6 +135,20 @@ export function registerModel(manifestText: string, manifestHash: string, extern
   return model;
 }
 
+/** The options of an outermost transaction. */
+interface BeginOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs: number; }
+
+/**
+ * statement 하나를 보내고 그 event를 publish한다. kind와 tables는 event의 것이고 params는 bind다.
+ *
+ * @internal
+ */
+export type Runner = (kind: StatementKind, tables: readonly string[], sql: string, params?: readonly DriverValue[]) => Promise<DriverResult>;
+
+/** SQLite row lock statement가 가리키는 table이다. */
+const ROW_LOCK_TABLES: readonly string[] = ['orm__row_lock'];
+const ROW_LOCK_DDL = 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))';
+
 /** One active transaction. */
 export class TxFrame {
   public busy = false;
@@ -146,7 +158,13 @@ export class TxFrame {
   public readonly locks: string[] = [];
   /** The audit record of the unit of work; audited writes of the transaction write its key. */
   public audit: AuditRecord | undefined = undefined;
-  public constructor(public readonly db: Db, public readonly tx: DriverTransaction) {}
+  /** number는 연결에서 이 transaction의 번호다. 그 statement의 event가 싣는다. */
+  public constructor(public readonly db: Db, public readonly session: DriverSession, public readonly number: number, public readonly options: BeginOptions) {}
+
+  /** transaction 연결에서 prepare하지 않은 statement를 보내고 그 event를 publish한다. */
+  public run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
+    return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params));
+  }
 }
 
 const flow = new AsyncLocalStorage<readonly TxFrame[]>();
@@ -334,7 +352,9 @@ export function armRollbackFault(db: Db): void {
 export class Db {
   // 한 connection의 모든 handle이 공유하는 상태다. rollbackFault는 test entry
   // point의 failNextRollback이 설정하는 test fault다.
-  private readonly shared = { closed: false, rollbackFault: false };
+  // events는 subscriber 목록과 transaction 번호이고, rowLockTable은 SQLite row lock table을 이 연결에서
+  // 만들었는지다.
+  private readonly shared = { closed: false, rollbackFault: false, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The audit values of the current request; the connection and its handles share it. */
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
@@ -344,7 +364,6 @@ export class Db {
   public readonly blindIndexKey: string;
   public readonly aesVersion: number;
   public readonly aesKeyring: AesKeyring | undefined;
-  public onQuery: ((event: QueryEvent) => void) | undefined;
   private readonly planCacheSize: number;
 
   private constructor(public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions) {
@@ -358,7 +377,6 @@ export class Db {
     this.aesKey = given !== '' ? given : listed;
     const keys = options.aesKeys ?? (this.aesKey === '' ? undefined : new Map([[this.aesVersion, this.aesKey]]));
     this.aesKeyring = keys === undefined ? undefined : new AesKeyring(keys, this.aesVersion);
-    this.onQuery = options.onQuery;
     if (options.auditSource !== undefined && typeof options.auditSource !== 'function') throw new OrmError('CONFIG', 'auditSource is a function that returns the audit values');
     this.auditSource = options.auditSource;
     this.planCacheSize = options.planCacheSize ?? 256;
@@ -384,7 +402,8 @@ export class Db {
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
     const pool = openDriver(dsn, parsed, { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 }, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, options);
-    try { await pool.execute('SELECT 1', []); } catch (error) { await pool.close(); throw error; }
+    // 연결을 여는 statement는 event가 아니다.
+    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { await pool.close(); throw error; }
     return db;
   }
 
@@ -437,6 +456,53 @@ export class Db {
   }
 
   public utils(): Utils { return new Utils(this); }
+
+  /**
+   * Registers subscriber for the event of every statement that the connection
+   * and every handle derived from it send (docs/usage.md "Statement events").
+   * Subscribers run synchronously in registration order after the statement
+   * ends and before the operation continues; one that throws fails the
+   * operation with SUBSCRIBER. The returned function removes the subscription.
+   */
+  public subscribe(subscriber: (event: StatementEvent) => void): () => void {
+    return this.shared.events.subscribe(subscriber as StatementSubscriber);
+  }
+
+  /**
+   * statement 하나의 event를 publish하는 done이다.
+   *
+   * @internal
+   */
+  public statementDone(kind: StatementKind, tables: readonly string[], transaction: number | null, binds: readonly unknown[]): StatementDone {
+    return this.shared.events.done(kind, tables, transaction, binds);
+  }
+
+  /**
+   * 새 바깥 transaction의 번호다.
+   *
+   * @internal
+   */
+  public nextTransaction(): number { return this.shared.events.nextTransaction(); }
+
+  /**
+   * session에서 prepare하지 않은 statement를 보내는 runner다. transaction은 statement의 transaction
+   * 번호이고 밖이면 null이다.
+   *
+   * @internal
+   */
+  public runner(session: DriverSession, transaction: number | null): Runner {
+    return (kind, tables, sql, params = []) => session.control(sql, params, this.statementDone(kind, tables, transaction, params));
+  }
+
+  /**
+   * 연결 하나를 잡아 transaction 밖에서 fn을 실행하고 돌려준다.
+   *
+   * @internal
+   */
+  public async withSession<T>(fn: (session: DriverSession) => Promise<T>): Promise<T> {
+    const session = await this.pool.reserve();
+    try { return await fn(session); } finally { session.release(false); }
+  }
 
   public stats(): PoolStats { return this.pool.stats(); }
 
@@ -522,10 +588,9 @@ export class Db {
     return { table: entity.table, key };
   }
 
-  private async run<T>(callback: () => Promise<T> | T, options: { isolation?: Isolation; readOnly?: boolean; timeoutMs: number }, record: AuditInsert | undefined): Promise<T> {
+  private async run<T>(callback: () => Promise<T> | T, options: BeginOptions, record: AuditInsert | undefined): Promise<T> {
     if (this.closed) throw new OrmError('CONFIG', 'database is closed');
-    const tx = await this.pool.begin(options);
-    const frame = new TxFrame(this, tx);
+    const frame = await this.begin(options);
     let result: T;
     try {
       result = await flow.run([...frames(), frame], async () => {
@@ -549,61 +614,170 @@ export class Db {
   }
 
   /**
-   * transaction을 끝낸다. 끝내기 전에 MySQL named lock을 풀고 MySQL local 값을 지운다. 이 상태는
-   * COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 모든 단계를 시도하고 실패를 모두 보고한다.
-   * cleanup이 실패한 commit은 rollback하고 cleanup 오류를 던진다.
+   * SQLite row lock table을 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다(docs/usage.md
+   * "Statement events").
+   */
+  private async rowLockTable(): Promise<void> {
+    if (this.shared.rowLockTable) return;
+    await this.pool.execute(ROW_LOCK_DDL, [], undefined, this.statementDone('utility', ROW_LOCK_TABLES, null, []));
+    this.shared.rowLockTable = true;
+  }
+
+  /**
+   * 연결 하나를 잡고 바깥 transaction을 연다. transaction은 연결의 다음 번호를 받는다. transaction을 여는
+   * statement는 docs/usage.md "Statement events"의 것이다. BEGIN 전에 실패하면 session에 남은 설정이 다음
+   * 사용자에게 가지 않도록 연결을 닫고, BEGIN 뒤에 실패하면 transaction을 rollback한다.
+   */
+  private async begin(options: BeginOptions): Promise<TxFrame> {
+    const driver = this.driver;
+    if (options.timeoutMs > 0 && driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
+    if (driver === 'sqlite') await this.rowLockTable();
+    const session = await this.pool.reserve();
+    const frame = new TxFrame(this, session, this.nextTransaction(), options);
+    const steps: Array<[StatementKind, string]> = [];
+    switch (driver) {
+      case 'mysql':
+        if (level !== '') steps.push(['utility', `SET TRANSACTION ISOLATION LEVEL ${level}`]);
+        steps.push(['begin', options.readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION']);
+        break;
+      case 'postgres':
+        steps.push(['begin', `BEGIN${level !== '' ? ` ISOLATION LEVEL ${level}` : ''}${options.readOnly ? ' READ ONLY' : ''}`]);
+        if (options.timeoutMs > 0) steps.push(['utility', `SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs)}`]);
+        break;
+      default:
+        // 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기 lock을 잡고 busy_timeout까지 기다린다.
+        steps.push(['begin', options.readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE']);
+        if (options.isolation === 'read_uncommitted') steps.push(['utility', 'PRAGMA read_uncommitted = 1']);
+        if (options.readOnly) steps.push(['utility', 'PRAGMA query_only = 1']);
+    }
+    let began = false;
+    for (const [kind, sql] of steps) {
+      try {
+        await frame.run(kind, [], sql);
+      } catch (error) {
+        // subscriber가 실패한 statement는 효과를 냈다.
+        if (kind === 'begin' && subscriberError(error)) began = true;
+        if (!began) {
+          frame.finished = true;
+          session.release(true);
+          throw error;
+        }
+        try { await this.finish(frame, false); } catch (rollback) { throw rollbackFailed(error, rollback); }
+        throw error;
+      }
+      if (kind === 'begin') began = true;
+    }
+    return frame;
+  }
+
+  /**
+   * transaction을 끝낸다. 끝내기 전에 SQLite mode를 되돌리고 MySQL named lock을 풀고 MySQL local 값을
+   * key 순서로 지운다. 이 상태는 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 모든 단계를 시도하고
+   * 실패를 모두 보고한다. cleanup이 실패한 commit은 rollback하고 cleanup 오류를 던진다. signal이 취소된
+   * transaction은 ROLLBACK 대신 session을 닫아 server가 transaction과 그 상태를 함께 끝내게 한다. SQLite의
+   * 하나뿐인 연결은 닫을 수 없으므로 ROLLBACK한다.
    */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
     frame.finished = true;
-    const errors: unknown[] = [];
-    for (const key of frame.locks.splice(0)) {
-      try {
-        const released = (await frame.tx.control('SELECT RELEASE_LOCK(?)', [key])).rows[0]?.[0];
-        // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
-        if (Number(released) !== 1) errors.push(new OrmError('CONFIG', `lock ${key} was not held at transaction end`));
-      } catch (error) { errors.push(error); }
-    }
-    if (this.driver === 'mysql') {
-      for (const key of frame.locals.keys()) {
-        try { await frame.tx.control(`SET @\`orm.${key}\` = NULL`); } catch (error) { errors.push(error); }
-      }
-    }
-    const failure = joinedErrors(errors);
-    if (commit && failure === undefined) {
-      await frame.tx.commit();
+    const session = frame.session;
+    if (!commit && this.driver !== 'sqlite' && frame.db.signal?.aborted === true) {
+      session.release(true);
       return;
     }
+    // discard는 상태를 알 수 없는 session을 pool에 돌려주지 않고 닫는다.
+    let discard = false;
     try {
-      await frame.tx.rollback();
-    } catch (rollback) {
-      if (commit) throw rollbackFailed(failure, rollback);
-      throw joinedErrors(failure === undefined ? [rollback] : [failure, rollback]);
+      const errors: unknown[] = [];
+      const attempt = async (sql: string, params: readonly DriverValue[] = []): Promise<DriverResult | undefined> => {
+        try { return await frame.run('utility', [], sql, params); } catch (error) { errors.push(error); return undefined; }
+      };
+      if (this.driver === 'sqlite') {
+        if (frame.options.readOnly) await attempt('PRAGMA query_only = 0');
+        if (frame.options.isolation === 'read_uncommitted') await attempt('PRAGMA read_uncommitted = 0');
+      }
+      for (const key of frame.locks.splice(0)) {
+        const released = await attempt('SELECT RELEASE_LOCK(?)', [key]);
+        // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+        if (released !== undefined && Number(released.rows[0]?.[0]) !== 1) errors.push(new OrmError('CONFIG', `lock ${key} was not held at transaction end`));
+      }
+      if (this.driver === 'mysql') {
+        // 값을 지우는 statement는 key 순서로 보낸다.
+        for (const key of [...frame.locals.keys()].sort()) await attempt(`SET @\`orm.${key}\` = NULL`);
+      }
+      const failure = joinedErrors(errors);
+      if (commit && failure === undefined) {
+        try {
+          await frame.run('commit', [], 'COMMIT');
+          return;
+        } catch (error) {
+          // subscriber가 실패한 COMMIT은 commit되었다.
+          if (subscriberError(error)) throw error;
+          // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있다. SQLite는 열려 있을 때만 rollback하고, 다른
+          // database는 상태를 알 수 없는 session을 닫는다.
+          if (session.inTransaction?.() === true) {
+            try { await frame.run('rollback', [], 'ROLLBACK'); } catch (rollback) { throw rollbackFailed(error, rollback); }
+          } else if (this.driver !== 'sqlite') discard = true;
+          throw error;
+        }
+      }
+      try {
+        await frame.run('rollback', [], 'ROLLBACK');
+      } catch (rollback) {
+        if (!subscriberError(rollback)) discard = true;
+        if (commit) throw rollbackFailed(failure, rollback);
+        throw joinedErrors(failure === undefined ? [rollback] : [failure, rollback]);
+      }
+      if (failure !== undefined) throw failure;
+    } finally {
+      session.release(discard);
     }
-    if (failure !== undefined) throw failure;
   }
 
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
     frame.savepoints++;
     const name = `orm_sp_${frame.savepoints}`;
     try {
-      await frame.tx.control(`SAVEPOINT ${name}`);
+      await frame.run('savepoint', [], `SAVEPOINT ${name}`);
       let result: T;
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
         // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
         const errors: unknown[] = [];
-        for (const statement of [`ROLLBACK TO SAVEPOINT ${name}`, `RELEASE SAVEPOINT ${name}`]) {
-          try { await frame.tx.control(statement); } catch (failure) { errors.push(failure); }
+        for (const [kind, statement] of [['rollback_to', `ROLLBACK TO SAVEPOINT ${name}`], ['release', `RELEASE SAVEPOINT ${name}`]] as const) {
+          try { await frame.run(kind, [], statement); } catch (failure) { errors.push(failure); }
         }
         if (errors.length > 0) throw rollbackFailed(error, joinedErrors(errors));
         throw error;
       }
-      await frame.tx.control(`RELEASE SAVEPOINT ${name}`);
+      await frame.run('release', [], `RELEASE SAVEPOINT ${name}`);
       return result;
     } finally {
       frame.savepoints--;
+    }
+  }
+
+  /**
+   * SQLite의 row lock이다. SQLite에는 row lock 절이 없으므로 lock row 하나가 ORM의 lock 요청을
+   * 차례로 세운다. 쓰기는 busy_timeout까지 기다리고, NOWAIT 요청은 기다림을 0으로 둔다. 다른
+   * database는 statement의 lock 절이 잡는다.
+   *
+   * @internal
+   */
+  public async rowLock(frame: TxFrame, mode: string): Promise<void> {
+    if (this.driver !== 'sqlite' || mode === '') return;
+    const noWait = mode.endsWith('_nowait');
+    const previous = noWait ? Number((await frame.run('utility', [], 'PRAGMA busy_timeout')).rows[0]?.[0]) : 0;
+    try {
+      if (noWait) await frame.run('utility', [], 'PRAGMA busy_timeout=0');
+      await frame.run('utility', ROW_LOCK_TABLES, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+    } catch (error) {
+      if (noWait && error instanceof OrmError && sqliteBusy('sqlite', error.cause)) throw new OrmError('LOCK_NOT_AVAILABLE', error.message, error.cause);
+      throw error;
+    } finally {
+      if (noWait) await frame.run('utility', [], `PRAGMA busy_timeout=${previous}`);
     }
   }
 
@@ -691,17 +865,15 @@ export class Db {
 
   public async execute(ex: Executor, cached: Cached, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
     const { values, masked } = this.args(step, params, parents, ex.frame?.audit);
-    const started = performance.now();
-    const connection = ex.frame?.tx ?? this.pool;
-    try {
-      const result = await connection.execute(sql, values as DriverValue[], this.signal);
-      this.onQuery?.({ sql, binds: masked, seconds: (performance.now() - started) / 1000, planId: cached.id });
-      return result;
-    } catch (error) {
-      this.onQuery?.({ sql, binds: masked, seconds: (performance.now() - started) / 1000, planId: cached.id, error });
-      throw error;
-    }
+    const connection = ex.frame?.session ?? this.pool;
+    // kind는 plan step이 쓰는 SQL의 동사이고 tables는 plan step의 table이다.
+    return connection.execute(sql, values as DriverValue[], this.signal, this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked));
   }
+}
+
+/** error가 subscriber 실패(SUBSCRIBER)인지다. 그 statement는 효과를 냈다. */
+function subscriberError(error: unknown): boolean {
+  return error instanceof OrmError && error.code === 'SUBSCRIBER';
 }
 
 /** Marks the start of a statement on an executor; a transaction rejects concurrent use. */
@@ -746,7 +918,7 @@ export async function query(ex: Executor, request: Request, params: readonly unk
     checkLock(ex, request);
     const db = ex.db;
     const cached = await db.plan(request);
-    if ((request.lock ?? '') !== '') await ex.frame!.tx.rowLock(request.lock!);
+    if ((request.lock ?? '') !== '') await db.rowLock(ex.frame!, request.lock!);
     const parts = rootInParts(request, cached.plan, db.driver, params);
     let main: unknown[][];
     if (parts.length > 1) {
