@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-11: `make checklist-check` compares the ids and states of indented sub-items between the English and Korean checklists, as it does for top-level items, and accepts ids such as `G5.29-4`.
+
 - G5.29-3: `make owner-check` runs only the verification commands and coverage parts whose declared inputs contain a changed file; shared helpers such as the PHP and TypeScript coverage runners run only their own checks, `planner-go` runs per engine package, and a verification command without inputs fails the feature check.
 
 - G5.29-2: CI no longer runs Go and codec tests again after `make check`; `go vet` runs in the new `go-vet-check` and the PHP codec cross-check in the new `codec-check`, which fails when an output of the Go, Rust or TypeScript codec test is missing, and `make repo-check` finds a re-run by the test runner it starts instead of the exact command text.
