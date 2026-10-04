@@ -186,6 +186,7 @@ const php = [
   '        with:',
   '          php-version-file: .php-version',
   '          extensions: pdo_sqlite',
+  '          coverage: none',
   '      - run: composer install --working-dir=clients/php',
   '',
 ].join('\n');
@@ -199,6 +200,15 @@ caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
   ]);
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }, '8.5'), [
     'ci.yml runs PHP without shivammathur/setup-php',
+  ]);
+});
+
+caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, () => {
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('          coverage: none\n', '') }, '8.5'), [
+    'ci.yml sets up PHP without coverage: none, so Xdebug or pcov can load',
+  ]);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('coverage: none', 'coverage: xdebug') }, '8.5'), [
+    'ci.yml sets up PHP without coverage: none, so Xdebug or pcov can load',
   ]);
 });
 
@@ -334,9 +344,11 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     '      - uses: shivammathur/setup-php@v2',
     '        with:',
     '          php-version: ${{ steps.php-min.outputs.version }}',
+    '          coverage: none',
     '      - uses: shivammathur/setup-php@v2',
     '        with:',
     '          php-version-file: .php-version',
+    '          coverage: none',
     '      - run: composer install --working-dir=clients/php',
     '',
   ].join('\n');
@@ -345,7 +357,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     'ci.yml reads steps.php-min.outputs.version without the step that writes it from ./scripts/php/php-min.sh',
   ]);
   const reversed = minimum.replace('          php-version: ${{ steps.php-min.outputs.version }}', '          php-version-file: .php-version#')
-    .replace('          php-version-file: .php-version\n      - run', '          php-version: ${{ steps.php-min.outputs.version }}\n      - run').replace('.php-version#', '.php-version');
+    .replace('          php-version-file: .php-version\n          coverage: none\n      - run', '          php-version: ${{ steps.php-min.outputs.version }}\n          coverage: none\n      - run').replace('.php-version#', '.php-version');
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': reversed }, '8.5'), [
     'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
   ]);

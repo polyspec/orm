@@ -65,12 +65,16 @@ jobs:
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
+          coverage: none
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
         timeout-minutes: 10
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
+          # The checks run PHP without a debugger or coverage driver, as the local
+          # PHP does; Xdebug changes the ratios of the hot-path gate.
+          coverage: none
       - name: PHP releases and their SQLite
         timeout-minutes: 5
         # Every client requires SQLite 3.46; PHP links the system SQLite of

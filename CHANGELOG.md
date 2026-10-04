@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.17: CI sets up PHP with `coverage: none`, which `make repo-check` requires, and the PHP hot-path regression check refuses to measure with Xdebug or pcov loaded.
+
 - G5.16: the primary and replica cases of the four clients wait up to 60 s for the MySQL replica, which applies the parallel writes of every client one after another.
 
 - G5.13: `make test-servers` waits for each pooler's ready line only up to a declared deadline and then fails with the server, the deadline and its last log lines, and every workflow step declares its own `timeout-minutes`, which `make repo-check` requires.

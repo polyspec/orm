@@ -43,6 +43,9 @@ export function phpVersionErrors(declared, minimum, workflows, running) {
     const readsFile = step => /^\s*php-version-file:\s*["']?\.php-version["']?\s*$/m.test(step);
     const readsMinimum = step => /^\s*php-version:\s*\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}\s*$/m.test(step);
     for (const step of steps) {
+      // 검사의 PHP는 debugger와 coverage driver 없이 실행한다: Xdebug는 hot-path gate의 비율을 바꾼다.
+      if (!/^\s*coverage:\s*["']?none["']?\s*$/m.test(step))
+        errors.push(`${path} sets up PHP without coverage: none, so Xdebug or pcov can load`);
       if (readsMinimum(step)) {
         if (!minimumStep) errors.push(`${path} reads steps.php-min.outputs.version without the step that writes it from ${MINIMUM_SCRIPT}`);
         continue;

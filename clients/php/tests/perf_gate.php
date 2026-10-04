@@ -20,6 +20,13 @@ if ($argc !== 1) {
     exit(2);
 }
 
+require __DIR__ . '/perf_extensions.php';
+$refused = perfGateRefusedExtensions(fn (string $name): bool => extension_loaded($name));
+if ($refused !== []) {
+    fwrite(STDERR, 'perf_gate: this PHP loads ' . implode(', ', $refused) . '; the gate measures PHP without a debugger or coverage driver (shivammathur/setup-php coverage: none)' . "\n");
+    exit(1);
+}
+
 $benchDsn = getenv('ORM_BENCH_MYSQL_DSN');
 if ($benchDsn === false || $benchDsn === '') {
     fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips\n");

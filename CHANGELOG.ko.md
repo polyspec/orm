@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.17: CI는 `make repo-check`가 요구하는 `coverage: none`으로 PHP를 설치하고, PHP hot-path regression 검사는 Xdebug나 pcov가 load되어 있으면 측정을 거부한다.
+
 - G5.16: 네 client의 primary와 replica case는 모든 client의 병렬 쓰기를 차례로 적용하는 MySQL replica를 60 s까지 기다린다.
 
 - G5.13: `make test-servers`는 각 pooler의 준비 줄을 선언한 기한까지만 기다린 뒤 서버, 기한, 마지막 log 줄과 함께 실패하고, 모든 workflow step은 `make repo-check`가 요구하는 자기 `timeout-minutes`를 선언한다.
