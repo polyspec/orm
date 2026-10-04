@@ -12,11 +12,12 @@ use sqlx::postgres::{PgConnectOptions, PgPool, PgTypeInfo};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
 use crate::driver::{
-    acquire_sqlite_row_lock, exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg,
-    fetch_pg_pool, fetch_sqlite, fetch_sqlite_pool, masked, param_arg, pg_describe, statement, Target, TxInner,
+    exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg, fetch_pg_pool, fetch_sqlite,
+    fetch_sqlite_pool, masked, param_arg, pg_describe, statement, Target, TxInner,
 };
 pub use crate::driver::{NOW_MASK, SECRET_MASK};
 use crate::engine::{self, Dialect};
+use crate::events::{statement_kind, Sent, Subscribers, KIND_UTILITY};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
@@ -24,10 +25,6 @@ use crate::schema::Schema;
 use crate::tx::{AuditKey, TxShared};
 use crate::value::Param;
 use crate::{codes, Error, Result};
-
-/// The statement hook: `(sql, binds, duration, plan_id, err)`. Secret binds
-/// arrive as `$SECRET` and executor clock binds as `$NOW`.
-pub type OnQuery = Arc<dyn Fn(&str, &[Param], std::time::Duration, u64, Option<&Error>) + Send + Sync>;
 
 /// The audit source of a connection: it returns the audit values of the
 /// current request, column names and values of the audit record table, such as
@@ -55,7 +52,6 @@ pub struct Config {
     /// Lifetime of a pool connection in milliseconds; zero keeps the pool
     /// default of 30 minutes.
     pub pool_lifetime_ms: u32,
-    pub on_query: Option<OnQuery>,
     /// The audit values of the transactions that record an audit; `None`
     /// fails such a transaction with CONFIG.
     pub audit_source: Option<AuditSource>,
@@ -73,7 +69,6 @@ impl Default for Config {
             pool_lifetime_ms: 0,
             plan_cache_size: 256,
             statement_cache_size: 256,
-            on_query: None,
             audit_source: None,
         }
     }
@@ -276,6 +271,8 @@ pub(crate) struct DbInner {
     pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
+    /// 연결의 statement event subscriber와 transaction 번호다. 연결의 모든 clone이 공유한다.
+    pub(crate) subscribers: Subscribers,
     /// `orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
     /// `test-faults`가 있는 build만 설정할 수 있다.
     pub(crate) rollback_fault: AtomicBool,
@@ -440,6 +437,7 @@ impl Db {
                 pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
+                subscribers: Subscribers::default(),
                 rollback_fault: AtomicBool::new(false),
             }),
         };
@@ -644,23 +642,79 @@ impl Db {
         Ok(out)
     }
 
-    /// The binds of a statement as a hook shows them.
-    pub(crate) fn shown(&self, st: &Step, args: &[Param], n_parent: usize) -> Vec<Param> {
+    /// statement event가 보이는 bind: `secret`과 `now` slot을 가린 값이다.
+    fn shown<'a>(&self, st: &Step, args: &'a [Param], n_parent: usize) -> std::borrow::Cow<'a, [Param]> {
         if st.bind_slots.iter().any(|b| b.from == "secret" || b.from == "now") {
-            masked(st, args, n_parent)
+            std::borrow::Cow::Owned(masked(st, args, n_parent))
         } else {
-            args.to_vec()
+            std::borrow::Cow::Borrowed(args)
         }
     }
 
-    /// Reports a model statement to the hook; utility statements are not reported.
-    fn emit(&self, st: &Step, sql: &str, args: &[Param], n_parent: usize, start: std::time::Instant, err: Option<&Error>) {
-        if st.role == "utils" {
-            return;
+    /// step의 statement event를 publish하고 operation이 받을 결과를 돌려준다. `shown`은 event의
+    /// bind이며 subscriber가 있을 때만 만든다.
+    fn step_done<'a, T>(
+        &self,
+        st: &Step,
+        origin: Origin<'_>,
+        sql: &str,
+        shown: impl FnOnce() -> std::borrow::Cow<'a, [Param]>,
+        start: std::time::Instant,
+        r: Result<T>,
+    ) -> Result<T> {
+        if !self.inner.subscribers.observed() {
+            return r;
         }
-        if let Some(h) = &self.inner.cfg.on_query {
-            h(sql, &self.shown(st, args, n_parent), start.elapsed(), st.plan_id, err);
+        let binds = shown();
+        let tables = origin.tables.unwrap_or(&st.tables);
+        self.statement_done(
+            Sent { sql, binds: &binds, kind: origin.kind.unwrap_or_else(|| statement_kind(&st.sql)), tables, transaction: origin.transaction },
+            start,
+            r,
+        )
+    }
+
+    /// SQLite의 row lock을 transaction 연결에서 잡는다. SQLite에는 row lock 절이 없으므로
+    /// transaction에 묶인 lock row 하나가 ORM의 lock 요청을 차례로 세운다. 쓰기 statement는
+    /// 연결의 busy_timeout까지 lock을 기다리고, NOWAIT 요청은 기다림을 0으로 둔다.
+    async fn sqlite_row_lock(&self, target: &mut Target<'_>, transaction: Option<u64>, mode: &str) -> Result<()> {
+        if mode.is_empty() {
+            return Ok(());
         }
+        let tx = match target {
+            Target::Tx(TxInner::Sqlite(tx)) => tx,
+            Target::Pool(Pool::Sqlite(_)) => return Err(Error::Config("SQLite row locks require an ORM transaction".into())),
+            _ => return Ok(()),
+        };
+        let nowait = mode.ends_with("_nowait");
+        let mut previous = None;
+        if nowait {
+            let read = "PRAGMA busy_timeout";
+            let start = std::time::Instant::now();
+            let r = sqlx::query_scalar::<_, i64>(read).fetch_one(&mut **tx).await.map_err(Error::from);
+            previous = Some(self.statement_done(Sent::bare(KIND_UTILITY, &[], transaction, read), start, r)?);
+            crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, "PRAGMA busy_timeout=0")).await?;
+        }
+        let tables = [crate::tx::ROW_LOCK_TABLE.to_owned()];
+        let insert = "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"";
+        let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert));
+        let start = std::time::Instant::now();
+        let result = sqlx::raw_sql(statement).execute(&mut **tx).await.map(drop).map_err(|error| {
+            let busy = crate::sqlite_busy(&error);
+            let mapped = Error::from(error);
+            if nowait && busy {
+                Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }
+            } else {
+                mapped
+            }
+        });
+        let result = self.statement_done(Sent::bare(KIND_UTILITY, &tables, transaction, insert), start, result);
+        if let Some(previous) = previous {
+            // 기다림을 되돌리는 statement의 실패는 lock 요청의 결과를 바꾸지 않는다.
+            let restore = format!("PRAGMA busy_timeout={previous}");
+            let _ = crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, &restore)).await;
+        }
+        result
     }
 
     async fn pg_types_pool(&self, pool: &PgPool, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
@@ -685,12 +739,13 @@ impl Db {
     pub(crate) async fn run_query(
         &self,
         mut target: Target<'_>,
+        origin: Origin<'_>,
         st: &Step,
         params: &[Param],
         parent_vals: Vec<Param>,
         audit: Option<&AuditKey>,
     ) -> Result<Vec<DriverRow>> {
-        acquire_sqlite_row_lock(&mut target, &st.lock).await?;
+        self.sqlite_row_lock(&mut target, origin.transaction, &st.lock).await?;
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
         let args = self.args(st, params, &parent_vals, audit)?;
         let start = std::time::Instant::now();
@@ -715,11 +770,17 @@ impl Db {
                 fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
             }
         };
-        self.emit(st, &sql, &args, parent_vals.len(), start, r.as_ref().err());
-        r
+        self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), start, r)
     }
 
-    pub(crate) async fn run_execute(&self, target: Target<'_>, st: &Step, params: &[Param], audit: Option<&AuditKey>) -> Result<(u64, u64)> {
+    pub(crate) async fn run_execute(
+        &self,
+        target: Target<'_>,
+        origin: Origin<'_>,
+        st: &Step,
+        params: &[Param],
+        audit: Option<&AuditKey>,
+    ) -> Result<(u64, u64)> {
         let args = self.args(st, params, &[], audit)?;
         let sql = st.sql.as_str();
         let start = std::time::Instant::now();
@@ -739,8 +800,7 @@ impl Db {
             Target::Pool(Pool::Sqlite(p)) => exec_sqlite_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
         };
-        self.emit(st, sql, &args, 0, start, r.as_ref().err());
-        r
+        self.step_done(st, origin, sql, || self.shown(st, &args, 0), start, r)
     }
 
     /// The statement of a request without executing it.
@@ -768,6 +828,14 @@ pub struct Statement {
     pub binds: Vec<Param>,
 }
 
+/// step을 실행한 곳과 event의 출처: kind와 table(없으면 step의 것)과 transaction 번호다.
+#[derive(Clone, Copy)]
+pub(crate) struct Origin<'a> {
+    kind: Option<&'a str>,
+    tables: Option<&'a [String]>,
+    transaction: Option<u64>,
+}
+
 /// Where a statement runs: a connection or an active transaction.
 #[derive(Clone)]
 pub(crate) enum Executor {
@@ -783,7 +851,29 @@ impl Executor {
         }
     }
 
+    /// statement가 실행되는 transaction의 번호다. transaction 밖이면 None이다.
+    pub(crate) fn transaction(&self) -> Option<u64> {
+        match self {
+            Executor::Db(_) => None,
+            Executor::Tx(t) => Some(t.number),
+        }
+    }
+
+    /// model plan의 step을 실행하고 행을 돌려준다. event의 kind와 table은 step의 것이다.
     pub(crate) async fn query(&self, st: &Step, params: &[Param], parent_vals: Vec<Param>) -> Result<Vec<DriverRow>> {
+        self.query_as(None, None, st, params, parent_vals).await
+    }
+
+    /// step을 실행하고 행을 돌려준다. `kind`와 `tables`가 있으면 event는 그것을 싣는다.
+    pub(crate) async fn query_as(
+        &self,
+        kind: Option<&str>,
+        tables: Option<&[String]>,
+        st: &Step,
+        params: &[Param],
+        parent_vals: Vec<Param>,
+    ) -> Result<Vec<DriverRow>> {
+        let origin = Origin { kind, tables, transaction: self.transaction() };
         match self {
             Executor::Db(d) => {
                 if d.inner.closed.load(Ordering::Acquire) {
@@ -792,30 +882,49 @@ impl Executor {
                 if !st.lock.is_empty() {
                     return Err(Error::Config("row locks are allowed only inside a transaction".into()));
                 }
-                d.run_query(Target::Pool(&d.inner.pool), st, params, parent_vals, None).await
+                d.run_query(Target::Pool(&d.inner.pool), origin, st, params, parent_vals, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
                 let audit = t.audit();
-                t.db.run_query(Target::Tx(inner), st, params, parent_vals, audit.as_ref()).await
+                t.db.run_query(Target::Tx(inner), origin, st, params, parent_vals, audit.as_ref()).await
             }
         }
     }
 
+    /// SQLite의 row lock을 transaction에서 잡는다. 다른 database에서는 아무것도 보내지 않는다.
+    pub(crate) async fn sqlite_row_lock(&self, mode: &str) -> Result<()> {
+        match self {
+            Executor::Db(d) => d.sqlite_row_lock(&mut Target::Pool(&d.inner.pool), None, mode).await,
+            Executor::Tx(t) => {
+                let mut guard = t.enter()?;
+                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+                t.db.sqlite_row_lock(&mut Target::Tx(inner), Some(t.number), mode).await
+            }
+        }
+    }
+
+    /// model plan의 step을 실행하고 (마지막 id, 바뀐 행 수)를 돌려준다.
     pub(crate) async fn execute(&self, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
+        self.execute_as(None, None, st, params).await
+    }
+
+    /// step을 실행한다. `kind`와 `tables`가 있으면 event는 그것을 싣는다.
+    pub(crate) async fn execute_as(&self, kind: Option<&str>, tables: Option<&[String]>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
+        let origin = Origin { kind, tables, transaction: self.transaction() };
         match self {
             Executor::Db(d) => {
                 if d.inner.closed.load(Ordering::Acquire) {
                     return Err(Error::Config("database is closed".into()));
                 }
-                d.run_execute(Target::Pool(&d.inner.pool), st, params, None).await
+                d.run_execute(Target::Pool(&d.inner.pool), origin, st, params, None).await
             }
             Executor::Tx(t) => {
                 let mut guard = t.enter()?;
                 let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
                 let audit = t.audit();
-                t.db.run_execute(Target::Tx(inner), st, params, audit.as_ref()).await
+                t.db.run_execute(Target::Tx(inner), origin, st, params, audit.as_ref()).await
             }
         }
     }

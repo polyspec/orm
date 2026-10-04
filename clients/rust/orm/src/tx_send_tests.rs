@@ -39,23 +39,25 @@ async fn behavior(driver: &str, dsn: &str) {
     require_send(
         db.transaction_send(|| async {
             let tx = active_for(&db).expect("active outer transaction");
-            tx.raw(&format!("INSERT INTO {table} (id) VALUES (1)")).await?;
+            tx.raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (1)")).await?;
             let callback = || Box::pin(async { Ok::<_, Error>(17) }) as Pin<Box<dyn Future<Output = Result<i32>> + Send>>;
             let borrowed: &SendOperation<'_, i32> = &callback;
             assert_eq!(require_send(savepoint_send(tx.clone(), borrowed)).await?, 17);
-            db.transaction_send(|| async { active_for(&db).expect("nested commit frame").raw(&format!("INSERT INTO {table} (id) VALUES (2)")).await })
-                .retry(0)
-                .await?;
+            db.transaction_send(|| async {
+                active_for(&db).expect("nested commit frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (2)")).await
+            })
+            .retry(0)
+            .await?;
             let rejected = db
                 .transaction_send(|| async {
-                    active_for(&db).expect("nested rollback frame").raw(&format!("INSERT INTO {table} (id) VALUES (3)")).await?;
+                    active_for(&db).expect("nested rollback frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (3)")).await?;
                     Err::<(), _>(Error::Config("owned nested rejection".into()))
                 })
                 .retry(0)
                 .await;
             assert!(matches!(rejected,Err(Error::Config(ref text)) if text=="owned nested rejection"), "{driver}: callback error preserved");
             assert!(Arc::ptr_eq(&tx, &active_for(&db).expect("outer frame restored")));
-            tx.raw(&format!("INSERT INTO {table} (id) VALUES (4)")).await
+            tx.raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (4)")).await
         })
         .retry(0)
         .into_future(),
@@ -65,9 +67,9 @@ async fn behavior(driver: &str, dsn: &str) {
     assert_eq!(state(&db, table).await, [1, 2, 4], "{driver}: nested rollback preserves outer writes");
     let rejected = require_send(
         db.transaction_send(|| async {
-            active_for(&db).expect("outer rollback frame").raw(&format!("INSERT INTO {table} (id) VALUES (5)")).await?;
+            active_for(&db).expect("outer rollback frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (5)")).await?;
             db.transaction_send(|| async {
-                active_for(&db).expect("nested commit before outer rollback").raw(&format!("INSERT INTO {table} (id) VALUES (6)")).await
+                active_for(&db).expect("nested commit before outer rollback").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (6)")).await
             })
             .retry(0)
             .await?;
@@ -82,9 +84,12 @@ async fn behavior(driver: &str, dsn: &str) {
     assert!(active_for(&db).is_none(), "{driver}: transaction frame removed");
     db.transaction_send(|| async { Ok::<_, Error>(()) }).retry(0).await.expect("connection remains usable");
     // transaction_once의 future는 callback과 그 future가 Send이면 Send다.
-    require_send(db.transaction_once(async || active_for(&db).expect("once frame").raw(&format!("INSERT INTO {table} (id) VALUES (7)")).await).into_future())
-        .await
-        .expect("once commit must succeed");
+    require_send(
+        db.transaction_once(async || active_for(&db).expect("once frame").raw(KIND_UTILITY, &format!("INSERT INTO {table} (id) VALUES (7)")).await)
+            .into_future(),
+    )
+    .await
+    .expect("once commit must succeed");
     assert_eq!(state(&db, table).await, [1, 2, 4, 7], "{driver}: transaction_once commits");
     // audit 값을 정해도 transaction_send와 transaction_once의 future는 Send다. 이 연결에는 audit 기본값이
     // 없으므로 둘 다 시작하기 전에 CONFIG다.

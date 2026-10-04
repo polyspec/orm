@@ -9,10 +9,10 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use futures_util::FutureExt as _;
-use sqlx::SqlSafeStr as _;
 
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
+use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
 use crate::schema::Schema;
 use crate::value::Param;
 use crate::{codes, Error, Result};
@@ -20,6 +20,8 @@ use crate::{codes, Error, Result};
 /// One active transaction.
 pub(crate) struct TxShared {
     pub(crate) db: Db,
+    /// 연결에서 이 transaction의 번호다. statement event가 싣는다.
+    pub(crate) number: u64,
     pub(crate) inner: tokio::sync::Mutex<Option<TxInner>>,
     pub(crate) finished: AtomicBool,
     savepoints: AtomicU32,
@@ -137,28 +139,22 @@ impl TxShared {
         self.inner.try_lock().map_err(|_| Error::Config("the transaction connection is already in use".into()))
     }
 
-    /// Runs a statement text on the transaction connection.
-    pub(crate) async fn raw(&self, sql: &str) -> Result<()> {
+    /// Runs a statement text of `kind` on the transaction connection and
+    /// publishes its event.
+    pub(crate) async fn raw(&self, kind: &str, sql: &str) -> Result<()> {
         let mut guard = self.enter()?;
         let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-        raw_on(inner, sql).await
+        raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), sql)).await
     }
 }
 
-pub(crate) async fn raw_on(inner: &mut TxInner, sql: &str) -> Result<()> {
-    let statement = sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str();
+/// transaction 연결에서 bind 없는 statement를 실행하고 그 event를 publish한다.
+pub(crate) async fn raw_on(db: &Db, inner: &mut TxInner, s: Sent<'_>) -> Result<()> {
     match inner {
-        TxInner::MySql(t) => {
-            sqlx::raw_sql(statement).execute(&mut **t.conn.as_mut().expect("active MySQL transaction connection")).await?;
-        }
-        TxInner::Postgres(t) => {
-            sqlx::raw_sql(statement).execute(&mut **t).await?;
-        }
-        TxInner::Sqlite(t) => {
-            sqlx::raw_sql(statement).execute(&mut **t).await?;
-        }
+        TxInner::MySql(t) => events::raw(db, &mut **t.conn.as_mut().expect("active MySQL transaction connection"), s).await,
+        TxInner::Postgres(t) => events::raw(db, &mut **t, s).await,
+        TxInner::Sqlite(t) => events::raw(db, &mut **t, s).await,
     }
-    Ok(())
 }
 
 tokio::task_local! {
@@ -351,7 +347,7 @@ impl<'a> OnceScope<'a> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
             OnceScope::Savepoint { tx, name, .. } => Box::pin(async move {
-                let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+                let released = tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 released
             }),
@@ -424,7 +420,7 @@ where
                         Some(tx) => Box::pin(async move {
                             let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
                             let name = format!("orm_sp_{n}");
-                            match tx.raw(&format!("SAVEPOINT {name}")).await {
+                            match tx.raw(KIND_SAVEPOINT, &format!("SAVEPOINT {name}")).await {
                                 Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
@@ -438,7 +434,7 @@ where
                                 Err(error) => return Poll::Ready(Err(TransactionOnceError::Orm(error))),
                             };
                             Box::pin(async move {
-                                let tx = Arc::new(begin(db, None, false).await?);
+                                let tx = Arc::new(begin(db, None, false, 0).await?);
                                 if let Some(record) = record {
                                     // audit 기록은 callback 전에 transaction frame 안에서 삽입한다. 실패하면
                                     // transaction을 되돌리고 그 오류를 돌려준다.
@@ -560,7 +556,7 @@ where
         let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
             let mut stack = frames();
             stack.push(tx.clone());
             let body = async {
@@ -575,7 +571,7 @@ where
             } else {
                 match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
                     Ok(result) => result,
-                    Err(_) => Ok(Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() })),
+                    Err(_) => return Err(cancelled(&tx).await),
                 }
             };
             let result = match result {
@@ -619,8 +615,11 @@ impl<'a, F> Transaction<'a, F> {
     }
 
     /// Bounds execution of the transaction callback in milliseconds. On
-    /// expiry, the callback is cancelled and its transaction is rolled back.
-    /// Zero disables the bound.
+    /// expiry, the callback is cancelled and its transaction ends: MySQL and
+    /// PostgreSQL close its session, which rolls it back, and SQLite resets
+    /// its modes and rolls it back. On PostgreSQL the transaction also sends
+    /// `SET LOCAL statement_timeout = <ms>` after its `BEGIN`. Zero disables
+    /// the bound.
     pub fn timeout_ms(mut self, ms: u64) -> Self {
         self.timeout_ms = ms;
         self.set = true;
@@ -677,7 +676,7 @@ impl<'a, F> Transaction<'a, F> {
         let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?;
         let mut attempt = 0u32;
         loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only).await?);
+            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
             let mut stack = frames();
             stack.push(tx.clone());
             let body = async {
@@ -692,7 +691,7 @@ impl<'a, F> Transaction<'a, F> {
             } else {
                 match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
                     Ok(result) => result,
-                    Err(_) => Ok(Err(Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() })),
+                    Err(_) => return Err(cancelled(&tx).await),
                 }
             };
             let result = match result {
@@ -759,12 +758,12 @@ where
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
     let ended = async {
-        tx.raw(&format!("SAVEPOINT {name}")).await?;
+        tx.raw(KIND_SAVEPOINT, &format!("SAVEPOINT {name}")).await?;
         let mut stack = frames();
         stack.push(tx.clone());
         Ok::<_, Error>(match std::panic::AssertUnwindSafe(FLOW.scope(stack, callback)).catch_unwind().await {
             Ok(Ok(value)) => {
-                tx.raw(&format!("RELEASE SAVEPOINT {name}")).await?;
+                tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await?;
                 SavepointEnd::Returned(Ok(value))
             }
             Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
@@ -781,8 +780,8 @@ where
 
 /// savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두 statement를 모두 시도하고 실패를 모두 돌려준다.
 async fn rollback_savepoint(tx: &TxShared, name: &str) -> Result<()> {
-    let rolled_back = tx.raw(&format!("ROLLBACK TO SAVEPOINT {name}")).await;
-    let released = tx.raw(&format!("RELEASE SAVEPOINT {name}")).await;
+    let rolled_back = tx.raw(KIND_ROLLBACK_TO, &format!("ROLLBACK TO SAVEPOINT {name}")).await;
+    let released = tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await;
     joined([rolled_back.err(), released.err()].into_iter().flatten().collect())
 }
 
@@ -795,21 +794,21 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
     }
 }
 
-async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
+async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: u64) -> Result<TxShared> {
     if db.inner.closed.load(Ordering::Acquire) {
         return Err(Error::Config("database is closed".into()));
     }
     let level = isolation.map(Isolation::sql);
+    // transaction을 여는 statement다(docs/usage.md "Statement events").
+    let mut opening: Vec<(&str, String)> = Vec::new();
     let mut sqlite_mode = None;
     let inner = match db.pool() {
         Pool::MySql(p) => {
-            let mut conn = CancellableConnection::new(p.acquire().await?);
             if let Some(level) = level {
-                sqlx::raw_sql(sqlx::AssertSqlSafe(format!("SET TRANSACTION ISOLATION LEVEL {level}")).into_sql_str()).execute(&mut *conn).await?;
+                opening.push((KIND_UTILITY, format!("SET TRANSACTION ISOLATION LEVEL {level}")));
             }
-            let start = if read_only { "START TRANSACTION READ ONLY" } else { "START TRANSACTION" };
-            sqlx::raw_sql(start).execute(&mut *conn).await?;
-            TxInner::MySql(MySqlOwnedTx { conn: Some(conn) })
+            opening.push((KIND_BEGIN, if read_only { "START TRANSACTION READ ONLY" } else { "START TRANSACTION" }.into()));
+            TxInner::MySql(MySqlOwnedTx { conn: Some(CancellableConnection::new(p.acquire().await?)) })
         }
         Pool::Postgres(p) => {
             let mut statement = String::from("BEGIN");
@@ -820,31 +819,34 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result
             if read_only {
                 statement.push_str(" READ ONLY");
             }
-            let mut t = CancellableConnection::new(p.acquire().await?);
-            sqlx::raw_sql(sqlx::AssertSqlSafe(statement).into_sql_str()).execute(&mut *t).await?;
-            TxInner::Postgres(t)
+            opening.push((KIND_BEGIN, statement));
+            if timeout_ms > 0 {
+                opening.push((KIND_UTILITY, format!("SET LOCAL statement_timeout = {timeout_ms}")));
+            }
+            TxInner::Postgres(CancellableConnection::new(p.acquire().await?))
         }
         Pool::Sqlite(p) => {
+            // SQLite의 row lock table은 연결의 첫 transaction 전에 한 번 만든다.
             ensure_sqlite_lock_table(db).await?;
             // A write transaction holds the write lock from its start and waits
             // for it up to busy_timeout; a read-only one begins deferred.
-            let mut t = CancellableConnection::new(p.acquire().await?);
-            sqlx::raw_sql(if read_only { "BEGIN" } else { "BEGIN IMMEDIATE" }).execute(&mut *t).await?;
+            opening.push((KIND_BEGIN, if read_only { "BEGIN" } else { "BEGIN IMMEDIATE" }.into()));
             let uncommitted = isolation == Some(Isolation::ReadUncommitted);
             if uncommitted {
-                sqlx::raw_sql("PRAGMA read_uncommitted = 1").execute(&mut *t).await?;
+                opening.push((KIND_UTILITY, "PRAGMA read_uncommitted = 1".into()));
             }
             if read_only {
-                sqlx::raw_sql("PRAGMA query_only = 1").execute(&mut *t).await?;
+                opening.push((KIND_UTILITY, "PRAGMA query_only = 1".into()));
             }
             if uncommitted || read_only {
                 sqlite_mode = Some((uncommitted, read_only));
             }
-            TxInner::Sqlite(t)
+            TxInner::Sqlite(CancellableConnection::new(p.acquire().await?))
         }
     };
-    Ok(TxShared {
+    let tx = TxShared {
         db: db.clone(),
+        number: db.next_transaction(),
         inner: tokio::sync::Mutex::new(Some(inner)),
         finished: AtomicBool::new(false),
         savepoints: AtomicU32::new(0),
@@ -852,18 +854,57 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool) -> Result
         locks: Mutex::new(Vec::new()),
         audit: Mutex::new(None),
         sqlite_mode: Mutex::new(sqlite_mode),
-    })
+    };
+    let mut began = false;
+    for (kind, sql) in &opening {
+        if let Err(error) = tx.raw(kind, sql).await {
+            if began {
+                // 열린 transaction은 되돌린다. 되돌리지 못한 연결은 닫는다.
+                return Err(match rollback(&tx).await {
+                    Ok(()) => error,
+                    Err(rollback) => Error::rollback(error, rollback),
+                });
+            }
+            // 열기 전에 실패한 연결은 session에 남은 설정이 다음 사용자에게 가지 않도록 닫는다.
+            tx.finished.store(true, Ordering::Release);
+            return Err(error);
+        }
+        began |= *kind == KIND_BEGIN;
+    }
+    Ok(tx)
 }
+
+/// SQLite row lock이 쓰는 table이다.
+pub(crate) const ROW_LOCK_TABLE: &str = "orm__row_lock";
 
 async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
     if db.inner.sqlite_lock_ready.load(Ordering::Acquire) {
         return Ok(());
     }
     if let Pool::Sqlite(p) = db.pool() {
-        sqlx::raw_sql("CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))").execute(p).await?;
+        let tables = [ROW_LOCK_TABLE.to_owned()];
+        let create = "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))";
+        events::raw(db, p, Sent::bare(KIND_UTILITY, &tables, None, create)).await?;
         db.inner.sqlite_lock_ready.store(true, Ordering::Release);
     }
     Ok(())
+}
+
+/// 시간 제한으로 취소된 transaction을 끝내고 CANCELED를 돌려준다. MySQL과 PostgreSQL은 취소된
+/// callback이 statement를 끝내지 못했을 수 있으므로 ROLLBACK을 보내지 않고 session을 닫으며, server가
+/// transaction을 되돌리고 lock을 푼다. SQLite 연결은 중단된 statement 뒤에도 쓸 수 있으므로 mode를
+/// 되돌리고 ROLLBACK한다.
+async fn cancelled(tx: &TxShared) -> Error {
+    let error = Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() };
+    if matches!(tx.db.pool(), Pool::Sqlite(_)) {
+        return match rollback(tx).await {
+            Ok(()) => error,
+            Err(rollback) => Error::rollback(error, rollback),
+        };
+    }
+    tx.finished.store(true, Ordering::Release);
+    drop(tx.inner.lock().await.take());
+    error
 }
 
 /// panic한 callback의 transaction을 rollback하고 panic을 이어 간다. rollback이 실패하면
@@ -893,18 +934,27 @@ fn resume_panic(payload: Box<dyn std::any::Any + Send>, rollback: Option<Error>)
 async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
     let mut errors: Vec<Error> = Vec::new();
     let locks: Vec<String> = std::mem::take(&mut *tx.locks.lock().unwrap());
+    let db = &tx.db;
+    let number = Some(tx.number);
     if let TxInner::MySql(t) = inner {
         let conn = &mut **t.conn.as_mut().expect("active MySQL transaction connection");
         for key in locks {
-            match sqlx::query_scalar::<_, Option<i64>>("SELECT RELEASE_LOCK(?)").bind(&key).fetch_one(&mut *conn).await {
+            let release = "SELECT RELEASE_LOCK(?)";
+            let binds = [Param::Str(key.clone())];
+            let start = std::time::Instant::now();
+            let r = sqlx::query_scalar::<_, Option<i64>>(release).bind(&key).fetch_one(&mut *conn).await.map_err(Error::from);
+            match db.statement_done(Sent { sql: release, binds: &binds, kind: KIND_UTILITY, tables: &[], transaction: number }, start, r) {
                 Ok(Some(1)) => {}
                 Ok(_) => errors.push(Error::Config(format!("lock {key} was not held at transaction end"))),
-                Err(error) => errors.push(error.into()),
+                Err(error) => errors.push(error),
             }
         }
-        let keys: Vec<String> = tx.locals.lock().unwrap().keys().cloned().collect();
+        // 값을 지우는 statement는 key 순서로 실행한다.
+        let mut keys: Vec<String> = tx.locals.lock().unwrap().keys().cloned().collect();
+        keys.sort();
         for key in keys {
-            if let Err(error) = raw_on_conn(conn, &format!("SET @`orm.{key}` = NULL")).await {
+            let clear = format!("SET @`orm.{key}` = NULL");
+            if let Err(error) = events::raw(db, &mut *conn, Sent::bare(KIND_UTILITY, &[], number, &clear)).await {
                 errors.push(error);
             }
         }
@@ -913,13 +963,13 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
         let mode = tx.sqlite_mode.lock().unwrap().take();
         if let Some((uncommitted, read_only)) = mode {
             if read_only {
-                if let Err(error) = sqlx::raw_sql("PRAGMA query_only = 0").execute(&mut **t).await {
-                    errors.push(error.into());
+                if let Err(error) = events::raw(db, &mut **t, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA query_only = 0")).await {
+                    errors.push(error);
                 }
             }
             if uncommitted {
-                if let Err(error) = sqlx::raw_sql("PRAGMA read_uncommitted = 0").execute(&mut **t).await {
-                    errors.push(error.into());
+                if let Err(error) = events::raw(db, &mut **t, Sent::bare(KIND_UTILITY, &[], number, "PRAGMA read_uncommitted = 0")).await {
+                    errors.push(error);
                 }
             }
         }
@@ -927,8 +977,25 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
     joined(errors)
 }
 
-async fn raw_on_conn(conn: &mut sqlx::MySqlConnection, sql: &str) -> Result<()> {
-    sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str()).execute(conn).await?;
+/// transaction을 끝내는 statement(COMMIT이나 ROLLBACK)를 실행한다. 성공하면 연결을 pool에
+/// 돌려주고, 실패하면 상태를 알 수 없는 연결을 닫는다.
+async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str) -> Result<()> {
+    let s = Sent::bare(kind, &[], Some(tx.number), sql);
+    match inner {
+        TxInner::MySql(mut t) => {
+            let mut conn = t.conn.take().expect("active MySQL transaction connection");
+            events::raw(&tx.db, &mut *conn, s).await?;
+            conn.completed();
+        }
+        TxInner::Postgres(mut t) => {
+            events::raw(&tx.db, &mut *t, s).await?;
+            t.completed();
+        }
+        TxInner::Sqlite(mut t) => {
+            events::raw(&tx.db, &mut *t, s).await?;
+            t.completed();
+        }
+    }
     Ok(())
 }
 
@@ -939,18 +1006,7 @@ async fn commit(tx: &TxShared) -> Result<()> {
         return Err(Error::Config("transaction already finished".into()));
     };
     finish(tx, &mut inner).await?;
-    match inner {
-        TxInner::MySql(t) => t.commit().await?,
-        TxInner::Postgres(mut t) => {
-            sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
-            t.completed();
-        }
-        TxInner::Sqlite(mut t) => {
-            sqlx::raw_sql("COMMIT").execute(&mut *t).await?;
-            t.completed();
-        }
-    }
-    Ok(())
+    end(tx, inner, KIND_COMMIT, "COMMIT").await
 }
 
 /// transaction이 rollback된 뒤 설정된 test fault를 소비한다: 그 rollback은
@@ -970,27 +1026,11 @@ async fn rollback(tx: &TxShared) -> Result<()> {
         return Err(Error::Config("transaction already finished".into()));
     };
     let cleanup = finish(tx, &mut inner).await;
-    let rolled_back = match inner {
-        TxInner::MySql(t) => t.rollback().await,
-        TxInner::Postgres(mut t) => {
-            let result = sqlx::raw_sql("ROLLBACK").execute(&mut *t).await.map(|_| ());
-            if result.is_ok() {
-                t.completed();
-            }
-            result
-        }
-        TxInner::Sqlite(mut t) => {
-            let result = sqlx::raw_sql("ROLLBACK").execute(&mut *t).await.map(|_| ());
-            if result.is_ok() {
-                t.completed();
-            }
-            result
-        }
-    };
+    let rolled_back = end(tx, inner, KIND_ROLLBACK, "ROLLBACK").await;
     match (cleanup, rolled_back) {
         (Ok(()), Ok(())) => Ok(()),
         (Err(e), Ok(())) => Err(e),
-        (Ok(()), Err(e)) => Err(e.into()),
+        (Ok(()), Err(e)) => Err(e),
         (Err(cleanup), Err(rollback)) => Err(Error::Config(format!("transaction cleanup failed ({cleanup}) and rollback failed ({rollback})"))),
     }
 }
@@ -1063,7 +1103,7 @@ mod tests {
             execute(&db, "CREATE TABLE orm_once_probe (id INTEGER PRIMARY KEY)").await;
             let result = db
                 .transaction_once(async || {
-                    active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (1)").await.unwrap();
+                    active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (1)").await.unwrap();
                     Err::<(), _>(DomainFailure::Rejected)
                 })
                 .await;
@@ -1075,21 +1115,21 @@ mod tests {
             };
             assert_eq!(count, 0, "{driver}: rollback");
             db.transaction_once(async || {
-                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (2)").await.unwrap();
+                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (2)").await.unwrap();
                 Ok::<_, DomainFailure>(())
             })
             .await
             .unwrap_or_else(|e| panic!("{driver}: commit: {e:?}"));
             db.transaction(async || {
-                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (3)").await?;
+                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (3)").await?;
                 let nested = db
                     .transaction_once(async || {
-                        active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (4)").await.unwrap();
+                        active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (4)").await.unwrap();
                         Err::<(), _>(DomainFailure::Rejected)
                     })
                     .await;
                 assert!(matches!(nested, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {nested:?}");
-                active_for(&db).expect("transaction active").raw("INSERT INTO orm_once_probe (id) VALUES (5)").await
+                active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (5)").await
             })
             .retry(0)
             .await
@@ -1151,10 +1191,10 @@ mod tests {
                 std::time::Duration::from_secs(5),
                 db.transaction(async || {
                     let tx = active_for(&db).expect("transaction is active");
-                    tx.raw("INSERT INTO orm_timeout_probe (id) VALUES (1)").await?;
+                    tx.raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (1)").await?;
                     match driver {
-                        "mysql" => tx.raw("SELECT SLEEP(0.2)").await?,
-                        "postgres" => tx.raw("SELECT pg_sleep(0.2)").await?,
+                        "mysql" => tx.raw(KIND_UTILITY, "SELECT SLEEP(0.2)").await?,
+                        "postgres" => tx.raw(KIND_UTILITY, "SELECT pg_sleep(0.2)").await?,
                         "sqlite" => tokio::time::sleep(std::time::Duration::from_millis(200)).await,
                         _ => unreachable!(),
                     }
@@ -1167,13 +1207,13 @@ mod tests {
             .expect("transaction test timed out");
             assert_eq!(result.unwrap_err().code(), codes::CANCELED, "{driver}: timeout code");
             assert_eq!(count(&db).await, 0, "{driver}: transaction rolled back");
-            db.transaction(async || active_for(&db).expect("transaction is active").raw("INSERT INTO orm_timeout_probe (id) VALUES (2)").await)
+            db.transaction(async || active_for(&db).expect("transaction is active").raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (2)").await)
                 .retry(0)
                 .await
                 .unwrap_or_else(|e| panic!("{driver}: next transaction: {e}"));
             assert_eq!(count(&db).await, 1, "{driver}: next transaction committed");
             db.transaction(async || {
-                active_for(&db).expect("transaction is active").raw("INSERT INTO orm_timeout_probe (id) VALUES (3)").await?;
+                active_for(&db).expect("transaction is active").raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (3)").await?;
                 tokio::time::sleep(std::time::Duration::from_millis(30)).await;
                 Ok(())
             })
@@ -1196,7 +1236,7 @@ mod tests {
     /// 연결한다. ProxySQL은 KILL을 자기 client session의 명령으로 받는다.
     async fn transaction_with_failing_reset(db: &Db) -> TxShared {
         let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
-        let tx = begin(db, None, false).await.expect("begin");
+        let tx = begin(db, None, false, 0).await.expect("begin");
         let id: u64 = {
             let mut guard = tx.inner.lock().await;
             let Some(TxInner::MySql(t)) = guard.as_mut() else { panic!("MySQL transaction") };
@@ -1220,7 +1260,7 @@ mod tests {
             .transaction(async || {
                 db.utils().lock(&key).await?;
                 // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
-                active_for(&db).expect("transaction active").raw(&format!("DO RELEASE_LOCK('{key}')")).await
+                active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await
             })
             .retry(0)
             .await;
@@ -1305,7 +1345,7 @@ mod tests {
                 .transaction(async || -> Result<()> {
                     db.utils().lock(&key).await?;
                     if driver == "sqlite" {
-                        active_for(&db).expect("transaction active").raw("INSERT INTO orm_dropped_probe (id) VALUES (1)").await?;
+                        active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_dropped_probe (id) VALUES (1)").await?;
                     }
                     held.notify_one();
                     std::future::pending::<()>().await;

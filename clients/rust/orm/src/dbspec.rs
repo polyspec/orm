@@ -113,23 +113,61 @@ fn sqlite_value(row: &SqliteRow, i: usize) -> Result<CatalogValue, sqlx::Error> 
     })
 }
 
+/// catalog query를 실행하는 연결: 행을 읽는 일과 행을 [`CatalogValue`]로 바꾸는 일을 나눈다.
+/// 연결은 statement가 끝난 뒤, 행을 바꾸기 전에 그 statement의 event를 publish한다.
+pub(crate) trait CatalogFetch: Send {
+    type Row: Send;
+    fn fetch(&mut self, query: &'static str) -> impl Future<Output = Result<Vec<Self::Row>, sqlx::Error>> + Send;
+    fn values(rows: &[Self::Row]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error>;
+}
+
+impl CatalogFetch for MySqlConnection {
+    type Row = MySqlRow;
+    async fn fetch(&mut self, query: &'static str) -> Result<Vec<MySqlRow>, sqlx::Error> {
+        sqlx::query(query).fetch_all(self).await
+    }
+    fn values(rows: &[MySqlRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        rows.iter().map(|row| (0..row.len()).map(|i| mysql_value(row, i)).collect()).collect()
+    }
+}
+
+impl CatalogFetch for PgConnection {
+    type Row = PgRow;
+    async fn fetch(&mut self, query: &'static str) -> Result<Vec<PgRow>, sqlx::Error> {
+        sqlx::query(query).fetch_all(self).await
+    }
+    fn values(rows: &[PgRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        rows.iter().map(|row| (0..row.len()).map(|i| postgres_value(row, i)).collect()).collect()
+    }
+}
+
+impl CatalogFetch for SqliteConnection {
+    type Row = SqliteRow;
+    async fn fetch(&mut self, query: &'static str) -> Result<Vec<SqliteRow>, sqlx::Error> {
+        sqlx::query(query).fetch_all(self).await
+    }
+    fn values(rows: &[SqliteRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        rows.iter().map(|row| (0..row.len()).map(|i| sqlite_value(row, i)).collect()).collect()
+    }
+}
+
 impl CatalogQuerier for MySqlConnection {
     async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = sqlx::query(query).fetch_all(self).await?;
-        rows.iter().map(|row| (0..row.len()).map(|i| mysql_value(row, i)).collect()).collect()
+        let rows = self.fetch(query).await?;
+        Self::values(&rows)
     }
 }
 
 impl CatalogQuerier for PgConnection {
     async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = sqlx::query(query).fetch_all(self).await?;
-        rows.iter().map(|row| (0..row.len()).map(|i| postgres_value(row, i)).collect()).collect()
+        let rows = self.fetch(query).await?;
+        Self::values(&rows)
     }
 }
 
 impl CatalogQuerier for SqliteConnection {
     async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = sqlx::query(query).fetch_all(self).await?;
-        rows.iter().map(|row| (0..row.len()).map(|i| sqlite_value(row, i)).collect()).collect()
+        let rows = self.fetch(query).await?;
+        Self::values(&rows)
     }
 }

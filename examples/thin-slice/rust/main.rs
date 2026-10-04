@@ -45,29 +45,25 @@ async fn main() -> orm::Result<()> {
     let config = orm::Config {
         aes_key: AES_KEY.into(),
         blind_index_key: "bench-blind-index".into(),
-        on_query: Some(Arc::new(
-            move |sql: &str,
-                  binds: &[Param],
-                  _: std::time::Duration,
-                  _: u64,
-                  _: Option<&orm::Error>| {
-                // the hook masks secret binds; the native replay needs the real key
-                let binds = binds
-                    .iter()
-                    .map(|p| {
-                        if *p == Param::Str(orm::db::SECRET_MASK.into()) {
-                            Param::Str(AES_KEY.into())
-                        } else {
-                            p.clone()
-                        }
-                    })
-                    .collect();
-                *hook.lock().unwrap() = (sql.to_owned(), binds);
-            },
-        )),
         ..Default::default()
     };
     let db = model::connect(&dsn(), 1, config).await?;
+    let _last_statement = db.subscribe(move |e: &orm::StatementEvent<'_>| {
+        // event는 비밀 bind를 가리므로 native 재실행은 실제 key를 쓴다.
+        let binds = e
+            .binds
+            .iter()
+            .map(|p| {
+                if *p == Param::Str(orm::db::SECRET_MASK.into()) {
+                    Param::Str(AES_KEY.into())
+                } else {
+                    p.clone()
+                }
+            })
+            .collect();
+        *hook.lock().unwrap() = (e.sql.to_owned(), binds);
+        Ok(())
+    });
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
         .unwrap()
         .and_hms_opt(0, 0, 0)

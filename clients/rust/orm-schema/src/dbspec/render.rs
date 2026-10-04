@@ -16,28 +16,42 @@ pub enum Dialect {
 /// `dialect` (docs/dialects.md, "Rendered statements"), or the diagnostics of
 /// an invalid document set, as [`super::manifest`] reports them.
 pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>> {
+    Ok(render_statements(documents, dialect)?.into_iter().map(|r| r.sql).collect())
+}
+
+/// One statement of [`render`] and the table it creates or changes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderedStatement {
+    pub sql: String,
+    pub table: String,
+}
+
+/// Writes the statements of [`render`] in the same order, each with the table
+/// it creates or changes.
+pub fn render_statements(documents: &[&Document], dialect: Dialect) -> Result<Vec<RenderedStatement>, Vec<Diagnostic>> {
     check_set(documents)?;
     let r = Renderer { d: dialect };
     // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
     let ordered: Vec<_> = use_order(documents).into_iter().filter(|d| !d.external).collect();
     let mut out = Vec::new();
+    let mut add = |table: &str, statements: Vec<String>| out.extend(statements.into_iter().map(|sql| RenderedStatement { sql, table: table.to_owned() }));
     for document in &ordered {
         for table in &document.tables {
-            out.extend(r.table(table));
+            add(&table.name.text, r.table(table));
         }
     }
     if dialect != Dialect::Sqlite {
         for document in &ordered {
             for table in &document.tables {
                 for key in sorted_by(&table.foreign_keys, |f| &f.name.text) {
-                    out.push(format!("ALTER TABLE {} ADD {}", r.q(&table.name.text), r.foreign_key(key)));
+                    add(&table.name.text, vec![format!("ALTER TABLE {} ADD {}", r.q(&table.name.text), r.foreign_key(key))]);
                 }
             }
         }
     }
     for document in &ordered {
         for table in &document.tables {
-            out.extend(r.triggers(table));
+            add(&table.name.text, r.triggers(table));
         }
     }
     Ok(out)

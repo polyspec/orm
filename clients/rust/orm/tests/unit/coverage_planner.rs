@@ -113,7 +113,13 @@ fn query(value: &Value, at: &str) -> ir::Query {
         object
             .get(key)
             .map(|items| {
-                items.as_array().unwrap_or_else(|| panic!("{at}.{key}: expected an array")).iter().enumerate().map(|(i, item)| (format!("{at}.{key}[{i}]"), item)).collect()
+                items
+                    .as_array()
+                    .unwrap_or_else(|| panic!("{at}.{key}: expected an array"))
+                    .iter()
+                    .enumerate()
+                    .map(|(i, item)| (format!("{at}.{key}[{i}]"), item))
+                    .collect()
             })
             .unwrap_or_default()
     };

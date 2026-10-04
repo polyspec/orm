@@ -96,9 +96,9 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 `orm::codes`는 `docs/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback 오류>) and rollback failed (<rollback 오류>)`이고 두 오류를 모두 담으며 재시도하지 않는다.
 
-## 문장 hook
+## Statement event
 
-`Config.on_query`는 모델 문장마다 `(sql, binds, duration, plan_id, err)`를 받는다. 비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다. `plan_id`는 요청 모양의 FNV-1a 64 계획 캐시 키다.
+`db.subscribe(|e: &orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
 
 ## 빌드와 테스트
 

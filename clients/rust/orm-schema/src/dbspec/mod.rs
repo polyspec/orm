@@ -37,7 +37,7 @@ pub use model::{Document, Type};
 pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, TableRename, RULE_CHAIN, RULE_PLAN};
 pub use plan_diff::{diff, Change};
 pub use plan_steps::{plan_steps, Effect, NullCheck, PlanStep};
-pub use render::{render, Dialect};
+pub use render::{render, render_statements, Dialect, RenderedStatement};
 pub use runtime::{parse_manifest, parse_manifest_set, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
 
 use parser::Diag;

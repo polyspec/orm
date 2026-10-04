@@ -8,7 +8,7 @@
 | model_queries | 모델 조회 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | model_writes | 모델 쓰기 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | transactions | 트랜잭션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| statement_events | Statement event | partial | go: pass<br>php: pass<br>rust: planned<br>typescript: pass |
+| statement_events | Statement event | partial | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | model_generation | 모델 생성 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_definition | 스키마 정의와 마이그레이션 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
 | schema_install | 스키마 설치 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
