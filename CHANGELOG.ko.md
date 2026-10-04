@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5: GitHub Actions build가 통과한다: `make check`는 `make test-servers`가 시작한 서버로 `ubuntu-26.04-arm`에서 모든 target을 실행하고 docs site가 배포된다.
+
+- G5.6: MySQL 없는 PHP 검사는 client가 SQLite에서 쓰는 extension과 함께 `php -n`을 실행하며 Linux runner에서 통과한다.
+
 - G5.24: `make test-servers`는 signal이 기다림을 끊어도 시작하는 서버의 처음 보고를 유지하므로, 종료를 기한 초과로 보고하거나 기다림이 멈추지 않는다.
 
 - T41.1: `make owner-check`가 고른 make target은 owner-check가 받은 서버 환경, decimal 환경, Rust target directory로 실행하므로, worktree의 검사는 main checkout의 서버와 target directory를 쓴다.
