@@ -31,9 +31,13 @@
 - Owner checks: before each commit run `make owner-check` (or `make owner-check PATHS="<paths>"`),
   which selects every feature of `contracts/features.json` whose declared fixtures or tests are a
   changed file, or whose declared fixture files name a changed file, and runs its verification
-  commands and coverage with a deadline per step. Do not choose owner checks by hand. A changed
-  file that no feature declares selects nothing; declare it in the feature whose behavior it
-  defines. State the command and its pass counts in the item's evidence.
+  commands and coverage with a deadline per step. It also runs every make target of
+  `CHECK_TARGETS` whose inputs in `contracts/check-inputs.json` match a changed path, such as
+  `docs-check` and `docs-verify-idempotent` for a changed document. Do not choose owner checks
+  by hand. A changed file that no feature declares selects no feature; declare it in the feature
+  whose behavior it defines, and declare a new make target's inputs. Before a commit, also search
+  the tests and scripts for the name of every changed file and run those that read it. State the
+  commands and their pass counts in the item's evidence.
 - A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
   another machine prints it as a RUNNER line and does not count it. CI runs it there.
