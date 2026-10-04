@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { docs, root, files } from './lib.mjs';
@@ -15,8 +16,14 @@ const fail = (id, message) => failures.push(`${id}: ${message}`);
 const relative = file => path.relative(root, file).split(path.sep).join('/');
 
 const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
-const sources = allDocs.filter(file => !file.endsWith('.ko.md'));
-const translations = new Map(allDocs.filter(file => file.endsWith('.ko.md')).map(file => [file.slice(0, -'.ko.md'.length) + '.md', file]));
+// docs/ 밖의 추적되는 한국어 문서(AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md 등)도 영문 원본과
+// 같은 구조 검사를 받는다.
+const pairedOutside = execFileSync('git', ['ls-files', '-z', '*.ko.md'], { cwd: root }).toString().split('\0')
+  .filter(file => file && !file.startsWith('docs/')).map(file => path.join(root, file));
+const sources = [...allDocs.filter(file => !file.endsWith('.ko.md')),
+  ...pairedOutside.map(file => file.slice(0, -'.ko.md'.length) + '.md')];
+const translations = new Map([...allDocs.filter(file => file.endsWith('.ko.md')), ...pairedOutside]
+  .map(file => [file.slice(0, -'.ko.md'.length) + '.md', file]));
 
 try {
   const legacyDir = path.join(docs, 'ko');
@@ -26,6 +33,20 @@ try {
 }
 
 const headings = text => text.split('\n').filter(line => /^(#{1,6})\s+/.test(line)).map(line => line.match(/^(#{1,6})\s+/)[1].length);
+// listShape는 제목으로 나눈 절마다 목록 항목의 들여쓰기를 차례로 돌려준다. code fence 안은 세지
+// 않는다. 번역은 절마다 같은 수와 깊이의 목록 항목(규칙, 변경 기록 항목)을 가져야 한다.
+const listShape = text => {
+  const shape = [{ heading: '', items: [] }];
+  let fenced = false;
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) { fenced = !fenced; continue; }
+    if (fenced) continue;
+    if (/^#{1,6}\s/.test(line)) { shape.push({ heading: line, items: [] }); continue; }
+    const item = /^(\s*)(?:[-*+]|\d+\.)\s/.exec(line);
+    if (item) shape.at(-1).items.push(item[1].length);
+  }
+  return shape;
+};
 const fences = text => [...text.matchAll(/(^|\n)\s*```([^\n]*)\n/g)].map(match => match[2].trim());
 const tables = text => text.split('\n').filter(line => /^\s*\|/.test(line)).map(line => line.split('|').length - 2);
 // Style rules apply to prose. Code, HTML comments, inline code, link targets,
@@ -65,6 +86,13 @@ for (const source of sources) {
   if (JSON.stringify(fences(english)) !== JSON.stringify(fences(korean))) fail('docs.translation-shape', `${relative(translation)} code fence declarations differ`);
   if (JSON.stringify(tables(english)) !== JSON.stringify(tables(korean))) fail('docs.translation-shape', `${relative(translation)} table structure differs`);
   if (JSON.stringify(links(english, source)) !== JSON.stringify(links(korean, translation))) fail('docs.translation-shape', `${relative(translation)} link targets differ`);
+  const englishLists = listShape(english);
+  const koreanLists = listShape(korean);
+  englishLists.forEach((section, index) => {
+    const other = koreanLists[index];
+    if (other && JSON.stringify(section.items) !== JSON.stringify(other.items))
+      fail('docs.translation-shape', `${relative(translation)} section ${index} (${other.heading || 'before the first heading'}) has ${other.items.length} list items, ${relative(source)} section ${index} (${section.heading || 'before the first heading'}) has ${section.items.length}, or their depths differ`);
+  });
 }
 
 const style = rules.rules.find(rule => rule.id === 'docs.writing-style');

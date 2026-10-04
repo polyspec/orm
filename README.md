@@ -66,7 +66,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 
 [**한국어 README**](README.ko.md)
 
-[**공통 인터페이스**](docs/interfaces.md) · [구현 대조표](docs/interface-implementation.md) · [자동 검사](tests/interfaces/README.md) — 자료구조·수명·공개 API와 검증 상태.
+[**Common interfaces**](docs/interfaces.md) · [Implementation matrix](docs/interface-implementation.md) · [Automatic checks](tests/interfaces/README.md) — data structures, lifetimes, public API and verification status.
 
 [**docs/usage.md**](docs/usage.md) — start here: schema, generation, connecting, querying, writing, relations, the three databases, operations.
 

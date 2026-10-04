@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T7.D12: `make docs-rules-check`는 `AGENTS.ko.md`, `README.ko.md`, `CHANGELOG.ko.md`를 포함한 추적되는 모든 한국어 문서를 검사하고 절마다 목록 항목을 영문 원본과 비교한다. 한국어 규칙, 변경 이력, README, codec 문서를 영문 원본의 번역으로 바로잡았다.
+
 - G5.9: `TestCIRequiresGeneratedChecks`는 G5.5와 G5.7이 없앤 따로 된 step 대신, CI가 생성 model 검사를 `CHECK_TARGETS`에 두고 공통 interface 검사를 `feature-check`에서 실행하는 `make check`를 실행하는지 요구한다.
 
 - G5.8: 모든 workflow job은 `.github/runner`에 선언한 `ubuntu-26.04-arm`에서 실행한다. CI는 MySQL 8.4.11을 Ubuntu 26.04 package에서, PostgreSQL 17을 PostgreSQL apt repository에서, sha256으로 확인한 arm64 ProxySQL 3.0.9 package를, `make php-min-check`의 PHP 8.4를 `scripts/php/php-min.sh`가 보고한 version으로 setup-php를 통해 설치한다. `make repo-check`는 job이 다른 runner에서 실행하면 실패한다.
@@ -1071,10 +1073,16 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 
 - 제한된 PostgreSQL integration orchestration을 위한 ORM 소유 `DB.BackendWaitingForLock` inspection API를 추가했다. PostgreSQL이 아닌 adapter는 driver-specific 경로를 노출하지 않고 `false`를 반환한다.
 
+- adapter에 독립적인 Go transaction-local context 읽기를 `Tx.Local`로 추가했다. `Tx.SetLocal`로 설정한 값을 직접 SQL 없이 읽을 수 있고, 없는 key는 `NO_ROWS`를 반환한다.
+
+- driver별 SQL이나 오류 type 없이 직렬화·deadlock 오류를 결정적으로 전파하는 adapter 독립 Go `NewTransactionConflict`를 추가했다.
+
 - `github.com/polyspec/orm/generator`를 통해 Go·PHP·Rust·TypeScript용 정본 schema client 생성기를 공개한다.
 - Go client 생성에서 명시적 package 이름을 선택할 수 있게 하며 기본값 `gen`은 유지한다.
 
 - `Tx.InstallSchema(context.Context, []byte) error`를 ORM이 소유하는 정본 스키마 설치 호출로 정의한다. 그 호출은 SQL이나 dialect별 DDL을 받지 않는다.
+
+- 호출자가 소유한 Go transaction은 정본 adapter 선택을 위해 `Tx.Driver()`를 노출하며, 질의·변경·transaction API는 MySQL, PostgreSQL, SQLite에서 동일하게 유지한다.
 
 - SQLite transaction의 `readOnly`와 isolation option을 거부하지 않고 ORM이 소유한 connection pragma로 적용한다. `Tx.ReadOnly`와 `Tx.Isolation`에서 논리 mode를 노출하고 transaction 종료 전에 connection 상태를 복원하며 read-only 쓰기 거부와 이후 connection 재사용을 검증한다.
 - transaction 시작 시 생성되는 ORM 소유 SQLite lock table을 database-empty 검사에서 제외해 새 database가 사용자 소유로 잘못 판정되지 않게 한다.
@@ -1100,6 +1108,8 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 
 - 초기 개발 version이다.
 - 공통 IR, compiler, generated client, database executor, migration, 인증된 version encryption, relation, batch, keyset pagination, conformance check를 추가했다.
+- Go ORM에 transaction 범위의 PostgreSQL advisory lock을 추가했다.
+- Go ORM transaction 경계를 통한 순서 있는 DDL 설치를 추가했다.
 - SQLite 중복 키·외래 키 오류가 어댑터 독립 ORM 오류 계약으로 매핑되는지 검증한다.
 - namespace를 보존한 물리 table 이름을 처리하도록 어댑터 독립 `SchemaInstalled` transaction 연산에 SQLite 지원을 추가한다.
 - PostgreSQL·SQLite에서 안전한 초기 schema preflight를 수행할 수 있도록 어댑터 독립 database-empty 검사를 추가한다.
