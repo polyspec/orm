@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
@@ -388,7 +388,7 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
 // start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버가 준비
 // 줄을 쓰고 계속 실행하면 start_logged는 서버가 끝나기 전에 돌아와야 한다(Ubuntu의 mawk처럼 pipe를
 // block 단위로 읽는 reader는 서버가 끝날 때까지 줄을 넘기지 않는다). 준비 줄 없이 끝나면 실패한다.
-caseTest('start_logged reports a ready line while the server keeps running', COMPUTE, () => {
+caseTest('start_logged reports a ready line, an exit or its deadline', COMPUTE, () => {
   const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
   const start = script.indexOf('start_logged() {');
   const body = script.slice(start, script.indexOf('\n}\n', start) + 3);
@@ -399,7 +399,7 @@ caseTest('start_logged reports a ready line while the server keeps running', COM
     // spawnSync가 shell이 끝난 뒤에도 서버가 끝날 때까지 기다린다.
     const run = server => {
       const out = join(dir, 'stdout'), err = join(dir, 'stderr');
-      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
+      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 2 'accepting connections' sh -c '${server}'\necho returned`],
         { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
@@ -413,8 +413,39 @@ caseTest('start_logged reports a ready line while the server keeps running', COM
     rmSync(join(dir, 'fake.log'));
     const exited = run('echo starting; exit 3');
     assert.equal(exited.status, 1);
-    assert.match(exited.stderr, /test-servers: fake exited before it accepted connections; see .*fake\.log/);
+    assert.equal(exited.stderr, `test-servers: fake exited before it logged 'accepting connections'; last lines of ${dir}/fake.log:\nstarting\n`);
+    rmSync(join(dir, 'fake.log'));
+    // 준비 줄 없이 계속 실행하는 서버는 선언한 기한(2초)이 지나면 실패한다.
+    const waiting = Date.now();
+    const silent = run('echo starting; echo still starting; exec sleep 30');
+    assert.equal(silent.status, 1);
+    assert.equal(silent.stderr, `test-servers: fake logged no line with 'accepting connections' within its deadline of 2 s; last lines of ${dir}/fake.log:\nstarting\nstill starting\n`);
+    assert.ok(Date.now() - waiting < 10_000, `start_logged failed after ${Date.now() - waiting} ms`);
+    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// timeout case는 저장소의 workflow와 최소 workflow의 step마다 timeout-minutes를 검사한다.
+caseTest('every workflow step declares its own timeout-minutes', COMPUTE, () => {
+  assert.deepEqual(stepTimeoutErrors(workflows), []);
+  const timed = [
+    'jobs:',
+    '  test:',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '        timeout-minutes: 5',
+    '      - name: checks',
+    '        timeout-minutes: 30',
+    '        run: make check',
+    '',
+  ].join('\n');
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed }), []);
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('        timeout-minutes: 30\n', '') }), [
+    'ci.yml step "checks" has no timeout-minutes of its own',
+  ]);
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('timeout-minutes: 5', 'timeout-minutes: 0') }), [
+    'ci.yml step "uses: actions/checkout@v5" has no timeout-minutes of its own',
+  ]);
 });

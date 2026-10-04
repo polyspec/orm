@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.13: `make test-servers` waits for each pooler's ready line only up to a declared deadline and then fails with the server, the deadline and its last log lines, and every workflow step declares its own `timeout-minutes`, which `make repo-check` requires.
+
 - G5.15: every make target that runs cargo with `--offline` first runs `make rust-fetch`, which fetches the locked crates of `clients/rust` and `bench/rust`, so a fresh runner no longer fails with `no matching package`.
 
 - G5.14: `make docs-rules-check` fails on an HTML element outside code in a documentation page other than `<br>`, which VitePress would compile as an unclosed element; the T40 checklist messages that broke `make docs-check` are inline code.

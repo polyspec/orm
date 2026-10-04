@@ -178,16 +178,19 @@ start_postgres() {
   echo "test-servers: PostgreSQL replica on 127.0.0.1:$POSTGRES_REPLICA_PORT"
 }
 
-# start_logged <name> <line> <command> [<argument>...] runs a server in the
-# foreground and writes its process id to $DIR/<name>.pid. A shell reader copies
-# each line of the output of the server to $DIR/<name>.log as it arrives, until
-# the server exits. The reader reports through the FIFO $DIR/<name>.ready when the server logs a line that
-# contains <line>, or when the server exits first; the start fails in the
-# second case. The read of the FIFO blocks until one of these reports.
+# start_logged <name> <deadline> <line> <command> [<argument>...] runs a server in
+# the foreground and writes its process id to $DIR/<name>.pid. A shell reader
+# copies each line of the output of the server to $DIR/<name>.log as it
+# arrives, until the server exits. The reader reports through the FIFO
+# $DIR/<name>.ready when the server logs a line that contains <line>, or when
+# the server exits first; a timer reports when <deadline> seconds pass first.
+# The start fails in the last two cases, naming the server, the deadline and
+# the last lines of its log.
 start_logged() {
   name=$1
-  line=$2
-  shift 2
+  deadline=$2
+  line=$3
+  shift 3
   mkfifo "$DIR/$name.ready"
   # 읽는 쪽은 sh의 read다: read는 pipe에서 한 줄씩 읽어 그 줄이 쓰인 즉시 본다. awk는 쓰지
   # 않는다. Ubuntu의 awk(mawk)는 pipe 입력을 큰 block으로 읽어 서버가 끝날 때까지 줄을 넘기지 않는다.
@@ -197,23 +200,39 @@ start_logged() {
       printf '%s\n' "$output" >> "$DIR/$name.log"
       if [ -z "$reported" ]; then
         case $output in
-          *"$line"*) echo ready > "$DIR/$name.ready"; reported=1 ;;
+          *"$line"*) [ -p "$DIR/$name.ready" ] && echo ready > "$DIR/$name.ready"; reported=1 ;;
         esac
       fi
     done
-    [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
+    # 기한이 먼저 지나 FIFO가 지워졌으면 reader는 서버가 끝날 때까지 log만 복사하고 알리지 않는다.
+    [ -n "$reported" ] || { [ -p "$DIR/$name.ready" ] && echo exited > "$DIR/$name.ready"; } || true
   } >/dev/null &
+  # 선언한 기한은 timer가 지킨다: 기한이 먼저 지나면 timer가 FIFO에 timeout을 쓴다.
+  # 기한 전에 끝나면 timer의 sleep만 멈춘다: sleep이 실패하면 timer는 FIFO에 쓰지 않고 스스로
+  # 끝나므로, shell이 signal로 멈춘 job을 보고하지 않는다. timer의 stderr는 버린다.
+  ( exec 2>/dev/null; sleep "$deadline" && [ -p "$DIR/$name.ready" ] && echo timeout > "$DIR/$name.ready" ) &
+  timer=$!
   # FIFO를 여는 open은 reader가 끝날 때 오는 SIGCHLD에 끊길 수 있다(EINTR). 끊긴 open에는 writer가
-  # 짝지어지지 않았으므로 FIFO가 있는 동안 다시 열어 reader가 쓰는 한 줄을 읽는다.
+  # 짝지어지지 않았으므로 FIFO가 있는 동안 다시 열어 처음 보고된 한 줄을 읽는다.
   state=
   while [ -z "$state" ] && [ -p "$DIR/$name.ready" ]; do
     read -r state 2>/dev/null < "$DIR/$name.ready" || state=
   done
   rm "$DIR/$name.ready"
-  if [ "$state" != ready ]; then
-    echo "test-servers: $name exited before it accepted connections; see $DIR/$name.log" >&2
-    exit 1
-  fi
+  # 끝난 쪽이 아닌 보고자를 멈춘다: timer의 sleep이다. reader는 서버가 끝나면 스스로 끝나며, 실패한
+  # start의 stop_servers가 서버를 멈춘다.
+  pkill -P "$timer" sleep 2>/dev/null || true
+  case $state in
+    ready) ;;
+    exited)
+      echo "test-servers: $name exited before it logged '$line'; last lines of $DIR/$name.log:" >&2
+      tail -n 20 "$DIR/$name.log" >&2
+      exit 1 ;;
+    *)
+      echo "test-servers: $name logged no line with '$line' within its deadline of $deadline s; last lines of $DIR/$name.log:" >&2
+      tail -n 20 "$DIR/$name.log" >&2
+      exit 1 ;;
+  esac
 }
 
 # tls issues the TLS files of the MySQL servers once under $DIR/tls and loads
@@ -311,7 +330,7 @@ mysql_users=
 )
 EOF
   # ProxySQL logs the consulting notice after its listeners are bound.
-  start_logged proxysql 'For consultancy visit' \
+  start_logged proxysql 60 'For consultancy visit' \
     proxysql --foreground --initial --no-version-check -c "$DIR/proxysql.cnf" -D "$PROXYSQL_DATA"
   echo "test-servers: ProxySQL on 127.0.0.1:$PROXYSQL_PORT"
 }
@@ -343,7 +362,7 @@ max_prepared_statements = 200
 track_extra_parameters = statement_timeout
 EOF
   # PgBouncer logs "process up" after it listens on its sockets.
-  start_logged pgbouncer 'process up' pgbouncer "$DIR/pgbouncer.ini"
+  start_logged pgbouncer 60 'process up' pgbouncer "$DIR/pgbouncer.ini"
   echo "test-servers: PgBouncer on 127.0.0.1:$PGBOUNCER_PORT"
 }
 
