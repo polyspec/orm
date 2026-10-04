@@ -56,7 +56,11 @@ func TestIntrospectCompare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text, diagnostics, err := dbspec.ReadFile(filepath.Join(root, stressPath))
+	// make는 CARGO_TARGET_DIR 아래의 절대 경로를 준다.
+	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) {
+		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q and DBSPEC_INTROSPECT_RUST %q must be absolute paths under CARGO_TARGET_DIR", stressPath, rustRunner)
+	}
+	text, diagnostics, err := dbspec.ReadFile(stressPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +80,7 @@ func TestIntrospectCompare(t *testing.T) {
 		{"go", []string{"go", "run", "./tests/dbspec/introspect/go"}},
 		{"php", []string{"php", "tests/dbspec/introspect/php.php"}},
 		{"typescript", []string{"node", "tests/dbspec/introspect/typescript.mjs"}},
-		{"rust", []string{filepath.Join(root, rustRunner)}},
+		{"rust", []string{rustRunner}},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {

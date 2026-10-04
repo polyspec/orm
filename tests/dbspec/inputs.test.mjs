@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { cargoTarget } from '../cargo-target.mjs';
 import { root, runRunner, runners } from './compare/runners.mjs';
 
 // TIMEOUT은 case 하나의 기한이다. case는 runner process 하나를 없거나 directory인 input으로
@@ -41,9 +42,9 @@ const applyRunners = [
   { name: 'apply go', command: 'go', args: ['run', './tests/dbspec/apply/go'] },
   { name: 'apply php', command: 'php', args: ['tests/dbspec/apply/php.php'] },
   { name: 'apply typescript', command: process.execPath, args: ['tests/dbspec/apply/typescript.mjs'] },
-  { name: 'apply rust', command: 'clients/rust/target/debug/examples/dbspec_apply', args: [] },
+  { name: 'apply rust', command: join(cargoTarget(), 'debug/examples/dbspec_apply'), args: [] },
 ];
-const stressHarness = { name: 'stress rust', command: 'clients/rust/target/debug/examples/dbspec_stress', args: [] };
+const stressHarness = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };
 const inputNames = ['cases', 'stress document', 'ddl', 'plans', 'mermaid'];
 
 // 각 경우는 runner, 그 인자, 그리고 stderr에 나와야 할 읽을 수 없는 경로다.

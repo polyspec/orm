@@ -118,11 +118,11 @@ checklist-check:
 # dbspec-compare-check와 dbspec-introspect-compare-check는 같은 모양의 작은 문서
 # (DBSPEC_COMPARE_TABLES, DBSPEC_INTROSPECT_TABLES개 table)로 같은 code path를 실행하고, make
 # bench는 같은 target을 2000 table로 실행한다.
-DBSPEC_STRESS_DOCUMENT = clients/rust/target/dbspec/stress.dbs
+DBSPEC_STRESS_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs
 DBSPEC_COMPARE_TABLES ?= 20
-DBSPEC_COMPARE_DOCUMENT = clients/rust/target/dbspec/stress-$(DBSPEC_COMPARE_TABLES).dbs
+DBSPEC_COMPARE_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress-$(DBSPEC_COMPARE_TABLES).dbs
 DBSPEC_INTROSPECT_TABLES ?= 20
-DBSPEC_INTROSPECT_DOCUMENT = clients/rust/target/dbspec/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
+DBSPEC_INTROSPECT_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
 # DBSPEC_INTROSPECT_PROFILE은 Rust introspection runner의 cargo profile이다. make check는 test
 # build와 의존성을 함께 쓰는 dev, make bench는 introspection budget을 재는 release다.
 DBSPEC_INTROSPECT_PROFILE ?= dev
@@ -192,7 +192,7 @@ dbspec-apply-stress-bench:
 dbspec-apply-pairs-check: rust-fetch
 	$(TSC_BUILD)
 	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(CARGO_TARGET_DIR)/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
@@ -243,7 +243,7 @@ dbspec-introspect-compare-check: rust-fetch
 	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
 	$(TSC_BUILD)
 	$(RUN_CASE) rust-build/dbspec_introspect $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=clients/rust/target/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(CARGO_TARGET_DIR)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
@@ -286,8 +286,8 @@ dbspec-stress-bench: rust-fetch
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	$(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
-	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
-	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	$(CARGO_TARGET_DIR)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	$(CARGO_TARGET_DIR)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 dbspec-rust-check: rust-fetch
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
@@ -549,7 +549,7 @@ rust-driver-check: rust-fetch
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check: rust-fetch
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/examples $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/debug/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/debug/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(CARGO_TARGET_DIR)/debug/complex EXAMPLE_RUST_DEMO=$(CARGO_TARGET_DIR)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
@@ -562,7 +562,7 @@ timing-check: rust-fetch
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/orm-schema-tests $(BUILD_DEADLINE) --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
 	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(abspath clients/rust/target/release/examples/dbspec_stress) node --test --test-concurrency=1 tests/timing/preempted.test.mjs
+	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(CARGO_TARGET_DIR)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
 
 typescript-build:
 	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build

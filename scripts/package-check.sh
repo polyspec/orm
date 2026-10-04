@@ -38,7 +38,7 @@ pub fn config_code() -> &'static str {
     orm::codes::CONFIG
 }
 EOF
-CARGO_TARGET_DIR="$ROOT/clients/rust/target" cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
+CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
 echo "rust package: orm builds as an external path dependency"
 
 (

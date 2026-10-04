@@ -14,8 +14,10 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { DATABASE, PROCESS, runCase, runGroup, stepLines } from '../tests/testcase.mjs';
+
+import { cargoTarget } from '../tests/cargo-target.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
 const require = createRequire(resolve(root, 'clients/typescript/package.json'));
@@ -34,7 +36,7 @@ const commands = [
   ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './clients/go/model']],
   ['php/model', 'php', ['clients/php/tests/model_test.php']],
   ['typescript/model', 'node', ['clients/typescript/tests/model.mjs']],
-  ['rust/integration', resolve(root, 'clients/rust/target/debug/integration'), [resolve(root, 'schema/bench.dbs')]],
+  ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'schema/bench.dbs')]],
 ];
 
 function mysqlConnection(dsn = mysqlDsn) {

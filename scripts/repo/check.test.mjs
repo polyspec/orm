@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
@@ -460,4 +461,24 @@ caseTest('every workflow step declares its own timeout-minutes', COMPUTE, () => 
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('timeout-minutes: 5', 'timeout-minutes: 0') }), [
     'ci.yml step "uses: actions/checkout@v5" has no timeout-minutes of its own',
   ]);
+});
+
+// target case는 실행 명령이 clients/rust/target/를 직접 적으면 거부한다.
+caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR', COMPUTE, () => {
+  assert.deepEqual(targetPathErrors({
+    Makefile: '# measured clients/rust/target 10 GiB\nexport CARGO_TARGET_DIR := $(abspath clients/rust/target)\nx:\n\t$(CARGO_TARGET_DIR)/debug/integration\n',
+    'scripts/a.sh': '"${CARGO_TARGET_DIR:?}/debug/integration"\n',
+  }), []);
+  assert.deepEqual(targetPathErrors({
+    Makefile: 'x:\n\tclients/rust/target/debug/integration\n',
+    'scripts/a.mjs': "resolve(root, 'clients/rust/target/debug/integration')\n",
+    'tests/b/main.go': '\t\ttarget = filepath.Join(root, "clients", "rust", "target")\n',
+  }), [
+    'Makefile:2 names clients/rust/target instead of CARGO_TARGET_DIR',
+    'scripts/a.mjs:1 names clients/rust/target instead of CARGO_TARGET_DIR',
+    'tests/b/main.go:1 names clients/rust/target instead of CARGO_TARGET_DIR',
+  ]);
+  assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into clients/rust/target by default\n' }), []);
+  assert.ok(runFile('contracts/features.json') && runFile('tests/dbspec/compare/runners.mjs'));
+  assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('clients/rust/README.md') && !runFile('scripts/repo/target.mjs'));
 });

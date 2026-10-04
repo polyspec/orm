@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.22: every check runs the programs that cargo builds from the declared `CARGO_TARGET_DIR` and fails when it is unset, instead of naming `clients/rust/target`; `make repo-check` rejects a run command that names that directory.
+
 - G5.23: `TestWithContextCancelsInsideTransaction` cancels the blocked read when the server reports it waiting for the lock, instead of after a fixed delay that could end before the statement started.
 
 - G5.21: the TypeScript client no longer ends the process when the PostgreSQL server ends a pooled connection that is idle or closing, such as one that a `DROP DATABASE ... WITH (FORCE)` right after `close()` ends; the next statement opens a new connection.
