@@ -603,8 +603,7 @@ func (p *PrivilegeUtils) InspectTable(table string) (TablePrivileges, error) {
 	}
 	var out TablePrivileges
 	err = p.u.read(func(ctx context.Context, r runner) error {
-		return r.scan(ctx, KindUtility, []string{table}, `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
- has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, []any{qualified},
+		return r.scan(ctx, KindUtility, []string{table}, "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')", []any{qualified},
 			&out.Insert, &out.Select, &out.Update, &out.Delete, &out.Truncate)
 	})
 	return out, err

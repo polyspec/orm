@@ -517,9 +517,11 @@ final class PrivilegeUtils
     public function inspectTable(string $table): array
     {
         $qualified = $this->table($table);
+        // 다섯 권한을 statement 하나로 읽는다. 모든 client가 같은 statement를 실행한다.
+        $row = $this->db->fetch(StatementEvent::UTILITY, [$table], $this->db->transactionNumber(), "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')", [$qualified])[0];
         $out = [];
-        foreach (['insert', 'select', 'update', 'delete', 'truncate'] as $p) {
-            $out[$p] = (bool) $this->u->read(StatementEvent::UTILITY, [$table], 'SELECT has_table_privilege(current_user, $1, $2)', [$qualified, strtoupper($p)]);
+        foreach (['insert', 'select', 'update', 'delete', 'truncate'] as $i => $p) {
+            $out[$p] = (bool) $row[$i];
         }
         return $out;
     }
