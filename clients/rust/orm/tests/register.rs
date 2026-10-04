@@ -38,7 +38,7 @@ static COUNTER: StatementCounter = StatementCounter;
 /// manifestHash를 가진다.
 fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
     let fixture = |name: &str| {
-        let path = format!("{}/../../../contracts/fixtures/{name}.dbs", env!("CARGO_MANIFEST_DIR"));
+        let path = format!("{}/../../../contracts/fixtures/{name}.dbs", orm_testcase::manifest_dir().display());
         dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
     };
     let texts: Vec<(String, bool)> = owned.iter().map(|n| (fixture(n), false)).chain(external.iter().map(|n| (fixture(n), true))).collect();

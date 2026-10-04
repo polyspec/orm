@@ -40,6 +40,15 @@ pub fn wall_for_cpu(limit: Duration) -> Duration {
     limit * 10
 }
 
+/// 실행 중인 test의 package directory다. cargo test가 실행할 때 준 `CARGO_MANIFEST_DIR`를 읽는다.
+/// compile 시점의 `env!("CARGO_MANIFEST_DIR")`는 build한 checkout의 경로를 binary에 넣는데, worktree는
+/// main checkout의 target directory를 함께 쓰고 cargo는 다른 checkout에서 build한 binary를 다시
+/// build하지 않으므로, 그 checkout이 지워지면 test가 fixture를 찾지 못한다. 값이 없으면 cargo 밖에서
+/// 실행한 것이므로 경로를 추측하지 않고 panic한다.
+pub fn manifest_dir() -> std::path::PathBuf {
+    std::env::var_os("CARGO_MANIFEST_DIR").map(std::path::PathBuf::from).expect("CARGO_MANIFEST_DIR is unset; run the test through cargo test")
+}
+
 /// test 함수 이름을 case 이름으로 쓰고 기한 `$deadline` 아래의 case를 시작한다. 돌려준 값이
 /// scope를 벗어나면 결과를 출력하므로 `let _case = orm_testcase::case!(..);`로 묶어 둔다.
 #[macro_export]

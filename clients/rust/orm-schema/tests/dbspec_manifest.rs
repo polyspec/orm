@@ -6,7 +6,6 @@ use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
@@ -47,7 +46,7 @@ fn expect(case: &Value, documents: &[&Document]) {
 }
 
 fn cases() -> Value {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/cases.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json");
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 

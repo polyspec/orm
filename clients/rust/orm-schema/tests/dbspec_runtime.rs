@@ -5,7 +5,6 @@
 use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Document, Type};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
@@ -13,7 +12,7 @@ use std::time::Duration;
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
-    dbspec::read_file(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
+    dbspec::read_file(&orm_testcase::manifest_dir().join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
 fn document(path: &str) -> Document {

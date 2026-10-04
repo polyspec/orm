@@ -268,7 +268,9 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     await writeFile(join(root, cases[0].file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) {}\n');
     await writeFile(join(root, cases[1].file), '<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\necho "CASE first PASS\\n";\n');
     await writeFile(join(root, 'clients/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
-    await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
+    // cargo test처럼 실행 시점의 CARGO_MANIFEST_DIR가 test file을 소유하는 package directory다.
+    await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() { ' +
+      'assert_eq!(std::env::var("CARGO_MANIFEST_DIR").as_deref(), Ok(env!("CARGO_MANIFEST_DIR"))); } }\n');
     for (const item of cases) {
       const manifest = { features: [{ id: 'sample', status: 'partial', clients: { [item.language]: 'partial' },
         coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {

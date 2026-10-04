@@ -4,11 +4,11 @@
 use std::path::PathBuf;
 
 fn schema() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/zone.dbs")
+    orm_testcase::manifest_dir().join("../../../contracts/fixtures/zone.dbs")
 }
 
 fn bench() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../schema/bench.dbs")
+    orm_testcase::manifest_dir().join("../../../schema/bench.dbs")
 }
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -136,7 +136,7 @@ fn rejects_an_invalid_document() {
 fn rejects_a_file_without_the_signature() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     for name in ["dbschema.dbs", "empty.dbs"] {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/files").join(name);
+        let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
         let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
         let err = orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
         assert!(!out.exists(), "{name}: generation wrote {}", out.display());
@@ -152,7 +152,7 @@ fn manifest_text_is_embedded_with_its_hash() {
     let dir = std::env::temp_dir().join(format!("orm-build-manifest-{}-{n}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
-    let audit = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/audit.dbs");
+    let audit = orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
     orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
     let embedded = std::fs::read_to_string(dir.join("out").join(orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
@@ -270,7 +270,7 @@ fn relation_getters_report_a_mismatched_relation_value() {
 #[test]
 fn generation_leaves_external_tables_out() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/external");
+    let fixtures = orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
     let out = orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();

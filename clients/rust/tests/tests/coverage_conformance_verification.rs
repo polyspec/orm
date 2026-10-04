@@ -4,7 +4,6 @@
 mod common;
 
 use serde_json::Value;
-use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
@@ -34,7 +33,7 @@ fn coverage_conformance_vector() {
         "sqlite" => "vectors.sqlite.json",
         other => panic!("ORM_FEATURE_DATABASE {other:?} is not mysql, postgres or sqlite"),
     };
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/conformance").join(file);
+    let path = orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
     let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let recorded = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));

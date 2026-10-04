@@ -23,3 +23,23 @@ export function targetPathErrors(files) {
   }
   return errors;
 }
+
+// manifest directory 검사. worktree는 main checkout의 target directory를 함께 쓰고, cargo는 source
+// 경로를 workspace 기준 상대 경로로 기록하므로 다른 checkout에서 build한 test binary를 다시
+// build하지 않는다. env!("CARGO_MANIFEST_DIR")는 build한 checkout의 경로를 binary에 넣으므로, 그
+// checkout이 지워지면 test가 fixture를 찾지 못한다. Rust source는 실행 시점의 CARGO_MANIFEST_DIR
+// (orm_testcase::manifest_dir)을 읽는다.
+
+// manifestDirErrors는 files({path: text})의 Rust file이 env!("CARGO_MANIFEST_DIR")를 쓰는 줄마다
+// 오류 하나를 돌려준다. 주석 줄(//)은 제외한다.
+export function manifestDirErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!path.endsWith('.rs')) continue;
+    text.split('\n').forEach((line, index) => {
+      if (/^\s*\/\//.test(line) || !/env!\(\s*"CARGO_MANIFEST_DIR"\s*\)/.test(line)) return;
+      errors.push(`${path}:${index + 1} reads CARGO_MANIFEST_DIR at compile time; read it when the test runs`);
+    });
+  }
+  return errors;
+}

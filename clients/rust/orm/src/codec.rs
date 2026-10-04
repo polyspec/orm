@@ -670,8 +670,8 @@ mod tests {
     #[test]
     fn vectors() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/codec");
-        let src = std::fs::read(format!("{root}/vectors.json")).expect("vectors.json");
+        let root = orm_testcase::manifest_dir().join("../../../tests/codec");
+        let src = std::fs::read(root.join("vectors.json")).expect("vectors.json");
         let f: serde_json::Map<String, Value> = serde_json::from_slice(&src).unwrap();
         let mut vectors: Vec<Vector> = serde_json::from_value(f["vectors"].clone()).unwrap();
         let mut out = Map::new();
@@ -741,8 +741,8 @@ mod tests {
                 }
             }
         }
-        std::fs::create_dir_all(format!("{root}/out")).unwrap();
-        std::fs::write(format!("{root}/out/rust.json"), serde_json::to_string_pretty(&Value::Object(out)).unwrap()).unwrap();
+        std::fs::create_dir_all(root.join("out")).unwrap();
+        std::fs::write(root.join("out/rust.json"), serde_json::to_string_pretty(&Value::Object(out)).unwrap()).unwrap();
         assert_eq!(fails, 0);
     }
 

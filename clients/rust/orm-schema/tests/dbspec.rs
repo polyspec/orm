@@ -11,7 +11,7 @@ const CASE_DEADLINE: Duration = Duration::from_secs(1);
 const SUITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn cases_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/cases.json")
+    orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json")
 }
 
 /// Line ends of a case: LF, CRLF when `crlf` is true, or alternating CRLF and

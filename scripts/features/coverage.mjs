@@ -379,6 +379,8 @@ async function buildNative(plans, directory, buildTimeoutMs) {
 // compile한 test binary마다 그 entry의 모든 symbol을 한 process에서 정확히 일치로, 선언된 순서와
 // 상관없이 하나씩 차례로 실행한다(--test-threads=1). 같은 entry의 case는 같은 database row를 쓸 수
 // 있으므로 symbol마다 process를 띄우던 때처럼 겹쳐 실행하지 않는다.
+// Rust test binary에는 cargo test처럼 그 crate의 package directory를 CARGO_MANIFEST_DIR로 준다:
+// test는 fixture 경로를 실행 시점의 값(orm_testcase::manifest_dir)에서 얻는다.
 function prepared(spec, builds) {
   if (spec.format === 'case') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
   if (spec.format === 'go') {
@@ -393,7 +395,8 @@ function prepared(spec, builds) {
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
   return executables.map(executable => ({ program: executable,
-    args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1'], cwd: spec.cwd }));
+    args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1'], cwd: spec.cwd,
+    env: { CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
 async function state(builds, database, dsn, timeoutMs) {
@@ -511,7 +514,7 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buil
                 let output = '';
                 for (const child of processes[index]) {
                   step(child.label ?? `${spec.format === 'case' ? spec.program : child.program} ${entry.test}${spec.symbols ? ` ${spec.symbols.join(' ')}` : ''}`);
-                  const result = await run(child.program, child.args, child.cwd, timeoutMs, testEnv, dsn ? text => step(text.replaceAll(dsn, '[redacted]')) : step);
+                  const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? text => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
                   // libtest는 `test <symbol> ... ok` 결과 줄을 stdout에 쓴다. test가 stderr에 쓰는
                   // case 보고 줄이 그 줄 사이에 끼지 않도록 Rust는 stdout만 읽는다.

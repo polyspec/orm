@@ -21,7 +21,7 @@ use orm_case_database::CaseDatabase;
 
 /// contracts/fixtures/<name>.dbs의 text.
 fn fixture(name: &str) -> String {
-    let path = format!("{}/../../../contracts/fixtures/{name}.dbs", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/../../../contracts/fixtures/{name}.dbs", orm_testcase::manifest_dir().display());
     dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
 }
 
