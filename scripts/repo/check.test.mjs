@@ -10,7 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, rustTestCaseErrors } from './testcases.mjs';
+import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, testEntries } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -541,5 +541,43 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
   ].join('\n');
   assert.deepEqual(rustTestCaseErrors({ 'clients/rust/orm/tests/a.rs': rust }), [
     'clients/rust/orm/tests/a.rs: bare does not start its case with orm_testcase, so it runs without a deadline or RUN line',
+  ]);
+});
+
+// case 보고 case는 저장소가 실행하는 PHP와 TypeScript test와 최소 file을 검사한다.
+caseTest('every PHP and TypeScript test that a check runs reports its cases', COMPUTE, () => {
+  const commands = [
+    ...text('Makefile').split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
+    ...featureCommands(JSON.parse(text('contracts/features.json'))).map(command => ({ source: 'contracts/features.json', command })),
+    ...trackedFiles('scripts/*.sh').flatMap(path => text(path).split('\n').map(command => ({ source: path, command }))),
+    ...Object.values(JSON.parse(text('package.json')).scripts).map(command => ({ source: 'package.json', command })),
+  ];
+  const files = new Set(trackedFiles('*'));
+  assert.ok(commands.some(({ command }) => testEntries(command).includes('clients/php/tests/decimal_model_db.php')));
+  assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
+});
+
+caseTest('a PHP or TypeScript test without the shared case report fails', COMPUTE, () => {
+  const files = {
+    'clients/php/tests/bare.php': "<?php\nrequire __DIR__ . '/autoload.php';\necho 'PASS';\n",
+    'clients/php/tests/autoload.php': '<?php\n',
+    'clients/php/tests/helped.php': "<?php\nrequire_once __DIR__ . '/case_helper.php';\n",
+    'clients/php/tests/case_helper.php': "<?php\nrequire_once dirname(__DIR__, 3) . '/tests/testcase.php';\n",
+    'clients/typescript/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
+    'clients/typescript/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mjs';\n",
+    'tests/testcase.php': '<?php\n',
+    'tests/testcase.mjs': '',
+  };
+  const read = path => files[path];
+  assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test clients/typescript/tests/bare.mjs --dialect mysql'), ['clients/typescript/tests/bare.mjs']);
+  assert.deepEqual(reportingScriptErrors([
+    { source: 'Makefile', command: 'php clients/php/tests/bare.php && php clients/php/tests/helped.php' },
+    { source: 'contracts/features.json', command: 'node --test clients/typescript/tests/bare.mjs clients/typescript/tests/cased.mjs' },
+    { source: 'scripts/x.sh', command: 'php clients/php/tests/missing.php' },
+    { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
+  ], read), [
+    'Makefile runs clients/php/tests/bare.php, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
+    'contracts/features.json runs clients/typescript/tests/bare.mjs, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
+    'scripts/x.sh runs clients/php/tests/missing.php, which is not a tracked file',
   ]);
 });

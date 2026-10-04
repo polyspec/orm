@@ -61,3 +61,56 @@ export function rustTestCaseErrors(files) {
   }
   return errors;
 }
+
+// testEntries는 명령 text에서 php나 node가 실행하는 clients/<language>/tests/의 file(.php, .mjs)을
+// 돌려준다. `node --test a.mjs b.mjs`처럼 file이 여럿이면 모두다.
+export function testEntries(command) {
+  const out = [];
+  for (const match of command.matchAll(/(?:^|[\s;&|(])(?:php|node)((?:\s+-[-\w=]+)*)((?:\s+[\w./-]+\.(?:php|mjs))+)/g))
+    for (const path of match[2].trim().split(/\s+/))
+      if (/^clients\/[a-z]+\/tests\//.test(path)) out.push(path);
+  return out;
+}
+
+// dependencies는 PHP file이 __DIR__나 dirname(__DIR__, n)에서 require하는 file, JavaScript file이 상대
+// 경로로 import하는 file을 repository 상대 path로 돌려준다.
+function dependencies(path, text) {
+  const directory = path.split('/').slice(0, -1);
+  const resolve = (base, relative) => {
+    const parts = [...base];
+    for (const part of relative.split('/')) {
+      if (part === '' || part === '.') continue;
+      if (part === '..') parts.pop();
+      else parts.push(part);
+    }
+    return parts.join('/');
+  };
+  if (path.endsWith('.php'))
+    return [...text.matchAll(/(?:require|include)(?:_once)?\s*\(?\s*(?:__DIR__|dirname\(__DIR__(?:,\s*(\d+))?\))\s*\.\s*'([^']+)'/g)]
+      .map(match => resolve(directory.slice(0, directory.length - (match[0].includes('dirname') ? Number(match[1] ?? 1) : 0)), match[2]));
+  return [...text.matchAll(/(?:\bfrom|\bimport)\s*\(?\s*'(\.{1,2}\/[^']+)'/g)].map(match => resolve(directory, match[1]));
+}
+
+// reportingScriptErrors는 명령(commands: {source, command})이 실행하는 PHP나 TypeScript test file이
+// 공유 case 보고(tests/testcase.php, tests/testcase.mjs)를 직접이나 require, import한 file을 거쳐 쓰지
+// 않을 때마다 오류 하나를 돌려준다. read(path)는 tracked file의 text이거나 없으면 undefined다.
+export function reportingScriptErrors(commands, read) {
+  const reports = (path, seen = new Set()) => {
+    if (path === 'tests/testcase.php' || path === 'tests/testcase.mjs') return true;
+    if (seen.has(path)) return false;
+    seen.add(path);
+    const text = read(path);
+    return text !== undefined && dependencies(path, text).some(next => reports(next, seen));
+  };
+  const errors = [];
+  const checked = new Set();
+  for (const { source, command } of commands) {
+    for (const path of testEntries(command)) {
+      if (checked.has(path)) continue;
+      checked.add(path);
+      if (read(path) === undefined) errors.push(`${source} runs ${path}, which is not a tracked file`);
+      else if (!reports(path)) errors.push(`${source} runs ${path}, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line`);
+    }
+  }
+  return errors;
+}

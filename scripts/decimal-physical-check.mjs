@@ -59,7 +59,11 @@ function observed(language, database, output) {
       events.some(event => event.Action === 'pass' && !event.Test);
   }
   if (language === 'rust') return output.includes(`test ${id} ... ok`) && output.includes('1 passed; 0 failed');
-  return output.trim() === `CASE ${id} PASS`;
+  // PHP와 TypeScript test는 case마다 RUN과 PASS 줄을 쓴다. 정해진 case가 모두 통과하고 다른 결과
+  // 줄이 없어야 한다.
+  const cases = (language === 'php' ? ['generate', 'setters', 'round_trip'] : ['setters', 'round_trip']).map(name => `decimal_db/${database}/${name}`);
+  const results = output.split('\n').filter(line => /^(?:PASS|FAIL) /.test(line)).map(line => line.split(' ').slice(0, 2).join(' '));
+  return JSON.stringify(results) === JSON.stringify(cases.map(name => `PASS ${name}`));
 }
 
 async function state(database, dsn) {

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-7: the PHP and TypeScript decimal database tests report each case with its deadline and elapsed time, and `make repo-check` fails a PHP or TypeScript test that a check runs without the shared case report.
+
 - G5.29-5: the MySQL TLS tests of Go, PHP, Rust and TypeScript report each case with its deadline and elapsed time, the Go connection test reads through the case context, and `make repo-check` fails a Go or Rust test that starts no case of the shared testcase package.
 
 - G5.29-6: the version check test reports each case with its deadline and elapsed time, and `make repo-check` fails a JavaScript test that declares its tests with `node:test` directly instead of `caseTest`.
