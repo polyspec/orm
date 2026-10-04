@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29: every check reports each case with its own deadline, CI steps that run suites have no deadline of their own, each test runs once per push, and `make owner-check` runs only what a changed file is an input of (G5.29-1 to G5.29-13).
+
 - G5.29-13: every `go test` of the Makefile, the feature verification commands and the scripts first builds its test binaries as the case `go-build/<packages>` with a deadline through `tests/go-test.mjs`, `fuzz-check` runs under run-case, and `make repo-check` fails a `go test` outside them.
 
 - G5.29-12: `make check` runs the `go generate` and `git diff` of `clients/go/model` once, in `go-model-check`; `generation-go` runs the generator tests only, and `make repo-check` fails a `go generate` that `make check` would run twice.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29: 모든 check는 case마다 자기 기한과 함께 보고하고, suite를 실행하는 CI step에는 자기 기한이 없으며, test는 push마다 한 번 실행하고, `make owner-check`는 바뀐 file이 입력인 것만 실행한다(G5.29-1에서 G5.29-13).
+
 - G5.29-13: Makefile, 기능 검증 명령, script의 모든 `go test`는 `tests/go-test.mjs`로 먼저 기한을 가진 case `go-build/<packages>`로 test binary를 build하고, `fuzz-check`는 run-case 아래에서 실행하며, `make repo-check`는 그 밖의 `go test`를 실패시킨다.
 
 - G5.29-12: `make check`는 `clients/go/model`의 `go generate`와 `git diff`를 `go-model-check`에서 한 번만 실행한다. `generation-go`는 생성기 test만 실행하고, `make repo-check`는 `make check`가 두 번 실행할 `go generate`를 실패시킨다.
