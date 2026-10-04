@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-8: the tsc, go generate, go vet and cargo build steps of the feature verification commands run under `tests/run-case.mjs` with their deadlines, and `make repo-check` fails a verification command that runs such a tool outside it.
+
 - G5.29-7: the PHP and TypeScript decimal database tests report each case with its deadline and elapsed time, and `make repo-check` fails a PHP or TypeScript test that a check runs without the shared case report.
 
 - G5.29-5: the MySQL TLS tests of Go, PHP, Rust and TypeScript report each case with its deadline and elapsed time, the Go connection test reads through the case context, and `make repo-check` fails a Go or Rust test that starts no case of the shared testcase package.

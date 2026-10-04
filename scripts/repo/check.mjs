@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors } from './testcases.mjs';
+import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -60,6 +60,10 @@ const runCommands = [
   ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command })),
 ];
 failures.push(...reportingScriptErrors(runCommands, path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
+// build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 tests/run-case.mjs 아래에서 실행한다.
+const featureUnits = features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
+  .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] })));
+failures.push(...unwrappedToolErrors(featureUnits));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
