@@ -39,27 +39,44 @@ final class Renderer
      */
     public static function render(array $documents, string $dialect): array
     {
+        return array_map(static fn(array $s): string => $s[0], self::statements($documents, $dialect));
+    }
+
+    /**
+     * render 와 같은 statement 를 같은 순서로 쓰고, 각 statement 가 만들거나 바꾸는 table 을
+     * 함께 돌려준다. install 이 statement event 의 table 로 쓴다.
+     *
+     * @param list<Document> $documents
+     * @return list<array{0: string, 1: string}> statement 와 그 table
+     */
+    public static function statements(array $documents, string $dialect): array
+    {
         $r = new self($dialect);
         // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
         $ordered = array_values(array_filter(self::useOrder($documents), static fn(Document $d): bool => !$d->external));
         $out = [];
+        $add = static function (string $table, array $statements) use (&$out): void {
+            foreach ($statements as $statement) {
+                $out[] = [$statement, $table];
+            }
+        };
         foreach ($ordered as $document) {
             foreach ($document->tables as $table) {
-                array_push($out, ...$r->table($table));
+                $add($table->name, $r->table($table));
             }
         }
         if ($dialect !== 'sqlite') {
             foreach ($ordered as $document) {
                 foreach ($document->tables as $table) {
                     foreach (self::byName($table->foreignKeys) as $foreignKey) {
-                        $out[] = 'ALTER TABLE ' . $r->q($table->name) . ' ADD ' . $r->foreignKey($foreignKey);
+                        $add($table->name, ['ALTER TABLE ' . $r->q($table->name) . ' ADD ' . $r->foreignKey($foreignKey)]);
                     }
                 }
             }
         }
         foreach ($ordered as $document) {
             foreach ($document->tables as $table) {
-                array_push($out, ...$r->triggers($table));
+                $add($table->name, $r->triggers($table));
             }
         }
         return $out;
