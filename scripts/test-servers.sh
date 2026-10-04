@@ -113,18 +113,23 @@ psql_cli() {
   PGTZ=UTC PGOPTIONS='-c client_min_messages=warning' psql -X -q -o /dev/null -v ON_ERROR_STOP=1 -h 127.0.0.1 -p "$POSTGRES_PORT" -U orm "$@"
 }
 
+# MYSQLD_FILES는 모든 mysqld 실행에 주는 secure_file_priv다. NULL은 파일 import·export를 끈다.
+# build마다 compile된 기본값이 다르므로(Homebrew는 NULL, Ubuntu package는 mysql-server package가
+# 만드는 /var/lib/mysql-files) 명시해 같은 서버를 만든다: 그 directory가 없으면 mysqld가 시작하지 않는다.
+MYSQLD_FILES=--secure-file-priv=NULL
+
 start_mysql() {
-  mysqld --no-defaults --initialize-insecure --datadir="$DIR/mysql" --log-error="$DIR/mysql-init.log"
+  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" --datadir="$DIR/mysql" --log-error="$DIR/mysql-init.log"
   # --daemonize returns after the server accepts connections or fails.
-  mysqld --no-defaults --daemonize --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
+  mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
     --log-error="$DIR/mysql.log" --bind-address=127.0.0.1 --port="$MYSQL_PORT" \
     --socket="$DIR/mysql.sock" --mysqlx=OFF --server-id=1
   echo "test-servers: MySQL on 127.0.0.1:$MYSQL_PORT"
 
   # The replica starts before the primary holds data and reads the binary log
   # of the primary from its first file, so it applies every later change.
-  mysqld --no-defaults --initialize-insecure --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
-  mysqld --no-defaults --daemonize --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
+  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
+  mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
     --log-error="$DIR/mysql-replica.log" --bind-address=127.0.0.1 --port="$MYSQL_REPLICA_PORT" \
     --socket="$DIR/mysql-replica.sock" --mysqlx=OFF --server-id=2 --skip-replica-start
   mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P "$MYSQL_REPLICA_PORT" -u root -e "

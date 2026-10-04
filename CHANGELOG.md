@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.10: `make test-servers` starts every MySQL server with `--secure-file-priv=NULL`, so a build whose compiled default names a missing directory, such as `/var/lib/mysql-files` of the Ubuntu packages, starts as the local servers do.
+
 - T40: `utils().schema().register(schema)` registers a schema set on a connection without a statement, and `connectSchema` registers the same way, so a connection opened per request registers its sets without reading the database. `install` and `addTablesAndColumns` now end by comparing the tables of the set in the database with the set (`InstalledDifferences`) and fail with `CONFIG` naming each difference, such as a column changed outside the ORM; the database is verified at install and upgrade, not per request.
 
 - T7.D12: `make docs-rules-check` checks every tracked Korean document, including `AGENTS.ko.md`, `README.ko.md` and `CHANGELOG.ko.md`, and compares the list items of each section with the English source. The Korean rules, changelog, README and codec page are corrected to translate their English sources.
