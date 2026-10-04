@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ciCheckTargetErrors, ciServerErrors } from './ci.mjs';
+import { ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
@@ -23,6 +23,9 @@ failures.push(...ciServerErrors(ci, readFileSync(join(root, 'scripts/test-server
 
 // CI workflow는 로컬 make check와 같은 target(CHECK_TARGETS)을 모두 한 번씩 실행한다.
 failures.push(...ciCheckTargetErrors(ci, makefile));
+// make check의 feature-check가 실행하는 검증 명령을 CI가 따로 다시 실행하지 않는다.
+const features = JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'));
+failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
 
 // root npm script가 쓰는 path는 tracked file이나 directory다.
 const rootPackage = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

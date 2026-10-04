@@ -133,3 +133,65 @@ export function ciCheckTargetErrors(workflow, makefile) {
   return targets.filter(target => !ran.has(target)).map(target =>
     `ci.yml does not run ${target} of CHECK_TARGETS`);
 }
+
+// featureCommands는 contracts/features.json에서 repository root에서 실행하는 검증 명령(`command`
+// 값, `cwd`가 없거나 `.`)을 돌려준다. make check의 feature-check가 그 명령을 모두 실행한다
+// (scripts/features/check.mjs --run).
+export function featureCommands(features) {
+  const commands = [];
+  const visit = value => {
+    if (Array.isArray(value)) value.forEach(visit);
+    else if (value && typeof value === 'object') {
+      if (typeof value.command === 'string' && (value.cwd ?? '.') === '.') commands.push(value.command);
+      for (const [key, item] of Object.entries(value)) if (key !== 'command') visit(item);
+    }
+  };
+  visit(features);
+  return commands;
+}
+
+// recipe는 Makefile에서 target의 명령 줄을 돌려준다. target이 없으면 undefined다.
+function recipe(makefile, target) {
+  const lines = makefile.split('\n');
+  const start = lines.findIndex(line => line.startsWith(`${target}:`));
+  if (start === -1) return undefined;
+  const body = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!line.startsWith('\t')) break;
+    body.push(line.slice(1));
+  }
+  return body;
+}
+
+// shellCommand는 명령을 비교할 형태로 바꾼다: make의 `$$`는 `$`, `$(NAME)`은 `$NAME`이 되고,
+// 앞의 `$WITH_TEST_ENV`(검사 서버의 환경을 읽는 make 변수)는 빠지며, 공백은 하나로 줄인다.
+function shellCommand(command, fromMakefile) {
+  let text = command.trim();
+  if (fromMakefile) text = text.replaceAll('$$', '\0').replace(/\$\(([A-Z_][A-Z0-9_]*)\)/g, '$$$1').replaceAll('\0', '$');
+  return text.replace(/^\$WITH_TEST_ENV\s+/, '').replace(/\s+/g, ' ');
+}
+
+// ciDuplicateCommandErrors는 CI workflow가 make check 안에서 feature-check가 실행하는 검증 명령을
+// 다시 실행하는 step마다 오류 하나를 돌려준다. step의 줄이 그 명령과 같거나, 줄이 실행하는 make
+// target(CHECK_TARGETS 밖)의 명령이 모두 그 명령이면 두 번 실행한다.
+export function ciDuplicateCommandErrors(workflow, makefile, commands) {
+  const known = new Set(commands.map(command => shellCommand(command, false)));
+  const targets = new Set(checkTargets(makefile));
+  const errors = [];
+  for (const step of workflowSteps(workflow)) {
+    for (const line of step.run.split('\n').map(item => item.trim()).filter(Boolean)) {
+      if (known.has(shellCommand(line, false))) {
+        errors.push(`ci.yml step "${step.name}" runs ${line}, which make check runs in feature-check`);
+        continue;
+      }
+      const make = /^make\s+(.*)$/.exec(line)?.[1];
+      if (!make) continue;
+      for (const target of make.split(/\s+/).filter(word => /^[a-z0-9-]+$/.test(word) && !targets.has(word) && word !== 'check')) {
+        const body = recipe(makefile, target);
+        if (body?.length > 0 && body.every(command => known.has(shellCommand(command, true))))
+          errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make check runs in feature-check`);
+      }
+    }
+  }
+  return errors;
+}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciServerErrors, serverVariables } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, serverVariables } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
@@ -265,4 +265,37 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
     'ci.yml step "checks" runs ts-min-check, which make check runs',
   ]);
   assert.deepEqual(ciCheckTargetErrors(steps, 'CHECK =\n'), ['Makefile declares no CHECK_TARGETS']);
+});
+
+// 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
+caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
+  const commands = featureCommands(JSON.parse(text('contracts/features.json')));
+  for (const command of ['./scripts/perf-test.sh', 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test'])
+    assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
+  assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
+});
+
+caseTest('a workflow that runs a verification command of feature-check again fails', COMPUTE, () => {
+  const make = [
+    'CHECK_TARGETS = feature-check',
+    'interface-check:',
+    '\tPATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test',
+    'perf-check:',
+    '\t$(WITH_TEST_ENV) ./scripts/perf-test.sh',
+    'fuzz-check:',
+    "\tgo test ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest",
+    '',
+  ].join('\n');
+  const commands = featureCommands({ features: [{ verification: [
+    { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
+    { id: 'perf', command: './scripts/perf-test.sh' },
+    { id: 'elsewhere', command: 'php tests/codec/check.php', cwd: 'clients/php' },
+  ] }] });
+  assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', './scripts/perf-test.sh']);
+  const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          ./scripts/perf-test.sh\n          php tests/codec/check.php');
+  assert.deepEqual(ciDuplicateCommandErrors(twice, make, commands), [
+    'ci.yml step "checks" runs make interface-check, whose commands make check runs in feature-check',
+    'ci.yml step "checks" runs ./scripts/perf-test.sh, which make check runs in feature-check',
+  ]);
+  assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make fuzz-check'), make, commands), []);
 });
