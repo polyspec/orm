@@ -10,6 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
+import { nodeTestErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -481,4 +482,23 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
   assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into clients/rust/target by default\n' }), []);
   assert.ok(runFile('contracts/features.json') && runFile('tests/dbspec/compare/runners.mjs'));
   assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('clients/rust/README.md') && !runFile('scripts/repo/target.mjs'));
+});
+
+// test 선언 case는 저장소의 JavaScript file과 최소 file을 검사한다.
+const trackedFiles = pattern => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean);
+const trackedTexts = paths => Object.fromEntries(paths.map(path => [path, text(path)]));
+
+caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
+  assert.deepEqual(nodeTestErrors(trackedTexts(trackedFiles('*.mjs').filter(path => !path.startsWith('docs/')))), []);
+});
+
+caseTest('a JavaScript test that declares tests with node:test directly fails', COMPUTE, () => {
+  const message = path => `${path} declares tests with node:test directly; use caseTest of tests/testcase.mjs, which gives each case its deadline and RUN, PASS or FAIL line`;
+  assert.deepEqual(nodeTestErrors({
+    'a.test.mjs': "import { test } from 'node:test';\n",
+    'b.test.mjs': "import test from 'node:test';\n",
+    'c.test.mjs': "import { after, it as check } from 'node:test';\n",
+    'd.test.mjs': "import { after } from 'node:test';\nimport { caseTest } from '../testcase.mjs';\n",
+    'tests/testcase.mjs': "import test from 'node:test';\n",
+  }), [message('a.test.mjs'), message('b.test.mjs'), message('c.test.mjs')]);
 });

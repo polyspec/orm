@@ -6,6 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
+import { nodeTestErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -44,6 +45,9 @@ const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.j
 failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked));
 // cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.
 failures.push(...targetPathErrors(Object.fromEntries(tracked.filter(runFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
+// 모든 test는 자기 기한 아래 case로 보고한다(scripts/repo/testcases.mjs).
+const trackedText = paths => Object.fromEntries(paths.map(path => [path, readFileSync(join(root, path), 'utf8')]));
+failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|js)$/.test(path) && !path.startsWith('docs/')))));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

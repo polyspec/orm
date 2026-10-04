@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-6: the version check test reports each case with its deadline and elapsed time, and `make repo-check` fails a JavaScript test that declares its tests with `node:test` directly instead of `caseTest`.
+
 - G5.29-4: AGENTS.md states that a long operation gets detailed step logs in addition to its own timeout, instead of in place of one.
 
 - G5.27: `make owner-check` runs only the changed features' verification and coverage and the make targets that `contracts/check-inputs.json` declares with scope `owner`; whole-suite targets have scope `suite` and run only in `make check`, and a target without a scope fails the selection. `scripts/features/coverage.mjs --feature <id>` fails on an unknown id with the list of valid ids, and the feature unit tests run in the new `make feature-unit-check`.
