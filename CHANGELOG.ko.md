@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.23: `TestWithContextCancelsInsideTransaction`은 막힌 읽기를, statement가 시작되기 전에 끝날 수 있던 고정 지연 뒤가 아니라 서버가 그 lock 대기를 보고할 때 취소한다.
+
 - G5.21: TypeScript client는 PostgreSQL 서버가 idle이거나 닫는 중인 pool 연결을 끝내도, 예컨대 `close()` 직후의 `DROP DATABASE ... WITH (FORCE)`가 그 연결을 끝내도 process를 끝내지 않는다. 다음 statement는 새 연결을 연다.
 
 - G5.18: `make test-servers`의 environment file은 Makefile만 정하던 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`을 정의하므로 make 밖의 `go test`도 이를 읽고, `start`는 실행 중인 서버에 대해 file을 다시 쓴다.

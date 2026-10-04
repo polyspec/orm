@@ -2,6 +2,7 @@ package orm_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -139,6 +140,8 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer waiter.Close()
+			monitor := openNative(t, driver, serverSession(t, driver, dsn))
+			defer monitor.Close()
 			if err := holder.Utils().Schema().Install(manifest); err != nil {
 				t.Fatal(err)
 			}
@@ -176,8 +179,13 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 						t.Fatalf("the holder transaction ended before it held the row: %v", holderErr)
 					}
 					ctx, cancel := context.WithCancel(context.Background())
+					defer cancel()
+					// The context is cancelled once the server reports the statement
+					// waiting for the lock; a timer could fire before the statement
+					// starts, and then no statement is cancelled.
+					waiting := make(chan error, 1)
 					go func() {
-						time.Sleep(300 * time.Millisecond)
+						waiting <- awaitLockWait(ctx, monitor, driver)
 						cancel()
 					}()
 					start := time.Now()
@@ -200,6 +208,9 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 					})
 					waited := time.Since(start)
 					close(release)
+					if waitErr := <-waiting; waitErr != nil {
+						t.Fatal(waitErr)
+					}
 					if holderErr := <-done; holderErr != nil {
 						t.Fatal(holderErr)
 					}
@@ -246,5 +257,34 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	defer other.Close()
 	if other.Root() == db.Root() {
 		t.Fatal("two connections report the same root")
+	}
+}
+
+// lockWaits counts the sessions of the case database that wait for a lock.
+var lockWaits = map[string]string{
+	"mysql":    "SELECT count(*) FROM performance_schema.data_locks WHERE OBJECT_SCHEMA = DATABASE() AND LOCK_STATUS = 'WAITING'",
+	"postgres": "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+}
+
+// awaitLockWait returns when a session of the case database waits for a lock.
+// It returns an error when ctx ends first or no session waits within 10
+// seconds.
+func awaitLockWait(ctx context.Context, monitor *sql.DB, driver string) error {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		var n int
+		if err := monitor.QueryRow(lockWaits[driver]).Scan(&n); err != nil {
+			return fmt.Errorf("lock wait query: %w", err)
+		}
+		if n > 0 {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return fmt.Errorf("the context ended before a statement waited for the lock: %w", ctx.Err())
+		}
+		if time.Now().After(deadline) {
+			return errors.New("no statement waited for the lock within 10s")
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }

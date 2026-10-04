@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.23: `TestWithContextCancelsInsideTransaction` cancels the blocked read when the server reports it waiting for the lock, instead of after a fixed delay that could end before the statement started.
+
 - G5.21: the TypeScript client no longer ends the process when the PostgreSQL server ends a pooled connection that is idle or closing, such as one that a `DROP DATABASE ... WITH (FORCE)` right after `close()` ends; the next statement opens a new connection.
 
 - G5.18: the environment file of `make test-servers` defines `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, which only the Makefile set, so `go test` outside make reads them too, and `start` rewrites the file for running servers.
