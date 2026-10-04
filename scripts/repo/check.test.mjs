@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
 import { ciServerErrors, serverVariables } from './ci.mjs';
+import { nodeVersionErrors } from './node.mjs';
 import { scriptPathErrors } from './scripts.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -96,5 +97,67 @@ caseTest('a workflow that does not export the server environment fails', COMPUTE
   const unexported = steps.replace(`sed -e 's/^export //' .runtime/servers/env >> "$GITHUB_ENV"`, 'true');
   assert.deepEqual(ciServerErrors(unexported, script), [
     'ci.yml does not add .runtime/servers/env to $GITHUB_ENV in the step after make test-servers',
+  ]);
+});
+
+// node case는 저장소의 .node-version, package.json, workflow와 실행 중인 Node를 검사하고, 최소
+// workflow를 하나씩 바꾼다.
+const repository = new URL('../../', import.meta.url);
+const declared = readFileSync(new URL('.node-version', repository), 'utf8');
+const minimum = JSON.parse(readFileSync(new URL('package.json', repository), 'utf8')).engines.node;
+const workflows = Object.fromEntries(readdirSync(new URL('.github/workflows/', repository)).sort()
+  .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')]));
+
+caseTest('the checks and every workflow run the Node of .node-version', COMPUTE, () => {
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml']);
+  assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
+});
+
+const node = [
+  'jobs:',
+  '  test:',
+  '    steps:',
+  '      - uses: actions/setup-node@v7',
+  '        with:',
+  '          node-version-file: .node-version',
+  '          cache: npm',
+  '      - run: npm ci',
+  '',
+].join('\n');
+
+caseTest('a workflow that reads .node-version on the declared Node passes', COMPUTE, () => {
+  assert.deepEqual(nodeVersionErrors('26.8.1\n', '>=22.16.0', { 'ci.yml': node }, '26.8.1'), []);
+});
+
+caseTest('a workflow that declares node-version itself fails', COMPUTE, () => {
+  const literal = node.replace('node-version-file: .node-version', 'node-version: "22.16.0"');
+  assert.deepEqual(nodeVersionErrors('26.8.1\n', '>=22.16.0', { 'ci.yml': literal }, '26.8.1'), [
+    'ci.yml declares node-version itself; .node-version declares it',
+    'ci.yml does not read node-version-file .node-version in actions/setup-node',
+  ]);
+  const unset = node.replace('actions/setup-node@v7', 'actions/checkout@v5');
+  assert.deepEqual(nodeVersionErrors('26.8.1\n', '>=22.16.0', { 'ci.yml': unset }, '26.8.1'), [
+    'ci.yml runs Node without actions/setup-node',
+  ]);
+});
+
+caseTest('a Node other than .node-version fails', COMPUTE, () => {
+  assert.deepEqual(nodeVersionErrors('26.8.1\n', '>=22.16.0', { 'ci.yml': node }, '22.16.0'), [
+    'Node 22.16.0 runs the checks; .node-version declares 26.8.1',
+  ]);
+});
+
+caseTest('a .node-version that is not one exact supported version fails', COMPUTE, () => {
+  assert.deepEqual(nodeVersionErrors('', '>=22.16.0', {}, '26.8.1'), [
+    '.node-version must hold one exact version x.y.z and a newline, found ""',
+  ]);
+  assert.deepEqual(nodeVersionErrors('26\n', '>=22.16.0', {}, '26.8.1'), [
+    '.node-version must hold one exact version x.y.z and a newline, found "26\\n"',
+  ]);
+  assert.deepEqual(nodeVersionErrors('22.12.0\n', '>=22.16.0', {}, '22.12.0'), [
+    '.node-version 22.12.0 is below package.json engines.node >=22.16.0',
+  ]);
+  assert.deepEqual(nodeVersionErrors('26.8.1\n', '22.16', {}, '26.8.1'), [
+    'package.json engines.node must be ">=x.y.z", found "22.16"',
   ]);
 });
