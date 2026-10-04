@@ -125,15 +125,16 @@ sqlite:///var/lib/orm_example.sqlite
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbs>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`, `ManifestHash`, schema 값 `Schema`를 쓴다. `--use <file.dbs>`마다 [외부 문서](dbspec.ko.md#external-documents) 하나를 적으며, 생성 코드는 그 문서에서 쓰는 table을 `ExternalText`로 담고 연결할 때 database에서 확인하며, 그 model은 만들지 않는다. `model.Connect(dsn, config)`는 `orm.ConnectSchema(dsn, model.Schema, config)`를 호출한다. 연결을 열고 그 모델의 set을 연결에 등록하며, text의 hash가 `ManifestHash`와 다르면 `CONFIG`로 실패한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다([protocol](protocol.md)). `orm.Connect(dsn, config)`는 set 없이 연결을 연다. `master.Utils().Schema().Install(model.Schema)`는 그 set을 연결에 등록하고 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다.
+`orm-gen gen --document <file.dbs>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`, `ManifestHash`, schema 값 `Schema`를 쓴다. `--use <file.dbs>`마다 [외부 문서](dbspec.ko.md#external-documents) 하나를 적으며, 생성 코드는 그 문서에서 쓰는 table을 `ExternalText`로 담고 `Install`이 database에서 확인하며, 그 model은 만들지 않는다. `model.Connect(dsn, config)`는 `orm.ConnectSchema(dsn, model.Schema, config)`를 호출한다. 연결을 열고 그 모델의 set을 연결에 등록하며, text의 hash가 `ManifestHash`와 다르면 `CONFIG`로 실패한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다([protocol](protocol.md)). `orm.Connect(dsn, config)`는 set 없이 연결을 연다. `master.Utils().Schema().Install(model.Schema)`는 그 set을 연결에 등록하고 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
 ### PHP
 
 ```php
 $master = \Polyspec\Orm\Tests\Model\connect($masterDsn, new Config(aesKey: $aesKey));
+$master->utils()->schema()->register(\Module\Orm\schema());
 ```
 
-generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema 값 `schema()`, connect helper `connect()`를 정의한다. `connect()`는 `Orm::connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록하며, 모든 요청은 `manifestHash`를 포함한다. `Orm::connect`는 set 없이 연결을 연다. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())`는 set을 설치하고 연결에 등록한다.
+generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema 값 `schema()`, connect helper `connect()`를 정의한다. `connect()`는 `Orm::connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록하며, 모든 요청은 `manifestHash`를 포함한다. `Orm::connect`는 set 없이 연결을 연다. `$db->utils()->schema()->register(\Module\Orm\schema())`는 다른 generated model의 set, 여기서는 module set을 statement 없이 같은 연결에 등록하므로, 요청마다 연결을 여는 서버는 쓰는 모든 set을 그 연결에 등록한다. `$db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())`는 배포할 때 set을 설치하고 데이터베이스를 확인한 뒤 연결에 등록한다.
 
 ### Rust
 
@@ -142,7 +143,7 @@ let master = model::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Def
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 하지 않고, 일부만 있으면 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
+`orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 table이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
 
 ### TypeScript
 
@@ -153,9 +154,9 @@ const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
 ```
 
-`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다.
+`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
-각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema.md](schema.md#_5-adding-tables-and-columns)).
+각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema.md](schema.md#_5-adding-tables-and-columns)). 둘 다 설치나 upgrade 때 실행해 그때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](schema.md#_6-schema-registration)).
 
 ---
 

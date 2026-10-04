@@ -21,6 +21,7 @@ export {
   emitDbspec,
   emitPlan,
   externalDifferences,
+  installedDifferences,
   introspectDbspec,
   parseDbspec,
   parsePlan,

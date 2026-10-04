@@ -1866,8 +1866,8 @@
       "title": "Schema installation",
       "title_ko": "스키마 설치",
       "status": "implemented",
-      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference. A set that uses external documents of another set owns only its own tables: install, addTablesAndColumns and connecting with its generated schema value require the used external tables in the database as declared and fail with CONFIG otherwise, and never create or change them.",
-      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다. 다른 set의 외부 문서를 쓰는 set은 자기 table만 소유한다. install, addTablesAndColumns, 생성한 schema 값으로 하는 연결은 쓰는 외부 table이 선언대로 database에 있기를 요구하고 아니면 CONFIG로 실패하며, 그 table을 만들거나 바꾸지 않는다.",
+      "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist; it then compares the tables of the set in the database with the set and fails with CONFIG naming each difference. Registering a set on a connection, with utils().schema().register or the connect helper of generated code, reads and writes nothing in the database; install and addTablesAndColumns verify the database. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks and the missing columns of the existing tables that are null or have a default with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference. A set that uses external documents of another set owns only its own tables: install and addTablesAndColumns require the used external tables in the database as declared and fail with CONFIG otherwise, and never create or change them.",
+      "description_ko": "연결로 dbspec document set을 설치한다. 모든 client가 자기 dialect의 문장을 렌더링해 set의 table이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 CONFIG로 실패한다. 그다음 database의 set table을 set과 비교하고 각 차이를 적은 CONFIG로 실패한다. utils().schema().register나 generated code의 connect helper로 연결에 set을 등록하는 것은 database를 읽거나 쓰지 않으며, install과 addTablesAndColumns가 database를 확인한다. 한 process가 여러 document set의 generated code를 읽고, 한 연결이 그 모두를 각 요청의 manifest hash에 맞는 model로 처리한다. addTablesAndColumns는 설치한 document set에 database에 없는 table과, 기존 table에 빠진 column 가운데 null이거나 default가 있는 column을 dialect의 plan step으로 더하며, 그 step은 각 table을 index, foreign key, check, trigger와 함께 만들고 바뀐 table의 audit trigger를 바꾼다. 다른 set의 table은 바꾸지 않고, 다른 모든 차이에는 변경 전에 SCHEMA_DIFFERS를 반환한다. 다른 set의 외부 문서를 쓰는 set은 자기 table만 소유한다. install과 addTablesAndColumns는 쓰는 외부 table이 선언대로 database에 있기를 요구하고 아니면 CONFIG로 실패하며, 그 table을 만들거나 바꾸지 않는다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -1883,6 +1883,8 @@
         "check which tables of the set exist",
         "apply the statements in one transaction where the dialect allows it",
         "change nothing when every table of the set exists",
+        "compare the tables of the set in the database with the set after install and addTablesAndColumns",
+        "register a set on a connection without a statement",
         "add the missing columns of the existing tables that are null or have a default with the plan steps of the dialect"
       ],
       "errors": [
@@ -1892,7 +1894,7 @@
         },
         {
           "code": "CONFIG",
-          "when": "only some tables of the set exist, a table that the set uses from an external document differs from the database, MySQL installs inside a transaction, or MySQL or SQLite adds columns inside a transaction"
+          "when": "only some tables of the set exist, the tables of the set in the database differ from the set after install or addTablesAndColumns, a table that the set uses from an external document differs from the database, MySQL installs inside a transaction, MySQL or SQLite adds columns inside a transaction, or a registered manifest text does not hash to its declared manifest hash"
         },
         {
           "code": "SCHEMA_HASH_MISMATCH",
@@ -1928,7 +1930,9 @@
         "contracts/fixtures/external/core.dbs",
         "contracts/fixtures/external/core_extra.dbs",
         "contracts/fixtures/external/member.dbs",
-        "contracts/fixtures/external/member_v2.dbs"
+        "contracts/fixtures/external/member_v2.dbs",
+        "contracts/fixtures/install/note.dbs",
+        "contracts/fixtures/install/changed_database.json"
       ],
       "tests": [
         "clients/go/orm/keyword_test.go",
@@ -1952,7 +1956,10 @@
         "clients/rust/orm/tests/add_tables_and_columns.rs",
         "clients/typescript/tests/add-tables-and-columns.mjs",
         "clients/go/orm/external_documents_test.go",
-        "clients/rust/orm/tests/external_documents.rs"
+        "clients/rust/orm/tests/external_documents.rs",
+        "clients/go/orm/register_test.go",
+        "clients/rust/orm/tests/register.rs",
+        "clients/rust/orm/tests/install.rs"
       ],
       "docs": [
         "docs/schema.md",
@@ -1983,6 +1990,22 @@
         {
           "id": "install-add-tables-and-columns-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns"
+        },
+        {
+          "id": "install-register-go",
+          "command": "go test -v -timeout 0 ./clients/go/orm -run '^(TestRegisterSendsNoStatement|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements|TestExternalDocuments)$' -count=1"
+        },
+        {
+          "id": "install-register-php",
+          "command": "php clients/php/tests/schema_set_test.php register_sends_no_statement install_verifies_the_database external_documents"
+        },
+        {
+          "id": "install-register-typescript",
+          "command": "node clients/typescript/tests/schema-set.mjs register_sends_no_statement install_verifies_the_database external_documents"
+        },
+        {
+          "id": "install-register-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents"
         }
       ],
       "coverage": {

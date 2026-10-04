@@ -237,8 +237,9 @@ function externalSets(): array
 /**
  * 외부 문서를 쓰는 set(contracts/fixtures/external)을 dsn의 database에서 확인한다
  * (clients/go/orm/external_documents_test.go의 externalCase와 같다).
- *   - 외부 table이 없으면 connect, install, addTablesAndColumns가 어떤 statement보다 먼저
- *     CONFIG이고 member의 table을 만들지 않는다.
+ *   - 외부 table이 없으면 install과 addTablesAndColumns가 어떤 statement보다 먼저 CONFIG이고
+ *     member의 table을 만들지 않는다. 등록은 database를 읽지 않으므로 connectSchema는 외부
+ *     table이 없거나 달라도 연결한다.
  *   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도 바꾸지 않는다.
  *     addTablesAndColumns는 소유한 table에만 column을 더한다.
  *   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
@@ -257,7 +258,7 @@ function externalDocuments(string $dsn): void
         }
     };
     $missing = 'the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist';
-    $expectConfig('connect before core', static fn() => Orm::connectSchema($dsn, $member, $config)->close(), $missing);
+    Orm::connectSchema($dsn, $member, $config)->close();
 
     $db = Orm::connect($dsn, $config);
     try {
@@ -296,11 +297,124 @@ function externalDocuments(string $dsn): void
         check($accounts === 1, "ext_account has $accounts rows after the member changes, want 1");
 
         $differs = 'the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist';
-        $expectConfig('connect with a drifted external table', static fn() => Orm::connectSchema($dsn, $drifted, $config)->close(), $differs);
+        Orm::connectSchema($dsn, $drifted, $config)->close();
         $expectConfig('install with a drifted external table', static fn() => $schema->install($drifted), $differs);
         $expectConfig('addTablesAndColumns with a drifted external table', static fn() => $schema->addTablesAndColumns($drifted), $differs);
     } finally {
         $db->close();
+    }
+}
+
+/** 연결이 database에 보낸 statement, prepare, transaction 시작을 모두 센다. */
+final class StatementCountingPdo extends PDO
+{
+    public int $sent = 0;
+
+    public function exec(string $statement): int|false
+    {
+        $this->sent++;
+        return parent::exec($statement);
+    }
+
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    {
+        $this->sent++;
+        return parent::query($query, $fetchMode, ...$fetchModeArgs);
+    }
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        $this->sent++;
+        return parent::prepare($query, $options);
+    }
+
+    public function beginTransaction(): bool
+    {
+        $this->sent++;
+        return parent::beginTransaction();
+    }
+}
+
+/**
+ * 등록은 database에 아무 statement도 보내지 않는다(docs/schema.md "Schema registration").
+ * StatementCountingPdo로 연 연결에서 register는 외부 문서를 쓰는 set도 database를 읽지 않고,
+ * 선언한 hash로 hash되지 않는 text는 statement 없이 CONFIG다. 등록한 bench set의 요청은 그
+ * 연결에서 실행된다. connectSchema는 connect가 보내는 statement만 보낸다.
+ */
+function registerSendsNoStatement(string $dsn): void
+{
+    ['member' => $member] = externalSets();
+    $installer = Orm::connect($dsn, new Config());
+    try {
+        $installer->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+    } finally {
+        $installer->close();
+    }
+    [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
+    $pdo = new StatementCountingPdo($pdoDsn, $user, $password);
+    $db = new \Orm\Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
+    try {
+        check(code(fn() => (new User)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read before the register');
+        $before = $pdo->sent;
+        $db->utils()->schema()->register(\Polyspec\Orm\Tests\Model\schema());
+        $db->utils()->schema()->register(\Polyspec\Orm\Tests\Model\schema());
+        $db->utils()->schema()->register($member);
+        $bench = \Polyspec\Orm\Tests\Model\schema();
+        $edited = new Schema($bench->manifestText . "\n", $bench->manifestHash);
+        check(code(fn() => $db->utils()->schema()->register($edited)) === Code::CONFIG, 'register of a text that does not hash to its declared hash');
+        $sent = $pdo->sent - $before;
+        check($sent === 0, "register sent $sent statements, want 0");
+        $users = (new User)($db)->getCount();
+        check($users === 0, "bench read after the register: $users rows");
+    } finally {
+        $db->close();
+    }
+    $runs = 0;
+    Orm::connect($dsn, counted($runs))->close();
+    $connectRuns = $runs;
+    $runs = 0;
+    Orm::connectSchema($dsn, $member, counted($runs))->close();
+    check($runs === $connectRuns, "connectSchema ran $runs statements, connect $connectRuns");
+}
+
+/**
+ * install은 table 이름만이 아니라 database 전체를 set과 비교한다(docs/schema.md "Schema
+ * installation"). contracts/fixtures/install/changed_database.json의 case마다 statement로 ORM 밖에서
+ * 바꾼 database에 같은 set을 다시 install하면 dialect의 message인 CONFIG이고 database는 그대로다.
+ */
+function installVerifiesTheDatabase(string $dsn): void
+{
+    global $root;
+    $fixture = json_decode((string) file_get_contents("$root/contracts/fixtures/install/changed_database.json"), true, flags: JSON_THROW_ON_ERROR);
+    check($fixture['cases'] !== [], 'contracts/fixtures/install/changed_database.json has no cases');
+    [$driver] = Orm::parseDsn($dsn);
+    foreach ($fixture['cases'] as $case) {
+        check($case['operation'] === 'install', "{$case['id']}: the operation {$case['operation']}, want install");
+        $document = (string) file_get_contents("$root/contracts/fixtures/{$case['document']}");
+        $documents = RuntimeModel::parse([basename($case['document']) => $document]);
+        $model = RuntimeModel::build($documents);
+        $schema = new Schema($model->manifestText, $model->manifestHash);
+        $db = Orm::connect($dsn, new Config());
+        try {
+            $db->utils()->schema()->install($schema);
+            $db->pdo()->exec($case['statement']);
+            $want = "{$case['expected']['code']}: {$case['expected']['message'][$driver]}";
+            try {
+                $db->utils()->schema()->install($schema);
+                check(false, "{$case['id']}: install over the changed database: no error, want $want");
+            } catch (OrmException $e) {
+                check($e->code_ === $case['expected']['code'] && $e->getMessage() === $want, "{$case['id']}: install over the changed database: {$e->code_} {$e->getMessage()}, want $want");
+            }
+            $db->pdo()->query($case['remaining'])->fetchAll();
+            // 다음 case는 같은 case database를 쓰므로 이 case의 table을 지운다.
+            foreach ($documents as $parsed) {
+                foreach ($parsed->tables as $table) {
+                    $db->pdo()->exec("DROP TABLE {$table->name}");
+                }
+            }
+        } finally {
+            $db->close();
+        }
     }
 }
 
@@ -309,6 +423,8 @@ $cases = [
     'unregistered_schema' => unregisteredSchema(...),
     'edited_manifest' => editedManifest(...),
     'external_documents' => externalDocuments(...),
+    'register_sends_no_statement' => registerSendsNoStatement(...),
+    'install_verifies_the_database' => installVerifiesTheDatabase(...),
 ];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 foreach ($selected as $case) {

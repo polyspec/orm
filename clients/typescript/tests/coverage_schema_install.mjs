@@ -84,18 +84,16 @@ await runCases('coverage_schema_install.mjs', {
     });
   },
 
-  // 외부 문서를 쓰는 set의 연결은 외부 table을 database에서 확인한다. 같은 table이면 연결하고, 외부 문서의 column이
-  // database에 없으면 연결과 install이 CONFIG이며 소유한 table을 만들지 않는다.
+  // 외부 문서를 쓰는 set의 install은 외부 table을 database에서 확인한다. 외부 문서의 column이 database에 없으면
+  // install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지 않으므로 그 set으로도 연결한다.
   async schema_install_external_documents() {
     await withDatabase(async (db, driver, dsn) => {
       const connected = await Db.connectSchema(dsn, externalSchema(externalUser));
       await connected.close();
       const drifted = externalSchema(externalUser.replace('  name varchar(191)\n', '  name varchar(191)\n  coverage_missing varchar(8) null\n'));
       const want = 'the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist';
+      await (await Db.connectSchema(dsn, drifted)).close();
       let caught = null;
-      try { await (await Db.connectSchema(dsn, drifted)).close(); } catch (error) { caught = error; }
-      assert.ok(caught?.code === 'CONFIG' && caught.message.includes(want), `connect with a drifted external table: ${caught}`);
-      caught = null;
       try { await db.utils().schema().install(drifted); } catch (error) { caught = error; }
       assert.ok(caught?.code === 'CONFIG' && caught.message.includes(want), `install with a drifted external table: ${caught}`);
       assert.equal(await tableExists(driver, dsn, 'coverage_external_post'), false, 'the rejected install created table coverage_external_post');

@@ -1,0 +1,20 @@
+{
+  "feature": "schema_install",
+  "cases": [
+    {
+      "id": "renamed_column",
+      "operation": "install",
+      "document": "install/note.dbs",
+      "statement": "ALTER TABLE install_note RENAME COLUMN score TO points",
+      "remaining": "SELECT points FROM install_note",
+      "expected": {
+        "code": "CONFIG",
+        "message": {
+          "mysql": "the database differs from the document set: drop_column install_note.points; add_column install_note.score",
+          "postgres": "the database differs from the document set: drop_column install_note.points; add_column install_note.score",
+          "sqlite": "the database differs from the document set: unsupported_check install_note.install_note$score: the check typeof(\"points\") IN ('integer', 'null') is not the renderer CHECK; unsupported_column install_note.points: declared type bigint with CHECK \"\" has no dbspec type"
+        }
+      }
+    }
+  ]
+}

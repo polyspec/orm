@@ -370,6 +370,71 @@ final class Dbspec
     }
 
     /**
+     * database가 document set과 같은지 확인한다(docs/schema.md "Schema installation").
+     * `$live`는 연결의 database를 introspect한 문서, `$unsupported`는 introspection이 읽지
+     * 못한 객체, `$target`은 document set의 schema text 문서다. set에 없는 database의 table은
+     * 비교하지 않는다. set의 table에 읽지 못한 객체가 있으면 그 객체를
+     * "unsupported_<kind> <table>[.<name>]: <reason>"로, 아니면 database에 있는 set의 table에서
+     * set까지의 모든 차이를 "<kind> <table>[.<name>]"로 돌려준다. 빈 목록이면 같다.
+     *
+     * @param list<Unsupported> $unsupported
+     * @return list<string>
+     */
+    public static function installedDifferences(Document $live, array $unsupported, Document $target): array
+    {
+        [, $source, $comparison, $differences] = self::compareSet($live, $unsupported, $target);
+        if ($source === null) {
+            return $differences;
+        }
+        foreach ($comparison->differences ?? [] as $d) {
+            $differences[] = "{$d->kind} " . self::qualified($d->table, $d->name);
+        }
+        return $differences;
+    }
+
+    /**
+     * database에 있는 set의 table(source)과 set을 비교한다. set의 table에 읽지 못한 객체가
+     * 있으면 source 없이 그 객체를 차이로 돌려준다. 아니면 set의 table 이름별 정의, source,
+     * 비교 결과와 그 diagnostic을 돌려준다.
+     *
+     * @param list<Unsupported> $unsupported
+     * @return array{0: array<string, Table>, 1: ?Document, 2: ?ComparisonResult, 3: list<string>}
+     */
+    private static function compareSet(Document $live, array $unsupported, Document $target): array
+    {
+        $declared = [];
+        foreach ($target->tables as $table) {
+            $declared[$table->name] = $table;
+        }
+        $differences = [];
+        // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+        foreach ($unsupported as $u) {
+            if (isset($declared[$u->table])) {
+                $differences[] = "unsupported_{$u->kind} " . self::qualified($u->table, $u->name) . ": {$u->reason}";
+            }
+        }
+        if ($differences !== []) {
+            return [$declared, null, null, $differences];
+        }
+        $source = new Document('schema');
+        foreach ($live->tables as $table) {
+            if (isset($declared[$table->name])) {
+                $source->tables[] = $table;
+            }
+        }
+        $comparison = self::compareSchemas($source, $target);
+        foreach ($comparison->diagnostics as $d) {
+            $differences[] = "{$d->rule}: {$d->message}";
+        }
+        return [$declared, $source, $comparison, $differences];
+    }
+
+    private static function qualified(string $table, string $name): string
+    {
+        return $name === '' ? $table : "$table.$name";
+    }
+
+    /**
      * 연결의 addTablesAndColumns가 실행할 step이다(docs/schema.md "Adding tables and
      * columns"). `$live`는 연결의 database를 introspect한 문서, `$unsupported`는
      * introspection이 읽지 못한 객체, `$target`은 document set의 schema text 문서다. set에
@@ -385,30 +450,10 @@ final class Dbspec
      */
     public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array
     {
-        $qualified = static fn(string $table, string $name): string => $name === '' ? $table : "$table.$name";
-        $declared = [];
-        foreach ($target->tables as $table) {
-            $declared[$table->name] = $table;
-        }
-        $differences = [];
-        // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
-        foreach ($unsupported as $u) {
-            if (isset($declared[$u->table])) {
-                $differences[] = "unsupported_{$u->kind} " . $qualified($u->table, $u->name) . ": {$u->reason}";
-            }
-        }
-        if ($differences !== []) {
+        $qualified = self::qualified(...);
+        [$declared, $source, $comparison, $differences] = self::compareSet($live, $unsupported, $target);
+        if ($source === null) {
             return [[], [], $differences];
-        }
-        $source = new Document('schema');
-        foreach ($live->tables as $table) {
-            if (isset($declared[$table->name])) {
-                $source->tables[] = $table;
-            }
-        }
-        $comparison = self::compareSchemas($source, $target);
-        foreach ($comparison->diagnostics as $d) {
-            $differences[] = "{$d->rule}: {$d->message}";
         }
         $adding = [];
         foreach ($comparison->differences ?? [] as $d) {

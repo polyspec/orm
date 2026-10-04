@@ -1,0 +1,7 @@
+dbspec 1 install_note
+
+table install_note {
+  id i64 identity
+  score i64
+  primary key (id)
+}

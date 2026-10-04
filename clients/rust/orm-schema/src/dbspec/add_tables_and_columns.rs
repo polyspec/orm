@@ -34,6 +34,39 @@ fn schema_document(tables: Vec<Table>) -> Document {
     }
 }
 
+/// database에 있는 set의 table(source)이다. set의 table에 읽지 못한 객체가 있으면 그 table은
+/// set과 같다고 할 수 없으므로 그 객체를 "unsupported_<kind> <table>[.<name>]: <reason>"로
+/// 돌려준다.
+fn set_source(live: &Document, unsupported: &[Unsupported], target: &Document) -> Result<Document, Vec<String>> {
+    let declared: BTreeSet<&str> = target.tables.iter().map(|t| t.name.text.as_str()).collect();
+    let differences: Vec<String> = unsupported
+        .iter()
+        .filter(|u| declared.contains(u.table.as_str()))
+        .map(|u| format!("unsupported_{} {}: {}", u.kind, qualified(&u.table, &u.name), u.reason))
+        .collect();
+    if !differences.is_empty() {
+        return Err(differences);
+    }
+    Ok(schema_document(live.tables.iter().filter(|t| declared.contains(t.name.text.as_str())).cloned().collect()))
+}
+
+/// database가 document set과 같은지 확인한다(docs/schema.md, "Schema installation"). `live`는
+/// 연결의 database를 introspect한 문서, `unsupported`는 introspection이 읽지 못한 객체,
+/// `target`은 document set의 schema text 문서다. set에 없는 database의 table은 비교하지 않는다.
+/// set의 table에 읽지 못한 객체가 있으면 그 객체를 "unsupported_<kind> <table>[.<name>]: <reason>"로,
+/// 아니면 database에 있는 set의 table에서 set까지의 모든 차이를 "<kind> <table>[.<name>]"로
+/// 돌려준다. 빈 목록이면 같다.
+pub fn installed_differences(live: &Document, unsupported: &[Unsupported], target: &Document) -> Vec<String> {
+    let source = match set_source(live, unsupported, target) {
+        Ok(source) => source,
+        Err(differences) => return differences,
+    };
+    match compare_schemas(&source, target) {
+        Err(diagnostics) => diagnostics.iter().map(|d| format!("{}: {}", d.rule, d.message)).collect(),
+        Ok(found) => found.iter().map(|d| format!("{} {}", d.kind, qualified(&d.table, &d.name))).collect(),
+    }
+}
+
 /// `live`는 연결의 database를 introspect한 문서, `unsupported`는 introspection이 읽지
 /// 못한 객체, `target`은 document set의 schema text 문서다. set에 없는 database의 table은
 /// 비교하지도 바꾸지도 않는다. database에 있는 set의 table과 set의 차이가 database에 없는
@@ -45,16 +78,10 @@ pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported]
     let declared: BTreeMap<&str, &Table> = target.tables.iter().map(|t| (t.name.text.as_str(), t)).collect();
     let mut differences = Vec::new();
     let none = |differences| AddTablesAndColumnsSteps { added: Vec::new(), steps: Vec::new(), differences };
-    // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
-    for u in unsupported {
-        if declared.contains_key(u.table.as_str()) {
-            differences.push(format!("unsupported_{} {}: {}", u.kind, qualified(&u.table, &u.name), u.reason));
-        }
-    }
-    if !differences.is_empty() {
-        return none(differences);
-    }
-    let source = schema_document(live.tables.iter().filter(|t| declared.contains_key(t.name.text.as_str())).cloned().collect());
+    let source = match set_source(live, unsupported, target) {
+        Ok(source) => source,
+        Err(differences) => return none(differences),
+    };
     let mut adding = BTreeSet::new();
     match compare_schemas(&source, target) {
         Err(diagnostics) => differences.extend(diagnostics.iter().map(|d| format!("{}: {}", d.rule, d.message))),

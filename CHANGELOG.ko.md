@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T40: `utils().schema().register(schema)`는 statement 없이 schema set을 연결에 등록하고 `connectSchema`도 같은 방법으로 등록하므로, 요청마다 연 연결은 데이터베이스를 읽지 않고 set을 등록한다. `install`과 `addTablesAndColumns`는 이제 데이터베이스의 set table을 set과 비교하며 끝나고(`InstalledDifferences`), ORM 밖에서 바꾼 column 같은 차이마다 그것을 적은 `CONFIG`로 실패한다. 데이터베이스는 요청마다가 아니라 install과 upgrade 때 확인한다.
+
 - T7.D12: `make docs-rules-check`는 `AGENTS.ko.md`, `README.ko.md`, `CHANGELOG.ko.md`를 포함한 추적되는 모든 한국어 문서를 검사하고 절마다 목록 항목을 영문 원본과 비교한다. 한국어 규칙, 변경 이력, README, codec 문서를 영문 원본의 번역으로 바로잡았다.
 
 - G5.9: `TestCIRequiresGeneratedChecks`는 G5.5와 G5.7이 없앤 따로 된 step 대신, CI가 생성 model 검사를 `CHECK_TARGETS`에 두고 공통 interface 검사를 `feature-check`에서 실행하는 `make check`를 실행하는지 요구한다.

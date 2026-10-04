@@ -24,6 +24,43 @@ function schemaDocument(tables: readonly DbspecTable[]): DbspecDocument {
 }
 
 /**
+ * database가 document set과 같은지 확인한다(docs/schema.md "Schema installation"). live는 연결의
+ * database를 introspect한 문서, unsupported는 introspection이 읽지 못한 객체, target은 document
+ * set의 schema text 문서다. set에 없는 database의 table은 비교하지 않는다. set의 table에 읽지 못한
+ * 객체가 있으면 그 객체를 "unsupported_<kind> <table>[.<name>]: <reason>"로, 아니면 database에 있는
+ * set의 table에서 set까지의 모든 차이를 "<kind> <table>[.<name>]"로 돌려준다. 빈 목록이면 같다.
+ */
+export function installedDifferences(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): readonly string[] {
+  const { comparison, differences } = compareSet(live, unsupported, target);
+  for (const d of comparison?.differences ?? []) differences.push(`${d.kind} ${qualified(d.table, d.name)}`);
+  return differences;
+}
+
+/**
+ * database에 있는 set의 table(source)과 set을 비교한다. set의 table에 읽지 못한 객체가 있으면
+ * source 없이 그 객체를 차이로 돌려준다. 아니면 set의 table 이름별 정의, source, 비교 결과와 그
+ * diagnostic을 돌려준다.
+ */
+function compareSet(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): {
+  declared: Map<string, DbspecTable>;
+  source: DbspecDocument | null;
+  comparison: ReturnType<typeof compareSchemas> | null;
+  differences: string[];
+} {
+  const declared = new Map(target.tables.map(t => [t.name, t]));
+  const differences: string[] = [];
+  // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
+  for (const u of unsupported) {
+    if (declared.has(u.table)) differences.push(`unsupported_${u.kind} ${qualified(u.table, u.name)}: ${u.reason}`);
+  }
+  if (differences.length > 0) return { declared, source: null, comparison: null, differences };
+  const source = schemaDocument(live.tables.filter(t => declared.has(t.name)));
+  const comparison = compareSchemas(source, target);
+  for (const d of comparison.diagnostics) differences.push(`${d.rule}: ${d.message}`);
+  return { declared, source, comparison, differences };
+}
+
+/**
  * live는 연결의 database를 introspect한 문서, unsupported는 introspection이 읽지 못한 객체,
  * target은 document set의 schema text 문서다. set에 없는 database의 table은 비교하지도 바꾸지도
  * 않는다. database에 있는 set의 table과 set의 차이가 database에 없는 table의 create_table과
@@ -33,16 +70,9 @@ function schemaDocument(tables: readonly DbspecTable[]): DbspecDocument {
  * 돌려준다.
  */
 export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument, dialect: DbspecDialect): DbspecAddTablesAndColumnsSteps {
-  const declared = new Map(target.tables.map(t => [t.name, t]));
-  const differences: string[] = [];
+  const { declared, source, comparison, differences } = compareSet(live, unsupported, target);
   const none = (): DbspecAddTablesAndColumnsSteps => ({ added: [], steps: [], differences });
-  // set의 table에 읽지 못한 객체가 있으면 그 table은 set과 같다고 할 수 없다.
-  for (const u of unsupported) {
-    if (declared.has(u.table)) differences.push(`unsupported_${u.kind} ${qualified(u.table, u.name)}: ${u.reason}`);
-  }
-  if (differences.length > 0) return none();
-  const source = schemaDocument(live.tables.filter(t => declared.has(t.name)));
-  const comparison = compareSchemas(source, target);
+  if (source === null || comparison === null) return none();
   const adding = new Set<string>();
   for (const d of comparison.differences ?? []) {
     if (d.kind === 'create_table') {
@@ -60,7 +90,6 @@ export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: read
     }
     differences.push(`${d.kind} ${qualified(d.table, d.name)}`);
   }
-  for (const d of comparison.diagnostics) differences.push(`${d.rule}: ${d.message}`);
   if (differences.length > 0 || adding.size === 0) return none();
   // 만드는 table과 더하는 column은 table 이름 순, table 안에서는 column 순서다.
   const added = target.tables.flatMap(t => adding.has(t.name)

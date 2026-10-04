@@ -31,10 +31,12 @@ var outputs = map[string]map[string]string{
 	"Statement":         {"go": "(*orm.Statement,error)", "php": "array", "rust": "orm::Result<orm::Statement>", "typescript": "Promise<{sql:string;binds:unknown[];}>"},
 	"WrittenModel":      {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<Self>", "typescript": "Promise<this>"},
 	// Rust updates the borrowed model in place instead of returning it.
-	"UpdatedModel":      {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<()>", "typescript": "Promise<this>"},
-	"InsertedRows":      {"go": "(int64,error)", "php": "int", "rust": "orm::Result<u64>", "typescript": "Promise<number>"},
-	"ModelSuccess":      {"go": "error", "php": "void", "rust": "orm::Result<()>", "typescript": "Promise<void>"},
-	"Success":           {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
+	"UpdatedModel": {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<()>", "typescript": "Promise<this>"},
+	"InsertedRows": {"go": "(int64,error)", "php": "int", "rust": "orm::Result<u64>", "typescript": "Promise<number>"},
+	"ModelSuccess": {"go": "error", "php": "void", "rust": "orm::Result<()>", "typescript": "Promise<void>"},
+	"Success":      {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "Promise<void>"},
+	// 등록은 database를 읽거나 쓰지 않으므로 Rust와 TypeScript에서도 동기 호출이다.
+	"Registered":        {"go": "error", "php": "void", "rust": "Result<()>", "typescript": "void"},
 	"RowMap":            {"go": "map[string]any", "php": "array", "rust": "orm::Result<orm::serde_json::Value>", "typescript": "Record<string,unknown>"},
 	"Db":                {"go": "(*DB,error)", "php": "Orm\\Db", "rust": "Result<Db>", "typescript": "Promise<Db>"},
 	"TransactionResult": {"go": "error", "php": "mixed", "rust": "Transaction<'_,F>", "typescript": "Promise<T>"},
@@ -129,7 +131,9 @@ func validateRules(d document) error {
 						return fmt.Errorf("%s Rust receiver %s, want %s", r.ID, receiver, wantReceiver)
 					}
 				}
-				if len(r.Errors) > 0 && r.Output != "TransactionResult" && !strings.Contains(sig, "asyncfn") {
+				// 오류가 있는 operation은 database에서 실행되므로 async다. transaction은 Transaction
+				// builder를, 등록은 database 없이 동기 결과를 돌려준다.
+				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}

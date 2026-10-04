@@ -1,8 +1,8 @@
 //! 외부 문서를 쓰는 document set을 SQLite, MySQL, PostgreSQL에서 확인한다(docs/dbspec.md "External
 //! documents", contracts/fixtures/external). member set은 ext_core의 ext_account와 ext_audit을 use로 쓰고
 //! ext_post와 ext_post_history만 소유한다.
-//!   - 외부 table이 없으면 connect, install, add_tables_and_columns가 어떤 statement보다 먼저 CONFIG이고 member의
-//!     table을 만들지 않는다.
+//!   - 외부 table이 없으면 install, add_tables_and_columns가 어떤 statement보다 먼저 CONFIG이고 member의 table을
+//!     만들지 않는다. 등록은 database를 읽지 않으므로 connect_schema는 외부 table이 없거나 달라도 연결한다.
 //!   - core를 설치한 뒤 member install은 소유한 table만 만들고, 다시 하면 아무것도 바꾸지 않는다.
 //!     add_tables_and_columns는 소유한 table에만 column을 더한다.
 //!   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
@@ -131,7 +131,7 @@ async fn external_case(driver: &str, dsn: &str) {
     let config = || Config { audit_source: Some(source.clone()), ..Default::default() };
     let missing =
         "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist";
-    expect_config(&format!("{driver}: connect before core"), Db::connect_schema(dsn, member, 2, config()).await.map(|_| ()), missing);
+    Db::connect_schema(dsn, member, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect before core: {e}")).close().await;
 
     let db = Db::connect(dsn, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     let utils = db.utils();
@@ -177,7 +177,7 @@ async fn external_case(driver: &str, dsn: &str) {
     assert_eq!(scalar(&db, "SELECT COUNT(*) FROM ext_account").await, 1, "{driver}: ext_account rows after the member changes");
 
     let differs = "the tables that the set uses from external documents differ from the database: column ext_account.nick does not exist";
-    expect_config(&format!("{driver}: connect with a drifted external table"), Db::connect_schema(dsn, drifted, 2, config()).await.map(|_| ()), differs);
+    Db::connect_schema(dsn, drifted, 2, config()).await.unwrap_or_else(|e| panic!("{driver}: connect with a drifted external table: {e}")).close().await;
     expect_config(&format!("{driver}: install with a drifted external table"), schema.install(drifted).await, differs);
     expect_config(&format!("{driver}: add_tables_and_columns with a drifted external table"), schema.add_tables_and_columns(drifted).await, differs);
     db.close().await;

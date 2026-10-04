@@ -46,7 +46,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 
 `model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite` 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
-`db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환한다.
+`db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. `db.utils().schema().register(&model::SCHEMA)`는 데이터베이스를 읽지 않고 열린 연결에 set을 등록한다.
 `db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
 
 ## 필수 호출
@@ -55,6 +55,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 |---|---|
 | 생성 manifest 해시 검증 | `Schema::manifest()`는 포함된 manifest text로 runtime model을 만들고 `manifestHash`를 확인한다. `Manifest::load(text, hash)`는 다른 manifest text에 같은 일을 한다. |
 | 엔진 선택과 모델 노출 | `model::connect`가 DSN에서 dialect를 선택하고 생성 모델의 set을 연결에 등록한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`를 반환한다. |
+| 데이터베이스를 읽지 않고 연결에 set 등록 | `db.utils().schema().register(&model::SCHEMA)` |
 | 스키마 객체 설치 | `db.utils().schema().install(&model::SCHEMA)` |
 | 설치한 set에 빠진 테이블과 컬럼 추가 | `db.utils().schema().add_tables_and_columns(&model::SCHEMA)` |
 | 격리 수준 또는 읽기 전용 실행 | `db.transaction(callback).isolation(Isolation::…).read_only().await` |

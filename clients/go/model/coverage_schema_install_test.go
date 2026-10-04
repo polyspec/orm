@@ -87,9 +87,10 @@ table coverage_external_post {
 }
 `
 
-// TestCoverageSchemaInstallExternalDocuments는 외부 문서를 쓰는 set의 연결이 외부
+// TestCoverageSchemaInstallExternalDocuments는 외부 문서를 쓰는 set의 install이 외부
 // table을 database에서 확인하는지 본다. 같은 table이면 연결하고, 외부 문서의 column이
-// database에 없으면 연결과 install이 CONFIG이며 소유한 table을 만들지 않는다.
+// database에 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를
+// 읽지 않으므로 그 set으로도 연결한다.
 func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
@@ -110,8 +111,12 @@ func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	}
 	drifted := schema(strings.Replace(externalUser, "  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n", 1))
 	want := "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist"
-	if _, err := orm.ConnectSchema(dsn, drifted, orm.Config{}); orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), want) {
-		t.Fatalf("connect with a drifted external table = %v, want CONFIG with %q", err, want)
+	connected, err = orm.ConnectSchema(dsn, drifted, orm.Config{})
+	if err != nil {
+		t.Fatalf("connect with a drifted external table: %v, want a connection that reads nothing", err)
+	}
+	if err := connected.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := db.Utils().Schema().Install(drifted); orm.ErrorCode(err) != orm.CodeConfig || !strings.Contains(err.Error(), want) {
 		t.Fatalf("install with a drifted external table = %v, want CONFIG with %q", err, want)

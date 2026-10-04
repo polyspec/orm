@@ -3,7 +3,7 @@ import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
 import { openDriver, parseDsn, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverTransaction, type DriverValue, type Isolation, type PoolStats } from './driver.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
-import { Utils, checkExternal } from './utils.js';
+import { Utils } from './utils.js';
 import { wallMicros } from './clock.js';
 import { AesKeyring } from './aes.js';
 import { Engine } from './engine/index.js';
@@ -389,23 +389,14 @@ export class Db {
   }
 
   /**
-   * Opens the database selected by the DSN URI scheme and registers the set
-   * of a generated schema on the connection; the connect helper of generated
-   * models calls it. A manifest text that does not hash to its declared hash
-   * fails with CONFIG before the connection opens, and a set whose tables of
-   * external documents differ from the database fails with CONFIG and closes
-   * the connection. A set without external documents does not read the
-   * database here.
+   * DSN URI scheme이 고르는 database를 열고 generated schema의 set을 utils().schema().register처럼 그
+   * 연결에 등록한다. generated model의 connect helper가 부른다. manifest text가 선언한 hash로 hash되지
+   * 않으면 연결을 열기 전에 CONFIG다. 등록은 database를 읽지 않는다: database는 install과
+   * addTablesAndColumns가 확인한다.
    */
   public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db> {
     const model = schemaModel(schema);
     const db = await Db.connect(dsn, options);
-    try {
-      await checkExternal(model, db.driver, async sql => (await db.pool.execute(sql, [])).rows);
-    } catch (error) {
-      await db.close();
-      throw error;
-    }
     db[REGISTER](model);
     return db;
   }

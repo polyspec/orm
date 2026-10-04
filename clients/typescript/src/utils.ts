@@ -3,8 +3,8 @@ import { CORE, isModel } from './core.js';
 import { activeFor, registerSet, schemaModel, type Db, type Schema, type TxFrame } from './database.js';
 import type { DriverControl, DriverName, DriverValue, PoolStats } from './driver.js';
 import { AesKeyring } from './aes.js';
-import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, parseDbspec, renderDbspec } from './dbspec/index.js';
-import { introspectCatalog } from './dbspec/introspect.js';
+import { addTablesAndColumnsSteps, dbspecManifest, emitDbspec, externalDifferences, installedDifferences, parseDbspec, renderDbspec, type DbspecDocument } from './dbspec/index.js';
+import { introspectCatalog, type DbspecIntrospection } from './dbspec/introspect.js';
 import { CatalogRow } from './dbspec/introspect_catalog.js';
 import type { RuntimeModel } from './engine/model.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
@@ -72,15 +72,38 @@ function externalTexts(model: RuntimeModel): Record<string, string> {
   return Object.fromEntries(model.documents.filter(d => d.external === true).map(d => [d.name, emitDbspec(d)]));
 }
 
+/** 연결의 database를 introspect한다. control은 연결의 statement를 실행한다. */
+async function introspect(control: DriverControl, driver: DriverName): Promise<DbspecIntrospection> {
+  return introspectCatalog(async sql => (await control(sql)).rows.map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
+}
+
 /**
- * set이 외부 문서에서 쓰는 table을 database에서 확인한다(docs/dbspec.md "External documents"). query는 연결의 database를
- * 읽는다. 외부 문서가 없는 set은 database를 읽지 않는다. 차이는 CONFIG다.
+ * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다(docs/dbspec.md
+ * "External documents").
  */
-export async function checkExternal(model: RuntimeModel, driver: DriverName, query: (sql: string) => Promise<readonly (readonly unknown[])[]>): Promise<void> {
-  if (!model.documents.some(d => d.external === true)) return;
-  const live = await introspectCatalog(async sql => (await query(sql)).map(values => new CatalogRow(sql, values as unknown[])), driver, 'schema');
+async function introspectSet(control: DriverControl, driver: DriverName, model: RuntimeModel): Promise<DbspecIntrospection> {
+  const live = await introspect(control, driver);
   const differences = externalDifferences(live.document, model.documents);
   if (differences.length > 0) throw externalError(differences);
+  return live;
+}
+
+/** database가 set과 다르면 그 차이를 모두 담은 CONFIG다. */
+function verifySet(differences: readonly string[]): void {
+  if (differences.length > 0) throw config(`the database differs from the document set: ${differences.join('; ')}`);
+}
+
+/** set의 schema text 문서다. database와 비교하는 대상이다. */
+function schemaTarget(model: RuntimeModel): DbspecDocument {
+  const manifest = dbspecManifest(model.documents);
+  // schema text의 use 줄은 외부 문서를 가리키므로 외부 문서를 집합으로 삼아 parse한다.
+  const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
+  const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
+  if (failed.length > 0) {
+    const d = failed[0]!;
+    throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
+  }
+  return parsed!.document!;
 }
 
 /** Operations outside the query syntax. */
@@ -189,45 +212,52 @@ export class SchemaUtils {
   }
 
   /**
-   * Installs the tables of the document set of a generated schema and
-   * registers the set on this connection. A manifest text that does not hash
-   * to its declared manifestHash fails with CONFIG before any statement. The
-   * rendered statements (docs/dialects.md "Rendered statements") create the
-   * tables when none of them exists; when every table exists the call creates
-   * nothing; when only some exist it fails with CONFIG.
-   * PostgreSQL and SQLite apply the statements in the active transaction or in
-   * a new one; MySQL commits schema statements implicitly, so it applies them
-   * outside a transaction and rejects a call inside one with CONFIG.
+   * generated schema의 set을 이 연결에 등록한다. database를 읽거나 쓰지 않는다: manifest text가 선언한
+   * hash로 hash되는지 확인하고(아니면 CONFIG) set을 등록할 뿐이다. 같은 set을 다시 등록하면 아무것도
+   * 바꾸지 않는다. database가 set과 같은지는 install과 addTablesAndColumns가 설치와 upgrade 때
+   * 확인하며, 요청마다 연 연결에도 register가 statement 없이 set을 등록한다(docs/schema.md "Schema
+   * registration").
+   */
+  public register(schema: Schema): void {
+    registerSet(this.u.db, schemaModel(schema));
+  }
+
+  /**
+   * generated schema의 document set을 연결의 database에 설치하고, database가 set과 같은지 확인한 뒤 그
+   * set을 이 연결에 등록한다. manifest text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저
+   * CONFIG다. 연결의 database를 introspect해, 외부 문서에서 쓰는 table이 외부 문서와 다르면 CONFIG다.
+   * set이 소유한 table이 하나도 없으면 render한 statement(docs/dialects.md "Rendered statements")로 모두
+   * 만들고, 모두 있으면 아무것도 만들지 않으며, 일부만 있으면 CONFIG다. 그다음 database를 다시 읽어 set이
+   * 소유한 table을 set과 비교하고, 차이가 있으면 그 차이를 모두 담은 CONFIG다(docs/schema.md "Schema
+   * installation"). PostgreSQL과 SQLite는 진행 중인 transaction이나 새 transaction에서 적용하므로 실패한
+   * install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로 commit하므로 transaction
+   * 밖에서 적용하고 안에서는 CONFIG다.
    */
   public async install(schema: Schema): Promise<void> {
     const model = schemaModel(schema);
-    const documents = model.documents;
-    const rendered = renderDbspec(documents, this.u.db.driver);
+    const rendered = renderDbspec(model.documents, this.u.db.driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const statements = rendered.statements;
+    const target = schemaTarget(model);
+    const driver = this.u.db.driver;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
-    if (this.u.db.driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
-    await checkExternal(model, this.u.db.driver, sql => this.u.read(sql, []));
-    const tables = documents.filter(d => d.external !== true).flatMap(d => d.tables.map(t => t.name));
-    const present: string[] = [];
-    for (const table of tables) if (await this.table(table)) present.push(table);
-    if (present.length === tables.length) {
-      registerSet(this.u.db, model);
-      return;
-    }
-    if (present.length > 0) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
-    if (this.u.db.driver === 'mysql') {
-      await this.u.db.pool.session!(async control => {
+    if (driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
+    const apply = async (control: DriverControl): Promise<void> => {
+      let live = await introspectSet(control, driver, model);
+      const found = new Set([...live.document.tables.map(t => t.name), ...live.unsupported.map(u => u.table)]);
+      const present = target.tables.filter(t => found.has(t.name)).map(t => t.name);
+      if (present.length > 0 && present.length < target.tables.length) throw config(`install found only some tables of the document set: ${present.join(', ')}`);
+      if (present.length === 0) {
         for (const statement of statements) await control(statement);
-      });
-    } else {
-      await this.u.run(async frame => {
-        for (const statement of statements) await frame.tx.control(statement);
-      });
-    }
+        live = await introspect(control, driver);
+      }
+      verifySet(installedDifferences(live.document, live.unsupported, target));
+    };
+    if (driver === 'mysql') await this.u.db.pool.session!(apply);
+    else await this.u.run(frame => apply((sql, params) => frame.tx.control(sql, params)));
     registerSet(this.u.db, model);
   }
 
@@ -246,39 +276,22 @@ export class SchemaUtils {
    */
   public async addTablesAndColumns(schema: Schema): Promise<string[]> {
     const model = schemaModel(schema);
-    const manifest = dbspecManifest(model.documents);
-    // schema text의 use 줄은 외부 문서를 가리키므로 외부 문서를 집합으로 삼아 parse한다.
-    const parsed = manifest.manifest === null ? null : parseDbspec(manifest.manifest.schemaText, externalTexts(model));
-    const failed = manifest.manifest === null ? manifest.diagnostics : parsed!.diagnostics;
-    if (failed.length > 0) {
-      const d = failed[0]!;
-      throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
-    }
-    const target = parsed!.document!;
+    const target = schemaTarget(model);
     const driver = this.u.db.driver;
     const apply = async (control: DriverControl): Promise<string[]> => {
-      const query = async (sql: string) => (await control(sql)).rows.map(values => new CatalogRow(sql, values));
-      const live = await introspectCatalog(query, driver, 'schema');
-      const external = externalDifferences(live.document, model.documents);
-      if (external.length > 0) throw externalError(external);
+      let live = await introspectSet(control, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
       if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ${differences.join('; ')}`);
       for (const step of steps) await control(step.statement);
+      // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
+      if (steps.length > 0) live = await introspect(control, driver);
+      verifySet(installedDifferences(live.document, live.unsupported, target));
       return [...added];
     };
     if (driver === 'postgres') return this.u.run(frame => apply((sql, params) => frame.tx.control(sql, params)));
     if (activeFor(this.u.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
     if (driver === 'mysql') return this.u.db.pool.session!(apply);
     return this.u.db.pool.session!(control => withoutForeignKeys(control, apply));
-  }
-
-  /** Reports whether a table of the connected database or schema exists. */
-  private async table(name: string): Promise<boolean> {
-    switch (this.u.db.driver) {
-      case 'postgres': return this.check('SELECT to_regclass(current_schema() || \'.\' || quote_ident($1)) IS NOT NULL', [name]);
-      case 'mysql': return this.check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?)', [name]);
-      default: return this.check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?)", [name]);
-    }
   }
 
   public async exists(name: string): Promise<boolean> {

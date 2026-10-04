@@ -3,7 +3,7 @@ declare(strict_types=1);
 // schema_install feature coverage: 생성된 model이 담은 bench manifest를 이미
 // 설치된 bench database에 다시 설치하면 아무것도 바꾸지 않고, 일부 table만 있는
 // document set의 설치는 CONFIG로 실패하며 빠진 table을 만들지 않는다. 외부 문서를 쓰는 set의
-// 연결과 설치는 외부 table을 database에서 확인한다.
+// 설치는 외부 table을 database에서 확인하고, 등록은 database를 읽지 않는다.
 
 require __DIR__ . '/autoload.php';
 require __DIR__ . '/coverage_cases.php';
@@ -98,8 +98,9 @@ runCoverageCases($argv, [
             $db->close();
         }
     },
-    // 외부 문서를 쓰는 set의 연결은 외부 table을 database에서 확인한다. 같은 table이면 연결하고, 외부
-    // 문서의 column이 database에 없으면 연결과 install이 CONFIG이며 소유한 table을 만들지 않는다.
+    // 외부 문서를 쓰는 set의 install은 외부 table을 database에서 확인한다. 외부 문서의 column이
+    // database에 없으면 install이 CONFIG이며 소유한 table을 만들지 않는다. 등록은 database를 읽지
+    // 않으므로 그 set으로도 연결한다.
     'schema_install_external_documents' => function (): void {
         [, $dsn] = coverageDatabase();
         $schema = static function (string $external): Schema {
@@ -121,7 +122,7 @@ runCoverageCases($argv, [
             }
             throw new RuntimeException("$step: $message, want CONFIG with $want");
         };
-        $refused('connect with a drifted external table', static fn() => Orm::connectSchema($dsn, $drifted, new Config())->close());
+        Orm::connectSchema($dsn, $drifted, new Config())->close();
         $db = coverageConnect($dsn);
         try {
             $refused('install with a drifted external table', static fn() => $db->utils()->schema()->install($drifted));

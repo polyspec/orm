@@ -52,7 +52,7 @@ final class Db
     }
 
     /**
-     * @internal Orm::connectSchema와 SchemaUtils::install만 부른다. schema의 set을
+     * @internal Orm::connectSchema와 SchemaUtils의 register, install만 부른다. schema의 set을
      * 이 연결에 등록한다. 같은 set을 다시 등록하면 아무것도 바꾸지 않는다.
      */
     public function registerSet(Schema $schema): void

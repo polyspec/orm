@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:664004b1de2cfdbb145297c8cf853b139890fc8ce156a85e3d0830995f1b3374",
-    "php": "sha256:50d1b009022874f8941f792797c32eaba21fff20a18465aa1ae3b0bc04d33fc8",
-    "rust": "sha256:934fa4a55d9c277bd68e05002f3d27a3192d408492eeb560d03e31aa023b557c",
-    "typescript": "sha256:969c59514f89e6ad6f3fe17e669c6287f25413003fcf9f8204b1f0d689eb0ea6"
+    "go": "sha256:7839eca16deaae16f01e409e700297560b97cce819af841d4192fa3411de7fe4",
+    "php": "sha256:d3b350307a2d9770d6f8af3b52edea64bd923c50dec06d3efd7a8bd21551ea3d",
+    "rust": "sha256:394c14f71225341a8d66cbe85be6c52022a88e656dc0d1fd6143520a6047db69",
+    "typescript": "sha256:5cc95bee8892d0e22845a953de66bbe2904ac80e711c17452252da169978d524"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -289,13 +289,14 @@
         "db": "Db"
       },
       "methods": [
+        "register",
         "install",
         "exists",
         "installed",
         "empty"
       ],
-      "ownership": "Installs the set of a generated schema with the client DDL renderer and registers it on the connection.",
-      "ownership_ko": "client DDL 렌더러로 generated schema의 set을 설치하고 연결에 등록한다."
+      "ownership": "Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set.",
+      "ownership_ko": "generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다."
     },
     {
       "id": "AesUtils",
@@ -1110,7 +1111,7 @@
         "CONFIG",
         "driver error"
       ],
-      "state": "Opens the pool selected by the DSN URI scheme and registers the set of a generated schema on it; the connect helper of generated code calls it, and a manifest text that does not hash to its manifestHash returns CONFIG before the connection opens",
+      "state": "Opens the pool selected by the DSN URI scheme and registers the set of a generated schema on it as SchemaUtils.register does, without reading the database; the connect helper of generated code calls it, and a manifest text that does not hash to its manifestHash returns CONFIG before the connection opens",
       "native": {
         "go": {
           "symbol": "clients/go/orm/db.go::ConnectSchema",
@@ -1246,6 +1247,37 @@
       }
     },
     {
+      "id": "SchemaUtils.register",
+      "for": "once",
+      "inputs": [
+        "GeneratedSchema"
+      ],
+      "output": "Registered",
+      "errors": [
+        "CONFIG",
+        "SCHEMA_INVALID"
+      ],
+      "state": "Registers the set of a generated schema on the connection without reading or writing the database; registering a registered set again changes nothing, and a manifest text that does not hash to its manifestHash returns CONFIG",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/utils.go::SchemaUtils.Register",
+          "signature": "receiver=*SchemaUtils func(schema *Schema) error"
+        },
+        "php": {
+          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::register",
+          "signature": "public function register(Orm\\Schema $schema): void"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
+          "signature": "pub fn register(&self, schema: &Schema) -> Result<()>"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/utils.ts::SchemaUtils.register",
+          "signature": "public register(schema: Schema): void"
+        }
+      }
+    },
+    {
       "id": "SchemaUtils.install",
       "for": "once",
       "inputs": [
@@ -1257,7 +1289,7 @@
         "SCHEMA_INVALID",
         "driver error"
       ],
-      "state": "Creates the tables of the document set of a generated schema when none of them exists, changes nothing when all exist, and registers the set on the connection; a manifest text that does not hash to its manifestHash returns CONFIG before any statement",
+      "state": "Creates the tables of the document set of a generated schema when none of them exists, changes nothing when all exist, then compares the tables of the set in the database with the set and returns CONFIG naming each difference, and registers the set on the connection; a manifest text that does not hash to its manifestHash returns CONFIG before any statement",
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.Install",
@@ -1290,7 +1322,7 @@
         "SCHEMA_DIFFERS",
         "driver error"
       ],
-      "state": "Upgrades the installed document set of a generated schema by the tables the database lacks and the missing null or defaulted columns of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; leaves the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement",
+      "state": "Upgrades the installed document set of a generated schema by the tables the database lacks and the missing null or defaulted columns of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; leaves the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement, and tables of the set that differ from the set after the steps return CONFIG naming each difference",
       "native": {
         "go": {
           "symbol": "clients/go/orm/utils.go::SchemaUtils.AddTablesAndColumns",
