@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.21: TypeScript client는 PostgreSQL 서버가 idle이거나 닫는 중인 pool 연결을 끝내도, 예컨대 `close()` 직후의 `DROP DATABASE ... WITH (FORCE)`가 그 연결을 끝내도 process를 끝내지 않는다. 다음 statement는 새 연결을 연다.
+
 - G5.18: `make test-servers`의 environment file은 Makefile만 정하던 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`을 정의하므로 make 밖의 `go test`도 이를 읽고, `start`는 실행 중인 서버에 대해 file을 다시 쓴다.
 
 - G5.20: MySQL test 서버는 모든 platform에서 `lower_case_table_names=1`로 실행한다. `make test-servers`는 다른 값으로 시작한 서버의 data를 기록되고 이어서 할 수 있는 migration으로 옮긴다. 이 migration은 겹치는 이름을 거부하고, 이전 data directory를 보관하며, 모든 수를 확인한다. 선언한 값이면 아무것도 바꾸지 않는다.
