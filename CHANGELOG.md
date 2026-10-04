@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.28: a Rust transaction with `timeout_ms` fails with `CAPABILITY_UNSUPPORTED` on MySQL and SQLite, as in Go, PHP and TypeScript, instead of running its callback under a client timer that did not stop the statement on the server; on PostgreSQL the option is the server's `statement_timeout` alone.
+
 - T42: every client publishes an event for each statement it sends to the subscribers of the connection, with its text, masked binds, kind, tables, elapsed time, transaction number and error, in place of the `OnQuery` hook; plan steps name their tables, and every client sends the same transaction control statements.
 
 - G5.26: a documentation page shows `{{` in text and code as written instead of running it as a Vue interpolation, and `make docs-build` fails when the server render of a page fails; the checklist page, which rendered empty, shows G5.5 again.
