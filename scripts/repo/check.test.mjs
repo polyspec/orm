@@ -10,7 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, testEntries } from './testcases.mjs';
+import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -579,5 +579,38 @@ caseTest('a PHP or TypeScript test without the shared case report fails', COMPUT
     'Makefile runs clients/php/tests/bare.php, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
     'contracts/features.json runs clients/typescript/tests/bare.mjs, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
     'scripts/x.sh runs clients/php/tests/missing.php, which is not a tracked file',
+  ]);
+});
+
+// 도구 case는 저장소의 검증 명령과 최소 명령을 검사한다.
+const featureUnits = () => JSON.parse(text('contracts/features.json')).features.flatMap(feature => feature.verification
+  .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] })));
+
+caseTest('every build tool of a verification command runs under run-case', COMPUTE, () => {
+  assert.deepEqual(unwrappedToolErrors(featureUnits()), []);
+});
+
+caseTest('a build tool outside run-case fails', COMPUTE, () => {
+  assert.deepEqual(segments(`a && node tests/run-case.mjs x 5m -- sh -c 'go generate ./ && git diff' || (cd b; c | d)`),
+    ['a', `node tests/run-case.mjs x 5m -- sh -c 'go generate ./ && git diff'`, 'cd b', 'c', 'd']);
+  const unit = (name, command) => ({ name, commands: [command] });
+  const message = (name, tool, segment) => `${name} runs ${tool} outside tests/run-case.mjs, so it has no deadline or RUN line: ${segment}`;
+  assert.deepEqual(unwrappedToolErrors([
+    unit('tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
+    unit('generate', 'go test ./generator && cd clients/go/model && go generate ./'),
+    unit('vet', 'go vet ./tests/conformance/check'),
+    unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p orm-tests --bin integration && ./integration'),
+    unit('npm', 'npm run typescript:build >/dev/null'),
+    unit('later', 'node tests/run-case.mjs a 5m -- go vet ./a && go vet ./b'),
+    unit('wrapped', 'node tests/run-case.mjs go-generate 5m --cwd clients/go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
+    unit('make', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked'),
+    unit('tsc-build', '$(TSC_BUILD)'),
+  ]), [
+    message('tsc', 'tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
+    message('generate', 'go generate', 'go generate ./'),
+    message('vet', 'go vet', 'go vet ./tests/conformance/check'),
+    message('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p orm-tests --bin integration'),
+    message('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
+    message('later', 'go vet', 'go vet ./b'),
   ]);
 });

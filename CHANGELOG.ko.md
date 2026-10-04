@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-8: 기능 검증 명령의 tsc, go generate, go vet, cargo build 단계는 기한과 함께 `tests/run-case.mjs` 아래에서 실행하고, `make repo-check`는 그런 도구를 그 밖에서 실행하는 검증 명령을 실패시킨다.
+
 - G5.29-7: PHP와 TypeScript decimal database test는 case마다 기한과 경과 시간을 보고하고, `make repo-check`는 check가 실행하는 PHP나 TypeScript test가 공유 case 보고를 쓰지 않으면 실패시킨다.
 
 - G5.29-5: Go, PHP, Rust, TypeScript의 MySQL TLS test는 case마다 기한과 경과 시간을 보고하고, Go 연결 test는 case context로 읽으며, `make repo-check`는 공유 testcase package의 case를 시작하지 않는 Go나 Rust test를 실패시킨다.

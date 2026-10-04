@@ -594,7 +594,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+          "command": "node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
         },
         {
           "id": "decimal-typescript-mysql",
@@ -927,7 +927,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
+          "command": "node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit"
         },
         {
           "id": "decimal-typescript-mysql",
@@ -1785,7 +1785,7 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test -v -timeout 0 ./generator -count=1 && cd clients/go/model && go generate ./ && git diff --exit-code -- .",
+          "command": "go test -v -timeout 0 ./generator -count=1 && node tests/run-case.mjs go-generate/model 5m --cwd clients/go/model -- sh -c 'go generate ./ && git diff --exit-code -- .'",
           "exclusive": true
         },
         {
@@ -3230,7 +3230,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\""
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/integration 8m -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\""
         },
         {
           "id": "chunking-php-keys",
@@ -4390,7 +4390,7 @@
       "verification": [
         {
           "id": "conformance-build",
-          "command": "go vet ./tests/conformance/check ./tests/conformance/runner_go"
+          "command": "node tests/run-case.mjs go-vet/conformance 5m -- go vet ./tests/conformance/check ./tests/conformance/runner_go"
         },
         {
           "id": "conformance-runner-go",

@@ -114,3 +114,57 @@ export function reportingScriptErrors(commands, read) {
   }
   return errors;
 }
+
+// segments는 shell 명령을 따옴표 밖의 &&, ||, ;, |, 괄호에서 나눈 명령들이다. 따옴표 안(예:
+// `sh -c '... && ...'`)은 나누지 않는다.
+export function segments(command) {
+  const out = [];
+  let current = '';
+  let quote = null;
+  for (let index = 0; index < command.length; index++) {
+    const char = command[index];
+    if (quote) {
+      current += char;
+      if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '"' || char === "'") { quote = char; current += char; continue; }
+    const two = command.slice(index, index + 2);
+    if (two === '&&' || two === '||') { out.push(current); current = ''; index++; continue; }
+    if (char === ';' || char === '|' || char === '(' || char === ')') { out.push(current); current = ''; continue; }
+    current += char;
+  }
+  out.push(current);
+  return out.map(item => item.trim()).filter(Boolean);
+}
+
+// 자기 case를 보고하지 않는 build와 lint 도구다. 이 도구는 tests/run-case.mjs(Makefile의 RUN_CASE,
+// TSC_BUILD) 아래에서만 실행해 RUN, STEP, PASS나 FAIL과 기한을 가진다.
+const tools = [
+  ['tsc', /(?:^|[\s/])tsc(?=\s|$)/],
+  ['a TypeScript build', /\bnpm\s+(?:--prefix\s+\S+\s+)?run\s+(?:typescript:build|typescript:check|build)(?=\s|$)/],
+  ['go generate', /\bgo\s+generate\b/],
+  ['go vet', /\bgo\s+vet\b/],
+  ['go build', /\bgo\s+build\b/],
+  ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
+  ['cargo test --no-run', /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/],
+];
+const wrapper = /(?:\brun-case\.mjs|\$\(RUN_CASE\)|\$\(TSC_BUILD\))/;
+
+// unwrappedToolErrors는 units(이름과 차례로 실행하는 명령 목록)에서 tools의 도구를 RUN_CASE 밖에서
+// 실행하는 segment마다 오류 하나를 돌려준다.
+export function unwrappedToolErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units) {
+    for (const command of commands) {
+      for (const segment of segments(command)) {
+        const found = tools.find(([, pattern]) => pattern.test(segment));
+        if (!found) continue;
+        const wrapped = wrapper.exec(segment);
+        if (!wrapped || wrapped.index > found[1].exec(segment).index)
+          errors.push(`${name} runs ${found[0]} outside tests/run-case.mjs, so it has no deadline or RUN line: ${segment}`);
+      }
+    }
+  }
+  return errors;
+}
