@@ -49,8 +49,8 @@
 - During an item run only the Red/Green tests of what changed and `make owner-check`; never rerun
   tests mechanically after each fix. Every test reports its own running, completion, success or failure with
   its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
-  operation gets detailed step logs instead of a timeout, so its process and result stay
-  observable. A time limit on a test's own computation measures the CPU time of the thread or
+  operation gets detailed step logs in addition to its own timeout, so its process and result
+  stay observable. A time limit on a test's own computation measures the CPU time of the thread or
   process that runs it, because wall-clock time on a shared machine includes the time other
   processes hold the processors; a timer that stops a stuck case, a limit on work that a database
   or another process does, and a test of timing behavior measure wall-clock time.

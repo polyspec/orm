@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-4: AGENTS.md는 장기 작업이 timeout 대신이 아니라 자기 timeout에 더해 상세 단계 로그를 둔다고 적는다.
+
 - G5.27: `make owner-check`는 바뀐 기능의 검증과 coverage, 그리고 `contracts/check-inputs.json`이 scope `owner`로 선언한 make target만 실행한다. 전체 suite target은 scope `suite`이며 `make check`에서만 실행하고, scope 없는 target이 있으면 선택이 실패한다. `scripts/features/coverage.mjs --feature <id>`는 없는 id에 고를 수 있는 id 목록과 함께 실패하고, 기능 unit test는 새 `make feature-unit-check`에서 실행한다.
 
 - G5.28: `timeout_ms`가 있는 Rust transaction은 Go, PHP, TypeScript처럼 MySQL과 SQLite에서 `CAPABILITY_UNSUPPORTED`로 실패한다. server의 statement를 멈추지 못하는 client timer 아래 callback을 실행하지 않는다. PostgreSQL에서 이 option은 server의 `statement_timeout`뿐이다.
