@@ -18,24 +18,29 @@
 - `[o]` 표시는 변경 기록 항목도 같은 커밋에 남기며, 커밋되지 않은 변경은 항목 하나만 다룬다.
   받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은
   우선순위에 따라 배치한 뒤 시작한다.
-- 저장소의 전체 테스트 묶음은 모든 체크리스트 항목이 완료되었을 때 한 번 실행한다.
+- 저장소의 전체 테스트 묶음(`make check`)은 진행 중인 모든 체크리스트 항목이 완료되었을 때 정확히 한 번
+  실행한다. 수정마다, 항목마다 실행하지 않는다. CI는 push마다 `make check`를 실행한다.
 - 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
 - 소유 검사: 커밋하기 전에 `make owner-check`(또는 `make owner-check PATHS="<paths>"`)를 실행한다.
-  이 명령은 선언한 fixture나 테스트가 바뀐 file이거나, 선언한 fixture file이 바뀐 file을 가리키는
-  `contracts/features.json`의 모든 기능을 고르고, 그 검증 명령과 coverage를 단계마다 기한을 두고
-  실행한다. 또 `contracts/check-inputs.json`의 입력이 바뀐 path를 맞추는 `CHECK_TARGETS`의 모든 make
-  target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다. 소유 검사를 직접
-  고르지 않는다. 어느 기능도 선언하지 않은 바뀐 file은 기능을 고르지 않으므로, 그 file이 동작을 정의하는
-  기능에 선언하고, 새 make target의 입력도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와
-  script에서 찾아 그 file을 읽는 것을 실행한다. 항목의 증거에 명령과 통과 수를 적는다.
+  이 명령은 선언한 fixture나 테스트가 바뀐 file이거나, 선언한 fixture file이 바뀐 file을 가리키거나,
+  `contracts/features.json`의 자기 항목이 바뀐 기능을 고르고, 그 기능의 검증 명령과 coverage만
+  (`--feature <id>`) 실행한다. 또 `contracts/check-inputs.json`이 scope `owner`로 선언하고 입력이 바뀐
+  path를 맞추는 make target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다.
+  owner target은 file 단위 검사다: format, checklist, 문서, 검사기의 unit test. client, database,
+  conformance 묶음 전체를 실행하는 target은 scope `suite`이며 `make check`에서만 실행한다.
+  `CHECK_TARGETS`의 모든 target은 scope를 선언하고, 선언하지 않은 target이 있으면 `make owner-check`와
+  `make repo-check`가 실패한다. 소유 검사를 직접 고르지 않는다. 어느 기능도 선언하지 않은 바뀐 file은
+  기능을 고르지 않으므로, 그 file이 동작을 정의하는 기능에 선언하고, 새 make target의 scope도
+  선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것을 실행한다.
+  항목의 증거에 명령과 통과 수를 적는다.
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의
   `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. push 전에
    CI가 그 runner에서 실행한다.
-- 개발 중에는 수정한 영역의 테스트만 실행하고, 전체 묶음은 항목을 `[o]`로 표시할 때 한 번 실행한다.
-  모든 테스트는 자신의 실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄
+- 항목을 진행하는 동안에는 바뀐 것의 Red/Green 테스트와 `make owner-check`만 실행하고, 수정할
+  때마다 테스트를 기계적으로 다시 실행하지 않는다. 모든 테스트는 자신의 실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄
   타임아웃은 쓰지 않는다. 장기 작업은 타임아웃 대신 상세 단계 로그를 두어 과정과 결과를 관측할 수
   있게 한다. 테스트가 자기 계산에 두는 시간 제한은 그 계산을 실행한 thread나 process의 CPU 시간을
   잰다. 공유 machine에서 wall-clock 시간은 다른 process가 processor를 쓰는 시간도 담기 때문이다.
@@ -47,7 +52,7 @@
 - Go, PHP, Rust, TypeScript 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
 - 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `clients/<language>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
-- 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기와 변경 반례 테스트는 `make feature-check`에서 실행한다.
+- 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-check`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다.
 - coverage 검사기는 선언된 각 언어의 테스트 파일과 정확한 사례 필터를 직접 실행하고 종료 코드와 관찰한 테스트 이벤트에서 성공을 판단한다. 테스트 출력은 성공 보고서나 데이터베이스 상태 digest를 제공할 수 없다. 데이터베이스 사례에서는 검사기 자체 상태 판독기로 매 실행 전후의 선언된 데이터베이스 상태를 읽는다.
 - coverage 사례 ID는 언어에 공통인 동작을 가리킨다. Go와 Rust 명령은 해당 ID를 소유 파일의 정확한 실제 테스트 심볼에 연결하며, 검사기는 그 심볼의 통과를 확인한 뒤에만 ID를 수용한다. 데이터베이스 사례에서 검사기는 선택한 데이터베이스와 DSN을 실제 테스트 프로세스에 전달한다.
 - 소유 client는 `clients/<language>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.

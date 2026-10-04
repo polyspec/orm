@@ -38,7 +38,8 @@ const nodeVersionPath = join(root, '.node-version');
 const workflowDirectory = join(root, '.github/workflows');
 const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
-// CHECK_TARGETS의 모든 target은 make owner-check가 고를 입력을 contracts/check-inputs.json에 선언한다.
+// CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
+// owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;
 failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked));
 // cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.

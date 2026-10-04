@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.27: `make owner-check` runs only the changed features' verification and coverage and the make targets that `contracts/check-inputs.json` declares with scope `owner`; whole-suite targets have scope `suite` and run only in `make check`, and a target without a scope fails the selection. `scripts/features/coverage.mjs --feature <id>` fails on an unknown id with the list of valid ids, and the feature unit tests run in the new `make feature-unit-check`.
+
 - G5.28: a Rust transaction with `timeout_ms` fails with `CAPABILITY_UNSUPPORTED` on MySQL and SQLite, as in Go, PHP and TypeScript, instead of running its callback under a client timer that did not stop the statement on the server; on PostgreSQL the option is the server's `statement_timeout` alone.
 
 - T42: every client publishes an event for each statement it sends to the subscribers of the connection, with its text, masked binds, kind, tables, elapsed time, transaction number and error, in place of the `OnQuery` hook; plan steps name their tables, and every client sends the same transaction control statements.

@@ -22,7 +22,8 @@
   changes cover one item only. A received instruction is triaged first: finish the item in
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
-- The repository's full test suite runs once, when every checklist item is complete.
+- The repository's full test suite (`make check`) runs exactly once, when every active checklist
+  item is complete; it never runs per fix or per item. CI runs `make check` on push.
 - Write commit messages in English as `type(scope): subject (#issue)`: a subject of at most 50
   characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
   near 72 characters explaining what changed and why; an optional footer for references. The
@@ -30,19 +31,23 @@
   subject git writes.
 - Owner checks: before each commit run `make owner-check` (or `make owner-check PATHS="<paths>"`),
   which selects every feature of `contracts/features.json` whose declared fixtures or tests are a
-  changed file, or whose declared fixture files name a changed file, and runs its verification
-  commands and coverage with a deadline per step. It also runs every make target of
-  `CHECK_TARGETS` whose inputs in `contracts/check-inputs.json` match a changed path, such as
-  `docs-check` and `docs-verify-idempotent` for a changed document. Do not choose owner checks
-  by hand. A changed file that no feature declares selects no feature; declare it in the feature
-  whose behavior it defines, and declare a new make target's inputs. Before a commit, also search
-  the tests and scripts for the name of every changed file and run those that read it. State the
-  commands and their pass counts in the item's evidence.
+  changed file, whose declared fixture files name a changed file, or whose entry in
+  `contracts/features.json` changed, and runs only that feature's verification commands and
+  coverage (`--feature <id>`). It also runs every make target that `contracts/check-inputs.json`
+  declares with scope `owner` and whose inputs match a changed path, such as `docs-check` and
+  `docs-verify-idempotent` for a changed document. An owner target is a per-file check: a format,
+  checklist, document or checker unit test. A target that runs a whole client, database or
+  conformance suite has scope `suite` and runs only in `make check`. Every target of
+  `CHECK_TARGETS` declares its scope; `make owner-check` and `make repo-check` fail on a target
+  without one. Do not choose owner checks by hand. A changed file that no feature declares selects
+  no feature; declare it in the feature whose behavior it defines, and declare a new make target's
+  scope. Before a commit, also search the tests and scripts for the name of every changed file and
+  run those that read it. State the commands and their pass counts in the item's evidence.
 - A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
   another machine prints it as a RUNNER line and does not count it. CI runs it there.
-- During development run only the tests of the modified area; run the full suite once, when the
-  item is marked `[o]`. Every test reports its own running, completion, success or failure with
+- During an item run only the Red/Green tests of what changed and `make owner-check`; never rerun
+  tests mechanically after each fix. Every test reports its own running, completion, success or failure with
   its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
   operation gets detailed step logs instead of a timeout, so its process and result stay
   observable. A time limit on a test's own computation measures the CPU time of the thread or
@@ -55,7 +60,7 @@
 - Record a conformance expectation only when the Go, PHP, Rust, and TypeScript outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
 - Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
 - Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `clients/<language>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
-- Feature coverage evidence comes from commands executed in the current check, with exact case IDs and two equal result and database-state runs. A named test file or saved output is not execution evidence. The coverage checker and its mutation tests run in `make feature-check`.
+- Feature coverage evidence comes from commands executed in the current check, with exact case IDs and two equal result and database-state runs. A named test file or saved output is not execution evidence. The coverage checker runs in `make feature-check`, and its mutation tests run in `make feature-unit-check`.
 - The coverage checker invokes declared native test files and exact case filters itself, and derives success from process exit and observed test events. Test output cannot supply a success report or database-state digest. For database cases the checker reads the declared database state before and after each run with its own state reader.
 - A coverage case ID names shared behavior. Go and Rust commands map that ID to the exact native test symbol in their owning file; the checker accepts the ID only after that symbol passes. The checker supplies the selected database and DSN to the native process for database cases.
 - An owning client executes its own behavior cases from tests located under `clients/<language>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
