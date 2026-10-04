@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.24: `make test-servers`는 signal이 기다림을 끊어도 시작하는 서버의 처음 보고를 유지하므로, 종료를 기한 초과로 보고하거나 기다림이 멈추지 않는다.
+
 - T41.1: `make owner-check`가 고른 make target은 owner-check가 받은 서버 환경, decimal 환경, Rust target directory로 실행하므로, worktree의 검사는 main checkout의 서버와 target directory를 쓴다.
 
 - G5.22: 모든 검사는 cargo가 build한 program을 선언한 `CARGO_TARGET_DIR`에서 실행하고, 그 값이 없으면 `clients/rust/target`을 적는 대신 실패한다. `make repo-check`는 그 directory를 적은 실행 명령을 거부한다.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.24: `make test-servers` keeps the first report of a starting server when a signal interrupts the wait for it, so an exit is no longer reported as a missed deadline and the wait no longer hangs.
+
 - T41.1: the make targets that `make owner-check` selects run with the server environment, the decimal environment and the Rust target directory that owner-check receives, so a check in a worktree uses the servers and the target directory of the main checkout.
 
 - G5.22: every check runs the programs that cargo builds from the declared `CARGO_TARGET_DIR` and fails when it is unset, instead of naming `clients/rust/target`; `make repo-check` rejects a run command that names that directory.
