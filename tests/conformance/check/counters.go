@@ -14,6 +14,9 @@ import (
 type counterValue struct {
 	value  int64
 	called bool
+	// owner is the table that owns a PostgreSQL sequence (pg_depend), empty
+	// when no table owns it.
+	owner string
 }
 
 var conformanceWriteTables = map[string]bool{
@@ -92,18 +95,29 @@ func readCounters(db *sql.DB, driver string) (map[string]counterValue, error) {
 		}
 		return values, nil
 	case "postgres":
-		rows, err := db.QueryContext(ctx, "SELECT schemaname, sequencename FROM pg_catalog.pg_sequences WHERE schemaname = current_schema() ORDER BY sequencename")
+		// The owning table comes from pg_depend: a serial column's sequence
+		// depends on its table with deptype 'a', an identity column's with 'i'.
+		// The sequence name cannot tell, because PostgreSQL truncates it to 63
+		// bytes.
+		rows, err := db.QueryContext(ctx, `SELECT s.schemaname, s.sequencename, COALESCE(t.relname, '')
+			FROM pg_catalog.pg_sequences s
+			JOIN pg_catalog.pg_namespace n ON n.nspname = s.schemaname
+			JOIN pg_catalog.pg_class c ON c.relnamespace = n.oid AND c.relname = s.sequencename
+			LEFT JOIN pg_catalog.pg_depend d ON d.classid = 'pg_catalog.pg_class'::regclass AND d.objid = c.oid
+				AND d.refclassid = 'pg_catalog.pg_class'::regclass AND d.deptype IN ('a', 'i')
+			LEFT JOIN pg_catalog.pg_class t ON t.oid = d.refobjid
+			WHERE s.schemaname = current_schema() ORDER BY s.sequencename`)
 		if err != nil {
 			return nil, err
 		}
-		sequences := [][2]string{}
+		sequences := [][3]string{}
 		for rows.Next() {
-			var schema, name string
-			if err := rows.Scan(&schema, &name); err != nil {
+			var schema, name, owner string
+			if err := rows.Scan(&schema, &name, &owner); err != nil {
 				rows.Close()
 				return nil, err
 			}
-			sequences = append(sequences, [2]string{schema, name})
+			sequences = append(sequences, [3]string{schema, name, owner})
 		}
 		err = rows.Err()
 		rows.Close()
@@ -117,7 +131,7 @@ func readCounters(db *sql.DB, driver string) (map[string]counterValue, error) {
 			if err := db.QueryRowContext(ctx, "SELECT last_value, is_called FROM "+qualified).Scan(&value, &called); err != nil {
 				return nil, fmt.Errorf("read PostgreSQL sequence %s: %w", qualified, err)
 			}
-			values[qualified] = counterValue{value: value, called: called}
+			values[qualified] = counterValue{value: value, called: called, owner: sequence[2]}
 		}
 		return values, nil
 	default:
@@ -156,14 +170,15 @@ func restoreCounters(db *sql.DB, driver string, before map[string]counterValue) 
 		}
 		table := name
 		if driver == "postgres" {
-			// Generated serial sequences use <table>_seq_seq. Other sequences
-			// are not changed by the conformance vectors.
-			part := name[strings.LastIndex(name, ".")+1:]
-			part = strings.Trim(part, `"`)
-			if !strings.HasSuffix(part, "_seq_seq") {
-				return fmt.Errorf("undeclared PostgreSQL sequence changed: %s", name)
+			// A sequence belongs to the table that owns it; the conformance
+			// vectors change no sequence that no table owns.
+			table = old.owner
+			if !existed {
+				table = current.owner
 			}
-			table = strings.TrimSuffix(part, "_seq_seq")
+			if table == "" {
+				return fmt.Errorf("PostgreSQL sequence owned by no table changed: %s", name)
+			}
 		}
 		if !conformanceWriteTables[table] {
 			return fmt.Errorf("undeclared %s counter changed: %s", driver, name)
