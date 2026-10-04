@@ -2,10 +2,11 @@
 # and SQLite, with the common interfaces and the hot-path regression check of
 # feature-check, then the decoder fuzz checks, Go tests, and codec vectors.
 # make test-servers starts the database servers and writes their DSNs, as it
-# does for the local checks. Every step has its own timeout-minutes: the time
-# the step took in a run on ubuntu-26.04-arm (4 vCPU, 16 GB;
-# make check 19 min, the others under 2 min) with room for cold caches and
-# downloads; make repo-check fails on a step without one.
+# does for the local checks. A step that runs make or a test runner has no
+# timeout-minutes: its cases report RUN, PASS or FAIL with their own
+# deadlines, and a step deadline would be one deadline for the whole suite.
+# Every other step (actions, installs, one tool) has its own timeout-minutes.
+# make repo-check fails a step that breaks either rule.
 name: ci
 on:
   push:
@@ -112,7 +113,6 @@ jobs:
           proxysql --version | grep -F 'ProxySQL version 3.0.9-'
           echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
       - name: database servers
-        timeout-minutes: 15
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment
         # file .runtime/servers/env that the database checks read.
@@ -123,7 +123,6 @@ jobs:
         # variables from the process environment.
         run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
       - name: make check
-        timeout-minutes: 90
         # The targets of CHECK_TARGETS through the runner of the local checks,
         # with its own bench and decimal databases; make repo-check fails
         # when this workflow omits or repeats one of them or a verification
@@ -131,11 +130,9 @@ jobs:
         # one run reports every result.
         run: make check
       - name: decoder fuzz smoke checks
-        timeout-minutes: 10
         if: ${{ !cancelled() }}
         run: make fuzz-check
       - name: Go
-        timeout-minutes: 30
         if: ${{ !cancelled() }}
         run: go vet ./... && go test -v -timeout 0 ./...
       - name: common state and execution contracts
@@ -146,7 +143,6 @@ jobs:
           go run ./tests/interfaces/check --results tests/conformance/out/postgres
           go run ./tests/interfaces/check --results tests/conformance/out/sqlite
       - name: codec vectors
-        timeout-minutes: 30
         if: ${{ !cancelled() }}
         run: |
           go test -v -timeout 0 ./clients/go/orm -run TestCodec
