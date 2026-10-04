@@ -8,8 +8,8 @@
 // so the client's ROLLBACK finds no transaction. On MySQL and PostgreSQL a
 // test connection ends the server session that holds the transaction, so the
 // next statement and the rollback fail; that connection reaches the server
-// through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the make
-// targets set them to the server DSNs of TEST_ENV), not through a pooler.
+// through ORM_TEST_MYSQL_SERVER_DSN or ORM_TEST_POSTGRES_SERVER_DSN (the server
+// DSNs that make test-servers writes into TEST_ENV), not through a pooler.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
 // one of the four is unset.

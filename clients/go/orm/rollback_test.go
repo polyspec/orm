@@ -19,8 +19,8 @@ var rollbackColumns = []string{"seq", "label"}
 // transaction이 callback 중에 끝나고 끝내는 함수는 아무것도 하지 않는다.
 // MySQL과 PostgreSQL에서는 끝내는 함수가 test connection에서 rollback_probe의
 // lock을 가진 server session을 끝낸다. 그 connection은 pooler가 아니라
-// ORM_TEST_MYSQL_SERVER_DSN이나 ORM_TEST_POSTGRES_SERVER_DSN(make target이 TEST_ENV의
-// server DSN으로 둔다)의 server에서 case database를 연다. pooler가 statement를 스스로
+// ORM_TEST_MYSQL_SERVER_DSN이나 ORM_TEST_POSTGRES_SERVER_DSN(make test-servers가 TEST_ENV에
+// 적는 server DSN)의 server에서 case database를 연다. pooler가 statement를 스스로
 // 처리할 수 있기 때문이다: ProxySQL은 text protocol의 KILL을 자기 client session의
 // 명령으로 받는다. case database table의 lock이 pooler 뒤에서 transaction을 가진
 // session을 가리키는 표지다.
