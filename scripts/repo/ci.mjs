@@ -204,6 +204,9 @@ export function runnerErrors(declared, workflows) {
   const runner = declared.trim();
   if (!/^[a-z0-9][a-z0-9.-]*$/.test(runner) || declared !== `${runner}\n`)
     return [`.github/runner must hold one runner label and a newline, found ${JSON.stringify(declared)}`];
+  // contracts/features.json의 environment linux-runner 검증 명령은 이 runner의 make check만 실행한다.
+  if (!runner.startsWith('ubuntu-'))
+    return [`.github/runner ${runner} is not a Linux runner; the linux-runner checks of contracts/features.json run only there`];
   const errors = [];
   for (const [path, workflow] of Object.entries(workflows)) {
     const labels = [...workflow.matchAll(/^\s*runs-on:\s*(.*?)\s*$/gm)].map(match => match[1]);

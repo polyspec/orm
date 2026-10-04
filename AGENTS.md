@@ -34,6 +34,9 @@
   commands and coverage with a deadline per step. Do not choose owner checks by hand. A changed
   file that no feature declares selects nothing; declare it in the feature whose behavior it
   defines. State the command and its pass counts in the item's evidence.
+- A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
+  `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
+  another machine prints it as a RUNNER line and does not count it. CI runs it there.
 - During development run only the tests of the modified area; run the full suite once, when the
   item is marked `[o]`. Every test reports its own running, completion, success or failure with
   its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
