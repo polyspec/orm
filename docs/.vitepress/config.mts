@@ -92,6 +92,21 @@ export default defineConfig({
   },
   markdown: {
     config(md) {
+      // Vue compiles each page as a template, so `{{` in Markdown text or code would run as an
+      // interpolation. VitePress marks fenced code v-pre; inline code, indented code and text that
+      // holds `{{` are marked here, so Markdown always shows `{{` as written.
+      for (const rule of ['code_inline', 'code_block'] as const) {
+        const render = md.renderer.rules[rule]!;
+        md.renderer.rules[rule] = (tokens, index, options, env, self) => {
+          tokens[index].attrSet('v-pre', '');
+          return render(tokens, index, options, env, self);
+        };
+      }
+      const text = md.renderer.rules.text!;
+      md.renderer.rules.text = (tokens, index, options, env, self) => {
+        const html = text(tokens, index, options, env, self);
+        return html.includes('{{') ? `<span v-pre>${html}</span>` : html;
+      };
       // Source links stay valid in GitHub Markdown and in the static site.
       md.core.ruler.after('inline', 'repository-links', state => {
         const visit = tokens => {

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.26: a documentation page shows `{{` in text and code as written instead of running it as a Vue interpolation, and `make docs-build` fails when the server render of a page fails; the checklist page, which rendered empty, shows G5.5 again.
+
 - D4: the documentation site at https://polyspec.github.io/orm/ is the build of the current commit, deployed by the `docs-pages` workflow.
 
 - G5.25: the conformance check restores a PostgreSQL sequence by the table that owns it in `pg_depend`, so a table whose sequence name PostgreSQL truncates is restored too.
