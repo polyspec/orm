@@ -33,7 +33,7 @@ async fn sqlite_file_name_is_the_path() {
 #[tokio::test]
 async fn sqlite_path_cases() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dsn/sqlite-paths.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");

@@ -44,7 +44,6 @@ fn step_fields(s: &PlanStep) -> Value {
     Value::Object(out)
 }
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 /// case 하나의 기한.
@@ -53,7 +52,7 @@ const DEADLINE: Duration = Duration::from_secs(5);
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
 fn vectors() -> Value {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/plans.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("plans.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/plans.json version");
     vectors

@@ -27,7 +27,7 @@ pub fn connection_rules(db: &str) -> &'static [&'static str] {
 }
 
 pub fn repository() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    orm_testcase::manifest_dir().join("../../..")
 }
 
 pub fn require_dsn(var: &str) -> String {

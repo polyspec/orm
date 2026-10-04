@@ -12,7 +12,7 @@ use orm::{Config, Db, Schema};
 use orm_case_database::CaseDatabase;
 
 fn root() -> String {
-    format!("{}/../../..", env!("CARGO_MANIFEST_DIR"))
+    format!("{}/../../..", orm_testcase::manifest_dir().display())
 }
 
 async fn exec(db: &Db, statement: &str) {

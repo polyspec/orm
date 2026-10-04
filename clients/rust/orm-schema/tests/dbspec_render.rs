@@ -5,7 +5,6 @@ use orm_case_clock::CaseClock;
 use orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
@@ -26,7 +25,7 @@ fn strings(value: &Value) -> Vec<String> {
 fn render_vectors() {
     let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/ddl.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/ddl.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let cases = vectors["cases"].as_array().expect("ddl cases");
     assert!(!cases.is_empty(), "tests/dbspec/ddl.json has no cases");

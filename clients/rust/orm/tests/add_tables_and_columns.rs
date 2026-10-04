@@ -33,7 +33,7 @@ const DIFFERS: [&str; 8] = ["required", "removed", "changed", "nullable", "defau
 /// contracts/fixtures/add_tables_and_columns/<name>.dbs의 schema 값. generated code처럼 manifest text와
 /// 그 manifestHash를 가진다.
 fn fixture(name: &str) -> &'static Schema {
-    let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", env!("CARGO_MANIFEST_DIR"));
+    let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", orm_testcase::manifest_dir().display());
     let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     let document = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{path}: {e:?}"));

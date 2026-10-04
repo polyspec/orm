@@ -12,7 +12,7 @@ const CPU_LIMIT: Duration = Duration::from_secs(10);
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
 fn repository() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    orm_testcase::manifest_dir().join("../../..")
 }
 
 /// fixture에서 `id` case 하나를 찾아 operation이 `operation`인지 확인하고 input과 expected를 돌려준다.

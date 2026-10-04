@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
-import { runFile, targetPathErrors } from './target.mjs';
+import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
@@ -494,6 +494,21 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
   assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into clients/rust/target by default\n' }), []);
   assert.ok(runFile('contracts/features.json') && runFile('tests/dbspec/compare/runners.mjs'));
   assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('clients/rust/README.md') && !runFile('scripts/repo/target.mjs'));
+});
+
+// manifest directory case는 Rust source가 package directory를 compile 시점의 env!로 읽으면 거부한다.
+caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
+  assert.deepEqual(manifestDirErrors({
+    'clients/rust/orm/tests/a.rs': 'let dir = orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
+    'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
+  }), []);
+  assert.deepEqual(manifestDirErrors({
+    'clients/rust/orm/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
+    'clients/rust/orm/src/codec.rs': '        let root = concat!(env!( "CARGO_MANIFEST_DIR" ), "/../../../tests/codec");\n',
+  }), [
+    'clients/rust/orm/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+    'clients/rust/orm/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+  ]);
 });
 
 // test 선언 case는 저장소의 JavaScript file과 최소 file을 검사한다.

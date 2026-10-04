@@ -11,14 +11,13 @@ use orm_schema::dbspec::model::{DefaultValue, Document};
 use orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::time::Duration;
 
 /// case 하나의 기한.
 const DEADLINE: Duration = Duration::from_secs(5);
 
 fn vectors() -> Value {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/mermaid.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/mermaid.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("mermaid.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/mermaid.json version");
     vectors
@@ -144,7 +143,7 @@ fn mermaid_vectors() {
         let id = format!("round_trip/{}", case["id"].as_str().expect("id"));
         count += 1;
         run(&id, &mut failures, || {
-            let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..").join(case["path"].as_str().expect("path"));
+            let path = orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
             let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let document = dbspec::parse(&source, &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);

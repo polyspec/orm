@@ -4,7 +4,6 @@ use orm::codec::{aes_decrypt, aes_encrypt, blind_index, hex_decode, hex_upper};
 use orm::Param;
 use orm_case_clock::CaseClock;
 use serde_json::Value;
-use std::path::PathBuf;
 use std::time::Duration;
 
 /// 한 case가 자기 계산에 쓰는 thread CPU 시간의 한도.
@@ -12,7 +11,7 @@ const CPU_LIMIT: Duration = Duration::from_secs(10);
 
 /// fixture에서 `id` case 하나를 찾아 operation이 `operation`인지 확인하고 input과 expected를 돌려준다.
 fn case(id: &str, operation: &str) -> (Value, Value) {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../contracts/fixtures/authenticated_encryption.json");
+    let path = orm_testcase::manifest_dir().join("../../../contracts/fixtures/authenticated_encryption.json");
     let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "authenticated_encryption", "{}: feature", path.display());

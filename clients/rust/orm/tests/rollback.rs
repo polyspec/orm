@@ -346,7 +346,7 @@ async fn rollback_fault_postgres() {
 #[test]
 fn rollback_fault_entry() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let manifest = std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml")).unwrap();
+    let manifest = std::fs::read_to_string(orm_testcase::manifest_dir().join("Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");
     let default = features.lines().find(|line| line.trim_start().starts_with("default"));

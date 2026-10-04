@@ -14,7 +14,6 @@ use serde_json::Value;
 use sqlx::{Connection, SqliteConnection};
 use std::collections::HashMap;
 use std::future::Future;
-use std::path::PathBuf;
 use std::time::Duration;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
@@ -36,7 +35,7 @@ impl std::error::Error for Stop {}
 
 /// tests/dbspec/plans.json의 create-from-empty.
 fn create_from_empty() -> Vec<Plan> {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../tests/dbspec/plans.json");
+    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
     let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == "create-from-empty").expect("create-from-empty case");
     let text: String = case["plan"].as_array().expect("plan lines").iter().map(|l| format!("{}\n", l.as_str().expect("plan line"))).collect();

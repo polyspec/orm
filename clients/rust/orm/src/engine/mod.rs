@@ -34,7 +34,7 @@ mod tests {
     #[test]
     fn all_columns_select_the_aes_version_once() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
+        let text = crate::dbspec::read_file(&orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
         let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
@@ -58,7 +58,7 @@ mod tests {
     #[test]
     fn composite_relation_keys() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
+        let text = crate::dbspec::read_file(&orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
         let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn key_columns_are_not_written() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../schema/bench.dbs"))).unwrap();
+        let text = crate::dbspec::read_file(&orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
         let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();

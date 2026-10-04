@@ -1,7 +1,6 @@
 //! interface_contract: repository root에서 `go run ./tests/interfaces/check -language rust`를
 //! 실행하고 exit 0을 요구한다.
 use std::io::Read;
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -15,7 +14,7 @@ const DEADLINE: Duration = Duration::from_secs(300);
 fn coverage_interface_symbols() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let started = Instant::now();
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+    let root = orm_testcase::manifest_dir().join("../../..");
     let mut child = Command::new("go")
         .args(["run", "./tests/interfaces/check", "-language", "rust"])
         .current_dir(&root)
