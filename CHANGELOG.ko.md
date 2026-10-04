@@ -34,6 +34,8 @@
 
 - G5.28: `timeout_ms`가 있는 Rust transaction은 Go, PHP, TypeScript처럼 MySQL과 SQLite에서 `CAPABILITY_UNSUPPORTED`로 실패한다. server의 statement를 멈추지 못하는 client timer 아래 callback을 실행하지 않는다. PostgreSQL에서 이 option은 server의 `statement_timeout`뿐이다.
 
+- G5.28-1: Rust symbol snapshot은 G5.28이 `tx.rs`에서 지운 함수 `cancelled`를 더 이상 적지 않으므로 interface check가 Rust에서 다시 통과한다.
+
 - T42: 모든 client는 보내는 statement마다 연결의 subscriber에게 문장, 가린 bind, kind, table, 경과 시간, transaction 번호, 오류를 담은 event를 publish하며 `OnQuery` hook을 대신한다. plan step은 자기 table을 가지고, 모든 client는 같은 transaction 제어 statement를 실행한다.
 
 - G5.26: 문서 page는 text와 code의 `{{`를 Vue interpolation으로 실행하지 않고 쓴 그대로 보이며, page의 server render가 실패하면 `make docs-build`가 실패한다. 본문 없이 render되던 checklist page에 G5.5가 다시 보인다.
