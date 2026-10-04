@@ -2666,7 +2666,6 @@
   "clients/rust/orm/src/tx.rs::audit_record": " fn audit_record (db : \u0026 Db , values : \u0026 AuditValues) -\u003e Result \u003c AuditInsert \u003e",
   "clients/rust/orm/src/tx.rs::audit_values": " fn audit_values \u003c K : Into \u003c String \u003e , V : Into \u003c Param \u003e \u003e (values : impl IntoIterator \u003c Item = (K , V) \u003e) -\u003e AuditValues",
   "clients/rust/orm/src/tx.rs::begin": " async fn begin (db : \u0026 Db , isolation : Option \u003c Isolation \u003e , read_only : bool , timeout_ms : u64) -\u003e Result \u003c TxShared \u003e",
-  "clients/rust/orm/src/tx.rs::cancelled": " async fn cancelled (tx : \u0026 TxShared) -\u003e Error",
   "clients/rust/orm/src/tx.rs::commit": " async fn commit (tx : \u0026 TxShared) -\u003e Result \u003c () \u003e",
   "clients/rust/orm/src/tx.rs::end": " async fn end (tx : \u0026 TxShared , inner : TxInner , kind : \u0026 str , sql : \u0026 str) -\u003e Result \u003c () \u003e",
   "clients/rust/orm/src/tx.rs::ensure_sqlite_lock_table": " async fn ensure_sqlite_lock_table (db : \u0026 Db) -\u003e Result \u003c () \u003e",
