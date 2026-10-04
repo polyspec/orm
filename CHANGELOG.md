@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.9: `TestCIRequiresGeneratedChecks` requires that CI runs `make check`, whose `CHECK_TARGETS` hold the generated model checks and whose `feature-check` runs the common interface check, instead of the separate steps that G5.5 and G5.7 removed.
+
 - G5.8: every workflow job runs on `ubuntu-26.04-arm`, declared in `.github/runner`. CI installs MySQL 8.4.11 from the Ubuntu 26.04 packages, PostgreSQL 17 from the PostgreSQL apt repository, the arm64 ProxySQL 3.0.9 package checked by its sha256, and PHP 8.4 for `make php-min-check` through setup-php from the version `scripts/php/php-min.sh` reports. `make repo-check` fails when a job runs on another runner.
 
 - G5.7: the CI workflow no longer runs `make interface-check` and `make perf-check` beside `make check`, whose `feature-check` runs their commands. `make repo-check` fails when a workflow runs a verification command of `contracts/features.json` again.
