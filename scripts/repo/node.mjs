@@ -2,25 +2,7 @@
 // 하나이고, 로컬 검사와 모든 workflow가 그 version으로 실행한다. package.json의 engines.node
 // (">=x.y.z")는 TypeScript client가 지원하는 최저 version이며 make ts-min-check가 실행한다.
 
-import { workflowSteps } from './ci.mjs';
-
-// setupNodeSteps는 workflow에서 actions/setup-node를 쓰는 step마다 그 step의 줄을 돌려준다.
-function setupNodeSteps(workflow) {
-  const lines = workflow.split('\n');
-  const steps = [];
-  for (let index = 0; index < lines.length; index++) {
-    const item = lines[index].match(/^(\s*)- uses:\s*actions\/setup-node@/);
-    if (!item) continue;
-    const indent = item[1].length;
-    const body = [lines[index]];
-    for (const line of lines.slice(index + 1)) {
-      if (line.trim() !== '' && line.match(/^\s*/)[0].length <= indent) break;
-      body.push(line);
-    }
-    steps.push(body.join('\n'));
-  }
-  return steps;
-}
+import { actionSteps, workflowSteps } from './ci.mjs';
 
 const version = text => /^(\d+)\.(\d+)\.(\d+)$/.exec(text)?.slice(1).map(Number);
 // compare는 두 version의 major, minor, patch를 차례로 비교한다.
@@ -43,7 +25,7 @@ export function nodeVersionErrors(declared, minimum, workflows, running) {
   if (exact && lowest && compare(exact, lowest) < 0)
     errors.push(`.node-version ${declared.trim()} is below package.json engines.node ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
-    const steps = setupNodeSteps(workflow);
+    const steps = actionSteps(workflow, 'actions/setup-node');
     const usesNode = workflowSteps(workflow).some(step => /(^|[\s;&|(])(node|npm|npx)\s/m.test(step.run));
     if (usesNode && steps.length === 0) errors.push(`${path} runs Node without actions/setup-node`);
     for (const step of steps) {

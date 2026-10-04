@@ -40,6 +40,24 @@ export function workflowSteps(workflow) {
   });
 }
 
+// actionSteps는 workflow에서 action(예: actions/setup-node)을 쓰는 step마다 그 step의 줄을 돌려준다.
+export function actionSteps(workflow, action) {
+  const lines = workflow.split('\n');
+  const steps = [];
+  for (let index = 0; index < lines.length; index++) {
+    const item = lines[index].match(/^(\s*)- uses:\s*(\S+)@/);
+    if (!item || item[2] !== action) continue;
+    const indent = item[1].length;
+    const body = [lines[index]];
+    for (const line of lines.slice(index + 1)) {
+      if (line.trim() !== '' && line.match(/^\s*/)[0].length <= indent) break;
+      body.push(line);
+    }
+    steps.push(body.join('\n'));
+  }
+  return steps;
+}
+
 // repository의 make target은 run text의 줄 머리에서 실행한다. 다른 directory에서 build하는
 // make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
 const startsServers = run => /^make test-servers\s*$/m.test(run);
