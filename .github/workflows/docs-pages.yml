@@ -30,10 +30,16 @@ jobs:
         timeout-minutes: 15
       - run: npx playwright install --with-deps chromium
         timeout-minutes: 20
+      # The job publishes docs/.vitepress/dist: the build step writes it, the
+      # idempotence check builds it twice more and compares every byte, and the
+      # smoke test serves it and opens it in a browser before the upload.
+      - name: Build the static site
+        timeout-minutes: 10
+        run: make docs-build
       - name: Build twice and compare every static file
         timeout-minutes: 20
         run: make docs-verify-idempotent
-      - name: Check static routes, links, diagrams and browser behavior
+      - name: Smoke test of the built site in a browser
         timeout-minutes: 15
         run: make docs-static-check
       - uses: actions/upload-pages-artifact@v3
