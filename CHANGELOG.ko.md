@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.20: MySQL test 서버는 모든 platform에서 `lower_case_table_names=1`로 실행한다. `make test-servers`는 다른 값으로 시작한 서버의 data를 기록되고 이어서 할 수 있는 migration으로 옮긴다. 이 migration은 겹치는 이름을 거부하고, 이전 data directory를 보관하며, 모든 수를 확인한다. 선언한 값이면 아무것도 바꾸지 않는다.
+
 - G5.19: `docs-pages.yml`은 idempotence 검사 전에 자기 step에서 정적 site를 build하고 브라우저 검사를 결과물의 smoke test로 실행하므로, workflow가 build와 smoke stage를 가진다.
 
 - T41: `make owner-check`는 `contracts/check-inputs.json`에 선언한 입력이 바뀐 path를 맞추는 `CHECK_TARGETS`의 모든 make target도 실행하므로, 바뀐 문서는 `make docs-check`와 `make docs-verify-idempotent`를 실행한다. `make repo-check`는 모든 target의 입력을 요구한다.

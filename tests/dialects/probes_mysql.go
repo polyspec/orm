@@ -15,12 +15,12 @@ func mysqlProbes() []Probe {
 	}
 	utc := "SET time_zone = '+00:00'"
 	return []Probe{
-		p("env.server", "the server is MySQL 8.4 in strict mode with lower_case_table_names=2", func(e *Env) {
+		p("env.server", "the server is MySQL 8.4 in strict mode with lower_case_table_names=1", func(e *Env) {
 			version := e.Value("SELECT VERSION()")
 			e.Check(strings.HasPrefix(version, "8.4."), "version %s", version)
 			mode := e.Value("SELECT @@sql_mode")
 			e.Check(strings.Contains(mode, "STRICT_TRANS_TABLES"), "sql_mode %s", mode)
-			e.Want("SELECT @@lower_case_table_names", "2")
+			e.Want("SELECT @@lower_case_table_names", "1")
 			e.Note("version=%s sql_mode=%s log_bin=%s log_bin_trust_function_creators=%s time_zone=%s system_time_zone=%s explicit_defaults_for_timestamp=%s",
 				version, mode, e.Value("SELECT @@log_bin"), e.Value("SELECT @@log_bin_trust_function_creators"),
 				e.Value("SELECT @@time_zone"), e.Value("SELECT @@system_time_zone"), e.Value("SELECT @@explicit_defaults_for_timestamp"))
@@ -387,9 +387,10 @@ func mysqlProbes() []Probe {
 		p("ident.column_case_insensitive", "column names are case-insensitive (1060)", func(e *Env) {
 			e.Fails("CREATE TABLE t (a int, A int)", "1060")
 		}),
-		p("ident.table_case_server_setting", "with lower_case_table_names=2, Foo and foo are the same table (1050)", func(e *Env) {
-			e.Want("SELECT @@lower_case_table_names", "2")
+		p("ident.table_case_server_setting", "with lower_case_table_names=1, Foo is stored as foo and foo is the same table (1050)", func(e *Env) {
+			e.Want("SELECT @@lower_case_table_names", "1")
 			e.Exec("CREATE TABLE Foo (a int)")
+			e.Want("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'foo'", "foo")
 			e.Fails("CREATE TABLE foo (a int)", "1050")
 		}),
 		// Update-time stamping.

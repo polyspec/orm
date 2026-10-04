@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.20: the MySQL test servers run with `lower_case_table_names=1` on every platform. `make test-servers` moves the data of servers started with another value by a recorded, resumable migration that refuses colliding names, keeps the earlier data directories and verifies every count; with the declared value it changes nothing.
+
 - G5.19: `docs-pages.yml` builds the static site in its own step before the idempotence check and runs the browser check as a smoke test of the output, so the workflow has its build and smoke stages.
 
 - T41: `make owner-check` also runs every make target of `CHECK_TARGETS` whose inputs, declared in `contracts/check-inputs.json`, match a changed path, so a changed document runs `make docs-check` and `make docs-verify-idempotent`; `make repo-check` requires the inputs of every target.
