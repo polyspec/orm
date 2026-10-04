@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -184,6 +185,68 @@ func Count(p *model.ProductModel) (int, error) {
 	}
 	if strings.Contains(text, "v, _ :=") {
 		t.Error("generated product.go drops a failed relation type assertion with v, _ :=")
+	}
+	buildScannedModule(t)
+}
+
+// TestGoGenerationScanPathSpelling checks that the same sources and schema
+// give the same model files however the scan patterns and the output
+// directory are written: relative, absolute, or with a trailing slash.
+func TestGoGenerationScanPathSpelling(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("src/src.go", `package src
+
+import "example.com/ormexample/model"
+
+func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
+`)
+	write("tests/tests.go", `package tests
+
+import "example.com/ormexample/model"
+
+func Named() *model.BrandModel { return model.Brand().GtMinPrice(2) }
+`)
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spellings := []struct{ name, src, tests, out string }{
+		{"relative", "./src", "./tests", "model"},
+		{"absolute", filepath.Join(dir, "src"), filepath.Join(dir, "tests"), filepath.Join(dir, "model")},
+		{"dot", "./src/.", "./tests/.", "./model"},
+		{"trailing_slash", "./src/", "./tests/", "model/"},
+	}
+	var first map[string]string
+	for _, s := range spellings {
+		if err := os.RemoveAll("model"); err != nil {
+			t.Fatal(err)
+		}
+		if err := generateGo(namesManifest(t, namesDiagram), s.out, "", []string{s.src, s.tests}); err != nil {
+			t.Fatalf("%s: %v", s.name, err)
+		}
+		entries, err := os.ReadDir("model")
+		if err != nil {
+			t.Fatal(err)
+		}
+		files := map[string]string{}
+		for _, entry := range entries {
+			b, err := os.ReadFile(filepath.Join("model", entry.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			files[entry.Name()] = string(b)
+		}
+		if first == nil {
+			first = files
+			if !strings.Contains(files["product.go"], ") LtPrice[") || !strings.Contains(files["brand.go"], ") GtMinPrice[") {
+				t.Fatal("the calls of src and tests are not generated")
+			}
+			continue
+		}
+		if !maps.Equal(files, first) {
+			t.Errorf("the model files of the %s paths differ from the relative paths", s.name)
+		}
 	}
 	buildScannedModule(t)
 }

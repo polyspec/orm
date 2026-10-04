@@ -1521,7 +1521,11 @@
         },
         {
           "id": "generation-typescript",
-          "command": "node clients/typescript/tests/generate.mjs"
+          "command": "node clients/typescript/tests/generate.mjs && node clients/typescript/tests/generate-scan.mjs"
+        },
+        {
+          "id": "generation-php",
+          "command": "php clients/php/tests/orm_gen_test.php"
         },
         {
           "id": "generation-rust",

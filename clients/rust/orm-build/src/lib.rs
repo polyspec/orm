@@ -100,6 +100,9 @@ impl Builder {
         let fallible_setters = generate::fallible_setters(&set.model);
         let scanned = scan::scan(&paths, &models, &fallible_setters)?;
         std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
+        // generated source는 manifest file의 path를 include_str!로 담는다. path를 어떻게 썼든(`./`, `..`,
+        // 끝의 `/`, 상대 path) 같은 directory는 같은 source가 되도록 canonical path로 바꾼다.
+        let out_dir = std::fs::canonicalize(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
         let manifest_file = out_dir.join(MANIFEST_FILE);
         write_if_changed(&manifest_file, set.manifest_text.as_bytes())?;
         if !set.external_text.is_empty() {
