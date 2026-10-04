@@ -18,9 +18,12 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@v6
         with: { go-version: "1.27" }
+      # .node-version declares the one Node release of the checks, locally and
+      # here; make repo-check requires it. make ts-min-check runs the
+      # TypeScript client on the lowest release of package.json engines.node.
       - uses: actions/setup-node@v7
         with:
-          node-version: "22.16.0"
+          node-version-file: .node-version
           cache: npm
       - name: install Node dependencies
         run: |

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.3: the checks and every GitHub Actions workflow run one Node release, declared once in `.node-version` (26.8.1); the workflows read it with `node-version-file` instead of `22.16.0` and `24`, whose `node:sqlite` printed an `ExperimentalWarning` that the coverage checker rejects. `make repo-check` fails when a workflow declares its own Node version or the running Node differs from `.node-version`. The TypeScript client still supports Node 22.16.0, which `make ts-min-check` runs.
+
 - T39: the generated models no longer depend on how a path is written. Rust `orm_build::Builder` includes the manifest by the canonical path of the output directory, so a relative, absolute, `./` or trailing-`/` spelling of `out_dir` gives the same source; Go, PHP, Rust and TypeScript each check this on one fixture with four spellings of the scan and output paths.
 
 - G5.2: the CI workflow installs MySQL 8.4.11 from five packages of its Ubuntu 24.04 deb bundle through apt, which installs their dependencies such as `libaio1t64`, so `make test-servers` finds `mysqld` at `/usr/sbin/mysqld` without a symbolic link. `make repo-check` fails when a workflow step creates a symbolic link.

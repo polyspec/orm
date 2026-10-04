@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.3: 검사와 모든 GitHub Actions workflow는 `.node-version`에 한 번 선언한 Node release 하나(26.8.1)로 실행한다. workflow는 `22.16.0`과 `24` 대신 `node-version-file`로 이를 읽는다. 22.16.0의 `node:sqlite`는 coverage checker가 거부하는 `ExperimentalWarning`을 출력했다. `make repo-check`는 workflow가 Node version을 직접 선언하거나 실행 중인 Node가 `.node-version`과 다르면 실패한다. TypeScript client는 계속 Node 22.16.0을 지원하며 `make ts-min-check`가 이를 실행한다.
+
 - T39: 생성 모델은 더 이상 path를 쓴 방식에 의존하지 않는다. Rust `orm_build::Builder`는 manifest를 output directory의 canonical path로 include하므로 `out_dir`를 상대 path, 절대 path, `./`, 끝의 `/`로 써도 같은 source가 나온다. Go, PHP, Rust, TypeScript는 각각 fixture 하나에서 scan과 output path를 네 방식으로 써서 이를 확인한다.
 
 - G5.2: CI workflow는 MySQL 8.4.11을 Ubuntu 24.04 deb bundle의 package 다섯 개로 apt를 통해 설치하고, apt가 `libaio1t64` 같은 의존성을 설치하므로 `make test-servers`는 symbolic link 없이 `/usr/sbin/mysqld`에서 `mysqld`를 찾는다. `make repo-check`는 workflow step이 symbolic link를 만들면 실패한다.
