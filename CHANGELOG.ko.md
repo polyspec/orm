@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.8: 모든 workflow job은 `.github/runner`에 선언한 `ubuntu-26.04-arm`에서 실행한다. CI는 MySQL 8.4.11을 Ubuntu 26.04 package에서, PostgreSQL 17을 PostgreSQL apt repository에서, sha256으로 확인한 arm64 ProxySQL 3.0.9 package를, `make php-min-check`의 PHP 8.4를 `scripts/php/php-min.sh`가 보고한 version으로 setup-php를 통해 설치한다. `make repo-check`는 job이 다른 runner에서 실행하면 실패한다.
+
 - G5.7: CI workflow는 `make check`의 `feature-check`가 명령을 실행하는 `make interface-check`와 `make perf-check`를 더 이상 따로 실행하지 않는다. `make repo-check`는 workflow가 `contracts/features.json`의 검증 명령을 다시 실행하면 실패한다.
 
 - G5.5: CI workflow는 target 43개 가운데 17개를 따로 된 step에서 실행하는 대신, 로컬 검사의 runner로 `CHECK_TARGETS`의 모든 target을 실행하는 `make check`를 실행한다. 이후 step은 실패 뒤에도 실행한다. `make repo-check`는 workflow가 `CHECK_TARGETS`의 target을 빠뜨리거나 두 번 실행하면 실패한다.

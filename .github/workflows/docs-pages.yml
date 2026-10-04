@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
     steps:
@@ -37,7 +37,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04-arm
     permissions:
       pages: write
       id-token: write
