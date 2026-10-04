@@ -1482,14 +1482,15 @@
         "go": "pass",
         "php": "planned",
         "rust": "planned",
-        "typescript": "planned"
+        "typescript": "pass"
       },
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
         "tests/events/vectors.json"
       ],
       "tests": [
-        "clients/go/orm/statement_events_test.go"
+        "clients/go/orm/statement_events_test.go",
+        "clients/typescript/tests/statement-events.mjs"
       ],
       "docs": [
         "docs/usage.md",
@@ -1500,6 +1501,10 @@
         {
           "id": "statement-events-go",
           "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestStatementEvents' -count=1"
+        },
+        {
+          "id": "statement-events-typescript",
+          "command": "node clients/typescript/tests/statement-events.mjs"
         }
       ],
       "public_constraints": [

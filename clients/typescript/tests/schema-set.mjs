@@ -93,12 +93,14 @@ async function severalSchemas(dsn) {
  */
 async function unregisteredSchema(dsn) {
   const statements = [];
-  const onQuery = event => statements.push(event.sql);
-  const raw = await Db.connect(dsn, { onQuery });
+  const record = event => statements.push(event.sql);
+  const raw = await Db.connect(dsn);
+  raw.subscribe(record);
   try {
     check(await code(() => new User().connect(raw).getCount()) === 'SCHEMA_HASH_MISMATCH', 'bench read on a raw connection');
   } finally { await raw.close(); }
-  const core = await Db.connectSchema(dsn, benchSchema, { onQuery });
+  const core = await Db.connectSchema(dsn, benchSchema);
+  core.subscribe(record);
   try {
     const installer = await Db.connectSchema(dsn, decimalSchema);
     try {
@@ -127,7 +129,8 @@ async function editedManifest(dsn) {
   check(await code(() => Db.connectSchema(dsn, edited)) === 'CONFIG', 'connect with an edited manifest');
   check(await code(() => registerModel(edited.manifestText, edited.manifestHash)) === 'SCHEMA_HASH_MISMATCH', 'generated code of an edited manifest');
   const statements = [];
-  const db = await Db.connectSchema(dsn, decimalSchema, { onQuery: event => statements.push(event.sql) });
+  const db = await Db.connectSchema(dsn, decimalSchema);
+  db.subscribe(event => statements.push(event.sql));
   try {
     check(await code(() => db.utils().schema().install(edited)) === 'CONFIG', 'install of an edited manifest');
     check(statements.length === 0, `the edited manifest ran ${statements.length} statements`);

@@ -437,6 +437,27 @@ function operandType(t: DbspecTable, a: CheckOperand, b: CheckOperand | null): D
  * (docs/dbspec.md, "Manifest and hashes"). An unknown dialect is a TypeError.
  */
 export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult {
+  const rendered = renderDbspecStatements(documents, dialect);
+  if (rendered.statements === null) return rendered;
+  return Object.freeze({ statements: Object.freeze(rendered.statements.map(s => s.sql)), diagnostics: rendered.diagnostics });
+}
+
+/** One rendered statement and the table it creates or changes. */
+export interface DbspecRenderedStatement {
+  readonly sql: string;
+  readonly table: string;
+}
+
+/** The rendered statements with their tables and no diagnostic, or the diagnostics of an invalid document set and no statements. */
+export type DbspecRenderStatementsResult =
+  | { readonly statements: readonly DbspecRenderedStatement[]; readonly diagnostics: readonly [] }
+  | { readonly statements: null; readonly diagnostics: readonly DbspecDiagnostic[] };
+
+/**
+ * Writes the statements of renderDbspec in the same order, each with the
+ * table it creates or changes.
+ */
+export function renderDbspecStatements(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderStatementsResult {
   if (!DIALECTS.has(dialect)) throw new TypeError(`unknown dbspec dialect ${String(dialect)}`);
   if (!Array.isArray(documents)) throw new TypeError('dbspec documents must be an array of parsed documents');
   const { diagnostics } = checkSet(documents);
@@ -444,15 +465,16 @@ export function renderDbspec(documents: readonly DbspecDocument[], dialect: Dbsp
   const r = new Renderer(dialect);
   // 외부 문서의 table은 그 문서를 소유한 set이 만든다.
   const ordered = useOrder(documents).filter(d => d.external !== true);
-  const out: string[] = [];
-  for (const document of ordered) for (const t of document.tables) out.push(...r.table(t));
+  const out: DbspecRenderedStatement[] = [];
+  const add = (table: string, statements: readonly string[]) => { for (const sql of statements) out.push(Object.freeze({ sql, table })); };
+  for (const document of ordered) for (const t of document.tables) add(t.name, r.table(t));
   if (dialect !== 'sqlite') {
     for (const document of ordered) {
       for (const t of document.tables) {
-        for (const f of sorted(t.foreignKeys, f => f.name)) out.push(`ALTER TABLE ${r.q(t.name)} ADD ${r.foreignKey(f)}`);
+        for (const f of sorted(t.foreignKeys, f => f.name)) add(t.name, [`ALTER TABLE ${r.q(t.name)} ADD ${r.foreignKey(f)}`]);
       }
     }
   }
-  for (const document of ordered) for (const t of document.tables) out.push(...r.triggers(t));
+  for (const document of ordered) for (const t of document.tables) add(t.name, r.triggers(t));
   return Object.freeze({ statements: Object.freeze(out), diagnostics: Object.freeze([]) as readonly [] });
 }

@@ -885,9 +885,9 @@ try {
     const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
     try {
       const failReset = () => {
-        const tx = db.utils().active('setLocal').tx;
-        const control = tx.control.bind(tx);
-        tx.control = (sql, params) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params);
+        const session = db.utils().active('setLocal').session;
+        const control = session.control.bind(session);
+        session.control = (sql, params, done) => sql.startsWith('SET @`orm.') && sql.endsWith('= NULL') ? Promise.reject(new Error('reset rejected by the test driver')) : control(sql, params, done);
       };
       const message = async promise => { try { await promise; return 'no error'; } catch (error) { return String(error?.message); } };
       const committed = await message(db.transaction(async () => { failReset(); await db.utils().setLocal('ormtest.actor', 'tester'); }, { retry: 0 }));
@@ -914,9 +914,9 @@ try {
     try {
       const key = name => `orm_test.${name}.${process.pid}`;
       const failRelease = () => {
-        const tx = db.utils().active('lock').tx;
-        const control = tx.control.bind(tx);
-        tx.control = (sql, params) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
+        const session = db.utils().active('lock').session;
+        const control = session.control.bind(session);
+        session.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
       };
       const committed = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key('commit')); }, { retry: 0 }));
       check(committed.includes('statement rejected by the test driver'), `commit reports the failed release: ${committed}`);
@@ -925,7 +925,7 @@ try {
       // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
       const notHeld = await failureMessage(db.transaction(async () => {
         await db.utils().lock(key('released'));
-        await db.utils().active('lock').tx.control('DO RELEASE_LOCK(?)', [key('released')]);
+        await db.utils().active('lock').session.control('DO RELEASE_LOCK(?)', [key('released')], () => undefined);
       }, { retry: 0 }));
       check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
     } finally {
@@ -934,21 +934,23 @@ try {
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
   // native rollback, SQLite mode 복원, begin 뒤의 rollback이 실패하면 transaction이 그 오류를 원인과
-  // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 exec가 실패시킨다.
+  // 함께 보고한다. 실제 SQLite는 이 statement를 거부하지 않으므로 connection의 statement 준비가 실패시킨다.
   // rollback은 실제로 끝낸 뒤 실패를 돌려준다.
   begin('sqlite/failedRollback');
   try {
     const db = await connectBench(`sqlite://${join(work, 'transaction-end.sqlite')}`);
     try {
-      const native = db.pool.state.db;
-      const exec = native.exec.bind(native);
+      const state = db.pool.state;
+      const native = state.db;
+      const statement = state.statement.bind(state);
       let rejects = () => false;
       let rejectRollback = false;
-      native.exec = sql => {
+      // ROLLBACK은 실제로 실행한 뒤 실패를 돌려준다.
+      state.statement = sql => {
         if (rejects(sql)) throw new Error('statement rejected by the test driver');
-        const result = exec(sql);
-        if (rejectRollback && sql === 'ROLLBACK') throw new Error('rollback rejected by the test driver');
-        return result;
+        const prepared = statement(sql);
+        if (!rejectRollback || sql !== 'ROLLBACK') return prepared;
+        return { run: (...values) => { prepared.run(...values); throw new Error('rollback rejected by the test driver'); } };
       };
       rejectRollback = true;
       const rolledBack = await failureMessage(db.transaction(async () => { throw new Error('callback failed'); }, { retry: 0 }));
@@ -976,10 +978,10 @@ try {
     const db = await connectBench(`sqlite://${join(work, 'savepoint-end.sqlite')}`);
     try {
       const nested = (rejects, callback) => failureMessage(db.transaction(async () => {
-        const tx = db.utils().active('transaction').tx;
-        const control = tx.control.bind(tx);
-        tx.control = (sql, params) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params);
-        try { return await db.transaction(callback); } finally { tx.control = control; }
+        const session = db.utils().active('transaction').session;
+        const control = session.control.bind(session);
+        session.control = (sql, params, done) => rejects(sql) ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
+        try { return await db.transaction(callback); } finally { session.control = control; }
       }, { retry: 0 }));
       for (const statement of ['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT']) {
         const failed = await nested(sql => sql.startsWith(statement), async () => { throw new Error('callback failed'); });

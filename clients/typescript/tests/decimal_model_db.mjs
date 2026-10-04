@@ -47,7 +47,7 @@ try {
       const frame = activeFor(db);
       if (!frame) throw new Error('decimal transaction is absent');
       const sql = `SELECT amount, large_value FROM decimal_case WHERE seq = ${dialect === 'postgres' ? '$1' : '?'}`;
-      const stored = (await frame.tx.execute(sql, [1])).rows;
+      const stored = (await frame.session.execute(sql, [1], undefined, () => undefined)).rows;
       if (stored.length !== 1 || String(stored[0][0]) !== (dialect === 'sqlite' ? '480450' : '48.0450') || String(stored[0][1]) !== '9007199254740993') {
         throw new Error('database decimal storage lost exact values');
       }
