@@ -53,10 +53,30 @@ func (ps *stepSet) add(st *plan.Step) int {
 }
 
 type builder struct {
-	p     *Planner
-	binds []plan.BindSlot
-	n     int
-	subs  int // subquery alias counter
+	p      *Planner
+	binds  []plan.BindSlot
+	n      int
+	subs   int             // subquery alias counter
+	tables map[string]bool // statement이 이름으로 쓴 table
+}
+
+// table은 ent의 table 이름을 quote하고 statement의 table로 기록한다.
+func (b *builder) table(ent *runtimemodel.Entity) string {
+	if b.tables == nil {
+		b.tables = map[string]bool{}
+	}
+	b.tables[ent.Table] = true
+	return b.p.D.Quote(ent.Table)
+}
+
+// tableList는 statement가 쓴 table을 정렬해 돌려준다.
+func (b *builder) tableList() []string {
+	out := make([]string, 0, len(b.tables))
+	for t := range b.tables {
+		out = append(out, t)
+	}
+	slices.Sort(out)
+	return out
 }
 
 func (b *builder) param(i int) string {
@@ -246,7 +266,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		parts := p.qualified(root, rc.childKeys)
 		sb.WriteString(", ROW_NUMBER() OVER (PARTITION BY " + strings.Join(parts, ", ") + order + ") AS " + p.D.Quote("orm_rn"))
 	}
-	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
+	sb.WriteString(" FROM " + b.table(root.ent) + " AS " + p.D.Quote(root.alias))
 	if q.ForceIdx != "" {
 		sb.WriteString(p.D.ForceIndex(q.ForceIdx))
 	}
@@ -334,7 +354,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			}
 		}
 	}
-	st := &plan.Step{Role: "main", SQL: sb.String(), Lock: q.Lock, BindSlots: b.binds}
+	st := &plan.Step{Role: "main", SQL: sb.String(), Tables: b.tableList(), Lock: q.Lock, BindSlots: b.binds}
 	switch {
 	case kind == "count" && len(ps.steps) > 0:
 		st.Role = "count"
@@ -728,7 +748,7 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 		if j.Kind == "left" {
 			kw = " LEFT JOIN "
 		}
-		sb.WriteString(kw + p.D.Quote(js.ent.Table) + " AS " + p.D.Quote(js.alias) + " ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
+		sb.WriteString(kw + b.table(js.ent) + " AS " + p.D.Quote(js.alias) + " ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
 		if j.Query.On != nil && len(j.Query.On.Items) > 0 {
 			on, err := p.renderGroup(b, js, j.Query.On, true)
 			if err != nil {
@@ -1123,7 +1143,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		cols = append(cols, p.D.Quote(c.column))
 		vals = append(vals, c.value(b))
 	}
-	sql := "INSERT INTO " + p.D.Quote(ent.Table) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
+	sql := "INSERT INTO " + b.table(ent) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
 	if len(r.Rows) > 0 {
 		// source maps each rendered column to its value in r.Set; derived
 		// blind-index columns take the value of their AES source column.
@@ -1151,7 +1171,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			}
 			sql += ", (" + strings.Join(more, ", ") + ")"
 		}
-		return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+		return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
 	if len(r.OnDuplicate) > 0 {
 		duplicate := addBlindIndexAssignments(ent, slices.Clone(r.OnDuplicate))
@@ -1186,7 +1206,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if p.D.InsertReturningID() && ent.Identity != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
 	}
-	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
 // managedColumn은 executor가 insert마다 쓰는 column과 그 bind slot이다.
@@ -1396,8 +1416,8 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
 	}
-	sql := "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
-	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	sql := "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
+	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
 // statementTime은 updated와 soft delete가 datetime column에 쓰는 statement
@@ -1428,10 +1448,10 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
-		return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, BindSlots: b.binds}, nil
+		return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
-	sql := "DELETE FROM " + p.D.Quote(ent.Table) + " WHERE " + where
-	return &plan.Step{Role: "main", SQL: sql, BindSlots: b.binds}, nil
+	sql := "DELETE FROM " + b.table(ent) + " WHERE " + where
+	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
 // restoreStep은 soft delete한 행 하나를 되돌리는 update다. where는 primary key나
@@ -1481,7 +1501,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NOT NULL"
-	return &plan.Step{Role: "main", SQL: "UPDATE " + p.D.Quote(ent.Table) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, BindSlots: b.binds}, nil
+	return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
 // restoreKey는 restore의 where가 primary key나 unique key 하나의 모든 column을
@@ -1613,7 +1633,7 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 	default:
 		sb.WriteString(p.qcol(root, sub.Column))
 	}
-	sb.WriteString(" FROM " + p.D.Quote(root.ent.Table) + " AS " + p.D.Quote(root.alias))
+	sb.WriteString(" FROM " + b.table(root.ent) + " AS " + p.D.Quote(root.alias))
 	if err := p.renderJoins(b, &sb, root); err != nil {
 		return "", err
 	}

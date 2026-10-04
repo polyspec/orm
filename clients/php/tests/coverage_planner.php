@@ -36,9 +36,10 @@ function plannerCase(string $root, array $fixture, string $id): void
         }
         $plan = $engine->compile($request);
         $statements = array_map(static fn(array $step): array => [
-            'params' => array_map(static fn(array $slot): mixed => ($slot['from'] ?? '') === 'param' ? $slot['param'] : $slot, $step['bind_slots']),
+            'params' => array_map(static fn(array $slot): mixed => match ($slot['from'] ?? '') { 'param' => $slot['param'], 'parent' => -1, default => $slot }, $step['bind_slots']),
             'role' => $step['role'],
             'sql' => $step['sql'],
+            'tables' => $step['tables'],
         ], $plan['steps']);
         coverageWant($statements === $case['expected'][$dialect], "$dialect $id statements " . json_encode($statements));
     }
@@ -49,5 +50,6 @@ runCoverageCases($argv, [
     'planner_count' => fn() => plannerCase($root, $fixture, 'planner_count'),
     'planner_rejects_unknown_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_unknown_column'),
     'planner_restore' => fn() => plannerCase($root, $fixture, 'planner_restore'),
+    'planner_tables' => fn() => plannerCase($root, $fixture, 'planner_tables'),
     'planner_restore_rejects_non_key' => fn() => plannerCase($root, $fixture, 'planner_restore_rejects_non_key'),
 ]);

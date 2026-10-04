@@ -90,6 +90,7 @@ classDiagram
         Optional_ParentRef parent
         Text role
         Text sql
+        List_Text tables
     }
     class Assemble {
         List_Child children
@@ -102,12 +103,14 @@ classDiagram
         Cache_Shape_Plan plans
         ConnectionPool pool
         Cache_Sql_Statement statements
+        List_StatementSubscriber subscribers
         connect()
         connectSchema()
         transaction()
         utils()
         close()
         stats()
+        subscribe()
     }
     class TransactionFlow {
         List_TransactionFrame frames
@@ -223,7 +226,7 @@ classDiagram
 | Plan | Immutable statements and assembly metadata cached per request shape. |
 | Step | One SQL statement of a plan. |
 | Assemble | Maps result columns by position to models, joins, and relations. |
-| Db | Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches. |
+| Db | Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers. |
 | TransactionFlow | Private. The transaction of the current execution flow; models without a connection use it. |
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
@@ -310,6 +313,7 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Step.parent | `Optional<ParentRef>` |
 | Step.role | `Text` |
 | Step.sql | `Text` |
+| Step.tables | `List<Text>` |
 | Assemble.children | `List<Child>` |
 | Assemble.columns | `List<OutputColumn>` |
 | Assemble.entity | `Text` |
@@ -318,6 +322,7 @@ An underscore in a diagram type name separates nested types. The table defines t
 | Db.plans | `Cache<Shape,Plan>` |
 | Db.pool | `ConnectionPool` |
 | Db.statements | `Cache<Sql,Statement>` |
+| Db.subscribers | `List<StatementSubscriber>` |
 | TransactionFlow.frames | `List<TransactionFrame>` |
 | Collection.fetched | `Map<Key,Value>` |
 | Collection.items | `Map<Key,Model>` |

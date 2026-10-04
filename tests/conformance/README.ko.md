@@ -3,8 +3,10 @@
 한 문서와 네 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
 
 ```json
-{"<vector>": {"statements": [{"sql": "...", "binds": [...]}], "result": ...}}
+{"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
 ```
+
+각 statement는 연결의 statement event다([사용법](../../docs/usage.md#statement-events)): 실행기의 연결이 실행하는 모든 statement를 kind, table, 오류 code와 함께 기록한다. `transaction`은 벡터 안에서 처음 나온 순서로 1부터 다시 센 번호이고 transaction 밖에서는 null이다.
 
 `check`는 JSON 숫자를 정확한 유리수 값으로 비교하고 기록할 때 원래 십진 표현을 보존한다. 객체 키는 출력에서 정렬한다. SQL, bind 순서와 타입, 결과를 `vectors.json`과 비교한다. 2^53을 넘는 서로 다른 정수도 구분하며 동등한 십진 표현은 같은 값으로 처리한다. 날짜 형식은 `YYYY-MM-DD HH:MM:SS[.ffffff]`다.
 어느 깊이의 객체든 중복 키가 있거나 데이터베이스 기대값 파일이 없으면 실패한다.

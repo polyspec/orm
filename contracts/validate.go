@@ -53,6 +53,8 @@ var outputs = map[string]map[string]string{
 	"DbspecRenderResult":    {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
 	"DbspecManifestResult":  {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
 	"AddedTablesAndColumns": {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
+	// 구독 해제는 database를 읽거나 쓰지 않는 동기 호출이다.
+	"Unsubscribe": {"go": "(unsubscribefunc())", "php": "Closure", "rust": "Subscription", "typescript": "()=>void"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -81,6 +83,7 @@ var inputs = map[string]map[string]string{
 	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument"},
 	"DbspecRenderSource":  {"go": "documents[]*Document,dialectDialect", "php": "array$documents,string$dialect", "rust": "documents:&[&Document],dialect:Dialect", "typescript": "documents:readonlyDbspecDocument[],dialect:DbspecDialect"},
 	"DbspecDocumentSet":   {"go": "documents[]*Document", "php": "array$documents", "rust": "documents:&[&Document]", "typescript": "documents:readonlyDbspecDocument[]"},
+	"StatementSubscriber": {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void"},
 }
 
 // validateRules checks every native adapter against the common inputs and

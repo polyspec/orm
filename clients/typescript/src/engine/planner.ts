@@ -45,7 +45,17 @@ function slot(fields: Partial<BindSlot> & { from: string }): BindSlot {
 class Builder {
   public readonly binds: BindSlot[] = [];
   public subs = 0;
+  /** statement가 이름으로 쓴 table이다. */
+  private readonly tableNames = new Set<string>();
   public constructor(private readonly d: Dialect) {}
+
+  /** ent의 table 이름을 quote하고 statement의 table로 기록한다. */
+  public table(ent: Entity): string {
+    this.tableNames.add(ent.table);
+    return this.d.quote(ent.table);
+  }
+  /** statement가 쓴 table을 정렬해 돌려준다. */
+  public tables(): string[] { return [...this.tableNames].sort(); }
 
   private push(s: BindSlot): string {
     this.binds.push(s);
@@ -270,7 +280,7 @@ export class Planner {
       if (order === '') order = ` ORDER BY ${this.qcol(root, root.ent.primaryKey[0]!)} ASC`;
       sql += `, ROW_NUMBER() OVER (PARTITION BY ${this.qualified(root, rc!.childKeys).join(', ')}${order}) AS ${this.d.quote('orm_rn')}`;
     }
-    sql += ` FROM ${this.d.quote(root.ent.table)} AS ${this.d.quote(root.alias)}`;
+    sql += ` FROM ${b.table(root.ent)} AS ${this.d.quote(root.alias)}`;
     if ((q.force_index ?? '') !== '') sql += this.d.forceIndex(q.force_index!);
     sql += this.renderJoins(b, root);
     const where: string[] = [];
@@ -308,7 +318,7 @@ export class Planner {
         }
       }
     }
-    const st: Omit<PlanStep, 'id'> = { role: 'main', sql, bind_slots: b.binds };
+    const st: Omit<PlanStep, 'id'> = { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
     if ((q.lock ?? '') !== '') st.lock = q.lock;
     if (kind === 'count' && steps.length > 0) st.role = 'count';
     else if (rc) {
@@ -482,7 +492,7 @@ export class Planner {
     for (const j of s.q.joins ?? []) {
       const js = s.joins.get(j.rel)!;
       const conditions = [`${this.qcol(s, j.left!)} = ${this.qcol(js, j.right!)}`];
-      sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${this.d.quote(js.ent.table)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
+      sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${b.table(js.ent)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
       if (j.query.on && j.query.on.items.length > 0) sql += ` AND ${this.renderGroup(b, js, j.query.on, true)}`;
       sql += this.renderJoins(b, js);
     }
@@ -666,7 +676,7 @@ export class Planner {
       case 'count': sql += 'COUNT(*)'; break;
       default: sql += this.qcol(root, sub.column!);
     }
-    sql += ` FROM ${this.d.quote(root.ent.table)} AS ${this.d.quote(root.alias)}`;
+    sql += ` FROM ${b.table(root.ent)} AS ${this.d.quote(root.alias)}`;
     sql += this.renderJoins(b, root);
     const where: string[] = [];
     if (root.ent.softDelete) where.push(`${this.qcol(root, root.ent.softDelete)} IS NULL`);
@@ -764,7 +774,7 @@ export class Planner {
       cols.push(this.d.quote(c.column));
       vals.push(c.value(b));
     }
-    let sql = `INSERT INTO ${this.d.quote(ent.table)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
+    let sql = `INSERT INTO ${b.table(ent)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
     if ((r.rows ?? []).length > 0) {
       // Derived blind-index columns take the value of their AES source column.
       const source = set.map((a, i) => i < input.length ? i : input.findIndex(x => x.column === blindIndexSource(ent, a.column)!.name));
@@ -773,7 +783,7 @@ export class Planner {
         for (const c of managed) more.push(c.value(b));
         sql += `, (${more.join(', ')})`;
       }
-      return { role: 'main', sql, bind_slots: b.binds };
+      return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
     }
     if ((r.on_duplicate ?? []).length > 0) {
       const duplicate = addBlindIndexAssignments(ent, [...r.on_duplicate!]);
@@ -789,7 +799,7 @@ export class Planner {
       sql += this.d.upsert(conflictTarget(ent, set), sets.join(', '));
     }
     if (this.d.insertReturningId && ent.identity !== '') sql += ` RETURNING ${this.d.quote(ent.identity)}`;
-    return { role: 'main', sql, bind_slots: b.binds };
+    return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
   }
 
   private updateStep(r: Request): Omit<PlanStep, 'id'> {
@@ -813,7 +823,7 @@ export class Planner {
     let where = this.renderGroup(b, root, r.where!, true);
     if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.param(r.optimistic.p)}`;
     if (ent.softDelete !== '') where += ` AND ${this.qcol(root, ent.softDelete)} IS NULL`;
-    return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
+    return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
 
   private deleteStep(r: Request): Omit<PlanStep, 'id'> {
@@ -821,14 +831,14 @@ export class Planner {
     const ent = this.entity(r.entity);
     const root = this.buildScopes(r, ent.table, undefined);
     if (ent.softDelete === '') {
-      return { role: 'main', sql: `DELETE FROM ${this.d.quote(ent.table)} WHERE ${this.renderGroup(b, root, r.where!, true)}`, bind_slots: b.binds };
+      return { role: 'main', sql: `DELETE FROM ${b.table(ent)} WHERE ${this.renderGroup(b, root, r.where!, true)}`, tables: b.tables(), bind_slots: b.binds };
     }
     // A soft delete is an update: it stamps the column and, on an audited table, the audit column.
     const sets = [`${this.d.quote(ent.softDelete)} = ${this.clock(b, columnOf(ent, ent.softDelete)!)}`];
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NULL`;
-    return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
+    return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
 
   /**
@@ -857,7 +867,7 @@ export class Planner {
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NOT NULL`;
-    return { role: 'main', sql: `UPDATE ${this.d.quote(ent.table)} SET ${sets.join(', ')} WHERE ${where}`, bind_slots: b.binds };
+    return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
 }
 

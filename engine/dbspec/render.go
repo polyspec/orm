@@ -21,6 +21,26 @@ const (
 // diagnostics of an invalid set. A dialect other than the three constants is
 // a programming error and panics.
 func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
+	rendered, diagnostics := RenderStatements(documents, dialect)
+	if len(diagnostics) > 0 {
+		return nil, diagnostics
+	}
+	out := make([]string, len(rendered))
+	for i, r := range rendered {
+		out[i] = r.SQL
+	}
+	return out, nil
+}
+
+// RenderedStatement은 Render의 statement 하나와 그 statement가 만들거나 바꾸는 table이다.
+type RenderedStatement struct {
+	SQL   string
+	Table string
+}
+
+// RenderStatements는 Render와 같은 statement를 같은 순서로 쓰고, 각 statement가
+// 만들거나 바꾸는 table을 함께 돌려준다.
+func RenderStatements(documents []*Document, dialect Dialect) ([]RenderedStatement, []Diagnostic) {
 	switch dialect {
 	case DialectMySQL, DialectPostgres, DialectSQLite:
 	default:
@@ -31,26 +51,31 @@ func Render(documents []*Document, dialect Dialect) ([]string, []Diagnostic) {
 	}
 	r := renderer{d: dialect}
 	ordered := useOrder(documents)
-	var out []string
+	var out []RenderedStatement
+	add := func(table string, statements ...string) {
+		for _, sql := range statements {
+			out = append(out, RenderedStatement{SQL: sql, Table: table})
+		}
+	}
 	// 외부 문서의 table은 그 문서를 소유한 set이 만든다.
 	ordered = slices.DeleteFunc(ordered, func(d *Document) bool { return d.External })
 	for _, document := range ordered {
 		for i := range document.Tables {
-			out = append(out, r.table(&document.Tables[i])...)
+			add(document.Tables[i].Name, r.table(&document.Tables[i])...)
 		}
 	}
 	if dialect != DialectSQLite {
 		for _, document := range ordered {
 			for _, t := range document.Tables {
 				for _, f := range sortedBy(t.ForeignKeys, func(f ForeignKey) string { return f.Name }) {
-					out = append(out, "ALTER TABLE "+r.q(t.Name)+" ADD "+r.foreignKey(f))
+					add(t.Name, "ALTER TABLE "+r.q(t.Name)+" ADD "+r.foreignKey(f))
 				}
 			}
 		}
 	}
 	for _, document := range ordered {
 		for i := range document.Tables {
-			out = append(out, r.triggers(&document.Tables[i])...)
+			add(document.Tables[i].Name, r.triggers(&document.Tables[i])...)
 		}
 	}
 	return out, nil

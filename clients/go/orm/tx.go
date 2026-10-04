@@ -26,7 +26,6 @@ type executor interface {
 	base() *DB
 	context() context.Context
 	stmt(ctx context.Context, sqlText string) (*sql.Stmt, error)
-	exec(ctx context.Context, sqlText string, args ...any) (sql.Result, error)
 	transaction() *txConn
 	// enter marks the start of a statement and returns its end; a
 	// transaction rejects concurrent use.
@@ -42,18 +41,15 @@ func (d *DB) enter() (func(), error) {
 	}
 	return func() {}, nil
 }
-func (d *DB) exec(ctx context.Context, sqlText string, args ...any) (sql.Result, error) {
-	r, err := d.sql.ExecContext(ctx, sqlText, args...)
-	return r, mapDriverErr(err)
-}
 
 // txConn is one active transaction.
 type txConn struct {
 	db *DB
 	// conn은 transaction이 끝날 때까지 잡아 두는 pool connection이다. rollback이
 	// 실패하면 driver가 그 connection을 닫았는지 확인한다.
-	conn       *sql.Conn
-	tx         *sql.Tx
+	conn *sql.Conn
+	// number는 연결에서 이 transaction의 번호다. statement event가 싣는다.
+	number     int64
 	ctx        context.Context
 	cancel     context.CancelFunc
 	busy       atomic.Bool
@@ -99,7 +95,7 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	if st, ok := t.stmts[sqlText]; ok {
 		return st, nil
 	}
-	st, err := t.tx.PrepareContext(ctx, sqlText)
+	st, err := t.conn.PrepareContext(ctx, sqlText)
 	if err != nil {
 		return nil, mapDriverErr(err)
 	}
@@ -110,10 +106,8 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	return st, nil
 }
 
-func (t *txConn) exec(ctx context.Context, sqlText string, args ...any) (sql.Result, error) {
-	r, err := t.tx.ExecContext(ctx, sqlText, args...)
-	return r, mapDriverErr(err)
-}
+// run은 transaction 연결에서 statement를 보내고 그 event를 publish한다.
+func (t *txConn) run() runner { return runner{d: t.db, q: t.conn, tx: t.number} }
 
 func (t *txConn) closeStatements() {
 	t.stmMu.Lock()
@@ -517,27 +511,22 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	if o.timeoutMs > 0 && d.driver != "postgres" {
 		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeoutMs is supported only by postgres"}
 	}
-	level := sql.LevelDefault
+	level := ""
 	switch o.isolation {
 	case "":
 	case ReadUncommitted:
-		level = sql.LevelReadUncommitted
+		level = "READ UNCOMMITTED"
 	case ReadCommitted:
-		level = sql.LevelReadCommitted
+		level = "READ COMMITTED"
 	case RepeatableRead:
-		level = sql.LevelRepeatableRead
+		level = "REPEATABLE READ"
 	case Serializable:
-		level = sql.LevelSerializable
+		level = "SERIALIZABLE"
 	default:
 		return nil, configErr("unsupported transaction isolation %q", o.isolation)
 	}
-	txo := &sql.TxOptions{Isolation: level, ReadOnly: o.readOnly}
 	if d.driver == "sqlite" {
-		// The ORM applies the isolation and read-only modes on the
-		// transaction connection. The read-only flag selects a deferred
-		// BEGIN; every other transaction begins with the DSN's
-		// _txlock=immediate and holds the write lock from its start.
-		txo = &sql.TxOptions{ReadOnly: o.readOnly}
+		// SQLite의 row lock table은 연결의 첫 transaction 전에 한 번 만든다.
 		if err := ensureSQLiteRowLock(d.ctx, d); err != nil {
 			return nil, err
 		}
@@ -548,18 +537,53 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 		cancel()
 		return nil, mapDriverErr(err)
 	}
-	native, err := conn.BeginTx(ctx, txo)
-	if err != nil {
-		cancel()
-		if closeErr := conn.Close(); closeErr != nil {
-			return nil, errors.Join(mapDriverErr(err), closeErr)
+	t := &txConn{db: d, conn: conn, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation, number: d.nextTransaction()}
+	// transaction을 여는 statement다(docs/usage.md "Statement events"). 하나라도
+	// 실패하면 session에 남은 설정이 다음 사용자에게 가지 않도록 연결을 닫는다.
+	type opening struct{ kind, sql string }
+	var steps []opening
+	switch d.driver {
+	case "mysql":
+		if level != "" {
+			steps = append(steps, opening{KindUtility, "SET TRANSACTION ISOLATION LEVEL " + level})
 		}
-		return nil, mapDriverErr(err)
+		begin := "START TRANSACTION"
+		if o.readOnly {
+			begin += " READ ONLY"
+		}
+		steps = append(steps, opening{KindBegin, begin})
+	case "postgres":
+		begin := "BEGIN"
+		if level != "" {
+			begin += " ISOLATION LEVEL " + level
+		}
+		if o.readOnly {
+			begin += " READ ONLY"
+		}
+		steps = append(steps, opening{KindBegin, begin})
+		if o.timeoutMs > 0 {
+			steps = append(steps, opening{KindUtility, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)})
+		}
+	default:
+		// 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기 lock을 잡는다.
+		begin := "BEGIN IMMEDIATE"
+		if o.readOnly {
+			begin = "BEGIN"
+		}
+		steps = append(steps, opening{KindBegin, begin})
 	}
-	t := &txConn{db: d, conn: conn, tx: native, ctx: ctx, cancel: cancel, readOnly: o.readOnly, isolation: o.isolation}
-	if o.timeoutMs > 0 {
-		if _, err := native.ExecContext(ctx, fmt.Sprintf("SET LOCAL statement_timeout = %d", o.timeoutMs)); err != nil {
-			return nil, t.rollbackAfter(mapDriverErr(err))
+	began := false
+	for _, step := range steps {
+		if _, err := t.run().exec(ctx, step.kind, nil, step.sql); err != nil {
+			if began {
+				return nil, t.rollbackAfter(err)
+			}
+			t.finished.Store(true)
+			cancel()
+			return nil, errors.Join(err, t.closeSession(), conn.Close())
+		}
+		if step.kind == KindBegin {
+			began = true
 		}
 	}
 	if d.driver == "sqlite" {
@@ -610,12 +634,15 @@ func (t *txConn) closeSession() error {
 // 취소되면 database/sql이 이미 rollback했으므로 sql.ErrTxDone은 실패가 아니다.
 // 그 밖의 실패는, driver나 server가 connection을 닫아 실패한 rollback도, 실패로
 // 보고한다 (docs/interfaces.md).
+// commitNative는 transaction을 commit한다.
+func (t *txConn) commitNative() error {
+	_, err := t.run().exec(t.ctx, KindCommit, nil, "COMMIT")
+	return err
+}
+
 func (t *txConn) rollbackNative() error {
-	err := t.tx.Rollback()
-	if err == nil || errors.Is(err, sql.ErrTxDone) && t.ctx.Err() != nil {
-		return nil
-	}
-	return mapDriverErr(err)
+	_, err := t.run().exec(t.ctx, KindRollback, nil, "ROLLBACK")
+	return err
 }
 
 func (t *txConn) commit() error {
@@ -637,7 +664,11 @@ func (t *txConn) commit() error {
 		return t.rollbackAfter(err)
 	}
 	t.closeStatements()
-	err := mapDriverErr(t.tx.Commit())
+	err := t.commitNative()
+	if err != nil {
+		// 실패한 COMMIT 뒤의 session 상태는 알 수 없으므로 연결을 버린다.
+		err = errors.Join(err, t.closeSession())
+	}
 	if closeErr := t.conn.Close(); closeErr != nil {
 		err = errors.Join(err, closeErr)
 	}
@@ -652,8 +683,8 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
-	if _, err := t.tx.ExecContext(t.ctx, "SAVEPOINT "+name); err != nil {
-		return mapDriverErr(err)
+	if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
+		return err
 	}
 	pushFrame(t)
 	returned := false
@@ -684,24 +715,24 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		}
 		return err
 	}
-	return t.endSavepoint("RELEASE SAVEPOINT " + name)
+	return t.endSavepoint(KindRelease, "RELEASE SAVEPOINT "+name)
 }
 
 // rollbackSavepoint는 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두
 // statement를 모두 시도하고 실패를 모두 돌려준다.
 func (t *txConn) rollbackSavepoint(name string) error {
-	return errors.Join(t.endSavepoint("ROLLBACK TO SAVEPOINT "+name), t.endSavepoint("RELEASE SAVEPOINT "+name))
+	return errors.Join(t.endSavepoint(KindRollbackTo, "ROLLBACK TO SAVEPOINT "+name), t.endSavepoint(KindRelease, "RELEASE SAVEPOINT "+name))
 }
 
 // endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction의
 // context가 취소되면 database/sql이 transaction 전체를 rollback했으므로
 // savepoint도 함께 끝났고 실패가 아니다. 그 밖의 실패는 보고한다.
-func (t *txConn) endSavepoint(statement string) error {
-	_, err := t.tx.ExecContext(t.ctx, statement)
-	if err == nil || t.ctx.Err() != nil {
+func (t *txConn) endSavepoint(kind, statement string) error {
+	_, err := t.run().exec(t.ctx, kind, nil, statement)
+	if err == nil || t.ctx.Err() != nil && ErrorCode(err) != CodeSubscriber {
 		return nil
 	}
-	return mapDriverErr(err)
+	return err
 }
 
 func cloneInserted(src map[string]map[int64]struct{}) map[string]map[int64]struct{} {
@@ -737,13 +768,13 @@ func (t *txConn) recordInserted(entity string, key int64) {
 func (t *txConn) beginSQLiteMode() error {
 	t.sqliteMode = t.isolation == ReadUncommitted || t.readOnly
 	if t.isolation == ReadUncommitted {
-		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA read_uncommitted = 1"); err != nil {
-			return mapDriverErr(err)
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 1"); err != nil {
+			return err
 		}
 	}
 	if t.readOnly {
-		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA query_only = 1"); err != nil {
-			return mapDriverErr(err)
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 1"); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -759,13 +790,13 @@ func (t *txConn) finishSQLiteMode() error {
 	t.sqliteMode = false
 	var errs []error
 	if t.readOnly {
-		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA query_only = 0"); err != nil {
-			errs = append(errs, mapDriverErr(err))
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 0"); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	if t.isolation == ReadUncommitted {
-		if _, err := t.tx.ExecContext(t.ctx, "PRAGMA read_uncommitted = 0"); err != nil {
-			errs = append(errs, mapDriverErr(err))
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 0"); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)

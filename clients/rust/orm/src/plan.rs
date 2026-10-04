@@ -14,6 +14,8 @@ pub struct Step {
     pub id: u32,
     pub role: String,
     pub sql: String,
+    /// statement가 이름으로 쓰는 table이다: 정렬하고 중복을 뺀 물리 table 이름.
+    pub tables: Vec<String>,
     pub lock: String,
     pub bind_slots: Vec<BindSlot>,
     pub assemble: Option<std::sync::Arc<Assemble>>,

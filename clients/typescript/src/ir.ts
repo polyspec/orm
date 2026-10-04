@@ -98,7 +98,7 @@ export interface Plan {
   steps: PlanStep[];
 }
 
-export interface PlanStep { id: number; role: string; sql: string; lock?: string; bind_slots: BindSlot[]; assemble?: Assemble; parent?: ParentReference; }
+export interface PlanStep { id: number; role: string; sql: string; tables: string[]; lock?: string; bind_slots: BindSlot[]; assemble?: Assemble; parent?: ParentReference; }
 export interface BindSlot { from: string; param: number; transform: string; name: string; step: number; column: string; host_styles: string[]; col_type: string; precision?: number; scale?: number; }
 export interface PlanIfParent { column: string; index: number; param: number; }
 export interface KeyReference { column: string; index: number; }

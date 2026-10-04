@@ -31,6 +31,7 @@ fn step(sql: String, binds: usize, lock: &str) -> Step {
         plan_id: 0,
         id: 0,
         role: "utils".into(),
+        tables: Vec::new(),
         sql,
         lock: lock.into(),
         bind_slots: (0..binds)

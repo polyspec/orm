@@ -77,7 +77,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		}
 		var local sql.NullString
 		if err := db.Transaction(func() error {
-			return activeFor(db).tx.QueryRow("SELECT @`orm.ormtest.cancelled`").Scan(&local)
+			return activeFor(db).conn.QueryRowContext(context.Background(), "SELECT @`orm.ormtest.cancelled`").Scan(&local)
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}
@@ -94,18 +94,18 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		cancelled(t, db, lockAndSet)
 		// 다른 connection이 lock_timeout 안에 같은 advisory lock을 잡는다.
 		if err := other.Transaction(func() error {
-			tx := activeFor(other).tx
-			if _, err := tx.Exec("SET LOCAL lock_timeout = '5s'"); err != nil {
+			tx := activeFor(other).conn
+			if _, err := tx.ExecContext(context.Background(), "SET LOCAL lock_timeout = '5s'"); err != nil {
 				return err
 			}
-			_, err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", key)
+			_, err := tx.ExecContext(context.Background(), "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", key)
 			return err
 		}, Retry(0)); err != nil {
 			t.Errorf("the lock %s is still held after the cancelled transaction: %v", key, err)
 		}
 		var local sql.NullString
 		if err := db.Transaction(func() error {
-			return activeFor(db).tx.QueryRow("SELECT current_setting('ormtest.cancelled', true)").Scan(&local)
+			return activeFor(db).conn.QueryRowContext(context.Background(), "SELECT current_setting('ormtest.cancelled', true)").Scan(&local)
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}
@@ -118,7 +118,7 @@ func TestCancelledTransactionClearsSessionState(t *testing.T) {
 		cancelled(t, db, func(*DB) error { return nil }, ReadOnly())
 		var queryOnly int
 		if err := db.Transaction(func() error {
-			return activeFor(db).tx.QueryRow("PRAGMA query_only").Scan(&queryOnly)
+			return activeFor(db).conn.QueryRowContext(context.Background(), "PRAGMA query_only").Scan(&queryOnly)
 		}, Retry(0)); err != nil {
 			t.Fatal(err)
 		}

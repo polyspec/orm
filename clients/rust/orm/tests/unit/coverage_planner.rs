@@ -1,6 +1,6 @@
 //! planner: contracts/fixtures/planner.json의 `input`에 schema/bench.dbs의 manifest hash를 더해
 //! 이 client의 engine으로 각 dialect에서 compile한다. statement(role, sql, bind slot의 param
-//! 순서)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
+//! 순서(parent slot은 -1), table)가 `expected[dialect]`와 같거나 error code가 `expected.error`와 같아야 한다.
 //! engine의 compile은 crate 안에서만 보이므로 src/engine/mod.rs가 이 file을 unit test module로 둔다.
 use super::{compile, Dialect};
 use crate::ir;
@@ -71,7 +71,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
             let pred = members(
                 members(item, &at, &["pred"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
                 &format!("{at}.pred"),
-                &["conn", "column", "op", "p", "ps"],
+                &["conn", "column", "op", "p", "ps", "sub"],
             );
             let at = format!("{at}.pred");
             ir::Item::Pred {
@@ -84,6 +84,15 @@ fn group(value: &Value, at: &str) -> ir::Group {
                         .get("ps")
                         .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{at}.ps: expected an array")).iter().map(|p| index(p, &format!("{at}.ps"))).collect())
                         .unwrap_or_default(),
+                    sub: pred.get("sub").map(|sub| {
+                        let at = format!("{at}.sub");
+                        let object = members(sub, &at, &["query", "column", "agg"]);
+                        ir::Sub {
+                            query: Box::new(query(object.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                            column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
+                            agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
+                        }
+                    }),
                     ..Default::default()
                 }),
             }
@@ -92,46 +101,93 @@ fn group(value: &Value, at: &str) -> ir::Group {
     ir::Group { conn: object.get("conn").map(|_| string(object, at, "conn")).unwrap_or_default(), items }
 }
 
+/// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
+fn query(value: &Value, at: &str) -> ir::Query {
+    let object = members(value, at, &["entity", "where", "joins", "relations", "order", "limit"]);
+    let limit = object.get("limit").map(|limit| {
+        let at = format!("{at}.limit");
+        let limit = members(limit, &at, &["count", "offset"]);
+        ir::Limit { count: count(limit.get("count"), &format!("{at}.count")), offset: count(limit.get("offset"), &format!("{at}.offset")) }
+    });
+    let list = |key: &str| -> Vec<(String, &Value)> {
+        object
+            .get(key)
+            .map(|items| {
+                items.as_array().unwrap_or_else(|| panic!("{at}.{key}: expected an array")).iter().enumerate().map(|(i, item)| (format!("{at}.{key}[{i}]"), item)).collect()
+            })
+            .unwrap_or_default()
+    };
+    let order = list("order")
+        .into_iter()
+        .map(|(at, o)| {
+            let o = members(o, &at, &["column", "desc"]);
+            ir::Order {
+                column: string(o, &at, "column"),
+                desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{at}.desc: expected a boolean"))).unwrap_or(false),
+                ..Default::default()
+            }
+        })
+        .collect();
+    let joins = list("joins")
+        .into_iter()
+        .map(|(at, j)| {
+            let j = members(j, &at, &["rel", "kind", "left", "right", "query"]);
+            ir::Join {
+                rel: string(j, &at, "rel"),
+                kind: string(j, &at, "kind"),
+                left: string(j, &at, "left"),
+                right: string(j, &at, "right"),
+                query: Box::new(query(j.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+            }
+        })
+        .collect();
+    let relations = list("relations")
+        .into_iter()
+        .map(|(at, r)| {
+            let r = members(r, &at, &["rel", "kind", "keys", "query"]);
+            let keys = r
+                .get("keys")
+                .and_then(Value::as_array)
+                .unwrap_or_else(|| panic!("{at}.keys: expected an array"))
+                .iter()
+                .map(|k| {
+                    let k = members(k, &format!("{at}.keys"), &["left", "right"]);
+                    ir::KeyPair { left: string(k, &at, "left"), right: string(k, &at, "right") }
+                })
+                .collect();
+            ir::Relation {
+                rel: string(r, &at, "rel"),
+                kind: string(r, &at, "kind"),
+                keys,
+                query: Box::new(query(r.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+            }
+        })
+        .collect();
+    ir::Query {
+        entity: string(object, at, "entity"),
+        where_: object.get("where").map(|w| group(w, &format!("{at}.where"))),
+        joins,
+        relations,
+        order,
+        limit,
+        ..Default::default()
+    }
+}
+
 /// fixture의 request를 IR로 읽는다. 지원하지 않는 member는 거부하고, 읽은 IR을 다시 직렬화한
 /// 값이 manifest hash를 더한 입력과 같아야 한다.
 fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
-    let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where"]);
-    let limit = object.get("limit").map(|limit| {
-        let limit = members(limit, "input.limit", &["count", "offset"]);
-        ir::Limit { count: count(limit.get("count"), "input.limit.count"), offset: count(limit.get("offset"), "input.limit.offset") }
-    });
-    let order = object
-        .get("order")
-        .map(|order| {
-            order
-                .as_array()
-                .unwrap_or_else(|| panic!("input.order: expected an array"))
-                .iter()
-                .enumerate()
-                .map(|(i, o)| {
-                    let at = format!("input.order[{i}]");
-                    let o = members(o, &at, &["column", "desc"]);
-                    ir::Order {
-                        column: string(o, &at, "column"),
-                        desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{at}.desc: expected a boolean"))).unwrap_or(false),
-                        ..Default::default()
-                    }
-                })
-                .collect()
-        })
-        .unwrap_or_default();
+    let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where", "joins", "relations"]);
+    let mut query_input = input.clone();
+    for key in ["ir_version", "kind", "n_params"] {
+        query_input.as_object_mut().expect("input object").remove(key);
+    }
     let request = ir::Request {
         ir_version: count(object.get("ir_version"), "input.ir_version"),
         manifest_hash: manifest_hash.to_owned(),
         kind: string(object, at, "kind"),
-        query: ir::Query {
-            entity: string(object, at, "entity"),
-            where_: object.get("where").map(|w| group(w, "input.where")),
-            order,
-            limit,
-            ..Default::default()
-        },
+        query: query(&query_input, at),
         n_params: index(object.get("n_params").unwrap_or_else(|| panic!("input.n_params: expected a count")), "input.n_params"),
         ..Default::default()
     };
@@ -153,7 +209,10 @@ fn run(id: &str) {
                 let statements: Vec<Value> = plan
                     .steps
                     .iter()
-                    .map(|step| json!({"role": step.role, "sql": step.sql, "params": step.bind_slots.iter().map(|slot| slot.param).collect::<Vec<_>>()}))
+                    .map(|step| {
+                        let params: Vec<i64> = step.bind_slots.iter().map(|slot| if slot.from == "parent" { -1 } else { slot.param as i64 }).collect();
+                        json!({"role": step.role, "sql": step.sql, "params": params, "tables": step.tables})
+                    })
                     .collect();
                 json!(statements)
             }
@@ -206,4 +265,11 @@ fn coverage_planner_restore() {
 fn coverage_planner_restore_rejects_non_key() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_restore_rejects_non_key");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_tables() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_tables");
 }

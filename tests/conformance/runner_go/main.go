@@ -27,9 +27,16 @@ import (
 	_ "github.com/polyspec/orm/clients/go/orm/sqlite"
 )
 
+// stmt는 statement event 하나다(docs/usage.md "Statement events"). transaction은
+// vector 안에서 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는
+// statement의 오류 code이거나 null이다.
 type stmt struct {
-	SQL   string `json:"sql"`
-	Binds []any  `json:"binds"`
+	SQL         string   `json:"sql"`
+	Binds       []any    `json:"binds"`
+	Kind        string   `json:"kind"`
+	Tables      []string `json:"tables"`
+	Transaction *int64   `json:"transaction"`
+	Error       *string  `json:"error"`
 }
 
 type vector struct {
@@ -38,7 +45,9 @@ type vector struct {
 }
 
 var (
-	log      []stmt
+	log []stmt
+	// transactions는 vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
+	transactions map[int64]int64
 	maskSeqs map[int64]bool
 	maskTs   map[string]bool
 )
@@ -192,16 +201,30 @@ func main() {
 	db, err := model.Connect(dsn, orm.Config{
 		AESKey:        "bench-salt",
 		BlindIndexKey: "bench-blind-index",
-		OnQuery: func(e orm.Event) {
-			binds := make([]any, len(e.Args))
-			for i, a := range e.Args {
-				binds[i] = norm(a)
-			}
-			log = append(log, stmt{SQL: e.SQL, Binds: binds})
-		},
 	})
 	check(err)
 	defer db.Close()
+	db.Subscribe(func(e orm.StatementEvent) error {
+		binds := make([]any, len(e.Binds))
+		for i, a := range e.Binds {
+			binds[i] = norm(a)
+		}
+		record := stmt{SQL: e.SQL, Binds: binds, Kind: e.Kind, Tables: e.Tables}
+		if e.Transaction != 0 {
+			n, ok := transactions[e.Transaction]
+			if !ok {
+				n = int64(len(transactions) + 1)
+				transactions[e.Transaction] = n
+			}
+			record.Transaction = &n
+		}
+		if e.Err != nil {
+			code := orm.ErrorCode(e.Err)
+			record.Error = &code
+		}
+		log = append(log, record)
+		return nil
+	})
 
 	out := map[string]vector{}
 	writeVectors := map[string]bool{
@@ -214,7 +237,7 @@ func main() {
 		declared = append(declared, declaredVector{name: name, fn: fn})
 	}
 	execute := func(name string, fn func() (any, error)) {
-		log, maskSeqs, maskTs = nil, map[int64]bool{}, map[string]bool{}
+		log, maskSeqs, maskTs, transactions = nil, map[int64]bool{}, map[string]bool{}, map[int64]int64{}
 		var transaction func(func() error) error
 		if writeVectors[name] {
 			transaction = func(task func() error) error { return db.Transaction(task, orm.Retry(0)) }

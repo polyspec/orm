@@ -124,17 +124,18 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 {
   "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
-    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20",
+    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20", "tables": ["author", "service"],
      "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
      "assemble": {"entity": "author", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],
                   "key": [{"column": "seq", "index": 0}],
                   "children": [{"rel": "service_model", "kind": "join", "assemble": {…}}]}},
-    {"id": 1, "role": "relation", "sql": "…", "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
+    {"id": 1, "role": "relation", "sql": "…", "tables": ["user"], "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
   ]
 }
 ```
 
+- `tables`는 statement가 가리키는 table을 정렬하고 중복을 뺀 목록이다: 쓰기의 대상 table, select의 root table, join한 table, subquery의 table이다. relation step은 자기 table을 쓴다.
 - `bind_slots.from`은 `param`(요청 매개변수. 포함 검색 값에는 `transform`, AES·hex·IP 단계에는 `host_styles`가 있다), `secret`(AES 키), `config`(AES 키 버전), `parent`(관계 키 값), `now`(UTC의 클라이언트 시각), `audit`(트랜잭션 audit 기록의 primary key. `name`은 audit 기록 테이블이다) 중 하나다. `audit` 슬롯이 있는 쓰기를 audit 값을 가진 트랜잭션 밖에서 실행하거나 audit 기록이 `name`과 다른 테이블의 행이면 데이터베이스에 닿기 전에 `CONFIG`로 실패한다.
 - **Clock.** 이것이 유일한 clock 규칙이며 [dialects](dialects.ko.md)와 [plans](plans.ko.md)는 이 규칙을 따른다. 모든 연결은 `datetime(p)`를 UTC로 읽고 쓴다. `now` slot은 마이크로초 해상도의 UTC 클라이언트 wall clock을 소수 여섯 자리로 자른 `datetime` 텍스트이며, statement는 clock을 한 번 읽으므로 그 statement의 `now` slot은 모두 같다. ORM이 쓰거나 비교하는 clock은 마이크로초를 유지한다. update 시각과 soft delete는 column이 선언한 소수 자릿수로 clock을 대입한다: MySQL은 `p > 0`이면 `CURRENT_TIMESTAMP(p)`, PostgreSQL은 `CURRENT_TIMESTAMP`, SQLite는 `now` slot이다. MySQL `now` value function과 그 상대 형식은 `NOW(6)`, PostgreSQL은 `now()`를 쓴다. SQLite에는 마이크로초 clock이 없으므로 SQLite dialect는 update 시각, soft delete, `now` 함수에 `now` slot을 bind하고, 상대 형식을 `now` slot에 간격을 적용한 `datetime` 뒤에 두 번째 `now` slot의 소수 여섯 자리를 붙인 형태로 render하며, insert가 빼먹은 `default now` 컬럼마다 `now` slot을 bind한다. MySQL과 PostgreSQL의 insert는 그런 컬럼을 database default에 맡긴다. plan history는 tool clock을 소수 여섯 자리로 유지한다([plans](plans.ko.md#apply)).
 - 행은 위치로 읽는다. `assemble.columns[].styles`는 클라이언트가 디코딩할 코덱 단계이며, SQL 단계는 이미 적용되어 있다.

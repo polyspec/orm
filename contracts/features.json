@@ -1443,6 +1443,71 @@
       }
     },
     {
+      "id": "statement_events",
+      "title": "Statement events",
+      "title_ko": "Statement event",
+      "status": "partial",
+      "description": "Publish an event for every statement the client sends to the subscribers registered on the connection: the statement, its masked binds, its kind by origin, the tables it names, its elapsed time, the number of its transaction on the connection, and its error. Subscribers run synchronously after the statement and before the operation continues; a failing subscriber fails the operation with SUBSCRIBER. Every client sends the same transaction control statements.",
+      "description_ko": "client가 보내는 모든 statement에 대해 연결에 등록한 subscriber에게 event를 publish한다: statement, 가린 bind, 출처에 따른 kind, statement가 가리키는 table, 경과 시간, 연결에서의 transaction 번호, 오류다. subscriber는 statement 뒤 operation이 이어지기 전에 동기로 실행되고, 실패한 subscriber는 operation을 SUBSCRIBER로 실패시킨다. 모든 client는 같은 transaction 제어 statement를 실행한다.",
+      "inputs": {
+        "type": "StatementSubscriber",
+        "fields": [
+          "subscriber"
+        ]
+      },
+      "outputs": {
+        "type": "StatementEvent",
+        "fields": [
+          "sql",
+          "binds",
+          "kind",
+          "tables",
+          "elapsed",
+          "transaction",
+          "error"
+        ]
+      },
+      "state": [
+        "register or remove a subscriber",
+        "publish the event of each statement in registration order",
+        "number the transactions of the connection"
+      ],
+      "errors": [
+        {
+          "code": "SUBSCRIBER",
+          "when": "a subscriber returned an error or threw; the error is its cause"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "planned",
+        "rust": "planned",
+        "typescript": "planned"
+      },
+      "fixtures": [
+        "contracts/fixtures/statement_events.dbs",
+        "tests/events/vectors.json"
+      ],
+      "tests": [
+        "clients/go/orm/statement_events_test.go"
+      ],
+      "docs": [
+        "docs/usage.md",
+        "docs/protocol.md",
+        "docs/errors.yaml"
+      ],
+      "verification": [
+        {
+          "id": "statement-events-go",
+          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestStatementEvents' -count=1"
+        }
+      ],
+      "public_constraints": [
+        "Subscribers must not fail; a failure fails the operation with SUBSCRIBER.",
+        "Statements that open a physical connection, statement preparation and protocol-level cancellation are not events."
+      ]
+    },
+    {
       "id": "model_generation",
       "title": "Model generation",
       "title_ko": "모델 생성",
@@ -2232,8 +2297,8 @@
       "title": "In-process planner",
       "title_ko": "프로세스 내 planner",
       "status": "implemented",
-      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, and assembly metadata in the client process. The four planners produce identical statements.",
-      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보를 client process에서 만든다. 네 planner는 같은 statement를 만든다.",
+      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. The four planners produce identical statements.",
+      "description_ko": "값이 없는 request를 manifest로 검증하고 dialect SQL, bind slot, 조립 정보, 각 statement가 가리키는 table을 client process에서 만든다. 네 planner는 같은 statement를 만든다.",
       "inputs": {
         "type": "RequestIR",
         "fields": [
@@ -2248,6 +2313,7 @@
         "type": "Plan",
         "fields": [
           "steps",
+          "tables",
           "bind_slots",
           "assemble"
         ]
@@ -2329,6 +2395,7 @@
           "planner_count",
           "planner_rejects_unknown_column",
           "planner_restore",
+          "planner_tables",
           "planner_restore_rejects_non_key"
         ],
         "owners": {
@@ -2347,6 +2414,7 @@
                     "planner_count",
                     "planner_rejects_unknown_column",
                     "planner_restore",
+                    "planner_tables",
                     "planner_restore_rejects_non_key"
                   ],
                   "symbols": {
@@ -2354,7 +2422,8 @@
                     "planner_count": "TestCoveragePlannerCount",
                     "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn",
                     "planner_restore": "TestCoveragePlannerRestore",
-                    "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey"
+                    "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey",
+                    "planner_tables": "TestCoveragePlannerTables"
                   }
                 }
               ]
@@ -2375,6 +2444,7 @@
                     "planner_count",
                     "planner_rejects_unknown_column",
                     "planner_restore",
+                    "planner_tables",
                     "planner_restore_rejects_non_key"
                   ]
                 }
@@ -2396,6 +2466,7 @@
                     "planner_count",
                     "planner_rejects_unknown_column",
                     "planner_restore",
+                    "planner_tables",
                     "planner_restore_rejects_non_key"
                   ],
                   "symbols": {
@@ -2403,7 +2474,8 @@
                     "planner_count": "engine::coverage_planner::coverage_planner_count",
                     "planner_rejects_unknown_column": "engine::coverage_planner::coverage_planner_rejects_unknown_column",
                     "planner_restore": "engine::coverage_planner::coverage_planner_restore",
-                    "planner_restore_rejects_non_key": "engine::coverage_planner::coverage_planner_restore_rejects_non_key"
+                    "planner_restore_rejects_non_key": "engine::coverage_planner::coverage_planner_restore_rejects_non_key",
+                    "planner_tables": "engine::coverage_planner::coverage_planner_tables"
                   }
                 }
               ]
@@ -2424,6 +2496,7 @@
                     "planner_count",
                     "planner_rejects_unknown_column",
                     "planner_restore",
+                    "planner_tables",
                     "planner_restore_rejects_non_key"
                   ]
                 }

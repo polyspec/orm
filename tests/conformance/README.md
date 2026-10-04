@@ -5,8 +5,10 @@ PHP, Rust, and TypeScript; each runner executes it against the seeded bench data
 `orm_bench` and prints
 
 ```json
-{"<vector>": {"statements": [{"sql": "...", "binds": [...]}], "result": ...}}
+{"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
 ```
+
+Each statement is a statement event of the connection ([usage](../../docs/usage.md#statement-events)): every statement the runner's connection sends, with its kind, tables and error code; `transaction` is renumbered from 1 in the order of appearance within the vector and is null outside a transaction.
 
 `check` compares JSON numbers as exact rational values and records their original
 decimal representation. It sorts object keys for readable output and compares

@@ -28,7 +28,7 @@ function compileCase(id) {
       continue;
     }
     const plan = engine.compile(request);
-    const statements = plan.steps.map(step => ({ params: step.bind_slots.map(slot => slot.param), role: step.role, sql: step.sql }));
+    const statements = plan.steps.map(step => ({ params: step.bind_slots.map(slot => slot.from === 'parent' ? -1 : slot.param), role: step.role, sql: step.sql, tables: step.tables }));
     assert.deepEqual(statements, c.expected[dialect], `${dialect} statements`);
   }
 }
@@ -38,5 +38,6 @@ await runCases('coverage_planner.mjs', {
   async planner_count() { compileCase('planner_count'); },
   async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
   async planner_restore() { compileCase('planner_restore'); },
+  async planner_tables() { compileCase('planner_tables'); },
   async planner_restore_rejects_non_key() { compileCase('planner_restore_rejects_non_key'); },
 }, 60_000);

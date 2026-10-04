@@ -14,6 +14,13 @@ type Querier interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
+// QueryObserver는 Querier가 구현하면 catalog query마다 그 행을 모두 읽었거나 읽다
+// 실패했을 때 불린다. err는 query의 오류다. QueryEnded가 돌려준 오류는 introspection을
+// 그 오류로 끝낸다.
+type QueryObserver interface {
+	QueryEnded(query string, err error) error
+}
+
 // Unsupported는 introspection이 dbspec으로 읽지 못한 객체다(docs/dialects.md
 // "Introspection"). Kind는 column, index, unique, foreign_key, check, trigger,
 // view, routine, sequence, event, partition, table 중 하나다.

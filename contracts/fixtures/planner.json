@@ -10,7 +10,10 @@
               2
             ],
             "role": "main",
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+            "tables": [
+              "user"
+            ]
           }
         ],
         "postgres": [
@@ -21,7 +24,10 @@
               2
             ],
             "role": "main",
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"seq\" IN ($2, $3) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"seq\" IN ($2, $3) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0",
+            "tables": [
+              "user"
+            ]
           }
         ],
         "sqlite": [
@@ -32,7 +38,10 @@
               2
             ],
             "role": "main",
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"seq\" IN (?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0"
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"seq\" IN (?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0",
+            "tables": [
+              "user"
+            ]
           }
         ]
       },
@@ -85,7 +94,10 @@
               0
             ],
             "role": "main",
-            "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE `a`.`name` = ?"
+            "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE `a`.`name` = ?",
+            "tables": [
+              "user"
+            ]
           }
         ],
         "postgres": [
@@ -94,7 +106,10 @@
               0
             ],
             "role": "main",
-            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1"
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1",
+            "tables": [
+              "user"
+            ]
           }
         ],
         "sqlite": [
@@ -103,7 +118,10 @@
               0
             ],
             "role": "main",
-            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ?"
+            "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ?",
+            "tables": [
+              "user"
+            ]
           }
         ]
       },
@@ -159,7 +177,10 @@
               0
             ],
             "role": "main",
-            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL"
+            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
           }
         ],
         "postgres": [
@@ -168,7 +189,10 @@
               0
             ],
             "role": "main",
-            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $1 AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $1 AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
           }
         ],
         "sqlite": [
@@ -177,7 +201,10 @@
               0
             ],
             "role": "main",
-            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL"
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
           }
         ]
       },
@@ -218,6 +245,126 @@
                 "column": "name",
                 "op": "eq",
                 "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "params": [],
+            "role": "main",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (SELECT `s1`.`user_seq` FROM `service_member` AS `s1`)",
+            "tables": [
+              "service_member",
+              "user"
+            ]
+          },
+          {
+            "params": [
+              -1
+            ],
+            "role": "relation",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` WHERE `a`.`user_seq` IN (?)",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "params": [],
+            "role": "main",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (SELECT \"s1\".\"user_seq\" FROM \"service_member\" AS \"s1\")",
+            "tables": [
+              "service_member",
+              "user"
+            ]
+          },
+          {
+            "params": [
+              -1
+            ],
+            "role": "relation",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"service_model\".\"seq\" AS \"service_model__seq\", \"service_model\".\"name\" AS \"service_model__name\" FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service_model\" ON \"a\".\"service_seq\" = \"service_model\".\"seq\" WHERE \"a\".\"user_seq\" IN ($1)",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "params": [],
+            "role": "main",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (SELECT \"s1\".\"user_seq\" FROM \"service_member\" AS \"s1\")",
+            "tables": [
+              "service_member",
+              "user"
+            ]
+          },
+          {
+            "params": [
+              -1
+            ],
+            "role": "relation",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"service_model\".\"seq\" AS \"service_model__seq\", \"service_model\".\"name\" AS \"service_model__name\" FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service_model\" ON \"a\".\"service_seq\" = \"service_model\".\"seq\" WHERE \"a\".\"user_seq\" IN (?)",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ]
+      },
+      "id": "planner_tables",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "seq",
+                "right": "user_seq"
+              }
+            ],
+            "kind": "many",
+            "query": {
+              "entity": "author",
+              "joins": [
+                {
+                  "kind": "inner",
+                  "left": "service_seq",
+                  "query": {
+                    "entity": "service"
+                  },
+                  "rel": "service_model",
+                  "right": "seq"
+                }
+              ]
+            },
+            "rel": "authors"
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "in",
+                "sub": {
+                  "column": "user_seq",
+                  "query": {
+                    "entity": "service_member"
+                  }
+                }
               }
             }
           ]

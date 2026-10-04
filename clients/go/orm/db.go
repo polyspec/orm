@@ -37,22 +37,12 @@ type Config struct {
 	StatementTimeoutMs int              // bound of every statement of the connection; zero keeps the server default
 	PlanCacheSize      int              // maximum compiled plans; zero uses the default
 	StatementCacheSize int              // maximum prepared statements; zero uses the default
-	OnQuery            func(Event)
 	// AuditSource returns the audit values of the current request, a map from
 	// column name to value of the audit record table, such as the account and
 	// the request id. A transaction with orm.Audit calls it once with the
 	// transaction's context; an error fails the transaction. The ORM writes no
 	// audit value of its own.
 	AuditSource func(ctx context.Context) (map[string]any, error)
-}
-
-// Event is emitted for every executed statement when Config.OnQuery is set.
-type Event struct {
-	SQL      string
-	Args     []any // binds; secret and clock slots are replaced by Secret and Now
-	Duration time.Duration
-	PlanID   string
-	Err      error
 }
 
 // Secret replaces a secret bind wherever binds are shown.
@@ -133,6 +123,9 @@ type dbMutable struct {
 	keyring     AESKeyring
 	keyringErr  error
 
+	// subs는 연결의 statement event subscriber와 transaction 번호다.
+	subs subscribers
+
 	// rollbackFault는 FailNextRollback이 설정하는 test fault다. build tag
 	// ormtest가 있는 build만 설정할 수 있다.
 	rollbackFault atomic.Bool
@@ -204,15 +197,15 @@ func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 	var waiting bool
-	err := d.sql.QueryRowContext(ctx, `SELECT EXISTS(
+	err := (runner{d: d, q: d.sql}).scan(ctx, KindUtility, nil, `SELECT EXISTS(
 		SELECT 1
 		FROM pg_locks l
 		JOIN pg_stat_activity a ON a.pid=l.pid
 		WHERE a.datname=current_database()
 		  AND a.pid<>pg_backend_pid()
 		  AND NOT l.granted
-	)`).Scan(&waiting)
-	return waiting, mapDriverErr(err)
+	)`, nil, &waiting)
+	return waiting, err
 }
 
 func (d *DB) compile(eng *engine.Engine, r *ir.Request) (*plan.Plan, error) {
@@ -412,9 +405,6 @@ func (d *DB) Stats() DBStats {
 
 // Driver is the database of the connection: mysql, postgres, or sqlite.
 func (d *DB) Driver() string { return d.driver }
-
-// SetOnQuery replaces the query event hook.
-func (d *DB) SetOnQuery(fn func(Event)) { d.cfg.OnQuery = fn }
 
 // Drivers other than MySQL live in their own packages so a MySQL-only program
 // does not link PostgreSQL and SQLite; import the driver package for its side
