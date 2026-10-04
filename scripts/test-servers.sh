@@ -140,19 +140,24 @@ psql_cli() {
 # build마다 compile된 기본값이 다르므로(Homebrew는 NULL, Ubuntu package는 mysql-server package가
 # 만드는 /var/lib/mysql-files) 명시해 같은 서버를 만든다: 그 directory가 없으면 mysqld가 시작하지 않는다.
 MYSQLD_FILES=--secure-file-priv=NULL
+# MYSQL_LOWER_CASE는 MySQL data directory의 lower_case_table_names다. 1은 두 platform에서 모두 허용되는
+# 유일한 값이다(0은 대소문자를 구분하지 않는 파일 시스템, 2는 Linux에서 쓸 수 없다). 초기화할 때 정해지므로
+# data directory의 값과 다르면 start가 data를 옮긴다(scripts/test-servers-mysql.mjs).
+MYSQL_LOWER_CASE=1
+MYSQLD_NAMES=--lower-case-table-names=$MYSQL_LOWER_CASE
 
 start_mysql() {
-  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" --datadir="$DIR/mysql" --log-error="$DIR/mysql-init.log"
+  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql" --log-error="$DIR/mysql-init.log"
   # --daemonize returns after the server accepts connections or fails.
-  mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
+  mysqld --no-defaults --daemonize "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
     --log-error="$DIR/mysql.log" --bind-address=127.0.0.1 --port="$MYSQL_PORT" \
     --socket="$MYSQL_SOCKET" --mysqlx=OFF --server-id=1
   echo "test-servers: MySQL on 127.0.0.1:$MYSQL_PORT"
 
   # The replica starts before the primary holds data and reads the binary log
   # of the primary from its first file, so it applies every later change.
-  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
-  mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
+  mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
+  mysqld --no-defaults --daemonize "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
     --log-error="$DIR/mysql-replica.log" --bind-address=127.0.0.1 --port="$MYSQL_REPLICA_PORT" \
     --socket="$MYSQL_REPLICA_SOCKET" --mysqlx=OFF --server-id=2 --skip-replica-start
   mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P "$MYSQL_REPLICA_PORT" -u root -e "
@@ -160,6 +165,13 @@ start_mysql() {
     START REPLICA;
     SET GLOBAL super_read_only = ON;"
   echo "test-servers: MySQL replica on 127.0.0.1:$MYSQL_REPLICA_PORT"
+  printf 'lower_case_table_names=%s\n' "$MYSQL_LOWER_CASE" > "$DIR/mysql.settings"
+}
+
+# mysql_timezones loads the time zone tables of the primary, which the replica
+# applies from its binary log.
+mysql_timezones() {
+  mysql_tzinfo_to_sql /usr/share/zoneinfo 2>"$DIR/mysql-tzinfo.log" | mysql_cli mysql
 }
 
 start_postgres() {
@@ -372,6 +384,9 @@ start() {
       echo "test-servers: $ENV_FILE exists but a server is not running; run make test-servers-stop" >&2
       exit 1
     fi
+    # The running servers keep their data; a MySQL setting that differs from
+    # the declared one moves the data into newly initialized directories.
+    node "$ROOT/scripts/test-servers-mysql.mjs" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
     echo "test-servers: running; environment $ENV_FILE"
     cat "$ENV_FILE"
     return
@@ -391,7 +406,7 @@ start() {
   tls
   start_postgres
 
-  mysql_tzinfo_to_sql /usr/share/zoneinfo 2>"$DIR/mysql-tzinfo.log" | mysql_cli mysql
+  mysql_timezones
   mysql_cli -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'
   psql_cli postgres -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools'
 
@@ -449,6 +464,29 @@ case "$1" in
     MYSQL_PORT=$2
     MYSQL_REPLICA_PORT=$3
     tls
+    ;;
+  mysql-stop)
+    # mysql-stop and mysql-start <mysql-port> <mysql-replica-port> are the steps
+    # of the MySQL migration (scripts/test-servers-mysql.mjs): they stop the
+    # MySQL servers, and initialize and start them with the declared settings.
+    [ $# -eq 1 ] || usage
+    for server in "$MYSQL_REPLICA_PID:$MYSQL_REPLICA_SOCKET:the MySQL replica" "$MYSQL_PID:$MYSQL_SOCKET:MySQL"; do
+      pid=${server%%:*}; rest=${server#*:}; socket=${rest%%:*}
+      if pid_running "$pid"; then
+        mysqladmin --no-defaults --socket="$socket" -u root shutdown
+        echo "test-servers: stopped ${rest#*:}"
+      fi
+    done
+    ;;
+  mysql-start)
+    [ $# -eq 3 ] || usage
+    port "$2"
+    port "$3"
+    MYSQL_PORT=$2
+    MYSQL_REPLICA_PORT=$3
+    start_mysql
+    tls
+    mysql_timezones
     ;;
   stop)
     [ $# -eq 1 ] || usage
