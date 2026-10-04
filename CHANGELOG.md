@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.14: `make docs-rules-check` fails on an HTML element outside code in a documentation page other than `<br>`, which VitePress would compile as an unclosed element; the T40 checklist messages that broke `make docs-check` are inline code.
+
 - G5.12: `make test-servers` reads the output of ProxySQL and PgBouncer line by line with `sh` instead of `awk`, whose Ubuntu implementation `mawk` held the ready line until the server exited, so the start no longer waits on the Linux runner.
 
 - G5.11: `make test-servers` fails before it starts a server when a socket path under `.runtime/servers` exceeds the Unix limit of the platform, naming the path, its length and the limit.

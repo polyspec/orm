@@ -107,6 +107,20 @@ for (const file of allDocs) {
   if (file.endsWith('.ko.md') && /(?:요|어요|해요|합니다|됩니다|있어요|없어요)[.!?]?\s*$/.test(text.replace(/```[\s\S]*?```/g, '').trim())) fail('docs.writing-style', `${relative(file)} uses an informal ending`);
 }
 
+// VitePress는 문서의 Markdown을 Vue template으로 compile하므로, code 밖의 `<word>`는 HTML element로
+// 읽혀 닫히지 않으면 build가 실패한다. code 밖에서 쓰는 element는 생성 문서의 줄바꿈 `<br>`뿐이다.
+const allowedElements = new Set(['br']);
+for (const file of allDocs) {
+  const text = (await readFile(file, 'utf8'))
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/`[^`\n]*`/g, '');
+  for (const match of text.matchAll(/<\/?([A-Za-z][A-Za-z0-9-]*)[^>\n]*>/g)) {
+    if (!allowedElements.has(match[1].toLowerCase()))
+      fail('docs.element', `${relative(file)} writes ${match[0]} outside code; put it in inline code`);
+  }
+}
+
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
