@@ -237,8 +237,18 @@ final class Db
     public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = []): array
     {
         return $this->observed($kind, $tables, $transaction, $sql, $args, function () use ($sql, $args): array {
-            $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
-            $st->execute($args);
+            $text = $sql;
+            $bound = $args;
+            if ($this->driver === 'postgres') {
+                // 같은 $n이 여러 번 나오면 ?마다 그 값을 다시 bind한다.
+                $bound = [];
+                $text = preg_replace_callback('/\$(\d+)/', static function (array $m) use ($args, &$bound): string {
+                    $bound[] = $args[(int) $m[1] - 1];
+                    return '?';
+                }, $sql);
+            }
+            $st = $this->pdo->prepare($text);
+            $st->execute($bound);
             $rows = $st->columnCount() > 0 ? $st->fetchAll(\PDO::FETCH_NUM) : [];
             $st->closeCursor();
             return $rows;
