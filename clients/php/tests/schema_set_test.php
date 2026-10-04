@@ -24,6 +24,7 @@ require_once __DIR__ . '/case_database.php';
 use Polyspec\Orm\Tests\Model\User;
 use Orm\Code;
 use Orm\Config;
+use Orm\Db;
 use Orm\Generator;
 use Orm\Orm;
 use Orm\OrmException;
@@ -107,12 +108,13 @@ function severalSchemas(string $dsn): void
     }
 }
 
-/** 실행한 statement 수를 세는 Config다. */
-function counted(int &$n): Config
+/** 연결이 보낸 statement를 $n에 세는 subscriber를 등록하고 그 연결을 돌려준다. */
+function counted(Db $db, int &$n): Db
 {
-    return new Config(onQuery: static function () use (&$n): void {
+    $db->subscribe(static function () use (&$n): void {
         $n++;
     });
+    return $db;
 }
 
 /**
@@ -124,13 +126,13 @@ function counted(int &$n): Config
 function unregisteredSchema(string $dsn): void
 {
     $runs = 0;
-    $raw = Orm::connect($dsn, counted($runs));
+    $raw = counted(Orm::connect($dsn, new Config()), $runs);
     try {
         check(code(fn() => (new User)($raw)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read on a raw connection');
     } finally {
         $raw->close();
     }
-    $core = \Polyspec\Orm\Tests\Model\connect($dsn, counted($runs));
+    $core = counted(\Polyspec\Orm\Tests\Model\connect($dsn, new Config()), $runs);
     try {
         $installer = \SchemaSetDecimal\Orm\connect($dsn, new Config());
         try {
@@ -167,7 +169,7 @@ function editedManifest(string $dsn): void
     check($edited->manifestText !== $decimalModel->manifestText, 'edited manifest differs');
     check(code(fn() => Orm::connectSchema($dsn, $edited, new Config())) === Code::CONFIG, 'connect with an edited manifest');
     $runs = 0;
-    $db = \SchemaSetDecimal\Orm\connect($dsn, counted($runs));
+    $db = counted(\SchemaSetDecimal\Orm\connect($dsn, new Config()), $runs);
     try {
         check(code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
         check($runs === 0, "the edited install ran $runs statements");
@@ -370,10 +372,10 @@ function registerSendsNoStatement(string $dsn): void
         $db->close();
     }
     $runs = 0;
-    Orm::connect($dsn, counted($runs))->close();
+    counted(Orm::connect($dsn, new Config()), $runs)->close();
     $connectRuns = $runs;
     $runs = 0;
-    Orm::connectSchema($dsn, $member, counted($runs))->close();
+    counted(Orm::connectSchema($dsn, $member, new Config()), $runs)->close();
     check($runs === $connectRuns, "connectSchema ran $runs statements, connect $connectRuns");
 }
 

@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 namespace Orm;
 
+use Orm\Dbspec\CatalogRows;
 use Orm\Dbspec\Dbspec;
+use Orm\Dbspec\DocumentSet;
+use Orm\Dbspec\Renderer;
 
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
@@ -28,38 +31,33 @@ final class Utils
         return $this->db->transaction($fn, retry: 0);
     }
 
-    /** @internal the first column of the first row of a statement, read through the active transaction or the connection */
-    public function read(string $sql, array $args): mixed
+    /**
+     * @internal the first column of the first row of a statement, read through the active
+     * transaction or the connection; false without a row. The statement publishes its event with
+     * $kind and $tables.
+     *
+     * @param list<string> $tables
+     */
+    public function read(string $kind, array $tables, string $sql, array $args): mixed
     {
-        try {
-            $st = $this->db->pdo()->prepare($sql);
-            $st->execute($args);
-            $v = $st->fetchColumn();
-            $st->closeCursor();
-            return $v;
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
-        }
+        $rows = $this->db->fetch($kind, $tables, $this->db->transactionNumber(), $sql, $args);
+        return $rows === [] ? false : $rows[0][0];
     }
 
-    /** @internal runs a statement through the active transaction or the connection */
-    public function exec(string $sql, array $args = []): void
+    /**
+     * @internal runs a statement through the active transaction or the connection and publishes
+     * its event with $kind and $tables
+     *
+     * @param list<string> $tables
+     */
+    public function exec(string $kind, array $tables, string $sql, array $args = []): void
     {
-        try {
-            $this->db->pdo()->prepare($sql)->execute($args);
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
-        }
+        $this->db->fetch($kind, $tables, $this->db->transactionNumber(), $sql, $args);
     }
 
     private static function validKey(string $key): bool
     {
         return strlen($key) <= 64 && preg_match('/^[A-Za-z0-9_][A-Za-z0-9_.]*$/', $key) === 1;
-    }
-
-    private function driverError(\PDOException $e): OrmException
-    {
-        return OrmException::fromDriver($e, $this->db->driver());
     }
 
     /** Takes a named lock that is released when the transaction ends. */
@@ -69,27 +67,19 @@ final class Utils
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "lock key $key is invalid");
         }
-        $pdo = $this->db->pdo();
-        try {
-            switch ($this->db->driver()) {
-                case 'mysql':
-                    $st = $pdo->prepare('SELECT GET_LOCK(?, 50)');
-                    $st->execute([$key]);
-                    $got = $st->fetchColumn();
-                    $st->closeCursor();
-                    if ((int) $got !== 1) {
-                        throw Orm::transactionConflict("lock $key was not acquired");
-                    }
-                    $frame->locks[] = $key;
-                    break;
-                case 'postgres':
-                    $pdo->prepare('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))')->execute([$key]);
-                    break;
-                default:
-                    $this->db->acquireSQLiteRowLock('update');
-            }
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
+        switch ($this->db->driver()) {
+            case 'mysql':
+                $got = $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT GET_LOCK(?, 50)', [$key])[0][0] ?? null;
+                if ((int) $got !== 1) {
+                    throw Orm::transactionConflict("lock $key was not acquired");
+                }
+                $frame->locks[] = $key;
+                break;
+            case 'postgres':
+                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [$key]);
+                break;
+            default:
+                $this->db->acquireSQLiteRowLock('update');
         }
     }
 
@@ -103,18 +93,13 @@ final class Utils
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "local key $key is invalid");
         }
-        $pdo = $this->db->pdo();
-        try {
-            switch ($this->db->driver()) {
-                case 'postgres':
-                    $pdo->prepare('SELECT set_config(?, ?, true)')->execute([$key, $value]);
-                    break;
-                case 'mysql':
-                    $pdo->prepare('SET @`orm.' . $key . '` = ?')->execute([$value]);
-                    break;
-            }
-        } catch (\PDOException $e) {
-            throw $this->driverError($e);
+        switch ($this->db->driver()) {
+            case 'postgres':
+                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT set_config($1, $2, true)', [$key, $value]);
+                break;
+            case 'mysql':
+                $this->db->fetch(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = ?', [$value]);
+                break;
         }
         $frame->locals[$key] = $value;
     }
@@ -189,17 +174,18 @@ final class SchemaUtils
         $schema->verify();
         $driver = $this->db->driver();
         $documents = $schema->documents();
-        $rendered = Dbspec::render($documents, $driver);
-        if ($rendered->statements === null) {
-            throw self::invalid($rendered->diagnostics);
+        [, $diagnostics] = DocumentSet::check($documents);
+        if ($diagnostics !== []) {
+            throw self::invalid($diagnostics);
         }
-        $statements = $rendered->statements;
+        $statements = Renderer::statements($documents, $driver);
         if ($statements === []) {
             throw new OrmException(Code::CONFIG, 'the document set has no tables');
         }
         $target = self::target($documents);
-        $pdo = $this->db->pdo();
-        $apply = static function () use ($pdo, $statements, $driver, $documents, $target): void {
+        $db = $this->db;
+        $pdo = $db->pdo();
+        $apply = fn(?int $tx) => $this->observed($tx, static function () use ($db, $pdo, $tx, $statements, $driver, $documents, $target): void {
             try {
                 $live = self::introspectSet($pdo, $driver, $documents);
                 $found = [];
@@ -222,8 +208,8 @@ final class SchemaUtils
                     throw new OrmException(Code::CONFIG, 'the database holds only some tables of the document set: ' . implode(', ', $present));
                 }
                 if ($missing !== []) {
-                    foreach ($statements as $statement) {
-                        $pdo->exec($statement);
+                    foreach ($statements as [$statement, $table]) {
+                        $db->run(StatementEvent::SCHEMA, [$table], $tx, $statement);
                     }
                     $live = Dbspec::introspect($pdo, $driver, 'schema');
                 }
@@ -231,14 +217,14 @@ final class SchemaUtils
             } catch (\PDOException $e) {
                 throw OrmException::fromDriver($e, $driver);
             }
-        };
+        });
         if ($driver !== 'mysql') {
-            $this->u->run($apply);
+            $this->u->run(fn() => $apply($db->transactionNumber()));
         } else {
             if (Db::activeFor($this->db) !== null) {
                 throw new OrmException(Code::CONFIG, 'MySQL commits schema statements implicitly; install outside a transaction');
             }
-            $apply();
+            $apply(null);
         }
         $this->db->registerSet($schema);
     }
@@ -265,8 +251,9 @@ final class SchemaUtils
         $driver = $this->db->driver();
         $documents = $schema->documents();
         $document = self::target($documents);
-        $pdo = $this->db->pdo();
-        $apply = static function () use ($pdo, $driver, $document, $documents): array {
+        $db = $this->db;
+        $pdo = $db->pdo();
+        $apply = fn(?int $tx): array => $this->observed($tx, static function () use ($db, $pdo, $tx, $driver, $document, $documents): array {
             try {
                 $live = self::introspectSet($pdo, $driver, $documents);
                 [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
@@ -274,7 +261,8 @@ final class SchemaUtils
                     throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ' . implode('; ', $differences));
                 }
                 foreach ($steps as $step) {
-                    $pdo->exec($step->statement);
+                    // step은 그 effect의 table을 만들거나 바꾼다.
+                    $db->run(StatementEvent::SCHEMA, $step->effect->table === '' ? [] : [$step->effect->table], $tx, $step->statement);
                 }
                 // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
                 if ($steps !== []) {
@@ -285,17 +273,38 @@ final class SchemaUtils
             } catch (\PDOException $e) {
                 throw OrmException::fromDriver($e, $driver);
             }
-        };
+        });
         if ($driver === 'postgres') {
-            return $this->u->run($apply);
+            return $this->u->run(fn(): array => $apply($db->transactionNumber()));
         }
         if (Db::activeFor($this->db) !== null) {
             throw new OrmException(Code::CONFIG, "$driver adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table");
         }
         if ($driver === 'mysql') {
-            return $apply();
+            return $apply(null);
         }
         return $this->withoutForeignKeys($apply);
+    }
+
+    /**
+     * $fn을 실행하는 동안 introspection의 catalog query마다 schema event를 publish한다.
+     * catalog query는 table을 가리키지 않는다. $tx는 그 query의 transaction 번호다.
+     *
+     * @template T
+     * @param \Closure(): T $fn
+     * @return T
+     */
+    private function observed(?int $tx, \Closure $fn): mixed
+    {
+        $db = $this->db;
+        return CatalogRows::observed(static function (string $query, int $start, ?\Throwable $failure) use ($db, $tx): void {
+            $error = match (true) {
+                $failure === null => null,
+                $failure instanceof \PDOException => OrmException::fromDriver($failure, $db->driver()),
+                default => new OrmException(Code::DRIVER, $failure->getMessage(), $failure),
+            };
+            $db->publish(StatementEvent::SCHEMA, [], $tx, $query, [], $start, $error);
+        }, $fn);
     }
 
     /**
@@ -367,43 +376,47 @@ final class SchemaUtils
      * 뒤 foreign key 검사가 row를 돌려주지 않을 때만 commit하고 foreign key를 다시
      * 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
      *
-     * @param \Closure(): list<string> $fn
+     * 이 transaction도 연결의 transaction 번호를 하나 받는다.
+     *
+     * @param \Closure(int): list<string> $fn
      * @return list<string>
      */
     private function withoutForeignKeys(\Closure $fn): array
     {
-        $pdo = $this->db->pdo();
+        $db = $this->db;
+        $db->run(StatementEvent::UTILITY, [], null, 'PRAGMA foreign_keys = OFF');
         try {
-            $pdo->exec('PRAGMA foreign_keys = OFF');
+            $tx = $db->nextTransaction();
+            $began = false;
             try {
-                $pdo->exec('BEGIN IMMEDIATE');
-                try {
-                    $added = $fn();
-                    $broken = (int) $pdo->query('SELECT COUNT(*) FROM pragma_foreign_key_check')->fetchColumn();
-                    if ($broken > 0) {
-                        throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
-                    }
-                } catch (\Throwable $e) {
-                    try {
-                        $pdo->exec('ROLLBACK');
-                    } catch (\PDOException $rollback) {
-                        throw OrmException::rollback($e, OrmException::fromDriver($rollback, 'sqlite'));
-                    }
-                    throw $e;
+                $db->run(StatementEvent::BEGIN, [], $tx, 'BEGIN IMMEDIATE');
+                $began = true;
+                $added = $fn($tx);
+                $broken = (int) ($db->fetch(StatementEvent::SCHEMA, [], $tx, 'SELECT COUNT(*) FROM pragma_foreign_key_check')[0][0] ?? 0);
+                if ($broken > 0) {
+                    throw new OrmException(Code::INTERNAL, "the rebuilt tables break $broken foreign keys");
                 }
-                $pdo->exec('COMMIT');
-                return $added;
-            } finally {
-                $pdo->exec('PRAGMA foreign_keys = ON');
+            } catch (\Throwable $e) {
+                // BEGIN 뒤 subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로도 판단한다.
+                if ($began || $db->pdo()->inTransaction()) {
+                    try {
+                        $db->run(StatementEvent::ROLLBACK, [], $tx, 'ROLLBACK');
+                    } catch (OrmException $rollback) {
+                        throw OrmException::rollback($e, $rollback);
+                    }
+                }
+                throw $e;
             }
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, 'sqlite');
+            $db->run(StatementEvent::COMMIT, [], $tx, 'COMMIT');
+            return $added;
+        } finally {
+            $db->run(StatementEvent::UTILITY, [], null, 'PRAGMA foreign_keys = ON');
         }
     }
 
     private function bool(string $sql, array $args): bool
     {
-        return (bool) $this->u->read($sql, $args);
+        return (bool) $this->u->read(StatementEvent::SCHEMA, [], $sql, $args);
     }
 
     private static function name(string $name): string
@@ -418,7 +431,7 @@ final class SchemaUtils
     {
         $schema = self::name($schema);
         return match ($this->db->driver()) {
-            'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = ?)', [$schema]),
+            'postgres' => $this->bool('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [$schema]),
             'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)', [$schema]),
             default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", [str_replace('_', '\\_', $schema) . '\\_\\_%']),
         };
@@ -429,7 +442,7 @@ final class SchemaUtils
         $schema = self::name($schema);
         $table = self::name($table);
         return match ($this->db->driver()) {
-            'postgres' => $this->bool('SELECT to_regclass(?) IS NOT NULL', [$schema . '.' . $table]),
+            'postgres' => $this->bool('SELECT to_regclass($1) IS NOT NULL', [$schema . '.' . $table]),
             'mysql' => $this->bool('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)', [$schema, $table]),
             default => $this->bool("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)", [$schema . '__' . $table]),
         };
@@ -483,9 +496,9 @@ final class PrivilegeUtils
         $qualified = $this->table($table);
         $r = self::role($role);
         $schema = substr($qualified, 0, (int) strpos($qualified, '.'));
-        $this->u->run(function () use ($qualified, $r, $schema): void {
-            $this->u->exec("GRANT USAGE ON SCHEMA $schema TO $r");
-            $this->u->exec("GRANT SELECT, INSERT, UPDATE, DELETE ON $qualified TO $r");
+        $this->u->run(function () use ($table, $qualified, $r, $schema): void {
+            $this->u->exec(StatementEvent::UTILITY, [$table], "GRANT USAGE ON SCHEMA $schema TO $r");
+            $this->u->exec(StatementEvent::UTILITY, [$table], "GRANT SELECT, INSERT, UPDATE, DELETE ON $qualified TO $r");
         });
     }
 
@@ -497,7 +510,7 @@ final class PrivilegeUtils
         if (!in_array($privilege, ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'], true)) {
             throw new OrmException(Code::CONFIG, "unsupported table privilege $privilege");
         }
-        $this->u->run(fn() => $this->u->exec("REVOKE $privilege ON $qualified FROM $r"));
+        $this->u->run(fn() => $this->u->exec(StatementEvent::UTILITY, [$table], "REVOKE $privilege ON $qualified FROM $r"));
     }
 
     /** @return array{insert: bool, select: bool, update: bool, delete: bool, truncate: bool} */
@@ -506,7 +519,7 @@ final class PrivilegeUtils
         $qualified = $this->table($table);
         $out = [];
         foreach (['insert', 'select', 'update', 'delete', 'truncate'] as $p) {
-            $out[$p] = (bool) $this->u->read('SELECT has_table_privilege(current_user, ?, ?)', [$qualified, strtoupper($p)]);
+            $out[$p] = (bool) $this->u->read(StatementEvent::UTILITY, [$table], 'SELECT has_table_privilege(current_user, $1, $2)', [$qualified, strtoupper($p)]);
         }
         return $out;
     }
@@ -542,14 +555,7 @@ final class AesUtils
     {
         $spec = $this->spec($model);
         $version = $this->q($spec['version']);
-        try {
-            $st = $this->db->pdo()->prepare("SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version");
-            $st->execute();
-            $rows = $st->fetchAll(\PDO::FETCH_NUM);
-            $st->closeCursor();
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->db->driver());
-        }
+        $rows = $this->db->fetch(StatementEvent::UTILITY, [$spec['table']], $this->db->transactionNumber(), "SELECT $version, COUNT(*) FROM {$this->q($spec['table'])} GROUP BY $version ORDER BY $version");
         $versions = [];
         $total = 0;
         $pending = 0;
@@ -569,47 +575,59 @@ final class AesUtils
     public function rotate(Model $model, AesKeyring $keyring): int
     {
         $spec = $this->spec($model);
+        $pg = $this->db->driver() === 'postgres';
+        // PostgreSQL은 $n placeholder를 쓴다. pdo_pgsql에는 ?로 바꿔 보낸다.
+        $ph = static fn(int $n): string => $pg ? '$' . $n : '?';
         $columns = array_merge(array_map($this->q(...), $spec['keys']), [$this->q($spec['version'])], array_map(fn(array $c): string => $this->q($c['name']), $spec['columns']));
         $keyCount = count($spec['keys']);
-        $select = 'SELECT ' . implode(', ', $columns) . " FROM {$this->q($spec['table'])} WHERE {$this->q($spec['version'])} <> ? ORDER BY " . implode(', ', array_slice($columns, 0, $keyCount)) . ' LIMIT 1000';
-        $sets = array_map(fn(array $c): string => $this->q($c['name']) . ' = ?', $spec['columns']);
-        $sets[] = $this->q($spec['version']) . ' = ?';
-        $where = array_map(fn(string $k): string => $this->q($k) . ' = ?', $spec['keys']);
-        $where[] = $this->q($spec['version']) . ' = ?';
+        $select = 'SELECT ' . implode(', ', $columns) . " FROM {$this->q($spec['table'])} WHERE {$this->q($spec['version'])} <> {$ph(1)} ORDER BY " . implode(', ', array_slice($columns, 0, $keyCount)) . ' LIMIT 1000';
+        $sets = [];
+        foreach ($spec['columns'] as $i => $c) {
+            $sets[] = $this->q($c['name']) . ' = ' . $ph($i + 1);
+        }
+        $sets[] = $this->q($spec['version']) . ' = ' . $ph(count($spec['columns']) + 1);
+        $where = [];
+        foreach ($spec['keys'] as $i => $k) {
+            $where[] = $this->q($k) . ' = ' . $ph(count($spec['columns']) + 2 + $i);
+        }
+        $where[] = $this->q($spec['version']) . ' = ' . $ph(count($spec['columns']) + 2 + $keyCount);
         $update = "UPDATE {$this->q($spec['table'])} SET " . implode(', ', $sets) . ' WHERE ' . implode(' AND ', $where);
-        return $this->u->run(function () use ($select, $update, $spec, $keyring, $keyCount): int {
-            $pdo = $this->db->pdo();
+        return $this->u->run(function () use ($select, $update, $spec, $keyring, $keyCount, $pg): int {
+            $db = $this->db;
+            $tx = $db->transactionNumber();
+            $tables = [$spec['table']];
             $rotated = 0;
             try {
-                while (true) {
-                    $st = $pdo->prepare($select);
-                    $st->execute([$keyring->currentVersion]);
-                    $batch = $st->fetchAll(\PDO::FETCH_NUM);
-                    $st->closeCursor();
-                    if ($batch === []) {
-                        return $rotated;
+                $up = $db->pdo()->prepare($pg ? preg_replace('/\$\d+/', '?', $update) : $update);
+            } catch (\PDOException $e) {
+                throw OrmException::fromDriver($e, $db->driver());
+            }
+            while (true) {
+                $batch = $db->fetch(StatementEvent::UTILITY, $tables, $tx, $select, [$keyring->currentVersion]);
+                if ($batch === []) {
+                    return $rotated;
+                }
+                foreach ($batch as $values) {
+                    $row = [];
+                    foreach ($spec['keys'] as $i => $k) {
+                        $row[$k] = $values[$i];
                     }
-                    $up = $pdo->prepare($update);
-                    foreach ($batch as $values) {
-                        $row = [];
-                        foreach ($spec['keys'] as $i => $k) {
-                            $row[$k] = $values[$i];
-                        }
-                        $version = (int) $values[$keyCount];
-                        $row[$spec['version']] = $version;
-                        foreach ($spec['columns'] as $i => $c) {
-                            $row[$c['name']] = $values[$keyCount + 1 + $i];
-                        }
-                        $after = $keyring->rotateRow($row, $spec['version'], $spec['columns'], $keyring->currentVersion);
-                        $args = [];
-                        foreach ($spec['columns'] as $c) {
-                            $args[] = $after[$c['name']];
-                        }
-                        $args[] = $keyring->currentVersion;
-                        foreach ($spec['keys'] as $k) {
-                            $args[] = $row[$k];
-                        }
-                        $args[] = $version;
+                    $version = (int) $values[$keyCount];
+                    $row[$spec['version']] = $version;
+                    foreach ($spec['columns'] as $i => $c) {
+                        $row[$c['name']] = $values[$keyCount + 1 + $i];
+                    }
+                    $after = $keyring->rotateRow($row, $spec['version'], $spec['columns'], $keyring->currentVersion);
+                    $args = [];
+                    foreach ($spec['columns'] as $c) {
+                        $args[] = $after[$c['name']];
+                    }
+                    $args[] = $keyring->currentVersion;
+                    foreach ($spec['keys'] as $k) {
+                        $args[] = $row[$k];
+                    }
+                    $args[] = $version;
+                    $changed = $db->observed(StatementEvent::UTILITY, $tables, $tx, $update, $args, static function () use ($up, $args): int {
                         foreach ($args as $i => $v) {
                             match (true) {
                                 $v instanceof Bytes => $up->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB),
@@ -619,14 +637,13 @@ final class AesUtils
                             };
                         }
                         $up->execute();
-                        if ($up->rowCount() !== 1) {
-                            throw Orm::transactionConflict("aes rotation of {$spec['table']} changed {$up->rowCount()} rows");
-                        }
-                        $rotated++;
+                        return $up->rowCount();
+                    });
+                    if ($changed !== 1) {
+                        throw Orm::transactionConflict("aes rotation of {$spec['table']} changed $changed rows");
                     }
+                    $rotated++;
                 }
-            } catch (\PDOException $e) {
-                throw OrmException::fromDriver($e, $this->db->driver());
             }
         });
     }

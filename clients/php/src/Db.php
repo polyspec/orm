@@ -12,6 +12,8 @@ final class Db
     public const DRIVERS = ['mysql', 'postgres', 'sqlite'];
     public const SECRET = '$SECRET';
     public const NOW = '$NOW';
+    /** SQLite row lock을 대신하는 table이다. row lock statement가 가리킨다. */
+    private const ROW_LOCK_TABLE = 'orm__row_lock';
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
@@ -28,6 +30,13 @@ final class Db
     private bool $rollbackFault = false;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     private array $sets = [];
+    /** @var array<int, \Closure(StatementEvent): void> statement event subscriber다. 등록 순서이고 key는 등록 번호다. */
+    private array $subscribers = [];
+    private int $subscriberSeq = 0;
+    /** 연결의 바깥 transaction 번호다. 바깥 begin마다 하나 늘린다. */
+    private int $transactions = 0;
+    /** SQLite row lock table을 이 연결에서 만들었는지다. 연결의 첫 transaction 전에 한 번 만든다. */
+    private bool $rowLockReady = false;
     /** @internal Orm::connect creates connections. */
     public function __construct(
         private readonly \PDO $pdo,
@@ -111,6 +120,129 @@ final class Db
         }
         $this->stmts = [];
         $this->stmtOrder = [];
+    }
+
+    // ---- statement events ----
+
+    /**
+     * Registers $subscriber for the event of every statement the connection
+     * sends (docs/usage.md "Statement events"). Subscribers run in
+     * registration order, after the statement and before the operation
+     * continues. A subscriber must not throw: an exception fails the
+     * operation with SUBSCRIBER, whose previous exception it is, and the
+     * statement keeps its effect. The returned closure removes the
+     * subscription.
+     *
+     * @param \Closure(StatementEvent): void $subscriber
+     * @return \Closure(): void
+     */
+    public function subscribe(\Closure $subscriber): \Closure
+    {
+        $id = $this->subscriberSeq++;
+        $this->subscribers[$id] = $subscriber;
+        return function () use ($id): void {
+            unset($this->subscribers[$id]);
+        };
+    }
+
+    /** @internal 새 바깥 transaction의 번호다. */
+    public function nextTransaction(): int
+    {
+        return ++$this->transactions;
+    }
+
+    /** @internal 연결의 진행 중인 transaction 번호다. transaction 밖이면 null이다. */
+    public function transactionNumber(): ?int
+    {
+        return self::activeFor($this)?->number;
+    }
+
+    /**
+     * @internal 끝난 statement의 event를 subscriber에게 publish한다. subscriber가 던지면 남은
+     * subscriber를 부르지 않고 SUBSCRIBER를 던진다. 그 previous가 subscriber의 오류다.
+     * subscriber가 없으면 목록이 빈 것만 확인한다. $start는 statement를 보내기 전의 hrtime이다.
+     *
+     * @param list<string> $tables
+     * @param list<mixed> $binds
+     */
+    public function publish(string $kind, array $tables, ?int $transaction, string $sql, array $binds, int $start, ?OrmException $error): void
+    {
+        if ($this->subscribers === []) {
+            return;
+        }
+        $elapsed = (hrtime(true) - $start) / 1e9;
+        foreach ($binds as $i => $v) {
+            if ($v instanceof Bytes) {
+                $binds[$i] = $v->bytes;
+            }
+        }
+        $event = new StatementEvent($sql, array_values($binds), $kind, $tables, $elapsed, $transaction, $error);
+        // 목록의 복사본을 돈다. subscriber가 구독을 풀어도 이번 event의 순서는 그대로다.
+        foreach ($this->subscribers as $subscriber) {
+            try {
+                $subscriber($event);
+            } catch (\Throwable $e) {
+                throw new OrmException(Code::SUBSCRIBER, 'statement event subscriber failed: ' . $e->getMessage(), $e);
+            }
+        }
+    }
+
+    /**
+     * @internal model이 아닌 statement 하나를 보내고 event를 publish한다. $send는 statement를
+     * 실행해 결과를 돌려준다. driver 오류는 mapping한 OrmException으로 event에 싣고 던진다.
+     *
+     * @template T
+     * @param list<string> $tables
+     * @param list<mixed> $binds
+     * @param \Closure(): T $send
+     * @return T
+     */
+    public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
+    {
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        $start = hrtime(true);
+        try {
+            $result = $send();
+        } catch (\PDOException $e) {
+            $error = OrmException::fromDriver($e, $this->driver);
+            $this->publish($kind, $tables, $transaction, $sql, $binds, $start, $error);
+            throw $error;
+        }
+        $this->publish($kind, $tables, $transaction, $sql, $binds, $start, null);
+        return $result;
+    }
+
+    /**
+     * @internal bind도 행도 없는 statement 하나를 실행한다. transaction 제어와 schema statement가
+     * 쓴다.
+     *
+     * @param list<string> $tables
+     */
+    public function run(string $kind, array $tables, ?int $transaction, string $sql): void
+    {
+        $this->observed($kind, $tables, $transaction, $sql, [], fn() => $this->pdo->exec($sql));
+    }
+
+    /**
+     * @internal model이 아닌 statement 하나를 실행하고 그 행을 위치 순 값으로 돌려준다. 행이 없는
+     * statement는 빈 목록이다. PostgreSQL text의 $n placeholder는 pdo_pgsql이 받는 ?로 바꿔
+     * 보낸다. event의 sql은 text 그대로다.
+     *
+     * @param list<string> $tables
+     * @param list<mixed> $args
+     * @return list<list<mixed>>
+     */
+    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = []): array
+    {
+        return $this->observed($kind, $tables, $transaction, $sql, $args, function () use ($sql, $args): array {
+            $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
+            $st->execute($args);
+            $rows = $st->columnCount() > 0 ? $st->fetchAll(\PDO::FETCH_NUM) : [];
+            $st->closeCursor();
+            return $rows;
+        });
     }
 
     public static function bindLimit(string $driver): int
@@ -364,59 +496,66 @@ final class Db
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
         }
         $level = strtoupper(str_replace('_', ' ', $isolation));
-        $frame = null;
-        try {
-            if ($this->driver === 'mysql') {
-                if ($isolation !== '') {
-                    $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level);
-                }
-                if ($readOnly) {
-                    $this->pdo->exec('SET TRANSACTION READ ONLY');
-                }
-            }
-            if ($this->driver === 'sqlite') {
-                $this->pdo->exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
-                // A write transaction holds the write lock from its start and
-                // waits for it up to busy_timeout; a read-only one begins deferred.
-                $this->pdo->exec($readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE');
-            } else {
-                $this->pdo->beginTransaction();
-            }
-            $frame = new TxFrame($this, $readOnly, $isolation);
-            if ($this->driver === 'postgres') {
-                if ($isolation !== '') {
-                    $this->pdo->exec('SET TRANSACTION ISOLATION LEVEL ' . $level);
-                }
-                if ($readOnly) {
-                    $this->pdo->exec('SET TRANSACTION READ ONLY');
-                }
-                if ($timeoutMs > 0) {
-                    $this->pdo->exec('SET LOCAL statement_timeout = ' . $timeoutMs);
-                }
-            }
-            if ($this->driver === 'sqlite') {
-                if ($isolation === 'read_uncommitted') {
-                    $this->pdo->exec('PRAGMA read_uncommitted = 1');
-                }
-                if ($readOnly) {
-                    $this->pdo->exec('PRAGMA query_only = 1');
-                }
-            }
-            return $frame;
-        } catch (\PDOException $e) {
-            $failure = OrmException::fromDriver($e, $this->driver);
-            try {
-                // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다.
-                if ($frame !== null) {
-                    $this->finish($frame, false);
-                } elseif ($this->pdo->inTransaction()) {
-                    $this->pdo->rollBack();
-                }
-            } catch (\Throwable $cleanup) {
-                throw OrmException::rollback($failure, $cleanup);
-            }
-            throw $failure;
+        if ($this->driver === 'sqlite') {
+            // SQLite의 row lock table은 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다.
+            $this->ensureRowLockTable();
         }
+        $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
+        // transaction을 여는 statement다(docs/usage.md "Statement events"). driver의 transaction
+        // API 대신 client가 이 text를 그대로 보낸다.
+        $steps = [];
+        switch ($this->driver) {
+            case 'mysql':
+                if ($level !== '') {
+                    $steps[] = [StatementEvent::UTILITY, 'SET TRANSACTION ISOLATION LEVEL ' . $level];
+                }
+                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION'];
+                break;
+            case 'postgres':
+                $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '') . ($readOnly ? ' READ ONLY' : '')];
+                if ($timeoutMs > 0) {
+                    $steps[] = [StatementEvent::UTILITY, 'SET LOCAL statement_timeout = ' . $timeoutMs];
+                }
+                break;
+            default:
+                // 쓰기 transaction은 시작할 때 쓰기 lock을 잡고 busy_timeout까지 기다린다. 읽기 전용
+                // transaction은 deferred BEGIN이다.
+                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE'];
+                if ($isolation === 'read_uncommitted') {
+                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA read_uncommitted = 1'];
+                }
+                if ($readOnly) {
+                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA query_only = 1'];
+                }
+        }
+        foreach ($steps as [$kind, $sql]) {
+            try {
+                $this->run($kind, [], $frame->number, $sql);
+            } catch (OrmException $failure) {
+                // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다. BEGIN이 실행된 뒤
+                // subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로 판단한다.
+                if (!$this->pdo->inTransaction()) {
+                    throw $failure;
+                }
+                try {
+                    $this->finish($frame, false);
+                } catch (\Throwable $cleanup) {
+                    throw OrmException::rollback($failure, $cleanup);
+                }
+                throw $failure;
+            }
+        }
+        return $frame;
+    }
+
+    /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
+    private function ensureRowLockTable(): void
+    {
+        if ($this->rowLockReady) {
+            return;
+        }
+        $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null, 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+        $this->rowLockReady = true;
     }
 
     /**
@@ -431,10 +570,10 @@ final class Db
         $failure = self::joined($this->cleanup($frame));
         if ($commit && $failure === null) {
             try {
-                $this->pdo->commit();
+                $this->run(StatementEvent::COMMIT, [], $frame->number, 'COMMIT');
                 return;
-            } catch (\PDOException $e) {
-                $failure = OrmException::fromDriver($e, $this->driver);
+            } catch (OrmException $e) {
+                $failure = $e;
             }
         }
         $rollback = null;
@@ -443,10 +582,10 @@ final class Db
             // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
             // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
             if (!$commit || $this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
+                $this->run(StatementEvent::ROLLBACK, [], $frame->number, 'ROLLBACK');
             }
-        } catch (\PDOException $e) {
-            $rollback = OrmException::fromDriver($e, $this->driver);
+        } catch (OrmException $e) {
+            $rollback = $e;
         }
         if ($commit) {
             throw $rollback === null ? $failure : OrmException::rollback($failure, $rollback);
@@ -464,34 +603,34 @@ final class Db
         $attempt = function (callable $step) use (&$errors): void {
             try {
                 $step();
-            } catch (\PDOException $e) {
-                $errors[] = OrmException::fromDriver($e, $this->driver);
             } catch (OrmException $e) {
                 $errors[] = $e;
             }
         };
         foreach ($frame->locks as $key) {
-            $attempt(function () use ($key): void {
-                $st = $this->pdo->prepare('SELECT RELEASE_LOCK(?)');
-                $st->execute([$key]);
+            $attempt(function () use ($key, $frame): void {
+                $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)', [$key])[0][0] ?? null;
                 // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
-                if ((string) $st->fetchColumn() !== '1') {
+                if ((string) $released !== '1') {
                     throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
                 }
             });
         }
         $frame->locks = [];
         if ($this->driver === 'mysql') {
-            foreach ($frame->locals as $key => $_) {
-                $attempt(fn() => $this->pdo->exec('SET @`orm.' . $key . '` = NULL'));
+            // 값을 지우는 statement는 key 순서로 보낸다.
+            $keys = array_map('strval', array_keys($frame->locals));
+            sort($keys, SORT_STRING);
+            foreach ($keys as $key) {
+                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = NULL'));
             }
         }
         if ($this->driver === 'sqlite') {
             if ($frame->readOnly) {
-                $attempt(fn() => $this->pdo->exec('PRAGMA query_only = 0'));
+                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'PRAGMA query_only = 0'));
             }
             if ($frame->isolation === 'read_uncommitted') {
-                $attempt(fn() => $this->pdo->exec('PRAGMA read_uncommitted = 0'));
+                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'PRAGMA read_uncommitted = 0'));
             }
         }
         return $errors;
@@ -510,11 +649,7 @@ final class Db
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
         try {
-            try {
-                $this->pdo->exec("SAVEPOINT $name");
-            } catch (\PDOException $e) {
-                throw OrmException::fromDriver($e, $this->driver);
-            }
+            $this->run(StatementEvent::SAVEPOINT, [], $frame->number, "SAVEPOINT $name");
             self::$frames[] = $frame;
             try {
                 $v = $fn();
@@ -523,13 +658,13 @@ final class Db
                 $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
                 // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
                 $ended = self::joined(array_values(array_filter([
-                    $this->endSavepoint("ROLLBACK TO SAVEPOINT $name"),
-                    $this->endSavepoint("RELEASE SAVEPOINT $name"),
+                    $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, "ROLLBACK TO SAVEPOINT $name"),
+                    $this->endSavepoint($frame, StatementEvent::RELEASE, "RELEASE SAVEPOINT $name"),
                 ])));
                 throw $ended === null ? $failure : OrmException::rollback($failure, $ended);
             }
             array_pop(self::$frames);
-            $released = $this->endSavepoint("RELEASE SAVEPOINT $name");
+            $released = $this->endSavepoint($frame, StatementEvent::RELEASE, "RELEASE SAVEPOINT $name");
             if ($released !== null) {
                 throw $released;
             }
@@ -540,13 +675,13 @@ final class Db
     }
 
     /** savepoint를 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
-    private function endSavepoint(string $statement): ?\Throwable
+    private function endSavepoint(TxFrame $frame, string $kind, string $statement): ?\Throwable
     {
         try {
-            $this->pdo->exec($statement);
+            $this->run($kind, [], $frame->number, $statement);
             return null;
-        } catch (\PDOException $e) {
-            return OrmException::fromDriver($e, $this->driver);
+        } catch (OrmException $e) {
+            return $e;
         }
     }
 
@@ -581,7 +716,7 @@ final class Db
         // bind 한도보다 많은 값의 요청은 나뉜 요청(rootInParts)의 plan으로 실행된다.
         // 값마다 bind slot을 가진 이 plan은 수십 MB이므로 plan cache에 남기지 않는다.
         $plan = $engine->compile($shape);
-        Assemble::index($plan, hash('xxh3', json_encode($shape, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION)), $engine->model);
+        Assemble::index($plan, $engine->model);
         return $plan;
     }
 
@@ -652,7 +787,7 @@ final class Db
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params, [], $frame);
         $insert = $r->ir['kind'] === 'insert';
-        $start = microtime(true);
+        $start = hrtime(true);
         $st = null;
         try {
             $st = $this->stmt($step['sql']);
@@ -669,10 +804,10 @@ final class Db
             }
         } catch (\PDOException $e) {
             $e = $this->failed($st, $e);
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
+            $this->modelDone($step, $step['sql'], $args, $start, $e);
             throw $e;
         }
-        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
+        $this->modelDone($step, $step['sql'], $args, $start, null);
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
         }
@@ -876,21 +1011,27 @@ final class Db
         return OrmException::fromDriver($e, $this->driver);
     }
 
-    private function emit(string $sql, array $args, float $start, string $planId, ?\Throwable $err): void
+    /**
+     * model statement의 event를 publish한다. kind는 plan step SQL의 첫 단어, tables는 plan
+     * step의 table이다. bind는 비밀과 시각 slot을 가린 값이다.
+     */
+    private function modelDone(array $step, string $sql, array $args, int $start, ?OrmException $err): void
     {
-        $hook = $this->config->onQuery;
-        if ($hook === null) {
-            return;
-        }
-        foreach ($args as $i => $v) {
-            if ($v instanceof Bytes) {
-                $args[$i] = $v->bytes;
-            }
-        }
         foreach ($this->masks as $i => $mask) {
             $args[$i] = $mask;
         }
-        $hook($sql, $args, microtime(true) - $start, $planId, $err);
+        $this->publish(self::statementKind($step['sql']), $step['tables'], $this->transactionNumber(), $sql, $args, $start, $err);
+    }
+
+    /** planner가 쓴 statement의 kind다: SQL의 첫 단어다. */
+    private static function statementKind(string $sql): string
+    {
+        return match (strtoupper(explode(' ', ltrim($sql), 2)[0])) {
+            'INSERT' => StatementEvent::INSERT,
+            'UPDATE' => StatementEvent::UPDATE,
+            'DELETE' => StatementEvent::DELETE,
+            default => StatementEvent::SELECT,
+        };
     }
 
     /** @internal takes the ORM lock row that stands for SQLite row locks */
@@ -899,29 +1040,25 @@ final class Db
         if ($mode === '' || $this->driver !== 'sqlite') {
             return;
         }
+        $tx = $this->transactionNumber();
         $noWait = str_ends_with($mode, '_nowait');
-        try {
-            $previous = (int) $this->pdo->query('PRAGMA busy_timeout')->fetchColumn();
-        } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->driver);
+        $previous = 0;
+        if ($noWait) {
+            $previous = (int) ($this->fetch(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout')[0][0] ?? 0);
+            $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0');
         }
         try {
-            if ($noWait) {
-                $this->pdo->exec('PRAGMA busy_timeout=0');
+            $this->ensureRowLockTable();
+            $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+        } catch (OrmException $e) {
+            $driverError = $e->getPrevious();
+            if ($noWait && $driverError instanceof \PDOException && (((int) ($driverError->errorInfo[1] ?? 0)) & 0xff) === 5) {
+                throw new OrmException(Code::LOCK_NOT_AVAILABLE, $driverError->getMessage(), $driverError);
             }
-            $this->pdo->exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
-        } catch (\PDOException $e) {
-            if ($noWait && (((int) ($e->errorInfo[1] ?? 0)) & 0xff) === 5) {
-                throw new OrmException(Code::LOCK_NOT_AVAILABLE, $e->getMessage(), $e);
-            }
-            throw OrmException::fromDriver($e, $this->driver);
+            throw $e;
         } finally {
             if ($noWait) {
-                try {
-                    $this->pdo->exec('PRAGMA busy_timeout=' . $previous);
-                } catch (\PDOException $e) {
-                    throw OrmException::fromDriver($e, $this->driver);
-                }
+                $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=' . $previous);
             }
         }
     }
@@ -931,7 +1068,7 @@ final class Db
     {
         $sql ??= $step['sql'];
         $args = $this->args($step, $params, $parentVals);
-        $start = microtime(true);
+        $start = hrtime(true);
         $st = null;
         try {
             $st = $this->stmt($sql);
@@ -940,10 +1077,11 @@ final class Db
             $st->closeCursor();
         } catch (\PDOException $e) {
             $e = $this->failed($st, $e);
-            $this->emit($sql, $args, $start, $step['plan_id'], $e);
+            $this->modelDone($step, $sql, $args, $start, $e);
             throw $e;
         }
-        $this->emit($sql, $args, $start, $step['plan_id'], null);
+        $this->modelDone($step, $sql, $args, $start, null);
+        // 읽은 행을 풀지 못한 오류는 statement의 오류가 아니므로 event 뒤에 던진다.
         if ($step['decode'] !== []) {
             Codec::decodeRows($rows, $step['decode'], $this->config);
         }
@@ -953,7 +1091,7 @@ final class Db
     private function scalar(array $step, array $params): mixed
     {
         $args = $this->args($step, $params);
-        $start = microtime(true);
+        $start = hrtime(true);
         $st = null;
         try {
             $st = $this->stmt($step['sql']);
@@ -962,10 +1100,10 @@ final class Db
             $st->closeCursor();
         } catch (\PDOException $e) {
             $e = $this->failed($st, $e);
-            $this->emit($step['sql'], $args, $start, $step['plan_id'], $e);
+            $this->modelDone($step, $step['sql'], $args, $start, $e);
             throw $e;
         }
-        $this->emit($step['sql'], $args, $start, $step['plan_id'], null);
+        $this->modelDone($step, $step['sql'], $args, $start, null);
         return $v === false ? null : $v;
     }
 
@@ -1228,7 +1366,8 @@ final class TxFrame
      */
     public ?array $audit = null;
 
-    public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation) {}
+    /** @param int $number 연결에서 이 transaction의 번호다. statement event가 싣는다. */
+    public function __construct(public readonly Db $db, public readonly bool $readOnly, public readonly string $isolation, public readonly int $number) {}
 }
 
 final class Transform

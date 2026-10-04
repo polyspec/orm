@@ -333,11 +333,6 @@ final class Config
         public readonly int $aesVersion = 1,
         /** @var array<int, string> every declared AES key version */
         public readonly array $aesKeys = [],
-        /**
-         * fn(string $sql, array $binds, float $seconds, string $planId, ?\Throwable $err) for every
-         * executed statement; secret and clock binds are replaced by "$SECRET" and "$NOW"
-         */
-        public readonly ?\Closure $onQuery = null,
         /** maximum connections a process opens for this database; zero uses the driver default */
         public readonly int $poolSize = 0,
         /** bound of every statement of the connection in milliseconds; zero keeps the server default */
