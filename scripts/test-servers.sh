@@ -36,10 +36,33 @@ POSTGRES_REPLICA_DATA="$DIR/postgres-replica"
 PROXYSQL_DATA="$DIR/proxysql"
 PROXYSQL_PID="$DIR/proxysql.pid"
 PGBOUNCER_PID="$DIR/pgbouncer.pid"
+MYSQL_SOCKET="$DIR/mysql.sock"
+MYSQL_REPLICA_SOCKET="$DIR/mysql-replica.sock"
+PROXYSQL_ADMIN_SOCKET="$DIR/proxysql-admin.sock"
+PROXYSQL_ADMIN_PGSQL_SOCKET="$DIR/proxysql-admin-pgsql.sock"
+PROXYSQL_PGSQL_SOCKET="$DIR/proxysql-pgsql.sock"
 
 usage() {
   echo "usage: test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> <postgres-replica-port> <proxysql-port> <pgbouncer-port> | tls <mysql-port> <mysql-replica-port> | stop" >&2
   exit 2
+}
+
+# check_socket_paths는 서버를 시작하기 전에 Unix socket 경로마다 platform 한도를 확인한다. socket
+# 경로는 sockaddr_un의 sun_path에 NUL과 함께 들어가므로 Linux는 107 byte, macOS는 103 byte까지다.
+# 깊은 checkout(예: 긴 worktree 경로)은 서버 log 줄 대신 이 경로와 한도로 실패한다.
+check_socket_paths() {
+  case "$(uname -s)" in
+    Linux) system=Linux limit=107 ;;
+    Darwin) system=macOS limit=103 ;;
+    *) echo "test-servers: no Unix socket path limit is declared for $(uname -s)" >&2; exit 1 ;;
+  esac
+  for socket in "$MYSQL_SOCKET" "$MYSQL_REPLICA_SOCKET" "$PROXYSQL_ADMIN_SOCKET" "$PROXYSQL_ADMIN_PGSQL_SOCKET" "$PROXYSQL_PGSQL_SOCKET"; do
+    bytes=$(printf %s "$socket" | wc -c | tr -d ' ')
+    if [ "$bytes" -gt "$limit" ]; then
+      echo "test-servers: socket path $socket is $bytes bytes; $system allows at most $limit" >&2
+      exit 1
+    fi
+  done
 }
 
 port() {
@@ -82,11 +105,11 @@ stop_servers() {
   # Through the server socket, shutdown returns after the server removes its
   # pid file; through TCP it returns at once.
   if pid_running "$MYSQL_REPLICA_PID"; then
-    mysqladmin --no-defaults --socket="$DIR/mysql-replica.sock" -u root shutdown
+    mysqladmin --no-defaults --socket="$MYSQL_REPLICA_SOCKET" -u root shutdown
     echo "test-servers: stopped the MySQL replica"
   fi
   if pid_running "$MYSQL_PID"; then
-    mysqladmin --no-defaults --socket="$DIR/mysql.sock" -u root shutdown
+    mysqladmin --no-defaults --socket="$MYSQL_SOCKET" -u root shutdown
     echo "test-servers: stopped MySQL"
   fi
   if postgres_running "$POSTGRES_REPLICA_DATA"; then
@@ -123,7 +146,7 @@ start_mysql() {
   # --daemonize returns after the server accepts connections or fails.
   mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
     --log-error="$DIR/mysql.log" --bind-address=127.0.0.1 --port="$MYSQL_PORT" \
-    --socket="$DIR/mysql.sock" --mysqlx=OFF --server-id=1
+    --socket="$MYSQL_SOCKET" --mysqlx=OFF --server-id=1
   echo "test-servers: MySQL on 127.0.0.1:$MYSQL_PORT"
 
   # The replica starts before the primary holds data and reads the binary log
@@ -131,7 +154,7 @@ start_mysql() {
   mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
   mysqld --no-defaults --daemonize "$MYSQLD_FILES" --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
     --log-error="$DIR/mysql-replica.log" --bind-address=127.0.0.1 --port="$MYSQL_REPLICA_PORT" \
-    --socket="$DIR/mysql-replica.sock" --mysqlx=OFF --server-id=2 --skip-replica-start
+    --socket="$MYSQL_REPLICA_SOCKET" --mysqlx=OFF --server-id=2 --skip-replica-start
   mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P "$MYSQL_REPLICA_PORT" -u root -e "
     CHANGE REPLICATION SOURCE TO SOURCE_HOST='127.0.0.1', SOURCE_PORT=$MYSQL_PORT, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1;
     START REPLICA;
@@ -247,8 +270,8 @@ datadir="$PROXYSQL_DATA"
 admin_variables=
 {
   admin_credentials="admin:admin"
-  mysql_ifaces="$DIR/proxysql-admin.sock"
-  pgsql_ifaces="$DIR/proxysql-admin-pgsql.sock"
+  mysql_ifaces="$PROXYSQL_ADMIN_SOCKET"
+  pgsql_ifaces="$PROXYSQL_ADMIN_PGSQL_SOCKET"
   restapi_enabled=false
   web_enabled=false
 }
@@ -261,7 +284,7 @@ mysql_variables=
 }
 pgsql_variables=
 {
-  interfaces="$DIR/proxysql-pgsql.sock"
+  interfaces="$PROXYSQL_PGSQL_SOCKET"
   monitor_enabled=false
 }
 mysql_servers=
@@ -324,6 +347,7 @@ start() {
     echo "test-servers: $DIR holds an incomplete start; run make test-servers-stop" >&2
     exit 1
   fi
+  check_socket_paths
   for tool in mysqld initdb pg_ctl pg_basebackup proxysql pgbouncer; do
     command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed" >&2; exit 1; }
   done

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
-import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, serverVariables } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
@@ -346,4 +349,38 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': reversed }, '8.5'), [
     'ci.yml must set up the PHP of .php-version last, so that it is php on PATH',
   ]);
+});
+
+// socket case는 test-servers.sh를 깊은 checkout 경로의 scripts/ 아래에 복사해 실행한다. script는
+// 자기 위치에서 .runtime/servers를 정하므로, 그 경로의 socket이 platform 한도(Linux 107, macOS 103
+// byte)를 넘으면 서버를 시작하기 전에 그 path와 한도를 말하고 실패해야 한다.
+caseTest('test-servers.sh refuses a socket path longer than the platform limit', PROCESS, () => {
+  const limit = { linux: 107, darwin: 103 }[process.platform];
+  assert.ok(limit, `no socket path limit for ${process.platform}`);
+  const base = mkdtempSync(join(tmpdir(), 'orm-sock-'));
+  try {
+    // 첫 경로는 가장 짧은 mysql.sock도 한도를 넘고, 둘째 경로는 가장 긴
+    // proxysql-admin-pgsql.sock만 넘는다. 실패는 넘은 첫 socket을 말한다.
+    const fits = name => root => Buffer.byteLength(join(root, '.runtime/servers', name)) <= limit;
+    const deep = (name, keep) => {
+      let root = base;
+      while (fits(name)(root)) {
+        const next = join(root, 'd');
+        if (keep && !keep(next)) root = `${root}x`; else root = next;
+      }
+      return root;
+    };
+    const system = process.platform === 'linux' ? 'Linux' : 'macOS';
+    for (const [root, name] of [[deep('mysql.sock'), 'mysql.sock'], [deep('proxysql-admin-pgsql.sock', fits('mysql.sock')), 'proxysql-admin-pgsql.sock']]) {
+      mkdirSync(join(root, 'scripts'), { recursive: true });
+      copyFileSync(new URL('../test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
+      const result = spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'start', '39171', '39471', '39181', '39481', '39182', '39482'], { encoding: 'utf8' });
+      const socket = join(root, '.runtime/servers', name);
+      assert.equal(result.status, 1, result.stderr);
+      assert.equal(result.stderr, `test-servers: socket path ${socket} is ${Buffer.byteLength(socket)} bytes; ${system} allows at most ${limit}\n`);
+      assert.equal(existsSync(join(root, '.runtime/servers')), false, 'the servers directory was created');
+    }
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });
