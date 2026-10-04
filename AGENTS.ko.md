@@ -25,8 +25,11 @@
 - 소유 검사: 커밋하기 전에 `make owner-check`(또는 `make owner-check PATHS="<paths>"`)를 실행한다.
   이 명령은 선언한 fixture나 테스트가 바뀐 file이거나, 선언한 fixture file이 바뀐 file을 가리키는
   `contracts/features.json`의 모든 기능을 고르고, 그 검증 명령과 coverage를 단계마다 기한을 두고
-  실행한다. 소유 검사를 직접 고르지 않는다. 어느 기능도 선언하지 않은 바뀐 file은 아무것도 고르지
-  않으므로, 그 file이 동작을 정의하는 기능에 선언한다. 항목의 증거에 명령과 통과 수를 적는다.
+  실행한다. 또 `contracts/check-inputs.json`의 입력이 바뀐 path를 맞추는 `CHECK_TARGETS`의 모든 make
+  target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다. 소유 검사를 직접
+  고르지 않는다. 어느 기능도 선언하지 않은 바뀐 file은 기능을 고르지 않으므로, 그 file이 동작을 정의하는
+  기능에 선언하고, 새 make target의 입력도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와
+  script에서 찾아 그 file을 읽는 것을 실행한다. 항목의 증거에 명령과 통과 수를 적는다.
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의
   `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. push 전에

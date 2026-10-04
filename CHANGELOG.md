@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T41: `make owner-check` also runs every make target of `CHECK_TARGETS` whose inputs, declared in `contracts/check-inputs.json`, match a changed path, so a changed document runs `make docs-check` and `make docs-verify-idempotent`; `make repo-check` requires the inputs of every target.
+
 - G5.17: CI sets up PHP with `coverage: none`, which `make repo-check` requires, and the PHP hot-path regression check refuses to measure with Xdebug or pcov loaded.
 
 - G5.16: the primary and replica cases of the four clients wait up to 60 s for the MySQL replica, which applies the parallel writes of every client one after another.

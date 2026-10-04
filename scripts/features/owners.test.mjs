@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mjs';
-import { selectOwners } from './owners.mjs';
+import { checkInputErrors, selectOwners, selectTargets } from './owners.mjs';
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = JSON.parse(await readFile(new URL('contracts/features.json', `file://${root}`), 'utf8'));
@@ -31,4 +31,35 @@ caseTest('a file named by a file that a fixture names selects the feature', 5000
   const owners = await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs']);
   assert.deepEqual(ids(owners), ['interface_contract']);
   assert.deepEqual(owners[0].reasons, ['clients/rust/orm/src/tx_send_tests.rs (named by contracts/symbols/rust.json)']);
+});
+
+// make target case는 contracts/check-inputs.json의 선언과 최소 선언으로 고른다.
+const inputs = JSON.parse(await readFile(new URL('contracts/check-inputs.json', `file://${root}`), 'utf8')).targets;
+const targets = selected => selected.map(item => item.target);
+
+caseTest('a changed document selects the documentation checks', 5000, async () => {
+  const selected = targets(selectTargets(inputs, ['docs/checklist.md']));
+  for (const target of ['checklist-check', 'docs-rules-check', 'docs-check', 'docs-verify-idempotent'])
+    assert.ok(selected.includes(target), `selected ${selected}`);
+  assert.ok(!selected.includes('rust-check'), `selected ${selected}`);
+});
+
+caseTest('a declared pattern matches by path segment', 5000, async () => {
+  const declared = { one: ['docs/*.md'], deep: ['docs/**'], rust: ['clients/rust/**/*.rs'], any: ['**'] };
+  assert.deepEqual(targets(selectTargets(declared, ['docs/a/b.md'])), ['deep', 'any']);
+  assert.deepEqual(targets(selectTargets(declared, ['docs/a.md'])), ['one', 'deep', 'any']);
+  assert.deepEqual(targets(selectTargets(declared, ['clients/rust/orm/src/lib.rs'])), ['rust', 'any']);
+  assert.deepEqual(targets(selectTargets(declared, ['clients/rust/Cargo.toml'])), ['any']);
+});
+
+caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', 5000, async () => {
+  const makefile = await readFile(new URL('Makefile', `file://${root}`), 'utf8');
+  const checkTargets = /^CHECK_TARGETS = (.*)$/m.exec(makefile)[1].trim().split(/\s+/);
+  const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
+  assert.deepEqual(checkInputErrors({ a: ['docs/**'], b: ['nothing/**'] }, ['a', 'c'], ['docs/x.md']), [
+    'contracts/check-inputs.json declares no inputs of c of CHECK_TARGETS',
+    'contracts/check-inputs.json declares b, which is not in CHECK_TARGETS',
+    'contracts/check-inputs.json: b input nothing/** matches no tracked file',
+  ]);
 });

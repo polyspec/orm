@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T41: `make owner-check`는 `contracts/check-inputs.json`에 선언한 입력이 바뀐 path를 맞추는 `CHECK_TARGETS`의 모든 make target도 실행하므로, 바뀐 문서는 `make docs-check`와 `make docs-verify-idempotent`를 실행한다. `make repo-check`는 모든 target의 입력을 요구한다.
+
 - G5.17: CI는 `make repo-check`가 요구하는 `coverage: none`으로 PHP를 설치하고, PHP hot-path regression 검사는 Xdebug나 pcov가 load되어 있으면 측정을 거부한다.
 
 - G5.16: 네 client의 primary와 replica case는 모든 client의 병렬 쓰기를 차례로 적용하는 MySQL replica를 60 s까지 기다린다.
