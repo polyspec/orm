@@ -94,7 +94,7 @@ go-test-check:
 # 결과(PASS, FAIL과 이유)와 경과 시간을 이 순서로 출력하고, 기한이 지난 case를 FAIL로
 # 보고하는지 하위 process의 출력으로 확인한다.
 .PHONY: testcase-check
-testcase-check:
+testcase-check: rust-fetch
 	$(GO_TEST) ./internal/testcase -count=1
 	node --test tests/testcase.test.mjs
 	php tests/testcase_test.php
@@ -157,7 +157,7 @@ dbspec-introspect-php-check:
 # dbspec-introspect-rust-check는 같은 round trip과 tests/dbspec/introspect.json의 case를 Rust
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
-dbspec-introspect-rust-check:
+dbspec-introspect-rust-check: rust-fetch
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
@@ -188,7 +188,7 @@ dbspec-apply-stress-bench:
 # plan을 둘째 client가 recover로 마치며, 다시 멈춘 plan을 둘째 client가 rollback한다. history
 # row와 introspect한 schema text가 chain의 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check:
+dbspec-apply-pairs-check: rust-fetch
 	$(TSC_BUILD)
 	$(RUN_CASE) rust-build/dbspec_apply $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=clients/rust/target/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
@@ -196,7 +196,7 @@ dbspec-apply-pairs-check:
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
-dbspec-apply-rust-check:
+dbspec-apply-rust-check: rust-fetch
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
@@ -216,7 +216,7 @@ dbspec-apply-ts-check:
 # dbspec-plan-rust-check는 같은 case를 Rust client의 plan step, renderer,
 # orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
-dbspec-plan-rust-check:
+dbspec-plan-rust-check: rust-fetch
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
@@ -237,7 +237,7 @@ dbspec-apply-php-check:
 # introspection의 budget 준수를 요구한다. dbspec-introspect-compare-bench는 같은 target을 2000
 # table 문서와 release runner로 실행한다.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
-dbspec-introspect-compare-check:
+dbspec-introspect-compare-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
 	$(TSC_BUILD)
@@ -255,7 +255,7 @@ dbspec-introspect-compare-bench:
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
 # 문서로 실행한다.
 .PHONY: dbspec-compare-check dbspec-compare-bench
-dbspec-compare-check:
+dbspec-compare-check: rust-fetch
 	node --test tests/dbspec/compare/check.test.mjs
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
@@ -273,7 +273,7 @@ dbspec-compare-bench:
 # emit해 parse 시간 budget(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
 # emission이 같음을 확인하고(Rust는 release build), PHP introspection을 SQLite에서 잰다.
 .PHONY: dbspec-stress-bench
-dbspec-stress-bench:
+dbspec-stress-bench: rust-fetch
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
@@ -288,14 +288,14 @@ dbspec-stress-bench:
 	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	clients/rust/target/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
-dbspec-rust-check:
+dbspec-rust-check: rust-fetch
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
-rust-send-savepoint-check:
+rust-send-savepoint-check: rust-fetch
 	$(RUN_CASE) rust-clippy/orm-lib $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
@@ -441,7 +441,7 @@ decimal-bench-sqlite:
 decimal-db-setup:
 	$(WITH_TEST_ENV) ORM_DECIMAL_DATABASE=$(DECIMAL_DATABASE) php scripts/decimal-db-setup.php
 
-decimal-physical-check:
+decimal-physical-check: rust-fetch
 	test -f $(DECIMAL_ENV) || { echo '$(DECIMAL_ENV) is missing; run make decimal-db-setup' >&2; exit 1; }
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
@@ -525,14 +525,21 @@ rust-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/clippy-live-db $(BUILD_DEADLINE) --cwd clients/rust -- cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-check/clippy-test-faults $(BUILD_DEADLINE) --cwd clients/rust -- cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
 
+# rust-fetch는 clients/rust와 bench/rust의 Cargo.lock이 고정한 crate를 받는다. cargo를 --offline으로
+# 실행하는 target은 이것을 먼저 실행한다: 새 machine(CI runner)의 cargo cache에는 crate가 없으므로
+# 앞선 다른 target이 받아 두었는지에 기대지 않는다. 받아 둔 crate는 다시 받지 않는다.
+.PHONY: rust-fetch
+rust-fetch:
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-fetch $(TOOL_DEADLINE) -- sh -c 'cargo fetch --locked --manifest-path clients/rust/Cargo.toml && cargo fetch --locked --manifest-path bench/rust/Cargo.toml'
+
 # rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
-rust-driver-check:
+rust-driver-check: rust-fetch
 	$(WITH_TEST_ENV) cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --offline -- --test-threads=1
 
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
-example-check:
+example-check: rust-fetch
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/examples $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(abspath clients/rust/target/debug/complex) EXAMPLE_RUST_DEMO=$(abspath clients/rust/target/debug/demo) $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 
@@ -540,7 +547,7 @@ example-check:
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
 # 2000 table stress 문서의 parse budget을 쓰므로 make bench가 실행한다.
 TIMING_GO_DBSPEC_TEST = .runtime/timing/dbspec.test
-timing-check:
+timing-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
