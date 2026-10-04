@@ -11,6 +11,30 @@ namespace Orm\Dbspec;
  */
 final class CatalogRows
 {
+    /** @var ?\Closure(string, int, ?\Throwable): void observed가 정한 catalog query observer다. */
+    private static ?\Closure $observer = null;
+
+    /**
+     * $fn 동안 catalog query 마다 $observer 를 부른다. observer 는 query 의 row 를 모두
+     * 읽었거나 읽다 실패했을 때 query, query 를 보내기 전의 hrtime, query 의 오류(성공이면
+     * null)를 받는다. observer 가 던진 오류는 introspection 을 그 오류로 끝낸다.
+     *
+     * @template T
+     * @param \Closure(string, int, ?\Throwable): void $observer
+     * @param \Closure(): T $fn
+     * @return T
+     */
+    public static function observed(\Closure $observer, \Closure $fn): mixed
+    {
+        $previous = self::$observer;
+        self::$observer = $observer;
+        try {
+            return $fn();
+        } finally {
+            self::$observer = $previous;
+        }
+    }
+
     /**
      * query 의 모든 row 를 위치 순 값으로 돌려준다. connection 의 error mode 와
      * 무관하게 실패는 RuntimeException 이다.
@@ -19,17 +43,30 @@ final class CatalogRows
      */
     public static function read(\PDO $connection, string $query): array
     {
+        $start = hrtime(true);
+        $rows = [];
+        $failure = null;
         try {
             $statement = $connection->query($query, \PDO::FETCH_NUM);
             if ($statement === false) {
-                throw new \RuntimeException(self::failure($query, $connection->errorInfo()));
-            }
-            $rows = $statement->fetchAll();
-            if ($statement->errorCode() !== '00000') {
-                throw new \RuntimeException(self::failure($query, $statement->errorInfo()));
+                $failure = new \RuntimeException(self::failure($query, $connection->errorInfo()));
+            } else {
+                $rows = $statement->fetchAll();
+                if ($statement->errorCode() !== '00000') {
+                    $failure = new \RuntimeException(self::failure($query, $statement->errorInfo()));
+                }
             }
         } catch (\PDOException $e) {
-            throw new \RuntimeException("Catalog query failed: {$e->getMessage()}\n$query", 0, $e);
+            $failure = $e;
+        }
+        if (self::$observer !== null) {
+            (self::$observer)($query, $start, $failure);
+        }
+        if ($failure instanceof \PDOException) {
+            throw new \RuntimeException("Catalog query failed: {$failure->getMessage()}\n$query", 0, $failure);
+        }
+        if ($failure !== null) {
+            throw $failure;
         }
         return $rows;
     }

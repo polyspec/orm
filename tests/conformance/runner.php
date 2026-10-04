@@ -21,6 +21,7 @@ use Orm\Config;
 use Orm\Model;
 use Orm\Orm;
 use Orm\OrmException;
+use Orm\StatementEvent;
 use Orm\StyledValue;
 
 $dsn = null;
@@ -38,7 +39,11 @@ for ($i = 1; $i < $argc; $i++) {
 }
 $dsn ?? throw new RuntimeException('--dsn required');
 
+// $log는 vector의 statement event다(docs/usage.md "Statement events"). transaction은 vector 안에서
+// 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는 statement의 오류 code이거나 null이다.
 $log = [];
+/** @var array<int, int> vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다. */
+$transactions = [];
 $maskSeqs = [];
 $maskTs = [];
 
@@ -126,10 +131,23 @@ function picks(Collection $c, string ...$names): array
 $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
     blindIndexKey: 'bench-blind-index',
-    onQuery: static function (string $sql, array $binds) use (&$log): void {
-        $log[] = ['sql' => $sql, 'binds' => array_map('norm', $binds)];
-    },
 ));
+$db->subscribe(static function (StatementEvent $e): void {
+    global $log, $transactions;
+    $transaction = null;
+    if ($e->transaction !== null) {
+        $transactions[$e->transaction] ??= count($transactions) + 1;
+        $transaction = $transactions[$e->transaction];
+    }
+    $log[] = [
+        'sql' => $e->sql,
+        'binds' => array_map('norm', $e->binds),
+        'kind' => $e->kind,
+        'tables' => $e->tables,
+        'transaction' => $transaction,
+        'error' => $e->error?->code_,
+    ];
+});
 
 $out = [];
 /** @var array<string, callable> vector 이름별 chain, 선언 순서 */
@@ -148,8 +166,9 @@ function vector(string $name, callable $fn): void
 
 function run(string $name, callable $fn): void
 {
-    global $out, $log, $maskSeqs, $maskTs, $db, $writeVectors;
+    global $out, $log, $transactions, $maskSeqs, $maskTs, $db, $writeVectors;
     $log = [];
+    $transactions = [];
     $maskSeqs = [];
     $maskTs = [];
     $res = executeVector($name, $fn, isset($writeVectors[$name]) ? static fn(callable $task): mixed => $db->transaction($task, retry: 0) : null);

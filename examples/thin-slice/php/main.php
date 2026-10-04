@@ -12,6 +12,7 @@ use Polyspec\Orm\Tests\Model\Author;
 use Orm\Config;
 use Orm\Db;
 use Orm\Orm;
+use Orm\StatementEvent;
 
 const ITERATIONS = 500;
 const AES_KEY = 'bench-salt';
@@ -21,11 +22,11 @@ $lastArgs = [];
 $db = \Polyspec\Orm\Tests\Model\connect(dsn(), new Config(
     aesKey: AES_KEY,
     blindIndexKey: 'bench-blind-index',
-    onQuery: static function (string $sql, array $binds) use (&$lastSql, &$lastArgs): void {
-        $lastSql = $sql;
-        $lastArgs = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? AES_KEY : $v, $binds);
-    },
 ));
+$db->subscribe(static function (StatementEvent $e) use (&$lastSql, &$lastArgs): void {
+    $lastSql = $e->sql;
+    $lastArgs = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? AES_KEY : $v, $e->binds);
+});
 $now = new DateTimeImmutable('2026-09-11 00:00:00', new DateTimeZone('UTC'));
 
 $query = static fn() => (new Author)->connect($db)

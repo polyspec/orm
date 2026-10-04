@@ -40,7 +40,7 @@ final class Engine
             return $this->plans[$shape];
         }
         $plan = $this->compile($ir);
-        Assemble::index($plan, hash('xxh3', $shape), $this->model);
+        Assemble::index($plan, $this->model);
         $this->plans[$shape] = $plan;
         if (count($this->plans) > $this->cacheSize) {
             unset($this->plans[array_key_first($this->plans)]);
@@ -61,16 +61,15 @@ final class Assemble
     private static int $nodes = 0;
 
     /**
-     * Stamps every step with 'plan_id' (the cache key suffix, for the on_query hook), 'decode'
-     * (the styled cells Codec::decodeRows converts) and adds 'idx' => [name => position] and a
-     * process-unique 'node' number to every assemble node in place. A styled column's stages are
+     * Stamps every step with 'decode' (the styled cells Codec::decodeRows converts) and adds
+     * 'idx' => [name => position] and a process-unique 'node' number to every assemble node in
+     * place. A styled column's stages are
      * split once into 'host' (aes/hex/ip, the stages the dialect left to the executor) and 'codec'
      * (docs/codec.md), in write order.
      */
-    public static function index(array &$plan, string $id, RuntimeModel $model): void
+    public static function index(array &$plan, RuntimeModel $model): void
     {
         foreach ($plan['steps'] as &$step) {
-            $step['plan_id'] = $id;
             $step['decode'] = [];
             if (isset($step['assemble'])) {
                 self::indexNode($step['assemble']);
