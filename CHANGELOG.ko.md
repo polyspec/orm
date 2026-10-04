@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.14: `make docs-rules-check`는 문서 page의 code 밖에 `<br>` 외의 HTML element가 있으면 실패한다. VitePress는 이를 닫히지 않은 element로 compile한다. `make docs-check`를 깨뜨린 T40 checklist 메시지는 inline code가 되었다.
+
 - G5.12: `make test-servers`는 ProxySQL과 PgBouncer의 출력을 `awk` 대신 `sh`로 한 줄씩 읽는다. Ubuntu의 `awk`인 `mawk`가 서버가 끝날 때까지 준비 줄을 넘기지 않아, Linux runner에서 시작이 더 이상 기다리지 않는다.
 
 - G5.11: `.runtime/servers` 아래의 socket 경로가 platform의 Unix 한도를 넘으면 `make test-servers`는 서버를 시작하기 전에 경로, 길이, 한도를 말하며 실패한다.
