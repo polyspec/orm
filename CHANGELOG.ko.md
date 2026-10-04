@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.5: CI workflow는 target 43개 가운데 17개를 따로 된 step에서 실행하는 대신, 로컬 검사의 runner로 `CHECK_TARGETS`의 모든 target을 실행하는 `make check`를 실행한다. 이후 step은 실패 뒤에도 실행한다. `make repo-check`는 workflow가 `CHECK_TARGETS`의 target을 빠뜨리거나 두 번 실행하면 실패한다.
+
 - G5.4: 검사와 모든 workflow는 `.php-version`에 선언한 PHP release 하나(8.5)와 `rust-toolchain.toml`에 선언한 Rust toolchain 하나(clippy와 rustfmt를 포함한 1.98.1)로 실행한다. Makefile은 그 toolchain을 읽고 CI는 `rustup toolchain install`로 설치한다. 새 `make php-min-check`는 `require.php`의 최저 release(8.4)에서 PHP client unit test를 실행한다. `make repo-check`는 workflow나 Makefile이 PHP나 Rust version을 직접 고르거나 실행 중인 version이 선언과 다르면 실패한다.
 
 - G5.3: 검사와 모든 GitHub Actions workflow는 `.node-version`에 한 번 선언한 Node release 하나(26.8.1)로 실행한다. workflow는 `22.16.0`과 `24` 대신 `node-version-file`로 이를 읽는다. 22.16.0의 `node:sqlite`는 coverage checker가 거부하는 `ExperimentalWarning`을 출력했다. `make repo-check`는 workflow가 Node version을 직접 선언하거나 실행 중인 Node가 `.node-version`과 다르면 실패한다. TypeScript client는 계속 Node 22.16.0을 지원하며 `make ts-min-check`가 이를 실행한다.

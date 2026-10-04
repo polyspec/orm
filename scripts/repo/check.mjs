@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ciServerErrors } from './ci.mjs';
+import { ciCheckTargetErrors, ciServerErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
@@ -20,6 +20,9 @@ const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 // CI workflow는 database 검사의 서버와 변수를 make test-servers로 준다.
 failures.push(...ciServerErrors(ci, readFileSync(join(root, 'scripts/test-servers.sh'), 'utf8')));
+
+// CI workflow는 로컬 make check와 같은 target(CHECK_TARGETS)을 모두 한 번씩 실행한다.
+failures.push(...ciCheckTargetErrors(ci, makefile));
 
 // root npm script가 쓰는 path는 tracked file이나 directory다.
 const rootPackage = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));

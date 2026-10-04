@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.5: the CI workflow runs `make check`, every target of `CHECK_TARGETS` through the runner of the local checks, instead of 17 of its 43 targets in separate steps; the later steps run after a failure too. `make repo-check` fails when the workflow omits a target of `CHECK_TARGETS` or runs one twice.
+
 - G5.4: the checks and every workflow run one PHP release, declared in `.php-version` (8.5), and one Rust toolchain, declared in `rust-toolchain.toml` (1.98.1 with clippy and rustfmt), which the Makefile reads and CI installs with `rustup toolchain install`. The new `make php-min-check` runs the PHP client unit tests on the lowest release of `require.php` (8.4). `make repo-check` fails when a workflow or the Makefile chooses its own PHP or Rust version or the running one differs from the declaration.
 
 - G5.3: the checks and every GitHub Actions workflow run one Node release, declared once in `.node-version` (26.8.1); the workflows read it with `node-version-file` instead of `22.16.0` and `24`, whose `node:sqlite` printed an `ExperimentalWarning` that the coverage checker rejects. `make repo-check` fails when a workflow declares its own Node version or the running Node differs from `.node-version`. The TypeScript client still supports Node 22.16.0, which `make ts-min-check` runs.

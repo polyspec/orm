@@ -103,3 +103,33 @@ export function ciServerErrors(workflow, serversScript) {
   }
   return errors;
 }
+
+// checkTargets는 Makefile의 CHECK_TARGETS, 곧 make check가 실행하는 target을 돌려준다.
+export function checkTargets(makefile) {
+  return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/) ?? [];
+}
+
+// ciCheckTargetErrors는 CI workflow가 make check의 target(CHECK_TARGETS)을 빠뜨리거나 두 번
+// 실행하는 곳마다 오류 하나를 돌려준다. step의 run text에서 줄 머리의 `make`가 실행하는 target을
+// 읽는다. `make check`는 모든 CHECK_TARGETS를 make check의 runner(scripts/check/run.mjs)로 실행하므로
+// 그 target을 따로 실행하면 두 번 실행한다. `make check`가 없으면 각 target이 어느 step에 있어야 한다.
+export function ciCheckTargetErrors(workflow, makefile) {
+  const targets = checkTargets(makefile);
+  if (targets.length === 0) return ['Makefile declares no CHECK_TARGETS'];
+  const ran = new Map();
+  for (const step of workflowSteps(workflow)) {
+    for (const line of step.run.split('\n')) {
+      const command = /^make\s+(.*)$/.exec(line.trim())?.[1];
+      if (!command) continue;
+      for (const word of command.split(/\s+/)) {
+        if (!/^[a-z0-9-]+$/.test(word)) break;
+        ran.set(word, step.name);
+      }
+    }
+  }
+  if (ran.has('check'))
+    return targets.filter(target => ran.has(target)).map(target =>
+      `ci.yml step "${ran.get(target)}" runs ${target}, which make check runs`);
+  return targets.filter(target => !ran.has(target)).map(target =>
+    `ci.yml does not run ${target} of CHECK_TARGETS`);
+}
