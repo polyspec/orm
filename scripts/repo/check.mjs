@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ciServerErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -15,6 +16,7 @@ const root = new URL('../../', import.meta.url).pathname;
 const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
 const failures = [];
 
+const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
 const ci = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
 // CI workflow는 database 검사의 서버와 변수를 make test-servers로 준다.
 failures.push(...ciServerErrors(ci, readFileSync(join(root, 'scripts/test-servers.sh'), 'utf8')));
@@ -31,10 +33,20 @@ const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name 
 failures.push(...nodeVersionErrors(existsSync(nodeVersionPath) ? readFileSync(nodeVersionPath, 'utf8') : '',
   rootPackage.engines?.node, workflows, process.versions.node));
 
+// 검사를 실행하는 PHP와 Rust도 .php-version과 rust-toolchain.toml이 선언한 것 하나다. 실행 중인
+// version은 repository root에서 PATH의 php와 rustc가 보고한 것이다.
+const text = path => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
+const reported = (program, args) => execFileSync(program, args, { cwd: root }).toString().trim();
+const composer = JSON.parse(readFileSync(join(root, 'clients/php/composer.json'), 'utf8'));
+const php = reported('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']);
+failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, php));
+const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
+failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
+
 if (failures.length > 0) {
   console.error(failures.join('\n'));
-  console.error(`repository check: ${failures.length} CI server or Node version problems remain`);
+  console.error(`repository check: ${failures.length} CI server or toolchain version problems remain`);
   process.exit(1);
 }
-console.log(`repository check: ${tracked.length} tracked paths, the CI server environment and Node ${process.versions.node} of .node-version inspected`);
+console.log(`repository check: ${tracked.length} tracked paths, the CI server environment, Node ${process.versions.node}, PHP ${php} and rustc ${rustc} inspected`);
 log.end();

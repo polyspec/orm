@@ -30,18 +30,20 @@ jobs:
           npm ci
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
+      - name: Rust toolchain of rust-toolchain.toml
+        # rustup installs the channel and components that rust-toolchain.toml
+        # declares; every cargo and rustc run of the repository uses them.
+        run: rustup toolchain install && rustc --version
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: |
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
+      # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
       - name: SQLite 3.46+ for PHP
         # PHP links the system SQLite (3.45 on Ubuntu 24.04); every client
@@ -52,6 +54,13 @@ jobs:
           (cd /tmp/sqlite-autoconf-3460100 && CFLAGS="-O2 -DSQLITE_ENABLE_COLUMN_METADATA" ./configure --prefix=/usr/local --quiet && make -s -j"$(nproc)" && sudo make -s install)
           sudo ldconfig
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
+      - name: lowest PHP release of the PHP client
+        # make php-min-check runs the PHP client unit tests on the lowest release
+        # of require.php in clients/php/composer.json; the PHP apt repository
+        # that setup-php added installs it beside the PHP of .php-version.
+        run: |
+          sudo apt-get install -y -q "php$(./scripts/php/php-min.sh --version)-cli" >/dev/null
+          "$(./scripts/php/php-min.sh)" --version
       - name: install PHP dependencies
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: programs of the database servers

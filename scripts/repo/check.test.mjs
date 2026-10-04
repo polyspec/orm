@@ -3,6 +3,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
 import { ciServerErrors, serverVariables } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
+import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -159,5 +161,85 @@ caseTest('a .node-version that is not one exact supported version fails', COMPUT
   ]);
   assert.deepEqual(nodeVersionErrors('26.8.1\n', '22.16', {}, '26.8.1'), [
     'package.json engines.node must be ">=x.y.z", found "22.16"',
+  ]);
+});
+
+// PHP와 Rust case는 저장소의 선언과 실행 중인 php, rustc를 검사하고, 최소 workflow를 하나씩 바꾼다.
+const text = path => readFileSync(new URL(path, repository), 'utf8');
+const runningPhp = execFileSync('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']).toString();
+const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())[1];
+
+caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', COMPUTE, () => {
+  const composer = JSON.parse(text('clients/php/composer.json'));
+  assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require.php, workflows, runningPhp), []);
+  assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
+});
+
+const php = [
+  'jobs:',
+  '  test:',
+  '    steps:',
+  '      - uses: shivammathur/setup-php@v2',
+  '        with:',
+  '          php-version-file: .php-version',
+  '          extensions: pdo_sqlite',
+  '      - run: composer install --working-dir=clients/php',
+  '',
+].join('\n');
+
+caseTest('a workflow that declares php-version itself fails', COMPUTE, () => {
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php }, '8.5'), []);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('php-version-file: .php-version', 'php-version: "8.4"') }, '8.5'), [
+    'ci.yml declares php-version itself; .php-version declares it',
+    'ci.yml does not read php-version-file .php-version in shivammathur/setup-php',
+  ]);
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': php.replace('shivammathur/setup-php@v2', 'actions/checkout@v5') }, '8.5'), [
+    'ci.yml runs PHP without shivammathur/setup-php',
+  ]);
+});
+
+caseTest('a PHP other than .php-version or below composer.json fails', COMPUTE, () => {
+  assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', {}, '8.4'), ['PHP 8.4 runs the checks; .php-version declares 8.5']);
+  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}, '8.3'), ['.php-version 8.3 is below clients/php/composer.json require.php >=8.4']);
+  assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}, '8.5'), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
+  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}, '8.5'), ['clients/php/composer.json require.php must be ">=x.y", found "^8.4"']);
+});
+
+const toolchain = '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy", "rustfmt"]\nprofile = "minimal"\n';
+const makefile = `PHYSICAL_RUST_TOOLCHAIN := $(shell sed -n 's/^channel = "\\(.*\\)"$$/\\1/p' rust-toolchain.toml)\nexport RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)\n`;
+const rust = [
+  'jobs:',
+  '  test:',
+  '    steps:',
+  '      - name: Rust toolchain',
+  '        run: rustup toolchain install',
+  '      - uses: Swatinem/rust-cache@v2',
+  '      - run: (cd clients/rust && cargo test --locked)',
+  '',
+].join('\n');
+
+caseTest('a workflow or Makefile that chooses a Rust toolchain itself fails', COMPUTE, () => {
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust }, '1.98.1'), []);
+  const action = rust.replace('      - name: Rust toolchain\n        run: rustup toolchain install\n',
+    '      - uses: dtolnay/rust-toolchain@stable\n        with:\n          components: clippy\n');
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': action }, '1.98.1'), [
+    'ci.yml chooses a Rust toolchain with dtolnay/rust-toolchain; rust-toolchain.toml declares it',
+    'ci.yml does not install the toolchain of rust-toolchain.toml with rustup toolchain install',
+  ]);
+  for (const run of ['rustup toolchain install 1.98.0', 'rustup default stable', 'cargo +nightly test']) {
+    assert.deepEqual(rustToolchainErrors(toolchain, makefile, { 'ci.yml': rust.replace('cargo test --locked', `true; ${run}`).replace('run: rustup toolchain install', `run: rustup toolchain install && ${run}`) }, '1.98.1'),
+      ['ci.yml chooses a Rust toolchain itself; rust-toolchain.toml declares it'], run);
+  }
+  assert.deepEqual(rustToolchainErrors(toolchain, 'PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1\n', {}, '1.98.1'), [
+    'Makefile does not read PHYSICAL_RUST_TOOLCHAIN from rust-toolchain.toml',
+    'Makefile declares a Rust toolchain itself; rust-toolchain.toml declares it',
+  ]);
+});
+
+caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
+  assert.deepEqual(rustToolchainErrors(toolchain, makefile, {}, '1.98.0'), ['rustc 1.98.0 runs the checks; rust-toolchain.toml declares 1.98.1']);
+  assert.deepEqual(rustToolchainErrors('[toolchain]\nchannel = "stable"\ncomponents = ["clippy"]\n', makefile, {}, '1.98.1'), [
+    'rust-toolchain.toml must declare one channel x.y.z under [toolchain]',
+    'rust-toolchain.toml does not install rustfmt',
   ]);
 });

@@ -1,4 +1,4 @@
-.PHONY: check version-check repo-check checklist-check ts-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
+.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -27,7 +27,8 @@ export DECIMAL_ENV
 # check는 한 번 build한 artifact를 실행하므로 incremental compile의 중간 결과(T27 측정: debug
 # target 7.9 GiB 가운데 1.6 GiB)를 남기지 않고, debug build의 debug 정보는 panic과 backtrace의
 # 줄 번호만 둔다.
-PHYSICAL_RUST_TOOLCHAIN ?= 1.98.1
+# 그 toolchain은 rust-toolchain.toml의 channel 하나이고, CI도 그 file로 설치한다.
+PHYSICAL_RUST_TOOLCHAIN := $(shell sed -n 's/^channel = "\(.*\)"$$/\1/p' rust-toolchain.toml)
 export RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)
 export CARGO_TARGET_DIR := $(abspath clients/rust/target)
 export CARGO_INCREMENTAL := 0
@@ -67,7 +68,7 @@ TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typesc
 # target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다.
-CHECK_TARGETS = checklist-check version-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
+CHECK_TARGETS = checklist-check version-check testcase-check repo-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
 check:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
@@ -371,8 +372,16 @@ fuzz-check:
 	$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
 	$(GO_TEST) ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
+# PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
+# 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
+PHP = php
 client-unit-check:
-	php clients/php/tests/dsn.php && php clients/php/tests/relation_keys.php && php clients/php/tests/hostcodec.php && php clients/php/tests/engine_test.php && php clients/php/tests/runtime_model_test.php && php clients/php/tests/orm_gen_test.php
+	$(PHP) clients/php/tests/dsn.php && $(PHP) clients/php/tests/relation_keys.php && $(PHP) clients/php/tests/hostcodec.php && $(PHP) clients/php/tests/engine_test.php && $(PHP) clients/php/tests/runtime_model_test.php && $(PHP) clients/php/tests/orm_gen_test.php
+
+# php-min-check runs the PHP client unit tests on the lowest PHP release that
+# clients/php/composer.json supports.
+php-min-check:
+	PHP="$$(./scripts/php/php-min.sh)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
 
 # php-without-mysql-check는 pdo_mysql이 없는 공식 PHP image에서 PHP client를 SQLite로 실행한다(N17).
 # container image를 받고 PHP를 시작하는 데 몇 분이 걸릴 수 있다.
