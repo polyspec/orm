@@ -293,7 +293,14 @@ function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise<void> {
 
 class PostgresPoolDriver implements DriverPool {
   public readonly name = 'postgres' as const;
-  public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {}
+  public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig) {
+    // The server can end a connection while it waits in the pool (pg_terminate_backend, DROP
+    // DATABASE ... WITH (FORCE), a server shutdown) or while the pool closes it. pg removes that
+    // connection from the pool and reports the server's message as an 'error' event of the pool;
+    // no statement runs on it, so no caller receives the error, and the next statement opens a
+    // new connection. Without a listener the event would end the calling process.
+    pool.on('error', () => {});
+  }
   /** Returns client to the pool, or closes it when it failed or the pool already keeps idleSize idle connections. */
   private release(client: pg.PoolClient, failed = false): void {
     client.release(failed || this.pool.idleCount >= this.idleSize);

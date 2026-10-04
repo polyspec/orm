@@ -68,6 +68,7 @@
         "clients/go/model/replica_test.go",
         "clients/php/tests/dsn.php",
         "clients/typescript/tests/dsn.mjs",
+        "clients/typescript/tests/idle-connection-end.mjs",
         "clients/rust/orm/tests/zone.rs",
         "clients/rust/orm/tests/sqlite_file_name.rs",
         "clients/go/orm/coverage_dsn_test.go",
