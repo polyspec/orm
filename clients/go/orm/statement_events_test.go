@@ -185,7 +185,9 @@ func (r *eventRun) checked(s eventStep) error {
 	return nil
 }
 
-func runEventCases(t *testing.T, driver string) {
+// runEventCases는 vector의 모든 case를 driver에서 실행한다. subtests이면 case마다
+// subtest로 실행하고, 아니면(coverage는 test 하나의 결과만 받는다) 차례로 실행한다.
+func runEventCases(t *testing.T, driver string, subtests bool) {
 	raw, err := os.ReadFile(eventsVector)
 	if err != nil {
 		t.Fatal(err)
@@ -199,7 +201,7 @@ func runEventCases(t *testing.T, driver string) {
 	recording := os.Getenv("ORM_EVENTS_RECORD") == "1"
 	recorded := map[string][]eventRecord{}
 	for _, c := range doc.Cases {
-		t.Run(c.ID, func(t *testing.T) {
+		runOne := func(t *testing.T) {
 			s := fixtureSchema(t, "statement_events")
 			dsn := newDatabase(t, driver)
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{})
@@ -238,7 +240,12 @@ func runEventCases(t *testing.T, driver string) {
 				wantJSON, _ := json.MarshalIndent(want, "", "  ")
 				t.Fatalf("%s events\n got %s\nwant %s", driver, gotJSON, wantJSON)
 			}
-		})
+		}
+		if subtests {
+			t.Run(c.ID, runOne)
+		} else {
+			runOne(t)
+		}
 	}
 	if recording {
 		recordEvents(t, driver, recorded)
@@ -280,15 +287,15 @@ func recordEvents(t *testing.T, driver string, recorded map[string][]eventRecord
 
 func TestStatementEventsMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	runEventCases(t, "mysql")
+	runEventCases(t, "mysql", true)
 }
 
 func TestStatementEventsPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	runEventCases(t, "postgres")
+	runEventCases(t, "postgres", true)
 }
 
 func TestStatementEventsSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	runEventCases(t, "sqlite")
+	runEventCases(t, "sqlite", true)
 }
