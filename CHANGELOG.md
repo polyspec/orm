@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- D4: the documentation site at https://polyspec.github.io/orm/ is the build of the current commit, deployed by the `docs-pages` workflow.
+
 - G5.25: the conformance check restores a PostgreSQL sequence by the table that owns it in `pg_depend`, so a table whose sequence name PostgreSQL truncates is restored too.
 
 - G5: the GitHub Actions build passes: `make check` runs every target on `ubuntu-26.04-arm` against servers that `make test-servers` starts, and the docs site deploys.

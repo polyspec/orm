@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- D4: https://polyspec.github.io/orm/ 의 문서 사이트는 `docs-pages` workflow가 배포한 현재 커밋의 build다.
+
 - G5.25: conformance check는 PostgreSQL sequence를 `pg_depend`의 소유 table로 되돌리므로, PostgreSQL이 sequence 이름을 자른 table도 되돌린다.
 
 - G5: GitHub Actions build가 통과한다: `make check`는 `make test-servers`가 시작한 서버로 `ubuntu-26.04-arm`에서 모든 target을 실행하고 docs site가 배포된다.

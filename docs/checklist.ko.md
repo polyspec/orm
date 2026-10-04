@@ -239,7 +239,7 @@
 - [o] D1 VitePress로 Markdown 페이지를 빌드하고 구현 상태와 로컬 검색을 제공한다.
 - [o] D2 Mermaid 다이어그램을 SVG로 렌더링하고 JavaScript 없는 페이지 내용을 검증한다.
 - [o] D3 `/orm/` 링크, 앵커, 직접 HTML 경로, 검색, 모바일 탐색, 반복 빌드를 검사한다.
-- [!] D4 현재 페이지를 https://polyspec.github.io/orm/ 에 배포하고 검증한다. 원인: 정적 사이트를 두 번 빌드해 동일한 결과를 확인했고 로컬 정적 검사를 통과했으며 현재 Pages URL도 HTTP 200을 반환하지만, 이 저장소는 로컬 전용이고 개발 규칙이 현재 커밋의 push·게시를 금지한다. 재시도: 현재 `main` 커밋을 승인된 방식으로 push하거나 GitHub Actions 배포를 실행한 뒤 배포된 콘텐츠 hash와 경로를 검증한다.
+- [o] D4 현재 페이지를 https://polyspec.github.io/orm/ 에 배포하고 검증한다. 원인: 정적 사이트를 두 번 빌드해 동일한 결과를 확인했고 로컬 정적 검사를 통과했으며 현재 Pages URL도 HTTP 200을 반환하지만, 이 저장소는 로컬 전용이고 개발 규칙이 현재 커밋의 push·게시를 금지한다. 증거: G5.24의 `docs-pages` 실행이 사이트를 빌드하고 검사해 배포했다. 그 Pages artifact(`github-pages/artifact.tar`)에는 file 179개가 있고, https://polyspec.github.io/orm/ 의 같은 경로에서 받은 file은 `index.html`, `dbspec.html`, `checklist.html`, `ko/checklist.html`을 포함해 모두 artifact와 byte 단위로 같다(179/179, HTTP 200). Mermaid 도표의 좌표는 빌드하는 platform의 font에 따라 달라지므로, build는 한 platform 안에서 비교하고(`make docs-verify-idempotent`) platform 사이에서는 비교하지 않는다.
 
 ## 1단계 — 모델 문법
 
