@@ -432,18 +432,31 @@ func tableTypes(t *itable) map[string]Type {
 type scanner interface{ Scan(dest ...any) error }
 
 // eachRow는 query의 모든 row에 f를 부르고 rows의 error를 돌려준다.
+// q가 QueryObserver이면 행을 모두 읽었거나 읽다 실패했을 때 QueryEnded를 부른다.
 func eachRow(ctx context.Context, q Querier, query string, f func(scanner) error) error {
 	rows, err := q.QueryContext(ctx, query)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	var fErr error
 	for rows.Next() {
-		if err := f(rows); err != nil {
-			return err
+		if fErr = f(rows); fErr != nil {
+			break
 		}
 	}
-	return rows.Err()
+	err = rows.Err()
+	if closeErr := rows.Close(); err == nil {
+		err = closeErr
+	}
+	if o, ok := q.(QueryObserver); ok {
+		if oErr := o.QueryEnded(query, err); oErr != nil {
+			return oErr
+		}
+	}
+	if fErr != nil {
+		return fErr
+	}
+	return err
 }
 
 // readMySQLTriggers는 trigger를 renderer statement 형식으로 다시 쓰고 알아본다.

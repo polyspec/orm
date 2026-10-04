@@ -398,13 +398,47 @@ $b->getJsonSetting()['a'];
 |---|---|
 | 스키마가 라이브 DB와 같은지 | 데이터베이스를 introspect하고 schema text를 document set과 비교한다([schema.md](schema.md#_2-schema-operations)) |
 | 생성물이 최신인지 | 언어별 생성기 실행 후 `git diff --exit-code` |
-| 문장 로그 | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, 시간, plan_id, err)`, 비밀은 `$SECRET`로 마스킹 |
+| Statement event | 연결의 `subscribe`. client가 보내는 모든 statement([statement event](#statement-events)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
 | 설치한 set에 빠진 테이블과 컬럼 추가 | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 
 ---
+
+
+### Statement event {#statement-events}
+
+모든 client는 데이터베이스로 보내는 statement마다 event 하나를 publish한다: model의 statement, transaction 제어, schema utility의 statement, 그 밖의 모든 utility statement다. subscriber는 연결에 등록한다. 공유 vector `tests/events/vectors.json`은 sequence 하나를 MySQL, PostgreSQL, SQLite에서 실행하고 모든 client가 publish하는 event를 적는다.
+
+| Client | 등록과 해제 | Event |
+|---|---|---|
+| Go | `unsubscribe := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`. `Elapsed`는 `time.Duration`, `Transaction`은 transaction 밖에서 0 |
+| PHP | `$unsubscribe = $db->subscribe(function (Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`?int`), `error`(`?OrmException`)를 가진 `Orm\StatementEvent` |
+| Rust | `let subscription = db.subscribe(\|e: &orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`. `elapsed`는 `Duration`, `transaction`은 `Option<u64>`, `error`는 `Option<&orm::Error>` |
+| TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`number \| null`), `error`(`OrmError \| null`)를 가진 `StatementEvent` |
+
+- `sql`은 보낸 statement다. relation step은 펼친 `IN` 목록을 담는다.
+- `binds`는 순서대로 bind한 값이다. 비밀은 `$SECRET`, executor 시각 값은 `$NOW`다.
+- `kind`는 statement의 출처에서 정한다: model statement는 plan step이 쓰는 동사인 `select`, `insert`, `update`, `delete`다(soft delete는 `update`). transaction 제어는 `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`다. schema utility의 statement는 `schema`다(`install`과 `addTablesAndColumns`의 catalog 읽기와 statement, `exists`, `installed`, `empty`의 읽기). 그 밖의 모든 statement는 `utility`다: 이름 lock과 row lock, transaction 지역 값, transaction 설정, 권한, AES 상태와 회전, SQLite row lock table이다.
+- `tables`는 정렬하고 중복을 뺀 목록이다. model statement는 plan step의 `tables`를 가진다([protocol](protocol.md#_2-plan)). table을 만들거나 바꾸는 schema statement는 그 table을 가진다. table에 대한 utility statement는 그 table을 가진다(SQLite row lock의 `orm__row_lock`, 권한의 table, AES 상태와 회전의 table). transaction 제어, catalog 읽기, 그 밖의 statement는 table이 없다.
+- `elapsed`는 statement를 보낸 때부터 client가 그 결과를 다 읽을 때까지다.
+- `transaction`은 연결에서의 transaction 번호다: 바깥 begin마다(deadlock 뒤의 재시도와 foreign key를 끈 채 table을 다시 만드는 SQLite transaction 포함) 1부터 다음 번호를 받고, begin부터 commit이나 rollback까지의 모든 statement가 그 번호를 가진다. transaction 밖의 statement는 번호가 없다.
+- `error`는 statement가 끝난 오류이며 operation이 보고하는 code를 가진다. 성공하면 없다. 돌려받은 행을 decode하지 못한 것은 statement의 오류가 아니다.
+
+client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, Rust clone)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
+
+모든 client는 같은 transaction 제어 statement를 실행한다:
+
+| Dialect | 시작 | 끝 |
+|---|---|---|
+| MySQL | `SET TRANSACTION ISOLATION LEVEL <level>`(isolation이 있으면 `utility`), 그다음 `START TRANSACTION` 또는 `START TRANSACTION READ ONLY` | `COMMIT` 또는 `ROLLBACK` |
+| PostgreSQL | option에 따라 ` ISOLATION LEVEL <level>`과 ` READ ONLY`를 붙인 `BEGIN`, 그다음 `SET LOCAL statement_timeout = <ms>`(`timeoutMs`가 있으면 `utility`) | `COMMIT` 또는 `ROLLBACK` |
+| SQLite | `BEGIN IMMEDIATE`, 읽기 전용 transaction은 `BEGIN`, 그다음 option에 따라 `PRAGMA read_uncommitted = 1`과 `PRAGMA query_only = 1`(`utility`) | 같은 `PRAGMA`를 0으로, 그다음 `COMMIT` 또는 `ROLLBACK` |
+
+`<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 실행하고, callback이 실패하면 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 실행한다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다.
+
+물리 연결을 여는 statement(time zone 같은 session 설정, SQLite version 읽기), statement의 준비, protocol 수준의 취소는 event가 아니다.
 
 ## 11. 자주 나는 에러
 

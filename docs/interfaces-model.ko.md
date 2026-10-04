@@ -90,6 +90,7 @@ classDiagram
         Optional_ParentRef parent
         Text role
         Text sql
+        List_Text tables
     }
     class Assemble {
         List_Child children
@@ -102,12 +103,14 @@ classDiagram
         Cache_Shape_Plan plans
         ConnectionPool pool
         Cache_Sql_Statement statements
+        List_StatementSubscriber subscribers
         connect()
         connectSchema()
         transaction()
         utils()
         close()
         stats()
+        subscribe()
     }
     class TransactionFlow {
         List_TransactionFrame frames
@@ -223,7 +226,7 @@ classDiagram
 | Plan | request 모양별로 cache하는 불변 statement와 조립 정보다. |
 | Step | plan의 SQL statement 하나다. |
 | Assemble | 결과 컬럼을 위치로 model, join, relation에 대응시킨다. |
-| Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다. |
+| Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다. |
 | TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. |
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
@@ -310,6 +313,7 @@ classDiagram
 | Step.parent | `Optional<ParentRef>` |
 | Step.role | `Text` |
 | Step.sql | `Text` |
+| Step.tables | `List<Text>` |
 | Assemble.children | `List<Child>` |
 | Assemble.columns | `List<OutputColumn>` |
 | Assemble.entity | `Text` |
@@ -318,6 +322,7 @@ classDiagram
 | Db.plans | `Cache<Shape,Plan>` |
 | Db.pool | `ConnectionPool` |
 | Db.statements | `Cache<Sql,Statement>` |
+| Db.subscribers | `List<StatementSubscriber>` |
 | TransactionFlow.frames | `List<TransactionFrame>` |
 | Collection.fetched | `Map<Key,Value>` |
 | Collection.items | `Map<Key,Model>` |

@@ -124,17 +124,18 @@ The step writes the new values, clears the soft delete column and, on a table wi
 {
   "manifest_hash": "sha256:…", "kind": "all",
   "steps": [
-    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20",
+    {"id": 0, "role": "main", "sql": "SELECT `a`.`seq` AS `a__seq`, … FROM `author` AS `a` … LIMIT 0, 20", "tables": ["author", "service"],
      "bind_slots": [{"from": "param", "param": 0}, {"from": "secret", "name": "aes"}],
      "assemble": {"entity": "author", "alias": "a",
                   "columns": [{"index": 0, "name": "seq", "column": "seq", "type": "i64"}],
                   "key": [{"column": "seq", "index": 0}],
                   "children": [{"rel": "service_model", "kind": "join", "assemble": {…}}]}},
-    {"id": 1, "role": "relation", "sql": "…", "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
+    {"id": 1, "role": "relation", "sql": "…", "tables": ["user"], "bind_slots": [{"from": "parent"}], "parent": {"step": 0, "keys": [{"column": "user_seq", "index": 14}]}}
   ]
 }
 ```
 
+- `tables` lists the tables that the statement names, sorted and without duplicates: the target table of a write, the root table of a select, its joined tables and the tables of its subqueries; a relation step lists its own.
 - `bind_slots.from` is `param` (a request parameter, with `transform` for contains values and `host_styles` for AES, hex, and IP stages), `secret` (the AES key), `config` (the AES key version), `parent` (relation key values), `now` (the client clock in UTC), or `audit` (the primary key of the transaction's audit record, with `name` the audit record table). A write that has an `audit` slot and runs outside a transaction with audit values, or in one whose audit record is a row of another table than `name`, fails with `CONFIG` before it reaches the database.
 - **Clock.** This is the one clock rule; [dialects](dialects.md) and [plans](plans.md) refer to it. Every connection reads and writes `datetime(p)` in UTC. The `now` slot is the client wall clock in UTC with microsecond resolution, truncated to six fraction digits, in the `datetime` text form; a statement reads the clock once, so its `now` slots are equal. A clock that the ORM writes or compares keeps microseconds: the update time and soft deletion assign the clock with the declared fraction digits of the column, `CURRENT_TIMESTAMP(p)` on MySQL for `p > 0`, `CURRENT_TIMESTAMP` on PostgreSQL and the `now` slot on SQLite; the MySQL `now` value function and its relative forms use `NOW(6)`, and PostgreSQL `now()`. SQLite has no clock with microseconds, so the SQLite dialect binds the `now` slot for the update time, soft deletion and the `now` function, renders a relative form as `datetime` of a `now` slot with the interval followed by the six fraction digits of a second `now` slot, and binds the `now` slot for every column with `default now` that an insert omits; MySQL and PostgreSQL inserts leave such a column to its database default. The plan history keeps the tool clock with six fraction digits ([plans](plans.md#apply)).
 - Rows are read by position. `assemble.columns[].styles` lists the codec stages the client decodes; SQL-side stages are already applied.

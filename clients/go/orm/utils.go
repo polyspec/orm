@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -40,12 +41,12 @@ func (u *Utils) run(fn func(t *txConn) error) error {
 	return u.db.Transaction(func() error { return fn(activeFor(u.db)) }, Retry(0))
 }
 
-// read executes fn on the active transaction or the connection.
-func (u *Utils) read(fn func(ctx context.Context, q querier) error) error {
+// read executes fn with a runner on the active transaction or the connection.
+func (u *Utils) read(fn func(ctx context.Context, r runner) error) error {
 	if t := activeFor(u.db); t != nil {
-		return fn(t.ctx, t.tx)
+		return fn(t.ctx, t.run())
 	}
-	return fn(u.db.ctx, u.db.sql)
+	return fn(u.db.ctx, runner{d: u.db, q: u.db.sql})
 }
 
 type querier interface {
@@ -85,16 +86,16 @@ func (u *Utils) Lock(key string) error {
 	switch u.db.driver {
 	case "mysql":
 		var got sql.NullInt64
-		if err := t.tx.QueryRowContext(t.ctx, "SELECT GET_LOCK(?, 50)", key).Scan(&got); err != nil {
-			return mapDriverErr(err)
+		if err := t.run().scan(t.ctx, KindUtility, nil, "SELECT GET_LOCK(?, 50)", []any{key}, &got); err != nil {
+			return err
 		}
 		if !got.Valid || got.Int64 != 1 {
 			return TransactionConflict("lock " + key + " was not acquired")
 		}
 		t.locks = append(t.locks, key)
 	case "postgres":
-		if _, err := t.tx.ExecContext(t.ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", key); err != nil {
-			return mapDriverErr(err)
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", key); err != nil {
+			return err
 		}
 	default:
 		return acquireSQLiteRowLock(t.ctx, t, "update")
@@ -112,8 +113,8 @@ func (t *txConn) releaseLocks() error {
 	var errs []error
 	for _, key := range locks {
 		var released sql.NullInt64
-		if err := t.tx.QueryRowContext(t.ctx, "SELECT RELEASE_LOCK(?)", key).Scan(&released); err != nil {
-			errs = append(errs, mapDriverErr(err))
+		if err := t.run().scan(t.ctx, KindUtility, nil, "SELECT RELEASE_LOCK(?)", []any{key}, &released); err != nil {
+			errs = append(errs, err)
 			continue
 		}
 		if !released.Valid || released.Int64 != 1 {
@@ -135,12 +136,12 @@ func (u *Utils) SetLocal(key, value string) error {
 	}
 	switch u.db.driver {
 	case "postgres":
-		if _, err := t.tx.ExecContext(t.ctx, "SELECT set_config($1, $2, true)", key, value); err != nil {
-			return mapDriverErr(err)
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "SELECT set_config($1, $2, true)", key, value); err != nil {
+			return err
 		}
 	case "mysql":
-		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = ?", value); err != nil {
-			return mapDriverErr(err)
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "SET @`orm."+key+"` = ?", value); err != nil {
+			return err
 		}
 	}
 	if t.locals == nil {
@@ -161,9 +162,10 @@ func (t *txConn) clearLocals() error {
 		return nil
 	}
 	var errs []error
-	for key := range locals {
-		if _, err := t.tx.ExecContext(t.ctx, "SET @`orm."+key+"` = NULL"); err != nil {
-			errs = append(errs, mapDriverErr(err))
+	// 값을 지우는 statement는 key 순서로 보낸다.
+	for _, key := range slices.Sorted(maps.Keys(locals)) {
+		if _, err := t.run().exec(t.ctx, KindUtility, nil, "SET @`orm."+key+"` = NULL"); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
@@ -229,7 +231,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 	if err != nil {
 		return err
 	}
-	statements, diagnostics := dbspec.Render(m.Documents, dbspec.Dialect(d.driver))
+	statements, diagnostics := dbspec.RenderStatements(m.Documents, dbspec.Dialect(d.driver))
 	if len(diagnostics) > 0 {
 		return &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
@@ -241,7 +243,8 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 		return configErr("MySQL commits schema statements implicitly; install outside a transaction")
 	}
 	dialect := dbspec.Dialect(d.driver)
-	apply := func(ctx context.Context, q querier) error {
+	apply := func(ctx context.Context, r runner) error {
+		q := &observed{r: r, kind: KindSchema, tables: noTables}
 		live, unsupported, err := introspectSet(ctx, q, dialect, m)
 		if err != nil {
 			return err
@@ -267,8 +270,8 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 			return configErr("the manifest is partly installed: tables %s exist and %s do not", strings.Join(present, ", "), strings.Join(missing, ", "))
 		default:
 			for _, statement := range statements {
-				if _, err := q.ExecContext(ctx, statement); err != nil {
-					return mapDriverErr(err)
+				if _, err := r.exec(ctx, KindSchema, []string{statement.Table}, statement.SQL); err != nil {
+					return err
 				}
 			}
 			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
@@ -278,9 +281,9 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 		return setDiffers(dbspec.InstalledDifferences(live, unsupported, target))
 	}
 	if d.driver == "mysql" {
-		err = apply(d.ctx, d.sql)
+		err = apply(d.ctx, runner{d: d, q: d.sql})
 	} else {
-		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.run()) })
 	}
 	if err != nil {
 		return err
@@ -314,7 +317,8 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	}
 	dialect := dbspec.Dialect(d.driver)
 	var added []string
-	apply := func(ctx context.Context, q dbspec.Execer) error {
+	apply := func(ctx context.Context, r runner) error {
+		q := &observed{r: r, kind: KindSchema, tables: noTables}
 		live, unsupported, err := introspectSet(ctx, q, dialect, m)
 		if err != nil {
 			return err
@@ -324,8 +328,8 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: " + strings.Join(differences, "; ")}
 		}
 		for _, step := range steps {
-			if _, err := q.ExecContext(ctx, step.Statement); err != nil {
-				return mapDriverErr(err)
+			if _, err := r.exec(ctx, KindSchema, []string{step.Effect.Table}, step.Statement); err != nil {
+				return err
 			}
 		}
 		// step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
@@ -342,11 +346,11 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	}
 	switch {
 	case d.driver == "postgres":
-		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.tx) })
+		err = s.u.run(func(t *txConn) error { return apply(t.ctx, t.run()) })
 	case activeFor(d) != nil:
 		return nil, configErr("%s adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table", d.driver)
 	case d.driver == "mysql":
-		err = apply(d.ctx, d.sql)
+		err = apply(d.ctx, runner{d: d, q: d.sql})
 	default:
 		err = sqliteWithoutForeignKeys(d, apply)
 	}
@@ -410,7 +414,7 @@ func externalTexts(m *runtimemodel.Model) map[string]string {
 // transaction으로 fn을 실행한 뒤 foreign key 검사가 row를 돌려주지 않을 때만
 // commit하고 foreign key를 다시 켠다(docs/plans.md "Apply"의 SQLite 다시 만들기).
 // foreign key를 다시 켜지 못한 연결은 pool에 돌려주지 않고 닫는다.
-func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Execer) error) (err error) {
+func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) error) (err error) {
 	ctx := d.ctx
 	conn, err := d.sql.Conn(ctx)
 	if err != nil {
@@ -426,31 +430,30 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Exece
 			err = errors.Join(err, mapDriverErr(closeErr))
 		}
 	}()
-	if _, err := conn.ExecContext(ctx, "PRAGMA foreign_keys = OFF"); err != nil {
-		return mapDriverErr(err)
+	outside := runner{d: d, q: conn}
+	if _, err := outside.exec(ctx, KindUtility, nil, "PRAGMA foreign_keys = OFF"); err != nil {
+		return err
 	}
-	tx, err := conn.BeginTx(ctx, nil)
-	if err != nil {
-		return mapDriverErr(err)
+	inside := runner{d: d, q: conn, tx: d.nextTransaction()}
+	if _, err := inside.exec(ctx, KindBegin, nil, "BEGIN IMMEDIATE"); err != nil {
+		return err
 	}
-	err = fn(ctx, tx)
+	err = fn(ctx, inside)
 	if err == nil {
 		var broken int
-		if err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM pragma_foreign_key_check").Scan(&broken); err != nil {
-			err = mapDriverErr(err)
-		} else if broken > 0 {
+		if err = inside.scan(ctx, KindSchema, nil, "SELECT COUNT(*) FROM pragma_foreign_key_check", nil, &broken); err == nil && broken > 0 {
 			err = &ir.Error{Code: CodeInternal, Msg: fmt.Sprintf("the rebuilt tables break %d foreign keys", broken)}
 		}
 	}
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			err = rollbackFailed(err, mapDriverErr(rollbackErr))
+		if _, rollbackErr := inside.exec(ctx, KindRollback, nil, "ROLLBACK"); rollbackErr != nil {
+			err = rollbackFailed(err, rollbackErr)
 		}
-	} else if err = tx.Commit(); err != nil {
-		err = mapDriverErr(err)
+	} else {
+		_, err = inside.exec(ctx, KindCommit, nil, "COMMIT")
 	}
-	if _, onErr := conn.ExecContext(ctx, "PRAGMA foreign_keys = ON"); onErr != nil {
-		return errors.Join(err, mapDriverErr(onErr))
+	if _, onErr := outside.exec(ctx, KindUtility, nil, "PRAGMA foreign_keys = ON"); onErr != nil {
+		return errors.Join(err, onErr)
 	}
 	restored = true
 	return err
@@ -458,8 +461,8 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, q dbspec.Exece
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
 	var found bool
-	err := s.u.read(func(ctx context.Context, q querier) error {
-		return mapDriverErr(q.QueryRowContext(ctx, query, args...).Scan(&found))
+	err := s.u.read(func(ctx context.Context, r runner) error {
+		return r.scan(ctx, KindSchema, nil, query, args, &found)
 	})
 	return found, err
 }
@@ -560,8 +563,8 @@ func (p *PrivilegeUtils) GrantTable(table, roleName string) error {
 			"GRANT USAGE ON SCHEMA " + schemaName + " TO " + r,
 			"GRANT SELECT, INSERT, UPDATE, DELETE ON " + qualified + " TO " + r,
 		} {
-			if _, err := t.tx.ExecContext(t.ctx, statement); err != nil {
-				return mapDriverErr(err)
+			if _, err := t.run().exec(t.ctx, KindUtility, []string{table}, statement); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -583,8 +586,8 @@ func (p *PrivilegeUtils) RevokeTable(table, privilege, roleName string) error {
 		return configErr("unsupported table privilege %q", privilege)
 	}
 	return p.u.run(func(t *txConn) error {
-		_, err := t.tx.ExecContext(t.ctx, "REVOKE "+privilege+" ON "+qualified+" FROM "+r)
-		return mapDriverErr(err)
+		_, err := t.run().exec(t.ctx, KindUtility, []string{table}, "REVOKE "+privilege+" ON "+qualified+" FROM "+r)
+		return err
 	})
 }
 
@@ -595,10 +598,10 @@ func (p *PrivilegeUtils) InspectTable(table string) (TablePrivileges, error) {
 		return TablePrivileges{}, err
 	}
 	var out TablePrivileges
-	err = p.u.read(func(ctx context.Context, q querier) error {
-		return mapDriverErr(q.QueryRowContext(ctx, `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
- has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, qualified).
-			Scan(&out.Insert, &out.Select, &out.Update, &out.Delete, &out.Truncate))
+	err = p.u.read(func(ctx context.Context, r runner) error {
+		return r.scan(ctx, KindUtility, []string{table}, `SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'),
+ has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')`, []any{qualified},
+			&out.Insert, &out.Select, &out.Update, &out.Delete, &out.Truncate)
 	})
 	return out, err
 }
@@ -666,16 +669,11 @@ func (a *AESUtils) Status(m Model, keyring AESKeyring) (AESRotationStatus, error
 	d := a.u.db
 	version := quoteIdentifier(d.driver, spec.version)
 	query := "SELECT " + version + ", COUNT(*) FROM " + quoteIdentifier(d.driver, spec.table) + " GROUP BY " + version + " ORDER BY " + version
-	err = a.u.read(func(ctx context.Context, q querier) error {
-		rows, err := q.QueryContext(ctx, query)
-		if err != nil {
-			return mapDriverErr(err)
-		}
-		defer rows.Close()
-		for rows.Next() {
+	err = a.u.read(func(ctx context.Context, r runner) error {
+		return r.rows(ctx, KindUtility, []string{spec.table}, query, nil, func(scan func(...any) error) error {
 			var raw cell
 			var count int64
-			if err := rows.Scan(&raw, &count); err != nil {
+			if err := scan(&raw, &count); err != nil {
 				return mapDriverErr(err)
 			}
 			stored, err := rowVersion(raw.v)
@@ -687,8 +685,8 @@ func (a *AESUtils) Status(m Model, keyring AESKeyring) (AESRotationStatus, error
 			if stored != status.Current {
 				status.Pending += count
 			}
-		}
-		return mapDriverErr(rows.Err())
+			return nil
+		})
 	})
 	return status, err
 }
@@ -730,19 +728,14 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 			rotationColumns[i] = AESRotationColumn{Name: c.name, Styles: c.styles}
 		}
 		for {
-			rows, err := t.tx.QueryContext(t.ctx, selectSQL, keyring.current)
-			if err != nil {
-				return mapDriverErr(err)
-			}
 			var batch []map[string]any
-			for rows.Next() {
+			err := t.run().rows(t.ctx, KindUtility, []string{spec.table}, selectSQL, []any{keyring.current}, func(scan func(...any) error) error {
 				cells := make([]cell, len(columns))
 				dest := make([]any, len(columns))
 				for i := range cells {
 					dest[i] = &cells[i]
 				}
-				if err := rows.Scan(dest...); err != nil {
-					rows.Close()
+				if err := scan(dest...); err != nil {
 					return mapDriverErr(err)
 				}
 				row := map[string]any{}
@@ -754,9 +747,10 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 					row[c.name] = cells[len(spec.keys)+1+i].v
 				}
 				batch = append(batch, row)
-			}
-			if err := rows.Close(); err != nil {
-				return mapDriverErr(err)
+				return nil
+			})
+			if err != nil {
+				return err
 			}
 			if len(batch) == 0 {
 				return nil
@@ -780,9 +774,9 @@ func (a *AESUtils) Rotate(m Model, keyring AESKeyring) (int, error) {
 					args = append(args, before[k])
 				}
 				args = append(args, version)
-				res, err := t.tx.ExecContext(t.ctx, updateSQL, args...)
+				res, err := t.run().exec(t.ctx, KindUtility, []string{spec.table}, updateSQL, args...)
 				if err != nil {
-					return mapDriverErr(err)
+					return err
 				}
 				if n, err := res.RowsAffected(); err != nil || n != 1 {
 					return TransactionConflict(fmt.Sprintf("aes rotation of %s changed %d rows", spec.table, n))

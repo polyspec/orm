@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -85,7 +86,7 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 				return err
 			}
 			// lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려준다.
-			_, err := activeFor(db).tx.Exec("DO RELEASE_LOCK(?)", key("released"))
+			_, err := activeFor(db).conn.ExecContext(context.Background(), "DO RELEASE_LOCK(?)", key("released"))
 			return err
 		}, Retry(0))
 		if want := "lock " + key("released") + " was not held at transaction end"; err == nil || !strings.Contains(err.Error(), want) {

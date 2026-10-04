@@ -100,11 +100,24 @@ struct Builder {
     d: Dialect,
     binds: Vec<BindSlot>,
     subs: usize,
+    /// statement가 이름으로 쓴 table이다.
+    tables: std::collections::BTreeSet<String>,
 }
 
 impl Builder {
     fn new(d: Dialect) -> Builder {
-        Builder { d, binds: Vec::new(), subs: 0 }
+        Builder { d, binds: Vec::new(), subs: 0, tables: std::collections::BTreeSet::new() }
+    }
+
+    /// table 이름을 quote하고 statement의 table로 기록한다.
+    fn table(&mut self, table: &str) -> String {
+        self.tables.insert(table.to_string());
+        self.d.quote(table)
+    }
+
+    /// statement가 쓴 table을 정렬해 돌려준다.
+    fn tables(&self) -> Vec<String> {
+        self.tables.iter().cloned().collect()
     }
 
     fn slot(&mut self, slot: BindSlot) -> String {
@@ -424,7 +437,7 @@ impl<'m> Planner<'m> {
                 self.d.quote("orm_rn")
             ));
         }
-        sb.push_str(&format!(" FROM {} AS {}", self.d.quote(&root.ent.table), self.d.quote(&root.alias)));
+        sb.push_str(&format!(" FROM {} AS {}", b.table(&root.ent.table), self.d.quote(&root.alias)));
         if !q.force_index.is_empty() {
             sb.push_str(&self.d.force_index(&q.force_index));
         }
@@ -480,7 +493,7 @@ impl<'m> Planner<'m> {
                 }
             }
         }
-        let mut st = Step { role: "main".into(), sql: sb, lock: q.lock.clone(), bind_slots: b.binds, ..Default::default() };
+        let mut st = Step { role: "main".into(), sql: sb, tables: b.tables(), lock: q.lock.clone(), bind_slots: b.binds, ..Default::default() };
         if kind == "count" && !steps.is_empty() {
             st.role = "count".into();
         } else if let Some(rc) = rc {
@@ -751,7 +764,7 @@ impl<'m> Planner<'m> {
             let js = s.join(&j.rel).expect("scoped join");
             let kw = if j.kind == "left" { " LEFT JOIN " } else { " INNER JOIN " };
             let condition = format!("{} = {}", self.qcol(s, &j.left), self.qcol(js, &j.right));
-            sb.push_str(&format!("{kw}{} AS {} ON {condition}", self.d.quote(&js.ent.table), self.d.quote(&js.alias)));
+            sb.push_str(&format!("{kw}{} AS {} ON {condition}", b.table(&js.ent.table), self.d.quote(&js.alias)));
             if let Some(on) = j.query.on.as_ref().filter(|g| !g.items.is_empty()) {
                 let on = self.render_group(b, root, js, on, true)?;
                 sb.push_str(" AND ");
@@ -990,7 +1003,7 @@ impl<'m> Planner<'m> {
             "count" => sb.push_str("COUNT(*)"),
             _ => sb.push_str(&self.qcol(root, &sub.column)),
         }
-        sb.push_str(&format!(" FROM {} AS {}", self.d.quote(&root.ent.table), self.d.quote(&root.alias)));
+        sb.push_str(&format!(" FROM {} AS {}", b.table(&root.ent.table), self.d.quote(&root.alias)));
         self.render_joins(b, root, root, &mut sb)?;
         let mut where_ = Vec::new();
         if let Some(soft_delete) = &root.ent.soft_delete {
@@ -1090,7 +1103,7 @@ impl<'m> Planner<'m> {
             cols.push(self.d.quote(c.column()));
             vals.push(c.value(&mut b));
         }
-        let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", self.d.quote(&ent.table), cols.join(", "), vals.join(", "));
+        let mut sql = format!("INSERT INTO {} ({}) VALUES ({})", b.table(&ent.table), cols.join(", "), vals.join(", "));
         if !r.rows.is_empty() {
             // 그려진 column은 r.set의 값에 대응한다. 파생된 blind index는 AES source column의 값을 쓴다.
             let mut source = Vec::with_capacity(set.len());
@@ -1113,7 +1126,7 @@ impl<'m> Planner<'m> {
                 }
                 sql.push_str(&format!(", ({})", more.join(", ")));
             }
-            return Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() });
+            return Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() });
         }
         if !r.on_duplicate.is_empty() {
             let duplicate = add_blind_index_assignments(ent, r.on_duplicate.clone());
@@ -1140,7 +1153,7 @@ impl<'m> Planner<'m> {
         if let Some(identity) = ent.identity.as_deref().filter(|_| self.d.insert_returning_id()) {
             sql.push_str(&format!(" RETURNING {}", self.d.quote(identity)));
         }
-        Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+        Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
     /// insert가 사용자 assignment 외에 쓰는 column: AES key version, audit column,
@@ -1216,8 +1229,8 @@ impl<'m> Planner<'m> {
         if let Some(soft_delete) = &ent.soft_delete {
             where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
         }
-        let sql = format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "));
-        Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+        let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
+        Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
     /// soft delete column이 있으면 delete는 그 column을 statement 시각으로 쓰는 update다.
@@ -1240,11 +1253,11 @@ impl<'m> Planner<'m> {
         let sql = match &ent.soft_delete {
             Some(soft_delete) => {
                 where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
-                format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "))
+                format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "))
             }
-            None => format!("DELETE FROM {} WHERE {where_}", self.d.quote(&ent.table)),
+            None => format!("DELETE FROM {} WHERE {where_}", b.table(&ent.table)),
         };
-        Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+        Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
     /// soft delete한 행 하나를 되돌리는 update다. where는 primary key나 unique key 하나의 모든 column을 eq
@@ -1283,8 +1296,8 @@ impl<'m> Planner<'m> {
         }
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         where_.push_str(&format!(" AND {} IS NOT NULL", self.qcol(&root, soft_delete)));
-        let sql = format!("UPDATE {} SET {} WHERE {where_}", self.d.quote(&ent.table), sets.join(", "));
-        Ok(Step { role: "main".into(), sql, bind_slots: b.binds, ..Default::default() })
+        let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
+        Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 }
 

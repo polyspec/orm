@@ -117,7 +117,7 @@ final class Planner
             }
             $sql .= ', ROW_NUMBER() OVER (PARTITION BY ' . implode(', ', $this->qualified($root, $rc->childKeys)) . $order . ') AS ' . $this->d->quote('orm_rn');
         }
-        $sql .= ' FROM ' . $this->d->quote($root->ent['table']) . ' AS ' . $this->d->quote($root->alias);
+        $sql .= ' FROM ' . $b->table($root->ent) . ' AS ' . $this->d->quote($root->alias);
         if (($q['force_index'] ?? '') !== '') {
             $sql .= $this->d->forceIndex($q['force_index']);
         }
@@ -168,7 +168,7 @@ final class Planner
                 }
             }
         }
-        $st = new PlanStep('main', $sql, $lock, $b->slots);
+        $st = new PlanStep('main', $sql, $lock, $b->slots, $b->tables());
         if ($kind === 'count' && $steps->steps !== []) {
             $st->role = 'count';
         } elseif ($rc !== null) {
@@ -420,7 +420,7 @@ final class Planner
             $js = $s->joins[$j['rel']];
             $kw = ($j['kind'] ?? '') === 'left' ? ' LEFT JOIN ' : ' INNER JOIN ';
             $conditions = [$this->qcol($s, $j['left']) . ' = ' . $this->qcol($js, $j['right'])];
-            $sql .= $kw . $this->d->quote($js->ent['table']) . ' AS ' . $this->d->quote($js->alias) . ' ON ' . implode(' AND ', $conditions);
+            $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias) . ' ON ' . implode(' AND ', $conditions);
             if (($j['query']['on']['items'] ?? []) !== []) {
                 $sql .= ' AND ' . $this->renderGroup($b, $js, $j['query']['on'], true);
             }
@@ -854,7 +854,7 @@ final class Planner
             $cols[] = $this->d->quote($c['name']);
             $vals[] = $b->now($c['precision']);
         }
-        $sql = 'INSERT INTO ' . $this->d->quote($ent['table']) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
+        $sql = 'INSERT INTO ' . $b->table($ent) . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $vals) . ')';
         $rows = $r['rows'] ?? [];
         if ($rows !== []) {
             // derived blind-index columns take the value of their AES source column
@@ -879,7 +879,7 @@ final class Planner
                 }
                 $sql .= ', (' . implode(', ', $more) . ')';
             }
-            return new PlanStep('main', $sql, '', $b->slots);
+            return new PlanStep('main', $sql, '', $b->slots, $b->tables());
         }
         if (($r['on_duplicate'] ?? []) !== []) {
             $duplicate = self::withBlindIndexes($ent, $r['on_duplicate']);
@@ -904,7 +904,7 @@ final class Planner
         if ($this->d->insertReturningId() && $ent['identity'] !== '') {
             $sql .= ' RETURNING ' . $this->d->quote($ent['identity']);
         }
-        return new PlanStep('main', $sql, '', $b->slots);
+        return new PlanStep('main', $sql, '', $b->slots, $b->tables());
     }
 
     private function updateStep(array $r): PlanStep
@@ -941,7 +941,7 @@ final class Planner
         if ($ent['soft_delete'] !== '') {
             $where .= ' AND ' . $this->qcol($root, $ent['soft_delete']) . ' IS NULL';
         }
-        return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
+        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
 
     /**
@@ -971,9 +971,9 @@ final class Planner
         $where = $this->renderGroup($b, $root, $r['where'], true);
         if ($soft !== '') {
             $where .= ' AND ' . $this->qcol($root, $soft) . ' IS NULL';
-            return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots);
+            return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . $sets . ' WHERE ' . $where, '', $b->slots, $b->tables());
         }
-        return new PlanStep('main', 'DELETE FROM ' . $this->d->quote($ent['table']) . ' WHERE ' . $where, '', $b->slots);
+        return new PlanStep('main', 'DELETE FROM ' . $b->table($ent) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
 
     /**
@@ -1010,7 +1010,7 @@ final class Planner
             $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
         }
         $where = $this->renderGroup($b, $root, $r['where'], true) . ' AND ' . $this->qcol($root, $soft) . ' IS NOT NULL';
-        return new PlanStep('main', 'UPDATE ' . $this->d->quote($ent['table']) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots);
+        return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
     }
 
     /** restore의 where가 primary key나 unique key 하나의 모든 column을 and로 이은 eq 값 조건으로 한 번씩 이름하는지 확인한다. */
@@ -1059,7 +1059,7 @@ final class Planner
             'count' => 'COUNT(*)',
             default => $this->qcol($root, $column),
         };
-        $sql .= ' FROM ' . $this->d->quote($root->ent['table']) . ' AS ' . $this->d->quote($root->alias);
+        $sql .= ' FROM ' . $b->table($root->ent) . ' AS ' . $this->d->quote($root->alias);
         $sql .= $this->renderJoins($b, $root);
         $where = [];
         if ($root->ent['soft_delete'] !== '') {
@@ -1125,8 +1125,25 @@ final class PlanBinds
     /** @var list<array> */
     public array $slots = [];
     public int $subs = 0;
+    /** @var array<string, true> statement가 이름으로 쓴 table */
+    private array $tables = [];
 
     public function __construct(private readonly Dialect $d) {}
+
+    /** ent의 table 이름을 quote하고 statement의 table로 기록한다. */
+    public function table(array $ent): string
+    {
+        $this->tables[$ent['table']] = true;
+        return $this->d->quote($ent['table']);
+    }
+
+    /** @return list<string> statement가 쓴 table, 정렬한 것 */
+    public function tables(): array
+    {
+        $out = array_map('strval', array_keys($this->tables));
+        sort($out, SORT_STRING);
+        return $out;
+    }
 
     private function add(array $slot): string
     {
@@ -1221,11 +1238,12 @@ final class PlanStep
     public ?PlanAssemble $assemble = null;
     public ?array $parent = null;
 
-    public function __construct(public string $role, public readonly string $sql, public readonly string $lock, public readonly array $slots) {}
+    /** @param list<string> $tables statement가 이름으로 쓰는 table, 정렬한 것 */
+    public function __construct(public string $role, public readonly string $sql, public readonly string $lock, public readonly array $slots, public readonly array $tables) {}
 
     public function toArray(): array
     {
-        $out = ['id' => $this->id, 'role' => $this->role, 'sql' => $this->sql];
+        $out = ['id' => $this->id, 'role' => $this->role, 'sql' => $this->sql, 'tables' => $this->tables];
         if ($this->lock !== '') {
             $out['lock'] = $this->lock;
         }

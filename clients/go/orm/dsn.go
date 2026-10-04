@@ -106,7 +106,6 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		if q.Has("_txlock") {
 			return parsedDSN{}, configErr("sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE")
 		}
-		q.Set("_txlock", "immediate")
 		pragmas := strings.Join(q["_pragma"], ",")
 		if !strings.Contains(pragmas, "busy_timeout") {
 			q.Add("_pragma", "busy_timeout("+strconv.Itoa(sqliteBusyTimeoutMs)+")")

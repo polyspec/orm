@@ -1,0 +1,1321 @@
+{
+  "cases": [
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "b",
+              1
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `event_probe` SET `label` = ? WHERE `event_probe`.`seq` = ?",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`label` AS `a__label` FROM `event_probe` AS `a` WHERE `a`.`label` = ? LIMIT 0, 1",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              1
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `event_probe` WHERE `event_probe`.`seq` = ?",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "b",
+              1
+            ],
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE \"event_probe\" SET \"label\" = $1 WHERE \"event_probe\".\"seq\" = $2",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              1
+            ],
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM \"event_probe\" WHERE \"event_probe\".\"seq\" = $1",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = ? LIMIT 1 OFFSET 0",
+            "binds": [
+              "a"
+            ],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = ? LIMIT 1 OFFSET 0",
+            "binds": [
+              "a"
+            ],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "UPDATE \"event_probe\" SET \"label\" = ? WHERE \"event_probe\".\"seq\" = ?",
+            "binds": [
+              "b",
+              1
+            ],
+            "kind": "update",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\" FROM \"event_probe\" AS \"a\" WHERE \"a\".\"label\" = ? LIMIT 1 OFFSET 0",
+            "binds": [
+              "b"
+            ],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "DELETE FROM \"event_probe\" WHERE \"event_probe\".\"seq\" = ?",
+            "binds": [
+              1
+            ],
+            "kind": "delete",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "model_statements",
+      "note": "model statements outside a transaction: insert, select, count, update and delete of one row",
+      "steps": [
+        {
+          "label": "a",
+          "op": "create"
+        },
+        {
+          "label": "a",
+          "op": "get"
+        },
+        {
+          "op": "count",
+          "result": 1
+        },
+        {
+          "label": "a",
+          "op": "update",
+          "to": "b"
+        },
+        {
+          "label": "b",
+          "op": "delete"
+        },
+        {
+          "op": "count",
+          "result": 0
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "BEGIN IMMEDIATE",
+            "binds": [],
+            "kind": "begin",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "SAVEPOINT orm_sp_1",
+            "binds": [],
+            "kind": "savepoint",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "b"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "binds": [],
+            "kind": "release",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "COMMIT",
+            "binds": [],
+            "kind": "commit",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "transaction_savepoint",
+      "note": "a transaction with a nested transaction that runs in a savepoint; both commit",
+      "steps": [
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "label": "a",
+              "op": "create"
+            },
+            {
+              "op": "transaction",
+              "steps": [
+                {
+                  "label": "b",
+                  "op": "create"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "op": "count",
+          "result": 2
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "BEGIN IMMEDIATE",
+            "binds": [],
+            "kind": "begin",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "ROLLBACK",
+            "binds": [],
+            "kind": "rollback",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "transaction_rollback",
+      "note": "a transaction whose callback fails rolls back",
+      "steps": [
+        {
+          "error": "callback",
+          "fail": true,
+          "op": "transaction",
+          "steps": [
+            {
+              "label": "a",
+              "op": "create"
+            }
+          ]
+        },
+        {
+          "op": "count",
+          "result": 0
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback_to",
+            "sql": "ROLLBACK TO SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "BEGIN",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "b"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback_to",
+            "sql": "ROLLBACK TO SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "BEGIN IMMEDIATE",
+            "binds": [],
+            "kind": "begin",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "SAVEPOINT orm_sp_1",
+            "binds": [],
+            "kind": "savepoint",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "b"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "ROLLBACK TO SAVEPOINT orm_sp_1",
+            "binds": [],
+            "kind": "rollback_to",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "binds": [],
+            "kind": "release",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "COMMIT",
+            "binds": [],
+            "kind": "commit",
+            "tables": [],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "savepoint_rollback",
+      "note": "a nested transaction whose callback fails rolls back to its savepoint; the outer callback continues and commits",
+      "steps": [
+        {
+          "op": "transaction",
+          "steps": [
+            {
+              "label": "a",
+              "op": "create"
+            },
+            {
+              "error": "callback",
+              "fail": true,
+              "op": "transaction",
+              "steps": [
+                {
+                  "label": "b",
+                  "op": "create"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "op": "count",
+          "result": 1
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": "DUPLICATE_KEY",
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              "a"
+            ],
+            "error": "DUPLICATE_KEY",
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": "DUPLICATE_KEY"
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "failed_statement",
+      "note": "a statement that the database rejects carries the error code of the operation",
+      "steps": [
+        {
+          "label": "a",
+          "op": "create"
+        },
+        {
+          "error": "DUPLICATE_KEY",
+          "label": "a",
+          "op": "create"
+        },
+        {
+          "op": "count",
+          "result": 1
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `event_probe` AS `a`",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "SELECT COUNT(*) FROM \"event_probe\" AS \"a\"",
+            "binds": [],
+            "kind": "select",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "subscriber_error",
+      "note": "a subscriber registered after the recording one fails on the first insert; the operation fails with SUBSCRIBER, and the row stays",
+      "steps": [
+        {
+          "kind": "insert",
+          "op": "fail_subscriber"
+        },
+        {
+          "error": "SUBSCRIBER",
+          "label": "a",
+          "op": "create"
+        },
+        {
+          "op": "stop_failing"
+        },
+        {
+          "op": "count",
+          "result": 1
+        }
+      ]
+    },
+    {
+      "events": {
+        "mysql": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `event_probe` (`label`) VALUES (?)",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [
+              "a"
+            ],
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES ($1) RETURNING \"seq\"",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "INSERT INTO \"event_probe\" (\"label\") VALUES (?) RETURNING \"seq\"",
+            "binds": [
+              "a"
+            ],
+            "kind": "insert",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null,
+            "error": null
+          }
+        ]
+      },
+      "id": "unsubscribe",
+      "note": "after the recording subscriber is removed it receives no event",
+      "steps": [
+        {
+          "label": "a",
+          "op": "create"
+        },
+        {
+          "op": "unsubscribe"
+        },
+        {
+          "label": "b",
+          "op": "create"
+        },
+        {
+          "op": "count",
+          "result": 2
+        }
+      ]
+    },
+    {
+      "compare": "tables",
+      "events": {
+        "mysql": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "schema",
+            "sql": "CREATE TABLE `event_probe` (`seq` BIGINT NOT NULL AUTO_INCREMENT, `label` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL, PRIMARY KEY (`seq`), CONSTRAINT `uq_event_probe_label` UNIQUE (`label`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": null
+          }
+        ],
+        "postgres": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "schema",
+            "sql": "CREATE TABLE \"event_probe\" (\"seq\" bigint GENERATED BY DEFAULT AS IDENTITY NOT NULL, \"label\" varchar(32) COLLATE \"C\" NOT NULL, PRIMARY KEY (\"seq\"), CONSTRAINT \"uq_event_probe_label\" UNIQUE (\"label\"))",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1
+          }
+        ],
+        "sqlite": [
+          {
+            "sql": "CREATE TABLE IF NOT EXISTS \"orm__row_lock\" (\"id\" INTEGER PRIMARY KEY CHECK (\"id\" = 1))",
+            "binds": [],
+            "kind": "utility",
+            "tables": [
+              "orm__row_lock"
+            ],
+            "transaction": null,
+            "error": null
+          },
+          {
+            "sql": "CREATE TABLE \"event_probe\" (\"seq\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"label\" varchar(32) NOT NULL, CONSTRAINT \"event_probe$label\" CHECK (length(\"label\") \u003c= 32))",
+            "binds": [],
+            "kind": "schema",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          },
+          {
+            "sql": "CREATE UNIQUE INDEX \"uq_event_probe_label\" ON \"event_probe\" (\"label\")",
+            "binds": [],
+            "kind": "schema",
+            "tables": [
+              "event_probe"
+            ],
+            "transaction": 1,
+            "error": null
+          }
+        ]
+      },
+      "id": "install",
+      "install": false,
+      "note": "installing the fixture on an empty database; the events that name a table are compared",
+      "steps": [
+        {
+          "op": "install"
+        }
+      ]
+    }
+  ],
+  "fixture": "contracts/fixtures/statement_events.dbs",
+  "note": "Statement events (docs/usage.md \"Statement events\"). Each case runs on a new case database with the fixture installed (unless install is false), opens a new connection, registers one recording subscriber, runs the steps in order and compares the recorded events of every dialect: sql, binds, kind, tables, transaction (renumbered from 1 in the order of appearance within the case, null outside a transaction) and error (the error code of the statement, or null). With compare \"tables\" only the events that name a table are compared. elapsed is checked to be non-negative. Step ops: create (insert a row with label), get (read the row with label), count (count the rows; result is the expected count), update (read the row with label, then change its label to `to`), delete (read the row with label, then delete it), transaction (run steps in a transaction; fail makes the callback fail after its steps with an error of its own, reported as error \"callback\"), install (install the fixture), fail_subscriber (register a second subscriber that fails on the first event of kind), stop_failing (remove it), unsubscribe (remove the recording subscriber). A step with error expects the operation to fail with that code; \"callback\" is the error of the callback itself.",
+  "version": 1
+}

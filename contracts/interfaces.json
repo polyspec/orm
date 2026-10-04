@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:7839eca16deaae16f01e409e700297560b97cce819af841d4192fa3411de7fe4",
-    "php": "sha256:d3b350307a2d9770d6f8af3b52edea64bd923c50dec06d3efd7a8bd21551ea3d",
-    "rust": "sha256:394c14f71225341a8d66cbe85be6c52022a88e656dc0d1fd6143520a6047db69",
-    "typescript": "sha256:5cc95bee8892d0e22845a953de66bbe2904ac80e711c17452252da169978d524"
+    "go": "sha256:146f8a62725fc22923c4c311ad927b5229dd797f141969f5266e2f20f2dea45a",
+    "php": "sha256:642a2cfa10b582a49fc404f56156c0f6121a44f173e3f76b6d2eddaea28021ab",
+    "rust": "sha256:9831b3d2f6414ab63f6b94cad98fbbb3b1a62d2139c8a696b94322c67e87caf9",
+    "typescript": "sha256:f9f56aace09c58918955f7539664b538f57ca337b17bcce3d6d43bbc785dbd3b"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -182,6 +182,7 @@
         "id": "Integer",
         "role": "Text",
         "sql": "Text",
+        "tables": "List<Text>",
         "bindSlots": "List<BindSlot>",
         "parent": "Optional<ParentRef>",
         "assemble": "Optional<Assemble>"
@@ -208,7 +209,8 @@
         "planners": "Map<SchemaHash,Planner>",
         "plans": "Cache<Shape,Plan>",
         "statements": "Cache<Sql,Statement>",
-        "config": "Config"
+        "config": "Config",
+        "subscribers": "List<StatementSubscriber>"
       },
       "methods": [
         "connect",
@@ -216,10 +218,11 @@
         "transaction",
         "utils",
         "close",
-        "stats"
+        "stats",
+        "subscribe"
       ],
-      "ownership": "Owns the pool, the planners of the schema sets registered on it, and the plan and statement caches.",
-      "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache를 가진다."
+      "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
+      "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
     },
     {
       "id": "TransactionFlow",
@@ -1186,6 +1189,34 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.utils",
           "signature": "public utils(): Utils"
+        }
+      }
+    },
+    {
+      "id": "Db.subscribe",
+      "for": "once",
+      "inputs": [
+        "StatementSubscriber"
+      ],
+      "output": "Unsubscribe",
+      "errors": [],
+      "state": "Registers a subscriber that receives the event of every statement the connection sends, after the statement and before the operation continues; the returned value removes it (docs/usage.md \"Statement events\")",
+      "native": {
+        "go": {
+          "symbol": "clients/go/orm/events.go::DB.Subscribe",
+          "signature": "receiver=*DB func(fn Subscriber) (unsubscribe func())"
+        },
+        "php": {
+          "symbol": "clients/php/src/Db.php::Orm\\Db::subscribe",
+          "signature": "public function subscribe(Closure $subscriber): Closure"
+        },
+        "rust": {
+          "symbol": "clients/rust/orm/src/events.rs::Db::subscribe",
+          "signature": "pub fn subscribe<F>(&self, subscriber: F) -> Subscription"
+        },
+        "typescript": {
+          "symbol": "clients/typescript/src/database.ts::Db.subscribe",
+          "signature": "public subscribe(subscriber: (event: StatementEvent) => void): () => void"
         }
       }
     },

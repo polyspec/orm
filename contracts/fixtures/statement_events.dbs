@@ -1,0 +1,8 @@
+dbspec 1 statement_events
+
+table event_probe {
+  seq i64 identity
+  label varchar(32)
+  primary key (seq)
+  unique uq_event_probe_label (label)
+}

@@ -15,11 +15,13 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot param이다.
+// plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot param,
+// table이다. parent에서 오는 bind slot의 param은 -1이다.
 type plannerStatement struct {
-	Role   string `json:"role"`
-	SQL    string `json:"sql"`
-	Params []int  `json:"params"`
+	Role   string   `json:"role"`
+	SQL    string   `json:"sql"`
+	Params []int    `json:"params"`
+	Tables []string `json:"tables"`
 }
 
 // compilePlannerCase는 planner fixture case의 input에 schema/bench.dbs의
@@ -72,15 +74,19 @@ func compilePlannerCase(t *testing.T, id string) {
 		for _, step := range compiled.Steps {
 			params := []int{}
 			for _, slot := range step.BindSlots {
-				if slot.From != "param" {
+				switch slot.From {
+				case "param":
+					params = append(params, slot.Param)
+				case "parent":
+					params = append(params, -1)
+				default:
 					t.Fatalf("%s: step %d binds from %s", dialect, step.ID, slot.From)
 				}
-				params = append(params, slot.Param)
 			}
-			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Params: params})
+			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Params: params, Tables: step.Tables})
 		}
 		if len(want) == 0 || !slices.EqualFunc(got, want, func(a, b plannerStatement) bool {
-			return a.Role == b.Role && a.SQL == b.SQL && slices.Equal(a.Params, b.Params)
+			return a.Role == b.Role && a.SQL == b.SQL && slices.Equal(a.Params, b.Params) && slices.Equal(a.Tables, b.Tables)
 		}) {
 			t.Fatalf("%s statements:\n got %+v\nwant %+v", dialect, got, want)
 		}
@@ -115,4 +121,11 @@ func TestCoveragePlannerRestore(t *testing.T) {
 func TestCoveragePlannerRestoreRejectsNonKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_restore_rejects_non_key")
+}
+
+// TestCoveragePlannerTables는 subquery, join, relation이 있는 select의 step마다
+// statement가 이름으로 쓰는 table을 확인한다.
+func TestCoveragePlannerTables(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_tables")
 }

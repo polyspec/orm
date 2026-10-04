@@ -12,6 +12,8 @@ type Step struct {
 	ID        int        `json:"id"`
 	Role      string     `json:"role"` // main | count | relation
 	SQL       string     `json:"sql"`
+	// Tables는 statement가 이름으로 쓰는 table이다: 정렬하고 중복을 뺀 물리 table 이름.
+	Tables    []string   `json:"tables"`
 	Lock      string     `json:"lock,omitempty"` // adapter lock mode for a root row select
 	BindSlots []BindSlot `json:"bind_slots"`
 	Assemble  *Assemble  `json:"assemble,omitempty"`

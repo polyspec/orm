@@ -290,17 +290,25 @@ func (d *DB) statement(ctx context.Context, r *request) (*Statement, error) {
 	return &Statement{SQL: st.SQL, Binds: args}, nil
 }
 
-func (d *DB) emit(c *cached, sqlText string, args []any, masks map[int]string, start time.Time, err error) {
-	if d.cfg.OnQuery == nil {
-		return
-	}
+// modelDone은 model statement의 event를 publish하고 operation이 받을 오류를
+// 돌려준다. bind는 비밀과 시각 slot을 가린 값이다.
+func (d *DB) modelDone(ex executor, st *plan.Step, sqlText string, args []any, masks map[int]string, start time.Time, err error) error {
+	shown := args
 	if len(masks) > 0 {
-		args = slices.Clone(args)
+		shown = slices.Clone(args)
 		for i, m := range masks {
-			args[i] = m
+			shown[i] = m
 		}
 	}
-	d.cfg.OnQuery(Event{SQL: sqlText, Args: args, Duration: time.Since(start), PlanID: c.id, Err: err})
+	return d.statementDone(statementKind(st.SQL), st.Tables, transactionNumber(ex), sqlText, shown, start, err)
+}
+
+// transactionNumber는 ex가 transaction이면 그 번호, 아니면 0이다.
+func transactionNumber(ex executor) int64 {
+	if t := ex.transaction(); t != nil {
+		return t.number
+	}
+	return 0
 }
 
 // result is the positional result of a select plan.
@@ -643,8 +651,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	rows, err := stmt.QueryContext(ctx, args...)
 	err = mapDriverErr(err)
 	if err != nil {
-		d.emit(c, sqlText, args, masks, start, err)
-		return nil, err
+		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
 	defer rows.Close()
 	si := c.scans[st]
@@ -659,6 +666,9 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	}
 	var out [][]any
 	var chunk []any
+	// decodeErr는 읽은 행을 풀지 못한 client 쪽 오류다. statement의 오류가 아니므로
+	// event에는 싣지 않는다.
+	var decodeErr error
 	for rows.Next() {
 		if err = rows.Scan(ptrs...); err != nil {
 			err = mapDriverErr(err)
@@ -678,7 +688,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		for i := range cells {
 			vals[i] = cells[i].v
 		}
-		if err = decodeSelectedRow(vals, si, st, keyring); err != nil {
+		if decodeErr = decodeSelectedRow(vals, si, st, keyring); decodeErr != nil {
 			break
 		}
 		out = append(out, vals)
@@ -686,8 +696,13 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	if err == nil {
 		err = mapDriverErr(rows.Err())
 	}
-	d.emit(c, sqlText, args, masks, start, err)
-	return out, err
+	if err := d.modelDone(ex, st, sqlText, args, masks, start, err); err != nil {
+		return nil, err
+	}
+	if decodeErr != nil {
+		return nil, decodeErr
+	}
+	return out, nil
 }
 
 func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyring) error {
@@ -868,8 +883,10 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	var v cell
 	start := time.Now()
 	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&v))
-	d.emit(c, st.SQL, args, masks, start, err)
-	return v.v, err
+	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
+		return nil, err
+	}
+	return v.v, nil
 }
 
 // paginate runs the page statement with its relations and the count statement.
@@ -936,16 +953,14 @@ func write(ex executor, r *request) (lastID, affected int64, err error) {
 	start := time.Now()
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
 		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
-		d.emit(c, st.SQL, args, masks, start, err)
-		if err != nil {
+		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return 0, 0, err
 		}
 		return lastID, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	err = mapDriverErr(err)
-	d.emit(c, st.SQL, args, masks, start, err)
-	if err != nil {
+	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return 0, 0, err
 	}
 	affected, _ = res.RowsAffected()

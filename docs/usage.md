@@ -398,13 +398,47 @@ The same statement produces the same result on all three databases, although sta
 |---|---|
 | Compare schema with the live database | introspect the database and compare its schema text with the document set ([schema.md](schema.md#_2-schema-operations)) |
 | Check generated files | `git diff --exit-code` after the language generator runs |
-| Statement log | `Config.OnQuery` / `onQuery` / `Config { on_query }` → `(sql, binds, duration, plan_id, err)`; secrets are masked as `$SECRET` |
+| Statement events | `subscribe` on the connection; every statement the client sends ([statement events](#statement-events)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
 | Add the missing tables and columns of an installed set | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 
 ---
+
+
+### Statement events
+
+Every client publishes one event for each statement it sends to the database: the statements of models, transaction control, the statements of schema utilities and every other statement of a utility. Subscribers register on the connection. The shared vector `tests/events/vectors.json` runs one sequence on MySQL, PostgreSQL and SQLite and states the events every client publishes.
+
+| Client | Subscribe and unsubscribe | Event |
+|---|---|---|
+| Go | `unsubscribe := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`, `Elapsed` a `time.Duration`, `Transaction` 0 outside a transaction |
+| PHP | `$unsubscribe = $db->subscribe(function (Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `Orm\StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`?int`), `error` (`?OrmException`) |
+| Rust | `let subscription = db.subscribe(\|e: &orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`, `elapsed` a `Duration`, `transaction` an `Option<u64>`, `error` an `Option<&orm::Error>` |
+| TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`number \| null`), `error` (`OrmError \| null`) |
+
+- `sql` is the statement as sent; a relation step carries its expanded `IN` list.
+- `binds` are the bound values in order; a secret is `$SECRET` and an executor clock value `$NOW`.
+- `kind` comes from the origin of the statement: `select`, `insert`, `update` or `delete` for a model statement, the verb that its plan step writes (a soft delete is `update`); `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` for transaction control; `schema` for the statements of schema utilities (the catalog reads and the statements of `install` and `addTablesAndColumns`, and the reads of `exists`, `installed` and `empty`); `utility` for every other statement: named locks and row locks, transaction-local values, transaction settings, privileges, AES status and rotation, and the SQLite row-lock table.
+- `tables` are sorted and without duplicates. A model statement has the `tables` of its plan step ([protocol](protocol.md#_2-plan)); a schema statement that creates or changes a table names that table; a utility statement on a table names it (`orm__row_lock` for the SQLite row lock, the table of a privilege, the table of an AES status or rotation); transaction control, catalog reads and the other statements name none.
+- `elapsed` runs from sending the statement until the client has read its result.
+- `transaction` is the number of the transaction on the connection: every outermost begin, including a retry after a deadlock and the SQLite transaction that rebuilds tables with foreign keys off, takes the next number from 1, and every statement from its begin to its commit or rollback carries it; a statement outside a transaction has none.
+- `error` is the error the statement ended with, with the code the operation reports; none on success. A failure to decode returned rows is not an error of the statement.
+
+The client calls the subscribers synchronously, in registration order, after the statement ends and before the operation continues. Every handle of the connection (Go `WithContext`, TypeScript `withSignal`, a Rust clone) shares them. With no subscriber the client only finds the list empty. A subscriber must not fail: when one returns an error (Go, Rust) or throws (PHP, TypeScript), the remaining subscribers do not run and the operation fails with `SUBSCRIBER`, whose cause is that error; the statement keeps its effect, and inside a transaction the callback receives the error.
+
+Every client sends the same transaction control statements:
+
+| Dialect | Begin | End |
+|---|---|---|
+| MySQL | `SET TRANSACTION ISOLATION LEVEL <level>` (`utility`, with an isolation), then `START TRANSACTION` or `START TRANSACTION READ ONLY` | `COMMIT` or `ROLLBACK` |
+| PostgreSQL | `BEGIN`, with ` ISOLATION LEVEL <level>` and ` READ ONLY` as the options ask, then `SET LOCAL statement_timeout = <ms>` (`utility`, with `timeoutMs`) | `COMMIT` or `ROLLBACK` |
+| SQLite | `BEGIN IMMEDIATE`, or `BEGIN` for a read-only transaction, then `PRAGMA read_uncommitted = 1` and `PRAGMA query_only = 1` (`utility`, as the options ask) | the same `PRAGMA` with 0, then `COMMIT` or `ROLLBACK` |
+
+`<level>` is `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ` or `SERIALIZABLE`. Before the first transaction of a SQLite connection the client creates the row-lock table with `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))` outside the transaction. A nested transaction sends `SAVEPOINT orm_sp_<depth>` and `RELEASE SAVEPOINT orm_sp_<depth>`, or after a failed callback `ROLLBACK TO SAVEPOINT orm_sp_<depth>` and then the `RELEASE`. Before the end of a MySQL transaction the client releases its named locks with `SELECT RELEASE_LOCK(?)` and clears its local values with ``SET @`orm.<key>` = NULL`` in key order. When the context or signal of a transaction is cancelled, the client closes the session instead of sending `ROLLBACK`.
+
+The statements that open a physical connection (session settings such as the time zone, the SQLite version read), the preparation of a statement and protocol-level cancellation are not events.
 
 ## 11. Common errors
 
