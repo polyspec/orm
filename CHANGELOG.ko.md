@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-5: Go, PHP, Rust, TypeScript의 MySQL TLS test는 case마다 기한과 경과 시간을 보고하고, Go 연결 test는 case context로 읽으며, `make repo-check`는 공유 testcase package의 case를 시작하지 않는 Go나 Rust test를 실패시킨다.
+
 - G5.29-6: version check test는 case마다 기한과 경과 시간을 보고하고, `make repo-check`는 `caseTest` 대신 `node:test`로 test를 직접 선언하는 JavaScript test를 실패시킨다.
 
 - G5.29-4: AGENTS.md는 장기 작업이 timeout 대신이 아니라 자기 timeout에 더해 상세 단계 로그를 둔다고 적는다.

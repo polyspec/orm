@@ -18,3 +18,46 @@ export function nodeTestErrors(files) {
   }
   return errors;
 }
+
+// body는 text의 index에서 시작하는 첫 `{`부터 짝이 맞는 `}`까지다. 문자열 안의 괄호는 세지 않으므로
+// 함수의 경계를 찾는 데만 쓴다.
+function body(text, index) {
+  const start = text.indexOf('{', index);
+  let depth = 0;
+  for (let at = start; at < text.length; at++) {
+    if (text[at] === '{') depth++;
+    else if (text[at] === '}' && --depth === 0) return text.slice(start, at + 1);
+  }
+  return text.slice(start);
+}
+
+// goTestCaseErrors는 Go의 Test나 Fuzz 함수가 internal/testcase(testcase.Start, Group, Run, Of)를 쓰지
+// 않을 때마다 오류 하나를 돌려준다. 그런 test는 RUN 줄과 기한 없이 실행된다. files는 {path: text}이고,
+// 그 형식을 정의하는 internal/testcase의 test는 검사하지 않는다.
+export function goTestCaseErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!path.endsWith('_test.go') || path.startsWith('internal/testcase/')) continue;
+    // raw string literal 안의 Go source(생성기 test가 쓰는 file)는 이 file의 test가 아니다. 같은 길이의
+    // 공백으로 바꾸어 위치를 지킨다.
+    const code = text.replace(/`[^`]*`/g, literal => literal.replace(/[^\n]/g, ' '));
+    for (const match of code.matchAll(/^func ((?:Test|Fuzz)\w*)\(\w+ \*testing\.[TF]\) \{/gm))
+      if (!/\btestcase\.(?:Start|Group|Run|Of)\(/.test(body(code, match.index)))
+        errors.push(`${path}: ${match[1]} does not start its case with internal/testcase, so it runs without a deadline or RUN line`);
+  }
+  return errors;
+}
+
+// rustTestCaseErrors는 Rust의 #[test]나 #[tokio::test] 함수가 orm_testcase의 case(case! macro나
+// start)를 시작하지 않을 때마다 오류 하나를 돌려준다. files는 {path: text}다.
+export function rustTestCaseErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!path.endsWith('.rs')) continue;
+    const pattern = /#\[(?:tokio::)?test(?:\([^)]*\))?\]\s*(?:#\[[^\]]*\]\s*)*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/g;
+    for (const match of text.matchAll(pattern))
+      if (!/\bcase!\(|\btestcase::(?:case!|start)\(/.test(body(text, match.index + match[0].length)))
+        errors.push(`${path}: ${match[1]} does not start its case with orm_testcase, so it runs without a deadline or RUN line`);
+  }
+  return errors;
+}
