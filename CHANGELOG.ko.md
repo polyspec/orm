@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-12: `make check`는 `clients/go/model`의 `go generate`와 `git diff`를 `go-model-check`에서 한 번만 실행한다. `generation-go`는 생성기 test만 실행하고, `make repo-check`는 `make check`가 두 번 실행할 `go generate`를 실패시킨다.
+
 - G5.29-11: `make checklist-check`는 들여 쓴 하위 항목의 id와 상태도 최상위 항목처럼 영어와 한국어 checklist 사이에서 비교하고, `G5.29-4` 같은 id를 받는다.
 
 - G5.29-3: `make owner-check`는 선언한 입력에 바뀐 file이 있는 검증 명령과 coverage 단위만 실행한다. PHP와 TypeScript coverage 실행기 같은 공유 helper는 자기 check만 실행하고, `planner-go`는 engine package마다 실행하며, 입력 없는 검증 명령은 기능 검사를 실패시킨다.

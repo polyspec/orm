@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-12: `make check` runs the `go generate` and `git diff` of `clients/go/model` once, in `go-model-check`; `generation-go` runs the generator tests only, and `make repo-check` fails a `go generate` that `make check` would run twice.
+
 - G5.29-11: `make checklist-check` compares the ids and states of indented sub-items between the English and Korean checklists, as it does for top-level items, and accepts ids such as `G5.29-4`.
 
 - G5.29-3: `make owner-check` runs only the verification commands and coverage parts whose declared inputs contain a changed file; shared helpers such as the PHP and TypeScript coverage runners run only their own checks, `planner-go` runs per engine package, and a verification command without inputs fails the feature check.

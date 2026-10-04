@@ -243,3 +243,38 @@ export function reachedScripts(commands, read) {
   commands.forEach(({ command }) => visit(command));
   return [...reached].map(([path, text]) => ({ name: path, commands: text.split('\n').filter(line => !/^\s*#/.test(line)) }));
 }
+
+// generateRuns는 명령이 `go generate`를 실행하는 directory를 돌려준다. `sh -c '...'` 안도 읽고, 앞의
+// `cd <dir>`와 run-case의 `--cwd <dir>`로 directory를 정한다. 생성은 추적되는 file을 다시 쓰고 `git diff`로
+// 비교하므로, 같은 directory의 생성은 make check에서 한 번만 실행한다.
+export function generateRuns(command) {
+  const out = [];
+  const visit = (text, cwd) => {
+    let directory = cwd;
+    for (const segment of segments(text)) {
+      const nested = /\bsh\s+-c\s+'([^']*)'/.exec(segment);
+      const runCase = /--cwd\s+(\S+)/.exec(segment);
+      if (nested) { visit(nested[1], runCase ? runCase[1] : directory); continue; }
+      const cd = /^cd\s+(\S+)$/.exec(segment);
+      if (cd) { directory = cd[1]; continue; }
+      const generate = /\bgo\s+generate\s+(\S+)/.exec(segment);
+      if (generate) out.push(`${(runCase ? runCase[1] : directory).replace(/\/$/, '')}/${generate[1]}`.replace(/\/\.\/?$/, '').replace(/^\.\//, ''));
+    }
+  };
+  visit(command, '.');
+  return out;
+}
+
+// repeatedGenerateErrors는 make check의 단위(CHECK_TARGETS의 recipe와 feature-check의 검증 명령)가 같은
+// directory의 `go generate`를 두 번 이상 실행할 때마다 오류 하나를 돌려준다.
+export function repeatedGenerateErrors(units) {
+  const seen = new Map();
+  for (const { name, commands } of units)
+    for (const command of commands)
+      for (const directory of generateRuns(command)) {
+        if (!seen.has(directory)) seen.set(directory, []);
+        seen.get(directory).push(name);
+      }
+  return [...seen].filter(([, names]) => names.length > 1)
+    .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make check: ${names.join(', ')}`);
+}

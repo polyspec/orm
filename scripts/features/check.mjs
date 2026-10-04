@@ -71,7 +71,7 @@ for (const feature of manifest.features ?? []) {
     }
     for (const [index, check] of (feature.verification ?? []).entries()) {
       if (!check.id || !check.command) errors.push(`${feature.id}: verification ${index} is incomplete`);
-      if (check.exclusive !== undefined && typeof check.exclusive !== 'boolean') errors.push(`${feature.id}: verification ${index} exclusive is not a boolean`);
+      if (Object.keys(check).some(key => !['id', 'command', 'inputs', 'cwd', 'environment'].includes(key))) errors.push(`${feature.id}: verification ${index} has a field other than id, command, inputs, cwd and environment`);
       if (check.environment !== undefined && check.environment !== 'linux-runner') errors.push(`${feature.id}: verification ${index} environment must be linux-runner`);
     }
   }
@@ -189,8 +189,8 @@ for (const id of onlyHelpers)
 log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
   // 검증 명령은 서로 독립이다(database를 쓰는 test는 case마다 자기 database를 만든다). 그래서
-  // ORM_FEATURE_LANES개(기본 4)를 함께 실행한다. exclusive인 명령(추적되는 file을 다시 쓰는
-  // 명령)은 다른 명령과 겹치지 않도록 병렬 실행 앞에서 혼자 실행한다.
+  // ORM_FEATURE_LANES개(기본 4)를 함께 실행한다. 추적되는 file을 다시 쓰는 생성 검사(go-model-check)는
+  // 검증 명령이 아니라 make check의 target이다.
   // 여러 기능이 같은 directory에서 같은 명령으로 검증하면(decimal, styled value, engine 검사)
   // 명령은 처음 한 번만 실행하고, 다음 기능은 그 실행의 결과를 자기 결과로 보고한다. 같은
   // 명령을 같은 tree에서 다시 실행해도 같은 일을 다시 할 뿐이다.
@@ -229,8 +229,7 @@ if (runVerification && errors.length === 0) {
     if (settle) settle(passed);
     if (!passed) errors.push(`${feature.id}/${check.id}: command failed; its output is in the STEP lines above`);
   };
-  for (const item of checks.filter(item => item.check.exclusive)) await verify(item);
-  const queue = checks.filter(item => !item.check.exclusive);
+  const queue = [...checks];
   await Promise.all(Array.from({ length: lanes }, async () => {
     while (queue.length > 0) await verify(queue.shift());
   }));

@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -78,6 +78,9 @@ failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...scr
 const packageUnits = Object.entries(rootPackage.scripts ?? {}).filter(([, command]) => segments(command).length > 1)
   .map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
 failures.push(...unwrappedToolErrors([...recipeUnits, ...packageUnits, ...scriptUnits]));
+// make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.
+const checkTargetSet = new Set(checkTargets(makefile));
+failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
