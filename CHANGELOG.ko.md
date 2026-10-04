@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.15: cargo를 `--offline`으로 실행하는 모든 make target은 먼저 `clients/rust`와 `bench/rust`의 고정된 crate를 받는 `make rust-fetch`를 실행하므로, 새 runner가 더 이상 `no matching package`로 실패하지 않는다.
+
 - G5.14: `make docs-rules-check`는 문서 page의 code 밖에 `<br>` 외의 HTML element가 있으면 실패한다. VitePress는 이를 닫히지 않은 element로 compile한다. `make docs-check`를 깨뜨린 T40 checklist 메시지는 inline code가 되었다.
 
 - G5.12: `make test-servers`는 ProxySQL과 PgBouncer의 출력을 `awk` 대신 `sh`로 한 줄씩 읽는다. Ubuntu의 `awk`인 `mawk`가 서버가 끝날 때까지 준비 줄을 넘기지 않아, Linux runner에서 시작이 더 이상 기다리지 않는다.
