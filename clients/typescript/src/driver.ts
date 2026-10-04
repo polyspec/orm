@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
-import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
+import { OrmError } from './runtime_error.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -20,7 +20,6 @@ pg.types.setTypeParser(3802, value => value);
 
 export type DriverName = 'mysql' | 'postgres' | 'sqlite';
 export type Isolation = 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable';
-export interface DriverTransactionOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs?: number; }
 export type DriverValue = null | boolean | number | string | bigint | Uint8Array;
 
 export interface DriverResult {
@@ -31,42 +30,77 @@ export interface DriverResult {
 
 export interface PoolStats { maxOpenConnections: number; openConnections: number; inUse: number; idle: number; }
 
-/** A connection pool or one transaction connection. */
+/**
+ * driver가 보낸 statement의 출처다. statement는 호출자가 보낸 statement, deallocate는 PostgreSQL이
+ * statement cache에서 밀어낸 prepared statement를 푸는 statement, kill은 MySQL이 다른 연결에서
+ * 실행 중인 statement를 멈추는 statement다.
+ */
+export type SentOrigin = 'statement' | 'deallocate' | 'kill';
+
+/**
+ * driver가 statement 하나의 결과를 읽었거나 statement가 실패했을 때 부른다. elapsed는 statement를
+ * 보낸 때부터의 초이고 error는 statement의 오류다. 던진 오류는 operation의 오류가 된다.
+ */
+export type StatementDone = (sql: string, elapsed: number, error: OrmError | null, origin: SentOrigin) => void;
+
+/** statement를 보내지만 event를 publish하지 않는 done이다. 연결을 여는 statement가 쓴다. */
+export const unobserved: StatementDone = () => undefined;
+
+/** A connection pool or one reserved connection. */
 export interface DriverConnection {
   readonly name: DriverName;
-  /** Runs one statement; an aborted signal cancels it and raises CANCELED. */
-  execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult>;
+  /** Runs one prepared statement; an aborted signal cancels it and raises CANCELED. */
+  execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult>;
 }
 
 export interface DriverPool extends DriverConnection {
-  begin(options: DriverTransactionOptions): Promise<DriverTransaction>;
   /**
-   * Runs run with statements that are not prepared on one reserved connection
-   * outside a transaction: MySQL schema statements and the catalog reads they
-   * depend on, and SQLite statements that turn foreign keys off, which a
-   * transaction cannot change.
+   * 연결 하나를 잡는다. transaction과, transaction 밖에서 한 연결로 실행해야 하는 statement(MySQL
+   * schema statement와 그것이 읽는 catalog, foreign key를 끄는 SQLite statement)가 쓴다.
    */
-  session?<T>(run: (control: DriverControl) => Promise<T>): Promise<T>;
+  reserve(): Promise<DriverSession>;
   stats(): PoolStats;
   close(): Promise<void>;
 }
 
-/** Runs a statement that is not prepared and returns its rows in column order. */
-export type DriverControl = (sql: string, params?: readonly DriverValue[]) => Promise<DriverResult>;
+/** 잡아 둔 연결 하나다. 끝나면 release로 돌려준다. */
+export interface DriverSession extends DriverConnection {
+  /** Runs a statement that is not prepared (transaction control, savepoints, locks, session values, schema statements). */
+  control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult>;
+  /** SQLite 연결이 transaction 안에 있는지다. 다른 driver는 알리지 않는다. */
+  inTransaction?(): boolean;
+  /**
+   * 연결을 돌려준다. discard면 pool에 돌려주지 않고 닫아 server가 그 session을 끝내게 한다. SQLite의
+   * 하나뿐인 연결은 닫지 않는다.
+   */
+  release(discard: boolean): void;
+}
 
-export interface DriverTransaction extends DriverConnection {
-  /** Runs a statement that is not prepared (savepoints, locks, session values). */
-  control(sql: string, params?: readonly DriverValue[]): Promise<DriverResult>;
-  commit(): Promise<void>;
-  rollback(): Promise<void>;
-  rowLock(mode: string): Promise<void>;
+function seconds(started: number): number { return (performance.now() - started) / 1000; }
+
+/**
+ * work가 보내는 statement 하나를 실행하고, 결과를 읽었거나 실패했을 때 done을 부른다. 실패는
+ * driver 오류로 바꾸어 done에 주고 던진다.
+ */
+async function observed<T>(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () => Promise<T> | T): Promise<T> {
+  const started = performance.now();
+  let result: T;
+  try {
+    result = await work();
+  } catch (error) {
+    const mapped = driverError(name, error);
+    done(sql, seconds(started), mapped, origin);
+    throw mapped;
+  }
+  done(sql, seconds(started), null, origin);
+  return result;
 }
 
 /** Milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms). */
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
 /** Reports SQLITE_BUSY or one of its extended codes. */
-function sqliteBusy(name: DriverName, error: unknown): boolean {
+export function sqliteBusy(name: DriverName, error: unknown): boolean {
   return name === 'sqlite' && (Number((error as { errcode?: number }).errcode) & 0xff) === 5;
 }
 
@@ -110,44 +144,55 @@ async function cancellable<T>(name: DriverName, signal: AbortSignal, stop: () =>
     await work.catch(() => undefined);
     throw canceled(name);
   }
-  const abort = () => { void stop().catch(() => undefined); };
+  // 멈추는 statement의 실패는 statement의 CANCELED가 보고하므로 버린다. 그 event의 subscriber
+  // 실패(SUBSCRIBER)만 statement가 끝난 뒤 operation의 오류로 던진다.
+  let stopping: Promise<unknown> | undefined;
+  const abort = () => { stopping = stop().then(() => undefined, (error: unknown) => error); };
   signal.addEventListener('abort', abort, { once: true });
+  let result: T;
   try {
-    return await work;
+    result = await work;
   } catch (error) {
+    await subscriberFailure(stopping);
     if (signal.aborted) throw error instanceof OrmError && error.code === 'CANCELED' ? error : canceled(name);
     throw error;
   } finally {
     signal.removeEventListener('abort', abort);
   }
+  await subscriberFailure(stopping);
+  return result;
 }
 
-function isolationSql(isolation: Isolation): string {
+/** 멈추는 statement의 subscriber가 실패했으면 그 SUBSCRIBER 오류를 던진다. */
+async function subscriberFailure(stopping: Promise<unknown> | undefined): Promise<void> {
+  if (stopping === undefined) return;
+  const error = await stopping;
+  if (error instanceof OrmError && error.code === 'SUBSCRIBER') throw error;
+}
+
+export function isolationSql(isolation: Isolation): string {
   if (!['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'].includes(isolation)) throw new OrmError('CONFIG', `unsupported transaction isolation ${isolation}`);
   return isolation.replaceAll('_', ' ').toUpperCase();
 }
 
 async function mysqlExecute(connection: MySqlPool | MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  try {
-    const [value] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
-    if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
-    const result = value as { affectedRows: number; insertId: number };
-    return { rows: [], affected: result.affectedRows, insertId: result.insertId || null };
-  } catch (error) { throw driverError('mysql', error); }
+  const [value] = await connection.execute({ sql, rowsAsArray: true }, [...params]);
+  if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+  const result = value as { affectedRows: number; insertId: number };
+  return { rows: [], affected: result.affectedRows, insertId: result.insertId || null };
 }
 
 async function mysqlControl(connection: MySqlConnection, sql: string, params: readonly DriverValue[]): Promise<DriverResult> {
-  try {
-    const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
-    if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
-    return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
-  } catch (error) { throw driverError('mysql', error); }
+  const [value] = await connection.query({ sql, rowsAsArray: true }, [...params]);
+  if (Array.isArray(value)) return { rows: value as unknown[][], affected: 0, insertId: null };
+  return { rows: [], affected: (value as { affectedRows: number }).affectedRows, insertId: null };
 }
 
 /** Stops the statement running on connection from another connection of the pool. */
-async function mysqlKill(pool: MySqlPool, connection: MySqlConnection): Promise<void> {
+async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone): Promise<void> {
   const id = (connection as unknown as { threadId: number }).threadId;
-  await pool.query(`KILL QUERY ${Number(id)}`);
+  const sql = `KILL QUERY ${Number(id)}`;
+  await observed('mysql', sql, done, 'kill', () => pool.query(sql));
 }
 
 /** The failure of the session setup that runs on each new MySQL connection. */
@@ -170,40 +215,23 @@ class MySqlPoolDriver implements DriverPool {
       error => { throw sessionError(this.setup) ?? error; },
     );
   }
-  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
-    if (signal === undefined) return this.checked(mysqlExecute(this.pool, sql, params));
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
+    if (signal === undefined) return observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(this.pool, sql, params)));
     // A cancellable statement holds its own connection, so KILL QUERY names
     // the thread that runs it.
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error); }
     try {
-      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection), this.checked(mysqlExecute(connection, sql, params)));
+      return await cancellable(this.name, signal, () => mysqlKill(this.pool, connection, done),
+        observed(this.name, sql, done, 'statement', () => this.checked(mysqlExecute(connection, sql, params))));
     } finally {
       connection.release();
     }
   }
-  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
+  public async reserve(): Promise<DriverSession> {
     let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
-    try {
-      return await run((sql, params = []) => mysqlControl(connection, sql, params));
-    } finally {
-      connection.release();
-    }
-  }
-  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
-    if ((options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
-    let connection: MySqlConnection;
-    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw error instanceof OrmError ? error : driverError(this.name, error); }
-    try {
-      if (options.isolation) await connection.query(`SET TRANSACTION ISOLATION LEVEL ${isolationSql(options.isolation)}`);
-      if (options.readOnly) await connection.query('SET TRANSACTION READ ONLY');
-      await connection.beginTransaction();
-    } catch (error) {
-      connection.release();
-      throw driverError(this.name, error);
-    }
-    return new MySqlTx(connection, this.pool);
+    try { connection = await this.checked(this.pool.getConnection()); } catch (error) { throw driverError(this.name, error); }
+    return new MySqlSession(connection, this.pool);
   }
   public stats(): PoolStats {
     const inner = (this.pool as unknown as { pool: { _allConnections: { length: number }; _freeConnections: { length: number } } }).pool;
@@ -214,21 +242,20 @@ class MySqlPoolDriver implements DriverPool {
   public async close(): Promise<void> { await this.pool.end(); }
 }
 
-class MySqlTx implements DriverTransaction {
+class MySqlSession implements DriverSession {
   public readonly name = 'mysql' as const;
   public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool) {}
-  public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
-    const work = mysqlExecute(this.connection, sql, params);
-    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection), work);
+  public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
+    const work = observed(this.name, sql, done, 'statement', () => mysqlExecute(this.connection, sql, params));
+    return signal === undefined ? work : cancellable(this.name, signal, () => mysqlKill(this.pool, this.connection, done), work);
   }
-  public control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return mysqlControl(this.connection, sql, params); }
-  public async commit(): Promise<void> {
-    try { await this.connection.commit(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
+  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+    return observed(this.name, sql, done, 'statement', () => mysqlControl(this.connection, sql, params));
   }
-  public async rollback(): Promise<void> {
-    try { await this.connection.rollback(); } catch (error) { throw driverError(this.name, error); } finally { this.connection.release(); }
+  public release(discard: boolean): void {
+    if (discard) this.connection.destroy();
+    else this.connection.release();
   }
-  public async rowLock(): Promise<void> {}
 }
 
 class StatementNames {
@@ -253,18 +280,23 @@ class StatementNames {
 
 const statementCaches = new WeakMap<object, StatementNames>();
 
-async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number): Promise<DriverResult> {
+/**
+ * prepared statement를 실행한다. statement cache가 밀어낸 prepared statement는 statement의 결과를 읽은
+ * 뒤 같은 연결에서 DEALLOCATE로 푼다. 그 statement는 statement 다음의 event다.
+ */
+async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone): Promise<DriverResult> {
   let cache = statementCaches.get(client);
   if (cache === undefined) {
     cache = new StatementNames(cacheSize);
     statementCaches.set(client, cache);
   }
-  try {
-    const { name, evicted } = cache.name(sql);
-    const result = await client.query({ name, text: sql, values: [...params], rowMode: 'array' });
-    if (evicted !== undefined) await client.query(`DEALLOCATE "${evicted}"`);
-    return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: (result.rows[0] as unknown[] | undefined)?.[0] as DriverResult['insertId'] ?? null };
-  } catch (error) { throw driverError('postgres', error); }
+  const { name, evicted } = cache.name(sql);
+  const result = await observed('postgres', sql, done, 'statement', () => client.query({ name, text: sql, values: [...params], rowMode: 'array' }));
+  if (evicted !== undefined) {
+    const deallocate = `DEALLOCATE "${evicted}"`;
+    await observed('postgres', deallocate, done, 'deallocate', () => client.query(deallocate));
+  }
+  return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: (result.rows[0] as unknown[] | undefined)?.[0] as DriverResult['insertId'] ?? null };
 }
 
 /**
@@ -305,34 +337,18 @@ class PostgresPoolDriver implements DriverPool {
   private release(client: pg.PoolClient, failed = false): void {
     client.release(failed || this.pool.idleCount >= this.idleSize);
   }
-  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     try {
-      const work = pgExecute(client, sql, params, this.cacheSize);
+      const work = pgExecute(client, sql, params, this.cacheSize, done);
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
     } finally { this.release(client); }
   }
-  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
+  public async reserve(): Promise<DriverSession> {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
-    let began = false;
-    try {
-      await client.query('BEGIN');
-      began = true;
-      if (options.isolation) await client.query(`SET TRANSACTION ISOLATION LEVEL ${isolationSql(options.isolation)}`);
-      if (options.readOnly) await client.query('SET TRANSACTION READ ONLY');
-      if ((options.timeoutMs ?? 0) > 0) await client.query(`SET LOCAL statement_timeout = ${Math.floor(options.timeoutMs!)}`);
-    } catch (error) {
-      const failure = driverError(this.name, error);
-      try {
-        if (began) await client.query('ROLLBACK');
-      } catch (rollback) {
-        throw rollbackFailed(failure, driverError(this.name, rollback));
-      } finally { this.release(client); }
-      throw failure;
-    }
-    return new PostgresTx(client, this.cacheSize, this.config, failed => this.release(client, failed));
+    return new PostgresSession(client, this.cacheSize, this.config, failed => this.release(client, failed));
   }
   public stats(): PoolStats {
     return { maxOpenConnections: this.maxOpen, openConnections: this.pool.totalCount, inUse: this.pool.totalCount - this.pool.idleCount, idle: this.pool.idleCount };
@@ -340,7 +356,7 @@ class PostgresPoolDriver implements DriverPool {
   public async close(): Promise<void> { await this.pool.end(); }
 }
 
-class PostgresTx implements DriverTransaction {
+class PostgresSession implements DriverSession {
   public readonly name = 'postgres' as const;
   /** The connection error the server reported between statements, such as the end of its session. */
   private failure: unknown;
@@ -349,27 +365,18 @@ class PostgresTx implements DriverTransaction {
     // A checked-out client reports a connection error between statements as an event; the next statement then fails.
     client.on('error', this.onError);
   }
-  private release(): void {
+  public release(discard: boolean): void {
     this.client.removeListener('error', this.onError);
-    this.done(this.failure !== undefined);
+    this.done(discard || this.failure !== undefined);
   }
-  public execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
-    const work = pgExecute(this.client, sql, params, this.cacheSize);
+  public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
+    const work = pgExecute(this.client, sql, params, this.cacheSize, done);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
   }
-  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
-    try {
-      const result = await this.client.query({ text: sql, values: [...params], rowMode: 'array' });
-      return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null };
-    } catch (error) { throw driverError(this.name, error); }
+  public async control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+    const result = await observed(this.name, sql, done, 'statement', () => this.client.query({ text: sql, values: [...params], rowMode: 'array' }));
+    return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null };
   }
-  public async commit(): Promise<void> {
-    try { await this.client.query('COMMIT'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
-  }
-  public async rollback(): Promise<void> {
-    try { await this.client.query('ROLLBACK'); } catch (error) { throw driverError(this.name, error); } finally { this.release(); }
-  }
-  public async rowLock(): Promise<void> {}
 }
 
 class SqliteState {
@@ -388,17 +395,15 @@ class SqliteState {
 }
 
 function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult {
-  try {
-    const statement = state.statement(sql);
-    const values = params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
-    if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
-      statement.setReturnArrays(true);
-      const rows = statement.all(...values) as unknown as unknown[][];
-      return { rows, affected: rows.length, insertId: rows[0]?.[0] as DriverResult['insertId'] ?? null };
-    }
-    const result = statement.run(...values);
-    return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
-  } catch (error) { throw driverError('sqlite', error); }
+  const statement = state.statement(sql);
+  const values = params.map(value => typeof value === 'boolean' ? Number(value) : value) as Array<null | number | string | bigint | Uint8Array>;
+  if (/^\s*(?:SELECT|WITH|PRAGMA)\b/i.test(sql) || /\bRETURNING\b/i.test(sql)) {
+    statement.setReturnArrays(true);
+    const rows = statement.all(...values) as unknown as unknown[][];
+    return { rows, affected: rows.length, insertId: rows[0]?.[0] as DriverResult['insertId'] ?? null };
+  }
+  const result = statement.run(...values);
+  return { rows: [], affected: Number(result.changes), insertId: result.lastInsertRowid };
 }
 
 class SqlitePoolDriver implements DriverPool {
@@ -406,49 +411,22 @@ class SqlitePoolDriver implements DriverPool {
   private readonly state: SqliteState;
   private waiters: Array<() => void> = [];
   public constructor(db: DatabaseSync, cacheSize: number) { this.state = new SqliteState(db, cacheSize); }
-  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     await this.idle();
     // node:sqlite runs a statement to its end without yielding, so the signal
     // is read before the statement starts.
     if (signal?.aborted) throw canceled(this.name);
-    return sqliteExecute(this.state, sql, params);
+    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
   }
-  /** transaction이 쓰지 않을 때 하나뿐인 SQLite 연결을 잡고 run을 transaction 밖에서 실행한다. */
-  public async session<T>(run: (control: DriverControl) => Promise<T>): Promise<T> {
+  /** transaction이나 session이 쓰지 않을 때 하나뿐인 SQLite 연결을 잡는다. */
+  public async reserve(): Promise<DriverSession> {
     await this.idle();
     this.state.busy = true;
-    try {
-      return await run(async (sql, params = []) => sqliteExecute(this.state, sql, params));
-    } finally { this.release(); }
+    return new SqliteSession(this.state, () => this.release());
   }
-  /** Waits until no transaction holds the single SQLite connection. */
+  /** Waits until no session holds the single SQLite connection. */
   private async idle(): Promise<void> {
     while (this.state.busy) await new Promise<void>(resolve => this.waiters.push(resolve));
-  }
-  public async begin(options: DriverTransactionOptions): Promise<DriverTransaction> {
-    if ((options.timeoutMs ?? 0) > 0) throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
-    if (options.isolation) isolationSql(options.isolation);
-    await this.idle();
-    this.state.busy = true;
-    try {
-      // A write transaction holds the write lock from its start and waits for
-      // it up to busy_timeout; a read-only one begins deferred.
-      this.state.db.exec(options.readOnly ? 'BEGIN DEFERRED' : 'BEGIN IMMEDIATE');
-    } catch (error) {
-      this.release();
-      throw driverError(this.name, error);
-    }
-    const tx = new SqliteTx(this.state, options, () => this.release());
-    try {
-      if (options.isolation === 'read_uncommitted') this.state.db.exec('PRAGMA read_uncommitted = 1');
-      if (options.readOnly) this.state.db.exec('PRAGMA query_only = 1');
-    } catch (error) {
-      // 시작한 transaction은 mode까지 되돌리고 rollback한다.
-      const failure = driverError(this.name, error);
-      try { await tx.rollback(); } catch (rollback) { throw rollbackFailed(failure, rollback); }
-      throw failure;
-    }
-    return tx;
   }
   private release(): void {
     this.state.busy = false;
@@ -460,70 +438,22 @@ class SqlitePoolDriver implements DriverPool {
   public async close(): Promise<void> { this.state.db.close(); }
 }
 
-class SqliteTx implements DriverTransaction {
+class SqliteSession implements DriverSession {
   public readonly name = 'sqlite' as const;
-  public constructor(private readonly state: SqliteState, private readonly options: DriverTransactionOptions, private readonly release: () => void) {}
-  public async execute(sql: string, params: readonly DriverValue[], signal?: AbortSignal): Promise<DriverResult> {
+  private released = false;
+  public constructor(private readonly state: SqliteState, private readonly done: () => void) {}
+  public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
     if (signal?.aborted) throw canceled(this.name);
-    return sqliteExecute(this.state, sql, params);
+    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
   }
-  public async control(sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> { return sqliteExecute(this.state, sql, params); }
-  /**
-   * transaction 안에서 바꾼 mode를 되돌린다. PRAGMA 값은 transaction 뒤에도 connection에 남으므로
-   * 모든 단계를 시도하고 실패를 모두 돌려준다.
-   */
-  private finishModes(): unknown[] {
-    const errors: unknown[] = [];
-    const attempt = (sql: string): void => {
-      try { this.state.db.exec(sql); } catch (error) { errors.push(driverError(this.name, error)); }
-    };
-    if (this.options.readOnly) attempt('PRAGMA query_only = 0');
-    if (this.options.isolation === 'read_uncommitted') attempt('PRAGMA read_uncommitted = 0');
-    return errors;
+  public control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
+    return observed(this.name, sql, done, 'statement', () => sqliteExecute(this.state, sql, params));
   }
-  public async commit(): Promise<void> {
-    try {
-      let failure = joinedErrors(this.finishModes());
-      if (failure === undefined) {
-        try {
-          this.state.db.exec('COMMIT');
-          return;
-        } catch (error) { failure = driverError(this.name, error); }
-      }
-      // 실패한 COMMIT은 transaction을 이미 끝냈을 수 있으므로 열려 있을 때만 rollback한다.
-      if (this.state.db.isTransaction) {
-        try { this.state.db.exec('ROLLBACK'); } catch (rollback) { throw rollbackFailed(failure, driverError(this.name, rollback)); }
-      }
-      throw failure;
-    } finally { this.release(); }
-  }
-  public async rollback(): Promise<void> {
-    try {
-      const errors = this.finishModes();
-      try { this.state.db.exec('ROLLBACK'); } catch (error) { errors.push(driverError(this.name, error)); }
-      const failure = joinedErrors(errors);
-      if (failure !== undefined) throw failure;
-    } finally { this.release(); }
-  }
-  /**
-   * SQLite has no row-lock clause; one lock row serializes ORM lock requests.
-   * The write waits up to busy_timeout; a NOWAIT request sets the wait to zero.
-   */
-  public async rowLock(mode: string): Promise<void> {
-    if (mode === '') return;
-    const noWait = mode.endsWith('_nowait');
-    const previous = noWait ? Number((this.state.db.prepare('PRAGMA busy_timeout').get() as Record<string, unknown>)['timeout']) : 0;
-    try {
-      if (noWait) this.state.db.exec('PRAGMA busy_timeout = 0');
-      this.state.db.exec('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
-      this.state.db.exec('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id" = excluded."id"');
-    } catch (error) {
-      const mapped = driverError(this.name, error);
-      if (noWait && sqliteBusy(this.name, error)) throw new OrmError('LOCK_NOT_AVAILABLE', mapped.message, error);
-      throw mapped;
-    } finally {
-      if (noWait) this.state.db.exec(`PRAGMA busy_timeout = ${previous}`);
-    }
+  public inTransaction(): boolean { return this.state.db.isTransaction; }
+  public release(): void {
+    if (this.released) return;
+    this.released = true;
+    this.done();
   }
 }
 

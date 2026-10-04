@@ -81,7 +81,7 @@ async function addTablesAndColumns(driver, dsn) {
     check(await countOf(driver, dsn, 'SELECT COUNT(*) AS n FROM addcol_tag WHERE color IS NULL') === 2, 'tags with a null color');
     check(await countOf(driver, dsn, "SELECT COUNT(*) AS n FROM addcol_log_entry WHERE message = 'kept'") === 1, 'log entries');
     // SQLite는 foreign key를 끄고 table을 다시 만들었다. 연결이 다시 켰는지 본다.
-    const orphan = await thrown(() => db.pool.execute("INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')", []));
+    const orphan = await thrown(() => db.pool.execute("INSERT INTO addcol_tag (item_id, name) VALUES (999, 'orphan')", [], undefined, () => undefined));
     check(orphan?.code === 'FOREIGN_KEY', `a tag of a missing item: ${orphan?.message ?? 'written'}`);
     // audit trigger는 새 column을 기록한다.
     await nativeQuery(driver, dsn, ["INSERT INTO audit (actor) VALUES ('update')", "UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1"]);
