@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.25: conformance check는 PostgreSQL sequence를 `pg_depend`의 소유 table로 되돌리므로, PostgreSQL이 sequence 이름을 자른 table도 되돌린다.
+
 - G5: GitHub Actions build가 통과한다: `make check`는 `make test-servers`가 시작한 서버로 `ubuntu-26.04-arm`에서 모든 target을 실행하고 docs site가 배포된다.
 
 - G5.6: MySQL 없는 PHP 검사는 client가 SQLite에서 쓰는 extension과 함께 `php -n`을 실행하며 Linux runner에서 통과한다.
