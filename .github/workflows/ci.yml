@@ -1,7 +1,8 @@
 # CI: make check, the targets of the local checks, against MySQL, PostgreSQL,
-# and SQLite, then the decoder fuzz checks, Go tests, common interfaces, codec
-# vectors, and the hot-path gate. make test-servers starts the database servers
-# and writes their DSNs, as it does for the local checks.
+# and SQLite, with the common interfaces and the hot-path regression check of
+# feature-check, then the decoder fuzz checks, Go tests, and codec vectors.
+# make test-servers starts the database servers and writes their DSNs, as it
+# does for the local checks.
 name: ci
 on:
   push:
@@ -103,8 +104,9 @@ jobs:
       - name: make check
         # The targets of CHECK_TARGETS through the runner of the local checks,
         # with its own bench and decimal databases; make repo-check fails
-        # when this workflow omits or repeats one of them. The later steps run
-        # after a failure too, so one run reports every result.
+        # when this workflow omits or repeats one of them or a verification
+        # command of feature-check. The later steps run after a failure too, so
+        # one run reports every result.
         run: make check
       - name: decoder fuzz smoke checks
         if: ${{ !cancelled() }}
@@ -112,9 +114,6 @@ jobs:
       - name: Go
         if: ${{ !cancelled() }}
         run: go vet ./... && go test -v -timeout 0 ./...
-      - name: common interfaces
-        if: ${{ !cancelled() }}
-        run: make interface-check
       - name: common state and execution contracts
         if: ${{ !cancelled() }}
         run: |
@@ -127,6 +126,3 @@ jobs:
           go test -v -timeout 0 ./clients/go/orm -run TestCodec
           (cd clients/rust && cargo test --locked -p orm codec)
           php tests/codec/check.php
-      - name: hot-path regression gate
-        if: ${{ !cancelled() }}
-        run: make perf-check

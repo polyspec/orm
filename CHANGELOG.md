@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.7: the CI workflow no longer runs `make interface-check` and `make perf-check` beside `make check`, whose `feature-check` runs their commands. `make repo-check` fails when a workflow runs a verification command of `contracts/features.json` again.
+
 - G5.5: the CI workflow runs `make check`, every target of `CHECK_TARGETS` through the runner of the local checks, instead of 17 of its 43 targets in separate steps; the later steps run after a failure too. `make repo-check` fails when the workflow omits a target of `CHECK_TARGETS` or runs one twice.
 
 - G5.4: the checks and every workflow run one PHP release, declared in `.php-version` (8.5), and one Rust toolchain, declared in `rust-toolchain.toml` (1.98.1 with clippy and rustfmt), which the Makefile reads and CI installs with `rustup toolchain install`. The new `make php-min-check` runs the PHP client unit tests on the lowest release of `require.php` (8.4). `make repo-check` fails when a workflow or the Makefile chooses its own PHP or Rust version or the running one differs from the declaration.
