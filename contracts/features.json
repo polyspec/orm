@@ -1985,17 +1985,15 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test -v -timeout 0 ./generator -count=1 && node tests/run-case.mjs go-generate/model 5m --cwd clients/go/model -- sh -c 'go generate ./ && git diff --exit-code -- .'",
+          "command": "go test -v -timeout 0 ./generator -count=1",
           "inputs": [
             "generator/gen_go_check_test.go",
             "generator/gen_go_output_test.go",
             "generator/gen_go_packages_test.go",
             "generator/gen_go_scan_test.go",
             "generator/gen_go_test.go",
-            "generator/generator_test.go",
-            "schema/*.dbs"
-          ],
-          "exclusive": true
+            "generator/generator_test.go"
+          ]
         },
         {
           "id": "generation-typescript",

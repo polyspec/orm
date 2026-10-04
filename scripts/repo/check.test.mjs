@@ -10,7 +10,7 @@ import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -701,4 +701,22 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
     message('go test'),
   ]);
   assert.deepEqual(ciRerunErrors(steps.replace('make repo-check', 'make repo-check\n          go test ./...'), make), []);
+});
+
+// 생성 case는 make check의 recipe와 검증 명령, 그리고 최소 단위를 검사한다.
+caseTest('make check runs each go generate once', COMPUTE, () => {
+  const targets = new Set(checkTargets(text('Makefile')));
+  const { recipes } = runUnits();
+  assert.deepEqual(repeatedGenerateErrors([...recipes.filter(unit => targets.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits()]), []);
+});
+
+caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
+  assert.deepEqual(generateRuns(`$(RUN_CASE) go-model 5m -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'`), ['clients/go/model']);
+  assert.deepEqual(generateRuns(`go test ./generator && node tests/run-case.mjs g 5m --cwd clients/go/model -- sh -c 'go generate ./ && git diff'`), ['clients/go/model']);
+  assert.deepEqual(generateRuns('cd clients/go/other && go generate ./'), ['clients/go/other']);
+  assert.deepEqual(repeatedGenerateErrors([
+    { name: 'Makefile go-model-check', commands: [`$(RUN_CASE) go-model 5m -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'`] },
+    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-case.mjs g 5m --cwd clients/go/model -- sh -c 'go generate ./ && git diff'`] },
+    { name: 'other', commands: ['cd clients/go/other && go generate ./'] },
+  ]), ['go generate of clients/go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
 });
