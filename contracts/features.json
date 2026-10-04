@@ -1480,7 +1480,7 @@
       ],
       "clients": {
         "go": "pass",
-        "php": "planned",
+        "php": "pass",
         "rust": "planned",
         "typescript": "pass"
       },
@@ -1490,7 +1490,8 @@
       ],
       "tests": [
         "clients/go/orm/statement_events_test.go",
-        "clients/typescript/tests/statement-events.mjs"
+        "clients/typescript/tests/statement-events.mjs",
+        "clients/php/tests/statement_events_test.php"
       ],
       "docs": [
         "docs/usage.md",
@@ -1505,6 +1506,10 @@
         {
           "id": "statement-events-typescript",
           "command": "node clients/typescript/tests/statement-events.mjs"
+        },
+        {
+          "id": "statement-events-php",
+          "command": "php clients/php/tests/statement_events_test.php"
         }
       ],
       "public_constraints": [

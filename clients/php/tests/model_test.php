@@ -843,22 +843,18 @@ final class FailingPdo extends PDO
     public function exec(string $statement): int|false
     {
         $this->check($statement);
-        return parent::exec($statement);
+        $result = parent::exec($statement);
+        // rejectRollback은 client의 ROLLBACK을 실행한 뒤 실패로 보고한다.
+        if ($statement === 'ROLLBACK' && $this->rejectRollback) {
+            throw new PDOException('rollback rejected by the test driver');
+        }
+        return $result;
     }
 
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
         $this->check($query);
         return parent::prepare($query, $options);
-    }
-
-    public function rollBack(): bool
-    {
-        $ok = parent::rollBack();
-        if ($this->rejectRollback) {
-            throw new PDOException('rollback rejected by the test driver');
-        }
-        return $ok;
     }
 }
 
