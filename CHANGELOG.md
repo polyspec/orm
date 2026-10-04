@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5: the GitHub Actions build passes: `make check` runs every target on `ubuntu-26.04-arm` against servers that `make test-servers` starts, and the docs site deploys.
+
+- G5.6: the PHP check without MySQL runs `php -n` with the extensions the client uses on SQLite, and passes on the Linux runner.
+
 - G5.24: `make test-servers` keeps the first report of a starting server when a signal interrupts the wait for it, so an exit is no longer reported as a missed deadline and the wait no longer hangs.
 
 - T41.1: the make targets that `make owner-check` selects run with the server environment, the decimal environment and the Rust target directory that owner-check receives, so a check in a worktree uses the servers and the target directory of the main checkout.
