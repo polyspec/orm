@@ -3957,6 +3957,8 @@
         "clients/go/bench/gate_test.go",
         "clients/go/bench/native_test.go",
         "clients/php/tests/perf_gate.php",
+        "clients/php/tests/perf_extensions.php",
+        "clients/php/tests/perf_extensions_test.php",
         "clients/rust/tests/src/client_bench.rs",
         "clients/rust/tests/tests/client_bench_args.rs",
         "clients/rust/tests/tests/client_bench_dsn.rs",

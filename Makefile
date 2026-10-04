@@ -376,7 +376,7 @@ fuzz-check:
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
 client-unit-check:
-	$(PHP) clients/php/tests/dsn.php && $(PHP) clients/php/tests/relation_keys.php && $(PHP) clients/php/tests/hostcodec.php && $(PHP) clients/php/tests/engine_test.php && $(PHP) clients/php/tests/runtime_model_test.php && $(PHP) clients/php/tests/orm_gen_test.php
+	$(PHP) clients/php/tests/dsn.php && $(PHP) clients/php/tests/relation_keys.php && $(PHP) clients/php/tests/hostcodec.php && $(PHP) clients/php/tests/engine_test.php && $(PHP) clients/php/tests/runtime_model_test.php && $(PHP) clients/php/tests/orm_gen_test.php && $(PHP) clients/php/tests/perf_extensions_test.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
 # clients/php/composer.json supports.
