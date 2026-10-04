@@ -60,6 +60,7 @@ TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 �
 `CODEC_ENCODE`로 실패한다. 대입한 뒤 입력 객체가 바뀐 경우에도 같다.
 
 `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
+
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
@@ -68,10 +69,7 @@ Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE
 | 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 |
 | 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 |
 
-PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하다:
-- **읽기**: 키가 정확히 `0..n-1`인 배열 → 리스트, 그 외 → 맵(정수 키는 십진 문자열로).
-- **쓰기(serialize/base64/gz)**: 리스트 → `i:0…i:n-1` 키, 맵 → 키가 정규 십진 정수(`"7"`, `"-3"`, 선행 0·`+` 없음)면 `i:7;`, 아니면 `s:…`. PHP가 같은 논리 배열을 serialize한 바이트와 같다(맵 키 순서가 같을 때).
-- **쓰기(json)**: portable map은 결정적인 순서로 ordered-json에 기록하고, 이미 파싱한 ordered-json 값은 원래 멤버 순서를 유지한다. 슬래시·비ASCII는 이스케이프하지 않는다.
+PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. Go와 Rust는 JSON 맵 키를 정렬하고 PHP는 삽입 순서를 유지하므로, 값이 같아도 바이트는 다를 수 있다.
 
 `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor, 명시적 tag, 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
@@ -79,23 +77,18 @@ PHP 배열은 순서 있는 맵이라 두 표현 사이에 규칙이 필요하�
 
 ## 사례
 - ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.
-- SQL NULL과 JSON 리터럴 null은 서로 다르며, 빈 JSON 저장 텍스트는 `CODEC_DECODE`다.
+- Rust는 SQL NULL을 `Val::Null`로, 빈 텍스트를 `Val::Str("")`로 읽는다. 빈 텍스트를 `json`이나 `jsons` 스타일로 디코딩하면 `CODEC_DECODE`를 반환한다.
 - SQL NULL, JSON 리터럴 null, 조회하지 않은 값 스타일 컬럼은 저장값, getter, 행 배열, 모델 JSON 출력에서 구분한다. 조회하지 않은 컬럼을 요청하면 `COLUMN_UNSELECTED`를 반환한다.
-- `json`/`jsons`: **`[]`·`{}`·`0`·`""`는 그 값 그대로** 유지한다. 파싱 실패 → 에러 `CODEC_DECODE`.
-- `serialize` 계열: 형식 오류 → `CODEC_DECODE`. `O:`(객체)·`C:`·참조(`R:`/`r:`) → `CODEC_UNSUPPORTED`.
-- YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`다.
+- `json`과 `jsons`는 `[]`, `{}`, `0`, `""`를 보존한다. 파싱 실패는 `CODEC_DECODE`를 반환한다.
+- serialize 계열의 형식 오류는 `CODEC_DECODE`를 반환한다. `O:`, `C:`, `R:`, `r:`는 `CODEC_UNSUPPORTED`를 반환한다.
+- YAML 파싱·값 모델 오류는 `CODEC_DECODE`, YAML 인코딩 오류는 `CODEC_ENCODE`를 반환한다. 첫 위치가 아닌 `yaml` 단계는 `CODEC_UNSUPPORTED`를 반환한다.
 - 잘못된 point 입력은 `CODEC_DECODE`를 반환한다. NaN 또는 무한 값이 포함된 point 출력은 `CODEC_ENCODE`를 반환한다.
-- 실수: PHP `serialize_precision=-1`과 같은 최단 왕복 표기(`d:1.5;`). 정수 범위를 넘는 실수는 지수 표기.
-- 문자열 길이는 **바이트** 길이(`s:6:"한";`).
-- 압축 바이트는 zlib 구현마다 다를 수 있으므로 `gz`는 **왕복 일치**만 보장한다(다른 언어가 쓴 바이트도 읽는다).
+- 문자열 길이는 바이트 길이를 쓴다. 압축 바이트는 구현마다 다를 수 있으므로 `gz`는 왕복한 값이 같음을 보장한다.
 
 ## 벡터 (`tests/codec`)
-`vectors.json`은 `php tests/codec/gen.php`로 생성한다: 스타일별로 값과 저장 바이트(base64). 각 언어 러너는
-1. 저장 바이트를 읽어 정규 JSON(키 정렬)이 `value`와 같은지,
-2. `value`를 써서 `serialize`/`base64`는 바이트가 같은지, `gz`/`json`은 자기 자신과 PHP가 다시 읽어 값이 같은지
-확인한다. TypeScript는 같은 파일을 `node clients/typescript/tests/codec-vector.mjs`로 실행한다. DB 왕복은 적합성 벡터(`tests/conformance`, `codec_roundtrip`)가 맡는다: 각 언어가 스타일 컬럼에 쓰고 구현된 언어가 같은 값을 읽는다.
+`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node clients/typescript/tests/codec-vector.mjs`로 실행한다. 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다.
 
 ## 생성 코드
-- 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 셀을 디코드한다(생성 코드는 값을 그대로 받는다).
-- 쓰기: `set<Col>(v)`가 스타일을 알고 있다 — `setGzExtend(v)` → 런타임 `setStyled('gz_extend', v, ['serialize','gz'])` → 인코딩된 바이트가 바인드된다. 엔진은 스타일 컬럼의 값을 보통 문자열/바이트 파라미터로만 본다.
-- 스타일 컬럼의 술어는 `isNull`/`isNotNull`뿐이다(`ir.OpAllowed`).
+- 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
+- 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
+- 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
