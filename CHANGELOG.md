@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.12: `make test-servers` reads the output of ProxySQL and PgBouncer line by line with `sh` instead of `awk`, whose Ubuntu implementation `mawk` held the ready line until the server exited, so the start no longer waits on the Linux runner.
+
 - G5.11: `make test-servers` fails before it starts a server when a socket path under `.runtime/servers` exceeds the Unix limit of the platform, naming the path, its length and the limit.
 
 - G5.10: `make test-servers` starts every MySQL server with `--secure-file-priv=NULL`, so a build whose compiled default names a missing directory, such as `/var/lib/mysql-files` of the Ubuntu packages, starts as the local servers do.

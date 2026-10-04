@@ -179,9 +179,9 @@ start_postgres() {
 }
 
 # start_logged <name> <line> <command> [<argument>...] runs a server in the
-# foreground and writes its process id to $DIR/<name>.pid. A reader copies the
-# output of the server to $DIR/<name>.log until the server exits. The reader
-# reports through the FIFO $DIR/<name>.ready when the server logs a line that
+# foreground and writes its process id to $DIR/<name>.pid. A shell reader copies
+# each line of the output of the server to $DIR/<name>.log as it arrives, until
+# the server exits. The reader reports through the FIFO $DIR/<name>.ready when the server logs a line that
 # contains <line>, or when the server exits first; the start fails in the
 # second case. The read of the FIFO blocks until one of these reports.
 start_logged() {
@@ -189,12 +189,26 @@ start_logged() {
   line=$2
   shift 2
   mkfifo "$DIR/$name.ready"
-  sh -c 'echo $$ > "$1"; shift; exec "$@"' sh "$DIR/$name.pid" "$@" </dev/null 2>&1 |
-    awk -v out="$DIR/$name.log" -v ready="$DIR/$name.ready" -v line="$line" '
-      { print > out; fflush(out) }
-      !done && index($0, line) { print "ready" > ready; close(ready); done = 1 }
-      END { if (!done) { print "exited" > ready; close(ready) } }' >/dev/null &
-  read -r state < "$DIR/$name.ready"
+  # 읽는 쪽은 sh의 read다: read는 pipe에서 한 줄씩 읽어 그 줄이 쓰인 즉시 본다. awk는 쓰지
+  # 않는다. Ubuntu의 awk(mawk)는 pipe 입력을 큰 block으로 읽어 서버가 끝날 때까지 줄을 넘기지 않는다.
+  sh -c 'echo $$ > "$1"; shift; exec "$@"' sh "$DIR/$name.pid" "$@" </dev/null 2>&1 | {
+    reported=
+    while IFS= read -r output || [ -n "$output" ]; do
+      printf '%s\n' "$output" >> "$DIR/$name.log"
+      if [ -z "$reported" ]; then
+        case $output in
+          *"$line"*) echo ready > "$DIR/$name.ready"; reported=1 ;;
+        esac
+      fi
+    done
+    [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
+  } >/dev/null &
+  # FIFO를 여는 open은 reader가 끝날 때 오는 SIGCHLD에 끊길 수 있다(EINTR). 끊긴 open에는 writer가
+  # 짝지어지지 않았으므로 FIFO가 있는 동안 다시 열어 reader가 쓰는 한 줄을 읽는다.
+  state=
+  while [ -z "$state" ] && [ -p "$DIR/$name.ready" ]; do
+    read -r state 2>/dev/null < "$DIR/$name.ready" || state=
+  done
   rm "$DIR/$name.ready"
   if [ "$state" != ready ]; then
     echo "test-servers: $name exited before it accepted connections; see $DIR/$name.log" >&2

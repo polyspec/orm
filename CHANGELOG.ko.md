@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.12: `make test-servers`는 ProxySQL과 PgBouncer의 출력을 `awk` 대신 `sh`로 한 줄씩 읽는다. Ubuntu의 `awk`인 `mawk`가 서버가 끝날 때까지 준비 줄을 넘기지 않아, Linux runner에서 시작이 더 이상 기다리지 않는다.
+
 - G5.11: `.runtime/servers` 아래의 socket 경로가 platform의 Unix 한도를 넘으면 `make test-servers`는 서버를 시작하기 전에 경로, 길이, 한도를 말하며 실패한다.
 
 - G5.10: `make test-servers`는 모든 MySQL 서버를 `--secure-file-priv=NULL`로 시작하므로, Ubuntu package의 `/var/lib/mysql-files`처럼 compile 기본값이 없는 directory를 가리키는 build도 로컬 서버처럼 시작한다.
