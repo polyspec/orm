@@ -71,7 +71,9 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 	target := openNative(t, driver, replicaServer)
 	defer target.Close()
 	var waited *int64
-	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 10)", file, position).Scan(&waited); err != nil {
+	// 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
+	// runner에서 10초 안에 primary 위치에 닿지 못했다.
+	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
 		t.Fatal(err)
 	}
 	if waited == nil || *waited < 0 {
