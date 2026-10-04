@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-11: `make checklist-check`는 들여 쓴 하위 항목의 id와 상태도 최상위 항목처럼 영어와 한국어 checklist 사이에서 비교하고, `G5.29-4` 같은 id를 받는다.
+
 - G5.29-3: `make owner-check`는 선언한 입력에 바뀐 file이 있는 검증 명령과 coverage 단위만 실행한다. PHP와 TypeScript coverage 실행기 같은 공유 helper는 자기 check만 실행하고, `planner-go`는 engine package마다 실행하며, 입력 없는 검증 명령은 기능 검사를 실패시킨다.
 
 - G5.29-2: CI는 `make check` 뒤에 Go와 codec test를 다시 실행하지 않는다. `go vet`은 새 `go-vet-check`에서, PHP codec 교차 검사는 새 `codec-check`에서 실행하고 `codec-check`는 Go, Rust, TypeScript codec test의 출력이 없으면 실패한다. `make repo-check`는 정확한 명령 text가 아니라 시작하는 test runner로 재실행을 찾는다.

@@ -31,3 +31,13 @@ caseTest('rejects unnumbered policy and status prose in the task tracker', COMPU
   const withLane = `${english}\n## Work lanes\n| Lane | Completion |\n`;
   assert.match(checkChecklistPair(withLane, korean).join('\n'), /unnumbered content/);
 });
+
+caseTest('compares the ids and states of indented sub-items too', COMPUTE, () => {
+  const englishSub = `${english}  - [o] A3.1 Done part\n  - [~] A3-2 Running part\n    continued text\n`;
+  const koreanSub = `${korean}  - [o] A3.1 완료한 부분\n  - [~] A3-2 진행 중인 부분\n    이어지는 글\n`;
+  assert.deepEqual(checkChecklistPair(englishSub, koreanSub), []);
+  assert.match(checkChecklistPair(englishSub, koreanSub.replace('[~] A3-2', '[o] A3-2')).join('\n'), /A3-2: English and Korean state differs/);
+  assert.match(checkChecklistPair(englishSub, koreanSub.replace('A3-2', 'A3-3')).join('\n'), /item IDs/);
+  assert.match(checkChecklistPair(englishSub.replace('[o] A3.1', '[x] A3.1'), koreanSub).join('\n'), /invalid state \[x\] for A3\.1/);
+  assert.match(checkChecklistPair(englishSub, koreanSub.replace('  - [o] A3.1 완료한 부분\n', '  - [o] A3.1 완료한 부분\n  - [o] A3.1 다시\n')).join('\n'), /duplicate item ID A3\.1/);
+});

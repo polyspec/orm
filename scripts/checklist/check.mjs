@@ -16,8 +16,10 @@ function parseChecklist(content, language, errors) {
       continue;
     }
     if (index === 2 && line.startsWith(language === 'en' ? 'Legend:' : '표기:')) continue;
-    if (/^  +\S/.test(line) && itemContinuation) continue;
-    const match = /^- \[([^\]]*)\] ([A-Za-z][A-Za-z0-9.]*)\s+(.+)$/.exec(line);
+    // 들여 쓴 `- [state] ID` 줄은 하위 항목이고 최상위 항목처럼 id와 상태를 비교한다. 그 밖의 들여 쓴 줄은
+    // 앞 항목의 이어지는 글이다.
+    const match = /^(?:  +)?- \[([^\]]*)\] ([A-Za-z][A-Za-z0-9.-]*)\s+(.+)$/.exec(line);
+    if (!match && /^  +\S/.test(line) && itemContinuation) continue;
     if (!match) {
       errors.push(`${language}:${index + 1}: unnumbered content in task tracker`);
       itemContinuation = false;
