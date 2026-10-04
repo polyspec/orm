@@ -1,6 +1,7 @@
-# CI: the planner, the four clients, conformance and codec vectors against
-# MySQL, PostgreSQL, and SQLite, and the hot-path gate. make test-servers starts
-# the database servers and writes their DSNs, as it does for the local checks.
+# CI: make check, the targets of the local checks, against MySQL, PostgreSQL,
+# and SQLite, then the decoder fuzz checks, Go tests, common interfaces, codec
+# vectors, and the hot-path gate. make test-servers starts the database servers
+# and writes their DSNs, as it does for the local checks.
 name: ci
 on:
   push:
@@ -99,37 +100,33 @@ jobs:
         # Steps that run go test, cargo test or php without make read the same
         # variables from the process environment.
         run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
-      - name: feature, documentation, and package contracts
-        run: make repo-check feature-check git-check docs-rules-check docs-check docs-verify-idempotent package-check
+      - name: make check
+        # The targets of CHECK_TARGETS through the runner of the local checks,
+        # with its own bench and decimal databases; make repo-check fails
+        # when this workflow omits or repeats one of them. The later steps run
+        # after a failure too, so one run reports every result.
+        run: make check
       - name: decoder fuzz smoke checks
+        if: ${{ !cancelled() }}
         run: make fuzz-check
       - name: Go
+        if: ${{ !cancelled() }}
         run: go vet ./... && go test -v -timeout 0 ./...
-      - name: generated Go models are current
-        run: make go-model-check
-      - name: generated TypeScript models are current
-        run: make ts-model-check
       - name: common interfaces
+        if: ${{ !cancelled() }}
         run: make interface-check
-      - name: PHP
-        run: make client-unit-check
-      - name: TypeScript
-        run: make ts-check
-      - name: Rust
-        run: make rust-check rust-fmt-check rust-150-check rust-driver-check
-      - name: client database tests (SQLite, MySQL, PostgreSQL)
-        run: make client-db-check
-      - name: conformance (4 languages identical on 3 databases)
-        run: make conformance-check
       - name: common state and execution contracts
+        if: ${{ !cancelled() }}
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
           go run ./tests/interfaces/check --results tests/conformance/out/postgres
           go run ./tests/interfaces/check --results tests/conformance/out/sqlite
       - name: codec vectors
+        if: ${{ !cancelled() }}
         run: |
           go test -v -timeout 0 ./clients/go/orm -run TestCodec
           (cd clients/rust && cargo test --locked -p orm codec)
           php tests/codec/check.php
       - name: hot-path regression gate
+        if: ${{ !cancelled() }}
         run: make perf-check

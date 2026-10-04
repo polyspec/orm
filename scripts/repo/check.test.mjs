@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
-import { ciServerErrors, serverVariables } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciServerErrors, serverVariables } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
@@ -242,4 +242,27 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
     'rust-toolchain.toml must declare one channel x.y.z under [toolchain]',
     'rust-toolchain.toml does not install rustfmt',
   ]);
+});
+
+// CHECK_TARGETS case는 저장소의 workflow와 Makefile, 그리고 최소 workflow를 검사한다.
+caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
+  const targets = checkTargets(text('Makefile'));
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-check', 'go-test-check'])
+    assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
+  assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
+});
+
+caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COMPUTE, () => {
+  const make = 'CHECK_TARGETS = repo-check ts-min-check feature-check\n';
+  const listed = steps.replace('make repo-check', 'make repo-check feature-check\n          make ts-min-check');
+  assert.deepEqual(ciCheckTargetErrors(listed, make), []);
+  assert.deepEqual(ciCheckTargetErrors(steps, make), [
+    'ci.yml does not run ts-min-check of CHECK_TARGETS',
+    'ci.yml does not run feature-check of CHECK_TARGETS',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(steps.replace('make repo-check', 'make check'), make), []);
+  assert.deepEqual(ciCheckTargetErrors(steps.replace('make repo-check', 'make check\n          make ts-min-check'), make), [
+    'ci.yml step "checks" runs ts-min-check, which make check runs',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(steps, 'CHECK =\n'), ['Makefile declares no CHECK_TARGETS']);
 });
