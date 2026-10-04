@@ -1,4 +1,4 @@
-.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
+.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -68,8 +68,9 @@ TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typesc
 # RUN, 출력 줄(STEP), PASS나 FAIL과 경과 시간을 보고한다. feature-check의 검증 명령이 실행하는
 # target(interface-check, php-without-mysql-check, perf-check, dbspec-go-check, dbspec-php-check,
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
-# 목록에 다시 넣지 않는다.
-CHECK_TARGETS = checklist-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-check go-test-check
+# 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
+# make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
+CHECK_TARGETS = checklist-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 check:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
@@ -354,18 +355,24 @@ test-servers-tls:
 test-servers-stop:
 	./scripts/test-servers.sh stop
 
-# feature-check는 TypeScript client를 한 번 build한 뒤 coverage(native test binary를 한 번 build해
-# 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다.
+# feature-unit-check는 feature 문서가 manifest와 같은지와 coverage, owner 선택의 unit test를 실행한다.
+# feature-check는 TypeScript client를 한 번 build한 뒤 모든 기능의 coverage(native test binary를 한 번
+# build해 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다. 기능 하나는
+# `node scripts/features/coverage.mjs --feature <id>`와 `node scripts/features/check.mjs --run --feature <id>`로
+# 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
-# 기능의 검증 명령과 coverage를 실행한다(AGENTS.md "Owner checks").
+# 기능의 검증 명령과 coverage만, 그리고 contracts/check-inputs.json이 scope owner로 선언한 target만
+# 실행한다(AGENTS.md "Owner checks").
 .PHONY: owner-check
 owner-check:
 	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) ORM_OWNER_CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) node scripts/features/owners.mjs $(PATHS)
 
-feature-check:
+feature-unit-check:
 	node scripts/features/build.mjs --check
 	node --test scripts/features/coverage.test.mjs
 	node --test scripts/features/owners.test.mjs
+
+feature-check:
 	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run

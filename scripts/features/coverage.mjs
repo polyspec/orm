@@ -532,10 +532,13 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buil
   }
 }
 
+// selectFeatures는 featureId(check.mjs --feature처럼 contracts/features.json의 id)인 기능 하나만 남긴
+// manifest다. 없는 id는 빈 실행이 아니라 고를 수 있는 id를 적은 오류다.
 export function selectFeatures(manifest, featureId) {
   if (featureId === undefined) return manifest;
   const feature = manifest.features?.find(item => item.id === featureId);
-  if (!feature) throw new Error(`unknown feature ${featureId}`);
+  if (!feature)
+    throw new Error(`unknown feature ${featureId}; valid features: ${(manifest.features ?? []).map(item => item.id).join(', ')}`);
   return { ...manifest, features: [feature] };
 }
 
@@ -545,7 +548,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     throw new Error('usage: coverage.mjs [--feature <id>]');
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const manifest = JSON.parse(await readFile(resolve(root, 'contracts/features.json'), 'utf8'));
-  const selected = selectFeatures(manifest, args[1]);
+  let selected;
+  try { selected = selectFeatures(manifest, args[1]); }
+  catch (error) {
+    console.error(`feature coverage: ${error.message}`);
+    process.exit(2);
+  }
   const errors = await executeCoverage(selected, root);
   for (const error of errors) console.error(`feature coverage: ${error}`);
   if (errors.length) process.exitCode = 1;

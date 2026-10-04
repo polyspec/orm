@@ -24,6 +24,26 @@ caseTest('one feature can run without declaring unrelated coverage complete', 10
   assert.throws(() => selectFeatures(manifest, 'missing'), /unknown feature missing/);
 });
 
+caseTest('selecting one feature requires only the coverage specs of that feature', 1000, async () => {
+  // statement_events는 소유 client마다 세 database에서 두 번 실행한다. 다른 기능의 spec은 없다.
+  const manifest = JSON.parse(await readFile(new URL('../../contracts/features.json', import.meta.url), 'utf8'));
+  const feature = manifest.features.find(item => item.id === 'statement_events');
+  const selected = selectFeatures(manifest, 'statement_events');
+  assert.deepEqual(selected.features.map(item => item.id), ['statement_events']);
+  const missing = checkCoverage(selected, {});
+  const expected = Object.keys(feature.coverage.owners).flatMap(language =>
+    databases.map(database => `statement_events/owner/${language}/${database}: no executed report`));
+  assert.deepEqual(missing.toSorted(), expected.toSorted());
+});
+
+caseTest('an unknown feature name fails with the list of valid names', 1000, () => {
+  const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
+  assert.throws(() => selectFeatures(manifest, 'missing'),
+    { message: 'unknown feature missing; valid features: one, two' });
+  assert.throws(() => selectFeatures(manifest, ''),
+    { message: 'unknown feature ; valid features: one, two' });
+});
+
 caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, async () => {
   const root = new URL('../..', import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('contracts/features.json', root), 'utf8'));
