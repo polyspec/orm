@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.11: `.runtime/servers` 아래의 socket 경로가 platform의 Unix 한도를 넘으면 `make test-servers`는 서버를 시작하기 전에 경로, 길이, 한도를 말하며 실패한다.
+
 - G5.10: `make test-servers`는 모든 MySQL 서버를 `--secure-file-priv=NULL`로 시작하므로, Ubuntu package의 `/var/lib/mysql-files`처럼 compile 기본값이 없는 directory를 가리키는 build도 로컬 서버처럼 시작한다.
 
 - T40: `utils().schema().register(schema)`는 statement 없이 schema set을 연결에 등록하고 `connectSchema`도 같은 방법으로 등록하므로, 요청마다 연 연결은 데이터베이스를 읽지 않고 set을 등록한다. `install`과 `addTablesAndColumns`는 이제 데이터베이스의 set table을 set과 비교하며 끝나고(`InstalledDifferences`), ORM 밖에서 바꾼 column 같은 차이마다 그것을 적은 `CONFIG`로 실패한다. 데이터베이스는 요청마다가 아니라 install과 upgrade 때 확인한다.
