@@ -429,7 +429,7 @@ conformance-counter-check:
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
 conformance-result-check:
-	npm --prefix clients/typescript run build
+	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
 	php tests/conformance/result_php.php
 	node --test tests/conformance/result_typescript.test.mjs
 	$(GO_TEST) ./tests/conformance/runner_go -count=1

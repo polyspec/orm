@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -70,6 +70,11 @@ const readTracked = path => trackedSet.has(path) ? readFileSync(join(root, path)
 const recipeUnits = makeRecipes(makefile);
 const scriptUnits = reachedScripts(runCommands, readTracked);
 failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...scriptUnits]));
+// Makefile recipe, 명령 여럿인 root package.json script(명령 하나인 script는 도구의 정의이고 그
+// 호출을 본다), run-case 밖의 shell script도 build 도구를 run-case 아래에서 실행한다.
+const packageUnits = Object.entries(rootPackage.scripts ?? {}).filter(([, command]) => segments(command).length > 1)
+  .map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+failures.push(...unwrappedToolErrors([...recipeUnits, ...packageUnits, ...scriptUnits]));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

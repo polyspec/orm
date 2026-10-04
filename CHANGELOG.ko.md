@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-10: `scripts/typescript/sqlite-test.sh`, `npm run typescript:test`, `make conformance-result-check`의 TypeScript build는 기한과 함께 `tests/run-case.mjs` 아래에서 실행하고 출력을 보이며, `make repo-check`는 Makefile recipe, `package.json` script, shell script의 build 도구도 검사한다.
+
 - G5.29-9: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test` 실행은 먼저 기한을 가진 case로 `cargo test --no-run` test binary를 build하고, `make repo-check`는 그 build 없는 `cargo test` 실행을 실패시킨다.
 
 - G5.29-8: 기능 검증 명령의 tsc, go generate, go vet, cargo build 단계는 기한과 함께 `tests/run-case.mjs` 아래에서 실행하고, `make repo-check`는 그런 도구를 그 밖에서 실행하는 검증 명령을 실패시킨다.
