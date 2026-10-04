@@ -87,7 +87,9 @@ async function awaitReplica(dialect, primary, replica) {
       const [[{ current }]] = await target.query('SELECT DATABASE() AS current');
       if (current !== null) throw new Error(`the replica wait connection opened database ${current}`);
       const [[status]] = await source.query('SHOW BINARY LOG STATUS');
-      const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 10) AS waited', [status.File, status.Position]);
+      // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
+      // runner에서 10초 안에 primary 위치에 닿지 못했다.
+      const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 60) AS waited', [status.File, status.Position]);
       if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
     } finally { await target.end(); }
   } finally { await source.end(); }

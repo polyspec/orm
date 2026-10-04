@@ -464,7 +464,9 @@ async fn await_replica(primary: &Db, replica: &Db) {
         (Pool::MySql(p), Pool::MySql(r)) => {
             let status = sqlx::raw_sql("SHOW BINARY LOG STATUS").fetch_one(p).await.unwrap();
             let (file, position): (String, u64) = (status.get(0), status.get(1));
-            let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 10)").bind(&file).bind(position).fetch_one(r).await.unwrap();
+            // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
+            // runner에서 10초 안에 primary 위치에 닿지 못했다.
+            let waited: Option<i64> = sqlx::query_scalar("SELECT SOURCE_POS_WAIT(?, ?, 60)").bind(&file).bind(position).fetch_one(r).await.unwrap();
             assert!(waited.is_some_and(|w| w >= 0), "the replica did not reach {file}:{position}");
         }
         _ => unreachable!("a MySQL or PostgreSQL primary and replica"),

@@ -754,7 +754,9 @@ function awaitReplica(string $driver, string $primary, string $replica): void
     $status = $source->query('SHOW BINARY LOG STATUS')->fetch(PDO::FETCH_NUM);
     [, $pdoDsn, $user, $password] = Orm::parseDsn($replica);
     $target = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 10)');
+    // 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
+    // runner에서 10초 안에 primary 위치에 닿지 못했다.
+    $st = $target->prepare('SELECT SOURCE_POS_WAIT(?, ?, 60)');
     $st->execute([$status[0], (int) $status[1]]);
     $waited = $st->fetchColumn();
     if ($waited === null || (int) $waited < 0) {
