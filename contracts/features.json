@@ -1446,7 +1446,7 @@
       "id": "statement_events",
       "title": "Statement events",
       "title_ko": "Statement event",
-      "status": "partial",
+      "status": "implemented",
       "description": "Publish an event for every statement the client sends to the subscribers registered on the connection: the statement, its masked binds, its kind by origin, the tables it names, its elapsed time, the number of its transaction on the connection, and its error. Subscribers run synchronously after the statement and before the operation continues; a failing subscriber fails the operation with SUBSCRIBER. Every client sends the same transaction control statements.",
       "description_ko": "client가 보내는 모든 statement에 대해 연결에 등록한 subscriber에게 event를 publish한다: statement, 가린 bind, 출처에 따른 kind, statement가 가리키는 table, 경과 시간, 연결에서의 transaction 번호, 오류다. subscriber는 statement 뒤 operation이 이어지기 전에 동기로 실행되고, 실패한 subscriber는 operation을 SUBSCRIBER로 실패시킨다. 모든 client는 같은 transaction 제어 statement를 실행한다.",
       "inputs": {
@@ -1486,13 +1486,21 @@
       },
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
-        "tests/events/vectors.json"
+        "tests/events/vectors.json",
+        "clients/typescript/tests/statement-events-run.mjs",
+        "clients/php/tests/statement_events_run.php",
+        "clients/go/orm/coverage_fixture_test.go",
+        "clients/php/tests/coverage_cases.php",
+        "clients/typescript/tests/coverage_case.mjs"
       ],
       "tests": [
         "clients/go/orm/statement_events_test.go",
         "clients/typescript/tests/statement-events.mjs",
         "clients/php/tests/statement_events_test.php",
-        "clients/rust/orm/tests/statement_events.rs"
+        "clients/rust/orm/tests/statement_events.rs",
+        "clients/go/orm/coverage_statement_events_test.go",
+        "clients/php/tests/coverage_statement_events.php",
+        "clients/typescript/tests/coverage_statement_events.mjs"
       ],
       "docs": [
         "docs/usage.md",
@@ -1520,7 +1528,186 @@
       "public_constraints": [
         "Subscribers must not fail; a failure fails the operation with SUBSCRIBER.",
         "Statements that open a physical connection, statement preparation and protocol-level cancellation are not events."
-      ]
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "statement_events"
+        ],
+        "owners": {
+          "go": {
+            "part": "clients/go/orm",
+            "tests": [
+              "clients/go/orm/coverage_statement_events_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_statement_events_test.go",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "TestCoverageStatementEvents"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_statement_events_test.go",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "TestCoverageStatementEvents"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "clients/go/orm/coverage_statement_events_test.go",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "TestCoverageStatementEvents"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "clients/php/tests",
+            "tests": [
+              "clients/php/tests/coverage_statement_events.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_statement_events.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_statement_events.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "clients/php/tests/coverage_statement_events.php",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "clients/rust/orm",
+            "tests": [
+              "clients/rust/orm/tests/statement_events.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/statement_events.rs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "coverage_statement_events"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/statement_events.rs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "coverage_statement_events"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "clients/rust/orm/tests/statement_events.rs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "symbols": {
+                    "statement_events": "coverage_statement_events"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "clients/typescript/tests",
+            "tests": [
+              "clients/typescript/tests/coverage_statement_events.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_statement_events.mjs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_statement_events.mjs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "clients/typescript/tests/coverage_statement_events.mjs",
+                  "cases": [
+                    "statement_events"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     },
     {
       "id": "model_generation",

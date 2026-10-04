@@ -272,3 +272,18 @@ async fn statement_events_sqlite() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run_cases("sqlite").await;
 }
+
+/// statement_events coverage: feature-check가 고른 database(ORM_FEATURE_DATABASE)에서
+/// vector의 모든 case를 case마다 새 case database로 실행한다. bench database는 읽거나 쓰지 않는다.
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_statement_events() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let driver = match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
+        Ok("mysql") => "mysql",
+        Ok("postgres") => "postgres",
+        Ok("sqlite") => "sqlite",
+        _ => panic!("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required"),
+    };
+    run_cases(driver).await;
+}

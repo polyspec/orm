@@ -48,8 +48,8 @@ var (
 	log []stmt
 	// transactions는 vector 안의 transaction 번호를 처음 나온 순서의 번호로 바꾼다.
 	transactions map[int64]int64
-	maskSeqs map[int64]bool
-	maskTs   map[string]bool
+	maskSeqs     map[int64]bool
+	maskTs       map[string]bool
 )
 
 const timeLayout = "2006-01-02 15:04:05.000000"

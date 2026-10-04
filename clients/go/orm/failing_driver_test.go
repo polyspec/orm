@@ -62,7 +62,14 @@ func (c failingConn) ExecContext(ctx context.Context, query string, args []drive
 	if !ok {
 		return nil, driver.ErrSkip
 	}
-	return e.ExecContext(ctx, query, args)
+	// client가 실행하는 ROLLBACK은 실제로 끝낸 뒤 inject된 rollback 실패를 돌려준다.
+	res, err := e.ExecContext(ctx, query, args)
+	if err == nil && query == "ROLLBACK" {
+		if f := injected.Load(); f != nil && f.rollback {
+			return nil, errRollbackRejected
+		}
+	}
+	return res, err
 }
 
 func (c failingConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
@@ -86,36 +93,11 @@ func (c failingConn) PrepareContext(ctx context.Context, query string) (driver.S
 	return c.Conn.Prepare(query)
 }
 
-func (c failingConn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
-	b, ok := c.Conn.(driver.ConnBeginTx)
-	if !ok {
-		return nil, errors.New("the wrapped test driver does not implement ConnBeginTx")
-	}
-	tx, err := b.BeginTx(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return failingTx{tx}, nil
-}
-
 func (c failingConn) CheckNamedValue(v *driver.NamedValue) error {
 	if n, ok := c.Conn.(driver.NamedValueChecker); ok {
 		return n.CheckNamedValue(v)
 	}
 	return driver.ErrSkip
-}
-
-type failingTx struct{ driver.Tx }
-
-// Rollback은 실제 rollback을 끝낸 뒤 inject된 rollback 실패를 돌려준다.
-func (t failingTx) Rollback() error {
-	if err := t.Tx.Rollback(); err != nil {
-		return err
-	}
-	if f := injected.Load(); f != nil && f.rollback {
-		return errRollbackRejected
-	}
-	return nil
 }
 
 var registerFailingDrivers sync.Once
