@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.10: `make test-servers`는 모든 MySQL 서버를 `--secure-file-priv=NULL`로 시작하므로, Ubuntu package의 `/var/lib/mysql-files`처럼 compile 기본값이 없는 directory를 가리키는 build도 로컬 서버처럼 시작한다.
+
 - T40: `utils().schema().register(schema)`는 statement 없이 schema set을 연결에 등록하고 `connectSchema`도 같은 방법으로 등록하므로, 요청마다 연 연결은 데이터베이스를 읽지 않고 set을 등록한다. `install`과 `addTablesAndColumns`는 이제 데이터베이스의 set table을 set과 비교하며 끝나고(`InstalledDifferences`), ORM 밖에서 바꾼 column 같은 차이마다 그것을 적은 `CONFIG`로 실패한다. 데이터베이스는 요청마다가 아니라 install과 upgrade 때 확인한다.
 
 - T7.D12: `make docs-rules-check`는 `AGENTS.ko.md`, `README.ko.md`, `CHANGELOG.ko.md`를 포함한 추적되는 모든 한국어 문서를 검사하고 절마다 목록 항목을 영문 원본과 비교한다. 한국어 규칙, 변경 이력, README, codec 문서를 영문 원본의 번역으로 바로잡았다.
