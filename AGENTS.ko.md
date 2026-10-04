@@ -24,16 +24,19 @@
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
 - 소유 검사: 커밋하기 전에 `make owner-check`(또는 `make owner-check PATHS="<paths>"`)를 실행한다.
-  이 명령은 선언한 fixture나 테스트가 바뀐 file이거나, 선언한 fixture file이 바뀐 file을 가리키거나,
-  `contracts/features.json`의 자기 항목이 바뀐 기능을 고르고, 그 기능의 검증 명령과 coverage만
-  (`--feature <id>`) 실행한다. 또 `contracts/check-inputs.json`이 scope `owner`로 선언하고 입력이 바뀐
+  `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는
+  `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
+  적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.
+  여러 기능이 쓰는 helper는 `helpers`에 자기 check와 함께 선언하고 어떤 입력에도 넣지 않는다. helper의
+  변경은 그 check만 실행하며, helper를 쓰는 모든 기능의 실행은 `make check`가 맡는다. 입력이 없는 검증
+  명령, 추적되는 file을 맞추지 않는 입력, 입력으로 쓰인 helper는 검증이 실패시킨다. 또 `contracts/check-inputs.json`이 scope `owner`로 선언하고 입력이 바뀐
   path를 맞추는 make target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다.
   owner target은 file 단위 검사다: format, checklist, 문서, 검사기의 unit test. client, database,
   conformance 묶음 전체를 실행하는 target은 scope `suite`이며 `make check`에서만 실행한다.
   `CHECK_TARGETS`의 모든 target은 scope를 선언하고, 선언하지 않은 target이 있으면 `make owner-check`와
-  `make repo-check`가 실패한다. 소유 검사를 직접 고르지 않는다. 어느 기능도 선언하지 않은 바뀐 file은
-  기능을 고르지 않으므로, 그 file이 동작을 정의하는 기능에 선언하고, 새 make target의 scope도
-  선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것을 실행한다.
+  `make repo-check`가 실패한다. 소유 검사를 직접 고르지 않는다. 어떤 입력도 아닌 바뀐 file은 아무것도 고르지 않고
+  `make owner-check`가 그 사실을 출력한다. 그 file을 실행하는 명령의 입력에 선언하고, 새 make target의
+  scope도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것을 실행한다.
   항목의 증거에 명령과 통과 수를 적는다.
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의

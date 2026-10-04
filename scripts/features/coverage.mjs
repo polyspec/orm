@@ -70,8 +70,16 @@ function requirements(feature, errors) {
       role: 'dependent', dependent: dependent.id, language: dependent.language, database,
       part: dependent.part, tests: dependent.tests, cases: dependent.cases, command: dependent.commands?.[database] });
   }
+  // selectFeatures가 coverage 단위(--part)를 골랐으면 그 단위의 항목만 요구하고 실행한다.
+  if (selectedParts.has(feature)) return items.filter(item => selectedParts.get(feature).has(itemPart(item)));
   return items;
 }
+
+// itemPart는 coverage 항목의 단위 이름이다: owner client는 `owner/<language>`, dependent는 `dependent/<id>`
+// (scripts/features/owners.mjs의 coverageParts와 같다).
+const itemPart = item => item.role === 'owner' ? `owner/${item.language}` : `dependent/${item.dependent}`;
+// selectedParts는 selectFeatures가 만든 기능 항목마다 고른 단위다. manifest의 기능 항목은 바꾸지 않는다.
+const selectedParts = new WeakMap();
 
 // Reports in this function are constructed by executeCoverage from native test
 // events and the checker's database reader, never parsed from test JSON.
@@ -533,23 +541,38 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buil
 }
 
 // selectFeatures는 featureId(check.mjs --feature처럼 contracts/features.json의 id)인 기능 하나만 남긴
-// manifest다. 없는 id는 빈 실행이 아니라 고를 수 있는 id를 적은 오류다.
-export function selectFeatures(manifest, featureId) {
-  if (featureId === undefined) return manifest;
+// manifest다. parts(`owner/<language>`나 `dependent/<id>`)를 주면 그 coverage 단위만 실행하고 검사한다.
+// 없는 id나 단위는 빈 실행이 아니라 고를 수 있는 값을 적은 오류다.
+export function selectFeatures(manifest, featureId, parts = []) {
+  if (featureId === undefined) {
+    if (parts.length) throw new Error('--part needs --feature');
+    return manifest;
+  }
   const feature = manifest.features?.find(item => item.id === featureId);
   if (!feature)
     throw new Error(`unknown feature ${featureId}; valid features: ${(manifest.features ?? []).map(item => item.id).join(', ')}`);
-  return { ...manifest, features: [feature] };
+  if (parts.length === 0) return { ...manifest, features: [feature] };
+  const valid = [...Object.keys(feature.coverage?.owners ?? {}).map(language => `owner/${language}`),
+    ...(feature.coverage?.dependents ?? []).map(dependent => `dependent/${dependent.id}`)];
+  const unknown = parts.filter(part => !valid.includes(part));
+  if (unknown.length) throw new Error(`unknown coverage part ${unknown.join(', ')} of ${featureId}; valid parts: ${valid.join(', ')}`);
+  const copy = { ...feature };
+  selectedParts.set(copy, new Set(parts));
+  return { ...manifest, features: [copy] };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
-  if (args.length && (args.length !== 2 || args[0] !== '--feature'))
-    throw new Error('usage: coverage.mjs [--feature <id>]');
+  const pairs = [];
+  for (let index = 0; index < args.length; index += 2) pairs.push([args[index], args[index + 1]]);
+  if (pairs.some(([flag, value]) => !['--feature', '--part'].includes(flag) || !value) || pairs.filter(([flag]) => flag === '--feature').length > 1)
+    throw new Error('usage: coverage.mjs [--feature <id> [--part owner/<language>|dependent/<id>]...]');
+  const featureId = pairs.find(([flag]) => flag === '--feature')?.[1];
+  const parts = pairs.filter(([flag]) => flag === '--part').map(([, value]) => value);
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const manifest = JSON.parse(await readFile(resolve(root, 'contracts/features.json'), 'utf8'));
   let selected;
-  try { selected = selectFeatures(manifest, args[1]); }
+  try { selected = selectFeatures(manifest, featureId, parts); }
   catch (error) {
     console.error(`feature coverage: ${error.message}`);
     process.exit(2);

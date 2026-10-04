@@ -3,36 +3,74 @@ import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mjs';
 import * as ownerSelection from './owners.mjs';
 
-const { checkInputErrors, makeArguments, manifestChanges, selectOwners, selectTargets } = ownerSelection;
+const { checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, selectHelpers, selectOwners, selectTargets } = ownerSelection;
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = JSON.parse(await readFile(new URL('contracts/features.json', `file://${root}`), 'utf8'));
 const ids = owners => owners.map(owner => owner.feature.id);
+// selected는 고른 검증 명령과 coverage 단위를 `<feature>/<command>`, `<feature>/coverage/<part>`로 적는다.
+const selected = owners => owners.flatMap(({ feature, commands, parts }) => [
+  ...commands.map(({ id }) => `${feature.id}/${id}`), ...parts.map(({ part }) => `${feature.id}/coverage/${part}`)]);
+const helperIds = async paths => (await selectHelpers(manifest, root, paths)).map(({ helper }) => helper.id);
 
 // 각 case는 repository file만 읽으므로 기한은 5 s다.
-caseTest('a changed fixture selects every feature whose fixtures render it', 5000, async () => {
-  // schema_definition은 contracts/fixtures/schema_definition.json에서 audit.dbs를 렌더링한다.
+caseTest('a changed test selects only the commands that run it', 5000, async () => {
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/php/tests/coverage_dsn.php'])), ['dsn_connection/coverage/owner/php']);
+});
+
+caseTest('a whole-suite command is split by package', 5000, async () => {
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/php/tests/dbspec_render_test.php'])), ['schema_definition/schema-php']);
+});
+
+caseTest('a shared helper selects its own check and no feature', 5000, async () => {
+  for (const [path, helper] of [
+    ['clients/php/tests/coverage_cases.php', 'coverage-runner-php'],
+    ['clients/typescript/tests/coverage_case.mjs', 'coverage-runner-typescript'],
+    ['clients/php/tests/autoload.php', 'php-test-autoload'],
+    ['clients/go/orm/test_helpers_test.go', 'go-test-helpers'],
+    ['clients/rust/tests/src/coverage_env.rs', 'rust-test-helpers'],
+  ]) {
+    assert.deepEqual(await selectOwners(manifest, root, [path]), [], path);
+    assert.deepEqual(await helperIds([path]), [helper], path);
+  }
+  assert.deepEqual(await helperIds(['clients/go/orm/mysql_tls_test.go']), []);
+});
+
+caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
+  // schema_definition의 coverage는 contracts/fixtures/schema_definition.json에서 audit.dbs를 렌더링한다.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
-  assert.ok(ids(owners).includes('schema_definition'), `selected ${ids(owners)}`);
-  assert.ok(ids(owners).includes('audit_triggers'), `selected ${ids(owners)}`);
-  const reason = owners.find(owner => owner.feature.id === 'schema_definition').reasons;
-  assert.deepEqual(reason, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
+  assert.deepEqual(ids(owners), ['schema_definition', 'audit_triggers']);
+  assert.deepEqual(owners[0].parts[0].reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
+  // contracts/symbols/rust.json은 Rust source의 symbol을 적으므로 그 source는 Rust coverage 단위만 고른다.
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs'])), ['interface_contract/coverage/owner/rust']);
 });
 
-caseTest('a changed test or vector file selects the feature that declares it', 5000, async () => {
-  assert.deepEqual(ids(await selectOwners(manifest, root, ['clients/go/orm/external_documents_test.go'])), ['schema_install']);
-  assert.ok(ids(await selectOwners(manifest, root, ['tests/dbspec/cases.json'])).includes('schema_definition'));
-});
-
-caseTest('a path that no feature declares selects nothing', 5000, async () => {
+caseTest('a path that no unit declares selects nothing', 5000, async () => {
   assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/checklist.md']), []);
+  assert.deepEqual(await helperIds(['README.md']), []);
 });
 
-caseTest('a file named by a file that a fixture names selects the feature', 5000, async () => {
-  // contracts/interfaces.json은 contracts/symbols/rust.json을 적고, 그 snapshot은 Rust source의 symbol을 적는다.
-  const owners = await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs']);
-  assert.deepEqual(ids(owners), ['interface_contract']);
-  assert.deepEqual(owners[0].reasons, ['clients/rust/orm/src/tx_send_tests.rs (named by contracts/symbols/rust.json)']);
+caseTest('a command without inputs or a helper used as an input fails the declaration', 5000, async () => {
+  const tracked = ['a_test.go', 'helper.php', 'b.php', 'fixture.json'];
+  const declared = {
+    features: [{ id: 'f', verification: [{ id: 'none', command: 'x' }, { id: 'uses', command: 'y', inputs: ['b.php', 'helper.php'] }, { id: 'missing', command: 'z', inputs: ['gone/**'] }],
+      coverage: { owners: { go: { tests: ['a_test.go'], inputs: ['fixture.json'] } } } }],
+    helpers: [{ id: 'h', paths: ['helper.php'], tests: [], command: 'php helper_test.php' }, { id: 'h', paths: [], command: '' }],
+  };
+  assert.deepEqual(manifestInputErrors(declared, tracked), [
+    'contracts/features.json f/none declares no inputs; declare the files whose change runs it',
+    'contracts/features.json f/missing: input gone/** matches no tracked file',
+    'contracts/features.json f/uses declares helper.php of contracts/features.json helper h as an input; a helper runs only its own check',
+    'contracts/features.json helper h: duplicate or missing id',
+    'contracts/features.json helper h: missing command',
+    'contracts/features.json helper h: declares no paths',
+    'contracts/features.json helper h: declares no tests list',
+  ]);
+  const files = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.deepEqual(manifestInputErrors(manifest, files), []);
 });
 
 // make target case는 contracts/check-inputs.json의 선언과 최소 선언으로 고른다.
@@ -84,10 +122,16 @@ const t42 = [
 ];
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['repo-check', 'go-fmt-check', 'rust-fmt-check']);
+  assert.deepEqual(targets(selectTargets(inputs, t42)), ['repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
   for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-check', 'go-test-check'])
     assert.equal(inputs[target].scope, 'suite', `${target} is not a full-suite target`);
-  assert.deepEqual(ids(await selectOwners(manifest, root, t42)), ['statement_events', 'interface_contract']);
+  // contracts/interfaces.json과 contracts/symbols/*.json이 적는 source는 interface 검사의 입력이다.
+  const owners = await selectOwners(manifest, root, t42);
+  assert.deepEqual(ids(owners), ['statement_events', 'interface_contract']);
+  assert.deepEqual(selected(owners.slice(0, 1)), [
+    'statement_events/statement-events-go', 'statement_events/statement-events-typescript', 'statement_events/statement-events-php', 'statement_events/statement-events-rust',
+    'statement_events/coverage/owner/go', 'statement_events/coverage/owner/php', 'statement_events/coverage/owner/rust', 'statement_events/coverage/owner/typescript',
+  ]);
 });
 
 caseTest('a target without a scope declaration fails the selection', 5000, async () => {
@@ -104,15 +148,18 @@ caseTest('a target without a scope declaration fails the selection', 5000, async
 });
 
 caseTest('a changed feature entry of contracts/features.json selects that feature only', 5000, async () => {
-  const before = { manifest_version: 1, features: [{ id: 'one', fixtures: [], tests: [], n: 1 }, { id: 'two', fixtures: [], tests: [] }] };
-  const after = { manifest_version: 1, features: [{ id: 'one', fixtures: [], tests: [], n: 2 }, { id: 'two', fixtures: [], tests: [] }, { id: 'three', fixtures: [], tests: [] }] };
-  assert.deepEqual(manifestChanges(before, after), { features: ['one', 'three'], whole: false });
-  assert.deepEqual(manifestChanges(before, { ...after, manifest_version: 2 }), { features: ['one', 'three'], whole: true });
-  assert.deepEqual(manifestChanges(before, { ...before, features: before.features.slice(1) }), { features: [], whole: true });
-  assert.deepEqual(manifestChanges(null, after), { features: ['one', 'two', 'three'], whole: true });
+  const feature = (id, n) => ({ id, n, verification: [{ id: 'c', command: 'x', inputs: ['x.php'] }] });
+  const before = { manifest_version: 1, features: [feature('one', 1), feature('two', 1)] };
+  const after = { manifest_version: 1, features: [feature('one', 2), feature('two', 1), feature('three', 1)] };
+  assert.deepEqual(manifestChanges(before, after), { features: ['one', 'three'], helpers: [], whole: false });
+  assert.deepEqual(manifestChanges(before, { ...after, manifest_version: 2 }), { features: ['one', 'three'], helpers: [], whole: true });
+  assert.deepEqual(manifestChanges(before, { ...before, features: before.features.slice(1) }), { features: [], helpers: [], whole: true });
+  assert.deepEqual(manifestChanges(null, after), { features: ['one', 'two', 'three'], helpers: [], whole: true });
   const owners = await selectOwners(after, root, ['contracts/features.json'], manifestChanges(before, after));
-  assert.deepEqual(owners.map(owner => [owner.feature.id, owner.reasons]), [
-    ['one', ['contracts/features.json (entry of one)']],
-    ['three', ['contracts/features.json (entry of three)']],
-  ]);
+  assert.deepEqual(owners.map(owner => owner.feature.id), ['one', 'three']);
+  assert.deepEqual(owners[0].commands, [{ id: 'c', reasons: ['contracts/features.json (entry of one)'] }]);
+  const helped = { ...after, helpers: [{ id: 'h', paths: ['x.php'], tests: [], command: 'php x' }] };
+  assert.deepEqual(manifestChanges(after, helped), { features: [], helpers: ['h'], whole: false });
+  assert.deepEqual((await selectHelpers(helped, root, ['contracts/features.json'], manifestChanges(after, helped))).map(({ helper, reasons }) => [helper.id, reasons]),
+    [['h', ['contracts/features.json (entry of h)']]]);
 });

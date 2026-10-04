@@ -1,7 +1,8 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import path, { resolve } from 'node:path';
 import { COMPUTE, runGroup, sections, stepLines } from '../../tests/testcase.mjs';
+import { manifestInputErrors } from './owners.mjs';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
@@ -16,10 +17,18 @@ const clientStatuses = new Set(['planned', 'partial', 'pass', 'unsupported']);
 const clients = ['go', 'php', 'rust', 'typescript'];
 const databases = ['mysql', 'postgres', 'sqlite'];
 const runVerification = process.argv.includes('--run');
-// --feature <id>는 그 기능의 검증 명령만 실행한다. 검사는 여전히 모든 기능을 본다.
-const featureIndex = process.argv.indexOf('--feature');
-const onlyFeature = featureIndex >= 0 ? process.argv[featureIndex + 1] : undefined;
-if (featureIndex >= 0 && !onlyFeature) throw new Error('usage: check.mjs [--run] [--feature <id>]');
+// --feature <id>는 그 기능의 검증 명령만, 함께 준 --command <id>(여럿)는 그 기능의 그 명령만 실행한다.
+// --helper <id>(여럿)는 그 helper의 check만 실행한다. 아무것도 고르지 않은 --run은 모든 기능의 명령과
+// 모든 helper의 check를 실행한다(make check의 feature-check). 검사는 여전히 모든 기능을 본다.
+const usage = 'usage: check.mjs [--run] [--feature <id> [--command <id>]...] [--helper <id>]...';
+const values = flag => process.argv.flatMap((arg, index) => arg === flag ? [process.argv[index + 1]] : []);
+const [onlyFeature, ...extraFeatures] = values('--feature');
+const onlyCommands = values('--command');
+const onlyHelpers = values('--helper');
+if (extraFeatures.length || [onlyFeature, ...onlyCommands, ...onlyHelpers].some(value => value === undefined && process.argv.includes('--feature')) ||
+    [...onlyCommands, ...onlyHelpers].some(value => !value || value.startsWith('--')) || (onlyCommands.length && !onlyFeature))
+  throw new Error(usage);
+const selection = onlyFeature !== undefined || onlyHelpers.length > 0;
 
 // execute는 명령의 출력 줄을 실행 중에 step으로 내보낸다. 명령이 실행하는 runner가 case마다
 // 시작, 결과, 경과 시간과 기한을 보고한다.
@@ -154,6 +163,11 @@ const listedByFeatures = new Set();
 for (const feature of manifest.features ?? []) {
   for (const relative of [...(feature.fixtures ?? []), ...(feature.tests ?? [])]) listedByFeatures.add(relative);
 }
+// helper의 file과 그 unit test도 선언된 test file이다.
+for (const helper of manifest.helpers ?? []) for (const relative of [...(helper.paths ?? []), ...(helper.tests ?? [])]) listedByFeatures.add(relative);
+// 검증 명령, coverage 단위, helper는 owner-check가 고를 입력을 선언한다(scripts/features/owners.mjs).
+const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+errors.push(...manifestInputErrors(manifest, tracked));
 for (const feature of manifest.features ?? []) {
   for (const language of clients) {
     const status = feature.clients[language];
@@ -166,7 +180,12 @@ for (const [language, files] of Object.entries(existing)) {
   for (const file of files) if (!listedByFeatures.has(file)) errors.push(`${file}: ${language} test file belongs to no feature`);
 }
 
-if (onlyFeature !== undefined && !(manifest.features ?? []).some(feature => feature.id === onlyFeature)) errors.push(`unknown feature ${onlyFeature}`);
+const selectedFeature = (manifest.features ?? []).find(feature => feature.id === onlyFeature);
+if (onlyFeature !== undefined && !selectedFeature) errors.push(`unknown feature ${onlyFeature}`);
+for (const id of onlyCommands)
+  if (selectedFeature && !(selectedFeature.verification ?? []).some(check => check.id === id)) errors.push(`unknown verification command ${onlyFeature}/${id}`);
+for (const id of onlyHelpers)
+  if (!(manifest.helpers ?? []).some(helper => helper.id === id)) errors.push(`unknown helper ${id}`);
 log.end(errors.length ? `${errors.length} error(s); each is listed at the end` : undefined);
 if (runVerification && errors.length === 0) {
   // 검증 명령은 서로 독립이다(database를 쓰는 test는 case마다 자기 database를 만든다). 그래서
@@ -177,8 +196,11 @@ if (runVerification && errors.length === 0) {
   // 명령을 같은 tree에서 다시 실행해도 같은 일을 다시 할 뿐이다.
   const lanes = Number(process.env.ORM_FEATURE_LANES ?? 4);
   if (!(Number.isInteger(lanes) && lanes > 0)) throw new Error(`ORM_FEATURE_LANES ${process.env.ORM_FEATURE_LANES} is not a positive integer`);
-  const checks = (manifest.features ?? []).filter(item => onlyFeature === undefined || item.id === onlyFeature)
-    .flatMap(feature => (feature.verification ?? []).map(check => ({ feature, check })));
+  const checks = (manifest.features ?? []).filter(item => selection ? item.id === onlyFeature : true)
+    .flatMap(feature => (feature.verification ?? []).filter(check => onlyCommands.length === 0 || onlyCommands.includes(check.id)).map(check => ({ feature, check })));
+  // helper의 check는 helper를 쓰는 기능 대신 helper 자신을 검사한다. 이름은 features/helpers/<id>다.
+  for (const helper of (manifest.helpers ?? []).filter(item => selection ? onlyHelpers.includes(item.id) : true))
+    checks.push({ feature: { id: 'helpers' }, check: { id: helper.id, command: helper.command } });
   const executed = new Map();
   // environment linux-runner인 명령은 선언된 Linux runner(.github/runner)의 검사다: CI가
   // 그 runner의 Linux에서 make check로 실행한다. Linux가 아닌
