@@ -27,8 +27,8 @@ cd "$ROOT"
 LANGS=,${ORM_CLIENT_DB_LANGS:-go,php,rust,typescript},
 
 go_lane() {
-  go test -v -timeout 0 -count=1 ./clients/go/...
-  go test -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
+  node tests/go-test.mjs -v -timeout 0 -count=1 ./clients/go/...
+  node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
 }
 php_lane() {
   php clients/php/tests/model_test.php

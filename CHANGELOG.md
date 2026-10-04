@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-13: every `go test` of the Makefile, the feature verification commands and the scripts first builds its test binaries as the case `go-build/<packages>` with a deadline through `tests/go-test.mjs`, `fuzz-check` runs under run-case, and `make repo-check` fails a `go test` outside them.
+
 - G5.29-12: `make check` runs the `go generate` and `git diff` of `clients/go/model` once, in `go-model-check`; `generation-go` runs the generator tests only, and `make repo-check` fails a `go generate` that `make check` would run twice.
 
 - G5.29-11: `make checklist-check` compares the ids and states of indented sub-items between the English and Korean checklists, as it does for top-level items, and accepts ids such as `G5.29-4`.

@@ -247,12 +247,12 @@ export function stepTimeoutErrors(workflows) {
 }
 
 // makeVariables는 Makefile의 한 줄 변수 정의(`NAME = value`, `NAME := value`)다.
-function makeVariables(makefile) {
+export function makeVariables(makefile) {
   return new Map([...makefile.matchAll(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*:?=\s*(.*)$/gm)].map(match => [match[1], match[2].trim()]));
 }
 
 // expand는 명령 안의 make 변수(`$(NAME)`)를 정의로 바꾼다. 정의가 다시 변수를 쓰면 몇 번 더 바꾼다.
-function expand(command, variables) {
+export function expand(command, variables) {
   let text = command;
   for (let round = 0; round < 4; round++)
     text = text.replace(/\$\(([A-Z_][A-Z0-9_]*)\)/g, (whole, name) => variables.get(name) ?? whole);
@@ -264,7 +264,10 @@ function expand(command, variables) {
 // 앞의 환경 변수 대입은 정체를 바꾸지 않는다. test runner가 아니면 undefined다.
 export function runnerIdentity(segment) {
   const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
-  if (/^go\s+test\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
+  // tests/run-case.mjs는 `--` 뒤의 명령을, tests/go-test.mjs는 go test를 실행한다.
+  const wrapped = /^node\s+tests\/run-case\.mjs\s.*?\s--\s+(.*)$/.exec(command);
+  if (wrapped) return runnerIdentity(wrapped[1]);
+  if (/^(?:go\s+test|node\s+tests\/go-test\.mjs)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
   const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);

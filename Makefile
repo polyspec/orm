@@ -47,10 +47,11 @@ export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
 # 명령으로 가로채기 때문이다.
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
-# GO_TEST는 Go test를 case마다 보고하게 실행한다. -v는 각 case가 internal/testcase로 내는
-# RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을 가지므로 -timeout 0이
-# test binary 전체의 기한(기본 10분)을 끈다.
-GO_TEST = go test -v -timeout 0
+# GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
+# tag의 build를 기한을 가진 case `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
+# case가 internal/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
+# 가지므로 -timeout 0이 test binary 전체의 기한(기본 10분)을 끈다.
+GO_TEST = node tests/go-test.mjs -v -timeout 0
 
 # RUN_CASE는 자기 case를 보고하지 않는 명령(build, format, lint, package 검사)을 case 하나로
 # 실행한다(tests/run-case.mjs): RUN과 기한, 명령의 출력 줄을 STEP으로, PASS나 FAIL을 출력하고
@@ -99,6 +100,7 @@ go-test-check:
 testcase-check: rust-fetch
 	$(GO_TEST) ./internal/testcase -count=1
 	node --test tests/testcase.test.mjs
+	node --test tests/go-test.test.mjs
 	php tests/testcase_test.php
 	$(RUN_CASE) rust-build/testcase-check $(BUILD_DEADLINE) --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm-testcase
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
@@ -390,9 +392,11 @@ feature-docs:
 package-check:
 	$(RUN_CASE) package $(BUILD_DEADLINE) -- ./scripts/package-check.sh
 
+# fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing을 함께 하므로 각 명령을 RUN_CASE의
+# BUILD_DEADLINE 아래에서 실행한다.
 fuzz-check:
-	$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
-	$(GO_TEST) ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
+	$(RUN_CASE) fuzz/engine-ir $(BUILD_DEADLINE) -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	$(RUN_CASE) fuzz/clients-go-orm $(BUILD_DEADLINE) -- go test -v -timeout 0 ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.

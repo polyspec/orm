@@ -4,13 +4,13 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, featureCommands, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, makeRecipes, nodeTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, makeRecipes, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -672,6 +672,9 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
   assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p orm codec'), 'cargo test');
   assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
+  assert.equal(runnerIdentity('node tests/go-test.mjs -v -timeout 0 ./engine -count=1'), 'go test');
+  assert.equal(runnerIdentity("node tests/run-case.mjs fuzz/ir 8m -- go test -v ./engine/ir -run '^$' -fuzz FuzzDecodeRequest"), undefined);
+  assert.equal(runnerIdentity('node tests/run-case.mjs rust-build/x 8m -- cargo test --no-run --locked'), 'cargo test');
   const make = [
     'CHECK_TARGETS = repo-check',
     'GO_TEST = go test -v -timeout 0',
@@ -719,4 +722,24 @@ caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
     { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-case.mjs g 5m --cwd clients/go/model -- sh -c 'go generate ./ && git diff'`] },
     { name: 'other', commands: ['cd clients/go/other && go generate ./'] },
   ]), ['go generate of clients/go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
+});
+
+// go test case는 저장소의 Makefile(변수를 푼), 검증 명령, script와 최소 단위를 검사한다.
+caseTest('every go test runs through go-test.mjs or run-case', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const variables = makeVariables(makefile);
+  const { recipes, scripts } = runUnits();
+  const expanded = recipes.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
+  assert.deepEqual(rawGoTestErrors([...expanded, ...featureUnits(), ...scripts]), []);
+});
+
+caseTest('a go test without its build case fails', COMPUTE, () => {
+  const message = (name, segment) => `${name} runs go test outside tests/go-test.mjs, so its compile has no deadline or RUN line: ${segment}`;
+  assert.deepEqual(rawGoTestErrors([
+    { name: 'raw', commands: ['go test -v -timeout 0 ./clients/go/orm -run X -count=1'] },
+    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./clients/go/bench'] },
+    { name: 'wrapped', commands: ['node tests/go-test.mjs -v -timeout 0 ./engine -count=1'] },
+    { name: 'fuzz', commands: ["$(RUN_CASE) fuzz/ir 8m -- go test -v ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"] },
+    { name: 'build', commands: ['node tests/run-case.mjs go-build 8m -- go test -c -o x ./engine/dbspec'] },
+  ]), [message('raw', 'go test -v -timeout 0 ./clients/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./clients/go/bench')]);
 });

@@ -278,3 +278,21 @@ export function repeatedGenerateErrors(units) {
   return [...seen].filter(([, names]) => names.length > 1)
     .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make check: ${names.join(', ')}`);
 }
+
+// rawGoTestErrors는 units에서 `go test`를 tests/go-test.mjs나 RUN_CASE 없이 실행하는 segment마다 오류
+// 하나를 돌려준다. go test는 test를 실행하기 전에 compile하고, 그 compile은 case로 보고되지 않으며
+// 기한도 없다. tests/go-test.mjs는 build를 기한을 가진 case로 먼저 실행하고, RUN_CASE는 명령 전체에
+// 기한을 둔다(fuzzing처럼 instrument한 build가 실행과 함께인 경우). Makefile의 변수는 미리 풀어 둔다.
+export function rawGoTestErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units)
+    for (const command of commands)
+      for (const segment of segments(command)) {
+        const match = /(?:^|\s)go\s+test\b/.exec(segment);
+        if (!match || /\btests\/go-test\.mjs\b/.test(segment)) continue;
+        const wrapped = wrapper.exec(segment);
+        if (!wrapped || wrapped.index > match.index)
+          errors.push(`${name} runs go test outside tests/go-test.mjs, so its compile has no deadline or RUN line: ${segment}`);
+      }
+  return errors;
+}

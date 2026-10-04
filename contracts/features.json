@@ -92,7 +92,7 @@
       "verification": [
         {
           "id": "dsn-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1",
           "inputs": [
             "clients/go/orm/dsn_test.go",
             "clients/go/orm/mysql_tls_test.go",
@@ -133,7 +133,7 @@
         },
         {
           "id": "dsn-mysql-tls-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run 'MySQLTLS' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'MySQLTLS' -count=1",
           "inputs": [
             "clients/go/orm/mysql_tls_test.go"
           ]
@@ -554,7 +554,7 @@
       "verification": [
         {
           "id": "aggregate-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestAggregateNumericFixture$' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^TestAggregateNumericFixture$' -count=1",
           "inputs": [
             "clients/go/orm/conversion_error_test.go",
             "contracts/fixtures/aggregate_numeric.json"
@@ -562,7 +562,7 @@
         },
         {
           "id": "queries-go",
-          "command": "go test -v -timeout 0 ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'Conditions|JoinsAndRelations|ColumnsAndSubqueries' -count=1",
           "inputs": [
             "clients/go/model/model_test.go"
           ]
@@ -638,7 +638,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". \"$DECIMAL_ENV\" && go test -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
+          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
           "inputs": [
             "clients/go/decimalmodel/decimal_physical_test.go"
           ]
@@ -997,7 +997,7 @@
       "verification": [
         {
           "id": "writes-go",
-          "command": "go test -v -timeout 0 ./clients/go/model -run 'Writes' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'Writes' -count=1",
           "inputs": [
             "clients/go/model/model_test.go"
           ]
@@ -1011,7 +1011,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". \"$DECIMAL_ENV\" && go test -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
+          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
           "inputs": [
             "clients/go/decimalmodel/decimal_physical_test.go"
           ]
@@ -1375,21 +1375,21 @@
       "verification": [
         {
           "id": "transactions-go",
-          "command": "go test -v -timeout 0 ./clients/go/model -run 'Transactions' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'Transactions' -count=1",
           "inputs": [
             "clients/go/model/model_test.go"
           ]
         },
         {
           "id": "transactions-sqlite-locking-go",
-          "command": "go test -v -timeout 0 ./clients/go/model -run 'TestSQLite' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'TestSQLite' -count=1",
           "inputs": [
             "clients/go/model/sqlite_concurrency_test.go"
           ]
         },
         {
           "id": "transactions-rollback-fault-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -tags ormtest -run '^TestRollbackFault' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -tags ormtest -run '^TestRollbackFault' -count=1",
           "inputs": [
             "clients/go/orm/rollback_fault_entry_test.go",
             "clients/go/orm/rollback_fault_test.go"
@@ -1668,7 +1668,7 @@
       "verification": [
         {
           "id": "statement-events-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestStatementEvents' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^TestStatementEvents' -count=1",
           "inputs": [
             "clients/go/orm/statement_events_test.go",
             "tests/events/vectors.json"
@@ -1985,7 +1985,7 @@
       "verification": [
         {
           "id": "generation-go",
-          "command": "go test -v -timeout 0 ./generator -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./generator -count=1",
           "inputs": [
             "generator/gen_go_check_test.go",
             "generator/gen_go_output_test.go",
@@ -2538,7 +2538,7 @@
       "verification": [
         {
           "id": "install-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'SQLKeywordNames|ConnectionsUseUTC' -count=1",
           "inputs": [
             "clients/go/orm/keyword_test.go",
             "clients/go/orm/timezone_test.go"
@@ -2553,7 +2553,7 @@
         },
         {
           "id": "install-add-tables-and-columns-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run '^TestAddTablesAndColumns' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^TestAddTablesAndColumns' -count=1",
           "inputs": [
             "clients/go/orm/add_tables_and_columns_test.go"
           ]
@@ -2583,7 +2583,7 @@
         },
         {
           "id": "install-register-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run '^(TestRegisterSendsNoStatement|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements|TestExternalDocuments)$' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestRegisterSendsNoStatement|TestInstallVerifiesTheDatabase|TestInstallAppliesRenderedStatements|TestExternalDocuments)$' -count=1",
           "inputs": [
             "clients/go/orm/external_documents_test.go",
             "clients/go/orm/install_test.go",
@@ -2924,7 +2924,7 @@
       "verification": [
         {
           "id": "planner-go-engine",
-          "command": "go test -v -timeout 0 ./engine -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine -count=1",
           "inputs": [
             "engine/engine_test.go",
             "engine/functions_physical_test.go",
@@ -2934,7 +2934,7 @@
         },
         {
           "id": "planner-go-planner",
-          "command": "go test -v -timeout 0 ./engine/planner -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/planner -count=1",
           "inputs": [
             "engine/planner/restore_test.go",
             "engine/planner/runtime_model_test.go",
@@ -2943,7 +2943,7 @@
         },
         {
           "id": "planner-go-ir",
-          "command": "go test -v -timeout 0 ./engine/ir -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/ir -count=1",
           "inputs": [
             "engine/ir/fuzz_test.go",
             "engine/ir/operators_test.go"
@@ -2951,21 +2951,21 @@
         },
         {
           "id": "planner-go-plan",
-          "command": "go test -v -timeout 0 ./engine/plan -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/plan -count=1",
           "inputs": [
             "engine/plan/plan_test.go"
           ]
         },
         {
           "id": "planner-go-dialect",
-          "command": "go test -v -timeout 0 ./engine/dialect -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/dialect -count=1",
           "inputs": [
             "engine/dialect/sqlite_test.go"
           ]
         },
         {
           "id": "planner-go-runtimemodel",
-          "command": "go test -v -timeout 0 ./engine/runtimemodel -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/runtimemodel -count=1",
           "inputs": [
             "engine/runtimemodel/runtimemodel_test.go"
           ]
@@ -3178,7 +3178,7 @@
       "verification": [
         {
           "id": "composite-go",
-          "command": "go test -v -timeout 0 ./engine -run 'Composite' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine -run 'Composite' -count=1",
           "inputs": [
             "engine/engine_test.go"
           ]
@@ -3442,7 +3442,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && go test -v -timeout 0 ./clients/go/model -run 'AESRotation' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'AESRotation' -count=1",
           "inputs": [
             "clients/go/orm/aes_json_test.go",
             "clients/go/orm/aes_keys_test.go",
@@ -3670,7 +3670,7 @@
       "verification": [
         {
           "id": "chunking-go",
-          "command": "go test -v -timeout 0 ./clients/go/model -run 'BindLimitSplitting' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'BindLimitSplitting' -count=1",
           "inputs": [
             "clients/go/model/chunk_test.go"
           ]
@@ -3970,7 +3970,7 @@
       "verification": [
         {
           "id": "constraints-go",
-          "command": "go test -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && go test -v -timeout 0 ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && node tests/go-test.mjs -v -timeout 0 ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1",
           "inputs": [
             "engine/planner/soft_delete_test.go",
             "clients/go/orm/driver_error_test.go",
@@ -4240,7 +4240,7 @@
       "verification": [
         {
           "id": "audit-go",
-          "command": "go test -v -timeout 0 ./clients/go/orm -run 'Audit' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'Audit' -count=1",
           "inputs": [
             "clients/go/orm/audit_transaction_test.go",
             "clients/go/orm/coverage_audit_triggers_test.go",
@@ -4929,7 +4929,7 @@
         },
         {
           "id": "conformance-runner-go",
-          "command": "go test -v -timeout 0 ./tests/conformance/runner_go -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./tests/conformance/runner_go -count=1",
           "inputs": [
             "tests/conformance/runner_go/main_test.go"
           ]
