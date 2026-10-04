@@ -2955,7 +2955,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && clients/rust/target/debug/integration \"$PWD/schema/bench.dbs\""
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\""
         },
         {
           "id": "chunking-php-keys",

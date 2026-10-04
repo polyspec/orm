@@ -321,10 +321,13 @@ func runOne(c *testcase.Case, root, output, language string) error {
 	case "typescript":
 		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
 	case "rust":
+		// cargo는 CARGO_TARGET_DIR에 build한다. Makefile이 그 값을 export하므로 없으면 다른 directory를
+		// 짐작하지 않고 실패한다.
 		target := os.Getenv("CARGO_TARGET_DIR")
 		if target == "" {
-			target = filepath.Join(root, "clients", "rust", "target")
-		} else if !filepath.IsAbs(target) {
+			return fmt.Errorf("CARGO_TARGET_DIR is unset; run this through make, which exports it")
+		}
+		if !filepath.IsAbs(target) {
 			target = filepath.Join(root, target)
 		}
 		return runCommand(c, root, output, runnerDeadline, filepath.Join(target, "debug", "conformance"), flags...)

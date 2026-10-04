@@ -51,7 +51,7 @@ rust_lane() {
   # build는 자기 case를 보고하지 않으므로 tests/run-case.mjs로 감싼다. 기한 8분의 기준은
   # Makefile의 BUILD_DEADLINE과 같다.
   node tests/run-case.mjs rust-build/integration 8m --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
-  clients/rust/target/debug/integration "$ROOT/schema/bench.dbs"
+  "${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration" "$ROOT/schema/bench.dbs"
 }
 
 # `--lane <client>`은 lane 하나를 자기 process에서 실행한다. if 조건 안의 subshell은 set -e를

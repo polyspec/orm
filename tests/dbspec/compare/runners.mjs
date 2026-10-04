@@ -4,7 +4,9 @@
 // stderr에 위치를 밝힌 error를 쓰고 nonzero로 끝난다. TypeScript runner는
 // TypeScript build를, Rust runner는 dbspec_compare example의 debug build를 요구한다.
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cargoTarget } from '../../cargo-target.mjs';
 
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -12,7 +14,7 @@ export const runners = [
   { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'] },
   { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'] },
   { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mjs'] },
-  { name: 'rust', command: 'clients/rust/target/debug/examples/dbspec_compare', args: [] },
+  { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [] },
 ];
 
 // runRunner는 runner를 inputs로 실행해 exit code 또는 signal, stdout, stderr를

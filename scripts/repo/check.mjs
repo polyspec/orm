@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciServerErrors, featureCommands, runnerErrors, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
@@ -40,6 +41,8 @@ const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name 
 // CHECK_TARGETS의 모든 target은 make owner-check가 고를 입력을 contracts/check-inputs.json에 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;
 failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked));
+// cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.
+failures.push(...targetPathErrors(Object.fromEntries(tracked.filter(runFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

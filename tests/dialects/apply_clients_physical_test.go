@@ -44,6 +44,10 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if rustRunner == "" || mysqlDSN == "" || postgresDSN == "" {
 		t.Fatal("DBSPEC_APPLY_RUST, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
 	}
+	// make는 CARGO_TARGET_DIR 아래의 절대 경로를 준다.
+	if !filepath.IsAbs(rustRunner) {
+		t.Fatalf("DBSPEC_APPLY_RUST %q must be an absolute path under CARGO_TARGET_DIR", rustRunner)
+	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +72,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		"go":         {goRunner},
 		"php":        {"php", "tests/dbspec/apply/php.php"},
 		"typescript": {"node", "tests/dbspec/apply/typescript.mjs"},
-		"rust":       {filepath.Join(root, rustRunner)},
+		"rust":       {rustRunner},
 	}
 	// 동시에 도는 다른 test run과 겹치지 않도록 database 이름에 pid와 random 값을 넣는다.
 	random := make([]byte, 4)
