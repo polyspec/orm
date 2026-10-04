@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Orm\Code;
 use Orm\Config;
@@ -19,6 +20,9 @@ $dsn = getenv($env);
 if (!is_string($dsn) || $dsn === '') {
     throw new RuntimeException("$env is required");
 }
+// case는 셋이다: model 생성(COMPUTE), 생성된 setter의 거부(COMPUTE), database에서 쓰고 읽은 뒤
+// rollback(DATABASE). 생성한 file은 마지막에 지운다.
+testcase_begin("decimal_db/$dialect/generate", TESTCASE_COMPUTE);
 $model = RuntimeModel::build(RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/decimal_schema.dbs']));
 $generated = sys_get_temp_dir() . '/orm-decimal-php-' . bin2hex(random_bytes(8));
 Generator::generate($model, $generated, 'DecimalFixture');
@@ -28,8 +32,10 @@ spl_autoload_register(static function (string $class) use ($generated): void {
     }
 });
 require $generated . '/bootstrap.php';
+testcase_end();
 
 try {
+    testcase_begin("decimal_db/$dialect/setters", TESTCASE_COMPUTE);
     $class = DecimalFixture\DecimalCase::class;
     $getAmount = (new ReflectionMethod($class, 'getAmount'))->getReturnType();
     $setAmount = (new ReflectionMethod($class, 'setAmount'))->getParameters()[0]->getType();
@@ -58,7 +64,9 @@ try {
     } catch (TypeError $error) {
         // The generated setter accepts an exact string.
     }
+    testcase_end();
 
+    testcase_begin("decimal_db/$dialect/round_trip", TESTCASE_DATABASE);
     $db = DecimalFixture\connect($dsn, new Config());
     try {
         if ((new $class)->connect($db)->seq(1)->getCount() !== 0) {
@@ -96,7 +104,7 @@ try {
     } finally {
         $db->close();
     }
-    echo "CASE decimal_$dialect PASS\n";
+    testcase_end();
 } finally {
     $files = glob($generated . '/*.php');
     if ($files === false) {

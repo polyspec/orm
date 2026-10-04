@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, nodeTestErrors, rustTestCaseErrors } from './testcases.mjs';
+import { goTestCaseErrors, nodeTestErrors, reportingScriptErrors, rustTestCaseErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -50,6 +50,16 @@ const trackedText = paths => Object.fromEntries(paths.map(path => [path, readFil
 failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|js)$/.test(path) && !path.startsWith('docs/')))));
 failures.push(...goTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('_test.go')))));
 failures.push(...rustTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('.rs')))));
+// Makefile, contracts/features.json, scripts/의 shell script와 root package.json이 실행하는 PHP와
+// TypeScript test도 공유 case 보고를 쓴다.
+const trackedSet = new Set(tracked);
+const runCommands = [
+  ...makefile.split('\n').filter(line => line.startsWith('\t')).map(line => ({ source: 'Makefile', command: line.slice(1) })),
+  ...featureCommands(features).map(command => ({ source: 'contracts/features.json', command })),
+  ...tracked.filter(path => /^scripts\/.*\.sh$/.test(path)).flatMap(path => readFileSync(join(root, path), 'utf8').split('\n').map(command => ({ source: path, command }))),
+  ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command })),
+];
+failures.push(...reportingScriptErrors(runCommands, path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
 // 모든 workflow의 step은 자기 timeout-minutes를 가진다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

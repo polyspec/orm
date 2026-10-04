@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.29-7: PHP와 TypeScript decimal database test는 case마다 기한과 경과 시간을 보고하고, `make repo-check`는 check가 실행하는 PHP나 TypeScript test가 공유 case 보고를 쓰지 않으면 실패시킨다.
+
 - G5.29-5: Go, PHP, Rust, TypeScript의 MySQL TLS test는 case마다 기한과 경과 시간을 보고하고, Go 연결 test는 case context로 읽으며, `make repo-check`는 공유 testcase package의 case를 시작하지 않는 Go나 Rust test를 실패시킨다.
 
 - G5.29-6: version check test는 case마다 기한과 경과 시간을 보고하고, `make repo-check`는 `caseTest` 대신 `node:test`로 test를 직접 선언하는 JavaScript test를 실패시킨다.
