@@ -34,7 +34,13 @@
               false,
               6
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? OR `a`.`read_count` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 3"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? OR `a`.`read_count` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -74,7 +80,13 @@
               true,
               500
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`is_display` = ? OR (`a`.`is_close` = ? AND `a`.`read_count` \u003e ?)) ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`is_display` = ? OR (`a`.`is_close` = ? AND `a`.`read_count` \u003e ?)) ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -113,7 +125,13 @@
               true,
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE (`a`.`is_display` = ? OR `a`.`is_close` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE (`a`.`is_display` = ? OR `a`.`is_close` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -129,7 +147,13 @@
               7,
               990
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003e ? ORDER BY `a`.`seq` DESC LIMIT 0, 3"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003e ? ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -157,19 +181,37 @@
               8,
               true
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` IN (?, ?) AND `a`.`is_close` != ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` IN (?, ?) AND `a`.`is_close` != ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`uuid` IS NULL"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`uuid` IS NULL",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`photo_url` IS NOT NULL"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`photo_url` IS NOT NULL",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
@@ -179,7 +221,13 @@
               206,
               206
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` NOT IN (?, ?, ?, ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` NOT IN (?, ?, ?, ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
@@ -187,42 +235,78 @@
               100,
               200
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` BETWEEN ? AND ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` BETWEEN ? AND ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               "%attle-10%"
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               "%Author-10%"
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE BINARY ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`name` LIKE BINARY ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               990
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003e= ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003e= ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               10
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003c= ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`read_count` \u003c= ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               1000
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`seq` \u003c ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`seq` \u003c ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -263,26 +347,50 @@
             "binds": [
               42
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               -1
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               false
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 2"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 2",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -302,19 +410,37 @@
               7,
               true
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 2"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 2",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -342,7 +468,13 @@
               7,
               990
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`read_count` \u003e ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND (`a`.`read_count` \u003e ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
@@ -350,7 +482,13 @@
               42,
               43
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, (`a`.`read_count` * ?) AS `a__doubled` FROM `author` AS `a` WHERE (`a`.`seq` IN (?, ?)) ORDER BY `a`.`seq` DESC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, (`a`.`read_count` * ?) AS `a__doubled` FROM `author` AS `a` WHERE (`a`.`seq` IN (?, ?)) ORDER BY `a`.`seq` DESC",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -377,19 +515,37 @@
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               42
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, CONCAT('r', `a`.`read_count`) AS `a__read_text` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, CONCAT('r', `a`.`read_count`) AS `a__read_text` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -439,19 +595,40 @@
               true,
               "service-7"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` AND `service_model`.`seq` \u003e ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service_model`.`name` = ?)) ORDER BY `a`.`seq` ASC LIMIT 0, 2"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` AND `service_model`.`seq` \u003e ? WHERE `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`service_model`.`name` = ?)) ORDER BY `a`.`seq` ASC LIMIT 0, 2",
+            "tables": [
+              "author",
+              "service"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`service_member_seq` = `service_member_model`.`seq` WHERE `a`.`service_seq` = ? AND `a`.`success_count` \u003c `service_member_model`.`seq`"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service_member` AS `service_member_model` ON `a`.`service_member_seq` = `service_member_model`.`seq` WHERE `a`.`service_seq` = ? AND `a`.`success_count` \u003c `service_member_model`.`seq`",
+            "tables": [
+              "author",
+              "service_member"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `module`.`seq` AS `module__seq`, `module`.`service_seq` AS `module__service_seq`, `module`.`name` AS `module__name` FROM `author` AS `a` LEFT JOIN `service_region` AS `module` ON `a`.`service_region_seq` = `module`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `module`.`seq` AS `module__seq`, `module`.`service_seq` AS `module__service_seq`, `module`.`name` AS `module__name` FROM `author` AS `a` LEFT JOIN `service_region` AS `module` ON `a`.`service_region_seq` = `module`.`seq` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 1",
+            "tables": [
+              "author",
+              "service_region"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -605,7 +782,13 @@
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 3"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`name` AS `a__name`, `a`.`is_close` AS `a__is_close` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
@@ -614,7 +797,13 @@
               207,
               207
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (?, ?, ?, ?)",
+            "tables": [
+              "user"
+            ],
+            "transaction": null
           },
           {
             "binds": [
@@ -623,19 +812,37 @@
               207,
               207
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_region_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?, ?, ?, ?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__user_seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__service_region_seq`, `orm_w`.`a__service_member_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`user_seq` ORDER BY `a`.`seq` DESC) AS `orm_rn` FROM `author` AS `a` WHERE `a`.`user_seq` IN (?, ?, ?, ?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__user_seq`, `orm_w`.`orm_rn`",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` IN (?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` IN (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `orm_w`.`a__seq`, `orm_w`.`a__service_seq`, `orm_w`.`a__user_seq` FROM (SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq`, ROW_NUMBER() OVER (PARTITION BY `a`.`service_seq` ORDER BY `a`.`seq` ASC) AS `orm_rn` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)) AS `orm_w` WHERE `orm_w`.`orm_rn` \u003c= 2 ORDER BY `orm_w`.`a__service_seq`, `orm_w`.`orm_rn`",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -650,7 +857,13 @@
             "binds": [
               -1
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -688,7 +901,14 @@
               7,
               906
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT COALESCE(SUM(`s1`.`read_count`), 0) FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`service_seq` = ?) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` IN (SELECT `s2`.`user_seq` FROM `author` AS `s2` WHERE `s2`.`service_seq` = ? AND `s2`.`read_count` \u003e= ?) ORDER BY `a`.`seq` ASC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT COALESCE(SUM(`s1`.`read_count`), 0) FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` AND `s1`.`service_seq` = ?) AS `a__read_total` FROM `user` AS `a` WHERE `a`.`seq` IN (SELECT `s2`.`user_seq` FROM `author` AS `s2` WHERE `s2`.`service_seq` = ? AND `s2`.`read_count` \u003e= ?) ORDER BY `a`.`seq` ASC",
+            "tables": [
+              "author",
+              "user"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -728,31 +948,61 @@
             "binds": [
               7
             ],
-            "sql": "SELECT COALESCE(SUM(`a`.`read_count`), 0) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COALESCE(SUM(`a`.`read_count`), 0) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT AVG(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT AVG(`a`.`like_count`) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` WHERE `a`.`service_seq` = ? GROUP BY `a`.`is_close` ORDER BY `a`.`is_close` ASC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`is_close` AS `a__is_close`, COUNT(*) AS `a__row_count` FROM `author` AS `a` WHERE `a`.`service_seq` = ? GROUP BY `a`.`is_close` ORDER BY `a`.`is_close` ASC",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 8, 4"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` WHERE `a`.`service_seq` = ? ORDER BY `a`.`seq` ASC LIMIT 8, 4",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -779,35 +1029,65 @@
               7,
               2
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND DAYOFWEEK(`a`.`start_dt`) = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND DAYOFWEEK(`a`.`start_dt`) = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               2026
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND YEAR(`a`.`start_dt`) = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND YEAR(`a`.`start_dt`) = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               36500
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e DATE_SUB(NOW(6), INTERVAL ? DAY)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003e DATE_SUB(NOW(6), INTERVAL ? DAY)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               7,
               1200
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c DATE_ADD(NOW(6), INTERVAL ? MONTH)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`start_dt` \u003c DATE_ADD(NOW(6), INTERVAL ? MONTH)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               42,
               43
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, MONTH(`a`.`start_dt`) AS `a__start_month` FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?) ORDER BY YEAR(`a`.`start_dt`) ASC, `a`.`seq` ASC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, MONTH(`a`.`start_dt`) AS `a__start_month` FROM `author` AS `a` WHERE `a`.`seq` IN (?, ?) ORDER BY YEAR(`a`.`start_dt`) ASC, `a`.`seq` ASC",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -866,13 +1146,25 @@
             "binds": [
               42
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           },
           {
             "binds": [
               "d7ed2c8be5e5492b75c87b240990131dc334f7866fbb94429467e12e1ba25d91"
             ],
-            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`email_blind_index` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`email_blind_index` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -933,6 +1225,14 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "cycle",
               1,
@@ -949,13 +1249,25 @@
               "dbc465e76bc8f462fdfa67f87db87fcc749b2ae4341aa20f5a72f6b84b11b339",
               1
             ],
-            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `price`, `ip`, `aes_hex_email`, `json_setting`, `serialize_data`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, INET6_ATON(?), HEX(?), ?, ?, ?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `price`, `ip`, `aes_hex_email`, `json_setting`, `serialize_data`, `email_blind_index`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, INET6_ATON(?), HEX(?), ?, ?, ?, ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
@@ -964,25 +1276,57 @@
               "$SEQ",
               "$TS"
             ],
-            "sql": "UPDATE `author` SET `name` = ?, `read_count` = `author`.`read_count` + ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `author` SET `name` = ?, `read_count` = `author`.`read_count` + ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`description` AS `a__description`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_key_version` AS `a__aes_key_version`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, `a`.`email_blind_index` AS `a__email_blind_index`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`phone_blind_index` AS `a__phone_blind_index`, `a`.`price` AS `a__price`, INET6_NTOA(`a`.`ip`) AS `a__ip`, `a`.`gz_extend` AS `a__gz_extend`, `a`.`json_setting` AS `a__json_setting`, `a`.`jsons_tags` AS `a__jsons_tags`, `a`.`base64_extra` AS `a__base64_extra`, `a`.`serialize_data` AS `a__serialize_data` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `author` WHERE `author`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `author` WHERE `author`.`seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
           }
         ]
       }
@@ -997,6 +1341,14 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "clock",
               1,
@@ -1007,19 +1359,45 @@
               "2026-06-01 00:00:00.000000",
               1
             ],
-            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `author` (`name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `author` WHERE `author`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `author` WHERE `author`.`seq` = ?",
+            "tables": [
+              "author"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
           }
         ]
       }
@@ -1040,17 +1418,45 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "draft",
               "open"
             ],
-            "sql": "INSERT INTO `task` (`title`, `state`) VALUES (?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `task` (`title`, `state`) VALUES (?, ?)",
+            "tables": [
+              "task"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `task` WHERE `task`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `task` WHERE `task`.`seq` = ?",
+            "tables": [
+              "task"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
           }
         ]
       }
@@ -1077,6 +1483,22 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               900,
               1,
@@ -1088,7 +1510,21 @@
               1,
               "c"
             ],
-            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
@@ -1097,7 +1533,13 @@
               "dup",
               "updated"
             ],
-            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `composite_account` (`tenant_id`, `account_id`, `name`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `name` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
@@ -1105,7 +1547,13 @@
               900,
               2
             ],
-            "sql": "UPDATE `composite_account` SET `name` = ? WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `composite_account` SET `name` = ? WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
@@ -1114,42 +1562,102 @@
               900,
               2
             ],
-            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?)) ORDER BY `a`.`account_id` ASC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?, ?), (?, ?)) ORDER BY `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               900,
               901
             ],
-            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` IN (?, ?) ORDER BY `a`.`tenant_id` ASC, `a`.`account_id` ASC"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a` WHERE `a`.`tenant_id` IN (?, ?) ORDER BY `a`.`tenant_id` ASC, `a`.`account_id` ASC",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               900,
               1
             ],
-            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               900,
               2
             ],
-            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               901,
               1
             ],
-            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `composite_account` WHERE `composite_account`.`tenant_id` = ? AND `composite_account`.`account_id` = ?",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               900,
               901
             ],
-            "sql": "SELECT COUNT(*) FROM `composite_account` AS `a` WHERE `a`.`tenant_id` IN (?, ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `composite_account` AS `a` WHERE `a`.`tenant_id` IN (?, ?)",
+            "tables": [
+              "composite_account"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
           }
         ]
       }
@@ -1165,66 +1673,158 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "recursive"
             ],
-            "sql": "INSERT INTO `service` (`name`) VALUES (?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service` (`name`) VALUES (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ",
               1
             ],
-            "sql": "INSERT INTO `service_member` (`service_seq`, `user_seq`) VALUES (?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service_member` (`service_seq`, `user_seq`) VALUES (?, ?)",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ",
               2
             ],
-            "sql": "INSERT INTO `service_member` (`service_seq`, `user_seq`) VALUES (?, ?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service_member` (`service_seq`, `user_seq`) VALUES (?, ?)",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`user_seq` AS `a__user_seq` FROM `service_member` AS `a` WHERE `a`.`service_seq` IN (?)",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `service_member` WHERE `service_member`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `service_member` WHERE `service_member`.`seq` = ?",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `service_member` WHERE `service_member`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `service_member` WHERE `service_member`.`seq` = ?",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "DELETE FROM `service` WHERE `service`.`seq` = ?"
+            "error": null,
+            "kind": "delete",
+            "sql": "DELETE FROM `service` WHERE `service`.`seq` = ?",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT COUNT(*) FROM `service_member` AS `a` WHERE `a`.`service_seq` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `service_member` AS `a` WHERE `a`.`service_seq` = ?",
+            "tables": [
+              "service_member"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "commit",
+            "sql": "COMMIT",
+            "tables": [],
+            "transaction": 1
           }
         ]
       }
@@ -1243,36 +1843,144 @@
         ],
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "tx-outer"
             ],
-            "sql": "INSERT INTO `service` (`name`) VALUES (?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service` (`name`) VALUES (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "savepoint",
+            "sql": "SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "tx-inner"
             ],
-            "sql": "INSERT INTO `service` (`name`) VALUES (?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `service` (`name`) VALUES (?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback_to",
+            "sql": "ROLLBACK TO SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "release",
+            "sql": "RELEASE SAVEPOINT orm_sp_1",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "tx-outer",
               "tx-inner"
             ],
-            "sql": "SELECT COUNT(*) FROM `service` AS `a` WHERE `a`.`name` IN (?, ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `service` AS `a` WHERE `a`.`name` IN (?, ?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "tx-outer"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`name` = ? FOR UPDATE"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `service` AS `a` WHERE `a`.`name` = ? FOR UPDATE",
+            "tables": [
+              "service"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "conformance"
+            ],
+            "error": null,
+            "kind": "utility",
+            "sql": "SELECT GET_LOCK(?, 50)",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "runner"
+            ],
+            "error": null,
+            "kind": "utility",
+            "sql": "SET @`orm.ormtest.actor` = ?",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [
+              "conformance"
+            ],
+            "error": null,
+            "kind": "utility",
+            "sql": "SELECT RELEASE_LOCK(?)",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "utility",
+            "sql": "SET @`orm.ormtest.actor` = NULL",
+            "tables": [],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "tx-outer",
               "tx-inner"
             ],
-            "sql": "SELECT COUNT(*) FROM `service` AS `a` WHERE `a`.`name` IN (?, ?)"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `service` AS `a` WHERE `a`.`name` IN (?, ?)",
+            "tables": [
+              "service"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -1298,67 +2006,143 @@
         },
         "statements": [
           {
+            "binds": [],
+            "error": null,
+            "kind": "begin",
+            "sql": "START TRANSACTION",
+            "tables": [],
+            "transaction": 1
+          },
+          {
             "binds": [
               "restore"
             ],
-            "sql": "INSERT INTO `soft_record` (`name`) VALUES (?)"
+            "error": null,
+            "kind": "insert",
+            "sql": "INSERT INTO `soft_record` (`name`) VALUES (?)",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "2026-01-02 03:04:05.000000",
               "$SEQ"
             ],
-            "sql": "UPDATE `soft_record` SET `deleted_at` = ? WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NULL"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_record` SET `deleted_at` = ? WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NULL",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "restore-2",
               "$SEQ"
             ],
-            "sql": "UPDATE `soft_record` SET `name` = ?, `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_record` SET `name` = ?, `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "ignored",
               "$SEQ"
             ],
-            "sql": "UPDATE `soft_record` SET `name` = ?, `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_record` SET `name` = ?, `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               "$SEQ"
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               0
             ],
-            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL"
+            "error": null,
+            "kind": "update",
+            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
           },
           {
             "binds": [
               0
             ],
-            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`deleted_at` AS `a__deleted_at` FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`seq` = ? LIMIT 0, 1",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": 1
+          },
+          {
+            "binds": [],
+            "error": null,
+            "kind": "rollback",
+            "sql": "ROLLBACK",
+            "tables": [],
+            "transaction": 1
           },
           {
             "binds": [
               "restore"
             ],
-            "sql": "SELECT COUNT(*) FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?"
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `soft_record` AS `a` WHERE `a`.`deleted_at` IS NULL AND `a`.`name` = ?",
+            "tables": [
+              "soft_record"
+            ],
+            "transaction": null
           }
         ]
       }
@@ -1372,7 +2156,18 @@
           "pending": 0,
           "versions": "1:100000"
         },
-        "statements": []
+        "statements": [
+          {
+            "binds": [],
+            "error": null,
+            "kind": "utility",
+            "sql": "SELECT `aes_key_version`, COUNT(*) FROM `author` GROUP BY `aes_key_version` ORDER BY `aes_key_version`",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
       }
     }
   ]

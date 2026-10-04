@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T42: 모든 client는 보내는 statement마다 연결의 subscriber에게 문장, 가린 bind, kind, table, 경과 시간, transaction 번호, 오류를 담은 event를 publish하며 `OnQuery` hook을 대신한다. plan step은 자기 table을 가지고, 모든 client는 같은 transaction 제어 statement를 실행한다.
+
 - G5.26: 문서 page는 text와 code의 `{{`를 Vue interpolation으로 실행하지 않고 쓴 그대로 보이며, page의 server render가 실패하면 `make docs-build`가 실패한다. 본문 없이 render되던 checklist page에 G5.5가 다시 보인다.
 
 - D4: https://polyspec.github.io/orm/ 의 문서 사이트는 `docs-pages` workflow가 배포한 현재 커밋의 build다.
