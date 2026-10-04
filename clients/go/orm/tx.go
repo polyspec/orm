@@ -602,11 +602,16 @@ func (t *txConn) rollback() error {
 		return nil
 	}
 	if t.ctx.Err() != nil {
-		t.finished.Store(true)
-		t.closeStatements()
-		err := t.closeSession()
-		t.cancel()
-		return err
+		if t.db.driver != "sqlite" {
+			t.finished.Store(true)
+			t.closeStatements()
+			err := t.closeSession()
+			t.cancel()
+			return err
+		}
+		// SQLite 연결은 취소된 statement 뒤에도 쓸 수 있으므로 취소되지 않는
+		// context로 mode를 되돌리고 ROLLBACK한다.
+		t.ctx = context.WithoutCancel(t.ctx)
 	}
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
 	t.finished.Store(true)
