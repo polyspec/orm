@@ -61,15 +61,15 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 | 격리 수준 또는 읽기 전용 실행 | `db.transaction(callback).isolation(Isolation::…).read_only().await` |
 | `Send` future가 필요한 callback 실행 | `db.transaction_send(callback).await` |
 | 한 번 실행하는 callback 자체 오류 보존 | `db.transaction_once(callback).await`, 감사 대상 write에는 `.audit(values)`를 더한다. rollback 뒤 `TransactionOnceError::Callback(error)`를 반환한다. |
-| 트랜잭션 callback 시간 제한 | `db.transaction(callback).timeout_ms(milliseconds).await` |
+| PostgreSQL 트랜잭션 문장 시간 제한 | `db.transaction(callback).timeout_ms(milliseconds).await` |
 | 0을 포함한 deadlock 재시도 횟수 | `db.transaction(callback).retry(count).await` |
-| 문장 또는 트랜잭션 callback 취소 | 해당 Future를 drop한다. `timeout_ms`는 기한 만료 시 callback을 취소하고 rollback을 기다린다. |
+| 문장 또는 트랜잭션 callback 취소 | 해당 Future를 drop한다. |
 | 모델 열 암호화 | 스키마에 `aes` codec stage와 `aes_version` setting을 선언하고 `Config::aes_key` 또는 `Config::aes_keys`와 `Config::aes_version`을 전달한다. |
 | 감사 쓰기 기록 | 스키마에 `audit` setting을 선언하고, 연결할 때 `Config::audit_source`를 한 번 주고, `transaction`, `transaction_send`, `transaction_once`의 `.audit([("action", …)])`로 작업 단위의 값을 준다([사용법](../../docs/usage.ko.md#audited-writes)). |
 
 Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버전은 양수이며 키는 비어 있지 않아야 한다. `aes_keys`가 있으면 현재 버전을 포함해야 한다. 함께 제공한 `aes_key`는 그 버전의 키와 같아야 한다. 잘못된 키 설정이면 연결을 열기 전에 `Db::connect`가 `CONFIG`를 반환한다. AES 열이 없는 연결에는 두 키 필드를 비워 둘 수 있다.
 
-`timeout_ms(0)`은 callback 기한을 끈다. 양수 기한은 callback이 시작한 문장을 포함한 실행을 덮는다. 기한 만료는 rollback에 성공한 뒤에만 `CANCELED`를 반환한다. rollback도 실패하면 반환 오류에 시간 초과와 rollback 실패를 모두 담는다. 성공한 callback 뒤의 commit은 이 기한 대상이 아니다. 각 트랜잭션은 자기 연결을 보유하며 취소된 문장 뒤에도 다음 트랜잭션이 연결을 사용할 수 있다.
+양수 `timeout_ms`는 PostgreSQL에서 트랜잭션의 모든 문장을 제한한다. 트랜잭션은 `BEGIN` 뒤에 `SET LOCAL statement_timeout = <ms>`를 보내고, 더 오래 걸리는 문장은 server가 취소하며 그 문장은 `CANCELED`를 반환한다. MySQL과 SQLite에서는 트랜잭션이 시작하기 전에 `CAPABILITY_UNSUPPORTED`로 실패하고 callback은 실행되지 않는다. `timeout_ms(0)`은 제한을 두지 않는다. 각 트랜잭션은 자기 연결을 보유하며 취소된 문장 뒤에도 다음 트랜잭션이 연결을 사용할 수 있다.
 
 `transaction_send`의 중첩 호출은 savepoint에서 타입을 지운 callback을 직접 빌린다.
 callback의 Box 할당 객체를 빌릴 필요는 없다. 소유 테스트가 세 DB 엔진에서
@@ -80,7 +80,7 @@ SEND_SQLITE_DSN에서 ORM_SEND_SQLITE_DSN을 선언한다. 직접 Cargo를 실�
 MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테이블은 연결
 전용 임시 테이블이며 연결 종료 시 제거된다.
 
-`transaction_once`는 한 번만 실행할 수 있는 callback을 받고 재시도하지 않는다. 중첩 호출은 savepoint를 쓴다. DB 준비·commit 오류는 `TransactionOnceError::Orm`이다. callback 실패는 rollback 뒤 원래 오류를 반환한다. rollback도 실패하면 두 오류를 모두 담는다. 이 호출에는 callback 기한 옵션이 없다.
+`transaction_once`는 한 번만 실행할 수 있는 callback을 받고 재시도하지 않는다. 중첩 호출은 savepoint를 쓴다. DB 준비·commit 오류는 `TransactionOnceError::Orm`이다. callback 실패는 rollback 뒤 원래 오류를 반환한다. rollback도 실패하면 두 오류를 모두 담는다. 이 호출에는 `timeout_ms` 옵션이 없다.
 
 ## 행 값
 

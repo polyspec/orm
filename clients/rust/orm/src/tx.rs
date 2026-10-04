@@ -510,6 +510,7 @@ impl<'a, T> SendTransaction<'a, T> {
         self
     }
 
+    /// Bounds every statement of the transaction; see `Transaction::timeout_ms`.
     pub fn timeout_ms(mut self, ms: u64) -> Self {
         self.timeout_ms = ms;
         self.set = true;
@@ -566,15 +567,7 @@ where
                 (self.f)().await
             };
             let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
-            let result = if self.timeout_ms == 0 {
-                callback.await
-            } else {
-                match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
-                    Ok(result) => result,
-                    Err(_) => return Err(cancelled(&tx).await),
-                }
-            };
-            let result = match result {
+            let result = match callback.await {
                 Ok(result) => result,
                 Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
@@ -614,12 +607,11 @@ impl<'a, F> Transaction<'a, F> {
         self
     }
 
-    /// Bounds execution of the transaction callback in milliseconds. On
-    /// expiry, the callback is cancelled and its transaction ends: MySQL and
-    /// PostgreSQL close its session, which rolls it back, and SQLite resets
-    /// its modes and rolls it back. On PostgreSQL the transaction also sends
-    /// `SET LOCAL statement_timeout = <ms>` after its `BEGIN`. Zero disables
-    /// the bound.
+    /// Bounds every statement of the transaction in milliseconds: PostgreSQL
+    /// sends `SET LOCAL statement_timeout = <ms>` after its `BEGIN`, and the
+    /// server cancels a statement that runs longer with `CANCELED`. MySQL and
+    /// SQLite fail with `CAPABILITY_UNSUPPORTED` before the transaction
+    /// begins. Zero sets no bound.
     pub fn timeout_ms(mut self, ms: u64) -> Self {
         self.timeout_ms = ms;
         self.set = true;
@@ -686,15 +678,7 @@ impl<'a, F> Transaction<'a, F> {
                 (self.f)().await
             };
             let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
-            let result = if self.timeout_ms == 0 {
-                callback.await
-            } else {
-                match tokio::time::timeout(std::time::Duration::from_millis(self.timeout_ms), callback).await {
-                    Ok(result) => result,
-                    Err(_) => return Err(cancelled(&tx).await),
-                }
-            };
-            let result = match result {
+            let result = match callback.await {
                 Ok(result) => result,
                 Err(payload) => match rollback_and_resume(&tx, payload).await {},
             };
@@ -798,6 +782,9 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
     if db.inner.closed.load(Ordering::Acquire) {
         return Err(Error::Config("database is closed".into()));
     }
+    if timeout_ms > 0 && !matches!(db.pool(), Pool::Postgres(_)) {
+        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeoutMs is supported only by postgres".into() });
+    }
     let level = isolation.map(Isolation::sql);
     // transaction을 여는 statement다(docs/usage.md "Statement events").
     let mut opening: Vec<(&str, String)> = Vec::new();
@@ -888,23 +875,6 @@ async fn ensure_sqlite_lock_table(db: &Db) -> Result<()> {
         db.inner.sqlite_lock_ready.store(true, Ordering::Release);
     }
     Ok(())
-}
-
-/// 시간 제한으로 취소된 transaction을 끝내고 CANCELED를 돌려준다. MySQL과 PostgreSQL은 취소된
-/// callback이 statement를 끝내지 못했을 수 있으므로 ROLLBACK을 보내지 않고 session을 닫으며, server가
-/// transaction을 되돌리고 lock을 푼다. SQLite 연결은 중단된 statement 뒤에도 쓸 수 있으므로 mode를
-/// 되돌리고 ROLLBACK한다.
-async fn cancelled(tx: &TxShared) -> Error {
-    let error = Error::Engine { code: codes::CANCELED.into(), msg: "transaction callback timed out".into() };
-    if matches!(tx.db.pool(), Pool::Sqlite(_)) {
-        return match rollback(tx).await {
-            Ok(()) => error,
-            Err(rollback) => Error::rollback(error, rollback),
-        };
-    }
-    tx.finished.store(true, Ordering::Release);
-    drop(tx.inner.lock().await.take());
-    error
 }
 
 /// panic한 callback의 transaction을 rollback하고 panic을 이어 간다. rollback이 실패하면
@@ -1170,8 +1140,12 @@ mod tests {
         .unwrap()
     }
 
+    /// `timeout_ms`는 PostgreSQL에서 `SET LOCAL statement_timeout`이므로 server가 오래 걸리는 statement를
+    /// 끝내고 transaction은 rollback된다. MySQL과 SQLite는 그 option을 지원하지 않으므로 transaction은
+    /// 시작하기 전에 CAPABILITY_UNSUPPORTED로 실패하고 callback은 실행되지 않는다(docs/interfaces.md).
+    /// 0은 option을 주지 않은 것과 같다. 각 database의 어긋남을 모아 마지막에 함께 보고한다.
     #[tokio::test]
-    async fn callback_timeout_cancels_a_statement_and_rolls_back() {
+    async fn transaction_timeout_is_the_postgres_statement_timeout() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let tmp = std::env::temp_dir().join(format!("orm-timeout-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
@@ -1183,13 +1157,16 @@ mod tests {
             ("mysql", mysql.dsn().to_owned()),
             ("postgres", postgres.dsn().to_owned()),
         ];
+        let mut mismatches = Vec::new();
         for (driver, dsn) in targets {
             let db = Db::connect(&dsn, 2, crate::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
             execute(&db, "DROP TABLE IF EXISTS orm_timeout_probe").await;
             execute(&db, "CREATE TABLE orm_timeout_probe (id INTEGER PRIMARY KEY)").await;
+            let ran = std::cell::Cell::new(false);
             let result = tokio::time::timeout(
                 std::time::Duration::from_secs(5),
                 db.transaction(async || {
+                    ran.set(true);
                     let tx = active_for(&db).expect("transaction is active");
                     tx.raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (1)").await?;
                     match driver {
@@ -1205,29 +1182,36 @@ mod tests {
             )
             .await
             .expect("transaction test timed out");
-            assert_eq!(result.unwrap_err().code(), codes::CANCELED, "{driver}: timeout code");
-            assert_eq!(count(&db).await, 0, "{driver}: transaction rolled back");
-            db.transaction(async || active_for(&db).expect("transaction is active").raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (2)").await)
-                .retry(0)
-                .await
-                .unwrap_or_else(|e| panic!("{driver}: next transaction: {e}"));
-            assert_eq!(count(&db).await, 1, "{driver}: next transaction committed");
+            let got = match &result {
+                Ok(()) => "ok".to_owned(),
+                Err(error) => error.to_string(),
+            };
+            let (want, want_ran) = if driver == "postgres" {
+                ("CANCELED: canceling statement due to statement timeout (SQLSTATE 57014)", true)
+            } else {
+                ("CAPABILITY_UNSUPPORTED: transaction timeoutMs is supported only by postgres", false)
+            };
+            if got != want || ran.get() != want_ran {
+                mismatches.push(format!("{driver}: got {got:?} with callback run {}, want {want:?} with callback run {want_ran}", ran.get()));
+            }
+            assert_eq!(count(&db).await, 0, "{driver}: nothing committed");
             db.transaction(async || {
-                active_for(&db).expect("transaction is active").raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (3)").await?;
+                active_for(&db).expect("transaction is active").raw(KIND_UTILITY, "INSERT INTO orm_timeout_probe (id) VALUES (2)").await?;
                 tokio::time::sleep(std::time::Duration::from_millis(30)).await;
                 Ok(())
             })
             .timeout_ms(0)
             .retry(0)
             .await
-            .unwrap_or_else(|e| panic!("{driver}: zero deadline: {e}"));
-            assert_eq!(count(&db).await, 2, "{driver}: zero disables the deadline");
+            .unwrap_or_else(|e| panic!("{driver}: zero timeout: {e}"));
+            assert_eq!(count(&db).await, 1, "{driver}: zero sets no timeout");
             execute(&db, "DROP TABLE orm_timeout_probe").await;
             db.close().await;
         }
         mysql.drop().await;
         postgres.drop().await;
         std::fs::remove_dir_all(tmp).unwrap();
+        assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
     }
 
     /// MySQL transaction을 열고 local 값을 둔 뒤 그 connection을 다른 connection에서 끊는다.
