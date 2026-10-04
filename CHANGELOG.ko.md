@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T41.1: `make owner-check`가 고른 make target은 owner-check가 받은 서버 환경, decimal 환경, Rust target directory로 실행하므로, worktree의 검사는 main checkout의 서버와 target directory를 쓴다.
+
 - G5.22: 모든 검사는 cargo가 build한 program을 선언한 `CARGO_TARGET_DIR`에서 실행하고, 그 값이 없으면 `clients/rust/target`을 적는 대신 실패한다. `make repo-check`는 그 directory를 적은 실행 명령을 거부한다.
 
 - G5.23: `TestWithContextCancelsInsideTransaction`은 막힌 읽기를, statement가 시작되기 전에 끝날 수 있던 고정 지연 뒤가 아니라 서버가 그 lock 대기를 보고할 때 취소한다.

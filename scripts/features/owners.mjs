@@ -118,13 +118,25 @@ const TARGET_DEADLINE = 30 * 60_000;
 // 10분을 넘긴 단계는 멈춘 것이다.
 const STEP_DEADLINE = 10 * 60_000;
 
+// makeArguments는 target 하나를 실행하는 make 인자다. owner-check가 받은 서버 환경(ORM_OWNER_TEST_ENV,
+// 곧 make의 TEST_ENV), decimal 환경(DECIMAL_ENV), Rust target directory(ORM_OWNER_CARGO_TARGET_DIR, 곧
+// CARGO_TARGET_DIR)를 target에도 준다: worktree는 main checkout의 서버와 target directory를 쓰고, make
+// 변수는 command line으로만 Makefile의 값을 바꾼다.
+export function makeArguments(target, env) {
+  const overrides = [];
+  if (env.ORM_OWNER_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_OWNER_TEST_ENV}`);
+  if (env.DECIMAL_ENV) overrides.push(`DECIMAL_ENV=${env.DECIMAL_ENV}`);
+  if (env.ORM_OWNER_CARGO_TARGET_DIR) overrides.push(`CARGO_TARGET_DIR=${env.ORM_OWNER_CARGO_TARGET_DIR}`);
+  return ['--no-print-directory', ...overrides, target];
+}
+
 // make는 한 make target을 process group으로 실행하고 출력 줄을 step으로 내보낸다. 기한에 group 전체를
 // 끝낸다.
 function make(root, target, { signal, step }) {
   return new Promise((resolveRun, rejectRun) => {
     const env = { ...process.env };
     for (const variable of ['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES']) delete env[variable];
-    const child = spawn('make', ['--no-print-directory', target], { cwd: root, env, detached: true });
+    const child = spawn('make', makeArguments(target, process.env), { cwd: root, env, detached: true });
     const lines = stepLines(step);
     child.stdout.on('data', chunk => lines.write(String(chunk)));
     child.stderr.on('data', chunk => lines.write(String(chunk)));

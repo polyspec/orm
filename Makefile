@@ -360,7 +360,7 @@ test-servers-stop:
 # 기능의 검증 명령과 coverage를 실행한다(AGENTS.md "Owner checks").
 .PHONY: owner-check
 owner-check:
-	$(WITH_TEST_ENV) node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) ORM_OWNER_CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) node scripts/features/owners.mjs $(PATHS)
 
 feature-check:
 	node scripts/features/build.mjs --check
