@@ -60,15 +60,26 @@ create)
   echo "databases: ${name}_bench and ${name}_decimal created and seeded"
   ;;
 drop)
+  # MySQL, PostgreSQL, 실행 directory를 지우는 일은 서로 독립이다. 하나가 실패해도 나머지를 지우고, 끝에 실패한
+  # 것을 모두 적고 1로 끝난다.
+  FAILED=
+  keep() {
+    "$@" || FAILED="$FAILED
+  $* (exit $?)"
+  }
   rest=${ORM_RUN_MYSQL_DSN#mysql://}
   user=${rest%%@*}
   address=${rest#*@}; address=${address%%/*}
-  mysql --no-defaults --protocol=TCP -h "${address%:*}" -P "${address##*:}" -u "$user" \
+  keep mysql --no-defaults --protocol=TCP -h "${address%:*}" -P "${address##*:}" -u "$user" \
     -e "DROP DATABASE IF EXISTS \`${name}_bench\`; DROP DATABASE IF EXISTS \`${name}_decimal\`"
   server=${ORM_RUN_POSTGRES_DSN#postgres://}; server=${server%%/*}
-  psql -X -q -v ON_ERROR_STOP=1 "postgres://$server/postgres?sslmode=disable" \
+  keep psql -X -q -v ON_ERROR_STOP=1 "postgres://$server/postgres?sslmode=disable" \
     -c "DROP DATABASE IF EXISTS \"${name}_bench\" WITH (FORCE)" -c "DROP DATABASE IF EXISTS \"${name}_decimal\" WITH (FORCE)"
-  rm -rf "$dir"
+  keep rm -rf "$dir"
+  if [ -n "$FAILED" ]; then
+    printf 'databases: drop failed:%s\n' "$FAILED" >&2
+    exit 1
+  fi
   echo "databases: ${name}_bench and ${name}_decimal dropped"
   ;;
 *)

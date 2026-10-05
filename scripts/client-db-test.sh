@@ -96,7 +96,16 @@ for lang in go php typescript rust; do
 done
 
 if [ "${ORM_CLIENT_DB_LANES:-}" != parallel ]; then
-  for lang in $selected; do "${lang}_lane"; done
+  # lane마다 자기 subshell에서 실행하므로 lane의 finish(실패하면 exit 1)는 그 lane만 끝내고 다음 lane이 실행된다.
+  failed=
+  for lang in $selected; do
+    ( "${lang}_lane" ) || failed="$failed $lang"
+  done
+  if [ -n "$failed" ]; then
+    echo "client-db-test: failed lanes:$failed" >&2
+    exit 1
+  fi
+  echo "client-db-test: every lane passed:$selected"
   exit 0
 fi
 

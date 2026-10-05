@@ -450,3 +450,79 @@ export function ciSetupErrors(workflows, { setup, runner }) {
   return errors;
 }
 
+
+// independentTestErrors는 make recipe 하나가 서로 다른 test 실행 줄을 둘 이상 가지는 곳마다 오류 하나를 돌려준다. recipe의
+// 줄은 첫 실패에서 멈추므로(make -k도 recipe 안에서는 멈춘다), 앞의 test가 실패하면 뒤의 test는 실행되지 않고 그
+// 결과도 남지 않는다. 독립된 test는 make -k가 서로의 실패 뒤에도 실행하는 하위 target(`<target>/<part>`)으로
+// 나눈다. 같은 test를 다시 실행하는 줄(결과가 반복되는지 보는 두 번째 실행)은 한 test로 센다. test 실행은
+// runnerIdentity로 판단하고, make 변수는 정의로 풀어 본다.
+export function independentTestErrors(makefile) {
+  const variables = makeVariables(makefile);
+  const recipes = [];
+  for (const line of makefile.split('\n')) {
+    const target = /^([A-Za-z0-9_./-]+):(?!=)/.exec(line);
+    if (target) recipes.push({ target: target[1], commands: [] });
+    else if (line.startsWith('\t') && recipes.length) recipes.at(-1).commands.push(line.slice(1));
+    else if (line.trim() !== '' && !line.startsWith('#')) recipes.push({ target: null, commands: [] });
+  }
+  const errors = [];
+  for (const { target, commands } of recipes) {
+    if (!target) continue;
+    const tests = new Set(commands.filter(command => checkLine(expand(command, variables))));
+    if (tests.size >= 2)
+      errors.push(`Makefile ${target} runs ${tests.size} independent tests in one recipe, whose first failure stops the others; split them into parts ${target}/<part>: ${[...tests].map(test => test.slice(0, 80)).join(' | ')}`);
+  }
+  return errors;
+}
+
+// testRun은 명령 조각이 test나 lint 검사를 실행하는지다: runnerIdentity가 test runner로 보는 것 가운데, 실행하지 않고 compile만
+// 하는 것(go test -c, cargo test --no-run), 출력을 file로 보내는 입력 생성(`> file`), 의존성의 도구(node_modules의
+// tsc 같은 build)는 test 실행이 아니다.
+// checkLine은 명령 줄이 test나 lint 검사를 실행하는지다. tests/cargo-test.mjs는 cargo test를 실행한다. make 함수와 shell
+// 치환(`$(abspath ...)`, `$(shell ...)`)은 값 하나로 줄인 뒤 조각마다 testRun으로 본다.
+function checkLine(line) {
+  if (/tests\/cargo-test\.mjs/.test(line) && !/\s--no-run\b/.test(line)) return true;
+  return segments(reduceMake(line)).some(segment => testRun(segment.trim()));
+}
+
+// reduceMake은 `$(` 로 시작하는 make 함수와 shell 치환을 짝이 맞는 `)`까지 값 하나(VALUE)로 바꾼다. 안의 괄호도 센다.
+function reduceMake(text) {
+  let out = '';
+  for (let index = 0; index < text.length; index++) {
+    if (text[index] === '$' && text[index + 1] === '(') {
+      let depth = 0;
+      let end = index + 1;
+      for (; end < text.length; end++) {
+        if (text[end] === '(') depth++;
+        else if (text[end] === ')' && --depth === 0) break;
+      }
+      out += 'VALUE';
+      index = end;
+    } else out += text[index];
+  }
+  return out;
+}
+
+function testRun(segment) {
+  // 앞의 환경 변수 대입은 뗀다.
+  const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S)*\s+)+/, '');
+  // lint(clippy, go vet, rustfmt와 gofmt의 검사)도 실패하면 뒤의 줄을 멈추는 검사다.
+  if (/(?:^|\s)cargo\s+(?:\+\S+\s+)?clippy\b|(?:^|\s)go\s+vet\b|(?:^|\s)cargo\s+(?:\+\S+\s+)?fmt\b.*--check|(?:^|\s)gofmt\s+-l\b/.test(command)) return true;
+  const identity = runnerIdentity(command);
+  if (!identity) return false;
+  if (/\s-c(?:\s|$)|\s--no-run\b|(?:^|\s)>\s*\S|node_modules\//.test(command)) return false;
+  return true;
+}
+
+// chainedCommandErrors는 contracts/features.json의 검증 명령과 helper 명령이 `&&`로 test 실행 둘 이상을 잇는 곳마다
+// 오류 하나를 돌려준다. 앞의 test가 실패하면 뒤의 test는 실행되지 않는다. 각 test는 자기 명령이 된다.
+export function chainedCommandErrors(features) {
+  const errors = [];
+  const check = (where, command) => {
+    const tests = command.split('&&').filter(part => checkLine(part.trim()));
+    if (tests.length >= 2) errors.push(`contracts/features.json ${where} chains ${tests.length} tests with &&, so the first failure stops the next; declare each as its own command: ${command.slice(0, 160)}`);
+  };
+  for (const feature of features.features ?? []) for (const verification of feature.verification ?? []) check(`${feature.id}/${verification.id}`, verification.command);
+  for (const helper of features.helpers ?? []) check(`helper ${helper.id}`, helper.command);
+  return errors;
+}

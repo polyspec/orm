@@ -353,18 +353,28 @@ dbspec-introspect-compare-bench:
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
 # 문서로 실행한다.
 .PHONY: dbspec-compare-check dbspec-compare-bench
-dbspec-compare-check: rust-fetch lease-tool
-	$(HOLD_TYPESCRIPT)
+# 부분들은 한 directory(top target의 RUN_DIR)를 함께 쓴다: prepare가 stress 문서와 runner를 만들고, 독립된 세
+# 검사가 그것을 읽으며, top target이 모두 통과한 뒤 지운다. 실패한 부분이 있으면 directory는 남고 runner가 보고서로
+# 옮긴다.
+dbspec-compare-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-compare-check-$$PPID
+.PHONY: dbspec-compare-check/unit dbspec-compare-check/prepare dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
+dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbspec-compare-check/inputs dbspec-compare-check/compare
+	rm -rf $(RUN_DIR)
+dbspec-compare-check/unit:
 	node --test tests/dbspec/compare/check.test.mjs
+dbspec-compare-check/prepare: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+dbspec-compare-check/runners: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+dbspec-compare-check/inputs: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+dbspec-compare-check/compare: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
-	rm -rf $(RUN_DIR)
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -373,32 +383,49 @@ dbspec-compare-bench:
 # emit해 parse 시간 budget(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
 # emission이 같음을 확인하고(Rust는 release build), PHP introspection을 SQLite에서 잰다.
 .PHONY: dbspec-stress-bench
-dbspec-stress-bench: rust-fetch lease-tool
-	$(HOLD_TYPESCRIPT)
+# 부분들은 top target의 RUN_DIR에 있는 stress 문서를 함께 읽고, 언어마다 독립된 부분이다.
+dbspec-stress-bench/%: RUN_DIR = $(abspath .runtime/run)/dbspec-stress-bench-$$PPID
+.PHONY: dbspec-stress-bench/prepare dbspec-stress-bench/go dbspec-stress-bench/php dbspec-stress-bench/php-introspect dbspec-stress-bench/typescript dbspec-stress-bench/rust
+dbspec-stress-bench: dbspec-stress-bench/go dbspec-stress-bench/php dbspec-stress-bench/php-introspect dbspec-stress-bench/typescript dbspec-stress-bench/rust
+	rm -rf $(RUN_DIR)
+dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
+dbspec-stress-bench/php: dbspec-stress-bench/prepare
 	php clients/php/tests/dbspec_stress_test.php
 	php clients/php/tests/dbspec_stress_test.php
+dbspec-stress-bench/php-introspect: dbspec-stress-bench/prepare
 	php clients/php/tests/dbspec_introspect_stress_test.php
+dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
+dbspec-stress-bench/rust: dbspec-stress-bench/prepare rust-fetch
 	$(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
-	rm -rf $(RUN_DIR)
 
-dbspec-rust-check: rust-fetch
+.PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup
+dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup
+dbspec-rust-check/documents: rust-fetch
 	cd clients/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+dbspec-rust-check/apply-cleanup: rust-fetch
 	cd clients/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
-rust-send-savepoint-check: rust-fetch
+# 부분의 실행 directory는 top target의 것이다($@에 /가 있으면 directory가 한 단계 더 생긴다).
+rust-send-savepoint-check/%: RUN_DIR = $(abspath .runtime/run)/rust-send-savepoint-check-$$PPID
+rust-send-savepoint-check: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
+.PHONY: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
+rust-send-savepoint-check/clippy: rust-fetch
 	$(RUN_LONG) rust-clippy/orm-lib --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
+rust-send-savepoint-check/test: rust-fetch
 	mkdir -p $(RUN_DIR)
 	$(WITH_TEST_ENV) cd clients/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
@@ -409,19 +436,27 @@ rust-send-savepoint-check: rust-fetch
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
 # 실행한다.
-dbspec-php-check:
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup
+.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup
+dbspec-php-check/documents:
 	php clients/php/tests/dbspec_test.php
 	php clients/php/tests/dbspec_test.php
+dbspec-php-check/rules:
 	php clients/php/tests/dbspec_rules_test.php
 	php clients/php/tests/dbspec_rules_test.php
+dbspec-php-check/manifest:
 	php clients/php/tests/dbspec_manifest_test.php
 	php clients/php/tests/dbspec_manifest_test.php
+dbspec-php-check/render:
 	php clients/php/tests/dbspec_render_test.php
 	php clients/php/tests/dbspec_render_test.php
+dbspec-php-check/plan:
 	php clients/php/tests/dbspec_plan_test.php
 	php clients/php/tests/dbspec_plan_test.php
+dbspec-php-check/mermaid:
 	php clients/php/tests/dbspec_mermaid_test.php
 	php clients/php/tests/dbspec_mermaid_test.php
+dbspec-php-check/apply-cleanup:
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 
@@ -576,11 +611,15 @@ conformance-counter-check:
 
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
-conformance-result-check: lease-tool
+conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go
+.PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go
+conformance-result-check/php:
+	php tests/conformance/result_php.php
+conformance-result-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	php tests/conformance/result_php.php
 	node --test tests/conformance/result_typescript.test.mjs
+conformance-result-check/go:
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
 
 conformance-result-physical-check: lease-tool
@@ -610,7 +649,12 @@ case-database-check: lease-tool
 # output을 vector 기대값과 비교하고, 그 실행의 output을 공통 state contract(contracts/interfaces.json의
 # sequences)와 비교한다. output은 이 실행의 RUN_DIR에만 쓰고 끝에 지우므로, 결과는 tree에만 달렸고 이전
 # 실행이 남긴 output을 읽지 않는다. interfaces checker는 Rust 추출기를 target lease 아래에서 build한다.
-conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check lease-tool
+# conformance-check의 부분은 서로 독립이다: counter, result, physical result 검사가 실패해도 conformance 실행(run)은
+# 실행된다(make -k).
+conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
+.PHONY: conformance-check/run
+conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
+conformance-check/run: lease-tool
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
 	$(WITH_TEST_ENV) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"

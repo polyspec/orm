@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciAfterCheckErrors, ciSetupErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { chainedCommandErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -1063,4 +1063,24 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
   assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
   const main = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, execFileSync('git', ['show', `main:.github/workflows/${name}`], { cwd: root, encoding: 'utf8' })]));
   assert.ok(ciSetupErrors(main, { setup: CI_SETUP, runner: RUNNER_STEPS }).length > 0, 'the workflows before G5.52 pass the setup rule');
+});
+
+// 독립 test case(G5.53)는 recipe 하나가 서로 다른 test나 lint 실행을 둘 이상 가지거나, 검증 명령이 `&&`로 test를 잇는
+// 곳을 오류로 본다. 같은 test의 두 번째 실행, compile만 하는 줄, 입력을 만드는 줄, 의존성 도구의 build는 test가 아니다.
+caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
+  const makefile = [
+    'GO_TEST = node tests/go-test.mjs -v -timeout 0',
+    'two:', "\t$(GO_TEST) ./a -count=1", '\tphp clients/php/tests/b_test.php',
+    'again:', '\tphp clients/php/tests/b_test.php', '\tphp clients/php/tests/b_test.php',
+    'built:', '\tnode tests/dbspec/stress.mjs > out.dbs', '\tgo test -c -o x ./engine', '\tnode clients/typescript/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
+    'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mjs) y -- cargo test -p orm',
+    'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp clients/php/tests/b_test.php',
+  ].join('\n');
+  assert.deepEqual(independentTestErrors(makefile).map(error => error.split(' runs ')[0]), ['Makefile two', 'Makefile linted']);
+  assert.deepEqual(chainedCommandErrors({ features: [{ id: 'f', verification: [{ id: 'chained', command: 'node clients/typescript/tests/a.mjs && node clients/typescript/tests/b.mjs' }, { id: 'built', command: 'npm run typescript:build && node clients/typescript/tests/a.mjs' }] }], helpers: [] }).map(error => error.split(' chains ')[0]),
+    ['contracts/features.json f/chained']);
+  const root = new URL('../..', import.meta.url).pathname;
+  assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
+  assert.deepEqual(chainedCommandErrors(JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'))), []);
+  assert.ok(independentTestErrors(execFileSync('git', ['show', 'main:Makefile'], { cwd: root, encoding: 'utf8' })).length > 0, 'the Makefile before G5.53 passes the rule');
 });
