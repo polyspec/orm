@@ -23,31 +23,49 @@ jobs:
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
+    # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
+    # installs, and runs whatever the earlier steps did (if: !cancelled()), so
+    # one failed install never hides another. make check runs after all of
+    # them and reads their results (ORM_CI_SETUP): a target that needs what a
+    # failed step installs is recorded as not-run with that step, and every
+    # other target runs. A failed step fails the job. The checkout and Node are
+    # what the runner itself needs.
     steps:
       # git-check reads history from the recorded subject-format baseline, so
       # the checkout must carry the full commit graph.
       - uses: actions/checkout@v5
+        id: checkout
         with:
           fetch-depth: 0
       - uses: actions/setup-go@v6
+        id: go
+        if: ${{ !cancelled() }}
         with: { go-version: "1.27" }
       # .node-version declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
       - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
         with:
           node-version-file: .node-version
           cache: npm
       - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
         run: |
           npm ci
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
       - name: Rust toolchain of rust-toolchain.toml
+        id: rust
+        if: ${{ !cancelled() }}
         # rustup installs the channel and components that rust-toolchain.toml
         # declares; every cargo and rustc run of the repository uses them.
         run: rustup toolchain install && rustc --version
       - uses: Swatinem/rust-cache@v2
+        id: rust-cache
+        if: ${{ !cancelled() }}
         with:
           workspaces: |
             clients/rust -> target
@@ -58,14 +76,19 @@ jobs:
         # of require.php in clients/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
+        if: ${{ !cancelled() }}
         run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
+        id: php-min-release
+        if: ${{ !cancelled() }}
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
           coverage: none
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
+        id: php
+        if: ${{ !cancelled() }}
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
@@ -73,14 +96,20 @@ jobs:
           # PHP does; Xdebug changes the ratios of the hot-path gate.
           coverage: none
       - name: PHP releases and their SQLite
+        id: php-sqlite
+        if: ${{ !cancelled() }}
         # Every client requires SQLite 3.46; PHP links the system SQLite of
         # the runner.
         run: |
           "$(./scripts/php/php-min.sh)" --version
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
+        id: composer
+        if: ${{ !cancelled() }}
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: programs of the database servers
+        id: server-programs
+        if: ${{ !cancelled() }}
         # make test-servers starts the servers of the database checks from these
         # programs, as it does locally: MySQL 8.4.11 from the Ubuntu packages,
         # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
@@ -108,10 +137,11 @@ jobs:
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment
-        # file .runtime/servers/env that the database checks read. A failure
-        # does not stop the job: make check records the targets that need the
-        # servers as not-run with this failure and runs every other target.
-        continue-on-error: true
+        # file .runtime/servers/env that the database checks read. make check
+        # records the targets that need the servers as not-run with this failure
+        # and runs every other target.
+        id: servers
+        if: ${{ !cancelled() }}
         run: make test-servers
       - name: make check
         # The targets of CHECK_TARGETS through the runner of the local checks,
@@ -121,8 +151,10 @@ jobs:
         # target runs unless a setup step it needs failed, and the step fails
         # when a target failed or did not run. The report of the run is
         # .runtime/check/ci_<run id>_<attempt>/report.
+        if: ${{ !cancelled() }}
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ORM_CI_SETUP: ${{ toJSON(steps) }}
         run: make check
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
@@ -130,12 +162,12 @@ jobs:
       # collected. make repo-check allows exactly these two steps after make
       # check.
       - name: summary
-        if: always()
+        if: ${{ !cancelled() }}
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: node scripts/check/summary.mjs
       - name: report
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: check-${{ github.run_id }}-${{ github.run_attempt }}

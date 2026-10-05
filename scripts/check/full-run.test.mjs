@@ -55,6 +55,8 @@ const space = process.env.STUB_SUITE === 'space';
 // 보고서 밖의 debug log(STUB_NPM_LOG)만 가리키고 실패하는 suite다(G5.44).
 const diskio = process.env.STUB_SUITE?.startsWith('diskio-');
 const npm = process.env.STUB_SUITE === 'npm';
+// STUB_SUITE=cisetup은 CI setup step rust가 실패한 실행이다(G5.52): a는 rust가, c는 go가 필요하고 b는 아무것도 필요하지 않다.
+const cisetup = process.env.STUB_SUITE === 'cisetup';
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
@@ -101,16 +103,16 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
-const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
+const needs = cisetup ? { a: ['rust'], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
 // 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
 const removed = '## files under /tmp that were removed but are still open (lsof +L1)\\nCOMMAND PID USER FD TYPE DEVICE SIZE/OFF NLINK NODE NAME\\nmysqld 10079 runner 2w REG 0,38 6493765632 0 3807 /tmp/orm-binlog-AHN00Q/mysqld.log (deleted)\\n';
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot });
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : '' });
 `;
 
 function checkout(t, checklist) {
@@ -713,3 +715,24 @@ caseTest('a failed npm command keeps its debug log and its error lines in the re
     cleanup();
   }
 });
+
+// CI setup case(G5.52)는 CI setup step rust가 실패한 실행이다. runner는 setup 단계 ci/rust를 실패로 기록하고, rust가
+// 필요한 a를 그 step과 함께 not-run으로 기록하며, 나머지 b와 c는 실행한다. 실패해도 target에 필요 없는 step(rust-cache)은
+// 기록하지 않는다.
+caseTest('a failed CI setup step marks the targets that need it not-run and runs every other target', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'cisetup', ORM_CHECK_RUN_ID: '14-1' }).status, 1);
+    const record = c.record();
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name]) => name.startsWith('ci/')), [['ci/rust', 'failed']]);
+    const a = record.targets.find(target => target.name === 'a');
+    assert.equal(a.status, 'not-run');
+    assert.match(a.reason, /^the CI setup step rust failed; its output is in the job log of that step/);
+    assert.deepEqual(record.targets.filter(target => target.name !== 'a').map(({ name, status }) => [name, status]), [['b', 'passed'], ['c', 'passed']]);
+    const ran = c.ran();
+    assert.ok(ran.includes('b') && ran.includes('c') && !ran.includes('a'), ran.join(' '));
+  } finally {
+    cleanup();
+  }
+});
+

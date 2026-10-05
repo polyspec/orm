@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { runGroup, stepLines } from '../../tests/testcase.mjs';
 import { makeRecipes } from '../repo/testcases.mjs';
+import { NEEDS } from '../check/ci-setup.mjs';
 
 // fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
 const pathPattern = /(?:contracts|tests|schema|clients|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
@@ -243,8 +244,8 @@ export function checkInputErrors(declared, targets, tracked) {
     if (!targets.includes(target)) errors.push(`contracts/check-inputs.json declares ${target}, which is not in CHECK_TARGETS`);
     // needs는 target이 필요한 setup 단계다. runner(scripts/check/run.mjs)는 그 단계가 실패하면 target을 not-run으로 기록한다.
     const needs = declaration?.needs;
-    if (!Array.isArray(needs)) errors.push(`contracts/check-inputs.json declares no needs of ${target}; declare [] or ["databases"]`);
-    else for (const need of needs) if (need !== 'databases') errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which is no setup step; the setup step is databases`);
+    if (!Array.isArray(needs)) errors.push(`contracts/check-inputs.json declares no needs of ${target}; declare [] or the setup it needs (${NEEDS.join(', ')})`);
+    else for (const need of needs) if (!NEEDS.includes(need)) errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which no setup step provides; the needs are ${NEEDS.join(', ')}`);
     const globs = declaration?.inputs;
     if (declaration?.scope === 'suite' && globs !== undefined)
       errors.push(`contracts/check-inputs.json: suite target ${target} declares inputs, which owner-check never reads`);

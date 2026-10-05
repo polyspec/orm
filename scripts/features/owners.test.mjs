@@ -163,11 +163,12 @@ caseTest('a target without a scope declaration fails the selection', 5000, async
   ]);
 });
 
-// needs case(G5.38-1)는 setup 단계 선언을 검사한다: 모든 target이 needs를 선언하고, 그 값은 setup 단계 databases다.
+// needs case(G5.38-1, G5.52)는 setup 단계 선언을 검사한다: 모든 target이 needs를 선언하고, 그 값은 setup 단계 databases나
+// CI setup step이 마련하는 것(scripts/check/ci-setup.mjs)이다.
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ a: { scope: 'suite' }, b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['a', 'b', 'c'], []), [
-    'contracts/check-inputs.json declares no needs of a; declare [] or ["databases"]',
-    'contracts/check-inputs.json: b needs servers, which is no setup step; the setup step is databases',
+    'contracts/check-inputs.json declares no needs of a; declare [] or the setup it needs (databases, go, node-modules, rust, php-min, php, composer, server-programs)',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, go, node-modules, rust, php-min, php, composer, server-programs',
   ]);
 });
 
