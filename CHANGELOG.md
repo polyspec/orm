@@ -16,7 +16,7 @@
 
 - G5.32-5: the Go PostgreSQL client prepares a statement text once per connection again (pgx statement cache), since the exec query mode of G5.32-1 made the steady state of a pool 24 to 44 % slower; pooled clients prepare once per connection and reuse, and only PHP sends each statement in one round trip.
 
-- G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-4).
+- G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-7, G5.33-10).
 
 - G5.33-4: the SQLite file of `rust-send-savepoint-check` and the Go test binary of `timing-check` live in the run directory, and every make target that builds the TypeScript client holds its build output as the only holder.
 
@@ -40,7 +40,7 @@
 
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
 
-- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-13).
+- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-14).
 
 - G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
 
