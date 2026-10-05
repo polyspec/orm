@@ -75,8 +75,8 @@ Rust 연결에서 `aes_version`은 양수여야 한다. 선언한 모든 키 버
 callback의 Box 할당 객체를 빌릴 필요는 없다. 소유 테스트가 세 DB 엔진에서
 Send future와 중첩 commit/rollback을 보존해야 한다.
 `make rust-send-savepoint-check`는 선언한 테스트 환경에서 소유 lint와 동작을
-검사하며 사용자의 데이터베이스를 사용하지 않는다. 공통 Make 테스트 환경이
-SEND_SQLITE_DSN에서 ORM_SEND_SQLITE_DSN을 선언한다. 직접 Cargo를 실행할 때는
+검사하며 사용자의 데이터베이스를 사용하지 않는다. make target은 자기 실행
+directory의 SQLite file(SEND_SQLITE_DSN)을 ORM_SEND_SQLITE_DSN으로 준다. 직접 Cargo를 실행할 때는
 MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테이블은 연결
 전용 임시 테이블이며 연결 종료 시 제거된다.
 

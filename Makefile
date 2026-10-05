@@ -12,7 +12,6 @@ TEST_POSTGRES_REPLICA_PORT = 55481
 TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
-SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
 # DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
 # 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
 # 실행마다 자기 database와 file을 만들어(scripts/check/databases.sh) 이 변수와 TEST_ENV로 준다. bench
@@ -48,7 +47,7 @@ export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
 # WITH_TEST_ENV는 또 이 줄의 shell이 끝날 때까지 server의 shared lease(tests/lease)를 가진다. lease
 # directory는 TEST_ENV의 ORM_TEST_SERVERS_LEASES다. 서버의 정지, 새 시작, MySQL migration은 exclusive
 # lease를 요구하므로 이 줄이 실행되는 동안 거부되고, 보유자로 이 줄을 적는다.
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ &&
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
@@ -77,6 +76,13 @@ CARGO_LEASED = $(LEASE) run $(CARGO_LEASES) exclusive --wait --
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
 CARGO_COPY = $(CARGO_LEASED) sh $(abspath scripts/cargo-build-copy.sh) $(RUN_TARGET)
+# HOLD_TYPESCRIPT은 이 checkout의 TypeScript build 출력(clients/typescript의 dist와 생성한 model)을 make
+# process가 끝날 때까지 하나의 보유자로 가진다. 그 출력을 build하고 쓰는 target은 첫 줄에서 그것을 얻으므로,
+# 다른 실행의 build가 쓰는 도중의 출력을 바꾸지 않는다. 다른 실행이 가지면 directory 변경 알림을 기다린다.
+TYPESCRIPT_LEASES = $(abspath .runtime/typescript.leases)
+HOLD_TYPESCRIPT = $(LEASE) hold $(TYPESCRIPT_LEASES) exclusive --wait --pid $$PPID
+# SEND_SQLITE_DSN은 rust-send-savepoint-check의 SQLite file이다. 실행 하나의 RUN_DIR에 둔다.
+SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 
 .PHONY: lease-tool
 lease-tool:
@@ -131,7 +137,8 @@ testcase-check: rust-fetch
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
-client-pooler-check:
+client-pooler-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" ./scripts/client-db-test.sh
 
 checklist-check:
@@ -173,7 +180,8 @@ dbspec-introspect-check:
 # dbspec-introspect-ts-check는 TypeScript client를 build하고 dbspec-introspect-check의 round
 # trip과 미지원 case를 그 introspectDbspec으로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-introspect-ts-check
-dbspec-introspect-ts-check:
+dbspec-introspect-ts-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-introspect.mjs
 
@@ -218,7 +226,8 @@ dbspec-apply-stress-bench:
 # plan을 둘째 client가 recover로 마치며, 다시 멈춘 plan을 둘째 client가 rollback한다. history
 # row와 introspect한 schema text가 chain의 것과 같아야 한다.
 .PHONY: dbspec-apply-pairs-check
-dbspec-apply-pairs-check: rust-fetch
+dbspec-apply-pairs-check: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
@@ -234,14 +243,16 @@ dbspec-apply-rust-check: rust-fetch
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
 # 그 renderDbspec, planSteps, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
 .PHONY: dbspec-plan-ts-check
-dbspec-plan-ts-check:
+dbspec-plan-ts-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-plan-physical.mjs
 
 # dbspec-apply-ts-check는 TypeScript client를 build하고 2000 table plan을 뺀 dbspec-apply-check의
 # scenario를 그 applyPlans, recoverPlans, rollbackPlans, finalizePlans로 실행한다.
 .PHONY: dbspec-apply-ts-check
-dbspec-apply-ts-check:
+dbspec-apply-ts-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-apply-physical.mjs
 
@@ -270,7 +281,8 @@ dbspec-apply-php-check:
 # introspection의 budget 준수를 요구한다. dbspec-introspect-compare-bench는 같은 target을 2000
 # table 문서와 release runner로 실행한다.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
-dbspec-introspect-compare-check: rust-fetch
+dbspec-introspect-compare-check: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
 	$(TSC_BUILD)
@@ -289,7 +301,8 @@ dbspec-introspect-compare-bench:
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
 # 문서로 실행한다.
 .PHONY: dbspec-compare-check dbspec-compare-bench
-dbspec-compare-check: rust-fetch
+dbspec-compare-check: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	node --test tests/dbspec/compare/check.test.mjs
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
@@ -308,7 +321,8 @@ dbspec-compare-bench:
 # emit해 parse 시간 budget(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
 # emission이 같음을 확인하고(Rust는 release build), PHP introspection을 SQLite에서 잰다.
 .PHONY: dbspec-stress-bench
-dbspec-stress-bench: rust-fetch
+dbspec-stress-bench: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
@@ -336,8 +350,10 @@ dbspec-rust-check: rust-fetch
 rust-send-savepoint-check: rust-fetch
 	$(RUN_LONG) rust-clippy/orm-lib --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
 	$(RUN_LONG) rust-build/rust-send-savepoint-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm --lib tx::send_tests::
-	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
-	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
+	mkdir -p $(RUN_DIR)
+	$(WITH_TEST_ENV) cd clients/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
+	$(WITH_TEST_ENV) cd clients/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
+	rm -rf $(RUN_DIR)
 
 .PHONY: dbspec-php-check
 # dbspec-php-check는 공유 dbspec vector, PHP rule, tests/dbspec/ddl.json의 statement vector,
@@ -431,7 +447,8 @@ feature-unit-check:
 	node --test scripts/features/coverage.test.mjs
 	node --test scripts/features/owners.test.mjs
 
-feature-check:
+feature-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
@@ -467,7 +484,8 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- ./scripts/php-without-mysql.sh
 
-client-db-check:
+client-db-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel ./scripts/client-db-test.sh
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
@@ -482,7 +500,8 @@ conformance-counter-check:
 
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
-conformance-result-check:
+conformance-result-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	php tests/conformance/result_php.php
 	node --test tests/conformance/result_typescript.test.mjs
@@ -504,6 +523,7 @@ unselected-column-physical-check:
 # case를 실행하고, case가 통과하며 공유 database와 PostgreSQL schema를 바꾸지 않고 자기
 # `orm_case_` database와 `orm-case-` SQLite file을 남기지 않는지 확인한다(T25).
 case-database-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd clients/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p orm-tests --bin integration
 	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
@@ -528,27 +548,31 @@ go-model-check:
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
 # or when the committed src/models/models.ts differs from its output.
-ts-model-check:
+ts-model-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/models-scan.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
-ts-check:
+ts-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-check -- npm run typescript:check
 	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
 # package.json supports.
-ts-min-check:
+ts-min-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, plan vector, Mermaid
 # vector, apply 정리 error, 그것들이 아직 다루지 않는 rule을 실행한다. stress 문서는 make bench가
 # 실행한다.
 .PHONY: dbspec-ts-check
-dbspec-ts-check:
+dbspec-ts-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec.mjs clients/typescript/tests/dbspec-rules.mjs clients/typescript/tests/dbspec-render.mjs clients/typescript/tests/dbspec-plan.mjs clients/typescript/tests/dbspec-mermaid.mjs clients/typescript/tests/dbspec-apply-cleanup.mjs
 
@@ -634,8 +658,9 @@ example-check: rust-fetch
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
 # 2000 table stress 문서의 parse budget을 쓰므로 make bench가 실행한다.
-TIMING_GO_DBSPEC_TEST = .runtime/timing/dbspec.test
-timing-check: rust-fetch
+TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
+timing-check: rust-fetch lease-tool
+	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	$(RUN_LONG) go-build/dbspec-test -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
@@ -645,7 +670,8 @@ timing-check: rust-fetch
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
 	rm -rf $(RUN_DIR)
 
-typescript-build:
+typescript-build: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 
 git-check:
