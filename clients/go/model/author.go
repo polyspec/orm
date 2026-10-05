@@ -522,6 +522,23 @@ func (x *AuthorModel) And(args ...any) *AuthorModel { return x.connector("and", 
 // places the conditions of a joined model.
 func (x *AuthorModel) Or(args ...any) *AuthorModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *AuthorModel) Not(fn func(*AuthorModel)) *AuthorModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *AuthorModel) AndNot(fn func(*AuthorModel)) *AuthorModel { return x.negated("and", fn) }
+
+// OrNot opens a negated group joined with OR.
+func (x *AuthorModel) OrNot(fn func(*AuthorModel)) *AuthorModel { return x.negated("or", fn) }
+
+func (x *AuthorModel) negated(conn string, fn func(*AuthorModel)) *AuthorModel {
+	g := authorEntity.New(x.m.Group()).(*AuthorModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *AuthorModel) connector(conn string, args []any) *AuthorModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*AuthorModel)); ok {
@@ -2199,6 +2216,11 @@ func (x *AuthorModel) LeftJoinUserSeqWithSeq[C hasSeq](child C) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) LtReadCount[T0 argIntCmp](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorLtReadCount, v0)
+	return x
+}
+
 func (x *AuthorModel) MatchSeqWithUserSeq() *AuthorModel { x.m.Match("seq", "user_seq"); return x }
 
 func (x *AuthorModel) Name[T0 argStringEq](v0 T0) *AuthorModel {
@@ -2212,6 +2234,11 @@ func (x *AuthorModel) NePhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
 }
 
 func (x *AuthorModel) NewLabel(v any) *AuthorModel { x.m.New("label", v); return x }
+
+func (x *AuthorModel) OrGtReadCount[T0 argIntCmp](v0 T0) *AuthorModel {
+	x.m.Where("or", chainAuthorOrGtReadCount, v0)
+	return x
+}
 
 func (x *AuthorModel) OrIsClose[T0 argBoolEq](v0 T0) *AuthorModel {
 	x.m.Where("or", chainAuthorOrIsClose, v0)
@@ -2326,9 +2353,13 @@ var chainAuthorIsClose = []orm.ChainKey{{Column: "is_close"}}
 
 var chainAuthorIsDisplay = []orm.ChainKey{{Column: "is_display"}}
 
+var chainAuthorLtReadCount = []orm.ChainKey{{Op: "lt", Column: "read_count"}}
+
 var chainAuthorName = []orm.ChainKey{{Column: "name"}}
 
 var chainAuthorNePhotoUrl = []orm.ChainKey{{Op: "ne", Column: "photo_url"}}
+
+var chainAuthorOrGtReadCount = []orm.ChainKey{{Op: "gt", Column: "read_count"}}
 
 var chainAuthorOrIsClose = []orm.ChainKey{{Column: "is_close"}}
 

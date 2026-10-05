@@ -51,4 +51,6 @@ await runCases('coverage_planner.mjs', {
   async planner_bind_types_update() { compileCase('planner_bind_types_update'); },
   async planner_bind_types_insert() { compileCase('planner_bind_types_insert'); },
   async planner_parent_key_types() { compileCase('planner_parent_key_types'); },
+  async planner_not_group() { compileCase('planner_not_group'); },
+  async planner_rejects_top_not() { compileCase('planner_rejects_top_not'); },
 }, 60_000);

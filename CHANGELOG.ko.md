@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-7: 부정 조건 묶음 `not(fn)`, `andNot(fn)`, `orNot(fn)`은 네 client에서 `NOT (…)`로 렌더링되고, docs/dsl.md가 쿼리 식 문법과 dbspec `check` 문법과의 관계를 적는다.
+
 - G5.33-9: Rust test는 실행하는 package program의 경로를 target lease 아래에서 만든 복사본의 `ORM_PROGRAM_<NAME>`으로 받고(`orm_testcase::program`), `make repo-check`는 `env!("CARGO_BIN_EXE_...")`를 실패시킨다.
 
 - G5.33-8: conformance와 interface checker는 Rust program을 target lease 아래에서 build하고 복사본을 실행하며, `scripts/check/run.mjs`는 받은 target directory를 하위 make에 넘긴다.

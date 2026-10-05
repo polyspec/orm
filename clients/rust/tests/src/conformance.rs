@@ -378,6 +378,12 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq().unwrap(), int(r.get_doubled().expect("doubled"))])).collect();
         Ok::<Value, orm::Error>(json!({"count": count, "rows": rows}))
     });
+    run!("expression_forms", async {
+        let count = author().service_seq(7).and_not(|q: Author| q.is_close(true).or_gt_read_count(500)).get_count().await?;
+        let rows = author().not(|q: Author| q.is_display(false)).and_service_seq(7).order_by_seq_desc().limit(0, 3).gets().await?;
+        let or_count = author().service_seq(7).or_not(|q: Author| q.lt_read_count(990)).get_count().await?;
+        Ok::<Value, orm::Error>(json!({"count": count, "rows": picks(&rows, &["seq", "is_display"]), "or_count": or_count}))
+    });
     run!("columns", async {
         let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
         let added = author().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;

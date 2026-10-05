@@ -85,6 +85,23 @@ func (x *UserModel) And(args ...any) *UserModel { return x.connector("and", args
 // places the conditions of a joined model.
 func (x *UserModel) Or(args ...any) *UserModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *UserModel) Not(fn func(*UserModel)) *UserModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *UserModel) AndNot(fn func(*UserModel)) *UserModel { return x.negated("and", fn) }
+
+// OrNot opens a negated group joined with OR.
+func (x *UserModel) OrNot(fn func(*UserModel)) *UserModel { return x.negated("or", fn) }
+
+func (x *UserModel) negated(conn string, fn func(*UserModel)) *UserModel {
+	g := userEntity.New(x.m.Group()).(*UserModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *UserModel) connector(conn string, args []any) *UserModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*UserModel)); ok {

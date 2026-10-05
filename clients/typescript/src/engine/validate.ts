@@ -115,6 +115,7 @@ class Validator {
       this.query(j.query, true, false);
     }
     if (!isJoin && q.on) fail('IR_INVALID', 'on[] is only valid on join children');
+    if (q.on?.not || q.where?.not) fail('IR_INVALID', 'not applies to a nested group');
     if (q.on) this.group(ent, q.on, joined);
     if (q.where) {
       this.group(ent, q.where, joined);

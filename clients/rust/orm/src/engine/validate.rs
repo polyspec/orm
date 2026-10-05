@@ -225,6 +225,9 @@ impl<'m> Validator<'m> {
         if !is_join && q.on.is_some() {
             return Err(err(codes::IR_INVALID, "on[] is only valid on join children"));
         }
+        if q.on.as_ref().is_some_and(|g| g.not) || q.where_.as_ref().is_some_and(|g| g.not) {
+            return Err(err(codes::IR_INVALID, "not applies to a nested group"));
+        }
         if let Some(on) = &q.on {
             self.group(ent, on, &joined)?;
         }

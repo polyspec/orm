@@ -76,6 +76,7 @@ const RESERVED_PREFIXES: &[&str] = &[
 const RESERVED_COLUMNS: &[&str] = &[
     "and",
     "or",
+    "not",
     "get",
     "gets",
     "gets_page",

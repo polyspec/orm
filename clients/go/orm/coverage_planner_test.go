@@ -162,3 +162,15 @@ func TestCoveragePlannerParentKeyTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_parent_key_types")
 }
+
+// TestCoveragePlannerNotGroup는 select의 NOT group이 그 조건을 괄호와 함께 부정하는지 확인한다.
+func TestCoveragePlannerNotGroup(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_not_group")
+}
+
+// TestCoveragePlannerRejectsTopNot는 top-level where group의 not이 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsTopNot(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_top_not")
+}

@@ -58,6 +58,12 @@ export abstract class Model implements ModelLike {
   public and(arg?: ((q: this) => unknown) | Model): this { this[CORE].connector('and', arg === undefined ? [] : [arg]); return this; }
   /** Joins the next condition with OR, opens an OR group, or places a joined model's conditions. */
   public or(arg?: ((q: this) => unknown) | Model): this { this[CORE].connector('or', arg === undefined ? [] : [arg]); return this; }
+  /** A negated group, NOT (…), as the first condition or after a connector written as a separate call. */
+  public not(fn: (q: this) => unknown): this { this[CORE].negated('', fn as (m: ModelLike) => unknown); return this; }
+  /** A negated group joined with AND. */
+  public andNot(fn: (q: this) => unknown): this { this[CORE].negated('and', fn as (m: ModelLike) => unknown); return this; }
+  /** A negated group joined with OR. */
+  public orNot(fn: (q: this) => unknown): this { this[CORE].negated('or', fn as (m: ModelLike) => unknown); return this; }
   public raw(sql: string, ...binds: unknown[]): this { this[CORE].raw('', sql, binds); return this; }
   public andRaw(sql: string, ...binds: unknown[]): this { this[CORE].raw('and', sql, binds); return this; }
   public orRaw(sql: string, ...binds: unknown[]): this { this[CORE].raw('or', sql, binds); return this; }

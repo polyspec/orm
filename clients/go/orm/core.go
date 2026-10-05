@@ -53,6 +53,8 @@ type condNode struct {
 type condGroup struct {
 	items   []condNode
 	pending string
+	// not은 group 전체를 부정한다(not(fn), andNot(fn), orNot(fn)).
+	not bool
 }
 
 type predSpec struct {
@@ -298,18 +300,28 @@ func (c *Core) Connector(conn string, args []any) {
 }
 
 // AddGroup appends the conditions collected by a group callback.
-func (c *Core) AddGroup(conn string, g *Core) {
+func (c *Core) AddGroup(conn string, g *Core) { c.addGroup(conn, g, false) }
+
+// AddNegatedGroup appends the conditions collected by a group callback as
+// one negated group: NOT (…).
+func (c *Core) AddNegatedGroup(conn string, g *Core) { c.addGroup(conn, g, true) }
+
+func (c *Core) addGroup(conn string, g *Core, not bool) {
 	c.ensureStatement()
 	c.failErr(g.err)
+	name := conn
+	if not {
+		name += " not"
+	}
 	if len(g.where.items) == 0 {
-		c.fail("%s group callback added no condition", conn)
+		c.fail("%s group callback added no condition", name)
 		return
 	}
 	if g.where.pending != "" {
 		c.fail("connector %s without a following condition", g.where.pending)
 		return
 	}
-	c.group().add(c, conn, condNode{group: &condGroup{items: g.where.items}})
+	c.group().add(c, conn, condNode{group: &condGroup{items: g.where.items, not: not}})
 }
 
 // On sets the join ON conditions from a callback group.

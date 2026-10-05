@@ -54,7 +54,8 @@ pub(crate) struct CondNode {
 #[derive(Clone)]
 pub(crate) enum CondKind {
     Pred(PredSpec),
-    Group(Vec<CondNode>),
+    /// A group of conditions; the flag negates the group as a whole: NOT (…).
+    Group(Vec<CondNode>, bool),
     Joined(u64),
     Raw(RawSpec),
 }
@@ -355,18 +356,29 @@ impl Core {
 
     /// Appends the conditions collected by a group callback.
     pub fn add_group(&mut self, conn: &'static str, g: Core) {
+        self.add_group_as(conn, g, false);
+    }
+
+    /// Appends the conditions collected by a group callback as one negated
+    /// group: NOT (…). `conn` is empty for the first condition.
+    pub fn add_negated_group(&mut self, conn: &'static str, g: Core) {
+        self.add_group_as(conn, g, true);
+    }
+
+    fn add_group_as(&mut self, conn: &'static str, g: Core, not: bool) {
         if let Some(e) = g.err() {
             self.fail_err(e);
         }
         if g.where_.items.is_empty() {
-            self.fail(format!("{conn} group callback added no condition"));
+            let name = if not { format!("{conn} not") } else { conn.to_owned() };
+            self.fail(format!("{} group callback added no condition", name.trim()));
             return;
         }
         if !g.where_.pending.is_empty() {
             self.fail(format!("connector {} without a following condition", g.where_.pending));
             return;
         }
-        self.add(conn, CondKind::Group(g.where_.items));
+        self.add(conn, CondKind::Group(g.where_.items, not));
     }
 
     /// Sets the join ON conditions from a callback group.

@@ -61,4 +61,6 @@ runCoverageCases($argv, [
     'planner_bind_types_update' => fn() => plannerCase($root, $fixture, 'planner_bind_types_update'),
     'planner_bind_types_insert' => fn() => plannerCase($root, $fixture, 'planner_bind_types_insert'),
     'planner_parent_key_types' => fn() => plannerCase($root, $fixture, 'planner_parent_key_types'),
+    'planner_not_group' => fn() => plannerCase($root, $fixture, 'planner_not_group'),
+    'planner_rejects_top_not' => fn() => plannerCase($root, $fixture, 'planner_rejects_top_not'),
 ]);

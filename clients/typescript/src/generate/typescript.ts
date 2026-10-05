@@ -59,7 +59,7 @@ function tsField(c: Column): string {
   return c.nullable ? `${t} | null` : t;
 }
 
-const baseMethods = ['connect', 'and', 'or', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations', 'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw',
+const baseMethods = ['connect', 'and', 'or', 'not', 'andNot', 'orNot', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations', 'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw',
   'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit', 'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait',
   'forShareNoWait', 'duplication', 'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
   'save', 'delete', 'restore', 'toArray', 'toJSON', 'toJSONText', 'constructor'];

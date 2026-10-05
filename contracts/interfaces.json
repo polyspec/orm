@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:2f39636a1f5d0a197059c65701953fd5915375138cf270bc5f9246270e5cf53c",
-    "php": "sha256:4ba01915cc33716604904c4a435d7e31d66801091fe1a4787fd8119601eef986",
-    "rust": "sha256:c2b4b76d50e68256420f75bb3ec2f947b6879ed6df570890d54e5ec2163d3ec2",
-    "typescript": "sha256:e290c9a1f297100008df5a976a02e3c0e9a80467b24e29d18cd18057ae0439a7"
+    "go": "sha256:a95335962fe3712b60df733abac50483e80ad4bae117166529a5838277d6896c",
+    "php": "sha256:0acf93b471d82cca83f01004df0457121b0fd6d4fc1fdfca06dec0b4b755d343",
+    "rust": "sha256:2a3e189c649a349fcea04795972dab683f466cd060cbb6b89420ffba87d47785",
+    "typescript": "sha256:d5692cf813e651c33fefccde9478ee5a32b9a98946ac7f29e1f18cc7130d5568"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -2066,10 +2066,12 @@
       },
       "fields": {
         "conn": "text",
+        "not": "bool",
         "items": "list<IRItem>"
       },
       "optional": [
-        "conn"
+        "conn",
+        "not"
       ]
     },
     {

@@ -310,9 +310,10 @@ fn group(r: &mut Req, items: &[CondNode], owner: &Core, f: &mut Frame<'_>) -> Op
                 let e = raw_expr(r, raw);
                 ir::Item::Pred { pred: Box::new(ir::Pred { conn: node.conn.to_owned(), expr: e.sql, ps: e.ps, ..Default::default() }) }
             }
-            CondKind::Group(items) => {
+            CondKind::Group(items, not) => {
                 let mut g = group(r, items, owner, f)?;
                 g.conn = node.conn.to_owned();
+                g.not = *not;
                 ir::Item::Group { group: g }
             }
             CondKind::Joined(id) => {

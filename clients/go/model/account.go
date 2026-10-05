@@ -84,6 +84,23 @@ func (x *AccountModel) And(args ...any) *AccountModel { return x.connector("and"
 // places the conditions of a joined model.
 func (x *AccountModel) Or(args ...any) *AccountModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *AccountModel) Not(fn func(*AccountModel)) *AccountModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *AccountModel) AndNot(fn func(*AccountModel)) *AccountModel { return x.negated("and", fn) }
+
+// OrNot opens a negated group joined with OR.
+func (x *AccountModel) OrNot(fn func(*AccountModel)) *AccountModel { return x.negated("or", fn) }
+
+func (x *AccountModel) negated(conn string, fn func(*AccountModel)) *AccountModel {
+	g := accountEntity.New(x.m.Group()).(*AccountModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *AccountModel) connector(conn string, args []any) *AccountModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*AccountModel)); ok {

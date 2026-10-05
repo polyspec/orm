@@ -202,6 +202,12 @@ async function main() {
       .orderByRaw('{seq} DESC').gets();
     return { count, rows: rows.values().map(r => [r.getSeq(), derivedInteger(r.getDoubled())]) };
   });
+  await run('expression_forms', async () => {
+    const count = await author().serviceSeq(7).andNot(q => q.isClose(true).orGtReadCount(500)).getCount();
+    const rows = await author().not(q => q.isDisplay(false)).andServiceSeq(7).orderBySeqDesc().limit(0, 3).gets();
+    const orCount = await author().serviceSeq(7).orNot(q => q.ltReadCount(990)).getCount();
+    return { count, rows: picks(rows, 'seq', 'is_display'), or_count: orCount };
+  });
   await run('columns', async () => {
     const none = await new Service().connect(db).removeAllColumns().getBySeq(7);
     const added = await author().removeAllColumns().addColumnName().addColumnReadCountAliasReadText("CONCAT('r', %s)").getBySeq(42);

@@ -20,7 +20,7 @@ ORM은 Go·PHP·Rust·TypeScript에서 하나의 모델 기반 쿼리 문법을 
 | 영역 | 문법 |
 |---|---|
 | 연결 | 모델 생성 후 `connect(connection)`, 조회한 행·컬렉션의 연결 변경도 같은 `connect` 사용 |
-| 조건 | 첫 조건 `<Chain>`, 이후 `and<Chain>` 또는 `or<Chain>`, 연결자 `and()`·`or()`, 묶음 `and(fn)`·`or(fn)`, 연산자 접두어 `Gt Lt Ge Le Eq Ne Lk Lb Between Fulltext FulltextBoolean`, `<ColA>With<ColB>(model)` |
+| 조건 | 첫 조건 `<Chain>`, 이후 `and<Chain>` 또는 `or<Chain>`, 연결자 `and()`·`or()`, 묶음 `and(fn)`·`or(fn)`, 부정 묶음 `not(fn)`·`andNot(fn)`·`orNot(fn)`, 연산자 접두어 `Gt Lt Ge Le Eq Ne Lk Lb Between Fulltext FulltextBoolean`, `<ColA>With<ColB>(model)` |
 | 조회 | `get`, `gets`, `getBy<Chain>`, `getsBy<Chain>`, `getCount`, `getCountBy<Chain>`, `getsCount`, `sum<Col>`와 `getSum`, `avg<Col>`와 `getAvg`, `keyName<Col>`, `fetchKey`, `fetchValue` |
 | 컬럼 | `addColumn<Col>`, `removeColumn<Col>`, `removeAllColumns`, `addAllColumns`, `forceIndex<Name>` |
 | 관계·조인 | `relation`, `relations`, `match<L>With<R>`, `alias<Name>`, `parentNode`, `possible<Col>`, `groupLimit`, `deleteLock`, `join<L>With<R>`, `leftJoin<L>With<R>`, `on(fn)` |
@@ -72,7 +72,7 @@ ORM은 Go·PHP·Rust·TypeScript에서 하나의 모델 기반 쿼리 문법을 
 
 - 첫 조건에는 접두어가 없다. 이후 조건은 `and<Chain>`, `or<Chain>`, 또는 연결자 `and()`·`or()` 다음의 `<Chain>`을 사용한다. 연결자 누락, 묶음 시작 위치의 연결자, 뒤따르는 조건이 없는 연결자는 `CONFIG`를 반환한다.
 - `<Chain>`은 `And`, `Or`, 연산자 접두어, `<ColA>With<ColB>`를 포함한 모든 컬럼 조합을 허용한다. 인자는 키 순서를 따른다. 같은 체인을 `getBy`, `getsBy`, `getCountBy`, `getsCountBy` 뒤에도 사용할 수 있다.
-- 묶음은 `and(fn)`과 `or(fn)`만 사용한다. 콜백은 같은 타입의 빈 모델을 받으며 조건 메서드만 허용한다. 콜백 안의 종단 작업이나 쓰기는 `CONFIG`를 반환한다.
+- 묶음은 `and(fn)`과 `or(fn)`을, 부정 묶음은 `not(fn)`, `andNot(fn)`, `orNot(fn)`을 사용한다. 콜백은 같은 타입의 빈 모델을 받으며 조건 메서드만 허용한다. 콜백 안의 종단 작업이나 쓰기는 `CONFIG`를 반환한다.
 - PHP는 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드만 생성한다. 생성기는 그 소스를 읽어 각 체인을 해석하고 스키마와 대조한 뒤 해당 메서드만 작성한다.
 
 ```go

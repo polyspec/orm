@@ -39,6 +39,7 @@
 | `and<Chain>(…)`, `or<Chain>(…)` | `AND` 또는 `OR`로 연결한 조건 |
 | `and()`, `or()` 다음의 `<Chain>(…)` | 같은 연결을 별도 호출로 작성한 형태 |
 | `and(fn)`, `or(fn)` | `AND` 또는 `OR`로 연결한 괄호 묶음 |
+| `not(fn)`, `andNot(fn)`, `orNot(fn)` | 첫 조건이거나 `AND` 또는 `OR`로 연결한 부정 묶음 `NOT (…)` |
 | `and(model)`, `or(model)` | 조인한 모델에 설정한 조건의 괄호 묶음 |
 | `raw(sql, binds)`, `andRaw(sql, binds)`, `orRaw(sql, binds)` | 첫 조건 또는 이후 조건인 원시 조건 |
 
@@ -47,6 +48,18 @@
 - 묶음 콜백은 같은 타입의 빈 모델을 받는다. 콜백은 조건 메서드만 허용하며 콜백 안의 종단 작업·쓰기·`connect`는 `CONFIG`를 반환한다.
 - 괄호는 묶음으로만 작성한다.
 - 원시 SQL은 호출한 모델의 컬럼을 `{column}`으로 참조하며 ORM이 모델 별칭을 붙여 출력한다. 값 위치 표시는 `?`만 사용하고 개수가 바인드 개수와 다르면 `IR_INVALID`를 반환한다. 원시 텍스트는 코드가 소유한 SQL에만 사용하며 요청 값은 바인드로 전달한다.
+
+- `not(fn)`은 묶음 전체를 부정하며 부정 묶음은 항상 괄호를 가진다. Rust는 연결한 두 형태를 `and_not`, `or_not`이라 부른다. 조건을 하나도 더하지 않은 콜백은 `CONFIG`를 반환한다.
+
+### 2.1.1 쿼리 식 문법
+
+조건은 중립 문법의 식 하나다. 이 식은 MySQL, PostgreSQL, SQLite에서 같게 렌더링되고 같은 의미를 가진다. 원소 집합은 dbspec `check`의 predicate 집합([dbspec](dbspec.ko.md#check))이다: 비교(`=`, `<>`, `<`, `<=`, `>`, `>=`), `in`, `is [not] null`, `and`, `or`, 괄호 묶음이며 피연산자는 column과 값이다. 값은 type 있는 bind다: 만나는 column의 dbspec type이나 비교하는 column 함수의 결과 type을 가지며([dialects](dialects.ko.md)), SQL에 쓴 literal이 아니다. 쿼리는 `check`에 없는 확장 세 가지를 더한다. introspection은 database에서 이것을 복원할 수 없지만 쿼리는 introspection하지 않기 때문이다:
+
+- `not(fn)`, `andNot(fn)`, `orNot(fn)`의 `not`;
+- 모든 database가 `BETWEEN`으로 렌더링하는 `Between` 연산자의 `between`;
+- column 함수 `year`, `month`, `dayOfWeek`, `date`와 값 함수 `now`, `today`, `<unit>Ago`, `<unit>Later`(10절). 각각 database마다 렌더링이 하나다.
+
+기존 `Lk`, `Lb`, `Fulltext`, `FulltextBoolean`, tuple 연산자와 column 비교는 그 규칙을 유지한다. 산술은 문법에 없다: 정수 overflow와 나눗셈이 세 database에서 다르다.
 
 ### 2.2 체인
 

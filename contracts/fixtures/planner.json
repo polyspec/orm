@@ -1227,6 +1227,155 @@
         ]
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "bool"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND NOT (`a`.`is_close` = ? OR `a`.`read_count` > ?)",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "bool"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND NOT (\"a\".\"is_close\" = $2 OR \"a\".\"read_count\" > $3)",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "bool"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = ? AND NOT (\"a\".\"is_close\" = ? OR \"a\".\"read_count\" > ?)",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_not_group",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 3,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq",
+                "p": 0
+              }
+            },
+            {
+              "group": {
+                "conn": "and",
+                "items": [
+                  {
+                    "pred": {
+                      "column": "is_close",
+                      "op": "eq",
+                      "p": 1
+                    }
+                  },
+                  {
+                    "pred": {
+                      "column": "read_count",
+                      "conn": "or",
+                      "op": "gt",
+                      "p": 2
+                    }
+                  }
+                ],
+                "not": true
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_top_not",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ],
+          "not": true
+        }
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

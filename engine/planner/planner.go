@@ -847,6 +847,9 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 	if !top {
 		out = "(" + out + ")"
 	}
+	if g.Not {
+		out = "NOT " + out
+	}
 	return out, nil
 }
 

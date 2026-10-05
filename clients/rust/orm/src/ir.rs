@@ -149,6 +149,9 @@ pub struct KeyPair {
 pub struct Group {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub conn: String,
+    /// A nested group negated as a whole: NOT (…). The top-level where and on groups are not negated.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub not: bool,
     pub items: Vec<Item>,
 }
 
