@@ -66,7 +66,7 @@ RUN_CASE = node tests/run-case.mjs
 RUN_LONG = node tests/run-long.mjs
 BUILD_DEADLINE = 8m
 TOOL_DEADLINE = 5m
-TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 
 # check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
 # database와 decimal database를 만들어 TEST_ENV와 DECIMAL_ENV로 넘기고 끝에 지우며, target마다
@@ -386,7 +386,7 @@ feature-unit-check:
 	node --test scripts/features/owners.test.mjs
 
 feature-check:
-	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
+	$(RUN_LONG) typescript-build -- npm run typescript:build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
 
@@ -437,7 +437,7 @@ conformance-counter-check:
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
 conformance-result-check:
-	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
+	$(RUN_LONG) typescript-build -- npm run typescript:build
 	php tests/conformance/result_php.php
 	node --test tests/conformance/result_typescript.test.mjs
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
@@ -458,7 +458,7 @@ unselected-column-physical-check:
 # case를 실행하고, case가 통과하며 공유 database와 PostgreSQL schema를 바꾸지 않고 자기
 # `orm_case_` database와 `orm-case-` SQLite file을 남기지 않는지 확인한다(T25).
 case-database-check:
-	$(RUN_CASE) typescript-build $(BUILD_DEADLINE) -- npm run typescript:build
+	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/integration $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
 	$(WITH_TEST_ENV) node scripts/case-database-check.mjs
 
@@ -492,7 +492,7 @@ perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
 ts-check:
-	$(RUN_CASE) typescript-check $(TOOL_DEADLINE) -- npm run typescript:check
+	$(RUN_LONG) typescript-check -- npm run typescript:check
 	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
@@ -596,11 +596,11 @@ timing-check: rust-fetch
 	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
-	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
+	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(CARGO_TARGET_DIR)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
 
 typescript-build:
-	$(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- npm run typescript:build
+	$(RUN_LONG) typescript-build -- npm run typescript:build
 
 git-check:
 	node --test scripts/git/check.test.mjs

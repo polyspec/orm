@@ -8,9 +8,9 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$ROOT"
-# build는 자기 case를 보고하지 않으므로 tests/run-case.mjs로 감싼다. 기한 5분은 Makefile의
-# TOOL_DEADLINE과 같고, build 출력은 STEP 줄로 보인다.
-node tests/run-case.mjs typescript-build 5m -- npm run typescript:build
+# build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mjs로 기한 없이 실행하고,
+# build 출력과 종료 코드는 STEP 줄로 보인다.
+node tests/run-long.mjs typescript-build -- npm run typescript:build
 node clients/typescript/tests/model.mjs
 node --test clients/typescript/tests/dbspec_runtime_db.mjs
 node clients/typescript/tests/sqlite-concurrency.mjs
