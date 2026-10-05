@@ -399,43 +399,48 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
   }
 });
 
-// start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버가 준비
-// 줄을 쓰고 계속 실행하면 start_logged는 서버가 끝나기 전에 돌아와야 한다(Ubuntu의 mawk처럼 pipe를
-// block 단위로 읽는 reader는 서버가 끝날 때까지 줄을 넘기지 않는다). 준비 줄 없이 끝나면 실패한다.
-caseTest('start_logged reports a ready line, an exit or its deadline', COMPUTE, () => {
+// start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버 시작은 장기
+// 작업이므로 기한이 없다. 준비 줄을 쓰고 계속 실행하면 start_logged는 서버가 끝나기 전에 돌아와야 하고
+// (Ubuntu의 mawk처럼 pipe를 block 단위로 읽는 reader는 서버가 끝날 때까지 줄을 넘기지 않는다), 준비 줄
+// 앞의 줄은 stderr에 보인다. 1.5초 뒤에야 준비 줄을 쓰는 느리지만 정상인 서버도 시작하고, 준비 줄 없이
+// 끝나는 서버는 log와 함께 실패한다.
+caseTest('start_logged waits for a ready line or an exit, with no deadline', COMPUTE, () => {
   const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
   const start = script.indexOf('start_logged() {');
   const body = script.slice(start, script.indexOf('\n}\n', start) + 3);
   assert.ok(start >= 0 && body.endsWith('}\n'), 'start_logged is absent from scripts/test-servers.sh');
+  assert.doesNotMatch(body, /\bsleep\b|\btimeout\b|deadline=/, 'start_logged has a timer');
+  assert.ok(!script.split('\n').some(text => !/^\s*#/.test(text) && /\bpg_ctl\b.*\s-w\b/.test(text)), 'pg_ctl -w waits at most 60 s');
   const dir = mkdtempSync(join(tmpdir(), 'orm-logged-'));
   try {
     // 출력은 file로 받는다: 계속 실행하는 가짜 서버와 reader는 pipe를 열어 두므로, pipe로 받으면
     // spawnSync가 shell이 끝난 뒤에도 서버가 끝날 때까지 기다린다.
     const run = server => {
       const out = join(dir, 'stdout'), err = join(dir, 'stderr');
-      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 2 'accepting connections' sh -c '${server}'\necho returned`],
+      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
         { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
     const started = Date.now();
-    const ready = run('echo starting; echo now accepting connections; exec sleep 30');
+    const ready = run('echo starting; echo now accepting connections; echo serving; exec sleep 30');
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(ready.stdout, 'returned\n');
+    assert.equal(ready.stderr, 'test-servers: fake: starting\ntest-servers: fake: now accepting connections\n');
     assert.ok(Date.now() - started < 10_000, `start_logged returned after ${Date.now() - started} ms`);
     assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
     spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
     rmSync(join(dir, 'fake.log'));
+    const slowStarted = Date.now();
+    const slow = run('echo starting; sleep 1.5; echo still starting; sleep 1; echo now accepting connections; exec sleep 30');
+    assert.equal(slow.status, 0, slow.stderr);
+    assert.equal(slow.stdout, 'returned\n');
+    assert.equal(slow.stderr, 'test-servers: fake: starting\ntest-servers: fake: still starting\ntest-servers: fake: now accepting connections\n');
+    assert.ok(Date.now() - slowStarted >= 2_500, `the slow server was ready after ${Date.now() - slowStarted} ms`);
+    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
+    rmSync(join(dir, 'fake.log'));
     const exited = run('echo starting; exit 3');
     assert.equal(exited.status, 1);
-    assert.equal(exited.stderr, `test-servers: fake exited before it logged 'accepting connections'; last lines of ${dir}/fake.log:\nstarting\n`);
-    rmSync(join(dir, 'fake.log'));
-    // 준비 줄 없이 계속 실행하는 서버는 선언한 기한(2초)이 지나면 실패한다.
-    const waiting = Date.now();
-    const silent = run('echo starting; echo still starting; exec sleep 30');
-    assert.equal(silent.status, 1);
-    assert.equal(silent.stderr, `test-servers: fake logged no line with 'accepting connections' within its deadline of 2 s; last lines of ${dir}/fake.log:\nstarting\nstill starting\n`);
-    assert.ok(Date.now() - waiting < 10_000, `start_logged failed after ${Date.now() - waiting} ms`);
-    spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
+    assert.equal(exited.stderr, `test-servers: fake: starting\ntest-servers: fake exited before it logged 'accepting connections'; last lines of ${dir}/fake.log:\nstarting\n`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

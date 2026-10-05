@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-11: `make test-servers` starts ProxySQL, PgBouncer and both PostgreSQL servers with no deadline, shows their log lines up to the ready line, returns on that line and fails with the log when a server exits first; PostgreSQL stops by fast shutdown without the 60 s limit of `pg_ctl -w`.
+
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
 
 - G5.30: every build, install, tool run, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-10).
