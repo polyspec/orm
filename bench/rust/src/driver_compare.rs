@@ -124,7 +124,9 @@ fn iterations(minimum: usize) -> usize {
     match arg.parse::<usize>() {
         Ok(n) if n >= minimum => n,
         _ => {
-            eprintln!("the iterations argument must be an integer of at least {minimum}, got {arg:?}");
+            eprintln!(
+                "the iterations argument must be an integer of at least {minimum}, got {arg:?}"
+            );
             std::process::exit(1)
         }
     }
@@ -141,7 +143,9 @@ async fn main() {
     let iterations = iterations(10);
 
     let dsn = bench_dsn();
-    let sqlx_options = MySqlConnectOptions::from_str(&dsn).unwrap_or_else(|e| invalid_dsn(e)).statement_cache_capacity(256);
+    let sqlx_options = MySqlConnectOptions::from_str(&dsn)
+        .unwrap_or_else(|e| invalid_dsn(e))
+        .statement_cache_capacity(256);
     let sqlx = MySqlPoolOptions::new()
         .min_connections(1)
         .max_connections(1)
@@ -149,8 +153,9 @@ async fn main() {
         .await
         .unwrap();
 
-    let async_options = OptsBuilder::from_opts(Opts::from_url(&dsn).unwrap_or_else(|e| invalid_dsn(e)))
-        .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
+    let async_options =
+        OptsBuilder::from_opts(Opts::from_url(&dsn).unwrap_or_else(|e| invalid_dsn(e)))
+            .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
     let mysql_async = AsyncPool::new(async_options);
 
     for index in 0..200 {
