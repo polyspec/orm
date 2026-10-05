@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"os/exec"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 // TestLockHelper는 다른 process로 실행되어 lock을 잡는 helper다. ORM_LOCK_HELPER가 dsn이면 그 lock을 잡고, ORM_LOCK_HOLD가
 // 있으면 stdin이 닫힐 때까지 기다리며, 없으면 놓지 않고 곧바로 끝난다(kill된 실행처럼).
 func TestLockHelper(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	dsn := os.Getenv("ORM_LOCK_HELPER")
 	if dsn == "" {
 		t.Skip("run by TestLockOfAnEndedRunDoesNotHold")
@@ -66,9 +68,11 @@ func TestLockOfAnEndedRunDoesNotHold(t *testing.T) {
 	if err := holder.Start(); err != nil {
 		t.Fatal(err)
 	}
-	line := make([]byte, 7)
-	if _, err := stdout.Read(line); err != nil || string(line) != "locked\n" {
-		t.Fatalf("the holder did not lock: %q %v", line, err)
+	lines := bufio.NewScanner(stdout)
+	for lines.Scan() && lines.Text() != "locked" {
+	}
+	if lines.Text() != "locked" {
+		t.Fatalf("the holder did not lock: %v", lines.Err())
 	}
 	err = lockDatabases(dsn)
 	stdin.Close()

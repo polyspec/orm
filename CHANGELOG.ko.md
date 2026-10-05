@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.56-1: conformance lock helper test는 `make repo-check`가 요구하는 공용 testcase package로 case를 시작한다.
+
 - G5.56: 끝난 보유자는 lease나 lock을 막지 않는다. lease는 releaser를 적고, 요청은 releaser가 실행되는 동안 기다린다. 보유자와 releaser가 모두 끝난 lease는 가져간다(shared는 어느 요청이든, exclusive는 다음 exclusive 요청이 가져가 자원을 다시 만든다). conformance check는 `flock`으로 lock을 잡고, decimal SQLite bench는 lease 아래에서 준비한다.
 
 - G5.55: test 단계는 아무것도 남기지 않는다. check runner와 `make owner-check`는 단계마다 자기 임시 directory와 자기 process group에서 실행하고, 임시 entry나 실행 directory나 process를 남긴 통과한 단계를 실패시키며, 실패한 단계가 남긴 것은 보고서에 넣고, 두 경우 모두 지운다. interface와 conformance check는 `os.Exit(run())`으로 끝나고, Rust transaction test와 SQLite lock test는 drop할 때 directory를 지우며, PHP testcase test는 `tempnam` file을 지우고, `make repo-check`는 Go에서 `defer` 뒤의 `os.Exit`를 거부한다. 실행이 끝날 때 `databases.sh drop`은 replica가 적용한 MySQL test server의 binary log를 지금 file까지 지운다.
