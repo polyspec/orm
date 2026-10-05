@@ -178,7 +178,6 @@ export class Author extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('author')!, create: core => new Author(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -191,7 +190,6 @@ export class Author extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -200,7 +198,6 @@ export class Author extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
   public getDescription(): string | null { return this[CORE].column('description') as string | null; }
   public setDescription(value: string | null): this { this[CORE].setValue('description', value); return this; }
-  public setRawDescription(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'description', raw: { sql, binds } }); return this; }
   public addColumnDescription(): this { this[CORE].addColumn('description'); return this; }
   public removeColumnDescription(): this { this[CORE].removeColumn('description'); return this; }
   public groupByDescription(): this { this[CORE].groupBy.push('description'); return this; }
@@ -209,7 +206,6 @@ export class Author extends Model {
   public orderByDescriptionDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('description', true, fn); return this; }
   public getCreatedTs(): string { return this[CORE].column('created_ts') as string; }
   public setCreatedTs(value: string | Date): this { this[CORE].setValue('created_ts', value); return this; }
-  public setRawCreatedTs(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'created_ts', raw: { sql, binds } }); return this; }
   public addColumnCreatedTs(): this { this[CORE].addColumn('created_ts'); return this; }
   public removeColumnCreatedTs(): this { this[CORE].removeColumn('created_ts'); return this; }
   public groupByCreatedTs(): this { this[CORE].groupBy.push('created_ts'); return this; }
@@ -218,7 +214,6 @@ export class Author extends Model {
   public orderByCreatedTsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('created_ts', true, fn); return this; }
   public getUpdatedTs(): string { return this[CORE].column('updated_ts') as string; }
   public setUpdatedTs(value: string | Date): this { this[CORE].setValue('updated_ts', value); return this; }
-  public setRawUpdatedTs(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'updated_ts', raw: { sql, binds } }); return this; }
   public addColumnUpdatedTs(): this { this[CORE].addColumn('updated_ts'); return this; }
   public removeColumnUpdatedTs(): this { this[CORE].removeColumn('updated_ts'); return this; }
   public groupByUpdatedTs(): this { this[CORE].groupBy.push('updated_ts'); return this; }
@@ -227,7 +222,6 @@ export class Author extends Model {
   public orderByUpdatedTsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('updated_ts', true, fn); return this; }
   public getIsClose(): boolean { return this[CORE].column('is_close') as boolean; }
   public setIsClose(value: boolean): this { this[CORE].setValue('is_close', value); return this; }
-  public setRawIsClose(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'is_close', raw: { sql, binds } }); return this; }
   public addColumnIsClose(): this { this[CORE].addColumn('is_close'); return this; }
   public removeColumnIsClose(): this { this[CORE].removeColumn('is_close'); return this; }
   public groupByIsClose(): this { this[CORE].groupBy.push('is_close'); return this; }
@@ -236,7 +230,6 @@ export class Author extends Model {
   public orderByIsCloseDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_close', true, fn); return this; }
   public getIsDisplay(): boolean { return this[CORE].column('is_display') as boolean; }
   public setIsDisplay(value: boolean): this { this[CORE].setValue('is_display', value); return this; }
-  public setRawIsDisplay(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'is_display', raw: { sql, binds } }); return this; }
   public addColumnIsDisplay(): this { this[CORE].addColumn('is_display'); return this; }
   public removeColumnIsDisplay(): this { this[CORE].removeColumn('is_display'); return this; }
   public groupByIsDisplay(): this { this[CORE].groupBy.push('is_display'); return this; }
@@ -245,7 +238,6 @@ export class Author extends Model {
   public orderByIsDisplayDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_display', true, fn); return this; }
   public getDisplayStartDt(): string | null { return this[CORE].column('display_start_dt') as string | null; }
   public setDisplayStartDt(value: string | Date | null): this { this[CORE].setValue('display_start_dt', value); return this; }
-  public setRawDisplayStartDt(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'display_start_dt', raw: { sql, binds } }); return this; }
   public addColumnDisplayStartDt(): this { this[CORE].addColumn('display_start_dt'); return this; }
   public removeColumnDisplayStartDt(): this { this[CORE].removeColumn('display_start_dt'); return this; }
   public groupByDisplayStartDt(): this { this[CORE].groupBy.push('display_start_dt'); return this; }
@@ -254,7 +246,6 @@ export class Author extends Model {
   public orderByDisplayStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_start_dt', true, fn); return this; }
   public getDisplayEndDt(): string | null { return this[CORE].column('display_end_dt') as string | null; }
   public setDisplayEndDt(value: string | Date | null): this { this[CORE].setValue('display_end_dt', value); return this; }
-  public setRawDisplayEndDt(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'display_end_dt', raw: { sql, binds } }); return this; }
   public addColumnDisplayEndDt(): this { this[CORE].addColumn('display_end_dt'); return this; }
   public removeColumnDisplayEndDt(): this { this[CORE].removeColumn('display_end_dt'); return this; }
   public groupByDisplayEndDt(): this { this[CORE].groupBy.push('display_end_dt'); return this; }
@@ -263,7 +254,6 @@ export class Author extends Model {
   public orderByDisplayEndDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('display_end_dt', true, fn); return this; }
   public getIsAllday(): boolean { return this[CORE].column('is_allday') as boolean; }
   public setIsAllday(value: boolean): this { this[CORE].setValue('is_allday', value); return this; }
-  public setRawIsAllday(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'is_allday', raw: { sql, binds } }); return this; }
   public addColumnIsAllday(): this { this[CORE].addColumn('is_allday'); return this; }
   public removeColumnIsAllday(): this { this[CORE].removeColumn('is_allday'); return this; }
   public groupByIsAllday(): this { this[CORE].groupBy.push('is_allday'); return this; }
@@ -272,7 +262,6 @@ export class Author extends Model {
   public orderByIsAlldayDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_allday', true, fn); return this; }
   public getTargetClubReaderCount(): number { return this[CORE].column('target_club_reader_count') as number; }
   public setTargetClubReaderCount(value: number): this { this[CORE].setValue('target_club_reader_count', value); return this; }
-  public setRawTargetClubReaderCount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'target_club_reader_count', raw: { sql, binds } }); return this; }
   public addColumnTargetClubReaderCount(): this { this[CORE].addColumn('target_club_reader_count'); return this; }
   public removeColumnTargetClubReaderCount(): this { this[CORE].removeColumn('target_club_reader_count'); return this; }
   public groupByTargetClubReaderCount(): this { this[CORE].groupBy.push('target_club_reader_count'); return this; }
@@ -285,7 +274,6 @@ export class Author extends Model {
   public avgTargetClubReaderCount(): this { this[CORE].aggregate('avg', 'target_club_reader_count'); return this; }
   public getSuccessCount(): number { return this[CORE].column('success_count') as number; }
   public setSuccessCount(value: number): this { this[CORE].setValue('success_count', value); return this; }
-  public setRawSuccessCount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'success_count', raw: { sql, binds } }); return this; }
   public addColumnSuccessCount(): this { this[CORE].addColumn('success_count'); return this; }
   public removeColumnSuccessCount(): this { this[CORE].removeColumn('success_count'); return this; }
   public groupBySuccessCount(): this { this[CORE].groupBy.push('success_count'); return this; }
@@ -298,7 +286,6 @@ export class Author extends Model {
   public avgSuccessCount(): this { this[CORE].aggregate('avg', 'success_count'); return this; }
   public getReaderCount(): number { return this[CORE].column('reader_count') as number; }
   public setReaderCount(value: number): this { this[CORE].setValue('reader_count', value); return this; }
-  public setRawReaderCount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'reader_count', raw: { sql, binds } }); return this; }
   public addColumnReaderCount(): this { this[CORE].addColumn('reader_count'); return this; }
   public removeColumnReaderCount(): this { this[CORE].removeColumn('reader_count'); return this; }
   public groupByReaderCount(): this { this[CORE].groupBy.push('reader_count'); return this; }
@@ -311,7 +298,6 @@ export class Author extends Model {
   public avgReaderCount(): this { this[CORE].aggregate('avg', 'reader_count'); return this; }
   public getReadCount(): number { return this[CORE].column('read_count') as number; }
   public setReadCount(value: number): this { this[CORE].setValue('read_count', value); return this; }
-  public setRawReadCount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'read_count', raw: { sql, binds } }); return this; }
   public addColumnReadCount(): this { this[CORE].addColumn('read_count'); return this; }
   public removeColumnReadCount(): this { this[CORE].removeColumn('read_count'); return this; }
   public groupByReadCount(): this { this[CORE].groupBy.push('read_count'); return this; }
@@ -324,7 +310,6 @@ export class Author extends Model {
   public avgReadCount(): this { this[CORE].aggregate('avg', 'read_count'); return this; }
   public getPhotoUrl(): string | null { return this[CORE].column('photo_url') as string | null; }
   public setPhotoUrl(value: string | null): this { this[CORE].setValue('photo_url', value); return this; }
-  public setRawPhotoUrl(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'photo_url', raw: { sql, binds } }); return this; }
   public addColumnPhotoUrl(): this { this[CORE].addColumn('photo_url'); return this; }
   public removeColumnPhotoUrl(): this { this[CORE].removeColumn('photo_url'); return this; }
   public groupByPhotoUrl(): this { this[CORE].groupBy.push('photo_url'); return this; }
@@ -333,7 +318,6 @@ export class Author extends Model {
   public orderByPhotoUrlDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('photo_url', true, fn); return this; }
   public getUserSeq(): number { return this[CORE].column('user_seq') as number; }
   public setUserSeq(value: number): this { this[CORE].setValue('user_seq', value); return this; }
-  public setRawUserSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'user_seq', raw: { sql, binds } }); return this; }
   public addColumnUserSeq(): this { this[CORE].addColumn('user_seq'); return this; }
   public removeColumnUserSeq(): this { this[CORE].removeColumn('user_seq'); return this; }
   public groupByUserSeq(): this { this[CORE].groupBy.push('user_seq'); return this; }
@@ -346,7 +330,6 @@ export class Author extends Model {
   public avgUserSeq(): this { this[CORE].aggregate('avg', 'user_seq'); return this; }
   public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
-  public setRawServiceSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'service_seq', raw: { sql, binds } }); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
   public groupByServiceSeq(): this { this[CORE].groupBy.push('service_seq'); return this; }
@@ -359,7 +342,6 @@ export class Author extends Model {
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
   public getServiceRegionSeq(): number { return this[CORE].column('service_region_seq') as number; }
   public setServiceRegionSeq(value: number): this { this[CORE].setValue('service_region_seq', value); return this; }
-  public setRawServiceRegionSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'service_region_seq', raw: { sql, binds } }); return this; }
   public addColumnServiceRegionSeq(): this { this[CORE].addColumn('service_region_seq'); return this; }
   public removeColumnServiceRegionSeq(): this { this[CORE].removeColumn('service_region_seq'); return this; }
   public groupByServiceRegionSeq(): this { this[CORE].groupBy.push('service_region_seq'); return this; }
@@ -372,7 +354,6 @@ export class Author extends Model {
   public avgServiceRegionSeq(): this { this[CORE].aggregate('avg', 'service_region_seq'); return this; }
   public getServiceMemberSeq(): number { return this[CORE].column('service_member_seq') as number; }
   public setServiceMemberSeq(value: number): this { this[CORE].setValue('service_member_seq', value); return this; }
-  public setRawServiceMemberSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'service_member_seq', raw: { sql, binds } }); return this; }
   public addColumnServiceMemberSeq(): this { this[CORE].addColumn('service_member_seq'); return this; }
   public removeColumnServiceMemberSeq(): this { this[CORE].removeColumn('service_member_seq'); return this; }
   public groupByServiceMemberSeq(): this { this[CORE].groupBy.push('service_member_seq'); return this; }
@@ -385,7 +366,6 @@ export class Author extends Model {
   public avgServiceMemberSeq(): this { this[CORE].aggregate('avg', 'service_member_seq'); return this; }
   public getStartDt(): string { return this[CORE].column('start_dt') as string; }
   public setStartDt(value: string | Date): this { this[CORE].setValue('start_dt', value); return this; }
-  public setRawStartDt(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'start_dt', raw: { sql, binds } }); return this; }
   public addColumnStartDt(): this { this[CORE].addColumn('start_dt'); return this; }
   public removeColumnStartDt(): this { this[CORE].removeColumn('start_dt'); return this; }
   public groupByStartDt(): this { this[CORE].groupBy.push('start_dt'); return this; }
@@ -394,7 +374,6 @@ export class Author extends Model {
   public orderByStartDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('start_dt', true, fn); return this; }
   public getEndDt(): string { return this[CORE].column('end_dt') as string; }
   public setEndDt(value: string | Date): this { this[CORE].setValue('end_dt', value); return this; }
-  public setRawEndDt(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'end_dt', raw: { sql, binds } }); return this; }
   public addColumnEndDt(): this { this[CORE].addColumn('end_dt'); return this; }
   public removeColumnEndDt(): this { this[CORE].removeColumn('end_dt'); return this; }
   public groupByEndDt(): this { this[CORE].groupBy.push('end_dt'); return this; }
@@ -403,7 +382,6 @@ export class Author extends Model {
   public orderByEndDtDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('end_dt', true, fn); return this; }
   public getUuid(): string | null { return this[CORE].column('uuid') as string | null; }
   public setUuid(value: string | null): this { this[CORE].setValue('uuid', value); return this; }
-  public setRawUuid(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'uuid', raw: { sql, binds } }); return this; }
   public addColumnUuid(): this { this[CORE].addColumn('uuid'); return this; }
   public removeColumnUuid(): this { this[CORE].removeColumn('uuid'); return this; }
   public groupByUuid(): this { this[CORE].groupBy.push('uuid'); return this; }
@@ -412,7 +390,6 @@ export class Author extends Model {
   public orderByUuidDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('uuid', true, fn); return this; }
   public getIsSingleWork(): boolean { return this[CORE].column('is_single_work') as boolean; }
   public setIsSingleWork(value: boolean): this { this[CORE].setValue('is_single_work', value); return this; }
-  public setRawIsSingleWork(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'is_single_work', raw: { sql, binds } }); return this; }
   public addColumnIsSingleWork(): this { this[CORE].addColumn('is_single_work'); return this; }
   public removeColumnIsSingleWork(): this { this[CORE].removeColumn('is_single_work'); return this; }
   public groupByIsSingleWork(): this { this[CORE].groupBy.push('is_single_work'); return this; }
@@ -421,7 +398,6 @@ export class Author extends Model {
   public orderByIsSingleWorkDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('is_single_work', true, fn); return this; }
   public getLikeCount(): number { return this[CORE].column('like_count') as number; }
   public setLikeCount(value: number): this { this[CORE].setValue('like_count', value); return this; }
-  public setRawLikeCount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'like_count', raw: { sql, binds } }); return this; }
   public addColumnLikeCount(): this { this[CORE].addColumn('like_count'); return this; }
   public removeColumnLikeCount(): this { this[CORE].removeColumn('like_count'); return this; }
   public groupByLikeCount(): this { this[CORE].groupBy.push('like_count'); return this; }
@@ -434,7 +410,6 @@ export class Author extends Model {
   public avgLikeCount(): this { this[CORE].aggregate('avg', 'like_count'); return this; }
   public getAesKeyVersion(): number { return this[CORE].column('aes_key_version') as number; }
   public setAesKeyVersion(value: number): this { this[CORE].setValue('aes_key_version', value); return this; }
-  public setRawAesKeyVersion(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'aes_key_version', raw: { sql, binds } }); return this; }
   public addColumnAesKeyVersion(): this { this[CORE].addColumn('aes_key_version'); return this; }
   public removeColumnAesKeyVersion(): this { this[CORE].removeColumn('aes_key_version'); return this; }
   public groupByAesKeyVersion(): this { this[CORE].groupBy.push('aes_key_version'); return this; }
@@ -447,7 +422,6 @@ export class Author extends Model {
   public avgAesKeyVersion(): this { this[CORE].aggregate('avg', 'aes_key_version'); return this; }
   public getAesHexEmail(): string | null { return this[CORE].column('aes_hex_email') as string | null; }
   public setAesHexEmail(value: string | null): this { this[CORE].setValue('aes_hex_email', value); return this; }
-  public setRawAesHexEmail(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'aes_hex_email', raw: { sql, binds } }); return this; }
   public addColumnAesHexEmail(): this { this[CORE].addColumn('aes_hex_email'); return this; }
   public removeColumnAesHexEmail(): this { this[CORE].removeColumn('aes_hex_email'); return this; }
   public groupByAesHexEmail(): this { this[CORE].groupBy.push('aes_hex_email'); return this; }
@@ -456,7 +430,6 @@ export class Author extends Model {
   public orderByAesHexEmailDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_email', true, fn); return this; }
   public getEmailBlindIndex(): string | null { return this[CORE].column('email_blind_index') as string | null; }
   public setEmailBlindIndex(value: string | null): this { this[CORE].setValue('email_blind_index', value); return this; }
-  public setRawEmailBlindIndex(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'email_blind_index', raw: { sql, binds } }); return this; }
   public addColumnEmailBlindIndex(): this { this[CORE].addColumn('email_blind_index'); return this; }
   public removeColumnEmailBlindIndex(): this { this[CORE].removeColumn('email_blind_index'); return this; }
   public groupByEmailBlindIndex(): this { this[CORE].groupBy.push('email_blind_index'); return this; }
@@ -465,7 +438,6 @@ export class Author extends Model {
   public orderByEmailBlindIndexDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('email_blind_index', true, fn); return this; }
   public getAesHexPhone(): string | null { return this[CORE].column('aes_hex_phone') as string | null; }
   public setAesHexPhone(value: string | null): this { this[CORE].setValue('aes_hex_phone', value); return this; }
-  public setRawAesHexPhone(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'aes_hex_phone', raw: { sql, binds } }); return this; }
   public addColumnAesHexPhone(): this { this[CORE].addColumn('aes_hex_phone'); return this; }
   public removeColumnAesHexPhone(): this { this[CORE].removeColumn('aes_hex_phone'); return this; }
   public groupByAesHexPhone(): this { this[CORE].groupBy.push('aes_hex_phone'); return this; }
@@ -474,7 +446,6 @@ export class Author extends Model {
   public orderByAesHexPhoneDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('aes_hex_phone', true, fn); return this; }
   public getPhoneBlindIndex(): string | null { return this[CORE].column('phone_blind_index') as string | null; }
   public setPhoneBlindIndex(value: string | null): this { this[CORE].setValue('phone_blind_index', value); return this; }
-  public setRawPhoneBlindIndex(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'phone_blind_index', raw: { sql, binds } }); return this; }
   public addColumnPhoneBlindIndex(): this { this[CORE].addColumn('phone_blind_index'); return this; }
   public removeColumnPhoneBlindIndex(): this { this[CORE].removeColumn('phone_blind_index'); return this; }
   public groupByPhoneBlindIndex(): this { this[CORE].groupBy.push('phone_blind_index'); return this; }
@@ -483,7 +454,6 @@ export class Author extends Model {
   public orderByPhoneBlindIndexDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('phone_blind_index', true, fn); return this; }
   public getPrice(): string | null { return this[CORE].column('price') as string | null; }
   public setPrice(value: string | null): this { this[CORE].setValue('price', value); return this; }
-  public setRawPrice(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'price', raw: { sql, binds } }); return this; }
   public addColumnPrice(): this { this[CORE].addColumn('price'); return this; }
   public removeColumnPrice(): this { this[CORE].removeColumn('price'); return this; }
   public groupByPrice(): this { this[CORE].groupBy.push('price'); return this; }
@@ -496,7 +466,6 @@ export class Author extends Model {
   public avgPrice(): this { this[CORE].aggregate('avg', 'price'); return this; }
   public getIp(): string | null { return this[CORE].column('ip') as string | null; }
   public setIp(value: string | null): this { this[CORE].setValue('ip', value); return this; }
-  public setRawIp(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'ip', raw: { sql, binds } }); return this; }
   public addColumnIp(): this { this[CORE].addColumn('ip'); return this; }
   public removeColumnIp(): this { this[CORE].removeColumn('ip'); return this; }
   public groupByIp(): this { this[CORE].groupBy.push('ip'); return this; }
@@ -505,7 +474,6 @@ export class Author extends Model {
   public orderByIpDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('ip', true, fn); return this; }
   public getGzExtend(): StyledValue<CodecValue> { return this[CORE].column('gz_extend') as StyledValue<CodecValue>; }
   public setGzExtend(value: StyledValue<CodecValue>): this { this[CORE].setValue('gz_extend', value); return this; }
-  public setRawGzExtend(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'gz_extend', raw: { sql, binds } }); return this; }
   public addColumnGzExtend(): this { this[CORE].addColumn('gz_extend'); return this; }
   public removeColumnGzExtend(): this { this[CORE].removeColumn('gz_extend'); return this; }
   public groupByGzExtend(): this { this[CORE].groupBy.push('gz_extend'); return this; }
@@ -514,7 +482,6 @@ export class Author extends Model {
   public orderByGzExtendDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('gz_extend', true, fn); return this; }
   public getJsonSetting(): StyledValue<JsonValue> { return this[CORE].column('json_setting') as StyledValue<JsonValue>; }
   public setJsonSetting(value: StyledValue<JsonValue | CodecValue>): this { this[CORE].setValue('json_setting', value); return this; }
-  public setRawJsonSetting(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'json_setting', raw: { sql, binds } }); return this; }
   public addColumnJsonSetting(): this { this[CORE].addColumn('json_setting'); return this; }
   public removeColumnJsonSetting(): this { this[CORE].removeColumn('json_setting'); return this; }
   public groupByJsonSetting(): this { this[CORE].groupBy.push('json_setting'); return this; }
@@ -523,7 +490,6 @@ export class Author extends Model {
   public orderByJsonSettingDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('json_setting', true, fn); return this; }
   public getJsonsTags(): StyledValue<JsonValue> { return this[CORE].column('jsons_tags') as StyledValue<JsonValue>; }
   public setJsonsTags(value: StyledValue<JsonValue | CodecValue>): this { this[CORE].setValue('jsons_tags', value); return this; }
-  public setRawJsonsTags(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'jsons_tags', raw: { sql, binds } }); return this; }
   public addColumnJsonsTags(): this { this[CORE].addColumn('jsons_tags'); return this; }
   public removeColumnJsonsTags(): this { this[CORE].removeColumn('jsons_tags'); return this; }
   public groupByJsonsTags(): this { this[CORE].groupBy.push('jsons_tags'); return this; }
@@ -532,7 +498,6 @@ export class Author extends Model {
   public orderByJsonsTagsDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('jsons_tags', true, fn); return this; }
   public getBase64Extra(): StyledValue<CodecValue> { return this[CORE].column('base64_extra') as StyledValue<CodecValue>; }
   public setBase64Extra(value: StyledValue<CodecValue>): this { this[CORE].setValue('base64_extra', value); return this; }
-  public setRawBase64Extra(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'base64_extra', raw: { sql, binds } }); return this; }
   public addColumnBase64Extra(): this { this[CORE].addColumn('base64_extra'); return this; }
   public removeColumnBase64Extra(): this { this[CORE].removeColumn('base64_extra'); return this; }
   public groupByBase64Extra(): this { this[CORE].groupBy.push('base64_extra'); return this; }
@@ -541,7 +506,6 @@ export class Author extends Model {
   public orderByBase64ExtraDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('base64_extra', true, fn); return this; }
   public getSerializeData(): StyledValue<CodecValue> { return this[CORE].column('serialize_data') as StyledValue<CodecValue>; }
   public setSerializeData(value: StyledValue<CodecValue>): this { this[CORE].setValue('serialize_data', value); return this; }
-  public setRawSerializeData(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'serialize_data', raw: { sql, binds } }); return this; }
   public addColumnSerializeData(): this { this[CORE].addColumn('serialize_data'); return this; }
   public removeColumnSerializeData(): this { this[CORE].removeColumn('serialize_data'); return this; }
   public groupBySerializeData(): this { this[CORE].groupBy.push('serialize_data'); return this; }
@@ -557,9 +521,8 @@ export class Author extends Model {
   public forceIndexUqAuthorUuid(): this { this[CORE].index = 'uq_author_uuid'; return this; }
 }
 export interface Author {
-  addColumnReadCountAliasReadText(format: string | ColumnFunction): this;
-  addColumnStartDtAliasStartMonth(format: string | ColumnFunction): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
+  addColumnStartDtAliasStartMonth(fn: ColumnFunction): this;
+  addColumnStartDtAliasStartYear(fn: ColumnFunction): this;
   aesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   andAesHexEmail(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   andBetweenReadCount(v0: readonly [number, number]): this;
@@ -616,8 +579,6 @@ export interface Author {
   userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -632,8 +593,6 @@ export interface Author {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -645,7 +604,6 @@ export class User extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('user')!, create: core => new User(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -658,7 +616,6 @@ export class User extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -667,9 +624,7 @@ export class User extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface User {
-  addColumnNameAliasUpperName(format: string | ColumnFunction): this;
   addColumnReadTotal(fn: (model: this) => Model): this;
-  addRawColumnDoubled(sql: string, ...binds: unknown[]): this;
   aliasOwner(): this;
   aliasWriter(): this;
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
@@ -681,8 +636,6 @@ export interface User {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -697,8 +650,6 @@ export interface User {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -710,7 +661,6 @@ export class Service extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('service')!, create: core => new Service(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -723,7 +673,6 @@ export class Service extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -740,8 +689,6 @@ export interface Service {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -756,8 +703,6 @@ export interface Service {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -769,7 +714,6 @@ export class ServiceRegion extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('service_region')!, create: core => new ServiceRegion(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -782,7 +726,6 @@ export class ServiceRegion extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
-  public setRawServiceSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'service_seq', raw: { sql, binds } }); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
   public groupByServiceSeq(): this { this[CORE].groupBy.push('service_seq'); return this; }
@@ -795,7 +738,6 @@ export class ServiceRegion extends Model {
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -812,8 +754,6 @@ export interface ServiceRegion {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -828,8 +768,6 @@ export interface ServiceRegion {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -841,7 +779,6 @@ export class ServiceMember extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('service_member')!, create: core => new ServiceMember(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -854,7 +791,6 @@ export class ServiceMember extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getServiceSeq(): number { return this[CORE].column('service_seq') as number; }
   public setServiceSeq(value: number): this { this[CORE].setValue('service_seq', value); return this; }
-  public setRawServiceSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'service_seq', raw: { sql, binds } }); return this; }
   public addColumnServiceSeq(): this { this[CORE].addColumn('service_seq'); return this; }
   public removeColumnServiceSeq(): this { this[CORE].removeColumn('service_seq'); return this; }
   public groupByServiceSeq(): this { this[CORE].groupBy.push('service_seq'); return this; }
@@ -867,7 +803,6 @@ export class ServiceMember extends Model {
   public avgServiceSeq(): this { this[CORE].aggregate('avg', 'service_seq'); return this; }
   public getUserSeq(): number { return this[CORE].column('user_seq') as number; }
   public setUserSeq(value: number): this { this[CORE].setValue('user_seq', value); return this; }
-  public setRawUserSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'user_seq', raw: { sql, binds } }); return this; }
   public addColumnUserSeq(): this { this[CORE].addColumn('user_seq'); return this; }
   public removeColumnUserSeq(): this { this[CORE].removeColumn('user_seq'); return this; }
   public groupByUserSeq(): this { this[CORE].groupBy.push('user_seq'); return this; }
@@ -891,8 +826,6 @@ export interface ServiceMember {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -909,8 +842,6 @@ export interface ServiceMember {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -922,7 +853,6 @@ export class CompositeAccount extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('composite_account')!, create: core => new CompositeAccount(core) };
   public getTenantId(): number { return this[CORE].column('tenant_id') as number; }
   public setTenantId(value: number): this { this[CORE].setValue('tenant_id', value); return this; }
-  public setRawTenantId(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'tenant_id', raw: { sql, binds } }); return this; }
   public addColumnTenantId(): this { this[CORE].addColumn('tenant_id'); return this; }
   public removeColumnTenantId(): this { this[CORE].removeColumn('tenant_id'); return this; }
   public groupByTenantId(): this { this[CORE].groupBy.push('tenant_id'); return this; }
@@ -935,7 +865,6 @@ export class CompositeAccount extends Model {
   public avgTenantId(): this { this[CORE].aggregate('avg', 'tenant_id'); return this; }
   public getAccountId(): number { return this[CORE].column('account_id') as number; }
   public setAccountId(value: number): this { this[CORE].setValue('account_id', value); return this; }
-  public setRawAccountId(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'account_id', raw: { sql, binds } }); return this; }
   public addColumnAccountId(): this { this[CORE].addColumn('account_id'); return this; }
   public removeColumnAccountId(): this { this[CORE].removeColumn('account_id'); return this; }
   public groupByAccountId(): this { this[CORE].groupBy.push('account_id'); return this; }
@@ -948,7 +877,6 @@ export class CompositeAccount extends Model {
   public avgAccountId(): this { this[CORE].aggregate('avg', 'account_id'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -965,8 +893,6 @@ export interface CompositeAccount {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -981,8 +907,6 @@ export interface CompositeAccount {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -994,7 +918,6 @@ export class CompositeMembership extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('composite_membership')!, create: core => new CompositeMembership(core) };
   public getTenantId(): number { return this[CORE].column('tenant_id') as number; }
   public setTenantId(value: number): this { this[CORE].setValue('tenant_id', value); return this; }
-  public setRawTenantId(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'tenant_id', raw: { sql, binds } }); return this; }
   public addColumnTenantId(): this { this[CORE].addColumn('tenant_id'); return this; }
   public removeColumnTenantId(): this { this[CORE].removeColumn('tenant_id'); return this; }
   public groupByTenantId(): this { this[CORE].groupBy.push('tenant_id'); return this; }
@@ -1007,7 +930,6 @@ export class CompositeMembership extends Model {
   public avgTenantId(): this { this[CORE].aggregate('avg', 'tenant_id'); return this; }
   public getAccountId(): number { return this[CORE].column('account_id') as number; }
   public setAccountId(value: number): this { this[CORE].setValue('account_id', value); return this; }
-  public setRawAccountId(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'account_id', raw: { sql, binds } }); return this; }
   public addColumnAccountId(): this { this[CORE].addColumn('account_id'); return this; }
   public removeColumnAccountId(): this { this[CORE].removeColumn('account_id'); return this; }
   public groupByAccountId(): this { this[CORE].groupBy.push('account_id'); return this; }
@@ -1020,7 +942,6 @@ export class CompositeMembership extends Model {
   public avgAccountId(): this { this[CORE].aggregate('avg', 'account_id'); return this; }
   public getRole(): string { return this[CORE].column('role') as string; }
   public setRole(value: string): this { this[CORE].setValue('role', value); return this; }
-  public setRawRole(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'role', raw: { sql, binds } }); return this; }
   public addColumnRole(): this { this[CORE].addColumn('role'); return this; }
   public removeColumnRole(): this { this[CORE].removeColumn('role'); return this; }
   public groupByRole(): this { this[CORE].groupBy.push('role'); return this; }
@@ -1038,8 +959,6 @@ export interface CompositeMembership {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1056,8 +975,6 @@ export interface CompositeMembership {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -1069,7 +986,6 @@ export class SoftRecord extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('soft_record')!, create: core => new SoftRecord(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -1082,7 +998,6 @@ export class SoftRecord extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -1091,7 +1006,6 @@ export class SoftRecord extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
   public getDeletedAt(): string | null { return this[CORE].column('deleted_at') as string | null; }
   public setDeletedAt(value: string | Date | null): this { this[CORE].setValue('deleted_at', value); return this; }
-  public setRawDeletedAt(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'deleted_at', raw: { sql, binds } }); return this; }
   public addColumnDeletedAt(): this { this[CORE].addColumn('deleted_at'); return this; }
   public removeColumnDeletedAt(): this { this[CORE].removeColumn('deleted_at'); return this; }
   public groupByDeletedAt(): this { this[CORE].groupBy.push('deleted_at'); return this; }
@@ -1106,8 +1020,6 @@ export interface SoftRecord {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1122,8 +1034,6 @@ export interface SoftRecord {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -1135,7 +1045,6 @@ export class Account extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('account')!, create: core => new Account(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -1148,7 +1057,6 @@ export class Account extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -1163,8 +1071,6 @@ export interface Account {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1179,8 +1085,6 @@ export interface Account {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -1192,7 +1096,6 @@ export class Project extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('project')!, create: core => new Project(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -1205,7 +1108,6 @@ export class Project extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getName(): string { return this[CORE].column('name') as string; }
   public setName(value: string): this { this[CORE].setValue('name', value); return this; }
-  public setRawName(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'name', raw: { sql, binds } }); return this; }
   public addColumnName(): this { this[CORE].addColumn('name'); return this; }
   public removeColumnName(): this { this[CORE].removeColumn('name'); return this; }
   public groupByName(): this { this[CORE].groupBy.push('name'); return this; }
@@ -1218,8 +1120,6 @@ export interface Project {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1234,8 +1134,6 @@ export interface Project {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -1247,7 +1145,6 @@ export class AccountProject extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('account_project')!, create: core => new AccountProject(core) };
   public getAccountSeq(): number { return this[CORE].column('account_seq') as number; }
   public setAccountSeq(value: number): this { this[CORE].setValue('account_seq', value); return this; }
-  public setRawAccountSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'account_seq', raw: { sql, binds } }); return this; }
   public addColumnAccountSeq(): this { this[CORE].addColumn('account_seq'); return this; }
   public removeColumnAccountSeq(): this { this[CORE].removeColumn('account_seq'); return this; }
   public groupByAccountSeq(): this { this[CORE].groupBy.push('account_seq'); return this; }
@@ -1260,7 +1157,6 @@ export class AccountProject extends Model {
   public avgAccountSeq(): this { this[CORE].aggregate('avg', 'account_seq'); return this; }
   public getProjectSeq(): number { return this[CORE].column('project_seq') as number; }
   public setProjectSeq(value: number): this { this[CORE].setValue('project_seq', value); return this; }
-  public setRawProjectSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'project_seq', raw: { sql, binds } }); return this; }
   public addColumnProjectSeq(): this { this[CORE].addColumn('project_seq'); return this; }
   public removeColumnProjectSeq(): this { this[CORE].removeColumn('project_seq'); return this; }
   public groupByProjectSeq(): this { this[CORE].groupBy.push('project_seq'); return this; }
@@ -1278,8 +1174,6 @@ export interface AccountProject {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1296,8 +1190,6 @@ export interface AccountProject {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */
@@ -1309,7 +1201,6 @@ export class Task extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('task')!, create: core => new Task(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -1322,7 +1213,6 @@ export class Task extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getTitle(): string { return this[CORE].column('title') as string; }
   public setTitle(value: string): this { this[CORE].setValue('title', value); return this; }
-  public setRawTitle(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'title', raw: { sql, binds } }); return this; }
   public addColumnTitle(): this { this[CORE].addColumn('title'); return this; }
   public removeColumnTitle(): this { this[CORE].removeColumn('title'); return this; }
   public groupByTitle(): this { this[CORE].groupBy.push('title'); return this; }
@@ -1331,7 +1221,6 @@ export class Task extends Model {
   public orderByTitleDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('title', true, fn); return this; }
   public getState(): string { return this[CORE].column('state') as string; }
   public setState(value: string): this { this[CORE].setValue('state', value); return this; }
-  public setRawState(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'state', raw: { sql, binds } }); return this; }
   public addColumnState(): this { this[CORE].addColumn('state'); return this; }
   public removeColumnState(): this { this[CORE].removeColumn('state'); return this; }
   public groupByState(): this { this[CORE].groupBy.push('state'); return this; }
@@ -1344,8 +1233,6 @@ export interface Task {
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
-  /** Returns the value or relation result named Doubled. */
-  getDoubled<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
   getMembers<T = unknown>(): T;
   /** Returns the value or relation result named Module. */
@@ -1362,8 +1249,6 @@ export interface Task {
   getServiceRegionModel<T = unknown>(): T;
   /** Returns the value or relation result named StartMonth. */
   getStartMonth<T = unknown>(): T;
-  /** Returns the value or relation result named UpperName. */
-  getUpperName<T = unknown>(): T;
   /** Returns the user relation result; T is its model type. */
   getUserModel<T = unknown>(): T;
   /** Returns the value or relation result named Writer. */

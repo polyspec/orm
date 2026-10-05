@@ -122,24 +122,6 @@ func (x *AccountProjectModel) connector(conn string, args []any) *AccountProject
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *AccountProjectModel) Raw(sql string, binds ...any) *AccountProjectModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *AccountProjectModel) AndRaw(sql string, binds ...any) *AccountProjectModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *AccountProjectModel) OrRaw(sql string, binds ...any) *AccountProjectModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *AccountProjectModel) On(fn func(*AccountProjectModel)) *AccountProjectModel {
 	g := accountProjectEntity.New(x.m.Group()).(*AccountProjectModel)
@@ -254,18 +236,6 @@ func (x *AccountProjectModel) Limit(offset, count int) *AccountProjectModel {
 // OrderByRandom orders rows randomly.
 func (x *AccountProjectModel) OrderByRandom() *AccountProjectModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *AccountProjectModel) OrderByRaw(sql string) *AccountProjectModel {
-	x.m.OrderByRaw(sql)
-	return x
-}
-
-// GroupByRaw appends a raw grouping expression.
-func (x *AccountProjectModel) GroupByRaw(sql string) *AccountProjectModel {
-	x.m.GroupByRaw(sql)
-	return x
-}
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *AccountProjectModel) RemoveAllColumns() *AccountProjectModel {
 	x.m.RemoveAllColumns()
@@ -324,10 +294,6 @@ func (x *AccountProjectModel) SetAccountSeq(v int64) *AccountProjectModel {
 	return x
 }
 
-func (x *AccountProjectModel) SetRawAccountSeq(sql string, binds ...any) *AccountProjectModel {
-	x.m.SetRaw("account_seq", sql, binds)
-	return x
-}
 func (x *AccountProjectModel) AddColumnAccountSeq() *AccountProjectModel {
 	x.m.AddColumn("account_seq")
 	return x
@@ -379,10 +345,6 @@ func (x *AccountProjectModel) SetProjectSeq(v int64) *AccountProjectModel {
 	return x
 }
 
-func (x *AccountProjectModel) SetRawProjectSeq(sql string, binds ...any) *AccountProjectModel {
-	x.m.SetRaw("project_seq", sql, binds)
-	return x
-}
 func (x *AccountProjectModel) AddColumnProjectSeq() *AccountProjectModel {
 	x.m.AddColumn("project_seq")
 	return x

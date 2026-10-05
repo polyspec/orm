@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use super::dialect::{Dialect, CURRENT_TIME_TOKEN};
+use super::dialect::Dialect;
 use super::err;
 use crate::codes;
 use crate::ir;
@@ -163,12 +163,6 @@ impl Builder {
         })
     }
 
-    /// raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로
-    /// type이 없다. raw fragment는 G5.32-3에서 사라진다.
-    fn raw_param(&mut self, i: usize) -> String {
-        self.push(BindSlot { from: "param".into(), param: i, ..Default::default() })
-    }
-
     /// executor 설정 값이다. `ty`는 그 값을 쓰는 column의 type이다.
     fn config(&mut self, name: &str, ty: &str) -> String {
         self.slot(BindSlot { from: "config".into(), name: name.into(), col_type: ty.into(), ..Default::default() })
@@ -189,26 +183,6 @@ impl Builder {
     /// executor가 parent 값으로 펼치는 placeholder 하나다. `key_types`는 비교하는 key column의 type이다.
     fn parent_list(&mut self, step: usize, key_types: Vec<String>) -> String {
         self.push(BindSlot { from: "parent".into(), step: step as u32, key_types, ..Default::default() })
-    }
-
-    /// Replaces each `?` of a fragment with the placeholder of the next bind.
-    fn fill(&mut self, frag: &str, ps: &[usize]) -> Result<String> {
-        let n = frag.matches('?').count();
-        if n != ps.len() {
-            return Err(err(codes::IR_INVALID, format!("fragment has {n} placeholders but {} binds", ps.len())));
-        }
-        let mut out = String::with_capacity(frag.len());
-        let mut k = 0;
-        for ch in frag.chars() {
-            if ch == '?' {
-                let ph = self.raw_param(ps[k]);
-                out.push_str(&ph);
-                k += 1;
-            } else {
-                out.push(ch);
-            }
-        }
-        Ok(out)
     }
 }
 
@@ -454,7 +428,7 @@ impl<'m> Planner<'m> {
         let mut sb = String::from("SELECT ");
         let mut asm = Asm { entity: root.ent.name.clone(), alias: root.alias.clone(), ..Default::default() };
         let mut out_names = Vec::new();
-        let grouped = !q.group_by.is_empty() || !q.group_by_expr.is_empty();
+        let grouped = !q.group_by.is_empty();
         let group_count = kind == "count" && grouped;
         match kind {
             "count" => sb.push_str(if group_count { "1" } else { "COUNT(*)" }),
@@ -462,9 +436,7 @@ impl<'m> Planner<'m> {
             "avg" => sb.push_str(&format!("AVG({})", self.qcol(root, agg))),
             "group_count" => {
                 self.select_group_count_list(root, &mut sb, &mut asm, &mut out_names)?;
-                let mut keys = q.group_by.clone();
-                keys.extend(q.group_by_expr.iter().map(|g| g.as_.clone()));
-                asm.key = asm.key_refs(&keys)?;
+                asm.key = asm.key_refs(&q.group_by)?;
             }
             _ => {
                 self.select_list(&mut b, root, &mut sb, &mut asm, &mut out_names)?;
@@ -623,11 +595,6 @@ impl<'m> Planner<'m> {
                 parts.push(self.d.random().to_owned());
                 continue;
             }
-            if !o.expr.is_empty() {
-                // a raw order expression carries its own direction
-                parts.push(self.render_expr(s, &o.expr)?);
-                continue;
-            }
             let col = match &o.r#fn {
                 Some(f) => self.column_function(s, &o.column, f)?,
                 None => self.qcol(s, &o.column),
@@ -638,11 +605,7 @@ impl<'m> Planner<'m> {
     }
 
     fn render_group_by(&self, s: &Scope<'_>, q: &ir::Query) -> Result<String> {
-        let mut parts: Vec<String> = q.group_by.iter().map(|g| self.qcol(s, g)).collect();
-        for g in &q.group_by_expr {
-            parts.push(self.render_expr(s, &g.expr)?);
-        }
-        Ok(parts.join(", "))
+        Ok(q.group_by.iter().map(|g| self.qcol(s, g)).collect::<Vec<_>>().join(", "))
     }
 
     /// The grouped columns and row_count of a grouped count.
@@ -662,11 +625,6 @@ impl<'m> Planner<'m> {
             let out =
                 OutCol { name: name.clone(), column: name.clone(), typ: col.ty.name().into(), styles: self.client_styles(&col.codec), ..Default::default() };
             push(sb, expr, name, out, asm);
-        }
-        for g in &s.q.group_by_expr {
-            let expr = self.render_expr(s, &g.expr)?;
-            let typ = s.ent.field(&g.as_).map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into());
-            push(sb, expr, &g.as_, OutCol { name: g.as_.clone(), typ, ..Default::default() }, asm);
         }
         push(sb, "COUNT(*)".into(), "row_count", OutCol { name: "row_count".into(), typ: "i64".into(), ..Default::default() }, asm);
         Ok(())
@@ -702,10 +660,6 @@ impl<'m> Planner<'m> {
                     let e = self.sub_select(b, s, sub)?;
                     typ = self.sub_type(sub)?;
                     format!("({e})")
-                }
-                OutKind::Expr(x) => {
-                    let e = self.render_expr(s, &x.sql)?;
-                    b.fill(&e, &x.ps)?
                 }
                 OutKind::Column => {
                     let col = col.ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, c.column)))?;
@@ -802,9 +756,6 @@ impl<'m> Planner<'m> {
         }
         let mut out: Vec<OutItem<'q>> = base.into_iter().map(|x| OutItem { name: x.clone(), column: x, kind: OutKind::Column }).collect();
         if let Some(c) = c {
-            for (name, e) in &c.expr {
-                out.push(OutItem { name: name.clone(), column: String::new(), kind: OutKind::Expr(e) });
-            }
             for (name, f) in &c.r#fn {
                 out.push(OutItem { name: name.clone(), column: f.column.clone(), kind: OutKind::Fn(&f.r#fn) });
             }
@@ -871,10 +822,6 @@ impl<'m> Planner<'m> {
     }
 
     fn render_pred(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, pr: &ir::Pred) -> Result<String> {
-        if !pr.expr.is_empty() {
-            let e = self.render_expr(s, &pr.expr)?;
-            return Ok(format!("({})", b.fill(&e, &pr.ps)?));
-        }
         let p = || pr.p.ok_or_else(|| err(codes::IR_INVALID, format!("{} {}.{} needs a value (p)", pr.op, s.ent.name, pr.column)));
         match pr.op.as_str() {
             "tuple_in" | "tuple_not_in" => {
@@ -1039,28 +986,6 @@ impl<'m> Planner<'m> {
         Ok(cur)
     }
 
-    /// Checks the `{column}` and backtick references of a fragment and
-    /// qualifies them with the scope alias.
-    fn render_expr(&self, s: &Scope<'_>, frag: &str) -> Result<String> {
-        let frag = frag.replace(CURRENT_TIME_TOKEN, self.d.current_time());
-        let mut out = String::with_capacity(frag.len());
-        let mut rest = frag.as_str();
-        while let Some(i) = rest.find(['{', '`']) {
-            out.push_str(&rest[..i]);
-            let close = if rest.as_bytes()[i] == b'{' { '}' } else { '`' };
-            let after = &rest[i + 1..];
-            let j = after.find(close).ok_or_else(|| err(codes::IR_INVALID, format!("unterminated {} in expr", &rest[i..i + 1])))?;
-            let name = &after[..j];
-            if s.ent.field(name).is_none() {
-                return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{name} in expr", s.ent.name)));
-            }
-            out.push_str(&self.qcol(s, name));
-            rest = &after[j + 1..];
-        }
-        out.push_str(rest);
-        Ok(out)
-    }
-
     fn column_function(&self, s: &Scope<'_>, column: &str, f: &ir::Func) -> Result<String> {
         self.d
             .column_function(&f.name, &self.qcol(s, column))
@@ -1121,7 +1046,7 @@ impl<'m> Planner<'m> {
 
     fn render_assign(&self, b: &mut Builder, ent: &Entity, col: &Field, a: &ir::Assign) -> Result<String> {
         if blind_index_source(ent, &col.name).is_some() {
-            if !a.expr.is_empty() || a.plus_p.is_some() || a.minus_p.is_some() {
+            if a.plus_p.is_some() || a.minus_p.is_some() {
                 return Err(err(codes::IR_INVALID, "blind index assignment must use its AES source value"));
             }
             if a.null {
@@ -1130,12 +1055,6 @@ impl<'m> Planner<'m> {
             return Ok(self.blind_value(b, col, a.p.unwrap_or_default()));
         }
         let qualified = || format!("{}.{}", self.d.quote(&ent.table), self.d.quote(&col.name));
-        if !a.expr.is_empty() {
-            let empty = ir::Query::default();
-            let scope = Scope { ent, alias: ent.table.clone(), q: &empty, joins: Vec::new(), outer: None, extra: Vec::new() };
-            let e = self.render_expr(&scope, &a.expr)?;
-            return b.fill(&e, &a.ps);
-        }
         if let Some(i) = a.plus_p {
             // table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
             return Ok(format!("{} + {}", qualified(), b.col_param(i, col, "")));
@@ -1149,7 +1068,7 @@ impl<'m> Planner<'m> {
         if a.null {
             return Ok("NULL".into());
         }
-        let p = a.p.ok_or_else(|| err(codes::IR_INVALID, format!("set {}: exactly one of p/null/expr/plus_p/minus_p", a.column)))?;
+        let p = a.p.ok_or_else(|| err(codes::IR_INVALID, format!("set {}: exactly one of p/null/plus_p/minus_p", a.column)))?;
         Ok(self.render_value(b, col, p))
     }
 
@@ -1402,7 +1321,6 @@ fn restore_key(ent: &Entity, w: &ir::Group) -> Result<()> {
             || pred.value.is_some()
             || pred.r#ref.is_some()
             || pred.sub.is_some()
-            || !pred.expr.is_empty()
             || (i > 0 && pred.conn != "and")
             || columns.contains(&pred.column.as_str())
         {
@@ -1443,7 +1361,6 @@ impl Managed<'_> {
 
 enum OutKind<'q> {
     Column,
-    Expr(&'q ir::Expr),
     Fn(&'q ir::Func),
     Sub(&'q ir::Sub),
 }

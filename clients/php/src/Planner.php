@@ -78,12 +78,11 @@ final class Planner
         }
         $pk = $root->ent['pk'];
         $groupBy = $q['group_by'] ?? [];
-        $groupExprs = $q['group_by_expr'] ?? [];
         $sql = 'SELECT ';
         $asm = new PlanAssemble($root->ent['entity'], $root->alias);
         $outNames = [];
         $idx = 0;
-        $groupCount = $kind === 'count' && ($groupBy !== [] || $groupExprs !== []);
+        $groupCount = $kind === 'count' && $groupBy !== [];
         switch ($kind) {
             case 'count':
                 $sql .= $groupCount ? '1' : 'COUNT(*)';
@@ -96,7 +95,7 @@ final class Planner
                 break;
             case 'group_count':
                 $sql .= $this->groupCountList($root, $asm, $idx, $outNames);
-                $asm->key = self::keyRefs($asm, [...$groupBy, ...array_column($groupExprs, 'as')]);
+                $asm->key = self::keyRefs($asm, $groupBy);
                 break;
             default:
                 $sql .= $this->selectList($b, $root, $asm, $idx, $outNames);
@@ -141,7 +140,7 @@ final class Planner
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
-        if (($groupBy !== [] || $groupExprs !== []) && ($kind === 'one' || $kind === 'all' || $groupCount || $kind === 'group_count')) {
+        if ($groupBy !== [] && ($kind === 'one' || $kind === 'all' || $groupCount || $kind === 'group_count')) {
             $sql .= ' GROUP BY ' . $this->renderGroupBy($root, $q);
         }
         if ($groupCount) {
@@ -244,11 +243,6 @@ final class Planner
                 $parts[] = $this->d->random();
                 continue;
             }
-            if (($o['expr'] ?? '') !== '') {
-                // a raw order expression carries its own direction
-                $parts[] = $this->renderExpr($root, $o['expr']);
-                continue;
-            }
             $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn']) : $this->qcol($root, $o['column']);
             $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC');
         }
@@ -257,11 +251,7 @@ final class Planner
 
     private function renderGroupBy(PlanScope $root, array $q): string
     {
-        $parts = $this->qualified($root, $q['group_by'] ?? []);
-        foreach ($q['group_by_expr'] ?? [] as $g) {
-            $parts[] = $this->renderExpr($root, $g['expr']);
-        }
-        return implode(', ', $parts);
+        return implode(', ', $this->qualified($root, $q['group_by'] ?? []));
     }
 
     /** The grouped columns and row_count of a grouped count. */
@@ -275,12 +265,6 @@ final class Planner
             $parts[] = $expr . ' AS ' . $this->d->quote($out);
             $outNames[] = $out;
             $asm->columns[] = self::outCol($idx++, $name, $name, $col['type'], $this->clientStyles($col));
-        }
-        foreach ($s->q['group_by_expr'] ?? [] as $g) {
-            $out = $s->alias . '__' . $g['as'];
-            $parts[] = $this->renderExpr($s, $g['expr']) . ' AS ' . $this->d->quote($out);
-            $outNames[] = $out;
-            $asm->columns[] = self::outCol($idx++, $g['as'], '', RuntimeModel::column($s->ent, $g['as'])['type'] ?? 'string', []);
         }
         $out = $s->alias . '__row_count';
         $parts[] = 'COUNT(*) AS ' . $this->d->quote($out);
@@ -325,8 +309,6 @@ final class Planner
             } elseif (isset($c['sub'])) {
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
                 $type = $this->subType($c['sub']);
-            } elseif (isset($c['expr'])) {
-                $expr = $this->fill($b, $this->renderExpr($s, $c['expr']['sql'] ?? ''), $c['expr']['ps'] ?? []);
             } else {
                 $expr = $this->d->readExpr($this->qcol($s, $c['column']), $this->sqlStyles($col));
                 $styles = $this->clientStyles($col);
@@ -357,7 +339,7 @@ final class Planner
         return implode(', ', $parts);
     }
 
-    /** @return list<array{name: string, column: string, expr?: array, fn?: array, sub?: array}> */
+    /** @return list<array{name: string, column: string, fn?: array, sub?: array}> */
     private function projection(PlanScope $s): array
     {
         $c = $s->q['columns'] ?? null;
@@ -400,12 +382,11 @@ final class Planner
             }
         }
         $out = array_map(static fn(string $x): array => ['name' => $x, 'column' => $x], $base);
-        foreach (['expr', 'fn', 'sub'] as $kind) {
+        foreach (['fn', 'sub'] as $kind) {
             $named = $c[$kind] ?? [];
             ksort($named, SORT_STRING);
             foreach ($named as $name => $v) {
                 $out[] = match ($kind) {
-                    'expr' => ['name' => (string) $name, 'column' => '', 'expr' => $v],
                     'fn' => ['name' => (string) $name, 'column' => $v['column'], 'fn' => $v['fn']],
                     'sub' => ['name' => (string) $name, 'column' => '', 'sub' => $v],
                 };
@@ -499,9 +480,6 @@ final class Planner
     private function renderPred(PlanBinds $b, PlanScope $s, array $p): string
     {
         $op = $p['op'] ?? '';
-        if (($p['expr'] ?? '') !== '') {
-            return '(' . $this->fill($b, $this->renderExpr($s, $p['expr']), $p['ps'] ?? []) . ')';
-        }
         if ($op === 'tuple_in' || $op === 'tuple_not_in') {
             $rows = [];
             foreach (array_chunk($p['ps'], count($p['cols'])) as $values) {
@@ -642,49 +620,6 @@ final class Planner
         return $cur;
     }
 
-    /** Checks the `{column}` and backtick names of a fragment and qualifies them. */
-    private function renderExpr(PlanScope $s, string $frag): string
-    {
-        $frag = str_replace(Dialect::CURRENT_TIME_TOKEN, $this->d->currentTime(), $frag);
-        $out = '';
-        $n = strlen($frag);
-        $i = 0;
-        while ($i < $n) {
-            $c = $frag[$i];
-            if ($c !== '{' && $c !== '`') {
-                $out .= $c;
-                $i++;
-                continue;
-            }
-            $close = $c === '{' ? '}' : '`';
-            $j = strpos($frag, $close, $i + 1);
-            if ($j === false) {
-                throw self::err(Code::IR_INVALID, "unterminated $c in expr");
-            }
-            $name = substr($frag, $i + 1, $j - $i - 1);
-            if (RuntimeModel::column($s->ent, $name) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "{$s->ent['entity']}.$name in expr");
-            }
-            $out .= $this->qcol($s, $name);
-            $i = $j + 1;
-        }
-        return $out;
-    }
-
-    /** Replaces each `?` of a fragment with the placeholder of the next bind. */
-    private function fill(PlanBinds $b, string $frag, array $ps): string
-    {
-        if (substr_count($frag, '?') !== count($ps)) {
-            throw self::err(Code::IR_INVALID, sprintf('fragment has %d placeholders but %d binds', substr_count($frag, '?'), count($ps)));
-        }
-        $parts = explode('?', $frag);
-        $out = array_shift($parts);
-        foreach ($parts as $k => $part) {
-            $out .= $b->rawParam($ps[$k]) . $part;
-        }
-        return $out;
-    }
-
     private function sqlStyles(array $col): array
     {
         return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->handlesStyle($s)));
@@ -800,17 +735,13 @@ final class Planner
     private function renderAssign(PlanBinds $b, array $ent, array $col, array $a): string
     {
         if (self::blindIndexSource($ent, $col['name']) !== null) {
-            if (($a['expr'] ?? '') !== '' || isset($a['plus_p']) || isset($a['minus_p'])) {
+            if (isset($a['plus_p']) || isset($a['minus_p'])) {
                 throw self::err(Code::IR_INVALID, 'blind index assignment must use its AES source value');
             }
             return !empty($a['null']) ? 'NULL' : $b->blindIndex($a['p'], $col['type']);
         }
         // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
         $q = $this->d->quote($ent['table']) . '.' . $this->d->quote($col['name']);
-        if (($a['expr'] ?? '') !== '') {
-            $scope = new PlanScope($ent, $ent['table'], ['entity' => $ent['entity']], null);
-            return $this->fill($b, $this->renderExpr($scope, $a['expr']), $a['ps'] ?? []);
-        }
         if (isset($a['plus_p'])) {
             return $q . ' + ' . $b->colParam($a['plus_p'], $col);
         }
@@ -1033,7 +964,7 @@ final class Planner
         foreach ($where['items'] as $i => $item) {
             $pr = $item['pred'] ?? null;
             if ($pr === null || ($pr['op'] ?? '') !== 'eq' || !isset($pr['p']) || isset($pr['fn']) || isset($pr['value']) || isset($pr['ref']) || isset($pr['sub'])
-                || ($pr['expr'] ?? '') !== '' || ($i > 0 && ($pr['conn'] ?? '') !== 'and') || in_array($pr['column'] ?? '', $columns, true)) {
+                || ($i > 0 && ($pr['conn'] ?? '') !== 'and') || in_array($pr['column'] ?? '', $columns, true)) {
                 throw $invalid;
             }
             $columns[] = $pr['column'];
@@ -1213,15 +1144,6 @@ final class PlanBinds
             $slot['precision'] = $col['precision'];
         }
         return $this->typed($slot);
-    }
-
-    /**
-     * raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로 type이
-     * 없다. raw fragment는 G5.32-3에서 사라진다.
-     */
-    public function rawParam(int $i): string
-    {
-        return $this->add(['from' => 'param', 'param' => $i]);
     }
 
     /** Plaintext the executor hashes with the blind-index key; $type is the index column's type. */

@@ -3,7 +3,7 @@
 // rows, and INSERT, UPDATE, and DELETE statements.
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
-import { CURRENT_TIME_TOKEN, type Dialect, valueFunctionUnits } from './dialect.js';
+import { type Dialect, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
@@ -31,7 +31,6 @@ interface RelationContext {
 interface OutColumn {
   name: string;
   column: string;
-  expr?: { sql: string; ps?: number[] };
   fn?: OrmFunction;
   sub?: Subquery;
 }
@@ -75,11 +74,6 @@ class Builder {
     if (col.type === 'decimal') s.scale = col.scale;
     return this.typed(s);
   }
-  /**
-   * raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로 type이
-   * 없다. raw fragment는 G5.32-3에서 사라진다.
-   */
-  public rawParam(i: number): string { return this.push(slot({ from: 'param', param: i })); }
   /** A key of the executor configuration; a key is text. */
   public secret(name: string): string { return this.typed(slot({ from: 'secret', name, col_type: 'text' })); }
   /** A value of the executor configuration; type is the type of the column it is written to. */
@@ -130,7 +124,7 @@ function sortedKeys(record: Readonly<Record<string, unknown>> | undefined): stri
 }
 
 function hasGroupBy(q: RequestQuery): boolean {
-  return (q.group_by ?? []).length > 0 || (q.group_by_expr ?? []).length > 0;
+  return (q.group_by ?? []).length > 0;
 }
 
 function styles(c: Column): readonly string[] { return c.stages; }
@@ -284,7 +278,7 @@ export class Planner {
         break;
       case 'group_count': {
         sql += this.selectGroupCountList(b, root, asm, idx, outNames);
-        asm.key = keyRefs(asm, [...q.group_by ?? [], ...(q.group_by_expr ?? []).map(g => g.as)]);
+        asm.key = keyRefs(asm, [...q.group_by ?? []]);
         break;
       }
       default:
@@ -387,8 +381,6 @@ export class Planner {
     if (order.length === 0) return '';
     const parts = order.map(o => {
       if (o.random) return this.d.random();
-      // A raw order expression carries its own direction.
-      if ((o.expr ?? '') !== '') return this.renderExpr(root, o.expr!);
       const target = o.fn ? this.columnFunction(b, root, o.column!, o.fn) : this.qcol(root, o.column!);
       return target + (o.desc ? ' DESC' : ' ASC');
     });
@@ -396,10 +388,7 @@ export class Planner {
   }
 
   private renderGroupBy(root: Scope, q: RequestQuery): string {
-    return [
-      ...(q.group_by ?? []).map(name => this.qcol(root, name)),
-      ...(q.group_by_expr ?? []).map(g => this.renderExpr(root, g.expr)),
-    ].join(', ');
+    return (q.group_by ?? []).map(name => this.qcol(root, name)).join(', ');
   }
 
   /** The grouped columns and row_count of a grouped count, assembled as the root entity. */
@@ -411,12 +400,6 @@ export class Planner {
       parts.push(`${this.d.readExpr(this.qcol(s, name), this.sqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
       outNames.push(out);
       asm.columns.push({ index: idx.n++, name, column: name, type: col.type, styles: this.clientStyles(styles(col)), hidden: false });
-    }
-    for (const g of s.q.group_by_expr ?? []) {
-      const out = `${s.alias}__${g.as}`;
-      parts.push(`${this.renderExpr(s, g.expr)} AS ${this.d.quote(out)}`);
-      outNames.push(out);
-      asm.columns.push({ index: idx.n++, name: g.as, column: '', type: 'string', styles: [], hidden: false });
     }
     const out = `${s.alias}__row_count`;
     parts.push(`COUNT(*) AS ${this.d.quote(out)}`);
@@ -442,8 +425,6 @@ export class Planner {
       } else if (c.sub) {
         expr = `(${this.subSelect(b, s, c.sub)})`;
         type = this.subType(c.sub);
-      } else if (c.expr) {
-        expr = this.fillPlaceholders(b, this.renderExpr(s, c.expr.sql), c.expr.ps ?? []);
       } else {
         expr = this.d.readExpr(this.qcol(s, c.column), this.sqlStyles(styles(col!)));
         colStyles = this.clientStyles(styles(col!));
@@ -504,7 +485,6 @@ export class Planner {
     for (const pk of s.ent.primaryKey) if (!base.includes(pk)) base = [pk, ...base];
     const out: OutColumn[] = base.map(x => ({ name: x, column: x }));
     if (c) {
-      for (const name of sortedKeys(c.expr)) out.push({ name, column: '', expr: c.expr![name] });
       for (const name of sortedKeys(c.fn)) out.push({ name, column: c.fn![name]!.column, fn: c.fn![name]!.fn });
       for (const name of sortedKeys(c.sub)) out.push({ name, column: '', sub: c.sub![name] });
     }
@@ -561,7 +541,6 @@ export class Planner {
 
   private renderPred(b: Builder, s: Scope, pr: Predicate): string {
     const op = pr.op ?? '';
-    if ((pr.expr ?? '') !== '') return `(${this.fillPlaceholders(b, this.renderExpr(s, pr.expr!), pr.ps ?? [])})`;
     if (op === 'tuple_in' || op === 'tuple_not_in') {
       const cols = pr.cols!;
       const ps = pr.ps!;
@@ -658,33 +637,6 @@ export class Planner {
     return cur;
   }
 
-  /** Checks {column} and `column` names of a fragment and qualifies them. */
-  private renderExpr(s: Scope, frag: string): string {
-    frag = frag.replaceAll(CURRENT_TIME_TOKEN, this.d.currentTime());
-    let out = '';
-    let i = 0;
-    while (i < frag.length) {
-      const c = frag[i]!;
-      if (c !== '{' && c !== '`') { out += c; i++; continue; }
-      const close = c === '{' ? '}' : '`';
-      const j = frag.indexOf(close, i + 1);
-      if (j < 0) fail('IR_INVALID', `unterminated ${c} in expr`);
-      const name = frag.slice(i + 1, j);
-      if (!columnOf(s.ent, name)) fail('COLUMN_UNKNOWN', `${s.ent.name}.${name} in expr`);
-      out += this.qcol(s, name);
-      i = j + 1;
-    }
-    return out;
-  }
-
-  /** Replaces each `?` of a fragment with the dialect placeholder of the next bind. */
-  private fillPlaceholders(b: Builder, frag: string, ps: readonly number[]): string {
-    const count = frag.split('?').length - 1;
-    if (count !== ps.length) fail('IR_INVALID', `fragment has ${count} placeholders but ${ps.length} binds`);
-    let k = 0;
-    return frag.replace(/\?/g, () => b.rawParam(ps[k++]!));
-  }
-
   private columnFunction(b: Builder, s: Scope, column: string, f: OrmFunction): string {
     // column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은 함수가 인자를 받으면
     // type 없는 slot으로 planner 오류다.
@@ -724,13 +676,9 @@ export class Planner {
 
   private renderAssign(b: Builder, ent: Entity, col: Column, a: Assignment): string {
     if (blindIndexSource(ent, col.name)) {
-      if ((a.expr ?? '') !== '' || a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
+      if (a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
       return this.renderBlindIndexValue(b, col, a.p!);
-    }
-    if ((a.expr ?? '') !== '') {
-      const scope: Scope = { ent, alias: ent.table, q: { entity: ent.name }, joins: new Map(), parent: undefined, outer: undefined, extra: [] };
-      return this.fillPlaceholders(b, this.renderExpr(scope, a.expr!), a.ps ?? []);
     }
     // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
     const q = `${this.d.quote(ent.table)}.${this.d.quote(col.name)}`;
@@ -905,7 +853,7 @@ function restoreKey(ent: Entity, where: Group): void {
   where.items.forEach((item, i) => {
     const p = item.pred;
     if (p === undefined || p.op !== 'eq' || p.p === undefined || p.fn !== undefined || p.value !== undefined || p.ref !== undefined
-      || p.sub !== undefined || (p.expr ?? '') !== '' || (i > 0 && p.conn !== 'and') || columns.includes(p.column ?? '')) invalid();
+      || p.sub !== undefined || (i > 0 && p.conn !== 'and') || columns.includes(p.column ?? '')) invalid();
     columns.push(p!.column ?? '');
   });
   const same = (key: readonly string[]) => key.length === columns.length && key.every(c => columns.includes(c));

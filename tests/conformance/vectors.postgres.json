@@ -446,54 +446,6 @@
       }
     },
     {
-      "name": "raw_forms",
-      "chain": "andRaw('{read_count} \u003e ?', 990), raw('{seq} IN (?, ?)'), addRawColumnDoubled, orderByRaw",
-      "expect": {
-        "result": {
-          "count": 0,
-          "rows": [
-            [
-              43,
-              86
-            ],
-            [
-              42,
-              84
-            ]
-          ]
-        },
-        "statements": [
-          {
-            "binds": [
-              7,
-              990
-            ],
-            "error": null,
-            "kind": "select",
-            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = $1 AND (\"a\".\"read_count\" \u003e $2)",
-            "tables": [
-              "author"
-            ],
-            "transaction": null
-          },
-          {
-            "binds": [
-              2,
-              42,
-              43
-            ],
-            "error": null,
-            "kind": "select",
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", (\"a\".\"read_count\" * $1) AS \"a__doubled\" FROM \"author\" AS \"a\" WHERE (\"a\".\"seq\" IN ($2, $3)) ORDER BY \"a\".\"seq\" DESC",
-            "tables": [
-              "author"
-            ],
-            "transaction": null
-          }
-        ]
-      }
-    },
-    {
       "name": "expression_forms",
       "chain": "serviceSeq(7)-\u003eandNot(fn: isClose(true)-\u003eorGtReadCount(500))-\u003egetCount(), not(fn: isDisplay(false))-\u003eandServiceSeq(7)-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets(), serviceSeq(7)-\u003eorNot(fn: ltReadCount(990))-\u003egetCount()",
       "expect": {
@@ -561,7 +513,7 @@
     },
     {
       "name": "columns",
-      "chain": "removeAllColumns(), addColumnName(), addColumnReadCountAliasReadText(format), removeColumnName()",
+      "chain": "removeAllColumns(), addColumnName(), addColumnStartDtAliasStartYear(year()), removeColumnName()",
       "expect": {
         "result": [
           {
@@ -569,8 +521,8 @@
           },
           {
             "name": "author-42",
-            "read_text": "r42",
-            "seq": 42
+            "seq": 42,
+            "start_year": 2026
           },
           {
             "seq": 7
@@ -595,7 +547,7 @@
             ],
             "error": null,
             "kind": "select",
-            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", CONCAT('r', \"a\".\"read_count\") AS \"a__read_text\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"name\" AS \"a__name\", EXTRACT(YEAR FROM \"a\".\"start_dt\")::int AS \"a__start_year\" FROM \"author\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
             "tables": [
               "author"
             ],

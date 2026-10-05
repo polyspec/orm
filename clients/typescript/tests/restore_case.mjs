@@ -104,9 +104,9 @@ export async function auditCase(db, driver, dsn) {
   let raw = null;
   try { await nativeQuery(driver, dsn, ["INSERT INTO item (title, audit_seq) VALUES ('raw', 999)"]); } catch (error) { raw = error; }
   assert.notEqual(raw, null, 'a raw insert that names no audit record succeeded; the foreign key rejects it');
-  const audits = await new Audit().connect(db).orderByRaw('{seq} ASC').gets();
+  const audits = await new Audit().connect(db).orderBySeqAsc().gets();
   assert.deepEqual(audits.values().map(a => [a[CORE].column('seq'), a[CORE].column('actor')]), [[1, 'create'], [2, 'default']], 'audit records');
-  const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
+  const history = await new ItemHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
   assert.deepEqual(history.values().map(h => [
     h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('title'),
     h[CORE].column('audit_seq'), h[CORE].column('deleted_at') !== null,
@@ -133,7 +133,7 @@ export async function restoreCase(db) {
   const { membership: Membership, membership_history: MembershipHistory, label: Label, audit: Audit } = modelsOf(restoreText);
   const make = (cls, values) => modelWith(cls, values).connect(db);
   const auditSeq = async actor => {
-    const rows = await new Audit().connect(db).raw('{actor} = ?', actor).gets();
+    const rows = await new Audit().connect(db).actor(actor).gets();
     assert.equal(rows.length, 1, `audit records of ${actor}`);
     return rows.values()[0][CORE].column('seq');
   };
@@ -153,7 +153,7 @@ export async function restoreCase(db) {
 
   assert.equal(await codeOf(adb.transaction(async () => { await make(Membership, { team_id: 1, member_id: 2 }).create(); }, { audit: { actor: 'duplicate' }, retry: 0 })),
     'DUPLICATE_KEY', 'insert of the key of a soft-deleted row');
-  assert.equal(await codeOf(new Label().connect(db).raw('{name} = ?', 'red').get()), 'NO_ROWS', 'default read of a soft-deleted row');
+  assert.equal(await codeOf(new Label().connect(db).name('red').get()), 'NO_ROWS', 'default read of a soft-deleted row');
   assert.equal(await codeOf(make(Membership, { team_id: 1, member_id: 2 }).restore()), 'CONFIG', 'restore of an audited row without an audit');
 
   // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
@@ -169,7 +169,7 @@ export async function restoreCase(db) {
   assert.equal(await codeOf(make(Label, {}).restore()), 'CONFIG', 'restore without key values');
 
   const [create, remove, restore] = [await auditSeq('create'), await auditSeq('delete'), await auditSeq('restore')];
-  const history = await new MembershipHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
+  const history = await new MembershipHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
   assert.deepEqual(history.values().map(h => [
     h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('team_id'),
     h[CORE].column('member_id'), h[CORE].column('audit_seq'), h[CORE].column('deleted_at') === null ? 'live' : 'deleted',
@@ -178,6 +178,6 @@ export async function restoreCase(db) {
     ['update', create, seq, 1, 2, remove, 'deleted'],
     ['update', remove, seq, 1, 2, restore, 'live'],
   ], 'membership_history in history_id order');
-  assert.equal(await new Audit().connect(db).raw('{actor} = ?', 'duplicate').getCount(), 0, 'audit records of the failed transaction');
+  assert.equal(await new Audit().connect(db).actor('duplicate').getCount(), 0, 'audit records of the failed transaction');
   assert.equal(await new Label().connect(db).getCount(), 1, 'live labels');
 }

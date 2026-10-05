@@ -272,41 +272,48 @@ func TestSubqueryConditionsAndColumns(t *testing.T) {
 	formsError(t, e, `"kind":"all","entity":"owner","where":{"items":[{"pred":{"column":"seq","op":"eq_col","ref":{"path":"^","column":"seq"}}}]}`, "IR_INVALID")
 }
 
-func TestRawColumnReferencesAndRandomOrder(t *testing.T) {
+func TestRandomOrder(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	for driver, parts := range map[string][]string{
-		"mysql":    {"(`a`.`price` * ? > ?)", "ORDER BY RAND()"},
-		"postgres": {`("a"."price" * $1 > $2)`, "ORDER BY random()"},
-		"sqlite":   {`("a"."price" * ? > ?)`, "ORDER BY random()"},
-	} {
-		p := formsCompile(t, formsEngine(t, driver), `"kind":"all","entity":"place",
-		 "where":{"items":[{"pred":{"expr":"{price} * ? > ?","ps":[0,1]}}]},
-		 "order":[{"random":true}]`)
-		requireSQL(t, p.Steps[0].SQL, parts...)
+	for driver, want := range map[string]string{"mysql": "ORDER BY RAND()", "postgres": "ORDER BY random()", "sqlite": "ORDER BY random()"} {
+		p := formsCompile(t, formsEngine(t, driver), `"kind":"all","entity":"place","order":[{"random":true}]`)
+		requireSQL(t, p.Steps[0].SQL, want)
 	}
-	formsError(t, formsEngine(t, "mysql"), `"kind":"all","entity":"place","where":{"items":[{"pred":{"expr":"{missing} > ?","ps":[0]}}]}`, "COLUMN_UNKNOWN")
 }
 
-func TestBoundRawColumnAndBinaryContains(t *testing.T) {
+// IR에는 SQL 조각을 싣는 form이 없다. 조건, column, 정렬, group, 할당의 옛 raw
+// form은 모르는 field라서 IR_INVALID다.
+func TestRawFormsRejected(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	e := formsEngine(t, "postgres")
+	for _, body := range []string{
+		`"kind":"all","entity":"place","where":{"items":[{"pred":{"expr":"{price} > ?","ps":[0]}}]}`,
+		`"kind":"all","entity":"place","columns":{"expr":{"doubled":{"sql":"({price} * ?)","ps":[0]}}}`,
+		`"kind":"all","entity":"place","order":[{"expr":"{price} DESC"}]`,
+		`"kind":"group_count","entity":"place","group_by_expr":[{"expr":"ROUND({price})","as":"bucket"}]`,
+		`"kind":"update","entity":"place","where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},"set":[{"column":"price","expr":"{price} * ?","ps":[1]}]`,
+	} {
+		formsError(t, e, body, "IR_INVALID")
+	}
+}
+
+func TestBinaryContains(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for driver, parts := range map[string][]string{
-		"mysql":    {"(`a`.`price` * ?) AS `a__doubled`", "`a`.`name` LIKE BINARY ?"},
-		"postgres": {`("a"."price" * $1) AS "a__doubled"`, `"a"."name" LIKE $2`},
-		"sqlite":   {`("a"."price" * ?) AS "a__doubled"`, `instr("a"."name", ?) > 0`},
+		"mysql":    {"`a`.`name` LIKE BINARY ?"},
+		"postgres": {`"a"."name" LIKE $1`},
+		"sqlite":   {`instr("a"."name", ?) > 0`},
 	} {
 		p := formsCompile(t, formsEngine(t, driver), `"kind":"all","entity":"place",
-		 "columns":{"expr":{"doubled":{"sql":"({price} * ?)","ps":[0]}}},
-		 "where":{"items":[{"pred":{"column":"name","op":"contains_binary","p":1}}]}`)
+		 "where":{"items":[{"pred":{"column":"name","op":"contains_binary","p":0}}]}`)
 		requireSQL(t, p.Steps[0].SQL, parts...)
 		want := "like_contains"
 		if driver == "sqlite" {
 			want = ""
 		}
-		if got := p.Steps[0].BindSlots[1].Transform; got != want {
+		if got := p.Steps[0].BindSlots[0].Transform; got != want {
 			t.Fatalf("%s transform %q", driver, got)
 		}
 	}
-	formsError(t, formsEngine(t, "mysql"), `"kind":"all","entity":"place","columns":{"expr":{"doubled":{"sql":"{price} * ?"}}}`, "IR_INVALID")
 }
 
 func TestMultiRowInsert(t *testing.T) {

@@ -149,7 +149,6 @@ func (s *shape) query(q *ir.Query) {
 		s.str(q.Columns.Mode)
 		s.strs(q.Columns.Add)
 		s.strs(q.Columns.Remove)
-		entries(s, q.Columns.Expr, func(e *shape, v ir.Expr) { e.str(v.SQL); e.ints(v.Ps) })
 		entries(s, q.Columns.Fn, func(e *shape, v ir.ColFunc) { e.str(v.Column); e.fn(&v.Fn) })
 		entries(s, q.Columns.Sub, func(e *shape, v *ir.Sub) { e.sub(v) })
 	}
@@ -187,17 +186,11 @@ func (s *shape) query(q *ir.Query) {
 	s.int(len(q.Order))
 	for _, o := range q.Order {
 		s.str(o.Column)
-		s.str(o.Expr)
 		s.bool(o.Desc)
 		s.bool(o.Random)
 		s.fn(o.Fn)
 	}
 	s.strs(q.GroupBy)
-	s.int(len(q.GroupByExpr))
-	for _, g := range q.GroupByExpr {
-		s.str(g.Expr)
-		s.str(g.As)
-	}
 	if q.Limit == nil {
 		s.byte(0)
 	} else {
@@ -256,7 +249,6 @@ func (s *shape) group(g *ir.Group) {
 				s.str(it.Pred.Ref.Path)
 				s.str(it.Pred.Ref.Column)
 			}
-			s.str(it.Pred.Expr)
 			s.fn(it.Pred.Fn)
 			s.fn(it.Pred.Value)
 			s.strs(it.Pred.Cols)
@@ -280,8 +272,6 @@ func (s *shape) assigns(as []ir.Assign) {
 		s.str(a.Column)
 		s.optInt(a.P)
 		s.bool(a.Null)
-		s.str(a.Expr)
-		s.ints(a.Ps)
 		s.optInt(a.PlusP)
 		s.optInt(a.MinusP)
 	}

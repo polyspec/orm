@@ -6,9 +6,6 @@ namespace Orm;
 /** The database-specific pieces of SQL for mysql, postgres, and sqlite. */
 final class Dialect
 {
-    /** Replaced in trusted expression fragments with the advancing wall clock. */
-    public const CURRENT_TIME_TOKEN = '$CURRENT_TIME';
-
     /** Column types each column function accepts. */
     public const COLUMN_FUNCTION_TYPES = [
         'day_of_week' => ['date', 'datetime'],
@@ -83,11 +80,6 @@ final class Dialect
     public function now(int $precision): string
     {
         return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
-    }
-
-    public function currentTime(): string
-    {
-        return $this->name === 'postgres' ? 'clock_timestamp()' : 'CURRENT_TIMESTAMP';
     }
 
     /** codec stage를 SQL에서 적용하는지 여부다. 나머지는 executor가 적용한다. */

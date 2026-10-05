@@ -64,17 +64,12 @@ export abstract class Model implements ModelLike {
   public andNot(fn: (q: this) => unknown): this { this[CORE].negated('and', fn as (m: ModelLike) => unknown); return this; }
   /** A negated group joined with OR. */
   public orNot(fn: (q: this) => unknown): this { this[CORE].negated('or', fn as (m: ModelLike) => unknown); return this; }
-  public raw(sql: string, ...binds: unknown[]): this { this[CORE].raw('', sql, binds); return this; }
-  public andRaw(sql: string, ...binds: unknown[]): this { this[CORE].raw('and', sql, binds); return this; }
-  public orRaw(sql: string, ...binds: unknown[]): this { this[CORE].raw('or', sql, binds); return this; }
   /** Sets the join ON conditions. */
   public on(fn: (q: this) => unknown): this { this[CORE].setOn(fn as (m: ModelLike) => unknown); return this; }
   public relation(child: Model): this { this[CORE].relation(false, child); return this; }
   public relations(child: Model): this { this[CORE].relation(true, child); return this; }
   public limit(offset: number, count: number): this { this[CORE].setLimit(offset, count); return this; }
   public orderByRandom(): this { this[CORE].order.push({ random: true }); return this; }
-  public orderByRaw(sql: string): this { this[CORE].order.push({ raw: sql }); return this; }
-  public groupByRaw(sql: string): this { this[CORE].groupRaw.push(sql); return this; }
   public removeAllColumns(): this { this[CORE].columns.mode = 'none'; return this; }
   public addAllColumns(): this { this[CORE].columns.mode = 'all'; return this; }
   public parentNode(): this { this[CORE].parentNode = true; return this; }
@@ -560,13 +555,6 @@ function encodeValue(schema: Entity, column: string, value: unknown): unknown {
 
 function assign(r: WriteRequest, schema: Entity, s: SetSpec): NonNullable<Request['set']>[number] {
   if (s.null) return { column: s.column, null: true };
-  if (s.raw) {
-    const count = s.raw.sql.split('?').length - 1;
-    if (count !== s.raw.binds.length) throw new OrmError('IR_INVALID', `raw SQL has ${count} placeholders and ${s.raw.binds.length} binds`);
-    const out: NonNullable<Request['set']>[number] = { column: s.column, expr: s.raw.sql };
-    if (s.raw.binds.length > 0) out.ps = s.raw.binds.map(b => param(r, b));
-    return out;
-  }
   if (s.plus) return { column: s.column, plus_p: param(r, s.value) };
   if (s.minus) return { column: s.column, minus_p: param(r, s.value) };
   const value = encodeValue(schema, s.column, s.value);
@@ -596,7 +584,7 @@ async function create(c: Core): Promise<Model> {
   m.row = st;
   for (const s of c.sets) {
     st.addName(s.column);
-    if (s.plus || s.minus || s.raw) continue;
+    if (s.plus || s.minus) continue;
     const field = fieldOf(schema, s.column)!;
     const type = columnType(field);
     m.values.set(s.column, s.null
@@ -625,7 +613,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
   const first = models[0]![CORE];
   if (first.sets.length === 0) throw configError('creates requires models with set<Col> values');
   const columns = first.sets.map(s => {
-    if (s.raw || s.plus || s.minus) throw configError('creates accepts stored values only');
+    if (s.plus || s.minus) throw configError('creates accepts stored values only');
     return s.column;
   });
   const schema = c.ent.entity;
@@ -637,7 +625,7 @@ async function creates(c: Core, models: readonly Model[]): Promise<number> {
       const rows: number[][] = [];
       models.slice(start, start + per).forEach((model, i) => {
         const mc = model[CORE];
-        if (mc.sets.length !== columns.length || mc.sets.some((s, j) => s.column !== columns[j] || s.raw || s.plus || s.minus)) {
+        if (mc.sets.length !== columns.length || mc.sets.some((s, j) => s.column !== columns[j] || s.plus || s.minus)) {
           throw configError('every model of creates must set the same columns in the same order');
         }
         const ps = mc.sets.map(s => param(r, s.null ? null : encodeValue(schema, s.column, s.value)));
@@ -656,7 +644,7 @@ function keyValues(c: Core, schema: Entity): Map<string, unknown> {
   const keys = new Map<string, unknown>();
   for (const pk of schema.primaryKey) {
     if (c.row?.loaded) { keys.set(pk, c.row.original.get(pk)); continue; }
-    const s = c.sets.find(s => s.column === pk && !s.plus && !s.minus && !s.raw && !s.null);
+    const s = c.sets.find(s => s.column === pk && !s.plus && !s.minus && !s.null);
     if (!s) throw configError(`${schema.name} requires a loaded row or set primary key ${pk}`);
     keys.set(pk, s.value);
   }
@@ -700,7 +688,7 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
   }
   await write(ex, finishWrite(r), r.params);
   if (loaded) {
-    for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus && !s.raw) c.row!.original.set(s.column, s.value);
+    for (const s of c.sets) if (schema.primaryKey.includes(s.column) && !s.plus && !s.minus) c.row!.original.set(s.column, s.value);
     c.row!.original.delete(column);
   }
   c.sets = [];
@@ -740,7 +728,7 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
 
 /**
  * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. key 는 모든 column 에
- * 값(null, raw, plus, minus 가 아닌 set 값)이 있으면 primary key, 아니면 모든 column 에 값이 있는 첫 unique key(이름
+ * 값(null, plus, minus 가 아닌 set 값)이 있으면 primary key, 아니면 모든 column 에 값이 있는 첫 unique key(이름
  * 순서)다. key 밖의 set 값은 되돌리는 행에 update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼
  * transaction 의 audit 기록 key 를 쓴다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
  * 지운 행을 읽지 않는다.
@@ -749,7 +737,7 @@ async function restore(c: Core): Promise<Model> {
   const ex = terminal(c);
   const schema = c.ent.entity;
   const values = new Map<string, unknown>();
-  for (const s of c.sets) if (!s.null && !s.plus && !s.minus && !s.raw) values.set(s.column, s.value);
+  for (const s of c.sets) if (!s.null && !s.plus && !s.minus) values.set(s.column, s.value);
   const covered = (columns: readonly string[]) => columns.every(column => values.has(column));
   // unique key 는 이름 순서로 고른다. indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
   const uniques = schema.uniques.map((columns, i) => ({ name: schema.indexes[i]!, columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
@@ -880,10 +868,6 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
       const key = snake(P.slice(3));
       return function (value) { this[CORE].setNew(key, value); return this; };
     }
-    if (P.startsWith('AddRawColumn') && P.length > 12) {
-      const key = outputName(set, schema, P.slice(12));
-      return function (sql, ...binds) { this[CORE].addRawColumn(key, sql as string, binds); return this; };
-    }
     if (P.startsWith('AddColumn') && P.length > 9) {
       const rest = P.slice(9);
       const at = rest.indexOf('Alias');
@@ -891,7 +875,7 @@ function resolveName(def: EntityDef, name: string): Resolved | undefined {
         const column = columnName(set, schema, rest.slice(0, at));
         if (column !== '' && rest.length > at + 5) {
           const key = outputName(set, schema, rest.slice(at + 5));
-          return function (format) { this[CORE].addColumnFormat(column, key, format); return this; };
+          return function (fn) { this[CORE].addColumnFunc(column, key, fn); return this; };
         }
       }
       const key = outputName(set, schema, rest);

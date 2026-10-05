@@ -745,9 +745,6 @@ func (r *request) assign(ent *runtimemodel.Entity, s setSpec) (ir.Assign, error)
 	switch {
 	case s.null:
 		a.Null = true
-	case s.raw != nil:
-		pred := r.rawPred(s.raw)
-		a.Expr, a.Ps = pred.Expr, pred.Ps
 	case s.plus:
 		i := r.param(s.value)
 		a.PlusP = &i
@@ -849,7 +846,7 @@ func (c *Core) Create() (Model, error) {
 	st := &rowState{}
 	m.row = st
 	for _, s := range c.sets {
-		if !s.plus && !s.minus && s.raw == nil {
+		if !s.plus && !s.minus {
 			st.addName(s.column)
 			v := s.value
 			if s.null {
@@ -952,7 +949,7 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 	}
 	columns := make([]string, len(first.sets))
 	for i, s := range first.sets {
-		if s.raw != nil || s.plus || s.minus {
+		if s.plus || s.minus {
 			return 0, configErr("creates accepts stored values only")
 		}
 		columns[i] = s.column
@@ -973,7 +970,7 @@ func Creates[T Model](c *Core, models []T) (int64, error) {
 				}
 				var row []int
 				for j, s := range mc.sets {
-					if s.column != columns[j] || s.raw != nil || s.plus || s.minus {
+					if s.column != columns[j] || s.plus || s.minus {
 						return configErr("every model of creates must set the same columns in the same order")
 					}
 					v, err := encodeValue(ent, s.column, s.value)
@@ -1019,7 +1016,7 @@ func (c *Core) keyValues(ent *runtimemodel.Entity) (map[string]any, error) {
 		}
 		found := false
 		for _, s := range c.sets {
-			if s.column == pk && !s.plus && !s.minus && s.raw == nil && !s.null {
+			if s.column == pk && !s.plus && !s.minus && !s.null {
 				keys[pk], found = s.value, true
 			}
 		}
@@ -1098,7 +1095,7 @@ func (c *Core) Update(optimistic []bool) error {
 	}
 	if loaded {
 		for _, s := range c.sets {
-			if slices.Contains(ent.PK, s.column) && !s.plus && !s.minus && s.raw == nil {
+			if slices.Contains(ent.PK, s.column) && !s.plus && !s.minus {
 				c.row.original.set(s.column, s.value)
 			}
 		}
@@ -1183,7 +1180,7 @@ func (c *Core) Restore() (Model, error) {
 	}
 	values := map[string]any{}
 	for _, s := range c.sets {
-		if !s.null && !s.plus && !s.minus && s.raw == nil {
+		if !s.null && !s.plus && !s.minus {
 			values[s.column] = s.value
 		}
 	}

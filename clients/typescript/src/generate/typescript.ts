@@ -59,7 +59,7 @@ function tsField(c: Column): string {
   return c.nullable ? `${t} | null` : t;
 }
 
-const baseMethods = ['connect', 'and', 'or', 'not', 'andNot', 'orNot', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations', 'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw',
+const baseMethods = ['connect', 'and', 'or', 'not', 'andNot', 'orNot', 'on', 'relation', 'relations', 'limit', 'orderByRandom',
   'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit', 'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait',
   'forShareNoWait', 'duplication', 'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
   'save', 'delete', 'restore', 'toArray', 'toJSON', 'toJSONText', 'constructor'];
@@ -68,7 +68,7 @@ function staticNames(e: Entity): Set<string> {
   const out = new Set(baseMethods);
   for (const c of e.fields) {
     const p = pascal(c.name);
-    for (const prefix of ['get', 'set', 'setRaw', 'addColumn', 'removeColumn', 'groupBy', 'keyName']) out.add(prefix + p);
+    for (const prefix of ['get', 'set', 'addColumn', 'removeColumn', 'groupBy', 'keyName']) out.add(prefix + p);
     out.add(`orderBy${p}Asc`);
     out.add(`orderBy${p}Desc`);
     if (numeric(c)) for (const prefix of ['plus', 'minus', 'sum', 'avg']) out.add(prefix + p);
@@ -148,14 +148,11 @@ class Generator {
     if (P.startsWith('Alias') && P.length > 5) return `${name}(): this;`;
     if (P.startsWith('Possible') && P.length > 8) return columnName(this.m, undefined, P.slice(8)) === '' ? undefined : `${name}(value: unknown): this;`;
     if (P.startsWith('New') && P.length > 3) return columnName(this.m, e, P.slice(3)) !== '' ? undefined : `${name}(value: unknown): this;`;
-    if (P.startsWith('AddRawColumn') && P.length > 12) {
-      return columnName(this.m, e, P.slice(12)) !== '' ? undefined : `${name}(sql: string, ...binds: unknown[]): this;`;
-    }
     if (P.startsWith('AddColumn') && P.length > 9) {
       const rest = P.slice(9);
       const i = rest.indexOf('Alias');
       if (i > 0 && columnName(this.m, e, rest.slice(0, i)) !== '' && rest.length > i + 5) {
-        return columnName(this.m, e, rest.slice(i + 5)) !== '' ? undefined : `${name}(format: string | ColumnFunction): this;`;
+        return columnName(this.m, e, rest.slice(i + 5)) !== '' ? undefined : `${name}(fn: ColumnFunction): this;`;
       }
       return columnName(this.m, e, rest) !== '' ? undefined : `${name}(fn: (model: this) => Model): this;`;
     }
@@ -193,7 +190,6 @@ class Generator {
         const n = tsString(c.name);
         b += `  public get${p}(): ${tsField(c)} { return this[CORE].column(${n}) as ${tsField(c)}; }\n`;
         b += `  public set${p}(value: ${tsSet(c)}): this { this[CORE].setValue(${n}, value); return this; }\n`;
-        b += `  public setRaw${p}(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: ${n}, raw: { sql, binds } }); return this; }\n`;
         b += `  public addColumn${p}(): this { this[CORE].addColumn(${n}); return this; }\n`;
         b += `  public removeColumn${p}(): this { this[CORE].removeColumn(${n}); return this; }\n`;
         b += `  public groupBy${p}(): this { this[CORE].groupBy.push(${n}); return this; }\n`;
@@ -261,7 +257,7 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
     for (const entity of m.entities.keys()) {
       if (key === `${pascal(entity)}Model` || key === `${pascal(entity)}Models`) g.getters.set(name, `the ${entity} relation result; T is its model type`);
     }
-    let named = used.has(`alias${key}`) || used.has(`new${key}`) || used.has(`addRawColumn${key}`) || used.has(`addColumn${key}`);
+    let named = used.has(`alias${key}`) || used.has(`new${key}`) || used.has(`addColumn${key}`);
     for (const n of used) if (n.startsWith('addColumn') && n.endsWith(`Alias${key}`)) named = true;
     if (named) g.getters.set(name, `the value or relation result named ${key}`);
   }

@@ -66,8 +66,7 @@ type BindSlot struct {
 	// 저장되는 값이므로 같다), SQL 쪽 style 함수가 받는 값은 그 함수 입력의 type,
 	// 함수와 비교하는 값은 함수 결과의 type, secret은 text, config는 그 값을 쓰는
 	// column의 type, now는 datetime, audit은 audit column의 type이다. parent
-	// slot은 ColType 대신 KeyTypes를 싣는다. raw fragment의 placeholder만 type이
-	// 없다(G5.32-3이 raw fragment를 없앤다).
+	// slot은 ColType 대신 KeyTypes를 싣는다. type이 없는 slot은 없다.
 	ColType string `json:"col_type,omitempty"`
 	// KeyTypes는 parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.
 	KeyTypes  []string `json:"key_types,omitempty"`

@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -165,8 +164,6 @@ func (r *request) query(c *Core, f *frame, path string) *ir.Query {
 		switch {
 		case o.random:
 			q.Order = append(q.Order, ir.Order{Random: true})
-		case o.raw != nil:
-			q.Order = append(q.Order, ir.Order{Expr: o.raw.sql})
 		default:
 			item := ir.Order{Column: o.column, Desc: o.desc}
 			if o.fn != nil {
@@ -177,9 +174,6 @@ func (r *request) query(c *Core, f *frame, path string) *ir.Query {
 		}
 	}
 	q.GroupBy = slices.Clone(c.groupBy)
-	for i, g := range c.groupRaw {
-		q.GroupByExpr = append(q.GroupByExpr, ir.GroupExpr{Expr: g.sql, As: fmt.Sprintf("group_%d", i+1)})
-	}
 	return q
 }
 
@@ -215,28 +209,11 @@ func (r *request) columns(c *Core) *ir.Columns {
 	spec := c.columns
 	out := &ir.Columns{Mode: spec.mode, Add: slices.Clone(spec.add), Remove: slices.Clone(spec.remove)}
 	for _, name := range spec.order {
-		if fs, ok := spec.formats[name]; ok {
-			if strings.Count(fs.format, "%s") != 1 {
-				r.fail(configErr("column format for %s must contain one %%s", name))
-				return nil
-			}
-			if out.Expr == nil {
-				out.Expr = map[string]ir.Expr{}
-			}
-			out.Expr[name] = ir.Expr{SQL: strings.Replace(fs.format, "%s", "{"+fs.column+"}", 1)}
-		}
 		if fs, ok := spec.funcs[name]; ok {
 			if out.Fn == nil {
 				out.Fn = map[string]ir.ColFunc{}
 			}
 			out.Fn[name] = ir.ColFunc{Column: fs.column, Fn: fs.fn.irFunc(r.param)}
-		}
-		if raw, ok := spec.raws[name]; ok {
-			if out.Expr == nil {
-				out.Expr = map[string]ir.Expr{}
-			}
-			pred := r.rawPred(&raw)
-			out.Expr[name] = ir.Expr{SQL: pred.Expr, Ps: pred.Ps}
 		}
 		if fn, ok := spec.subs[name]; ok {
 			sub := r.subquery(fn(c.self), c, true)
@@ -249,24 +226,10 @@ func (r *request) columns(c *Core) *ir.Columns {
 			out.Sub[name] = sub
 		}
 	}
-	if out.Mode == "" && len(out.Add) == 0 && len(out.Remove) == 0 && len(out.Expr) == 0 && len(out.Fn) == 0 && len(out.Sub) == 0 {
+	if out.Mode == "" && len(out.Add) == 0 && len(out.Remove) == 0 && len(out.Fn) == 0 && len(out.Sub) == 0 {
 		return nil
 	}
 	return out
-}
-
-// rawPred binds the values of a raw fragment. `{column}` references stay in
-// the fragment; the engine checks and qualifies them.
-func (r *request) rawPred(raw *rawSpec) *ir.Pred {
-	if n := strings.Count(raw.sql, "?"); n != len(raw.binds) {
-		r.fail(&ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("raw SQL has %d placeholders and %d binds", n, len(raw.binds))})
-	}
-	sql := raw.sql
-	ps := make([]int, len(raw.binds))
-	for i, b := range raw.binds {
-		ps[i] = r.param(b)
-	}
-	return &ir.Pred{Expr: sql, Ps: ps}
 }
 
 func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
@@ -279,9 +242,6 @@ func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
 			if item.Pred == nil {
 				return out
 			}
-			item.Pred.Conn = node.conn
-		case node.raw != nil:
-			item.Pred = r.rawPred(node.raw)
 			item.Pred.Conn = node.conn
 		case node.group != nil:
 			item.Group = r.group(node.group, owner, f)

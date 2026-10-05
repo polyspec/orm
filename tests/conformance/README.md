@@ -64,7 +64,10 @@ counter, and restores the original absence.
 Each runner also takes a repeatable vector selection (`-vector NAME` in Go,
 `--vector NAME` in PHP, Rust, and TypeScript) and then runs only the named
 vectors in declared order; an unknown or repeated name fails before any vector
-runs. The `conformance_verification` coverage case of each client runs its
+runs. `check run`, `check compare` and `check record` take the same repeatable
+`-vector NAME`: `run` passes it to the four runners, and `compare` and `record`
+compare and record only the named vectors, so a change to some vectors runs and
+records only them. The `conformance_verification` coverage case of each client runs its
 runner for the read-only vectors `conditions_values` and `relations` and
 compares each with the recorded expectation of the selected database.
 

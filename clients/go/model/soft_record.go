@@ -136,24 +136,6 @@ func (x *SoftRecordModel) connector(conn string, args []any) *SoftRecordModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *SoftRecordModel) Raw(sql string, binds ...any) *SoftRecordModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *SoftRecordModel) AndRaw(sql string, binds ...any) *SoftRecordModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *SoftRecordModel) OrRaw(sql string, binds ...any) *SoftRecordModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *SoftRecordModel) On(fn func(*SoftRecordModel)) *SoftRecordModel {
 	g := softRecordEntity.New(x.m.Group()).(*SoftRecordModel)
@@ -268,12 +250,6 @@ func (x *SoftRecordModel) Limit(offset, count int) *SoftRecordModel {
 // OrderByRandom orders rows randomly.
 func (x *SoftRecordModel) OrderByRandom() *SoftRecordModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *SoftRecordModel) OrderByRaw(sql string) *SoftRecordModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *SoftRecordModel) GroupByRaw(sql string) *SoftRecordModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *SoftRecordModel) RemoveAllColumns() *SoftRecordModel { x.m.RemoveAllColumns(); return x }
 
@@ -319,10 +295,6 @@ func (x *SoftRecordModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *SoftRecordModel) SetSeq(v int64) *SoftRecordModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *SoftRecordModel) SetRawSeq(sql string, binds ...any) *SoftRecordModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *SoftRecordModel) AddColumnSeq() *SoftRecordModel    { x.m.AddColumn("seq"); return x }
 func (x *SoftRecordModel) RemoveColumnSeq() *SoftRecordModel { x.m.RemoveColumn("seq"); return x }
 func (x *SoftRecordModel) GroupBySeq() *SoftRecordModel      { x.m.GroupBy("seq"); return x }
@@ -350,10 +322,6 @@ func (x *SoftRecordModel) SetName(v string) *SoftRecordModel {
 	return x
 }
 
-func (x *SoftRecordModel) SetRawName(sql string, binds ...any) *SoftRecordModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *SoftRecordModel) AddColumnName() *SoftRecordModel    { x.m.AddColumn("name"); return x }
 func (x *SoftRecordModel) RemoveColumnName() *SoftRecordModel { x.m.RemoveColumn("name"); return x }
 func (x *SoftRecordModel) GroupByName() *SoftRecordModel      { x.m.GroupBy("name"); return x }
@@ -381,10 +349,6 @@ func (x *SoftRecordModel) SetDeletedAt(v *time.Time) *SoftRecordModel {
 	return x
 }
 
-func (x *SoftRecordModel) SetRawDeletedAt(sql string, binds ...any) *SoftRecordModel {
-	x.m.SetRaw("deleted_at", sql, binds)
-	return x
-}
 func (x *SoftRecordModel) AddColumnDeletedAt() *SoftRecordModel {
 	x.m.AddColumn("deleted_at")
 	return x

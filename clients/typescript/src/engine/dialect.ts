@@ -1,9 +1,6 @@
 // Database-specific SQL pieces (docs/dialects.md). The planner never writes a
 // quote or a placeholder itself.
 
-/** Replaced in trusted expression fragments with the advancing wall clock. */
-export const CURRENT_TIME_TOKEN = '$CURRENT_TIME';
-
 /** Column types each column function accepts. */
 export const columnFunctionTypes: Readonly<Record<string, readonly string[]>> = {
   day_of_week: ['date', 'datetime'],
@@ -45,7 +42,6 @@ export interface Dialect {
   writeExpr(ph: string, stages: readonly string[]): string;
   /** column에 쓰는 database clock이며 precision은 column의 소수 자리다. */
   now(precision: number): string;
-  currentTime(): string;
   /** The codec stage runs in SQL; every other stage runs in the executor. */
   handlesStage(stage: string): boolean;
   /** The database has no sub-second clock; the executor binds the time. */
@@ -110,7 +106,6 @@ export const mysql: Dialect = {
     return expr;
   },
   now: precision => precision > 0 ? `CURRENT_TIMESTAMP(${precision})` : 'CURRENT_TIMESTAMP',
-  currentTime: () => 'CURRENT_TIMESTAMP',
   handlesStage: s => s === 'hex' || s === 'ip',
   hostNow: false,
   rowLock: lockSuffix,
@@ -148,7 +143,6 @@ export const postgres: Dialect = {
   readExpr: col => col,
   writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
-  currentTime: () => 'clock_timestamp()',
   handlesStage: () => false,
   hostNow: false,
   rowLock: lockSuffix,
@@ -191,7 +185,6 @@ export const sqlite: Dialect = {
   readExpr: col => col,
   writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
-  currentTime: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
   hostNow: true,
   // The executor takes an ORM-owned lock row; the SQL suffix stays empty.

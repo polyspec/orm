@@ -114,21 +114,6 @@ func (x *AccountModel) connector(conn string, args []any) *AccountModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *AccountModel) Raw(sql string, binds ...any) *AccountModel { x.m.Raw("", sql, binds); return x }
-
-// AndRaw adds a raw condition joined with AND.
-func (x *AccountModel) AndRaw(sql string, binds ...any) *AccountModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *AccountModel) OrRaw(sql string, binds ...any) *AccountModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *AccountModel) On(fn func(*AccountModel)) *AccountModel {
 	g := accountEntity.New(x.m.Group()).(*AccountModel)
@@ -229,12 +214,6 @@ func (x *AccountModel) Limit(offset, count int) *AccountModel { x.m.Limit(offset
 // OrderByRandom orders rows randomly.
 func (x *AccountModel) OrderByRandom() *AccountModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *AccountModel) OrderByRaw(sql string) *AccountModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *AccountModel) GroupByRaw(sql string) *AccountModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *AccountModel) RemoveAllColumns() *AccountModel { x.m.RemoveAllColumns(); return x }
 
@@ -280,10 +259,6 @@ func (x *AccountModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *AccountModel) SetSeq(v int64) *AccountModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *AccountModel) SetRawSeq(sql string, binds ...any) *AccountModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *AccountModel) AddColumnSeq() *AccountModel    { x.m.AddColumn("seq"); return x }
 func (x *AccountModel) RemoveColumnSeq() *AccountModel { x.m.RemoveColumn("seq"); return x }
 func (x *AccountModel) GroupBySeq() *AccountModel      { x.m.GroupBy("seq"); return x }
@@ -307,10 +282,6 @@ func (x *AccountModel) GetName() string { return x.fName }
 // SetName sets name.
 func (x *AccountModel) SetName(v string) *AccountModel { x.fName = v; x.m.Set("name", v); return x }
 
-func (x *AccountModel) SetRawName(sql string, binds ...any) *AccountModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *AccountModel) AddColumnName() *AccountModel    { x.m.AddColumn("name"); return x }
 func (x *AccountModel) RemoveColumnName() *AccountModel { x.m.RemoveColumn("name"); return x }
 func (x *AccountModel) GroupByName() *AccountModel      { x.m.GroupBy("name"); return x }

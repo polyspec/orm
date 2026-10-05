@@ -18,7 +18,7 @@ func rootINParts(r *request, st *plan.Step, driver string) ([]*request, error) {
 	}
 	q := &r.ir.Query
 	tooLarge := &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("the statement needs %d bind parameters but %s permits %d", len(st.BindSlots), driver, limit)}
-	if q.Limit != nil || len(q.Order) > 0 || len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0 || q.Where == nil {
+	if q.Limit != nil || len(q.Order) > 0 || len(q.GroupBy) > 0 || q.Where == nil {
 		return nil, tooLarge
 	}
 	target := -1

@@ -138,24 +138,6 @@ func (x *DecimalCaseModel) connector(conn string, args []any) *DecimalCaseModel 
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *DecimalCaseModel) Raw(sql string, binds ...any) *DecimalCaseModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *DecimalCaseModel) AndRaw(sql string, binds ...any) *DecimalCaseModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *DecimalCaseModel) OrRaw(sql string, binds ...any) *DecimalCaseModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *DecimalCaseModel) On(fn func(*DecimalCaseModel)) *DecimalCaseModel {
 	g := decimalCaseEntity.New(x.m.Group()).(*DecimalCaseModel)
@@ -270,12 +252,6 @@ func (x *DecimalCaseModel) Limit(offset, count int) *DecimalCaseModel {
 // OrderByRandom orders rows randomly.
 func (x *DecimalCaseModel) OrderByRandom() *DecimalCaseModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *DecimalCaseModel) OrderByRaw(sql string) *DecimalCaseModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *DecimalCaseModel) GroupByRaw(sql string) *DecimalCaseModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *DecimalCaseModel) RemoveAllColumns() *DecimalCaseModel { x.m.RemoveAllColumns(); return x }
 
@@ -321,10 +297,6 @@ func (x *DecimalCaseModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *DecimalCaseModel) SetSeq(v int64) *DecimalCaseModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *DecimalCaseModel) SetRawSeq(sql string, binds ...any) *DecimalCaseModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *DecimalCaseModel) AddColumnSeq() *DecimalCaseModel    { x.m.AddColumn("seq"); return x }
 func (x *DecimalCaseModel) RemoveColumnSeq() *DecimalCaseModel { x.m.RemoveColumn("seq"); return x }
 func (x *DecimalCaseModel) GroupBySeq() *DecimalCaseModel      { x.m.GroupBy("seq"); return x }
@@ -356,10 +328,6 @@ func (x *DecimalCaseModel) SetAmount(v string) (*DecimalCaseModel, error) {
 	return x, nil
 }
 
-func (x *DecimalCaseModel) SetRawAmount(sql string, binds ...any) *DecimalCaseModel {
-	x.m.SetRaw("amount", sql, binds)
-	return x
-}
 func (x *DecimalCaseModel) AddColumnAmount() *DecimalCaseModel { x.m.AddColumn("amount"); return x }
 func (x *DecimalCaseModel) RemoveColumnAmount() *DecimalCaseModel {
 	x.m.RemoveColumn("amount")
@@ -399,10 +367,6 @@ func (x *DecimalCaseModel) SetLargeValue(v *string) (*DecimalCaseModel, error) {
 	return x, nil
 }
 
-func (x *DecimalCaseModel) SetRawLargeValue(sql string, binds ...any) *DecimalCaseModel {
-	x.m.SetRaw("large_value", sql, binds)
-	return x
-}
 func (x *DecimalCaseModel) AddColumnLargeValue() *DecimalCaseModel {
 	x.m.AddColumn("large_value")
 	return x

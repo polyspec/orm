@@ -1126,7 +1126,7 @@ function rootInParts(request: Request, plan: Plan, driver: string, params: reado
   const limit = driverLimit(driver);
   if (main.bind_slots.length <= limit) return [request];
   const tooLarge = new OrmError('IR_INVALID', `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
-  if (request.limit || request.order?.length || request.group_by?.length || request.group_by_expr?.length || !request.where) throw tooLarge;
+  if (request.limit || request.order?.length || request.group_by?.length || !request.where) throw tooLarge;
   const items = request.where.items;
   let target = -1;
   items.forEach((item, i) => {

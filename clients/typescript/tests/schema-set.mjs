@@ -61,7 +61,7 @@ const decimalModel = registerModel(decimal.manifestText, decimal.manifestHash);
 const { decimal_case: DecimalCase } = classes(decimalModel);
 const user = (db, name) => { const m = new User().connect(db); m[CORE].setValue('name', name); return m; };
 const decimalRow = (db, seq, amount) => { const m = new DecimalCase().connect(db); m[CORE].setValue('seq', seq); m[CORE].setValue('amount', amount); return m; };
-const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).raw('{seq} = ?', seq).get())[CORE].column('amount');
+const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).seq(seq).get())[CORE].column('amount');
 
 /**
  * The bench helper connects, installs the bench set and the decimal set (the

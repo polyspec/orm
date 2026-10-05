@@ -213,7 +213,7 @@ const rows = await new Author().connect(slave1)
 (new Author)->connect($slave1)->serviceSeq(7)->sumLikeCount()->getSum();       // like_count 합계
 (new Author)->connect($slave1)->serviceSeq(7)->avgPrice()->getAvg();           // price 평균
 ```
-원시 조건·정렬·그룹·컬럼 형태, 서브쿼리 컬럼, ORM 함수 값은 [dsl.md](dsl.md)에서 정의한다.
+부정 묶음, 컬럼 함수 출력, 서브쿼리 컬럼, ORM 함수 값은 [dsl.md](dsl.md)에서 정의한다.
 Rust `gets_count()`는 일부 필드만 채운 모델 대신 선택한 그룹 값과 검증한 `row_count`만 담은 `GroupRows`를 반환한다.
 Rust `GroupRow::value(name)`은 `Result<&Val>`을 반환한다. 선택하지 않은 이름은 `COLUMN_UNSELECTED`이고 선택한 SQL NULL은 `Val::Null`로 유지한다.
 Go `GetsCount()`는 `*orm.GroupRows`를 반환한다. 각 `GroupRow`는 `Value(name)`으로 선택한 값, `Count()`로 검증한 개수를 제공한다. `Value(name)`은 선택하지 않은 이름에 `COLUMN_UNSELECTED`를 반환하고 선택된 SQL NULL에는 오류 없이 nil을 반환한다.
@@ -270,7 +270,7 @@ $row->newIsMember(true);                                                        
 ```
 
 - `update`는 방언 간 값을 맞추기 위해 `updated_ts`를 항상 명시적으로 기록한다.
-- `minus<Col>`은 음수를 저장하지 않는다. `setRaw<Col>`은 스키마 검사를 거친 SQL 식을 기록한다.
+- `minus<Col>`은 음수를 저장하지 않는다.
 - `save()`는 기본 키가 있으면 갱신하고 없으면 행을 생성한다.
 - 트랜잭션은 `connection.transaction(fn)`을 사용한다. 콜백 오류나 예외는 트랜잭션을 되돌리고 교착 상태는 재시도한다.
 - 활성 트랜잭션 안에서 같은 연결의 `transaction`을 호출하면 savepoint를 만든다. 바깥 콜백이 안쪽 실패를 반환하지 않으면 안쪽 작업만 되돌린다.

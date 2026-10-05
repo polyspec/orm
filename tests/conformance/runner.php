@@ -220,14 +220,6 @@ vector('terminal_reuse', function () use ($author): array {
     return [$first, count($rows), $q->getCount()];
 });
 
-vector('raw_forms', function () use ($author): array {
-    $count = $author()->serviceSeq(7)->andRaw('{read_count} > ?', [990])->getCount();
-    $rows = $author()->raw('{seq} IN (?, ?)', [42, 43])
-        ->removeAllColumns()->addRawColumnDoubled('({read_count} * ?)', [2])
-        ->orderByRaw('{seq} DESC')->gets();
-    return ['count' => $count, 'rows' => array_map(static fn(Author $r): array => [$r->getSeq(), derivedInteger($r->getDoubled())], $rows->all())];
-});
-
 vector('expression_forms', fn() => [
     'count' => $author()->serviceSeq(7)->andNot(fn(Author $q) => $q->isClose(true)->orGtReadCount(500))->getCount(),
     'rows' => picks($author()->not(fn(Author $q) => $q->isDisplay(false))->andServiceSeq(7)->orderBySeqDesc()->limit(0, 3)->gets(), 'seq', 'is_display'),
@@ -236,9 +228,9 @@ vector('expression_forms', fn() => [
 
 vector('columns', function () use ($db, $author): array {
     $none = (new Service)($db)->removeAllColumns()->getBySeq(7);
-    $added = $author()->removeAllColumns()->addColumnName()->addColumnReadCountAliasReadText("CONCAT('r', %s)")->getBySeq(42);
+    $added = $author()->removeAllColumns()->addColumnName()->addColumnStartDtAliasStartYear(Orm::year())->getBySeq(42);
     $removed = (new Service)($db)->removeColumnName()->getBySeq(7);
-    return [$none->toArray(), pick($added, 'seq', 'name', 'read_text'), $removed->toArray()];
+    return [$none->toArray(), pick($added, 'seq', 'name', 'start_year'), $removed->toArray()];
 });
 
 vector('joins', function () use ($author): array {

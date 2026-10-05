@@ -1,5 +1,5 @@
 import type { Db } from './database.js';
-import type { ColumnFunction as IRColumnFunction, Expression, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
+import type { ColumnFunction as IRColumnFunction, Group, Item, Limit, Order, Predicate, KeyPair, Relation, Request, RequestQuery, Subquery, Join, QueryKind } from './ir.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { ChainKey } from './names.js';
 import { OrmError } from './runtime_error.js';
@@ -46,14 +46,11 @@ interface PredSpec {
   kind: 'value' | 'list' | 'null' | 'between' | 'tuple' | 'ref' | 'sub' | 'column_fn' | 'value_fn';
 }
 
-interface RawSpec { sql: string; binds: readonly unknown[]; }
-
 interface CondNode {
   conn: string;
   pred?: PredSpec;
   group?: CondGroup;
   joined?: Core;
-  raw?: RawSpec;
 }
 
 class CondGroup {
@@ -76,28 +73,24 @@ class CondGroup {
 
 interface JoinSpec { kind: 'inner' | 'left'; left: string; right: string; child: Core; }
 interface RelSpec { many: boolean; child: Core; }
-interface FormatSpec { column: string; format?: string; fn?: ColumnFunction; }
-interface OrderSpec { column?: string; desc?: boolean; fn?: ColumnFunction; random?: boolean; raw?: string; }
-export interface SetSpec { column: string; value?: unknown; null?: boolean; raw?: RawSpec; plus?: boolean; minus?: boolean; }
+interface FuncSpec { column: string; fn: ColumnFunction; }
+interface OrderSpec { column?: string; desc?: boolean; fn?: ColumnFunction; random?: boolean; }
+export interface SetSpec { column: string; value?: unknown; null?: boolean; plus?: boolean; minus?: boolean; }
 
 class Columns {
   public mode: '' | 'all' | 'none' = '';
   public add: string[] = [];
   public remove: string[] = [];
-  public formats = new Map<string, FormatSpec>();
-  public funcs = new Map<string, FormatSpec>();
+  public funcs = new Map<string, FuncSpec>();
   public subs = new Map<string, (m: ModelLike) => ModelLike>();
-  public raws = new Map<string, RawSpec>();
   public order: string[] = [];
   public clone(): Columns {
     const out = new Columns();
     out.mode = this.mode;
     out.add = [...this.add];
     out.remove = [...this.remove];
-    out.formats = new Map(this.formats);
     out.funcs = new Map(this.funcs);
     out.subs = new Map(this.subs);
-    out.raws = new Map(this.raws);
     out.order = [...this.order];
     return out;
   }
@@ -144,7 +137,6 @@ export class Core {
   public columns = new Columns();
   public order: OrderSpec[] = [];
   public groupBy: string[] = [];
-  public groupRaw: string[] = [];
   public limit: Limit | undefined;
   public index = '';
   public lock = '';
@@ -244,10 +236,6 @@ export class Core {
     this.on = new CondGroup(g.where.items);
   }
 
-  public raw(conn: string, sql: string, binds: readonly unknown[]): void {
-    this.where.add(this, conn, { raw: { sql, binds } });
-  }
-
   /** Appends the conditions of a chain; a column function takes the compared value as the next argument. */
   public whereChain(conn: string, keys: readonly ChainKey[], args: readonly unknown[]): void {
     let i = 0;
@@ -332,17 +320,14 @@ export class Core {
     return true;
   }
   public addColumn(column: string): void { if (!this.columns.add.includes(column)) this.columns.add.push(column); }
-  public addColumnFormat(column: string, name: string, format: unknown): void {
-    if (!this.addName(name)) return;
-    if (format instanceof ColumnFunction) this.columns.funcs.set(name, { column, fn: format });
-    else if (typeof format === 'string') this.columns.formats.set(name, { column, format });
-    else this.fail(`addColumn ${name} requires a format or a column function`);
+  public addColumnFunc(column: string, name: string, fn: unknown): void {
+    if (!(fn instanceof ColumnFunction)) return this.fail(`addColumn ${name} requires a column function`);
+    if (this.addName(name)) this.columns.funcs.set(name, { column, fn });
   }
   public addColumnSub(name: string, fn: (m: ModelLike) => ModelLike): void {
     if (typeof fn !== 'function') return this.fail(`addColumn ${name} requires a callback`);
     if (this.addName(name)) this.columns.subs.set(name, fn);
   }
-  public addRawColumn(name: string, sql: string, binds: readonly unknown[]): void { if (this.addName(name)) this.columns.raws.set(name, { sql, binds }); }
   public removeColumn(column: string): void { if (!this.columns.remove.includes(column)) this.columns.remove.push(column); }
   public orderBy(column: string, desc: boolean, fn: readonly unknown[]): void {
     if (fn.length > 1) return this.fail('orderBy accepts one column function');
@@ -421,7 +406,6 @@ export class Core {
     out.columns = this.columns.clone();
     out.order = [...this.order];
     out.groupBy = [...this.groupBy];
-    out.groupRaw = [...this.groupRaw];
     out.sets = [...this.sets];
     out.news = [...this.news];
     out.newValues = new Map(this.newValues);
@@ -547,7 +531,6 @@ export class BuiltRequest {
     for (const o of c.order) {
       const item: Order = {};
       if (o.random) item.random = true;
-      else if (o.raw !== undefined) item.expr = o.raw;
       else {
         item.column = o.column;
         if (o.desc) item.desc = true;
@@ -556,7 +539,6 @@ export class BuiltRequest {
       (q.order ??= []).push(item);
     }
     if (c.groupBy.length > 0) q.group_by = [...c.groupBy];
-    c.groupRaw.forEach((sql, i) => (q.group_by_expr ??= []).push({ expr: sql, as: `group_${i + 1}` }));
     return q;
   }
 
@@ -580,20 +562,8 @@ export class BuiltRequest {
     if (spec.add.length > 0) out.add = [...spec.add];
     if (spec.remove.length > 0) out.remove = [...spec.remove];
     for (const name of spec.order) {
-      const format = spec.formats.get(name);
-      if (format) {
-        if (format.format!.split('%s').length !== 2) { this.fail(configError(`column format for ${name} must contain one %s`)); return undefined; }
-        (out.expr ??= {})[name] = { sql: format.format!.replace('%s', `{${format.column}}`) };
-      }
       const fn = spec.funcs.get(name);
-      if (fn) (out.fn ??= {})[name] = { column: fn.column, fn: fn.fn!.ir(v => this.param(v)) } satisfies IRColumnFunction;
-      const raw = spec.raws.get(name);
-      if (raw) {
-        const pred = this.rawPred(raw);
-        const expr: Expression = { sql: pred.expr! };
-        if (pred.ps && pred.ps.length > 0) expr.ps = pred.ps;
-        (out.expr ??= {})[name] = expr;
-      }
+      if (fn) (out.fn ??= {})[name] = { column: fn.column, fn: fn.fn.ir(v => this.param(v)) } satisfies IRColumnFunction;
       const sub = spec.subs.get(name);
       if (sub) {
         const built = this.subquery(sub(c.self), c, true);
@@ -602,14 +572,6 @@ export class BuiltRequest {
       }
     }
     return Object.keys(out).length > 0 ? out : undefined;
-  }
-
-  private rawPred(raw: RawSpec): Predicate {
-    const count = raw.sql.split('?').length - 1;
-    if (count !== raw.binds.length) this.fail(new OrmError('IR_INVALID', `raw SQL has ${count} placeholders and ${raw.binds.length} binds`));
-    const pred: Predicate = { expr: raw.sql };
-    if (raw.binds.length > 0) pred.ps = raw.binds.map(b => this.param(b));
-    return pred;
   }
 
   private group(g: CondGroup, owner: Core, f: Frame): Group {
@@ -621,9 +583,6 @@ export class BuiltRequest {
         if (!pred) return out;
         if (node.conn !== '') pred.conn = node.conn;
         item.pred = pred;
-      } else if (node.raw) {
-        item.pred = this.rawPred(node.raw);
-        if (node.conn !== '') item.pred.conn = node.conn;
       } else if (node.group) {
         item.group = this.group(node.group, owner, f);
         if (node.conn !== '') item.group.conn = node.conn;

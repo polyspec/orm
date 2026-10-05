@@ -25,7 +25,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, and TypeScript. 
 | Columns | `addColumn<Col>`, `removeColumn<Col>`, `removeAllColumns`, `addAllColumns`, `forceIndex<Name>` |
 | Relations and joins | `relation`, `relations`, `match<L>With<R>`, `alias<Name>`, `parentNode`, `possible<Col>`, `groupLimit`, `deleteLock`, `join<L>With<R>`, `leftJoin<L>With<R>`, `on(fn)` |
 | Order and range | `orderBy<Col>Asc`, `orderBy<Col>Desc`, `groupBy<Col>`, `limit(offset, count)` |
-| Writes | `set<Col>` for stored columns, `new<Name>` for in-memory attributes, `setRaw<Col>`, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)` with `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)` |
+| Writes | `set<Col>` for stored columns, `new<Name>` for in-memory attributes, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)` with `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)` |
 | Transactions | `connection.transaction(fn)` with deadlock retry |
 | Pages | total count and one page of rows from the same model |
 | Styles | `ip`, `aes`, `aes_serialize`, `aes_hex`, `point`, `serialize`, `base64`, `gz`, `json`, `jsons`, `yaml` |

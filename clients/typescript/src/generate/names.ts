@@ -10,7 +10,7 @@ export const reservedSegments = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'e
 /** A prefix no column name may start with. */
 export const reservedPrefixes = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
 /** Names no column may have. */
-export const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'raw', 'on', 'random'];
+export const reservedColumns = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'on', 'random'];
 
 /** Applies the column naming rules. */
 export function checkColumnName(n: string): string | undefined {

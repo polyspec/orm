@@ -138,24 +138,6 @@ func (x *CompositeAccountModel) connector(conn string, args []any) *CompositeAcc
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *CompositeAccountModel) Raw(sql string, binds ...any) *CompositeAccountModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *CompositeAccountModel) AndRaw(sql string, binds ...any) *CompositeAccountModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *CompositeAccountModel) OrRaw(sql string, binds ...any) *CompositeAccountModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *CompositeAccountModel) On(fn func(*CompositeAccountModel)) *CompositeAccountModel {
 	g := compositeAccountEntity.New(x.m.Group()).(*CompositeAccountModel)
@@ -272,18 +254,6 @@ func (x *CompositeAccountModel) Limit(offset, count int) *CompositeAccountModel 
 // OrderByRandom orders rows randomly.
 func (x *CompositeAccountModel) OrderByRandom() *CompositeAccountModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *CompositeAccountModel) OrderByRaw(sql string) *CompositeAccountModel {
-	x.m.OrderByRaw(sql)
-	return x
-}
-
-// GroupByRaw appends a raw grouping expression.
-func (x *CompositeAccountModel) GroupByRaw(sql string) *CompositeAccountModel {
-	x.m.GroupByRaw(sql)
-	return x
-}
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *CompositeAccountModel) RemoveAllColumns() *CompositeAccountModel {
 	x.m.RemoveAllColumns()
@@ -342,10 +312,6 @@ func (x *CompositeAccountModel) SetTenantId(v int64) *CompositeAccountModel {
 	return x
 }
 
-func (x *CompositeAccountModel) SetRawTenantId(sql string, binds ...any) *CompositeAccountModel {
-	x.m.SetRaw("tenant_id", sql, binds)
-	return x
-}
 func (x *CompositeAccountModel) AddColumnTenantId() *CompositeAccountModel {
 	x.m.AddColumn("tenant_id")
 	return x
@@ -397,10 +363,6 @@ func (x *CompositeAccountModel) SetAccountId(v int64) *CompositeAccountModel {
 	return x
 }
 
-func (x *CompositeAccountModel) SetRawAccountId(sql string, binds ...any) *CompositeAccountModel {
-	x.m.SetRaw("account_id", sql, binds)
-	return x
-}
 func (x *CompositeAccountModel) AddColumnAccountId() *CompositeAccountModel {
 	x.m.AddColumn("account_id")
 	return x
@@ -452,10 +414,6 @@ func (x *CompositeAccountModel) SetName(v string) *CompositeAccountModel {
 	return x
 }
 
-func (x *CompositeAccountModel) SetRawName(sql string, binds ...any) *CompositeAccountModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *CompositeAccountModel) AddColumnName() *CompositeAccountModel {
 	x.m.AddColumn("name")
 	return x

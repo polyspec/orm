@@ -63,7 +63,6 @@ var inputs = map[string]map[string]string{
 	"":                    {"go": "", "php": "", "rust": "", "typescript": ""},
 	"Connection":          {"go": "db*orm.DB", "php": "Orm\\Db$db", "rust": "db:&orm::Db", "typescript": "db:Db"},
 	"ConnectorArgument":   {"go": "args...any", "php": "mixed...$args", "rust": "arg:A", "typescript": "arg?:((q:this)=>unknown)|Model"},
-	"RawSql":              {"go": "sqlstring,binds...any", "php": "string$sql,array$binds=[]", "rust": "sql:&str,binds:implorm::Binds", "typescript": "sql:string,...binds:unknown[]"},
 	"ChildModel":          {"go": "childorm.Model", "php": "Orm\\Model$child", "rust": "child:implorm::Model", "typescript": "child:Model"},
 	"OffsetCount":         {"go": "offset,countint", "php": "int$offset,int$count", "rust": "offset:u32,count:u32", "typescript": "offset:number,count:number"},
 	"DuplicateModel":      {"go": "m*{Entity}Model", "php": "Orm\\Model$model", "rust": "m:Self", "typescript": "model:this"},

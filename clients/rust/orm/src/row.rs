@@ -144,9 +144,17 @@ fn required_cell<T>(value: Option<T>, i: usize) -> Result<T> {
     value.ok_or_else(|| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} is NULL where a value is required") })
 }
 
+/// A `YEAR` cell, which `YEAR(col)` also returns. sqlx's i64 does not accept `YEAR` (only
+/// unsigned Rust integers of an `UNSIGNED` column do); the value is a two-byte integer, so it is
+/// decoded as i64 without that type check.
+fn year_cell(r: &MySqlRow, i: usize) -> Result<Option<i64>> {
+    Ok(r.try_get_unchecked::<Option<i64>, _>(i)?)
+}
+
 fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
     Ok(match type_name(r, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => required_cell(r.try_get::<Option<i64>, _>(i)?, i)?,
+        "YEAR" => required_cell(year_cell(r, i)?, i)?,
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
             i64::try_from(required_cell(r.try_get::<Option<u64>, _>(i)?, i)?)
                 .map_err(|_| Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: format!("column {i} exceeds i64 range") })?
@@ -159,7 +167,8 @@ fn raw_i64(r: &MySqlRow, i: usize) -> Result<i64> {
 fn raw_f64(r: &MySqlRow, i: usize) -> Result<f64> {
     Ok(match type_name(r, i) {
         "FLOAT" | "DOUBLE" => Val::F64(required_cell(r.try_get::<Option<f64>, _>(i)?, i)?).as_f64()?,
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_f64()?,
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => Val::I64(required_cell(r.try_get::<Option<i64>, _>(i)?, i)?).as_f64()?,
+        "YEAR" => Val::I64(required_cell(year_cell(r, i)?, i)?).as_f64()?,
         _ => read_cell_mysql(r, i)?.as_f64()?,
     })
 }
@@ -197,7 +206,8 @@ fn raw_date(r: &MySqlRow, i: usize) -> Result<NaiveDate> {
 /// Reads one MySQL cell as a `Val` by its column type name.
 pub fn read_cell_mysql(row: &MySqlRow, i: usize) -> Result<Val> {
     let v = match type_name(row, i) {
-        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" | "YEAR" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
+        "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => row.try_get::<Option<i64>, _>(i)?.map(Val::I64),
+        "YEAR" => year_cell(row, i)?.map(Val::I64),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
             return match row.try_get::<Option<u64>, _>(i)? {
                 Some(value) => i64::try_from(value)

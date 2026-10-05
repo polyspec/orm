@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-8: the raw SQL API is removed from the four clients: `raw`, `andRaw`, `orRaw`, `orderByRaw`, `groupByRaw`, `setRaw<Col>`, `addRawColumn<Alias>` and the format string of `addColumn<Col>Alias<Name>`, which takes a column function only; the IR carries no SQL text, every bind slot has a dbspec type, and the Rust client reads a MySQL `YEAR` cell.
+
 - G5.32-7-1: the Go plan cache key includes the `not` of a condition group, so a negated group no longer reuses the plan of the same group without `not`.
 
 - G5.34: `make check` and the new `make rerun-failed` start with the full suite guard (`scripts/check/full-run.mjs`), which refuses before any step while a checklist item is `[~]` (listing each ID and title), while tracked files have uncommitted changes, while another run of the checkout is in progress and, for `make check`, when `.runtime/full-run.json` records a full run of the same tree. The runner writes the record before the first step and after each step, so a killed run stays `incomplete`; `make rerun-failed` runs only the targets of the current tree's record that did not pass.

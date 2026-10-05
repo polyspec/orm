@@ -134,24 +134,6 @@ func (x *ServiceRegionModel) connector(conn string, args []any) *ServiceRegionMo
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *ServiceRegionModel) Raw(sql string, binds ...any) *ServiceRegionModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *ServiceRegionModel) AndRaw(sql string, binds ...any) *ServiceRegionModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *ServiceRegionModel) OrRaw(sql string, binds ...any) *ServiceRegionModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *ServiceRegionModel) On(fn func(*ServiceRegionModel)) *ServiceRegionModel {
 	g := serviceRegionEntity.New(x.m.Group()).(*ServiceRegionModel)
@@ -266,18 +248,6 @@ func (x *ServiceRegionModel) Limit(offset, count int) *ServiceRegionModel {
 // OrderByRandom orders rows randomly.
 func (x *ServiceRegionModel) OrderByRandom() *ServiceRegionModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *ServiceRegionModel) OrderByRaw(sql string) *ServiceRegionModel {
-	x.m.OrderByRaw(sql)
-	return x
-}
-
-// GroupByRaw appends a raw grouping expression.
-func (x *ServiceRegionModel) GroupByRaw(sql string) *ServiceRegionModel {
-	x.m.GroupByRaw(sql)
-	return x
-}
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *ServiceRegionModel) RemoveAllColumns() *ServiceRegionModel { x.m.RemoveAllColumns(); return x }
 
@@ -330,10 +300,6 @@ func (x *ServiceRegionModel) SetSeq(v int64) *ServiceRegionModel {
 	return x
 }
 
-func (x *ServiceRegionModel) SetRawSeq(sql string, binds ...any) *ServiceRegionModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *ServiceRegionModel) AddColumnSeq() *ServiceRegionModel    { x.m.AddColumn("seq"); return x }
 func (x *ServiceRegionModel) RemoveColumnSeq() *ServiceRegionModel { x.m.RemoveColumn("seq"); return x }
 func (x *ServiceRegionModel) GroupBySeq() *ServiceRegionModel      { x.m.GroupBy("seq"); return x }
@@ -361,10 +327,6 @@ func (x *ServiceRegionModel) SetServiceSeq(v int64) *ServiceRegionModel {
 	return x
 }
 
-func (x *ServiceRegionModel) SetRawServiceSeq(sql string, binds ...any) *ServiceRegionModel {
-	x.m.SetRaw("service_seq", sql, binds)
-	return x
-}
 func (x *ServiceRegionModel) AddColumnServiceSeq() *ServiceRegionModel {
 	x.m.AddColumn("service_seq")
 	return x
@@ -416,10 +378,6 @@ func (x *ServiceRegionModel) SetName(v string) *ServiceRegionModel {
 	return x
 }
 
-func (x *ServiceRegionModel) SetRawName(sql string, binds ...any) *ServiceRegionModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *ServiceRegionModel) AddColumnName() *ServiceRegionModel { x.m.AddColumn("name"); return x }
 func (x *ServiceRegionModel) RemoveColumnName() *ServiceRegionModel {
 	x.m.RemoveColumn("name")

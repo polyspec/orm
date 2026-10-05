@@ -4,7 +4,6 @@ package model
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -115,15 +114,6 @@ func (x *UserModel) connector(conn string, args []any) *UserModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *UserModel) Raw(sql string, binds ...any) *UserModel { x.m.Raw("", sql, binds); return x }
-
-// AndRaw adds a raw condition joined with AND.
-func (x *UserModel) AndRaw(sql string, binds ...any) *UserModel { x.m.Raw("and", sql, binds); return x }
-
-// OrRaw adds a raw condition joined with OR.
-func (x *UserModel) OrRaw(sql string, binds ...any) *UserModel { x.m.Raw("or", sql, binds); return x }
-
 // On sets the join ON conditions.
 func (x *UserModel) On(fn func(*UserModel)) *UserModel {
 	g := userEntity.New(x.m.Group()).(*UserModel)
@@ -222,12 +212,6 @@ func (x *UserModel) Limit(offset, count int) *UserModel { x.m.Limit(offset, coun
 // OrderByRandom orders rows randomly.
 func (x *UserModel) OrderByRandom() *UserModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *UserModel) OrderByRaw(sql string) *UserModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *UserModel) GroupByRaw(sql string) *UserModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *UserModel) RemoveAllColumns() *UserModel { x.m.RemoveAllColumns(); return x }
 
@@ -273,10 +257,6 @@ func (x *UserModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *UserModel) SetSeq(v int64) *UserModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *UserModel) SetRawSeq(sql string, binds ...any) *UserModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *UserModel) AddColumnSeq() *UserModel                 { x.m.AddColumn("seq"); return x }
 func (x *UserModel) RemoveColumnSeq() *UserModel              { x.m.RemoveColumn("seq"); return x }
 func (x *UserModel) GroupBySeq() *UserModel                   { x.m.GroupBy("seq"); return x }
@@ -294,10 +274,6 @@ func (x *UserModel) GetName() string { return x.fName }
 // SetName sets name.
 func (x *UserModel) SetName(v string) *UserModel { x.fName = v; x.m.Set("name", v); return x }
 
-func (x *UserModel) SetRawName(sql string, binds ...any) *UserModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *UserModel) AddColumnName() *UserModel    { x.m.AddColumn("name"); return x }
 func (x *UserModel) RemoveColumnName() *UserModel { x.m.RemoveColumn("name"); return x }
 func (x *UserModel) GroupByName() *UserModel      { x.m.GroupBy("name"); return x }
@@ -311,23 +287,8 @@ func (x *UserModel) OrderByNameDesc(fn ...orm.Func) *UserModel {
 	return x
 }
 
-func (x *UserModel) AddColumnNameAliasUpperName[F ~string | orm.Func](format F) *UserModel {
-	switch f := any(format).(type) {
-	case orm.Func:
-		x.m.AddColumnFunc("name", "upper_name", f)
-	default:
-		x.m.AddColumnFormat("name", "upper_name", reflect.ValueOf(f).String())
-	}
-	return x
-}
-
 func (x *UserModel) AddColumnReadTotal(fn func(*UserModel) orm.Model) *UserModel {
 	x.m.AddColumnSub("read_total", func(m orm.Model) orm.Model { return fn(m.(*UserModel)) })
-	return x
-}
-
-func (x *UserModel) AddRawColumnDoubled(sql string, binds ...any) *UserModel {
-	x.m.AddRawColumn("doubled", sql, binds)
 	return x
 }
 
@@ -363,11 +324,5 @@ func (x *UserModel) GetAuthorModels() (*orm.Collection[*AuthorModel], error) {
 	return orm.RelatedAs[*orm.Collection[*AuthorModel]](x.m, "author_models")
 }
 
-// GetDoubled returns the column added with AddRawColumnDoubled.
-func (x *UserModel) GetDoubled() any { return x.m.NewValue("doubled") }
-
 // GetReadTotal returns the column added with AddColumnReadTotal.
 func (x *UserModel) GetReadTotal() any { return x.m.NewValue("read_total") }
-
-// GetUpperName returns the column added with AddColumnNameAliasUpperName.
-func (x *UserModel) GetUpperName() any { return x.m.NewValue("upper_name") }

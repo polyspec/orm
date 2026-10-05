@@ -29,8 +29,7 @@ final class Validator
             'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist', 'agg' => 'string', 'n_params' => 'int',
         ],
         'Query' => self::QUERY,
-        'Columns' => ['mode' => 'string', 'add' => 'list<string>', 'remove' => 'list<string>', 'expr' => 'map<Expr>', 'fn' => 'map<ColFunc>', 'sub' => 'map<Sub>'],
-        'Expr' => ['sql' => 'string', 'ps' => 'list<int>'],
+        'Columns' => ['mode' => 'string', 'add' => 'list<string>', 'remove' => 'list<string>', 'fn' => 'map<ColFunc>', 'sub' => 'map<Sub>'],
         'Func' => ['name' => 'string', 'ps' => 'list<int>'],
         'ColFunc' => ['column' => 'string', 'fn' => 'Func'],
         'Sub' => ['query' => 'Query', 'column' => 'string', 'agg' => 'string'],
@@ -42,19 +41,18 @@ final class Validator
         'JoinedRef' => ['conn' => 'string', 'join' => 'string'],
         'Pred' => [
             'conn' => 'string', 'column' => 'string', 'op' => 'string', 'p' => 'int', 'ps' => 'list<int>', 'ref' => 'ColRef',
-            'expr' => 'string', 'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
+            'fn' => 'Func', 'value' => 'Func', 'cols' => 'list<string>', 'sub' => 'Sub',
         ],
         'ColRef' => ['path' => 'string', 'column' => 'string'],
-        'Order' => ['column' => 'string', 'expr' => 'string', 'desc' => 'bool', 'random' => 'bool', 'fn' => 'Func'],
-        'GroupExpr' => ['expr' => 'string', 'as' => 'string'],
+        'Order' => ['column' => 'string', 'desc' => 'bool', 'random' => 'bool', 'fn' => 'Func'],
         'Limit' => ['offset' => 'int', 'count' => 'int'],
         'IfParent' => ['column' => 'string', 'p' => 'int'],
-        'Assign' => ['column' => 'string', 'p' => 'int', 'null' => 'bool', 'expr' => 'string', 'ps' => 'list<int>', 'plus_p' => 'int', 'minus_p' => 'int'],
+        'Assign' => ['column' => 'string', 'p' => 'int', 'null' => 'bool', 'plus_p' => 'int', 'minus_p' => 'int'],
         'Optimist' => ['column' => 'string', 'p' => 'int'],
     ];
     private const QUERY = [
         'entity' => 'string', 'columns' => 'Columns', 'on' => 'Group', 'where' => 'Group', 'joins' => 'list<Join>',
-        'relations' => 'list<Relation>', 'order' => 'list<Order>', 'group_by' => 'list<string>', 'group_by_expr' => 'list<GroupExpr>',
+        'relations' => 'list<Relation>', 'order' => 'list<Order>', 'group_by' => 'list<string>',
         'limit' => 'Limit', 'force_index' => 'string', 'lock' => 'string', 'key_by' => 'string', 'flatten' => 'bool',
         'limit_per_parent' => 'int', 'if_parent' => 'IfParent', 'no_cascade_delete' => 'bool',
     ];
@@ -75,7 +73,7 @@ final class Validator
      */
     public static function opAllowed(array $c, string $op): bool
     {
-        if (in_array($op, self::COL_OPS, true) || $op === 'expr') {
+        if (in_array($op, self::COL_OPS, true)) {
             return true;
         }
         $codec = $c['codec'];
@@ -239,9 +237,9 @@ final class Validator
         if ($column === $ent['audit']) {
             throw self::err(Code::IR_INVALID, "{$ent['entity']}.$column is written by the executor from the audit of the transaction");
         }
-        $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) (($a['expr'] ?? '') !== '') + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
+        $n = (int) isset($a['p']) + (int) !empty($a['null']) + (int) isset($a['plus_p']) + (int) isset($a['minus_p']);
         if ($n !== 1) {
-            throw self::err(Code::IR_INVALID, "set $column: exactly one of p/null/expr/plus_p/minus_p");
+            throw self::err(Code::IR_INVALID, "set $column: exactly one of p/null/plus_p/minus_p");
         }
         if (!empty($a['null']) && !$c['nullable']) {
             throw self::err(Code::IR_INVALID, "set {$ent['entity']}.$column to null but column is NOT NULL");
@@ -254,12 +252,11 @@ final class Validator
                 $this->params([$a[$k]]);
             }
         }
-        $this->params($a['ps'] ?? []);
     }
 
     private static function hasGroupBy(array $q): bool
     {
-        return ($q['group_by'] ?? []) !== [] || ($q['group_by_expr'] ?? []) !== [];
+        return ($q['group_by'] ?? []) !== [];
     }
 
     private function query(array $q, string $path, bool $isJoin, bool $isRelation): void
@@ -278,18 +275,6 @@ final class Validator
                 }
             }
             $outputs = [];
-            foreach ($cols['expr'] ?? [] as $out => $e) {
-                $out = (string) $out;
-                if (RuntimeModel::column($ent, $out) !== null) {
-                    throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out already a column");
-                }
-                $sql = $e['sql'] ?? '';
-                if (substr_count($sql, '?') !== count($e['ps'] ?? [])) {
-                    throw self::err(Code::IR_INVALID, sprintf('%s.%s expr has %d placeholders but %d binds', $entity, $out, substr_count($sql, '?'), count($e['ps'] ?? [])));
-                }
-                $this->params($e['ps'] ?? []);
-                $outputs[$out] = true;
-            }
             foreach ($cols['fn'] ?? [] as $out => $cf) {
                 $out = (string) $out;
                 if (RuntimeModel::column($ent, $out) !== null || isset($outputs[$out])) {
@@ -412,9 +397,9 @@ final class Validator
         }
         foreach ($q['order'] ?? [] as $o) {
             $column = $o['column'] ?? '';
-            $kinds = (int) ($column !== '') + (int) (($o['expr'] ?? '') !== '') + (int) !empty($o['random']);
+            $kinds = (int) ($column !== '') + (int) !empty($o['random']);
             if ($kinds !== 1) {
-                throw self::err(Code::IR_INVALID, 'order needs exactly one of column, expr, random');
+                throw self::err(Code::IR_INVALID, 'order needs exactly one of column, random');
             }
             if ($column !== '') {
                 $col = RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$column");
@@ -425,26 +410,10 @@ final class Validator
                 throw self::err(Code::IR_INVALID, 'order function needs a column');
             }
         }
-        $groups = [];
         foreach ($q['group_by'] ?? [] as $g) {
             if (RuntimeModel::column($ent, $g) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity.$g");
             }
-            $groups[$g] = true;
-        }
-        foreach ($q['group_by_expr'] ?? [] as $g) {
-            $expr = trim($g['expr'] ?? '');
-            $as = trim($g['as'] ?? '');
-            if ($expr === '' || $as === '') {
-                throw self::err(Code::IR_INVALID, 'group_by_expr needs expr and as');
-            }
-            if (str_contains($g['expr'], '?')) {
-                throw self::err(Code::IR_INVALID, 'group_by_expr does not accept parameters');
-            }
-            if (isset($groups[$g['as']])) {
-                throw self::err(Code::IR_INVALID, "duplicate group output {$g['as']}");
-            }
-            $groups[$g['as']] = true;
         }
         if (isset($q['limit']) && (($q['limit']['offset'] ?? 0) < 0 || ($q['limit']['count'] ?? 0) <= 0)) {
             throw self::err(Code::IR_INVALID, 'limit offset>=0, count>0');
@@ -453,7 +422,7 @@ final class Validator
         if ($lock !== '' && !in_array($lock, ['update', 'share', 'update_nowait', 'share_nowait'], true)) {
             throw self::err(Code::IR_INVALID, "lock \"$lock\": want update, share, update_nowait or share_nowait");
         }
-        if ($lock !== '' && ($isJoin || $isRelation || isset($q['group_by']) || isset($q['group_by_expr']) || ($q['limit_per_parent'] ?? 0) > 0)) {
+        if ($lock !== '' && ($isJoin || $isRelation || isset($q['group_by']) || ($q['limit_per_parent'] ?? 0) > 0)) {
             throw self::err(Code::IR_INVALID, 'row lock is only valid on a root row select');
         }
         $index = $q['force_index'] ?? '';
@@ -513,12 +482,6 @@ final class Validator
         $name = $ent['entity'];
         $column = $p['column'] ?? '';
         $op = $p['op'] ?? '';
-        if (($p['expr'] ?? '') !== '') {
-            if ($column !== '' || $op !== '') {
-                throw self::err(Code::IR_INVALID, 'expr pred may not carry column/op');
-            }
-            return;
-        }
         if ($op === 'tuple_in' || $op === 'tuple_not_in') {
             $cols = $p['cols'] ?? [];
             if (count($cols) < 2) {

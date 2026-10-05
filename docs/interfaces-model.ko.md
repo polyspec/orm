@@ -9,7 +9,6 @@ classDiagram
         connect()
         and()
         or()
-        raw()
         relation()
         relations()
         limit()

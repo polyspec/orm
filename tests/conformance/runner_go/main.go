@@ -337,27 +337,6 @@ func main() {
 		last, err := q.GetCount()
 		return []any{first, rows.Len(), last}, err
 	})
-	run("raw_forms", func() (any, error) {
-		count, err := author().ServiceSeq(7).AndRaw("{read_count} > ?", 990).GetCount()
-		if err != nil {
-			return nil, err
-		}
-		rows, err := author().Raw("{seq} IN (?, ?)", 42, 43).
-			RemoveAllColumns().AddRawColumnDoubled("({read_count} * ?)", 2).
-			OrderByRaw("{seq} DESC").Gets()
-		if err != nil {
-			return nil, err
-		}
-		out := []any{}
-		for _, r := range rows.Slice() {
-			doubled, err := orm.AsInt64(r.GetDoubled())
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, []any{r.GetSeq(), doubled})
-		}
-		return map[string]any{"count": count, "rows": out}, nil
-	})
 	run("expression_forms", func() (any, error) {
 		count, err := author().ServiceSeq(7).AndNot(func(q *model.AuthorModel) { q.IsClose(true).OrGtReadCount(500) }).GetCount()
 		if err != nil {
@@ -378,7 +357,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		added, err := author().RemoveAllColumns().AddColumnName().AddColumnReadCountAliasReadText("CONCAT('r', %s)").GetBySeq(42)
+		added, err := author().RemoveAllColumns().AddColumnName().AddColumnStartDtAliasStartYear(orm.Year()).GetBySeq(42)
 		if err != nil {
 			return nil, err
 		}
@@ -386,7 +365,7 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
-		return []any{none.ToArray(), pick(added, "seq", "name", "read_text"), removed.ToArray()}, nil
+		return []any{none.ToArray(), pick(added, "seq", "name", "start_year"), removed.ToArray()}, nil
 	})
 	run("joins", func() (any, error) {
 		service := model.Service().

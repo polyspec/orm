@@ -114,21 +114,6 @@ func (x *ServiceModel) connector(conn string, args []any) *ServiceModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *ServiceModel) Raw(sql string, binds ...any) *ServiceModel { x.m.Raw("", sql, binds); return x }
-
-// AndRaw adds a raw condition joined with AND.
-func (x *ServiceModel) AndRaw(sql string, binds ...any) *ServiceModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *ServiceModel) OrRaw(sql string, binds ...any) *ServiceModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *ServiceModel) On(fn func(*ServiceModel)) *ServiceModel {
 	g := serviceEntity.New(x.m.Group()).(*ServiceModel)
@@ -229,12 +214,6 @@ func (x *ServiceModel) Limit(offset, count int) *ServiceModel { x.m.Limit(offset
 // OrderByRandom orders rows randomly.
 func (x *ServiceModel) OrderByRandom() *ServiceModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *ServiceModel) OrderByRaw(sql string) *ServiceModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *ServiceModel) GroupByRaw(sql string) *ServiceModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *ServiceModel) RemoveAllColumns() *ServiceModel { x.m.RemoveAllColumns(); return x }
 
@@ -280,10 +259,6 @@ func (x *ServiceModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *ServiceModel) SetSeq(v int64) *ServiceModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *ServiceModel) SetRawSeq(sql string, binds ...any) *ServiceModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *ServiceModel) AddColumnSeq() *ServiceModel    { x.m.AddColumn("seq"); return x }
 func (x *ServiceModel) RemoveColumnSeq() *ServiceModel { x.m.RemoveColumn("seq"); return x }
 func (x *ServiceModel) GroupBySeq() *ServiceModel      { x.m.GroupBy("seq"); return x }
@@ -307,10 +282,6 @@ func (x *ServiceModel) GetName() string { return x.fName }
 // SetName sets name.
 func (x *ServiceModel) SetName(v string) *ServiceModel { x.fName = v; x.m.Set("name", v); return x }
 
-func (x *ServiceModel) SetRawName(sql string, binds ...any) *ServiceModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *ServiceModel) AddColumnName() *ServiceModel    { x.m.AddColumn("name"); return x }
 func (x *ServiceModel) RemoveColumnName() *ServiceModel { x.m.RemoveColumn("name"); return x }
 func (x *ServiceModel) GroupByName() *ServiceModel      { x.m.GroupBy("name"); return x }

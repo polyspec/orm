@@ -1284,7 +1284,7 @@ final class Db
         $tooLarge = new OrmException(Code::IR_INVALID, 'the statement needs ' . count($step['bind_slots']) . " bind parameters but {$this->driver} permits $limit");
         $ir = $r->ir;
         $items = $ir['where']['items'] ?? [];
-        if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || isset($ir['group_by_expr']) || $items === []) {
+        if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || $items === []) {
             throw $tooLarge;
         }
         $target = -1;

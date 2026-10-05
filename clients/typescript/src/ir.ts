@@ -11,7 +11,6 @@ export interface RequestQuery {
   relations?: Relation[];
   order?: Order[];
   group_by?: string[];
-  group_by_expr?: GroupExpression[];
   limit?: Limit;
   force_index?: string;
   lock?: string;
@@ -48,7 +47,6 @@ export interface Item {
 }
 
 export interface JoinedReference { conn?: string; join: string; }
-export interface Expression { sql: string; ps?: number[]; }
 export interface OrmFunction { name: string; ps?: number[]; }
 export interface ColumnFunction { column: string; fn: OrmFunction; }
 export interface Subquery { query: RequestQuery; column?: string; agg?: string; }
@@ -61,19 +59,17 @@ export interface Predicate {
   p?: number;
   ps?: number[];
   ref?: ColumnReferenceIR;
-  expr?: string;
   fn?: OrmFunction;
   value?: OrmFunction;
   cols?: string[];
   sub?: Subquery;
 }
 
-export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; expr?: Record<string, Expression>; fn?: Record<string, ColumnFunction>; sub?: Record<string, Subquery>; }
-export interface Order { column?: string; expr?: string; desc?: boolean; random?: boolean; fn?: OrmFunction; }
-export interface GroupExpression { expr: string; as: string; }
+export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; fn?: Record<string, ColumnFunction>; sub?: Record<string, Subquery>; }
+export interface Order { column?: string; desc?: boolean; random?: boolean; fn?: OrmFunction; }
 export interface Limit { offset: number; count: number; }
 export interface IfParent { column: string; p: number; }
-export interface Assignment { column: string; p?: number; null?: boolean; expr?: string; ps?: number[]; plus_p?: number; minus_p?: number; }
+export interface Assignment { column: string; p?: number; null?: boolean; plus_p?: number; minus_p?: number; }
 export interface Optimistic { column: string; p: number; }
 
 export interface Relation {

@@ -200,7 +200,7 @@ async fn conditions(t: &Target) {
     let first = q.get_count_by_is_close(true).await.unwrap();
     let second = q.get_count().await.unwrap();
     assert_eq!((first, second), (2, 4), "a terminal changed the model");
-    assert_eq!(Author::new().connect(db).raw("{read_count} >= ?", [20]).get_count().await.unwrap(), 2, "raw");
+    assert_eq!(Author::new().connect(db).ge_read_count(20).get_count().await.unwrap(), 2, "ge");
     assert_eq!(code(Author::new().connect(db).name("a").is_close(true).gets().await), "CONFIG", "missing connector");
     assert_eq!(code(Author::new().connect(db).name("a").and(()).gets().await), "CONFIG", "dangling connector");
     assert_eq!(code(Author::new().connect(db).seq(Vec::<i64>::new()).gets().await), "EMPTY_IN", "empty list");
@@ -264,8 +264,6 @@ async fn columns_and_subqueries(t: &Target) {
     let users = User::new()
         .connect(db)
         .add_column_read_total(|u: &User| Author::new().sum_read_count().user_seq_eq_seq(u))
-        .add_raw_column_doubled("({seq} * ?)", [2])
-        .add_column_name_alias_upper_name("UPPER(%s)")
         .seq(Author::new().add_column_user_seq().is_close(false))
         .order_by_seq_asc()
         .gets()
@@ -292,8 +290,6 @@ async fn columns_and_subqueries(t: &Target) {
         }
     };
     assert_eq!(int(u.get_read_total().unwrap()).expect("subquery integer"), 20, "subquery column");
-    assert_eq!(int(u.get_doubled().unwrap()).expect("raw integer"), 2 * u.get_seq().unwrap(), "raw column");
-    assert_eq!(u.get_upper_name().unwrap(), Some(serde_json::json!("KIM")), "format column");
     let sum = Author::new().connect(db).service_seq(f.service.get_seq().unwrap()).sum_read_count().get_sum().await.unwrap();
     let avg = Author::new().connect(db).service_seq(f.service.get_seq().unwrap()).avg_read_count().get_avg().await.unwrap();
     assert_eq!((sum, avg), (60.0, 15.0), "aggregates");

@@ -25,7 +25,7 @@ ORM은 Go·PHP·Rust·TypeScript에서 하나의 모델 기반 쿼리 문법을 
 | 컬럼 | `addColumn<Col>`, `removeColumn<Col>`, `removeAllColumns`, `addAllColumns`, `forceIndex<Name>` |
 | 관계·조인 | `relation`, `relations`, `match<L>With<R>`, `alias<Name>`, `parentNode`, `possible<Col>`, `groupLimit`, `deleteLock`, `join<L>With<R>`, `leftJoin<L>With<R>`, `on(fn)` |
 | 정렬·범위 | `orderBy<Col>Asc`, `orderBy<Col>Desc`, `groupBy<Col>`, `limit(offset, count)` |
-| 쓰기 | 저장 컬럼 `set<Col>`, 메모리 속성 `new<Name>`, `setRaw<Col>`, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)`과 `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)` |
+| 쓰기 | 저장 컬럼 `set<Col>`, 메모리 속성 `new<Name>`, `plus<Col>`, `minus<Col>`, `create`, `duplication(model)`과 `create`, `update`, `update(true)`, `save`, `delete`, `delete(true)` |
 | 트랜잭션 | 교착 재시도를 포함한 `connection.transaction(fn)` |
 | 페이지 | 같은 모델의 전체 개수와 한 페이지 행 |
 | 스타일 | `ip`, `aes`, `aes_serialize`, `aes_hex`, `point`, `serialize`, `base64`, `gz`, `json`, `jsons`, `yaml` |

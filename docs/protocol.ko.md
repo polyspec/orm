@@ -16,7 +16,6 @@
   "relations": [Relation],
   "order": [Order],
   "group_by": ["user_seq"],
-  "group_by_expr": [{"expr": "DATE({created_ts})", "as": "group_1"}],
   "limit": {"offset": 0, "count": 20},
   "force_index": "ix_service",
   "lock": "update | share | update_nowait | share_nowait",
@@ -41,7 +40,7 @@
 | `optimistic` | `update`는 컬럼 값이 매개변수와 같을 때만 일치한다. 일치하는 행이 없으면 `OPTIMISTIC_LOCK`을 반환한다 |
 | `lock` | 루트 행 조회에만 사용하며 클라이언트는 트랜잭션 안에서만 허용한다 |
 
-`Query`는 루트, 조인 자식, 관계 자식, 서브쿼리가 함께 쓰는 형태로 `entity`, `columns`, `on`(조인 자식 전용), `where`, `joins`, `relations`, `order`, `group_by`, `group_by_expr`, `limit`, `force_index`, `lock`, 관계 옵션으로 이루어진다.
+`Query`는 루트, 조인 자식, 관계 자식, 서브쿼리가 함께 쓰는 형태로 `entity`, `columns`, `on`(조인 자식 전용), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, 관계 옵션으로 이루어진다.
 
 ### 1.1 컬럼
 
@@ -50,14 +49,13 @@ Columns = {
   "mode": "" | "all" | "none",
   "add": ["name"],
   "remove": ["description"],
-  "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
   "fn": {"created_date": {"column": "created_ts", "fn": Func}},
   "sub": {"read_total": Sub}
 }
 ```
 
 - `mode`가 `""`이면 default select set, 즉 `select explicit`의 컬럼을 뺀 모든 컬럼을 선택한다([runtime model](dbspec.ko.md#runtime-model)). `all`이면 모든 컬럼을 선택하고, `none`이면 기본 키와 외래 키만 남긴다.
-- `expr`, `fn`, `sub`는 이름이 있는 출력을 추가한다. 출력 명칭은 엔티티의 컬럼 명칭과 같을 수 없다.
+- `fn`, `sub`는 이름이 있는 출력을 추가한다. 출력 명칭은 엔티티의 컬럼 명칭과 같을 수 없다.
 - 기본 키와 관계가 바인드하는 키는 항상 선택한다.
 
 ### 1.2 조인과 관계
@@ -76,7 +74,7 @@ Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq",
 ### 1.3 그룹과 조건
 
 ```json
-Group = {"conn": "and | or", "items": [Item]}
+Group = {"conn": "and | or", "not": true, "items": [Item]}
 Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
 Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
@@ -86,7 +84,6 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
-      | {"conn", "expr": "{read_count} > ?", "ps": [0]}
 Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 ```
@@ -94,17 +91,18 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - `conn`은 항목을 같은 그룹의 이전 항목에 연결한다. 첫 항목에는 연결자가 없다.
 - `ref.path`는 SQL 문장 루트에서 시작하는 조인 경로(`""`는 루트, `a/b`는 중첩 조인)이거나, 서브쿼리를 소유한 모델을 뜻하는 `^`다.
 - `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
-- `expr` 조각은 소유 모델의 컬럼을 `{column}`으로 참조하고 `?` 값을 `ps` 순서로 바인드한다. 자리표시자 수는 바인드 수와 같아야 한다.
+- `not`은 하위 묶음을 부정하며 `NOT (…)`로 렌더링된다. `not`을 가진 top-level `where`나 `on` 묶음은 `IR_INVALID`다.
+- 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.
 - `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains_binary`는 대소문자를 구분한다.
 
 ### 1.4 정렬과 할당
 
 ```json
-Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true} | {"expr": "{seq} DESC"}
-Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} | {"column", "plus_p"} | {"column", "minus_p"}
+Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true}
+Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"column", "minus_p"}
 ```
 
-원시 정렬 표현식은 방향을 직접 포함한다. `minus_p`는 음수 값을 저장하지 않는다.
+`minus_p`는 음수 값을 저장하지 않는다.
 
 default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
 

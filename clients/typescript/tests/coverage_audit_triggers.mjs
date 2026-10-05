@@ -99,13 +99,13 @@ await runCases('coverage_audit_triggers.mjs', {
       }, { audit: { actor: 'transaction' }, retry: 0 });
       const handle = adb.withSignal(new AbortController().signal);
       await handle.transaction(async () => {
-        const row = await new Item().raw('{seq} = ?', seq).get();
+        const row = await new Item().seq(seq).get();
         row[CORE].setValue('title', 'second');
         await row.update();
       }, { audit: { actor: 'signal' }, retry: 0 });
       const nested = adb.transaction(async () => { await adb.transaction(async () => {}, { audit: { actor: 'nested' } }); }, { audit: {}, retry: 0 });
       assert.equal(await errorCode(nested), 'CONFIG', 'a nested transaction with an audit');
-      const history = await new ItemHistory().connect(db).addAllColumns().orderByRaw('{history_id} ASC').gets();
+      const history = await new ItemHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
       assert.deepEqual(history.values().map(h => [
         h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('title'),
         h[CORE].column('audit_seq'), h[CORE].column('deleted_at') !== null,
@@ -113,7 +113,7 @@ await runCases('coverage_audit_triggers.mjs', {
         ['insert', null, seq, 'first', 1, false],
         ['update', 1, seq, 'second', 2, false],
       ], 'item_history in history_id order');
-      const audits = await new Audit().connect(db).orderByRaw('{seq} ASC').gets();
+      const audits = await new Audit().connect(db).orderBySeqAsc().gets();
       assert.deepEqual(audits.values().map(a => [a[CORE].column('seq'), a[CORE].column('actor')]), [[1, 'transaction'], [2, 'signal']], 'audit records');
     });
   },
@@ -135,14 +135,14 @@ await runCases('coverage_audit_triggers.mjs', {
         tag[CORE].setValue('label', 'x');
         tag[CORE].setValue('color', 'red');
         id = (await tag.create())[CORE].column('id');
-        const row = await new Card().raw('{seq} = ?', seq).get();
+        const row = await new Card().seq(seq).get();
         row[CORE].setValue('title', 'second');
         row[CORE].setValue('secret', 's2');
         await row.update();
       }, { audit: { actor: 'first' }, retry: 0 });
       await adb.transaction(async () => {
-        await (await new Card().raw('{seq} = ?', seq).get()).delete();
-        const tag = await new Tag().raw('{id} = ?', id).get();
+        await (await new Card().seq(seq).get()).delete();
+        const tag = await new Tag().id(id).get();
         tag[CORE].setValue('color', 'blue');
         await tag.update();
       }, { audit: { actor: 'second' }, retry: 0 });

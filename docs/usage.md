@@ -213,7 +213,7 @@ const rows = await new Author().connect(slave1)
 (new Author)->connect($slave1)->serviceSeq(7)->sumLikeCount()->getSum();       // sum of like_count
 (new Author)->connect($slave1)->serviceSeq(7)->avgPrice()->getAvg();           // average price
 ```
-Raw condition, order, group, and column forms, subquery columns, and ORM function values are specified in [dsl.md](dsl.md).
+Negated groups, column function outputs, subquery columns, and ORM function values are specified in [dsl.md](dsl.md).
 Rust `gets_count()` returns `GroupRows` with only selected grouping values and a checked `row_count`, instead of a partially populated model.
 Rust `GroupRow::value(name)` returns `Result<&Val>`: an unselected name reports `COLUMN_UNSELECTED`, while a selected SQL NULL remains `Val::Null`.
 Go `GetsCount()` returns `*orm.GroupRows`. Each `GroupRow` exposes its selected values through `Value(name)` and its checked count through `Count()`. `Value(name)` returns `COLUMN_UNSELECTED` for an unselected name and returns nil without an error for a selected SQL NULL.
@@ -270,7 +270,7 @@ $row->newIsMember(true);                                                        
 ```
 
 - `update` always writes `updated_ts` explicitly so the value is consistent across dialects.
-- `minus<Col>` never stores a negative value. `setRaw<Col>` writes a schema-checked SQL expression.
+- `minus<Col>` never stores a negative value.
 - `save()` updates when the primary key is set and creates the row otherwise.
 - Transactions use `connection.transaction(fn)`. A callback error or exception rolls back the transaction, and deadlocks are retried.
 - Calling `transaction` on the same connection inside an active transaction creates a savepoint. An inner failure rolls back only the inner work unless the outer callback returns it.
