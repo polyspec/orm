@@ -70,7 +70,7 @@ PgBouncer settings:
 | Setting | Value | Reason |
 |---|---|---|
 | `pool_mode` | `transaction` | A server connection serves one client transaction or one statement outside a transaction at a time. |
-| `max_prepared_statements` | above 0 (PgBouncer default 200) | The Rust and TypeScript clients run statements as protocol-level named prepared statements; the Go and PHP clients send each PostgreSQL statement with its binds as an unnamed statement. With 0, a statement prepared on one server connection is missing on the next and PgBouncer returns `prepared statement … already exists` or `does not exist`. |
+| `max_prepared_statements` | above 0 (PgBouncer default 200) | The Go, Rust and TypeScript clients run statements as protocol-level named prepared statements; the PHP client sends each PostgreSQL statement with its binds as an unnamed statement. With 0, a statement prepared on one server connection is missing on the next and PgBouncer returns `prepared statement … already exists` or `does not exist`. |
 | `track_extra_parameters` | `statement_timeout` | Needed when a connection sets `statementTimeoutMs`. The clients send `statement_timeout` as a startup parameter; PgBouncer rejects a startup parameter it does not track, and sets a tracked one on every server connection it assigns to that client connection and on no other. |
 
 - Outside a transaction the clients set no PostgreSQL session state other than the time zone, which every client sends as the startup parameter `TimeZone=UTC`; PgBouncer tracks `TimeZone` by default. Transaction options (`SET TRANSACTION`, `SET LOCAL statement_timeout`), `utils().setLocal` (`set_config(…, true)`), and `utils().lock` (`pg_advisory_xact_lock`) end with their transaction.

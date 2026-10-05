@@ -17,7 +17,7 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 2. Executor rules
 
-**F1 — Every executor caches prepared statements, except on PostgreSQL in Go and PHP.** In Go, `QueryContext(args)` without a prepared statement (prepare, execute, and close: three round trips) takes 100µs for a PK row and 38µs with a cached statement. On PostgreSQL the Go client sets the pgx query mode `exec` (`default_query_exec_mode=exec`), which sends the statement and its text binds as one unnamed statement in one round trip and lets the server infer the parameter types, so a statement text costs no separate prepare round trip and transaction on a new connection (PHP: F4).
+**F1 — A pooled client prepares a statement text once per connection and reuses it; a short-lived connection sends each statement in one round trip.** In Go, `QueryContext(args)` without a prepared statement (prepare, execute, and close: three round trips) takes 100µs for a PK row and 38µs with a cached statement. The Go (pgx statement cache), Rust (sqlx) and TypeScript (`pg` named statements) clients keep a pool whose connections outlive a request, so each connection prepares a statement text once and then binds and executes it with the server plan it keeps. A PHP connection lives for one request, so a prepare it keeps is never reused, and the PHP client sends each statement with its binds in one round trip (F4). Server transactions of the `model_statements` page of `server_transactions` (`tests/events/vectors.json`, 8 statements of 5 texts on PostgreSQL), first run on a new connection / second run: Go 13 / 8 (pgx sends Parse and Describe in a round trip of their own), Rust 13 / 8 (sqlx 0.9 prepares in a round trip of its own; it has no single-round-trip mode), TypeScript 8 / 8 (`pg` sends the Parse with the first Bind and Execute), PHP 8 / 8. Measured basis (Go, PostgreSQL, the bench database, a page of `GetBySeq`, `GetsByServiceSeqAndIsClose`, `GetCountByServiceSeq` and a 10-row list; a pool of 4 connections and 4 workers, 800 to 1600 pages after 200 warm-up pages, three rounds on a loaded machine): against the pgx `exec` query mode, which sends every statement unprepared in one round trip, the statement cache was 24 to 44 % faster at the steady-state p50 (5.5 to 6.3 ms against 7.8 to 8.9 ms), used 22 to 31 % less backend CPU per page (2.2 to 2.5 ms against 2.9 to 3.0 ms) and served 20 to 33 % more pages per second, while the first page on a new connection was 0 to 9 % slower (5.1 to 8.1 ms against 5.1 to 7.6 ms). The same comparison on MySQL (driver-side interpolation against server-side prepares) stayed within the noise of the machine, and the Go, Rust and TypeScript MySQL clients keep their server-side prepares.
 
 **F2 — The sqlx PK latency is the driver's own cost.** sqlx reads a PK row in about 80µs, twice Go and PDO, with pool size 1 and a dedicated connection. The difference comes from tokio task switching and protocol parsing.
 
@@ -61,7 +61,7 @@ On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. Th
 
 | ID | Decision | Basis |
 |---|---|---|
-| F1 | Prepared statement cache in every executor; PostgreSQL Go and PHP send unnamed statements | §2 |
+| F1 | Pooled clients prepare once per connection and reuse; PHP sends one round trip per statement | §2 |
 | F2 | sqlx PK latency is intrinsic driver cost | §1, §2 |
 | F3 | No failed sqlx `try_get` for flow control | §2 |
 | F4 | PHP: one round trip per statement (MySQL emulated prepares, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |

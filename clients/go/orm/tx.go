@@ -25,7 +25,7 @@ import (
 type executor interface {
 	base() *DB
 	context() context.Context
-	stmt(ctx context.Context, sqlText string) (modelStatement, error)
+	stmt(ctx context.Context, sqlText string) (*sql.Stmt, error)
 	transaction() *txConn
 	// enter marks the start of a statement and returns its end; a
 	// transaction rejects concurrent use.
@@ -88,11 +88,8 @@ func (t *txConn) enter() (func(), error) {
 }
 
 // stmt prepares on the transaction connection and keeps the statement until
-// the transaction ends. A PostgreSQL statement is not prepared (unprepared).
-func (t *txConn) stmt(ctx context.Context, sqlText string) (modelStatement, error) {
-	if t.db.driver == "postgres" {
-		return unprepared{q: t.conn, sql: sqlText}, nil
-	}
+// the transaction ends.
+func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	t.stmMu.Lock()
 	defer t.stmMu.Unlock()
 	if st, ok := t.stmts[sqlText]; ok {
