@@ -198,7 +198,8 @@ export function selectTargets(declared, changed) {
   return out;
 }
 
-// checkInputErrors는 declared가 CHECK_TARGETS의 target에 scope(owner나 suite)를 선언하지 않거나,
+// checkInputErrors는 declared가 CHECK_TARGETS의 target에 scope(owner나 suite)나 needs(필요한 setup 단계)를
+// 선언하지 않거나,
 // CHECK_TARGETS에 없는 target을 선언하거나, owner target에 입력이 없거나, suite target에 쓰이지 않을
 // 입력이 있거나, pattern이 추적되는 file을 하나도 맞추지 않는 곳마다 오류 하나를 돌려준다.
 export function checkInputErrors(declared, targets, tracked) {
@@ -208,6 +209,10 @@ export function checkInputErrors(declared, targets, tracked) {
       errors.push(`contracts/check-inputs.json declares no scope of ${target} of CHECK_TARGETS`);
   for (const [target, declaration] of Object.entries(declared)) {
     if (!targets.includes(target)) errors.push(`contracts/check-inputs.json declares ${target}, which is not in CHECK_TARGETS`);
+    // needs는 target이 필요한 setup 단계다. runner(scripts/check/run.mjs)는 그 단계가 실패하면 target을 not-run으로 기록한다.
+    const needs = declaration?.needs;
+    if (!Array.isArray(needs)) errors.push(`contracts/check-inputs.json declares no needs of ${target}; declare [] or ["databases"]`);
+    else for (const need of needs) if (need !== 'databases') errors.push(`contracts/check-inputs.json: ${target} needs ${need}, which is no setup step; the setup step is databases`);
     const globs = declaration?.inputs;
     if (declaration?.scope === 'suite' && globs !== undefined)
       errors.push(`contracts/check-inputs.json: suite target ${target} declares inputs, which owner-check never reads`);

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.38-1: `make check`는 실패한 setup 단계(`servers`, `databases/create`)가 막은 target을 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지를 실행하며(`contracts/check-inputs.json`의 `needs`), target마다 `make -k`로 실행하고, 보고서 `.runtime/check/<run id>/report`(환경, target마다 명령, recipe, 입력과 출력, 실패한 target의 실행 directory, `summary.md`)를 쓴다. `scripts/check/summary.mjs`는 끝나지 않은 runner를 포함해 `ORM_CHECK_RUN_ID`의 summary를 낸다.
+
 - G5.39: load되지 않는 문서 page는 남은 request와 그 나이와 server의 상태, 실패한 request, console과 page error, event loop 지연, host load를 적는다.
 
 - G5.37: `addTablesAndColumns`는 빠진 table, column과 함께 기존 table에 빠진 index를 만들고 각각을 `table.index`로 돌려준다. 빠진 unique key는 여전히 `SCHEMA_DIFFERS`이며 `add_unique <table>.<name>: a missing unique key can fail on the existing rows; add it with a plan`으로 적는다.

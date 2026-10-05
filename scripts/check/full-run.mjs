@@ -8,7 +8,7 @@
 // 실행한다. make rerun-failed는 현재 commit이 기록된 commit(전체 실행이나 마지막 재실행의 commit)이거나
 // 그 후손일 때만 실행한다. 다시 실행하는 target은 통과하지 못한 target(실패한 것과 끝나지 않은 것)과,
 // 기록된 commit 뒤에 바뀐 path가 contracts/check-inputs.json에서 고르는 owner target이다(make
-// owner-check와 같은 선택). 재실행은 고른 target을 시작 전에 `not run`으로 되돌리므로, 강제 종료된 재실행이
+// owner-check와 같은 선택). 재실행은 고른 target을 시작 전에 `pending`으로 되돌리므로, 강제 종료된 재실행이
 // 남긴 target도 다음 재실행이 고른다. GitHub CI의 checkout처럼 새 checkout에는 기록이 없다.
 //
 // 기록 .runtime/full-run.json(git이 무시한다)은 checkout의 마지막 전체 실행이다: tree, commit, 결과,
@@ -178,13 +178,15 @@ export function printRefusal(entry, reasons) {
 }
 
 const now = () => new Date().toISOString();
-const newStep = name => ({ name, status: 'not run', started: null, ended: null });
+// 단계의 상태: pending(시작 전), running, passed, failed, not-run(필요한 setup 단계가 실패해 실행하지 않았다. reason이
+// 그 단계와 첫 실패 줄을 적는다).
+const newStep = name => ({ name, status: 'pending', started: null, ended: null });
 
 // claim은 .runtime/full-run.lock을 배타적으로 만든 동안 결정하고, 허용되면 첫 기록을 쓴다. 그 file이
 // 남아 있으면 그것을 만든 process가 결정 도중에 끝난 것이므로 거부하고 그 file을 적는다. 허용된 실행은
 // { targets, recorder }를 받는다. recorder.begin(name, kind)은 단계(kind 'setup')나 target의 시작을,
 // recorder.end(step, passed)는 결과를 기록하고, recorder.finish()는 실행의 결과를 기록해 돌려준다.
-export function claim(root, mode, targets) {
+export function claim(root, mode, targets, id) {
   const entry = ENTRIES[mode];
   const lock = resolve(root, '.runtime/full-run.lock');
   mkdirSync(resolve(root, '.runtime'), { recursive: true });
@@ -198,7 +200,7 @@ export function claim(root, mode, targets) {
   let claimed;
   try {
     writeFileSync(descriptor, `${process.pid}\n`);
-    claimed = start(root, mode, entry, targets);
+    claimed = start(root, mode, entry, targets, id);
   } finally {
     closeSync(descriptor);
     unlinkSync(lock);
@@ -206,7 +208,7 @@ export function claim(root, mode, targets) {
   return claimed;
 }
 
-function start(root, mode, entry, targets) {
+function start(root, mode, entry, targets, id) {
   const path = recordPath(root);
   const current = state(root);
   const decision = decide(mode, { ...current, targets });
@@ -218,7 +220,7 @@ function start(root, mode, entry, targets) {
   if (mode === 'check') {
     console.log(`full-run: allowed ${entry}: no checklist item is in progress, the tracked files are committed and no full run of tree ${current.tree} is recorded; running ${targets.length} targets: ${targets.join(' ')}`);
     record = {
-      entry, tree: current.tree, commit: current.commit, started, ended: null, result: 'incomplete',
+      id, entry, tree: current.tree, commit: current.commit, started, ended: null, result: 'incomplete',
       failed: [], incomplete: [...targets], runner, setup: [], targets: targets.map(newStep), reruns: [],
     };
     run = record;
@@ -232,9 +234,9 @@ function start(root, mode, entry, targets) {
     record = { ...current.record, ended: null, result: 'incomplete', runner };
     // 고른 target은 이 재실행에서 다시 정해지므로 시작 전에 되돌린다. 강제 종료되면 끝나지 않은 target으로 남는다.
     for (const step of record.targets)
-      if (decision.targets.includes(step.name)) Object.assign(step, { status: 'not run', started: null, ended: null });
+      if (decision.targets.includes(step.name)) Object.assign(step, { status: 'pending', started: null, ended: null, reason: undefined, failures: undefined, log: undefined });
     run = {
-      started, ended: null, result: 'incomplete', commit: current.commit, tree: current.tree, since: from.commit,
+      id, started, ended: null, result: 'incomplete', commit: current.commit, tree: current.tree, since: from.commit,
       owners: decision.owners, targets: decision.targets, setup: [],
     };
     record.reruns.push(run);
@@ -249,8 +251,14 @@ function start(root, mode, entry, targets) {
       write(path, record);
       return step;
     },
-    end(step, passed) {
-      Object.assign(step, { status: passed ? 'passed' : 'failed', ended: now() });
+    // details는 단계의 log path, 경과 시간(ms)과 실패한 단계의 첫 실패 줄이다.
+    end(step, passed, details = {}) {
+      Object.assign(step, { status: passed ? 'passed' : 'failed', ended: now() }, details);
+      write(path, record);
+    },
+    // notRun은 필요한 setup 단계가 실패해 실행하지 않은 target을 그 이유와 함께 적는다.
+    notRun(name, reason) {
+      Object.assign(record.targets.find(target => target.name === name), { status: 'not-run', started: null, ended: now(), reason });
       write(path, record);
     },
     finish() {
@@ -265,7 +273,7 @@ function start(root, mode, entry, targets) {
       return record;
     },
   };
-  return { targets: decision.targets, recorder };
+  return { targets: decision.targets, recorder, record, run };
 }
 
 // preflight는 make check와 make rerun-failed의 첫 줄이다: 결정을 출력하고 거부면 2, 아니면 0을 돌려준다.

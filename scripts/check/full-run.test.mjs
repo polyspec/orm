@@ -31,18 +31,39 @@ function cleanup() {
 // stub은 runChecks를 stub 명령으로 실행한다. database 명령(sh)은 log에 `sh <action>`을, make target은 자기
 // 이름을 적는다. `b`는 추적하지 않는 file `pass-b`가 있을 때만 통과하므로 case는 tree를 바꾸지 않고 결과를
 // 바꾼다. kill에 target 이름을 주면 그 target이 runner process를 SIGKILL로 끝낸다. `decide`는 make check의 첫 줄을 실행한다.
-const STUB = `import { appendFileSync, existsSync } from 'node:fs';
+//
+// STUB_SUITE=failing는 setup 실패 case의 suite다: target a, b, c, d 가운데 a와 c는 database가 필요하고, database
+// 만들기는 실패하며, b는 실패한 case 하나와 끝나지 않은 case 하나를 출력하고 실행 directory를 남기며, d는 통과한다.
+const STUB = `import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { runChecks } from ${JSON.stringify(resolve(repo, 'scripts/check/run.mjs'))};
 import { preflight } from ${JSON.stringify(resolve(repo, 'scripts/check/full-run.mjs'))};
-const [root, action, mode, log, kill] = process.argv.slice(2);
+const [root, action, mode, log, kill, servers] = process.argv.slice(2);
 if (action === 'decide') process.exit(preflight(root, mode));
-const run = async (program, args) => {
+const failing = process.env.STUB_SUITE === 'failing';
+const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
   if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
-  if (name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (failing && name === 'sh create') {
+    step('databases: CREATE DATABASE orm_check_x_bench failed: ERROR 1045 (28000): Access denied for user');
+    throw new Error('sh scripts/check/databases.sh create exited with 1');
+  }
+  if (failing && name === 'b') {
+    spawned(4242);
+    const dir = root + '/.runtime/run/b-4242';
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(dir + '/out.json', '{"rows": 5}\\n');
+    writeFileSync(dir + '/big.log', 'x'.repeat(2 * 1024 * 1024) + 'END\\n');
+    for (const line of ['RUN b/count deadline=1m0s', 'STEP b/count elapsed=1ms: SELECT COUNT(*) FROM t', 'FAIL b/count elapsed=2ms: rows of t: expected 3, actual 5',
+      'RUN b/pending deadline=1m0s', 'STEP b/pending elapsed=1ms: waiting for the lock of t'])
+      step(line);
+    throw new Error('make --no-print-directory -k b exited with 2');
+  }
+  if (!failing && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
-process.exitCode = await runChecks({ root, mode, servers: '/servers/env', targets: mode === 'check' ? ['a', 'b', 'c'] : [], run });
+const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
+const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs });
 `;
 
 function checkout(t, checklist) {
@@ -53,6 +74,8 @@ function checkout(t, checklist) {
   writeFileSync(join(root, 'docs/checklist.md'), checklist);
   writeFileSync(join(root, '.gitignore'), '/.runtime/\npass-b\n');
   writeFileSync(join(base, 'stub.mjs'), STUB);
+  const servers = join(base, 'servers.env');
+  writeFileSync(servers, "export ORM_TEST_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_test'\n");
   const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString();
   git('init', '-q');
   git('add', '.');
@@ -61,7 +84,8 @@ function checkout(t, checklist) {
   return {
     root,
     git,
-    run: (action, mode, kill = '') => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill], { encoding: 'utf8' }),
+    servers,
+    run: (action, mode, kill = '', env = {}) => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill, servers], { encoding: 'utf8', env: { ...process.env, ...env } }),
     ran: () => {
       const names = existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean) : [];
       rmSync(log, { force: true });
@@ -100,11 +124,11 @@ caseTest('the decision refuses active items and allows a committed tree without 
 caseTest('make check and make rerun-failed start with the guard', COMPUTE, () => {
   assert.deepEqual(recipe('check'), [
     'node scripts/check/full-run.mjs decide check',
-    '$(WITH_TEST_ENV) node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)',
+    '$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)',
   ]);
   assert.deepEqual(recipe('rerun-failed'), [
     'node scripts/check/full-run.mjs decide rerun-failed',
-    '$(WITH_TEST_ENV) node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))',
+    '$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))',
   ]);
 });
 
@@ -147,7 +171,7 @@ caseTest('a second full run of the same tree is refused naming the first', PROCE
     assert.deepEqual(c.ran(), ['sh create', 'a', 'b', 'c', 'sh drop']);
     const record = c.record();
     assert.deepEqual([record.result, record.failed, record.runner], ['failed', ['b'], null]);
-    assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['databases/create', 'passed'], ['databases/drop', 'passed']]);
+    assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
     assert.equal(record.tree, c.git('rev-parse', 'HEAD^{tree}').trim());
     for (const action of ['decide', 'run']) {
       const second = c.run(action, 'check');
@@ -198,7 +222,7 @@ caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
     assert.equal(result.signal, 'SIGKILL');
     const record = c.record();
     assert.equal(record.result, 'incomplete');
-    assert.deepEqual(record.targets.map(target => [target.name, target.status]), [['a', 'running'], ['b', 'not run'], ['c', 'not run']]);
+    assert.deepEqual(record.targets.map(target => [target.name, target.status]), [['a', 'running'], ['b', 'pending'], ['c', 'pending']]);
     const rerun = c.run('run', 'rerun-failed');
     assert.equal(rerun.status, 1, rerun.stdout + rerun.stderr);
     assert.deepEqual(c.ran(), ['sh create', 'a', 'sh create', 'a', 'b', 'c', 'sh drop']);
@@ -230,7 +254,7 @@ caseTest('a killed run records failed and unfinished targets apart', PROCESS, ()
 });
 
 caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
-  const record = summarize({ targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'running' }, { name: 'd', status: 'not run' }] });
+  const record = summarize({ targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'running' }, { name: 'd', status: 'pending' }] });
   assert.deepEqual([record.failed, record.incomplete], [['b'], ['c', 'd']]);
 });
 
@@ -281,7 +305,7 @@ caseTest('a rerun on a descendant commit reruns failed and changed owner targets
     assert.equal(killed.signal, 'SIGKILL', killed.stdout + killed.stderr);
     assert.match(killed.stdout, /owner target c is selected by paths changed since [0-9a-f]+: src\/x\.mjs/);
     assert.deepEqual(c.ran(), ['sh create', 'b']);
-    assert.deepEqual(c.record().targets.map(target => [target.name, target.status]), [['a', 'passed'], ['b', 'running'], ['c', 'not run']]);
+    assert.deepEqual(c.record().targets.map(target => [target.name, target.status]), [['a', 'passed'], ['b', 'running'], ['c', 'pending']]);
     writeFileSync(join(c.root, 'pass-b'), '');
     const rerun = c.run('run', 'rerun-failed');
     assert.equal(rerun.status, 0, rerun.stdout + rerun.stderr);
@@ -298,6 +322,81 @@ caseTest('a rerun on a descendant commit reruns failed and changed owner targets
     assert.equal(older.status, 2);
     assert.match(older.stdout, /is neither that commit nor its descendant/);
     assert.deepEqual(c.ran(), []);
+  } finally {
+    cleanup();
+  }
+});
+
+// setup 실패 case(G5.38-1)는 database 만들기가 실패한 4개 target의 suite다: database가 필요한 a와 c는 그 단계와 첫
+// 실패 줄을 이유로 not-run이고, 필요 없는 b와 d는 실행된다. b는 실패하며 보고서는 그 정확한 명령과 출력, 실패한 case의
+// 기대값과 실제값, 끝나지 않은 case와 그 마지막 단계, b가 남긴 실행 directory(LIMIT_BYTES를 넘는 file은 끝만)를
+// 담고, 실행은 1로 끝난다. CI의 summary 단계는 같은 실행 id의 summary를 GITHUB_STEP_SUMMARY에 쓴다.
+caseTest('a failed setup step blocks only the targets that need it, and the report explains every failure', PROCESS, async ({ step }) => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const stepSummary = join(c.root, '..', 'step-summary.md');
+    const env = { STUB_SUITE: 'failing', ORM_CHECK_RUN_ID: '1234-1', GITHUB_STEP_SUMMARY: stepSummary };
+    const result = c.run('run', 'check', '', env);
+    step(`exit ${result.status}`);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.deepEqual(c.ran(), ['sh create', 'b', 'd', 'sh drop']);
+    const record = c.record();
+    const status = Object.fromEntries(record.targets.map(target => [target.name, target]));
+    assert.deepEqual(record.targets.map(target => [target.name, target.status]), [['a', 'not-run'], ['b', 'failed'], ['c', 'not-run'], ['d', 'passed']]);
+    for (const name of ['a', 'c'])
+      assert.match(status[name].reason, /^the setup step databases\/create failed: .*Access denied for user/);
+    assert.deepEqual(status.b.failures.slice(0, 2), [
+      'FAIL b/count elapsed=2ms: rows of t: expected 3, actual 5',
+      'case b/pending did not finish; its last step: STEP b/pending elapsed=1ms: waiting for the lock of t',
+    ]);
+    const report = join(c.root, '.runtime/check/ci_1234_1/report');
+    assert.equal(record.id, 'ci_1234_1');
+    const log = readFileSync(join(report, 'targets/b.log'), 'utf8');
+    assert.match(log, /^target b\ncommand: make --no-print-directory -k TEST_ENV=\S+ DECIMAL_ENV=\S+ b\n/);
+    assert.match(log, /FAIL b\/count elapsed=2ms: rows of t: expected 3, actual 5/);
+    assert.match(readFileSync(join(report, 'environment.txt'), 'utf8'), /^commit [0-9a-f]{40}\ntree [0-9a-f]{40}\nos .*\nnode v/);
+    const kept = join(report, 'targets/b/run/b-4242');
+    assert.equal(readFileSync(join(kept, 'out.json'), 'utf8'), '{"rows": 5}\n');
+    assert.match(readFileSync(join(kept, 'big.log'), 'utf8'), /^\[the last 262144 of 2097156 bytes of .*big\.log\]\nx+END\n$/);
+    assert.match(readFileSync(join(kept, 'MANIFEST.txt'), 'utf8'), /big\.log kept as its last 262144 of 2097156 bytes/);
+    const summaryText = readFileSync(join(report, 'summary.md'), 'utf8');
+    for (const row of [/\| servers \| passed \|/, /\| databases\/create \| failed \|/, /\| a \| not-run \| {2}\| the setup step databases\/create failed/, /\| b \| failed \|/, /\| d \| passed \|/])
+      assert.match(summaryText, row);
+    assert.match(summaryText, /keeps only its last 262144 bytes/);
+    // CI의 summary 단계는 같은 실행 id의 summary를 GITHUB_STEP_SUMMARY에 쓴다.
+    process.env.GITHUB_STEP_SUMMARY = stepSummary;
+    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mjs'));
+    const published = runSummary(c.root, '1234-1');
+    delete process.env.GITHUB_STEP_SUMMARY;
+    assert.equal(published.passed, false);
+    assert.match(readFileSync(stepSummary, 'utf8'), /\| b \| failed \|/);
+  } finally {
+    cleanup();
+  }
+});
+
+// crash case(G5.38-1)는 runner가 target c에서 죽은 실행이다. summary 단계는 runner가 끝나지 않았다고 쓰고, 보고서
+// directory는 그때까지의 기록과 target log를 담는다.
+caseTest('the summary step reports a runner that did not finish, with the partial record', PROCESS, async () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const stepSummary = join(c.root, '..', 'step-summary.md');
+    const result = c.run('run', 'check', 'c', { ORM_CHECK_RUN_ID: '99-2', GITHUB_STEP_SUMMARY: stepSummary });
+    assert.equal(result.signal, 'SIGKILL');
+    process.env.GITHUB_STEP_SUMMARY = stepSummary;
+    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mjs'));
+    const { text, passed } = runSummary(c.root, '99-2');
+    delete process.env.GITHUB_STEP_SUMMARY;
+    assert.equal(passed, false);
+    assert.match(text, /result \*\*crashed\*\*/);
+    assert.match(text, /The runner did not finish: the runner process \d+ ended without recording the end of run ci_99_2/);
+    assert.match(text, /\| b \| failed \|/);
+    assert.match(text, /\| c \| running \|/);
+    assert.equal(readFileSync(stepSummary, 'utf8'), text);
+    assert.equal(readFileSync(join(c.root, '.runtime/check/ci_99_2/report/summary.md'), 'utf8'), text);
+    assert.ok(existsSync(join(c.root, '.runtime/check/ci_99_2/report/targets/b.log')));
+    const missing = runSummary(c.root, '77-1');
+    assert.match(missing.text, /make check recorded no run ci_77_1/);
   } finally {
     cleanup();
   }

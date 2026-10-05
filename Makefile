@@ -113,7 +113,7 @@ CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
 run-databases:
-	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(TARGETS)
+	$(BUILD_LEASE) && node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(TARGETS)
 
 # check는 전체 suite이고 rerun-failed는 그 suite에서 통과하지 못한 target만 다시 실행한다. 두 진입점의 첫 줄은
 # 전체 suite의 guard(scripts/check/full-run.mjs)다: 어떤 단계보다 먼저, test server 환경을 읽고 lease program을
@@ -122,14 +122,16 @@ run-databases:
 # 거부한다. runner(--full-run, --rerun-failed)는 실행을 기록하기 직전에 다시 결정하고, 첫 단계 전과 각 단계의
 # 시작과 끝마다 기록을 쓴다. rerun-failed는 현재 commit이 기록된 commit(전체 실행이나 마지막 재실행)의 tree도
 # 후손도 아니면 거부되고, 통과하지 못한 target과 그 commit 뒤에 바뀐 path가 고르는 owner target을 실행한다. 새
-# checkout(GitHub CI)에는 기록이 없다.
+# checkout(GitHub CI)에는 기록이 없다. runner는 TEST_ENV를 setup 단계 servers로 읽고 그 server의 shared lease를
+# 잡는다: file이 없으면(make test-servers가 실패했다) database가 필요한 target만 not-run으로 기록하고 나머지는
+# 실행한다.
 check:
 	node scripts/check/full-run.mjs decide check
-	$(WITH_TEST_ENV) node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+	$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
 
 rerun-failed:
 	node scripts/check/full-run.mjs decide rerun-failed
-	$(WITH_TEST_ENV) node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))
+	$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))
 
 # bench는 성능 측정(2000 table stress 문서의 parse budget, 적용, introspection과 비교, CPU 시간
 # 제한)을 check와 같은 runner로 target마다 실행한다.
