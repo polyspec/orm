@@ -21,37 +21,30 @@
 //
 // Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--full-run] <servers env> <target>...
 //        node scripts/check/run.mjs --rerun-failed <servers env>
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
-import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
+import { duration, runGroup } from '../../tests/testcase.mjs';
 import { failedCiSetup } from './ci-setup.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
+import { runStep } from './step.mjs';
 
 // setupLabel은 runner의 setup 단계(servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
 const setupLabel = label => ['servers', 'databases/create', 'databases/drop'].includes(label) || label.startsWith('ci/');
 import { cappedLog, diskSnapshot, failures, keepFile, keepRunDirectory, npmErrors, NPM_LOG, publish, spaceCause, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
-// command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
-// 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한 process의 id를 받는다.
-export const command = root => (program, args, step, spawned = () => {}) => new Promise((finish, fail) => {
+// command는 program을 단계 하나로 실행하고(runStep: 자기 임시 directory와 process group) 출력 줄을 단계로 내보낸다.
+// make의 MAKEFLAGS는 넘기지 않는다: 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한
+// process의 id를 받는다. options의 label은 실패 줄의 이름, keep은 실패한 단계의 임시 entry를 복사할 directory,
+// leftovers는 단계 밖에 남은 것을 찾는 함수이고, guard: false는 setup 단계다.
+export const command = root => (program, args, step, spawned = () => {}, { label, keep, leftovers, guard } = {}) => {
   const env = { ...process.env };
   for (const variable of ['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES']) delete env[variable];
-  const child = spawn(program, args, { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
-  spawned(child.pid);
-  const lines = stepLines(step);
-  child.stdout.on('data', chunk => lines.write(String(chunk)));
-  child.stderr.on('data', chunk => lines.write(String(chunk)));
-  child.on('error', fail);
-  child.on('close', (code, signal) => {
-    lines.flush();
-    if (code === 0) finish();
-    else fail(new Error(`${program} ${args.join(' ')} exited with ${code ?? `signal ${signal}`}`));
-  });
-});
+  return runStep(program, args, { cwd: root, env, step, label, spawned, leftovers, guard, keep: keep && (source => keepRunDirectory(source, keep)) });
+};
 
 // serverEnvironment는 make test-servers가 쓴 환경 file(`export NAME='value'` 줄)을 읽는다. file이 없으면 server가
 // 시작하지 않은 것이므로 그 path와 함께 던진다.
@@ -149,6 +142,12 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     // npm이 적은 debug log의 경로다. 실패한 단계는 그 log를 보고서로 옮기고 그 오류 줄을 첫 실패 줄로 삼는다.
     const npmLogs = new Set();
     let pid = null;
+    const keepTemporary = join(report, 'targets', label.replaceAll('/', '-'), 'tmp');
+    // runDirectories는 이 단계의 make가 남긴 실행 directory(.runtime/run/<target>-<make pid>)다.
+    const runDirectories = () => {
+      const runs = resolve(root, '.runtime/run');
+      return pid && existsSync(runs) ? readdirSync(runs).filter(entry => entry.endsWith(`-${pid}`)).map(entry => join(runs, entry)) : [];
+    };
     const header = kind === 'target'
       ? [`target ${label}`, `command: make --no-print-directory -k TEST_ENV=${testEnv} DECIMAL_ENV=${decimalEnv} ${label}`, 'recipe (Makefile):', recipeText(root, label), `inputs: ${targetInputs(root, label).join(' ')}`, '']
       : [`setup step ${label}`, ''];
@@ -163,6 +162,9 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
         report(text);
       },
       spawned: child => { pid = child; },
+      // 실패한 단계의 임시 entry는 보고서의 targets/<단계>/tmp로 복사한다. 통과한 단계가 실행 directory를 남겼으면 그
+      // 단계는 실패한다.
+      options: { label, keep: keepTemporary, leftovers: () => runDirectories().map(path => relative(root, path)) },
     }).catch(error => { output.line(error.message); found.exit(error.message); throw error; }));
     const elapsed = performance.now() - started;
     const truncated = output.close() || null;
@@ -186,14 +188,14 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     const space = passed ? null : spaceCause(lines, after);
     if (space) lines.unshift(space);
     const details = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(truncated ? { truncated } : {}) };
-    // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 옮긴다.
-    if (!passed && pid) {
-      const runs = resolve(root, '.runtime/run');
-      for (const entry of existsSync(runs) ? readdirSync(runs) : [])
-        if (entry.endsWith(`-${pid}`)) {
-          const kept = join(report, 'targets', label.replaceAll('/', '-'), 'run', entry);
-          writer.run(kept, () => keepRunDirectory(join(runs, entry), kept));
-        }
+    // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 복사한 뒤 지운다. 보고서가 그
+    // 증거를 갖고, disk에는 남지 않는다.
+    for (const path of runDirectories()) {
+      if (!passed) {
+        const kept = join(report, 'targets', label.replaceAll('/', '-'), 'run', basename(path));
+        writer.run(kept, () => keepRunDirectory(path, kept));
+      }
+      rmSync(path, { recursive: true, force: true });
     }
     // 이 단계 동안 실패한 보고서 쓰기는 그 단계의 기록에 남는다.
     const reportErrors = writer.failed.slice(written);
@@ -236,7 +238,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   let created = false;
   if (serversReady) {
     created = await record('databases/create', 'setup', ({ step, spawned }) =>
-      run('sh', ['scripts/check/databases.sh', 'create', servers, directory, name], step, spawned));
+      run('sh', ['scripts/check/databases.sh', 'create', servers, directory, name], step, spawned, { guard: false }));
     if (!created) failedSetup.databases = `the setup step databases/create failed: ${results.at(-1).failures.join(' / ')}`;
   }
   for (const target of targets) {
@@ -245,16 +247,16 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       skip(target, failedSetup[blocked]);
       continue;
     }
-    await record(target, 'target', async ({ step, spawned }) => {
+    await record(target, 'target', async ({ step, spawned, options }) => {
       // 하위 make는 Makefile이 정하는 이 checkout의 Rust target directory를 쓴다(AGENTS.md).
       // -k는 recipe의 하위 target 하나가 실패해도 그와 무관한 하위 target을 실행한다.
-      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers}`, `DECIMAL_ENV=${decimalEnv}`, target], step, spawned);
+      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers}`, `DECIMAL_ENV=${decimalEnv}`, target], step, spawned, options);
     });
   }
   // database는 만들기가 중간에 실패해도 만든 만큼 지운다.
   if (serversReady)
     await record('databases/drop', 'setup', ({ step, spawned }) =>
-      run('sh', ['scripts/check/databases.sh', 'drop', servers, directory, name], step, spawned));
+      run('sh', ['scripts/check/databases.sh', 'drop', servers, directory, name], step, spawned, { guard: false }));
 
   for (const { label, passed, notRun, elapsed } of results)
     console.log(`check: ${notRun ? 'NOT-RUN' : passed ? 'PASS' : 'FAIL'} ${label} elapsed=${duration(elapsed)}${notRun ? `: ${notRun}` : ''}`);

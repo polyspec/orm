@@ -12,6 +12,7 @@ import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
+import { deferredExitErrors } from './gosource.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -395,7 +396,10 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
 caseTest('test-servers.sh refuses a socket path longer than the platform limit', PROCESS, () => {
   const limit = { linux: 107, darwin: 103 }[process.platform];
   assert.ok(limit, `no socket path limit for ${process.platform}`);
-  const base = mkdtempSync(join(tmpdir(), 'orm-sock-'));
+  // base는 /tmp 아래에 둔다: case에는 가장 짧은 mysql.sock은 한도 안에 드는 root가 필요하지만, 단계의 임시
+  // directory(TMPDIR, macOS에서는 /var/folders/... 아래의 orm-step-*)는 그 자체로 한도에 가깝다.
+  const base = mkdtempSync('/tmp/orm-sock-');
+  assert.ok(Buffer.byteLength(join(base, '.runtime/servers/mysql.sock')) <= limit, `${base} leaves no room under the socket path limit`);
   try {
     // 첫 경로는 가장 짧은 mysql.sock도 한도를 넘고, 둘째 경로는 가장 긴
     // proxysql-admin-pgsql.sock만 넘는다. 실패는 넘은 첫 socket을 말한다.
@@ -1083,4 +1087,51 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
   assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
   assert.deepEqual(chainedCommandErrors(JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'))), []);
   assert.ok(independentTestErrors(execFileSync('git', ['show', 'main:Makefile'], { cwd: root, encoding: 'utf8' })).length > 0, 'the Makefile before G5.53 passes the rule');
+});
+
+
+caseTest('a Go function does not call os.Exit after a defer', COMPUTE, () => {
+  const leaking = `package main
+
+func main() {
+\tdirectory, _ := os.MkdirTemp("", "x-")
+\tdefer os.RemoveAll(directory)
+\t// os.Exit(3) in a comment is not a call
+\tif failed() {
+\t\tos.Exit(1)
+\t}
+}
+`;
+  const recovering = `package main
+
+func main() {
+\tdefer func() {
+\t\tif recover() != nil {
+\t\t\tos.Exit(1)
+\t\t}
+\t}()
+}
+`;
+  const returning = `package main
+
+func main() {
+\tos.Exit(run())
+}
+
+func run() int {
+\tdirectory, _ := os.MkdirTemp("", "x-")
+\tdefer os.RemoveAll(directory)
+\treturn 1
+}
+
+func usage() {
+\tos.Exit(2)
+}
+`;
+  assert.deepEqual(deferredExitErrors({ 'a/main.go': leaking, 'b/main.go': recovering, 'c/main.go': returning }), [
+    'a/main.go:8: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
+    'b/main.go:6: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
+  ]);
+  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  assert.deepEqual(deferredExitErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });

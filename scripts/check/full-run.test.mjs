@@ -405,6 +405,8 @@ caseTest('a failed setup step blocks only the targets that need it, and the repo
     assert.match(log, /FAIL b\/count elapsed=2ms: rows of t: expected 3, actual 5/);
     assert.match(readFileSync(join(report, 'environment.txt'), 'utf8'), /^commit [0-9a-f]{40}\ntree [0-9a-f]{40}\nos .*\nnode v/);
     const kept = join(report, 'targets/b/run/b-4242');
+    // 실행 directory는 보고서로 복사된 뒤 지워진다.
+    assert.equal(existsSync(join(c.root, '.runtime/run/b-4242')), false);
     assert.equal(readFileSync(join(kept, 'out.json'), 'utf8'), '{"rows": 5}\n');
     assert.match(readFileSync(join(kept, 'big.log'), 'utf8'), /^\[the last 262144 of 2097156 bytes of .*big\.log\]\nx+END\n$/);
     assert.match(readFileSync(join(kept, 'MANIFEST.txt'), 'utf8'), /big\.log kept as its last 262144 of 2097156 bytes/);

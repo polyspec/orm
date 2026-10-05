@@ -1025,6 +1025,49 @@ mod send_tests;
 mod tests {
     use super::*;
 
+    /// A directory of its own for one test, removed when the value is dropped. A test that fails an assertion
+    /// unwinds through the drop, so it leaves nothing behind either.
+    struct Scratch(std::path::PathBuf);
+
+    impl Scratch {
+        fn new(prefix: &str) -> Self {
+            let path = std::env::temp_dir().join(format!("{prefix}-{}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&path);
+            std::fs::create_dir_all(&path).unwrap();
+            Scratch(path)
+        }
+
+        fn join(&self, name: &str) -> std::path::PathBuf {
+            self.0.join(name)
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            // A failed removal fails a test that passed; during a panic it is left to the panic already reported.
+            if let Err(error) = std::fs::remove_dir_all(&self.0) {
+                if !std::thread::panicking() {
+                    panic!("remove {}: {error}", self.0.display());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn scratch_is_removed_after_a_failed_assertion() {
+        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let path = std::sync::Mutex::new(None);
+        let unwound = std::panic::catch_unwind(|| {
+            let scratch = Scratch::new("orm-scratch-unwind");
+            std::fs::write(scratch.join("left.sqlite"), b"x").unwrap();
+            *path.lock().unwrap() = Some(scratch.0.clone());
+            panic!("a failed assertion");
+        });
+        assert!(unwound.is_err(), "the body panicked");
+        let path = path.lock().unwrap().clone().unwrap();
+        assert!(!path.exists(), "{} is left after the panic", path.display());
+    }
+
     #[allow(dead_code)]
     fn assert_transaction_send_future<'a, F, Fut, T>(db: &'a Db, f: F)
     where
@@ -1066,8 +1109,7 @@ mod tests {
     #[tokio::test]
     async fn one_shot_transaction_preserves_callback_error_and_rolls_back() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
-        let tmp = std::env::temp_dir().join(format!("orm-once-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = Scratch::new("orm-once");
         // probe table은 공유 test database가 아니라 case 자신의 database에 둔다. 다른 실행이 같은
         // 이름의 table을 지우거나 panic한 실행이 남긴 table이 이 case를 흔들지 않는다.
         let mysql = orm_case_database::CaseDatabase::create("mysql").await;
@@ -1122,7 +1164,6 @@ mod tests {
         }
         mysql.drop().await;
         postgres.drop().await;
-        std::fs::remove_dir_all(tmp).unwrap();
     }
 
     fn required_dsn(name: &str) -> String {
@@ -1154,8 +1195,7 @@ mod tests {
     #[tokio::test]
     async fn transaction_timeout_is_the_postgres_statement_timeout() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
-        let tmp = std::env::temp_dir().join(format!("orm-timeout-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = Scratch::new("orm-timeout");
         // probe table은 case 자신의 database에 둔다(one_shot_transaction_preserves_callback_error_and_rolls_back과 같다).
         let mysql = orm_case_database::CaseDatabase::create("mysql").await;
         let postgres = orm_case_database::CaseDatabase::create("postgres").await;
@@ -1217,7 +1257,6 @@ mod tests {
         }
         mysql.drop().await;
         postgres.drop().await;
-        std::fs::remove_dir_all(tmp).unwrap();
         assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
     }
 
@@ -1353,8 +1392,7 @@ mod tests {
     #[tokio::test]
     async fn dropped_transaction_closes_its_connection() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
-        let tmp = std::env::temp_dir().join(format!("orm-dropped-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = Scratch::new("orm-dropped");
         let targets = [
             ("sqlite", format!("sqlite://{}", tmp.join("dropped.sqlite").display())),
             ("mysql", required_dsn("ORM_TEST_MYSQL_SERVER_DSN")),
@@ -1418,7 +1456,6 @@ mod tests {
             }
             db.close().await;
         }
-        std::fs::remove_dir_all(tmp).unwrap();
     }
 
     /// sqlite_denied가 고른 statement를 SQLite authorizer가 거부한다. 실제 SQLite는 transaction 끝의
@@ -1477,8 +1514,7 @@ mod tests {
     async fn sqlite_transaction_end_failures_are_reported() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;
-        let tmp = std::env::temp_dir().join(format!("orm-transaction-end-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = Scratch::new("orm-transaction-end");
         let db = Db::connect(&format!("sqlite://{}", tmp.join("end.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
         let both = |error: &Error, cause: &str| {
             let text = error.to_string();
@@ -1514,7 +1550,6 @@ mod tests {
         both(&error, "CONFIG: callback failed");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close().await;
-        std::fs::remove_dir_all(tmp).unwrap();
     }
 
     // 중첩 transaction의 savepoint를 끝내는 ROLLBACK TO SAVEPOINT나 RELEASE SAVEPOINT가 실패하면 callback
@@ -1524,8 +1559,7 @@ mod tests {
     async fn savepoint_end_failures_are_reported() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;
-        let tmp = std::env::temp_dir().join(format!("orm-savepoint-end-{}", std::process::id()));
-        std::fs::create_dir_all(&tmp).unwrap();
+        let tmp = Scratch::new("orm-savepoint-end");
         let db = Db::connect(&format!("sqlite://{}", tmp.join("savepoint.sqlite").display()), 1, crate::Config::default()).await.expect("connect");
         let both = |what: &str, text: &str| {
             assert!(
@@ -1569,7 +1603,6 @@ mod tests {
         assert!(error.to_string().contains("not authorized"), "release: {error}");
         SQLITE_DENIED.store(DENY_NOTHING, Ordering::Release);
         db.close().await;
-        std::fs::remove_dir_all(tmp).unwrap();
     }
 
     // transaction 끝의 MySQL local 값 reset이 실패하면 그 오류를 보고한다. MySQL user

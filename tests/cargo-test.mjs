@@ -18,9 +18,9 @@
 //            (lease 아래에서 실행한다: build하고 test binary와 dep-info를 <run dir>로 복사해 binaries.json에 적는다.
 //             scripts/features/coverage.mjs도 쓴다.)
 import { spawn, spawnSync } from 'node:child_process';
-import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join, resolve } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
 import { runLong, stepLines } from './testcase.mjs';
 
 // valued는 값을 따로 받는 cargo test option이다. 그 다음 인자는 test 이름 filter가 아니다.
@@ -131,8 +131,9 @@ async function main() {
   const { cargo, options, filters, binaryArgs } = split(args.slice(2));
   const { LEASE: lease, CARGO_LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
-  const runDir = resolve(new URL('..', import.meta.url).pathname, '.runtime/run', `cargo-test-${process.pid}-${randomBytes(4).toString('hex')}`);
-  mkdirSync(runDir, { recursive: true });
+  // 실행 directory는 임시 directory 아래에 둔다. check runner와 owner-check의 단계에서는 그 단계의 임시
+  // directory이므로, 이 process가 signal로 끝나 finally를 실행하지 못해도 단계가 끝날 때 지워진다.
+  const runDir = mkdtempSync(join(tmpdir(), 'orm-cargo-test-'));
   try {
     let built = false;
     const passed = await runLong(`rust-build/${name}`, async ({ step }) => {
