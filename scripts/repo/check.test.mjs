@@ -12,7 +12,7 @@ import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
+import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -1169,6 +1169,16 @@ func fail(err error) {
   ]);
   const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
   assert.deepEqual(deferredExitErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
+});
+
+caseTest('Go code does not find its files through runtime.Caller', COMPUTE, () => {
+  const caller = 'package p\n\nfunc root() string {\n\t_, file, _, _ := runtime.Caller(0)\n\treturn file\n}\n';
+  const comment = 'package p\n\n// runtime.Caller(0) is not used here\nfunc root() string { return "." }\n';
+  assert.deepEqual(callerPathErrors({ 'p/root_test.go': caller, 'p/doc.go': comment }), [
+    'p/root_test.go:4: runtime.Caller gives the path the binary was compiled at, not the checkout that runs it; find files from the working directory (os.Getwd), which go test sets to the package directory',
+  ]);
+  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  assert.deepEqual(callerPathErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });
 
 caseTest('a script that starts a process group of its own checks that group after it ends', COMPUTE, () => {

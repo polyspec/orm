@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.78: Go test는 `runtime.Caller` 대신 working directory에서 저장소를 찾고, `make repo-check`는 Go code의 `runtime.Caller`를 거부한다.
+
 - T9.4: docs/dbspec.md는 PHP 확장(class, namespace로 고르기, build와 검사)을 설명하고, PHP client는 `ext-orm_dbspec`를 제안한다.
 
 - T9.3: contracts/interfaces.json은 PHP 확장을 그것이 구현하는 `Dbspec` rule, owner와 함께 `extensions`에 선언하고, interface 검사는 그 stub을 그 rule, 자기 symbol snapshot과 hash와 비교한다.

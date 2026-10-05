@@ -1,8 +1,8 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -11,11 +11,12 @@ import (
 
 func TestGetsCountUsesDedicatedGroupedRowsInEveryClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate interface test")
+	// go test는 test를 package directory(tests/interfaces/check)에서 실행하므로 저장소 root는 세 단계 위다.
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("cannot read the working directory of the interface test: %v", err)
 	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(file), "../../.."))
+	root := filepath.Clean(filepath.Join(directory, "../../.."))
 	var manifest Manifest
 	readJSON(filepath.Join(root, "contracts/interfaces.json"), &manifest)
 	for _, rule := range manifest.Rules {

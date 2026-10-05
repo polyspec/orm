@@ -100,3 +100,19 @@ export function timeFailureErrors(files) {
   }
   return errors;
 }
+
+// callerPathErrors는 runtime.Caller로 source file의 경로를 얻는 줄마다 오류 하나를 돌려준다. runtime.Caller는 binary가
+// compile될 때 기록된 경로를 돌려주고 binary를 실행하는 checkout의 경로를 돌려주지 않는다: -trimpath build에서는
+// module 경로이고, 다른 directory에서 build한 binary는 그 directory를 가진다. go test는 test를 package directory에서
+// 실행하므로 test는 working directory(os.Getwd)에서 file을 찾는다. 주석 줄은 보지 않는다.
+export function callerPathErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    text.split('\n').forEach((line, index) => {
+      if (code(line) && /\bruntime\.Callers?\(/.test(line)) {
+        errors.push(`${path}:${index + 1}: runtime.Caller gives the path the binary was compiled at, not the checkout that runs it; find files from the working directory (os.Getwd), which go test sets to the package directory`);
+      }
+    });
+  }
+  return errors;
+}
