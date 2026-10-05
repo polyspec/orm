@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-4: the SQLite file of `rust-send-savepoint-check` and the Go test binary of `timing-check` live in the run directory, and every make target that builds the TypeScript client holds its build output as the only holder.
+
 - G5.33-3: make targets run copies of the Rust programs they built, taken under the lease of the shared target directory, write their stress documents into a run directory of their own, and every cargo build of the Makefile holds that lease.
 
 - G5.33-2: no bench or decimal database is shared: `make check`, `make owner-check` and the new `make run-databases` create the databases of their run, and the environment of `make test-servers` names only the server DSNs those runs build theirs from.

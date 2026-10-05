@@ -382,3 +382,28 @@ export function sharedTargetErrors(makefile) {
       }
   return errors;
 }
+
+// runtimePathErrors는 Makefile에서 여러 실행이 함께 쓰는 .runtime의 고정 file(또는 TEST_ENV 옆의 file)을 실행
+// 하나의 file로 쓰는 줄마다 오류 하나를 돌려준다. 실행 하나의 file은 RUN_DIR에 둔다. 함께 쓰는 것은 server
+// 환경(TEST_ENV), build한 도구(.runtime/bin), 실행 directory의 뿌리(.runtime/run)와 lease directory(*.leases)뿐이다.
+export function runtimePathErrors(makefile) {
+  const allowed = [/^TEST_ENV = \.runtime\/servers\/env$/, /\.runtime\/bin\//, /\.runtime\/run\)/, /\.leases\)?$/];
+  const errors = [];
+  for (const [index, line] of makefile.split('\n').entries()) {
+    if (/^\s*#/.test(line)) continue;
+    if (!/\.runtime\/|\$\(dir \$\(abspath \$\(TEST_ENV\)\)\)/.test(line)) continue;
+    if (allowed.some(pattern => pattern.test(line.trim()))) continue;
+    errors.push(`Makefile:${index + 1} names a fixed file that runs would share; put the file of one run into $(RUN_DIR): ${line.trim()}`);
+  }
+  return errors;
+}
+
+// typescriptHolderErrors는 TypeScript client를 build하는(TSC_BUILD, npm의 typescript:build, typescript:test,
+// typescript:check, 그것을 하는 scripts/client-db-test.sh) make target 가운데 첫 줄에서 그 build 출력의 보유
+// ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
+export function typescriptHolderErrors(makefile) {
+  const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh/;
+  return makeRecipes(makefile)
+    .filter(unit => unit.name !== 'Makefile' && unit.commands.some(command => builds.test(command)) && unit.commands[0].trim() !== '$(HOLD_TYPESCRIPT)')
+    .map(unit => `${unit.name} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
+}

@@ -17,7 +17,9 @@
 //
 // Usage:
 //
-//	lease hold <dir> shared|exclusive --pid <pid>     pid의 process가 끝날 때까지 보유한다
+//	lease hold <dir> shared|exclusive [--wait] --pid <pid>
+//	                                                  pid의 process가 끝날 때까지 보유한다. 같은 pid가 이미
+//	                                                  exclusive를 가지면 그 보유를 그대로 쓴다
 //	lease run <dir> shared|exclusive [--wait] -- <command> [args...]
 //	                                                  command를 실행하는 동안 보유한다
 //	lease list <dir>                                  보유자를 적는다
@@ -44,6 +46,9 @@ import (
 )
 
 const exclusiveName = "exclusive.json"
+
+// errHeld는 그 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
+var errHeld = errors.New("the process already holds the exclusive lease")
 
 // holder는 보유 file의 내용이다.
 type holder struct {
@@ -175,6 +180,10 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 			var blocking []holder
 			for _, h := range all {
 				if h.Kind == "exclusive" {
+					// 같은 process가 이미 가진 exclusive는 그 process의 것이다.
+					if h.PID == pid {
+						return "", errHeld
+					}
 					blocking = append(blocking, h)
 				}
 			}
@@ -257,16 +266,25 @@ func main() {
 	command, dir := os.Args[1], os.Args[2]
 	switch command {
 	case "hold":
-		// hold <dir> <kind> --pid <pid>: 보유를 얻고, pid의 종료를 기다려 보유를 지우는 process를 남긴다.
-		if len(os.Args) != 6 || os.Args[4] != "--pid" {
+		// hold <dir> <kind> [--wait] --pid <pid>: 보유를 얻고, pid의 종료를 기다려 보유를 지우는 process를 남긴다.
+		rest := os.Args[4:]
+		wait := false
+		if len(rest) > 0 && rest[0] == "--wait" {
+			wait = true
+			rest = rest[1:]
+		}
+		if len(rest) != 2 || rest[0] != "--pid" {
 			usage()
 		}
 		kindArgument(os.Args[3])
-		pid, err := strconv.Atoi(os.Args[5])
+		pid, err := strconv.Atoi(rest[1])
 		if err != nil || pid <= 0 {
 			usage()
 		}
-		file, err := acquire(dir, os.Args[3], pid, parentCommand(pid))
+		file, err := acquireWaiting(dir, os.Args[3], pid, parentCommand(pid), wait)
+		if errors.Is(err, errHeld) {
+			return
+		}
 		if err != nil {
 			refuse(dir, os.Args[3], err)
 		}

@@ -84,8 +84,8 @@ Nested `transaction_send` calls borrow the erased callback directly when using
 a savepoint, without requiring a reference to its Box allocation. Owner tests
 must preserve Send futures and nested commit/rollback on all three databases.
 `make rust-send-savepoint-check` runs the owning lint and behavior checks using
-the declared test environment, never a user's database. The shared Make test
-environment exports ORM_SEND_SQLITE_DSN from SEND_SQLITE_DSN; direct Cargo
+the declared test environment, never a user's database. The make target gives
+ORM_SEND_SQLITE_DSN a SQLite file in the directory of its run (SEND_SQLITE_DSN); direct Cargo
 invocations must explicitly provide this URI alongside the MySQL/PostgreSQL
 test DSNs. Fixtures are connection-local temporary tables, removed on close.
 

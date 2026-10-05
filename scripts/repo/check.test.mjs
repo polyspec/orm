@@ -10,7 +10,7 @@ import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, sharedTargetErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -418,6 +418,31 @@ caseTest('the Makefile runs no program from the shared Rust target directory and
     'Makefile:4 uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): X=$(CARGO_TARGET_DIR)/debug/examples/x go test ./a',
     'Makefile run builds into the shared Rust target directory without its lease; run the build under $(CARGO_LEASED) or $(CARGO_COPY): $(RUN_LONG) rust-build/x --cwd clients/rust -- cargo build --locked --example x',
   ]);
+});
+
+// 실행 file case는 저장소의 Makefile과 최소 Makefile을 검사한다.
+caseTest('the files of one run live in its run directory and a TypeScript build holds its output', COMPUTE, () => {
+  assert.deepEqual(runtimePathErrors(text('Makefile')), []);
+  assert.deepEqual(typescriptHolderErrors(text('Makefile')), []);
+  const makefile = [
+    'TEST_ENV = .runtime/servers/env',
+    'SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite',
+    'TIMING = .runtime/timing/dbspec.test',
+    'LEASE = $(abspath .runtime/bin/lease)',
+    'RUN_DIR = $(abspath .runtime/run)/$@-$$PPID',
+    'X_LEASES = $(abspath .runtime/x.leases)',
+    'held:',
+    '\t$(HOLD_TYPESCRIPT)',
+    '\t$(TSC_BUILD)',
+    'bare:',
+    '\tnpm run typescript:test',
+    '',
+  ].join('\n');
+  assert.deepEqual(runtimePathErrors(makefile), [
+    'Makefile:2 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite',
+    'Makefile:3 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): TIMING = .runtime/timing/dbspec.test',
+  ]);
+  assert.deepEqual(typescriptHolderErrors(makefile), ['Makefile bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
 });
 
 // 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.
