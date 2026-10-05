@@ -59,3 +59,32 @@ caseTest('a different Mermaid dropped object names its case', COMPUTE, () => {
     actual: '= index\tb\tix_b_a_id',
   });
 });
+
+caseTest('an output with until equals the reference up to that line', COMPUTE, () => {
+  const all = `${go}plans/cases/a\n| dbplan 1 a\n`;
+  assert.equal(compare([{ name: 'go 1', output: all }, { name: 'php-extension 1', output: go, until: 'plans/' }]), null);
+});
+
+caseTest('an output with until that leaves out a case of the reference differs at that case', COMPUTE, () => {
+  const all = `${go}plans/cases/a\n| dbplan 1 a\n`;
+  const extension = go.slice(0, go.indexOf('stress'));
+  assert.deepEqual(compare([{ name: 'go 1', output: all }, { name: 'php-extension 1', output: extension, until: 'plans/' }]), {
+    reference: 'go 1',
+    other: 'php-extension 1',
+    case: 'stress',
+    line: 6,
+    expected: 'stress',
+    actual: '(end of output)',
+  });
+});
+
+caseTest('an output with until that goes on past that line differs there', COMPUTE, () => {
+  const all = `${go}plans/cases/a\n| dbplan 1 a\n`;
+  const difference = compare([{ name: 'go 1', output: all }, { name: 'php-extension 1', output: all, until: 'plans/' }]);
+  assert.equal(difference.expected, '(end of output)');
+  assert.equal(difference.actual, 'plans/cases/a');
+});
+
+caseTest('an until that the reference does not print is an error, not an agreement', COMPUTE, () => {
+  assert.throws(() => compare([{ name: 'go 1', output: go }, { name: 'php-extension 1', output: go, until: 'plans/' }]), /go 1 has no line that starts with plans\//);
+});

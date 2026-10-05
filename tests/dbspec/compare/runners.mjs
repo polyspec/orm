@@ -1,8 +1,10 @@
-// 네 dbspec compare runner. 각 runner는 <cases.json> <stress document>
-// <ddl.json> <plans.json> <mermaid.json>을 받아 tests/dbspec/compare/check.mjs의
-// line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면
-// stderr에 위치를 밝힌 error를 쓰고 nonzero로 끝난다. TypeScript runner는
-// TypeScript build를, Rust runner는 dbspec_compare example의 debug build를 요구한다.
+// 다섯 dbspec compare runner. Go, PHP, TypeScript, Rust runner는 <cases.json> <stress document>
+// <ddl.json> <plans.json> <mermaid.json>을 받고, PHP 확장 runner는 dbspec 인터페이스만 구현하므로
+// <cases.json> <stress document> <ddl.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
+// line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
+// error를 쓰고 nonzero로 끝난다. until이 있는 runner의 출력은 첫 Go 출력에서 그 문자열로 시작하는 첫
+// 줄 앞까지와 같아야 한다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
+// example의 debug build를, PHP 확장 runner는 확장 orm_dbspec의 debug build를 요구한다.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,18 +12,33 @@ import { cargoTarget } from '../../cargo-target.mjs';
 
 export const root = fileURLToPath(new URL('../../../', import.meta.url));
 
+// INPUTS는 runRunner가 받는 input의 이름과 순서다.
+export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid'];
+
+// PHP_EXTENSION은 CARGO_TARGET_DIR 안의 확장 orm_dbspec의 debug build다(make dbspec-compare-check가 복사한다).
+const PHP_EXTENSION = `debug/liborm_dbspec.${process.platform === 'darwin' ? 'dylib' : 'so'}`;
+
 export const runners = [
-  { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'] },
-  { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'] },
-  { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mjs'] },
-  { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [] },
+  { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'], reads: INPUTS },
+  { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'], reads: INPUTS },
+  { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mjs'], reads: INPUTS },
+  { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [], reads: INPUTS },
+  {
+    name: 'php-extension',
+    command: 'php',
+    args: ['-d', `extension=${join(cargoTarget(), PHP_EXTENSION)}`, 'tests/dbspec/compare/php-extension.php'],
+    reads: ['cases', 'stress', 'ddl'],
+    until: 'plans/',
+  },
 ];
 
-// runRunner는 runner를 inputs로 실행해 exit code 또는 signal, stdout, stderr를
-// 돌려주고, process를 시작할 수 없을 때만 reject한다.
+// runRunner는 runner를 inputs(INPUTS 순서의 경로) 가운데 runner가 읽는 것으로 실행해 exit code 또는
+// signal, stdout, stderr를 돌려주고, process를 시작할 수 없을 때만 reject한다.
 export function runRunner(runner, inputs, timeout) {
+  if (inputs.length !== INPUTS.length) throw new Error(`runRunner takes the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}`);
+  const args = runner.reads.map(name => inputs[INPUTS.indexOf(name)]);
   return new Promise((resolve, reject) => {
-    const child = spawn(runner.command, [...runner.args, ...inputs], { cwd: root, timeout });
+    const child = spawn(runner.command, [...runner.args, ...args], { cwd: root, timeout });
     const out = [];
     const err = [];
     child.stdout.on('data', chunk => out.push(chunk));

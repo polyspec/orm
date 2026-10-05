@@ -1,5 +1,5 @@
-// 네 dbspec client를 비교한다. 모든 runner는 공유 case, stress 문서, statement vector,
-// plan vector, Mermaid vector를 읽고 case마다 이름과 그 emission, manifest나 렌더링한
+// 다섯 dbspec 구현(Go, PHP, TypeScript, Rust client와 PHP 확장)을 비교한다. 네 client의 runner는 공유 case,
+// stress 문서, statement vector, plan vector, Mermaid vector를 읽고 case마다 이름과 그 emission, manifest나 렌더링한
 // statement("| "와 "= " 줄) 또는 diagnostic("! rule line column")을 출력한다. stress
 // 문서는 그대로 다시 emit되면 "= unchanged"를 출력한다. plan case는 emit한 plan, 그다음
 // "<name>/changes"와 "| kind table name" 줄, "<name>/<dialect>"와 statement를 출력한다.
@@ -9,11 +9,12 @@
 // 끝난다. Mermaid export case는 Mermaid text와 빠진 객체(이유 없이
 // "= kind<TAB>table<TAB>name") 또는 문서의 diagnostic을, import와 invalid case는 emit한
 // 문서와 빠진 객체 또는 diagnostic을, round trip case는 문서의 export와 그다음
-// "<name>/import"와 그 export의 import를 출력한다. 각 runner는 두 번 실행하며 모든 출력이
-// 첫 Go 출력과 같아야 한다.
+// "<name>/import"와 그 export의 import를 출력한다. PHP 확장의 runner는 dbspec 인터페이스의 case(공유 case,
+// stress 문서, files, hashes, statement vector)만 출력하고, 그 출력은 첫 Go 출력의 첫 plan case 앞까지와
+// 같아야 한다. 각 runner는 두 번 실행하며 모든 출력이 첫 Go 출력과 같아야 한다.
 //
 // Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
-// (TypeScript build와 Rust example의 release build 뒤)
+// (TypeScript build, Rust example과 PHP 확장의 debug build 뒤)
 import { compare } from './compare.mjs';
 import { runRunner, runners } from './runners.mjs';
 import { COMPUTE, runCase } from '../../testcase.mjs';
@@ -40,7 +41,7 @@ for (const runner of runners) {
       const output = await run(runner);
       const count = output.split('\n').filter(line => line !== '' && !/^[|!=] /.test(line)).length;
       step(`${count} cases`);
-      outputs.push({ name: `${runner.name} ${round}`, output });
+      outputs.push({ name: `${runner.name} ${round}`, output, until: runner.until });
     });
     if (!passed) process.exit(1);
   }
