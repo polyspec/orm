@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-10: a lease that its holder released while another run was being refused is no longer taken for a dead lease, so waiting runs no longer fail on it.
+
 - G5.30-14: the MySQL migration of `make test-servers` runs each step with step logs and no deadline, and waits for the replica without a timeout.
 
 - G5.33-7: targets that only read the TypeScript build output hold a shared lease, `conformance-check` and the feature steps of `make owner-check` hold the exclusive one, and a lease held by an ancestor process counts as held by its children.
