@@ -17,7 +17,7 @@
 
 ## 2. 실행기 규칙
 
-**F1 — 모든 실행기는 prepared statement를 캐시한다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다.
+**F1 — 모든 실행기는 prepared statement를 캐시한다. PostgreSQL의 Go와 PHP는 예외다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다. PostgreSQL에서 Go client는 pgx query mode `exec`(`default_query_exec_mode=exec`)를 쓴다. 이 mode는 문과 text bind를 unnamed statement 하나로 round trip 한 번에 실행하고 parameter type은 server가 추론하므로, 새 연결에서도 문 text마다 따로 드는 prepare round trip과 transaction이 없다(PHP: F4).
 
 **F2 — sqlx PK 지연은 드라이버 자체 비용이다.** sqlx는 풀 크기 1과 전용 연결에서도 PK 행을 약 80µs에 읽으며, 이는 Go와 PDO의 두 배다. 차이는 tokio 작업 전환과 프로토콜 파싱에서 생긴다.
 
@@ -61,7 +61,7 @@
 
 | ID | 결정 | 근거 |
 |---|---|---|
-| F1 | 모든 실행기의 prepared statement 캐시 | §2 |
+| F1 | 모든 실행기의 prepared statement 캐시, PostgreSQL의 Go와 PHP는 unnamed statement | §2 |
 | F2 | sqlx PK 지연은 드라이버 고유 비용 | §1, §2 |
 | F3 | 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않음 | §2 |
 | F4 | PHP: 문장마다 round trip 하나(MySQL emulated prepare, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |

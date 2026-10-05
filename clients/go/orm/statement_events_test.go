@@ -316,8 +316,7 @@ type serverTransactions struct {
 // TestStatementEventsServerTransactions는 vector의 server_transactions를 PostgreSQL case
 // database에서 실행한다. probe가 돌려주는 backend의 local transaction 번호 차이로 page 실행 한
 // 번의 server transaction을 센다. pool size 1이므로 모든 statement가 한 backend에서 실행된다.
-// pgx는 처음 보내는 statement text마다 parameter type을 묻는 prepare를 따로 보내므로, go가
-// first_run_clients에 없으면 첫 실행은 보고만 한다.
+// go가 first_run_clients에 없으면 첫 실행은 보고만 한다.
 func TestStatementEventsServerTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	raw, err := os.ReadFile(eventsVector)

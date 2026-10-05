@@ -13,8 +13,8 @@ func TestParseDSN(t *testing.T) {
 	}{
 		{"mysql tcp", "mysql://orm:secret@127.0.0.1:3306/orm_example", "mysql", "orm:secret@tcp(127.0.0.1:3306)/orm_example?clientFoundRows=true&parseTime=true&time_zone=%27%2B00%3A00%27", "UTC"},
 		{"mysql socket and UTC", "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=%2B00:00", "mysql", "root@unix(/tmp/mysql.sock)/orm_example?clientFoundRows=true&parseTime=true&time_zone=%27%2B00%3A00%27", "UTC"},
-		{"postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=UTC", "postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=UTC", "UTC"},
-		{"postgres socket", "postgres:///orm_example?host=/tmp", "postgres", "postgres:///orm_example?host=%2Ftmp&timezone=UTC", "UTC"},
+		{"postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?timezone=UTC", "postgres", "postgres://orm:secret@127.0.0.1:5432/orm_example?default_query_exec_mode=exec&timezone=UTC", "UTC"},
+		{"postgres socket", "postgres:///orm_example?host=/tmp", "postgres", "postgres:///orm_example?default_query_exec_mode=exec&host=%2Ftmp&timezone=UTC", "UTC"},
 		{"sqlite", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(5000)&timezone=UTC", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29", "UTC"},
 		{"sqlite lock wait", "sqlite:///tmp/orm_example.sqlite?_pragma=busy_timeout(250)", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%28250%29&_pragma=foreign_keys%281%29", "UTC"},
 		{"sqlite default lock wait", "sqlite:///tmp/orm_example.sqlite", "sqlite", "file:/tmp/orm_example.sqlite?_pragma=busy_timeout%285000%29&_pragma=foreign_keys%281%29", "UTC"},

@@ -83,6 +83,9 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 			q.Set("options", options+"-c statement_timeout="+strconv.Itoa(statementTimeoutMs))
 		}
 		q.Set("timezone", "UTC")
+		// pgx는 statement를 prepare하지 않고 text bind와 함께 round trip 하나로 보낸다.
+		// parameter type은 server가 추론한다(DB.stmt의 unprepared).
+		q.Set("default_query_exec_mode", "exec")
 		// PostgreSQL reads the option string literally, so a space is
 		// percent-encoded instead of the form encoder's plus sign.
 		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20")

@@ -17,7 +17,7 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 2. Executor rules
 
-**F1 — Every executor caches prepared statements.** In Go, `QueryContext(args)` without a prepared statement (prepare, execute, and close: three round trips) takes 100µs for a PK row and 38µs with a cached statement.
+**F1 — Every executor caches prepared statements, except on PostgreSQL in Go and PHP.** In Go, `QueryContext(args)` without a prepared statement (prepare, execute, and close: three round trips) takes 100µs for a PK row and 38µs with a cached statement. On PostgreSQL the Go client sets the pgx query mode `exec` (`default_query_exec_mode=exec`), which sends the statement and its text binds as one unnamed statement in one round trip and lets the server infer the parameter types, so a statement text costs no separate prepare round trip and transaction on a new connection (PHP: F4).
 
 **F2 — The sqlx PK latency is the driver's own cost.** sqlx reads a PK row in about 80µs, twice Go and PDO, with pool size 1 and a dedicated connection. The difference comes from tokio task switching and protocol parsing.
 
@@ -61,7 +61,7 @@ On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. Th
 
 | ID | Decision | Basis |
 |---|---|---|
-| F1 | Prepared statement cache in every executor | §2 |
+| F1 | Prepared statement cache in every executor; PostgreSQL Go and PHP send unnamed statements | §2 |
 | F2 | sqlx PK latency is intrinsic driver cost | §1, §2 |
 | F3 | No failed sqlx `try_get` for flow control | §2 |
 | F4 | PHP: one round trip per statement (MySQL emulated prepares, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |

@@ -36,7 +36,7 @@ type Config struct {
 	PoolLifetimeMs     int              // lifetime of a connection in milliseconds; zero keeps connections without a bound
 	StatementTimeoutMs int              // bound of every statement of the connection; zero keeps the server default
 	PlanCacheSize      int              // maximum compiled plans; zero uses the default
-	StatementCacheSize int              // maximum prepared statements; zero uses the default
+	StatementCacheSize int              // maximum prepared statements of MySQL and SQLite; zero uses the default
 	// AuditSource returns the audit values of the current request, a map from
 	// column name to value of the audit record table, such as the account and
 	// the request id. A transaction with orm.Audit calls it once with the
@@ -464,7 +464,40 @@ func lookupDriver(name string) (string, bool) {
 	return d, ok
 }
 
-func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
+// modelStatement는 executor가 model statement를 보내는 방법이다. MySQL과 SQLite는
+// prepare한 *sql.Stmt이고, PostgreSQL은 prepare하지 않은 unprepared다.
+type modelStatement interface {
+	QueryContext(ctx context.Context, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, args ...any) *sql.Row
+	ExecContext(ctx context.Context, args ...any) (sql.Result, error)
+}
+
+// unprepared는 PostgreSQL statement를 prepare 없이 보낸다. DSN의
+// default_query_exec_mode=exec로 pgx는 statement와 text bind를 parameter type 없이
+// unnamed statement 하나로 round trip 하나에 보내고, server가 parameter type을
+// 추론한다. statement text마다 따로 드는 prepare round trip과 그 implicit
+// transaction이 없다.
+type unprepared struct {
+	q   querier
+	sql string
+}
+
+func (u unprepared) QueryContext(ctx context.Context, args ...any) (*sql.Rows, error) {
+	return u.q.QueryContext(ctx, u.sql, args...)
+}
+
+func (u unprepared) QueryRowContext(ctx context.Context, args ...any) *sql.Row {
+	return u.q.QueryRowContext(ctx, u.sql, args...)
+}
+
+func (u unprepared) ExecContext(ctx context.Context, args ...any) (sql.Result, error) {
+	return u.q.ExecContext(ctx, u.sql, args...)
+}
+
+func (d *DB) stmt(ctx context.Context, sqlText string) (modelStatement, error) {
+	if d.driver == "postgres" {
+		return unprepared{q: d.sql, sql: sqlText}, nil
+	}
 	d.m.stmMu.Lock()
 	st, ok := d.stmts[sqlText]
 	d.m.stmMu.Unlock()
