@@ -54,6 +54,18 @@ func TestStressDocument(t *testing.T) {
 		}
 		slices.Sort(parses)
 		parseElapsed := parses[parseRuns/2]
+		// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
+		// 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+		references := make([]time.Duration, parseRuns)
+		for i := range references {
+			clock := startCaseClock(t)
+			referenceSum = referenceScan(text)
+			references[i], _ = clock.elapsed(t)
+			runtime.UnlockOSThread()
+		}
+		slices.Sort(references)
+		reference := references[parseRuns/2]
+		t.Logf("stress reference cpu median=%s ratio=%.2f", reference, float64(parseElapsed)/float64(reference))
 		if err := expectDocument(document, diagnostics); err != nil {
 			return err
 		}
@@ -81,4 +93,17 @@ func TestStressDocument(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+// referenceSum은 기준 작업의 결과다. compiler가 loop를 지우지 못하게 package 변수에 둔다.
+var referenceSum uint32
+
+// referenceScan은 stress 문서의 기준 작업이다: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다. 앞 값에 기대는
+// 계산이라 병렬로 줄일 수 없다.
+func referenceScan(text string) uint32 {
+	var h uint32
+	for i := 0; i < len(text); i++ {
+		h = h*31 + uint32(text[i])
+	}
+	return h
 }

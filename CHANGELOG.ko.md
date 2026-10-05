@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.58: 네 stress test는 기준 작업(같은 문서를 한 번 지나는 checksum)도 재고, 그 median CPU 시간과 그것에 대한 parse의 비율을 판정 없이 출력한다. 그래서 CI가 비율 budget이 기계 사이에서 유지되는지 보여 준다.
+
 - G5.57: 앞서 보고된 오류를 가리키는 FAIL 줄은 그 오류(Go의 `file_test.go:N: message` 줄)를 실행 기록과 summary의 첫 실패 줄로 남기므로, 줄어든 log가 그것을 잃지 않는다.
 
 - G5.56-1: conformance lock helper test는 `make repo-check`가 요구하는 공용 testcase package로 case를 시작한다.
