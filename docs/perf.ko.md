@@ -17,7 +17,7 @@
 
 ## 2. 실행기 규칙
 
-**F1 — 모든 실행기는 prepared statement를 캐시한다. PostgreSQL의 Go와 PHP는 예외다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다. PostgreSQL에서 Go client는 pgx query mode `exec`(`default_query_exec_mode=exec`)를 쓴다. 이 mode는 문과 text bind를 unnamed statement 하나로 round trip 한 번에 실행하고 parameter type은 server가 추론하므로, 새 연결에서도 문 text마다 따로 드는 prepare round trip과 transaction이 없다(PHP: F4).
+**F1 — pool 클라이언트는 문 text를 연결마다 한 번 prepare하고 재사용하며, 짧은 연결은 문마다 round trip 하나로 실행한다.** Go에서 prepared statement 없는 `QueryContext(args)`(prepare, 실행, close의 세 번 왕복)는 PK 행에 100µs, 캐시한 statement로는 38µs가 걸린다. Go(pgx statement cache), Rust(sqlx), TypeScript(`pg` named statement) 클라이언트는 연결이 요청보다 오래 사는 pool을 가지므로, 각 연결은 문 text를 한 번 prepare한 뒤 server가 유지하는 plan으로 bind하고 실행한다. PHP 연결은 요청 하나 동안만 살아서 유지한 prepare를 다시 쓰지 못하므로, PHP 클라이언트는 문과 bind를 round trip 하나로 실행한다(F4). `server_transactions`(`tests/events/vectors.json`, PostgreSQL에서 text 5개의 문 8개)의 `model_statements` page가 쓰는 server transaction은 새 연결의 첫 실행 / 두 번째 실행에서 Go 13 / 8(pgx는 Parse와 Describe를 자기 round trip으로 전송한다), Rust 13 / 8(sqlx 0.9는 자기 round trip으로 prepare하며 round trip 하나의 mode가 없다), TypeScript 8 / 8(`pg`는 Parse를 첫 Bind, Execute와 함께 전송한다), PHP 8 / 8이다. 측정 근거(Go, PostgreSQL, bench database, `GetBySeq`, `GetsByServiceSeqAndIsClose`, `GetCountByServiceSeq`와 10행 목록으로 된 page, 연결 4개의 pool과 worker 4개, warm-up 200 page 뒤 800~1600 page, 부하가 큰 기계에서 세 번): 모든 문을 prepare 없이 round trip 하나로 실행하는 pgx `exec` query mode와 비교해 statement cache는 steady state p50이 24~44% 빨랐고(5.5~6.3ms 대 7.8~8.9ms), page당 backend CPU가 22~31% 적었으며(2.2~2.5ms 대 2.9~3.0ms), 초당 page가 20~33% 많았다. 새 연결의 첫 page는 0~9% 느렸다(5.1~8.1ms 대 5.1~7.6ms). MySQL에서 같은 비교(driver 쪽 interpolation 대 server 쪽 prepare)는 기계의 noise 안에 있었고, Go, Rust, TypeScript MySQL 클라이언트는 server 쪽 prepare를 유지한다.
 
 **F2 — sqlx PK 지연은 드라이버 자체 비용이다.** sqlx는 풀 크기 1과 전용 연결에서도 PK 행을 약 80µs에 읽으며, 이는 Go와 PDO의 두 배다. 차이는 tokio 작업 전환과 프로토콜 파싱에서 생긴다.
 
@@ -61,7 +61,7 @@
 
 | ID | 결정 | 근거 |
 |---|---|---|
-| F1 | 모든 실행기의 prepared statement 캐시, PostgreSQL의 Go와 PHP는 unnamed statement | §2 |
+| F1 | pool 클라이언트는 연결마다 한 번 prepare하고 재사용, PHP는 문마다 round trip 하나 | §2 |
 | F2 | sqlx PK 지연은 드라이버 고유 비용 | §1, §2 |
 | F3 | 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않음 | §2 |
 | F4 | PHP: 문장마다 round trip 하나(MySQL emulated prepare, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |
