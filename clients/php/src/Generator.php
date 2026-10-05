@@ -14,7 +14,7 @@ final class Generator
 
     /** Methods of Model; a generated method with the same name would replace one. */
     private const FIXED_METHODS = [
-        'connect', '__invoke', 'and', 'or', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations',
+        'connect', '__invoke', 'and', 'or', 'not', 'andNot', 'orNot', 'raw', 'andRaw', 'orRaw', 'on', 'relation', 'relations',
         'limit', 'orderByRandom', 'orderByRaw', 'groupByRaw', 'removeAllColumns', 'addAllColumns', 'parentNode', 'groupLimit',
         'deleteLock', 'fetchKey', 'fetchValue', 'forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait', 'duplication',
         'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'getQuery', 'create', 'creates', 'update',
@@ -25,7 +25,7 @@ final class Generator
     /** Column naming rules of the DSL. */
     private const RESERVED_SEGMENTS = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between', 'tuple'];
     private const RESERVED_PREFIXES = ['and', 'or', 'get', 'set', 'new', 'plus', 'minus', 'order_by', 'group_by', 'tuple', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb', 'between'];
-    private const RESERVED_COLUMNS = ['and', 'or', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'raw', 'on', 'random'];
+    private const RESERVED_COLUMNS = ['and', 'or', 'not', 'get', 'gets', 'gets_page', 'get_query', 'limit', 'alias', 'connect', 'create', 'creates', 'update', 'delete', 'restore', 'save', 'raw', 'on', 'random'];
 
     /** $m의 model을 $outDir에 생성하고 이전에 생성한 파일을 바꾼다. */
     public static function generate(RuntimeModel $m, string $outDir, string $namespace): void

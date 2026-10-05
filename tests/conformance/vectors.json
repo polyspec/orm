@@ -494,6 +494,72 @@
       }
     },
     {
+      "name": "expression_forms",
+      "chain": "serviceSeq(7)-\u003eandNot(fn: isClose(true)-\u003eorGtReadCount(500))-\u003egetCount(), not(fn: isDisplay(false))-\u003eandServiceSeq(7)-\u003eorderBySeqDesc()-\u003elimit(0, 3)-\u003egets(), serviceSeq(7)-\u003eorNot(fn: ltReadCount(990))-\u003egetCount()",
+      "expect": {
+        "result": {
+          "count": 428,
+          "or_count": 2000,
+          "rows": [
+            {
+              "is_display": true,
+              "seq": 99806
+            },
+            {
+              "is_display": true,
+              "seq": 99706
+            },
+            {
+              "is_display": true,
+              "seq": 99506
+            }
+          ]
+        },
+        "statements": [
+          {
+            "binds": [
+              7,
+              true,
+              500
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND NOT (`a`.`is_close` = ? OR `a`.`read_count` \u003e ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              false,
+              7
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE NOT (`a`.`is_display` = ?) AND `a`.`service_seq` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 3",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              7,
+              990
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = ? OR NOT (`a`.`read_count` \u003c ?)",
+            "tables": [
+              "author"
+            ],
+            "transaction": null
+          }
+        ]
+      }
+    },
+    {
       "name": "columns",
       "chain": "removeAllColumns(), addColumnName(), addColumnReadCountAliasReadText(format), removeColumnName()",
       "expect": {

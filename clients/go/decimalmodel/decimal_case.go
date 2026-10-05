@@ -102,6 +102,29 @@ func (x *DecimalCaseModel) And(args ...any) *DecimalCaseModel { return x.connect
 // places the conditions of a joined model.
 func (x *DecimalCaseModel) Or(args ...any) *DecimalCaseModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *DecimalCaseModel) Not(fn func(*DecimalCaseModel)) *DecimalCaseModel {
+	return x.negated("", fn)
+}
+
+// AndNot opens a negated group joined with AND.
+func (x *DecimalCaseModel) AndNot(fn func(*DecimalCaseModel)) *DecimalCaseModel {
+	return x.negated("and", fn)
+}
+
+// OrNot opens a negated group joined with OR.
+func (x *DecimalCaseModel) OrNot(fn func(*DecimalCaseModel)) *DecimalCaseModel {
+	return x.negated("or", fn)
+}
+
+func (x *DecimalCaseModel) negated(conn string, fn func(*DecimalCaseModel)) *DecimalCaseModel {
+	g := decimalCaseEntity.New(x.m.Group()).(*DecimalCaseModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *DecimalCaseModel) connector(conn string, args []any) *DecimalCaseModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*DecimalCaseModel)); ok {

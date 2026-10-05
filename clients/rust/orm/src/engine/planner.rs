@@ -866,7 +866,8 @@ impl<'m> Planner<'m> {
             parts.push(text);
         }
         let out = parts.join(" ");
-        Ok(if top { out } else { format!("({out})") })
+        let grouped = if top { out } else { format!("({out})") };
+        Ok(if g.not { format!("NOT {grouped}") } else { grouped })
     }
 
     fn render_pred(&self, b: &mut Builder, root: &Scope<'_>, s: &Scope<'_>, pr: &ir::Pred) -> Result<String> {

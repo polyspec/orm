@@ -25,6 +25,28 @@ impl T {
         self
     }
 
+    /// Opens a negated group, NOT (…), as the first condition or after a
+    /// connector written as a separate call.
+    pub fn not(mut self, f: impl FnOnce(Self) -> Self) -> Self {
+        let g = f(<Self as orm::Model>::from_core(self.__orm.group()));
+        self.__orm.add_negated_group("", <Self as orm::Model>::into_core(g));
+        self
+    }
+
+    /// Opens a negated group joined with AND.
+    pub fn and_not(mut self, f: impl FnOnce(Self) -> Self) -> Self {
+        let g = f(<Self as orm::Model>::from_core(self.__orm.group()));
+        self.__orm.add_negated_group("and", <Self as orm::Model>::into_core(g));
+        self
+    }
+
+    /// Opens a negated group joined with OR.
+    pub fn or_not(mut self, f: impl FnOnce(Self) -> Self) -> Self {
+        let g = f(<Self as orm::Model>::from_core(self.__orm.group()));
+        self.__orm.add_negated_group("or", <Self as orm::Model>::into_core(g));
+        self
+    }
+
     /// Adds a raw first condition.
     pub fn raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
         self.__orm.raw("", sql, binds.into_binds());

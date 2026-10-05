@@ -228,6 +228,12 @@ vector('raw_forms', function () use ($author): array {
     return ['count' => $count, 'rows' => array_map(static fn(Author $r): array => [$r->getSeq(), derivedInteger($r->getDoubled())], $rows->all())];
 });
 
+vector('expression_forms', fn() => [
+    'count' => $author()->serviceSeq(7)->andNot(fn(Author $q) => $q->isClose(true)->orGtReadCount(500))->getCount(),
+    'rows' => picks($author()->not(fn(Author $q) => $q->isDisplay(false))->andServiceSeq(7)->orderBySeqDesc()->limit(0, 3)->gets(), 'seq', 'is_display'),
+    'or_count' => $author()->serviceSeq(7)->orNot(fn(Author $q) => $q->ltReadCount(990))->getCount(),
+]);
+
 vector('columns', function () use ($db, $author): array {
     $none = (new Service)($db)->removeAllColumns()->getBySeq(7);
     $added = $author()->removeAllColumns()->addColumnName()->addColumnReadCountAliasReadText("CONCAT('r', %s)")->getBySeq(42);

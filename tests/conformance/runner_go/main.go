@@ -358,6 +358,21 @@ func main() {
 		}
 		return map[string]any{"count": count, "rows": out}, nil
 	})
+	run("expression_forms", func() (any, error) {
+		count, err := author().ServiceSeq(7).AndNot(func(q *model.AuthorModel) { q.IsClose(true).OrGtReadCount(500) }).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		rows, err := author().Not(func(q *model.AuthorModel) { q.IsDisplay(false) }).AndServiceSeq(7).OrderBySeqDesc().Limit(0, 3).Gets()
+		if err != nil {
+			return nil, err
+		}
+		orCount, err := author().ServiceSeq(7).OrNot(func(q *model.AuthorModel) { q.LtReadCount(990) }).GetCount()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"count": count, "rows": picks(rows, "seq", "is_display"), "or_count": orCount}, nil
+	})
 	run("columns", func() (any, error) {
 		none, err := model.Service().Connect(db).RemoveAllColumns().GetBySeq(7)
 		if err != nil {

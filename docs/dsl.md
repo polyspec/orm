@@ -39,6 +39,7 @@ The first condition has no prefix; a prefix written on it is dropped. Each follo
 | `and<Chain>(…)`, `or<Chain>(…)` | condition joined with `AND` or `OR` |
 | `and()`, `or()` followed by `<Chain>(…)` | the same connection written as a separate call |
 | `and(fn)`, `or(fn)` | parenthesized group joined with `AND` or `OR` |
+| `not(fn)`, `andNot(fn)`, `orNot(fn)` | negated group `NOT (…)` as the first condition or joined with `AND` or `OR` |
 | `and(model)`, `or(model)` | parenthesized group of the conditions set on a joined model |
 | `raw(sql, binds)`, `andRaw(sql, binds)`, `orRaw(sql, binds)` | raw condition as the first or a following condition |
 
@@ -47,6 +48,18 @@ The first condition has no prefix; a prefix written on it is dropped. Each follo
 - A group callback receives an empty model of the same type. The callback accepts condition methods only; a terminal, write, or `connect` inside the callback returns `CONFIG`.
 - A group is the only way to write parentheses.
 - Raw SQL references columns of the calling model as `{column}`, which the ORM renders with the model alias. `?` is the only value placeholder, and the placeholder count must equal the bind count; otherwise `IR_INVALID` is returned. Raw text is for code-owned SQL, and request values are passed as binds.
+
+- `not(fn)` negates its group as a whole; a negated group always has parentheses. Rust names the two joined forms `and_not` and `or_not`. A callback that adds no condition returns `CONFIG`.
+
+### 2.1.1 Query expression grammar
+
+A condition is one expression of a neutral grammar: it renders and means the same on MySQL, PostgreSQL and SQLite. Its element set is the predicate set of a dbspec `check` ([dbspec](dbspec.md#checks)): a comparison (`=`, `<>`, `<`, `<=`, `>`, `>=`), `in`, `is [not] null`, `and`, `or` and grouping, whose operands are columns and values. A value is a typed bind: it takes the dbspec type of the column it meets, or the result type of the column function it is compared with ([dialects](dialects.md)), never a literal written into the SQL. A query adds three extensions that a `check` does not have, because introspection cannot restore them from a database and a query is never introspected:
+
+- `not` through `not(fn)`, `andNot(fn)` and `orNot(fn)`;
+- `between` through the `Between` operator, which every database renders as `BETWEEN`;
+- the column functions `year`, `month`, `dayOfWeek` and `date` and the value functions `now`, `today`, `<unit>Ago` and `<unit>Later` (section 10), each with one rendering per database.
+
+The existing `Lk`, `Lb`, `Fulltext`, `FulltextBoolean` and tuple operators and column comparisons keep their rules. Arithmetic is not part of the grammar: integer overflow and division differ between the three databases.
 
 ### 2.2 Chains
 

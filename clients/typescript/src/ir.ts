@@ -36,6 +36,8 @@ export interface Request extends RequestQuery {
 
 export interface Group {
   conn?: string;
+  /** A nested group negated as a whole: NOT (…). The top-level where and on groups are not negated. */
+  not?: boolean;
   items: Item[];
 }
 

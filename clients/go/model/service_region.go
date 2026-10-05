@@ -98,6 +98,29 @@ func (x *ServiceRegionModel) And(args ...any) *ServiceRegionModel { return x.con
 // places the conditions of a joined model.
 func (x *ServiceRegionModel) Or(args ...any) *ServiceRegionModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *ServiceRegionModel) Not(fn func(*ServiceRegionModel)) *ServiceRegionModel {
+	return x.negated("", fn)
+}
+
+// AndNot opens a negated group joined with AND.
+func (x *ServiceRegionModel) AndNot(fn func(*ServiceRegionModel)) *ServiceRegionModel {
+	return x.negated("and", fn)
+}
+
+// OrNot opens a negated group joined with OR.
+func (x *ServiceRegionModel) OrNot(fn func(*ServiceRegionModel)) *ServiceRegionModel {
+	return x.negated("or", fn)
+}
+
+func (x *ServiceRegionModel) negated(conn string, fn func(*ServiceRegionModel)) *ServiceRegionModel {
+	g := serviceRegionEntity.New(x.m.Group()).(*ServiceRegionModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *ServiceRegionModel) connector(conn string, args []any) *ServiceRegionModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*ServiceRegionModel)); ok {

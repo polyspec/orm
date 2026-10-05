@@ -126,7 +126,9 @@ type KeyPair struct {
 // Group is a parenthesised list. Conn joins the group to its previous
 // sibling; the first item of a group has no connector.
 type Group struct {
-	Conn  string `json:"conn,omitempty"` // and | or
+	Conn string `json:"conn,omitempty"` // and | or
+	// Not은 nested group 전체를 부정한다(`NOT (…)`). top-level where와 on group은 부정하지 않는다.
+	Not   bool   `json:"not,omitempty"`
 	Items []Item `json:"items"`
 }
 
@@ -666,6 +668,9 @@ func joinPath(path, rel string) string {
 
 // group validates connectors and operators.
 func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]*Join, top bool) error {
+	if top && g.Not {
+		return errf("IR_INVALID", "not applies to a nested group")
+	}
 	for i, it := range g.Items {
 		n := 0
 		conn := ""

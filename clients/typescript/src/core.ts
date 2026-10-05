@@ -59,7 +59,9 @@ interface CondNode {
 class CondGroup {
   public items: CondNode[] = [];
   public pending = '';
-  public constructor(items: CondNode[] = []) { this.items = items; }
+  /** The group is negated as a whole (not(fn), andNot(fn), orNot(fn)). */
+  public not = false;
+  public constructor(items: CondNode[] = [], not = false) { this.items = items; this.not = not; }
 
   public add(owner: Core, conn: string, node: Omit<CondNode, 'conn'>): void {
     if (this.pending !== '' && conn !== '') return owner.fail(`connector ${conn} follows connector ${this.pending}`);
@@ -217,11 +219,19 @@ export class Core {
     g.add(this, conn, { joined: child });
   }
 
-  private addGroup(conn: string, g: Core): void {
+  private addGroup(conn: string, g: Core, not = false): void {
     if (g.error) return this.failError(g.error);
-    if (g.where.items.length === 0) return this.fail(`${conn} group callback added no condition`);
+    if (g.where.items.length === 0) return this.fail(`${not ? `${conn} not` : conn} group callback added no condition`);
     if (g.where.pending !== '') return this.fail(`connector ${g.where.pending} without a following condition`);
-    this.where.add(this, conn, { group: new CondGroup(g.where.items) });
+    this.where.add(this, conn, { group: new CondGroup(g.where.items, not) });
+  }
+
+  /** Appends the conditions of a group callback as one negated group: NOT (…). conn is empty for the first condition. */
+  public negated(conn: string, fn: (m: ModelLike) => unknown): void {
+    if (typeof fn !== 'function') return this.fail(`${conn === '' ? 'not' : `${conn}Not`} accepts a callback of the same model`);
+    const group = this.newGroup();
+    fn(this.ent.create(group));
+    this.addGroup(conn, group, true);
   }
 
   public setOn(fn: (m: ModelLike) => unknown): void {
@@ -617,6 +627,7 @@ export class BuiltRequest {
       } else if (node.group) {
         item.group = this.group(node.group, owner, f);
         if (node.conn !== '') item.group.conn = node.conn;
+        if (node.group.not) item.group.not = true;
       } else if (node.joined) {
         const child = node.joined;
         const path = f.paths.get(child);

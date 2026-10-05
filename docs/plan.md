@@ -20,7 +20,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, and TypeScript. 
 | Area | Syntax |
 |---|---|
 | Connection | model creation followed by `connect(connection)`; the same `connect` rebinds a loaded row or collection |
-| Conditions | first condition `<Chain>`, then `and<Chain>` or `or<Chain>`, connectors `and()` and `or()`, groups `and(fn)` and `or(fn)`, operator prefixes `Gt Lt Ge Le Eq Ne Lk Lb Between Fulltext FulltextBoolean`, `<ColA>With<ColB>(model)` |
+| Conditions | first condition `<Chain>`, then `and<Chain>` or `or<Chain>`, connectors `and()` and `or()`, groups `and(fn)` and `or(fn)`, negated groups `not(fn)`, `andNot(fn)` and `orNot(fn)`, operator prefixes `Gt Lt Ge Le Eq Ne Lk Lb Between Fulltext FulltextBoolean`, `<ColA>With<ColB>(model)` |
 | Reads | `get`, `gets`, `getBy<Chain>`, `getsBy<Chain>`, `getCount`, `getCountBy<Chain>`, `getsCount`, `sum<Col>` with `getSum`, `avg<Col>` with `getAvg`, `keyName<Col>`, `fetchKey`, `fetchValue` |
 | Columns | `addColumn<Col>`, `removeColumn<Col>`, `removeAllColumns`, `addAllColumns`, `forceIndex<Name>` |
 | Relations and joins | `relation`, `relations`, `match<L>With<R>`, `alias<Name>`, `parentNode`, `possible<Col>`, `groupLimit`, `deleteLock`, `join<L>With<R>`, `leftJoin<L>With<R>`, `on(fn)` |
@@ -72,7 +72,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, and TypeScript. 
 
 - The first condition has no prefix. Each following condition uses `and<Chain>`, `or<Chain>`, or a connector `and()` or `or()` followed by `<Chain>`. A missing connector, a connector at the start of a group, or a connector without a following condition returns `CONFIG`.
 - `<Chain>` accepts any column combination with `And`, `Or`, operator prefixes, and `<ColA>With<ColB>`. Arguments follow the keys in order. The same chain is valid after `getBy`, `getsBy`, `getCountBy`, and `getsCountBy`.
-- Groups use `and(fn)` and `or(fn)` only. The callback receives an empty model of the same type and accepts condition methods only; a terminal or write inside the callback returns `CONFIG`.
+- Groups use `and(fn)` and `or(fn)`, and negated groups `not(fn)`, `andNot(fn)` and `orNot(fn)`. The callback receives an empty model of the same type and accepts condition methods only; a terminal or write inside the callback returns `CONFIG`.
 - PHP resolves chains at call time. Go, Rust, and TypeScript generate the chain methods that the scanned source code calls: the generator reads that source, parses each chain, checks it against the schema, and writes only those methods.
 
 ```go

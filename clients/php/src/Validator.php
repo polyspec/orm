@@ -37,7 +37,7 @@ final class Validator
         'Join' => ['rel' => 'string', 'kind' => 'string', 'query' => 'Query', 'left' => 'string', 'right' => 'string'],
         'Relation' => ['rel' => 'string', 'query' => 'Query', 'kind' => 'string', 'keys' => 'list<KeyPair>'],
         'KeyPair' => ['left' => 'string', 'right' => 'string'],
-        'Group' => ['conn' => 'string', 'items' => 'list<Item>'],
+        'Group' => ['conn' => 'string', 'not' => 'bool', 'items' => 'list<Item>'],
         'Item' => ['pred' => 'Pred', 'group' => 'Group', 'joined' => 'JoinedRef'],
         'JoinedRef' => ['conn' => 'string', 'join' => 'string'],
         'Pred' => [
@@ -336,6 +336,9 @@ final class Validator
         }
         if (!$isJoin && isset($q['on'])) {
             throw self::err(Code::IR_INVALID, 'on[] is only valid on join children');
+        }
+        if (!empty($q['on']['not']) || !empty($q['where']['not'])) {
+            throw self::err(Code::IR_INVALID, 'not applies to a nested group');
         }
         if (isset($q['on'])) {
             $this->group($ent, $q['on'], $joined);

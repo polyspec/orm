@@ -84,6 +84,23 @@ func (x *ServiceModel) And(args ...any) *ServiceModel { return x.connector("and"
 // places the conditions of a joined model.
 func (x *ServiceModel) Or(args ...any) *ServiceModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *ServiceModel) Not(fn func(*ServiceModel)) *ServiceModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *ServiceModel) AndNot(fn func(*ServiceModel)) *ServiceModel { return x.negated("and", fn) }
+
+// OrNot opens a negated group joined with OR.
+func (x *ServiceModel) OrNot(fn func(*ServiceModel)) *ServiceModel { return x.negated("or", fn) }
+
+func (x *ServiceModel) negated(conn string, fn func(*ServiceModel)) *ServiceModel {
+	g := serviceEntity.New(x.m.Group()).(*ServiceModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *ServiceModel) connector(conn string, args []any) *ServiceModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*ServiceModel)); ok {

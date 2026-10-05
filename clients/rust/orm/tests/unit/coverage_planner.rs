@@ -96,15 +96,18 @@ fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
 }
 
 fn group(value: &Value, at: &str) -> ir::Group {
-    let object = members(value, at, &["conn", "items"]);
+    let object = members(value, at, &["conn", "not", "items"]);
     let items = object.get("items").and_then(Value::as_array).unwrap_or_else(|| panic!("{at}.items: expected an array"));
     let items = items
         .iter()
         .enumerate()
         .map(|(i, item)| {
             let at = format!("{at}.items[{i}]");
+            if let Some(nested) = members(item, &at, &["pred", "group"]).get("group") {
+                return ir::Item::Group { group: group(nested, &format!("{at}.group")) };
+            }
             let pred = members(
-                members(item, &at, &["pred"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
+                members(item, &at, &["pred", "group"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
                 &format!("{at}.pred"),
                 &["conn", "column", "op", "p", "ps", "sub", "fn", "value"],
             );
@@ -135,7 +138,11 @@ fn group(value: &Value, at: &str) -> ir::Group {
             }
         })
         .collect();
-    ir::Group { conn: object.get("conn").map(|_| string(object, at, "conn")).unwrap_or_default(), items }
+    ir::Group {
+        conn: object.get("conn").map(|_| string(object, at, "conn")).unwrap_or_default(),
+        not: object.get("not").map(|n| n.as_bool().unwrap_or_else(|| panic!("{at}.not: expected a boolean"))).unwrap_or(false),
+        items,
+    }
 }
 
 /// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
@@ -359,4 +366,18 @@ fn coverage_planner_bind_types_insert() {
 fn coverage_planner_parent_key_types() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_parent_key_types");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_not_group() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_not_group");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_top_not() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_rejects_top_not");
 }

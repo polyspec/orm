@@ -96,6 +96,23 @@ func (x *TaskModel) And(args ...any) *TaskModel { return x.connector("and", args
 // places the conditions of a joined model.
 func (x *TaskModel) Or(args ...any) *TaskModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *TaskModel) Not(fn func(*TaskModel)) *TaskModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *TaskModel) AndNot(fn func(*TaskModel)) *TaskModel { return x.negated("and", fn) }
+
+// OrNot opens a negated group joined with OR.
+func (x *TaskModel) OrNot(fn func(*TaskModel)) *TaskModel { return x.negated("or", fn) }
+
+func (x *TaskModel) negated(conn string, fn func(*TaskModel)) *TaskModel {
+	g := taskEntity.New(x.m.Group()).(*TaskModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *TaskModel) connector(conn string, args []any) *TaskModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*TaskModel)); ok {

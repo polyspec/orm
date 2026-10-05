@@ -286,6 +286,7 @@ func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
 		case node.group != nil:
 			item.Group = r.group(node.group, owner, f)
 			item.Group.Conn = node.conn
+			item.Group.Not = node.group.not
 		case node.joined != nil:
 			child := node.joined
 			path, ok := f.paths[child]

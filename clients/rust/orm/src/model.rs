@@ -604,7 +604,7 @@ async fn attach_external(parents: &mut [Box<dyn AnyModel>], rel: &RelSpec) -> Re
         if q.where_.items.is_empty() {
             q.where_ = CondGroup { items: vec![pred], pending: "" };
         } else {
-            let group = CondNode { conn: "", kind: CondKind::Group(std::mem::take(&mut q.where_.items)) };
+            let group = CondNode { conn: "", kind: CondKind::Group(std::mem::take(&mut q.where_.items), false) };
             q.where_ = CondGroup { items: vec![group, CondNode { conn: "and", ..pred }], pending: "" };
         }
         let rows = Box::pin(load(&q, "all")).await?;

@@ -480,7 +480,8 @@ final class Planner
             $parts[] = $text;
         }
         $out = implode(' ', $parts);
-        return $top ? $out : "($out)";
+        $grouped = $top ? $out : "($out)";
+        return empty($g['not']) ? $grouped : "NOT $grouped";
     }
 
     private static function cmp(string $op): string

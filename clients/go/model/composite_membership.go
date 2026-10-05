@@ -107,6 +107,29 @@ func (x *CompositeMembershipModel) Or(args ...any) *CompositeMembershipModel {
 	return x.connector("or", args)
 }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *CompositeMembershipModel) Not(fn func(*CompositeMembershipModel)) *CompositeMembershipModel {
+	return x.negated("", fn)
+}
+
+// AndNot opens a negated group joined with AND.
+func (x *CompositeMembershipModel) AndNot(fn func(*CompositeMembershipModel)) *CompositeMembershipModel {
+	return x.negated("and", fn)
+}
+
+// OrNot opens a negated group joined with OR.
+func (x *CompositeMembershipModel) OrNot(fn func(*CompositeMembershipModel)) *CompositeMembershipModel {
+	return x.negated("or", fn)
+}
+
+func (x *CompositeMembershipModel) negated(conn string, fn func(*CompositeMembershipModel)) *CompositeMembershipModel {
+	g := compositeMembershipEntity.New(x.m.Group()).(*CompositeMembershipModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *CompositeMembershipModel) connector(conn string, args []any) *CompositeMembershipModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*CompositeMembershipModel)); ok {

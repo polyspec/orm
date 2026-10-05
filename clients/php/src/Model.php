@@ -142,6 +142,41 @@ abstract class Model implements \JsonSerializable
         return $this->connector('or', $args);
     }
 
+    /** A negated group, NOT (…), as the first condition or after a connector written as a separate call. */
+    public function not(\Closure $fn): static
+    {
+        return $this->negated('', $fn);
+    }
+
+    /** A negated group joined with AND. */
+    public function andNot(\Closure $fn): static
+    {
+        return $this->negated('and', $fn);
+    }
+
+    /** A negated group joined with OR. */
+    public function orNot(\Closure $fn): static
+    {
+        return $this->negated('or', $fn);
+    }
+
+    private function negated(string $conn, \Closure $fn): static
+    {
+        $g = new static();
+        $g->groupOf = $this;
+        $fn($g);
+        if ($g->error !== null) {
+            $this->error ??= $g->error;
+        } elseif ($g->where['items'] === []) {
+            $this->fail(trim("$conn not") . ' group callback added no condition');
+        } elseif ($g->where['pending'] !== '') {
+            $this->fail("connector {$g->where['pending']} without a following condition");
+        } else {
+            $this->addItem($conn, ['group' => $g->where['items'], 'not' => true]);
+        }
+        return $this;
+    }
+
     private function connector(string $conn, array $args): static
     {
         if (count($args) === 0) {
@@ -1033,6 +1068,9 @@ abstract class Model implements \JsonSerializable
                 $group = $this->groupIr($node['group'], $r, $f);
                 if ($conn !== '') {
                     $group['conn'] = $conn;
+                }
+                if (!empty($node['not'])) {
+                    $group['not'] = true;
                 }
                 $out['items'][] = ['group' => $group];
             } else {

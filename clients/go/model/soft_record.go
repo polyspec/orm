@@ -102,6 +102,27 @@ func (x *SoftRecordModel) And(args ...any) *SoftRecordModel { return x.connector
 // places the conditions of a joined model.
 func (x *SoftRecordModel) Or(args ...any) *SoftRecordModel { return x.connector("or", args) }
 
+// Not opens a negated group, NOT (…), as the first condition or after a
+// connector written as a separate call.
+func (x *SoftRecordModel) Not(fn func(*SoftRecordModel)) *SoftRecordModel { return x.negated("", fn) }
+
+// AndNot opens a negated group joined with AND.
+func (x *SoftRecordModel) AndNot(fn func(*SoftRecordModel)) *SoftRecordModel {
+	return x.negated("and", fn)
+}
+
+// OrNot opens a negated group joined with OR.
+func (x *SoftRecordModel) OrNot(fn func(*SoftRecordModel)) *SoftRecordModel {
+	return x.negated("or", fn)
+}
+
+func (x *SoftRecordModel) negated(conn string, fn func(*SoftRecordModel)) *SoftRecordModel {
+	g := softRecordEntity.New(x.m.Group()).(*SoftRecordModel)
+	fn(g)
+	x.m.AddNegatedGroup(conn, g.m)
+	return x
+}
+
 func (x *SoftRecordModel) connector(conn string, args []any) *SoftRecordModel {
 	if len(args) == 1 {
 		if fn, ok := args[0].(func(*SoftRecordModel)); ok {

@@ -24,7 +24,7 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 |---|---|
 | IF-01, IF-18, IF-32 | 각 client는 같은 planner의 이식본으로 자기 process에서 request를 계획하고 모델의 schema hash를 확인한다. conformance 벡터가 네 client의 계획된 SQL과 bind를 비교한다. `tests/interfaces/check`는 Go, PHP, Rust, TypeScript의 request 레코드 20개를 필드 단위로 비교한다 |
 | IF-02 | 컬럼 값은 논리 타입을 유지한다. `TestConnectionsUseUTC`와 PHP·TypeScript·Rust 대응 사례가 SQLite와 서버 시간대를 KST로 설정한 MySQL·PostgreSQL에서 날짜·시각 값을 UTC로 쓰고 읽는지 검사하고 SQLite 문자열 datetime을 저장 형식인 소수 여섯 자리로 비교한다. Rust 생성 모델은 타입이 지정된 `NaiveDateTime` 값을 사용하고 integration 사례에서 같은 데이터베이스 시각 동작을 검사한다 |
-| IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
+| IF-03 ~ IF-08 | 생성된 모델은 체인 상태를 core 객체 하나에 저장한다. `conditions_connectors`, `conditions_group`, `expression_forms`, `conditions_values`, `joins`, `errors` 벡터가 연결자, 그룹, 부정 그룹, 값 모양, 조인 배치, 잘못된 체인을 검사한다 |
 | IF-09 ~ IF-12 | 모델 메서드 23개를 언어별로 고정한다. Go는 생성 모델, PHP와 TypeScript는 기반 클래스, Rust는 `orm-build` 템플릿이다. `terminal_by`와 `terminal_reuse`가 터미널과 모델 하나의 재사용을 검사한다 |
 | IF-13 ~ IF-17 | `Db.connect`, `Db.transaction`, `Db.utils`, `Utils.lock`, `SchemaUtils.install`, AES 유틸리티를 언어별로 고정한다. `transactions` 벡터와 client 트랜잭션 테스트가 savepoint, 행 잠금, 이름 잠금, 지역 값을 검사한다 |
 | IF-19, IF-20 | `relations`, `relation_empty`, `subqueries` 벡터가 관계 statement와 조립을 검사한다. `TestBindLimitSplitting`이 세 데이터베이스에서 Go의 큰 IN 목록 분할을 검사하며 PHP·Rust·TypeScript는 공통 planner 명세과 각 client suite의 관계·subquery 경로를 검사한다 |

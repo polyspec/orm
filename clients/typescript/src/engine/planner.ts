@@ -555,7 +555,8 @@ export class Planner {
       parts.push(text);
     });
     const out = parts.join(' ');
-    return top ? out : `(${out})`;
+    const grouped = top ? out : `(${out})`;
+    return g.not ? `NOT ${grouped}` : grouped;
   }
 
   private renderPred(b: Builder, s: Scope, pr: Predicate): string {

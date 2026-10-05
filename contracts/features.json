@@ -2999,7 +2999,9 @@
           "planner_bind_types_select",
           "planner_bind_types_update",
           "planner_bind_types_insert",
-          "planner_parent_key_types"
+          "planner_parent_key_types",
+          "planner_not_group",
+          "planner_rejects_top_not"
         ],
         "owners": {
           "go": {
@@ -3025,7 +3027,9 @@
                     "planner_bind_types_select",
                     "planner_bind_types_update",
                     "planner_bind_types_insert",
-                    "planner_parent_key_types"
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3037,7 +3041,9 @@
                     "planner_bind_types_update": "TestCoveragePlannerBindTypesUpdate",
                     "planner_bind_types_insert": "TestCoveragePlannerBindTypesInsert",
                     "planner_parent_key_types": "TestCoveragePlannerParentKeyTypes",
-                    "planner_tables": "TestCoveragePlannerTables"
+                    "planner_tables": "TestCoveragePlannerTables",
+                    "planner_not_group": "TestCoveragePlannerNotGroup",
+                    "planner_rejects_top_not": "TestCoveragePlannerRejectsTopNot"
                   }
                 }
               ]
@@ -3066,7 +3072,9 @@
                     "planner_bind_types_select",
                     "planner_bind_types_update",
                     "planner_bind_types_insert",
-                    "planner_parent_key_types"
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not"
                   ]
                 }
               ]
@@ -3095,7 +3103,9 @@
                     "planner_bind_types_select",
                     "planner_bind_types_update",
                     "planner_bind_types_insert",
-                    "planner_parent_key_types"
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3107,7 +3117,9 @@
                     "planner_bind_types_update": "engine::coverage_planner::coverage_planner_bind_types_update",
                     "planner_bind_types_insert": "engine::coverage_planner::coverage_planner_bind_types_insert",
                     "planner_parent_key_types": "engine::coverage_planner::coverage_planner_parent_key_types",
-                    "planner_tables": "engine::coverage_planner::coverage_planner_tables"
+                    "planner_tables": "engine::coverage_planner::coverage_planner_tables",
+                    "planner_not_group": "engine::coverage_planner::coverage_planner_not_group",
+                    "planner_rejects_top_not": "engine::coverage_planner::coverage_planner_rejects_top_not"
                   }
                 }
               ]
@@ -3136,7 +3148,9 @@
                     "planner_bind_types_select",
                     "planner_bind_types_update",
                     "planner_bind_types_insert",
-                    "planner_parent_key_types"
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not"
                   ]
                 }
               ]
