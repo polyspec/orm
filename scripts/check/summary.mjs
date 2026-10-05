@@ -5,16 +5,21 @@
 // directory와 부분 기록을 싣는다.
 //
 // Usage: ORM_CHECK_RUN_ID=<id> node scripts/check/summary.mjs
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { publish, reportDirectory, runName, summary } from './report.mjs';
+import { keepLogs, publish, reportDirectory, runName, summary } from './report.mjs';
 
-export function runSummary(root, id) {
+// runSummary는 실행 id의 summary를 쓴다. 보고서에는 기록(record.json)과 test server의 log(servers/)도 둔다: upload
+// 단계는 그 실행의 보고서 directory만 올리므로, 이전 실행이 남긴 file은 들어가지 않는다.
+export function runSummary(root, id, servers = resolve(root, '.runtime/servers')) {
   const name = runName(id);
   const report = reportDirectory(root, name);
   const path = resolve(root, '.runtime/full-run.json');
   const record = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+  mkdirSync(report, { recursive: true });
+  if (record) writeFileSync(resolve(report, 'record.json'), `${JSON.stringify(record, null, 2)}\n`);
+  keepLogs(servers, resolve(report, 'servers'));
   const run = record?.id === name ? record : record?.reruns?.find(entry => entry.id === name);
   if (!run) {
     const text = `# make check ${name}\n\n**make check recorded no run ${name}** in ${path}: it stopped before the runner recorded the run (the guard refused, or a command before the runner failed). The log of the make check step shows why.\n`;

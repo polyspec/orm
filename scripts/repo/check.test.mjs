@@ -100,18 +100,33 @@ caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
   }
 });
 
-// make check 뒤 case는 저장소의 workflow가 make check 뒤에 검사 step을 두지 않는지 보고, 최소 workflow에서 make
-// check 뒤의 명령 step(make target이든 직접 실행이든)을 거부하며 action step(uses)은 허용하는지 확인한다.
-caseTest('a workflow runs no step after make check', COMPUTE, () => {
+// make check 뒤 case(G5.38-4)는 저장소의 workflow를 보고, 최소 workflow에서 make check 뒤에 선언된 summary와 report
+// 두 step만 받아들이는지 확인한다. 다른 명령 step, 다른 action step, 다른 path의 upload, 빠진 step, ORM_CHECK_RUN_ID
+// 없는 make check는 거부한다.
+caseTest('a workflow runs only the summary and the report upload after make check', COMPUTE, () => {
   assert.deepEqual(ciAfterCheckErrors(workflows), []);
-  const base = ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', '      - name: make check', '        run: make check', ''].join('\n');
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': base }), []);
-  const later = base + ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check',
-    '      - name: contracts', '        run: |', '          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results out', '      - uses: actions/upload-artifact@v4', ''].join('\n');
-  const after = (name, command) => `ci.yml step "${name}" runs ${command} after make check; make check runs every check, so one local run covers CI, and a check it lacks belongs in a target of CHECK_TARGETS`;
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': later }), [
-    after('decoder fuzz smoke checks', 'make fuzz-check'),
-    after('contracts', 'node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results out'),
+  const check = ['      - name: make check', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: make check'];
+  const summary = ['      - name: summary', '        if: always()', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: node scripts/check/summary.mjs'];
+  const report = ['      - name: report', '        if: always()', '        uses: actions/upload-artifact@v4', '        with:', '          name: check-${{ github.run_id }}-${{ github.run_attempt }}',
+    '          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', '          if-no-files-found: error'];
+  const workflow = (...steps) => ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', ...steps.flat(), ''].join('\n');
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report) }), []);
+  const fuzz = ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check'];
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, fuzz) }), [
+    'ci.yml step "decoder fuzz smoke checks" runs make fuzz-check after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS',
+  ]);
+  const everything = report.map(line => line.replace('/report/', '/'));
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, everything) }), [
+    `ci.yml step "report" after make check is not the declared report step: ${everything.map(line => line.trim()).join(' | ')} instead of ${report.map(line => line.trim()).join(' | ')}`,
+  ]);
+  const other = ['      - uses: actions/cache@v4'];
+  assert.match(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, other) })[0], /^ci\.yml step "uses: actions\/cache@v4" runs - uses: actions\/cache@v4 after make check/);
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check) }), [
+    `ci.yml has no summary step after make check: ${summary.map(line => line.trim()).join(' | ')}`,
+    `ci.yml has no report step after make check: ${report.map(line => line.trim()).join(' | ')}`,
+  ]);
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(['      - name: make check', '        run: make check'], summary, report) }), [
+    'ci.yml step "make check" gives make check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}, which names the report of the run',
   ]);
 });
 

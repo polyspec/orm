@@ -461,3 +461,26 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
     rmSync(base, { recursive: true, force: true });
   }
 });
+
+// 보고서 case(G5.38-4)는 CI의 summary 단계가 그 실행의 보고서에 기록과 test server의 log를 두는지 확인한다. upload
+// 단계는 그 보고서 directory만 올리므로 이것이 artifact다. 1 MiB보다 큰 log는 끝만 남고 data directory는 들어가지 않는다.
+caseTest('the summary step keeps the record and the server logs in the report of the run', PROCESS, async () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'failing', ORM_CHECK_RUN_ID: '555-1' }).status, 1);
+    const servers = join(c.root, '..', 'servers');
+    mkdirSync(join(servers, 'mysql'), { recursive: true });
+    writeFileSync(join(servers, 'mysql', 'ibdata1'), 'data');
+    writeFileSync(join(servers, 'postgres.log'), 'FATAL:  role "orm" does not exist\n');
+    writeFileSync(join(servers, 'mysql.log'), `${'y'.repeat(2 * 1024 * 1024)}[ERROR] Aborting\n`);
+    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mjs'));
+    runSummary(c.root, '555-1', servers);
+    const report = join(c.root, '.runtime/check/ci_555_1/report');
+    assert.deepEqual(JSON.parse(readFileSync(join(report, 'record.json'), 'utf8')), c.record());
+    assert.equal(readFileSync(join(report, 'servers/postgres.log'), 'utf8'), 'FATAL:  role "orm" does not exist\n');
+    assert.match(readFileSync(join(report, 'servers/mysql.log'), 'utf8'), /^\[the last 262144 of 2097169 bytes of .*mysql\.log\]\ny+\[ERROR\] Aborting\n$/);
+    assert.equal(existsSync(join(report, 'servers/mysql')), false);
+  } finally {
+    cleanup();
+  }
+});

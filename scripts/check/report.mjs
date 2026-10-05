@@ -6,6 +6,8 @@
 //   targets/<target>.log     target의 정확한 명령, Makefile의 recipe, 입력 path, 출력 전체
 //   targets/<target>/run/    실패한 target이 남긴 실행 directory(.runtime/run/<target>-<pid>)의 file
 //   summary.md               target마다 상태, 시간, 첫 실패 줄. CI에서는 GITHUB_STEP_SUMMARY에도 쓴다
+//   record.json              .runtime/full-run.json의 그 실행 기록(CI의 summary 단계가 쓴다)
+//   servers/*.log            test server의 log(CI의 summary 단계가 쓴다)
 //
 // LIMIT_BYTES보다 큰 file은 끝의 TAIL_BYTES만 남기고 그 사실을 file 첫 줄과 summary에 적는다. build
 // target(`target` directory), node_modules와 database file은 옮기지 않고 manifest에 크기와 함께 적는다.
@@ -136,6 +138,24 @@ export function keepRunDirectory(source, destination) {
   mkdirSync(destination, { recursive: true });
   writeFileSync(join(destination, 'MANIFEST.txt'), `${source}\n${manifest.join('\n')}\n`);
   return manifest.length;
+}
+
+// keepLogs는 directory 바로 아래의 `*.log` file(test server의 log)을 보고서로 옮긴다. LIMIT_BYTES보다 큰 file은 끝만
+// 남긴다. data directory는 읽지 않는다. 옮긴 file 수를 돌려준다.
+export function keepLogs(source, destination) {
+  if (!existsSync(source)) return 0;
+  let kept = 0;
+  for (const entry of readdirSync(source, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.log')) continue;
+    const path = join(source, entry.name);
+    const { size } = statSync(path);
+    mkdirSync(destination, { recursive: true });
+    writeFileSync(join(destination, entry.name), size > LIMIT_BYTES
+      ? Buffer.concat([Buffer.from(`[the last ${TAIL_BYTES} of ${size} bytes of ${path}]\n`), tail(path, size)])
+      : readFileSync(path));
+    kept++;
+  }
+  return kept;
 }
 
 // limitLog는 LIMIT_BYTES보다 큰 target log를 끝만 남긴 file로 바꾸고 그 사실을 돌려준다.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.38-4: CI는 server 시작이 실패해도 `ORM_CHECK_RUN_ID`와 함께 `make check`를 실행하고, 그 뒤 언제나 `summary` step(job summary, 보고서의 실행 기록과 server log)과 `.runtime/check/ci_<run id>_<attempt>/report/`만 올리는 `report` step을 실행한다. `make repo-check`는 `make check` 뒤에 정확히 이 두 step만 허용한다.
+
 - G5.38-3: `scripts/client-db-test.sh`와 `scripts/typescript/sqlite-test.sh`는 실패한 test 뒤에도 모든 test를 실행하고 실패한 명령을 종료 상태와 함께 적으며, `tests/cargo-test.mjs`는 `--no-fail-fast`처럼 모든 test binary를 실행하고 실패한 것을 적는다.
 
 - G5.38-2: `CHECK_TARGETS`의 13개 target은 독립된 명령을 부분 `<target>/<part>`(모두 40개)로 실행하고, runner와 `make owner-check`의 `make -k`는 실패한 부분 뒤에도 그것을 실행한다.

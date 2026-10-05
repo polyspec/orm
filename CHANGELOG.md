@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.38-4: CI runs `make check` after a failed server start, with `ORM_CHECK_RUN_ID`, and then always a `summary` step (the job summary, the run record and the server logs in the report) and a `report` step that uploads `.runtime/check/ci_<run id>_<attempt>/report/` alone; `make repo-check` allows exactly these two steps after `make check`.
+
 - G5.38-3: `scripts/client-db-test.sh` and `scripts/typescript/sqlite-test.sh` run every test after a failed one and name each failed command with its exit status, and `tests/cargo-test.mjs` runs every test binary as `--no-fail-fast` does and names the failed ones.
 
 - G5.38-2: 13 targets of `CHECK_TARGETS` run their independent commands as parts `<target>/<part>` (40 in all), which `make -k` of the runner and of `make owner-check` runs after a failed part.

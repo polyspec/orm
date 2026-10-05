@@ -1,9 +1,11 @@
 # CI: make check, the targets of the local checks, against MySQL, PostgreSQL,
 # and SQLite, with the common interfaces and the hot-path regression check of
 # feature-check, the decoder fuzz checks and the common state contracts of the
-# conformance results. make check runs every check once, so one local run
-# covers what CI runs; a check it lacks belongs in a target of CHECK_TARGETS,
-# and make repo-check fails a step after make check.
+# conformance results. This is where the full suite runs: after a push, never
+# stopping at a failure, and recording enough to fix every failure before the
+# next run. A check it lacks belongs in a target of CHECK_TARGETS, and make
+# repo-check fails a step after make check other than the summary and the
+# report upload.
 # make test-servers starts the database servers and writes their DSNs, as it
 # does for the local checks. No step or job has timeout-minutes: every step
 # (a checkout, an install, a server start, a tool run or a whole suite) is a
@@ -106,11 +108,36 @@ jobs:
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment
-        # file .runtime/servers/env that the database checks read.
+        # file .runtime/servers/env that the database checks read. A failure
+        # does not stop the job: make check records the targets that need the
+        # servers as not-run with this failure and runs every other target.
+        continue-on-error: true
         run: make test-servers
       - name: make check
         # The targets of CHECK_TARGETS through the runner of the local checks,
         # with its own bench and decimal databases; make repo-check fails
         # when this workflow omits or repeats one of them or a verification
-        # command of feature-check.
+        # command of feature-check. The run never stops at a failure: every
+        # target runs unless a setup step it needs failed, and the step fails
+        # when a target failed or did not run. The report of the run is
+        # .runtime/check/ci_<run id>_<attempt>/report.
+        env:
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: make check
+      # The summary of the run, also of a runner that did not finish, as the job
+      # summary and in the report, with the run record and the server logs; then
+      # the report of this run id alone, so no file of an earlier run is
+      # collected. make repo-check allows exactly these two steps after make
+      # check.
+      - name: summary
+        if: always()
+        env:
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: node scripts/check/summary.mjs
+      - name: report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/
+          if-no-files-found: error
