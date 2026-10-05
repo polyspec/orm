@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { docs, dist, files, serve, siteBase } from './lib.mjs';
-import { loading, openPage, trackLoad } from './load.mjs';
+import { browserSteps } from './steps.mjs';
 import { COMPUTE, runCase, runLong } from '../../tests/testcase.mjs';
 
 // docs check는 build한 site를 browser로 읽는다. server 시작과 browser 실행은 장기 작업이므로 runLong으로
@@ -72,23 +72,24 @@ try {
   });
   const page = await staticContext.newPage();
   inspect(page, { scripting: false });
-  // 열지 못한 page는 Playwright의 기한 초과만이 아니라 남은 request, 실패한 request, error와 host load를 적는다.
-  const load = trackLoad(page, server);
+  // browser에서 기다리는 모든 일은 browserSteps를 거친다. 실패하면 기다린 것, 요소의 상태, request, error,
+  // event loop 지연과 host load를 적는다(scripts/docs/steps.mjs).
+  const staticUi = browserSteps(page, server);
   let diagramCount = 0;
   for (const file of pages) {
     const relative = path.relative(dist, file).split(path.sep).join('/');
     await check(`docs-static/page/${relative}`, PAGE, async () => {
       const before = errors.length;
       const url = `${server.origin}${base}${relative}`;
-      assert.equal((await openPage(page, url, load)).status(), 200, relative);
-      const body = page.locator('#VPContent');
-      assert.ok((await body.innerText()).trim().length > 30, `Empty static body: ${relative}`);
+      assert.equal((await staticUi.open(url)).status(), 200, relative);
+      const body = staticUi.locator('#VPContent');
+      const text = await staticUi.text(body, 'the page content');
+      assert.ok(text.trim().length > 30, `Empty static body: ${relative}`);
       if (relative === 'index.html') {
-        const text = await body.innerText();
         assert.ok(text.includes('$count =') && text.includes('let count ='), 'All language examples must remain visible without JavaScript');
       }
       // Browsers load all images eagerly when scripting is disabled.
-      const state = await page.evaluate(async () => {
+      const state = await staticUi.evaluate(async () => {
         await Promise.all([...document.images].map(image => image.decode()));
         return {
           ids: [...document.querySelectorAll('[id]')].map(element => element.id),
@@ -96,7 +97,7 @@ try {
           diagrams: document.querySelectorAll('.orm-diagram img').length,
           broken: [...document.images].filter(image => !image.naturalWidth).map(image => image.src),
         };
-      });
+      }, 'the ids, links, diagrams and images of the page');
       assert.deepEqual(state.broken, [], relative);
       anchors.set(relative, new Set(state.ids));
       diagramCount += state.diagrams;
@@ -129,38 +130,37 @@ try {
   context.setDefaultTimeout(15000);
   const interactive = await context.newPage();
   inspect(interactive);
-  const interactiveLoad = trackLoad(interactive, server);
+  const ui = browserSteps(interactive, server);
   await check('docs-static/search', INTERACTION, async () => {
     const before = errors.length;
-    await openPage(interactive, `${server.origin}${base}`, interactiveLoad);
-    await interactive.locator('.VPNavBarSearch button').click();
-    await interactive.locator('#localsearch-input').fill('getCountBy');
-    const result = interactive.locator('.VPLocalSearchBox .result').first();
-    await result.waitFor({ state: 'visible' });
-    const beforeSearch = interactive.url();
-    await result.click();
-    await interactive.waitForURL(url => url.href !== beforeSearch);
-    await interactive.waitForFunction(() => {
+    await ui.open(`${server.origin}${base}`);
+    await ui.click(ui.locator('.VPNavBarSearch button'), 'the search button');
+    await ui.fill(ui.locator('#localsearch-input'), 'getCountBy', 'the search input');
+    const result = ui.locator('.VPLocalSearchBox .result').first();
+    await ui.waitFor(result, 'visible', 'the first search result');
+    const beforeSearch = ui.url();
+    await ui.click(result, 'the first search result');
+    await ui.waitForURL(url => url.href !== beforeSearch, `other than ${beforeSearch}`);
+    await ui.waitUntil(() => {
       const id = decodeURIComponent(location.hash.slice(1));
       return id && document.getElementById(id);
-    });
-    assert.ok((await interactive.locator('#VPContent').innerText()).includes('getCountBy'), 'Search did not navigate to matching content');
+    }, 'the element of the URL fragment exists');
+    assert.ok((await ui.text(ui.locator('#VPContent'), 'the page content')).includes('getCountBy'), 'Search did not navigate to matching content');
     assert.deepEqual(errors.slice(before), [], 'Browser errors during search');
   });
   await check('docs-static/theme-and-mobile', INTERACTION, async () => {
     const before = errors.length;
-    await openPage(interactive, `${server.origin}${base}interfaces.html`, interactiveLoad);
-    await interactive.getByRole('switch').first().click();
-    await interactive.waitForFunction(() => document.documentElement.classList.contains('dark'));
-    await interactive.setViewportSize({ width: 390, height: 844 });
-    await loading(interactiveLoad, 'reloading the page at the mobile viewport', () => interactive.reload());
-    const menu = interactive.locator('.VPLocalNav .menu');
-    await menu.click();
-    await interactive.locator('.VPSidebar.open').waitFor();
-    await interactive.locator('.VPSidebar.open a[href$="schema.html"]').click();
-    await interactive.waitForURL(url => url.pathname.endsWith('/schema.html'));
-    await interactive.waitForFunction(() => document.querySelector('.vp-doc h1')?.textContent.includes('Schema'));
-    const overflow = await interactive.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    await ui.open(`${server.origin}${base}interfaces.html`);
+    await ui.click(ui.getByRole('switch').first(), 'the appearance switch');
+    await ui.waitUntil(() => document.documentElement.classList.contains('dark'), 'the page is dark');
+    await ui.viewport({ width: 390, height: 844 });
+    await ui.reload('the page at the mobile viewport');
+    await ui.click(ui.locator('.VPLocalNav .menu'), 'the mobile menu button');
+    await ui.waitFor(ui.locator('.VPSidebar.open'), 'visible', 'the open sidebar');
+    await ui.click(ui.locator('.VPSidebar.open a[href$="schema.html"]'), 'the sidebar link to schema.html');
+    await ui.waitForURL(url => url.pathname.endsWith('/schema.html'), 'schema.html');
+    await ui.waitUntil(() => document.querySelector('.vp-doc h1')?.textContent.includes('Schema'), 'the page heading includes Schema');
+    const overflow = await ui.evaluate(() => document.documentElement.scrollWidth - window.innerWidth, 'the horizontal overflow');
     assert.ok(overflow <= 1, `Mobile page overflows horizontally by ${overflow}px`);
     assert.deepEqual(errors.slice(before), [], 'Browser errors during theme and mobile navigation');
   });

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.42: docs check의 모든 browser 기다림은 하나의 helper를 거치고, 실패하면 기다린 것, 맞는 요소와 그 보임, 상태, 위에 있는 요소나 accessibility tree, request, error, event loop 지연, host load를 적는다.
+
 - G5.40: `make repo-check`는 test가 TypeScript build 출력을 import하거나(여러 줄에 걸쳐도) node로 TypeScript test를 실행할 때(인자 배열, exec나 spawn의 shell 문자열)만 그 출력의 reader로 세고, 경로를 적기만 하는 test는 세지 않는다. `full-run-check`는 더 이상 build 출력을 잡지 않는다.
 
 - G5.41: `make checklist-check`는 항목 맨 앞의 상태가 아닌 곳의 상태 표시를 file, 줄, 열과 함께 실패로 보고, 체크리스트에는 항목만 두며 상태는 `AGENTS.md`가 정의한다.
