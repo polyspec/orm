@@ -629,8 +629,12 @@ codec-check:
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (clients/rust/rustfmt.toml).
+# rust-fmt-check는 저장소의 모든 Rust workspace(clients/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
+# 정리되어 있는지 확인한다.
 rust-fmt-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd clients/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh

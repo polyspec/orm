@@ -18,7 +18,7 @@
     "rust-check": {"scope": "suite"},
     "go-fmt-check": {"scope": "owner", "inputs": ["**/*.go"]},
     "go-vet-check": {"scope": "owner", "inputs": ["**/*.go", "go.mod", "go.sum"]},
-    "rust-fmt-check": {"scope": "owner", "inputs": ["clients/rust/**/*.rs"]},
+    "rust-fmt-check": {"scope": "owner", "inputs": ["clients/rust/**/*.rs", "bench/rust/**/*.rs", "tests/interfaces/rust/**/*.rs"]},
     "rust-150-check": {"scope": "suite"},
     "rust-driver-check": {"scope": "suite"},
     "example-check": {"scope": "suite"},

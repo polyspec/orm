@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.35: `make rust-fmt-check` checks `bench/rust` and `tests/interfaces/rust` as well as `clients/rust`, and both are formatted.
+
 - G5.32-7: negated condition groups `not(fn)`, `andNot(fn)` and `orNot(fn)` render `NOT (…)` in the four clients, and docs/dsl.md states the query expression grammar and its relation to the dbspec `check` grammar.
 
 - G5.33-9: Rust tests receive the paths of the package programs they run through `ORM_PROGRAM_<NAME>` from copies taken under the target lease (`orm_testcase::program`), and `make repo-check` fails `env!("CARGO_BIN_EXE_...")`.
