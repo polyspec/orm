@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -15,15 +14,15 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// repositoryRoot는 이 file의 위치로 찾은 module root이므로 test는 working directory에
-// 기대지 않는다.
+// repositoryRoot는 module root다. go test는 test를 package directory(engine/dbspec)에서 실행하므로 그 두 단계
+// 위다. 실행하는 checkout의 경로이고, binary가 compile된 곳의 경로(runtime.Caller)가 아니다.
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate the dbspec test source")
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("cannot read the working directory of the dbspec test: %v", err)
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	return filepath.Clean(filepath.Join(directory, "..", ".."))
 }
 
 // runTimed는 work를 자기 deadline 아래에서 실행하고 시작, 결과, 경과 시간을 기록한다. work는

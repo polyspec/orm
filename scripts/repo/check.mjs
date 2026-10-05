@@ -8,7 +8,7 @@ import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './ta
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
+import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
@@ -111,6 +111,8 @@ const goFiles = Object.fromEntries(tracked.filter(path => path.endsWith('.go')).
 failures.push(...goCargoErrors(goFiles));
 // Go 함수는 defer 뒤에 os.Exit를 부르지 않는다: 그 defer가 지울 임시 file과 풀 lock이 남는다.
 failures.push(...deferredExitErrors(goFiles));
+// Go code는 runtime.Caller로 file을 찾지 않는다: 그 경로는 binary가 compile된 곳이고 실행하는 checkout이 아니다.
+failures.push(...callerPathErrors(goFiles));
 // test는 측정한 시간이 한도를 넘었다고 실패하지 않는다: 성능은 측정하고 경고로 보고한다(AGENTS.md).
 const testFile = path => /(?:_test\.go|\.test\.mjs|\/tests\/.*\.(?:php|rs|mjs|go)|^tests\/.*\.(?:mjs|go|php)|\/examples\/.*\.rs|\/src\/lib\.rs)$/.test(path);
 failures.push(...timeFailureErrors(Object.fromEntries(tracked.filter(testFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.78: Go tests find the repository from the working directory instead of `runtime.Caller`, and `make repo-check` refuses `runtime.Caller` in Go code.
+
 - T9.4: docs/dbspec.md describes the PHP extension (its classes, selection by namespace, build and checks), and the PHP client suggests `ext-orm_dbspec`.
 
 - T9.3: contracts/interfaces.json declares the PHP extension under `extensions` with the `Dbspec` rules and owners it implements, and the interface check compares its stub with those rules, its own symbol snapshot and hash.
