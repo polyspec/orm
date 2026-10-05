@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-4).
+
 - G5.33-4: `rust-send-savepoint-check`의 SQLite file과 `timing-check`의 Go test binary는 실행 directory에 두고, TypeScript client를 build하는 모든 make target은 그 build 출력의 유일한 보유자가 된다.
 
 - G5.33-3: make target은 공유 target directory의 lease 아래에서 만든, 자기가 build한 Rust program의 복사본을 실행하고, stress 문서를 자기 실행 directory에 쓰며, Makefile의 모든 cargo build는 그 lease를 가진다.
