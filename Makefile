@@ -355,8 +355,10 @@ dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
 # dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
-# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
-# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. 그 전에 모든 runner가
+# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로,
+# PHP 확장 orm_dbspec의 runner를 dbspec 인터페이스의 input(cases, stress 문서, ddl)으로
+# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. PHP 확장의 출력은 첫 Go 출력의 첫 plan case
+# 앞까지와 같아야 한다. 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
 # apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
@@ -378,6 +380,7 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+	$(RUN_LONG) rust-build/orm_dbspec --cwd clients/php-extension -- $(CARGO_COPY) $(PHP_EXTENSION_LIBRARY) -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline
 dbspec-compare-check/runners: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 dbspec-compare-check/inputs: dbspec-compare-check/prepare

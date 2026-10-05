@@ -2636,7 +2636,11 @@
             "tests/dbspec/files/invalid-utf8.dbs",
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
-            "tests/dbspec/files/empty.dbs"
+            "tests/dbspec/files/empty.dbs",
+            "clients/php-extension/Cargo.toml",
+            "clients/php-extension/Cargo.lock",
+            "clients/php-extension/build.rs",
+            "clients/php-extension/src/**"
           ]
         }
       ],

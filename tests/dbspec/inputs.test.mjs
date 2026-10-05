@@ -3,8 +3,8 @@
 // message와 0이 아닌 exit로 거부하는지 확인한다.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mjs
-// (after the TypeScript build and the debug builds of the Rust dbspec_compare,
-// dbspec_apply and dbspec_stress examples)
+// (after the TypeScript build, the debug builds of the Rust dbspec_compare,
+// dbspec_apply and dbspec_stress examples and the debug build of the PHP extension)
 import { after } from 'node:test';
 import { caseTest } from '../testcase.mjs';
 import assert from 'node:assert/strict';
@@ -12,7 +12,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cargoTarget } from '../cargo-target.mjs';
-import { root, runRunner, runners } from './compare/runners.mjs';
+import { INPUTS, root, runRunner, runners } from './compare/runners.mjs';
 
 // TIMEOUT은 case 하나의 기한이다. case는 runner process 하나를 없거나 directory인 input으로
 // 실행하고, Go runner는 `go run` compile을 포함한다.
@@ -45,20 +45,24 @@ const applyRunners = [
   { name: 'apply rust', command: join(cargoTarget(), 'debug/examples/dbspec_apply'), args: [] },
 ];
 const stressHarness = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };
-const inputNames = ['cases', 'stress document', 'ddl', 'plans', 'mermaid'];
+// inputNames는 INPUTS 순서의 input을 message에 쓰는 이름이다.
+const inputNames = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid' };
 
 // 각 경우는 runner, 그 인자, 그리고 stderr에 나와야 할 읽을 수 없는 경로다.
 const cases = [];
 for (const unreadable of [missing, folder]) {
   const kind = unreadable === missing ? 'missing' : 'directory';
+  // runner는 자기가 읽는 input(runners.mjs의 reads)만 받는다. PHP 확장 runner는 plan과 Mermaid vector를 읽지 않는다.
   for (const runner of runners) {
-    inputNames.forEach((name, i) => {
+    INPUTS.forEach((input, i) => {
+      if (!runner.reads.includes(input)) return;
       const inputs = compareInputs.slice();
       inputs[i] = unreadable;
-      cases.push({ name: `${runner.name} rejects a ${kind} ${name}`, runner, inputs, unreadable });
+      cases.push({ name: `${runner.name} rejects a ${kind} ${inputNames[input]}`, runner, inputs, unreadable });
     });
+    if (!runner.reads.includes('mermaid')) continue;
     const inputs = compareInputs.slice();
-    inputs[4] = mermaidWithPath(unreadable);
+    inputs[INPUTS.indexOf('mermaid')] = mermaidWithPath(unreadable);
     cases.push({ name: `${runner.name} rejects a ${kind} round trip document`, runner, inputs, unreadable });
   }
   for (const runner of applyRunners) {

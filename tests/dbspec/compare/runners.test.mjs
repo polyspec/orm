@@ -1,8 +1,8 @@
-// 모든 dbspec compare runner가 없거나 type이 다른 vector section, id, document,
+// 모든 dbspec compare runner가 자기가 읽는 vector file의 없거나 type이 다른 vector section, id, document,
 // line을 위치를 밝힌 error와 nonzero exit로 거부하는지 확인한다.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/compare/runners.test.mjs
-// (after the TypeScript build and the release build of the Rust example)
+// (after the TypeScript build and the debug builds of the Rust example and the PHP extension)
 import { after } from 'node:test';
 import { caseTest } from '../../testcase.mjs';
 import assert from 'node:assert/strict';
@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { root, runRunner, runners } from './runners.mjs';
 
-// TIMEOUT은 case 하나의 기한이다. case는 Go, PHP, TypeScript, Rust runner process를 vector file 하나로
+// TIMEOUT은 case 하나의 기한이다. case는 Go, PHP, TypeScript, Rust, PHP 확장 runner process를 vector file 하나로
 // 실행하고, Go runner는 `go run` compile을 포함한다.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
@@ -76,9 +76,11 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
+// runner는 자기가 읽는 vector file(runners.mjs의 reads)의 잘못된 vector만 거부한다. PHP 확장 runner는 plan과
+// Mermaid vector를 읽지 않는다.
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
-  for (const runner of runners) {
+  for (const runner of runners.filter(runner => runner.reads.includes(mutation.file))) {
     caseTest(`${runner.name} rejects ${mutation.file} ${location} that ${mutation.problem}`, TIMEOUT, async () => {
       const result = await runRunner(runner, inputs, TIMEOUT);
       assert.notEqual(result.code, 0, `${runner.name} exited 0`);
