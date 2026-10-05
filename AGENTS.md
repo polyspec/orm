@@ -53,8 +53,10 @@
   a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
   so only the setup steps start servers that outlive a step.
-- A local `make check` remains possible but is no required step before a push; during an item
-  only its Red/Green tests and `make owner-check` run (below). A push needs the
+- During development run unit tests only: the Red/Green unit cases of what changed. End-to-end runs
+  (real database servers, conformance across languages, browsers, containers, full builds),
+  `make owner-check` and the full suite run in CI after the push, and no local check is required
+  before a push; read each CI report and fix what it finds. A push needs the
   owner's approval each time and happens only when no checklist item is `[~]`. A CI failure is
   fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
 - `make check` refuses before any step while a checklist item, sub-items included, is `[~]`,
@@ -73,7 +75,9 @@
   subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
   through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
   commit cannot be changed and `git-check` would fail on it from then on.
-- Owner checks: before each commit run `make owner-check` (or `make owner-check PATHS="<paths>"`),
+- Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
+  checks owning the changed files; no rule requires it before a commit or a push, because CI runs
+  the full suite after the push.
   Every verification command of `contracts/features.json` declares `inputs`, and every coverage
   part (an owner client or a dependent part) declares its `tests` and optional `inputs`. The command runs
   only the commands and parts whose inputs are a changed file or whose declared fixture data names
@@ -90,11 +94,11 @@
   without one. Do not choose owner checks by hand. A changed file that is no input selects nothing,
   and `make owner-check` prints that; declare it as an input of the command that runs it, and
   declare a new make target's scope. Before a commit, also search the tests and scripts for the name of every changed file and
-  run those that read it. State the commands and their pass counts in the item's evidence.
+  run the unit tests among those that read it. State the commands and their pass counts in the item's evidence.
 - A verification that `contracts/features.json` declares with `environment: linux-runner`, such as
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
-  another machine prints it as a RUNNER line and does not count it. CI runs it there.
-- During an item run only the Red/Green tests of what changed and `make owner-check`; never rerun
+  another machine prints it as a RUNNER line and does not count it. CI runs it.
+- During an item run only the Red/Green unit tests of what changed; never rerun
   tests mechanically after each fix. Every test case, a short verification unit, reports its own
   running, completion, success or failure with its elapsed time and has its own timeout; a
   whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,

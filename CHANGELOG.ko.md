@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.64: 개발하는 동안에는 unit test만 실행한다. end-to-end 실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
+
 - G5.61: 명령을 자기 process group으로 시작한 script는 명령이 끝날 때 그 group을 확인하고 남은 process가 있으면 실패한다(`endGroup`). `make repo-check`는 그 확인이 없는 `detached: true` spawn을 거부한다.
 
 - G5.60: `make repo-check`는 `defer` 뒤에 같은 package의 helper를 거쳐 닿는 `os.Exit`도 거부하고, 그렇게 하던 다섯 program(bench installer, example 둘, Go conformance runner, Go introspection 도구)은 `os.Exit(run())`으로 끝나므로 defer된 close가 실행된다.
