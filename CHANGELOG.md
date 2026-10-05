@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-6: `tests/go-test.mjs` builds the test binaries of every `go test` as the long operation `go-build/<packages>` with step logs and no deadline, and `fuzz-check` and the Go build of `timing-check` run under `tests/run-long.mjs`.
+
 - G5.30-5: every TypeScript build and type check of the Makefile, `npm run typescript:test` and `scripts/typescript/sqlite-test.sh` runs under `tests/run-long.mjs` with step logs and no deadline.
 
 - G5.30-4: the `cargo test --no-run` build before every `cargo test` run of the Makefile, the feature verification commands and `scripts/client-db-test.sh` runs under `tests/run-long.mjs` with step logs and no deadline.
