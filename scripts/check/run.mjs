@@ -19,7 +19,7 @@
 // 허용된 실행은 database 만들기와 지우기, 각 target의 시작과 결과를 .runtime/full-run.json에
 // 기록한다. `--rerun-failed`는 target을 인자로 받지 않고 그 기록에서 통과하지 못한 target을 실행한다.
 //
-// Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--full-run] <servers env> <target>...
+// Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--full-run] <servers env | -> <target>...
 //        node scripts/check/run.mjs --rerun-failed <servers env>
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -226,16 +226,20 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   }
   // downloads: check가 읽는 download가 있는지 network 없이 확인한다(scripts/check/downloads.mjs). 빠진 download의 need를
   // 선언한 target은 그 이유(`run make install`)와 함께 not-run으로 기록하고, 나머지 target은 실행한다.
+  // 확인하는 것은 실행하는 target이 선언한 need의 download뿐이다: 문서만 build하는 실행은 Rust crate가 필요 없다.
+  const wanted = new Set(targets.flatMap(target => needs[target] ?? []));
   let missing = [];
   await record('downloads', 'setup', async ({ step }) => {
-    missing = downloads(root);
+    missing = downloads(root).filter(({ need }) => wanted.has(need));
     for (const { message } of missing) step(`downloads: ${message}`);
     if (missing.length) throw new Error(`${missing.length} download(s) of the checks are missing; run make install, which downloads them`);
     step('downloads: every download of the checks is present');
   });
   for (const { need, message } of missing) failedSetup[need] ??= message;
-  // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다.
-  const serversReady = await record('servers', 'setup', async ({ step }) => {
+  // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다. servers가
+  // 없는 실행(문서 workflow, `-`)은 server와 database 단계를 두지 않고, database가 필요한 target을 not-run으로 기록한다.
+  if (!servers) failedSetup.databases = 'this run has no database servers';
+  const serversReady = servers && await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);
     Object.assign(process.env, env);
     step(`read ${Object.keys(env).length} variables from ${servers}`);
@@ -245,7 +249,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       step(`holding the shared lease of ${env.ORM_TEST_SERVERS_LEASES}`);
     }
   });
-  if (!serversReady) failedSetup.databases = `the setup step servers failed: ${results.at(-1).failures.join(' / ')}`;
+  if (servers && !serversReady) failedSetup.databases = `the setup step servers failed: ${results.at(-1).failures.join(' / ')}`;
   let created = false;
   if (serversReady) {
     created = await record('databases/create', 'setup', ({ step, spawned }) =>
@@ -261,7 +265,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     await record(target, 'target', async ({ step, spawned, options }) => {
       // 하위 make는 Makefile이 정하는 이 checkout의 Rust target directory를 쓴다(AGENTS.md).
       // -k는 recipe의 하위 target 하나가 실패해도 그와 무관한 하위 target을 실행한다.
-      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers}`, `DECIMAL_ENV=${decimalEnv}`, target], step, spawned, options);
+      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers ?? ''}`, `DECIMAL_ENV=${decimalEnv}`, target], step, spawned, options);
     });
   }
   // database는 만들기가 중간에 실패해도 만든 만큼 지운다.
@@ -281,11 +285,13 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...(recorder?.writeErrors ?? [])].join('\n')}`);
   if (failed.length) console.log(`check: ${failed.length} of ${results.length} step(s) failed or did not run; report ${relative(root, report)}`);
   // summary는 기록에서 만든다. 기록이 없는 실행(make bench, make run-databases)은 이 실행의 결과로 만든다.
+  // 기록이 없는 실행(make run-databases, 문서 workflow의 make docs-ci)은 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다. 기록이
+  // 있는 make check는 summary 단계(scripts/check/summary.mjs)가 쓴다.
   writer.run(join(report, 'summary.md'), () => publish(summary(finished ?? {
     commit: '', tree: '', started: '', ended: new Date().toISOString(), result: failed.length ? 'failed' : 'passed',
     setup: results.filter(result => setupLabel(result.label)).map(toStep),
     targets: results.filter(result => !setupLabel(result.label)).map(toStep),
-  }, { run: current, report: relative(root, report) }), report));
+  }, { run: current, report: relative(root, report) }), report, { step: !finished }));
   active = null;
   return failed.length || writeFailures ? 1 : 0;
 }
@@ -326,5 +332,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   handleCrashes();
-  process.exitCode = await runChecks({ root, mode, servers: resolve(serversArgument), targets, run: command(root) });
+  // servers `-`는 server 없는 실행이다.
+  process.exitCode = await runChecks({ root, mode, servers: serversArgument === '-' ? null : resolve(serversArgument), targets, run: command(root) });
 }

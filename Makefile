@@ -732,6 +732,12 @@ docs-dev:
 docs-build:
 	npm run docs:build
 
+# docs-ci는 문서 workflow의 검사(docs-build, docs-verify-idempotent, docs-static-check)를 make check의 runner로
+# test server 없이 실행한다(scripts/check/run.mjs `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
+# .runtime/check/<실행 id>/report에 남기며, workflow는 그것을 job summary와 artifact로 올린다.
+docs-ci:
+	node scripts/check/run.mjs - docs-build docs-verify-idempotent docs-static-check
+
 docs-check:
 	npm run docs:check
 
@@ -807,6 +813,8 @@ rust-check/clippy-test-faults: lease-tool
 # install은 check가 읽는 것을 download한다: npm package(root와 TypeScript client), Composer package, Rust
 # toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node. 이미 받은 것은 다시 받지 않는다.
 # 부분은 서로 독립이다(make -k).
+
+.PHONY: docs-ci
 .PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
 install: install-node install-php install-rust install-go install-node-min
 install-node:
