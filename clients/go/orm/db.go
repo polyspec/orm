@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"os"
@@ -533,11 +534,19 @@ func mapDriverErr(err error) error {
 			return mapped
 		}
 	}
+	// driver가 연결을 더 쓸 수 없다고 알린 오류는 연결을 잃은 오류다.
+	if errors.Is(err, driver.ErrBadConn) {
+		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error(), Cause: err}
+	}
 	// trigger가 거절한 write 같은 나머지 driver 오류는 DRIVER다.
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
 func mapMySQLErr(err error) error {
+	// go-sql-driver는 server가 끝냈거나 끊긴 연결의 statement를 ErrInvalidConn으로 알린다.
+	if errors.Is(err, mysql.ErrInvalidConn) {
+		return &ir.Error{Code: CodeConnectionLost, Msg: err.Error()}
+	}
 	var me *mysql.MySQLError
 	if !errors.As(err, &me) {
 		return err
@@ -558,6 +567,8 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
 	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
+	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: server가 쉬던 연결을 끝냈다
+		return &ir.Error{Code: CodeConnectionLost, Msg: me.Error()}
 	}
 	return err
 }

@@ -139,6 +139,11 @@ async function rollbackFailed(driver, dsn) {
       await probe(db, 'end').create();
     }, { retry: 0 }));
     checkRollback(error, 'transaction');
+    if (driver !== 'sqlite') {
+      // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+      check(error?.cause?.code === 'CONNECTION_LOST', `the callback error is CONNECTION_LOST: ${error?.cause?.code} ${error?.cause?.message}`);
+      check(error?.rollback?.code === 'CONNECTION_LOST', `the rollback error is CONNECTION_LOST: ${error?.rollback?.code} ${error?.rollback?.message}`);
+    }
     if (driver === 'sqlite') {
       check(String(error?.cause?.message).includes('rollback probe ended the transaction'), `callback error ${error?.cause?.message}`);
       check(await new RollbackProbe().connect(db).getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');

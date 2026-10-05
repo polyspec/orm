@@ -157,6 +157,12 @@ function rollbackFailed(string $dsn): void
         (new RollbackProbe)($db)->setLabel('end')->create();
     }, retry: 0));
     checkRollback($e, 'transaction');
+    if ($driver !== 'sqlite' && $e instanceof OrmException) {
+        // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+        $callback = $e->getPrevious();
+        check($callback instanceof OrmException && $callback->code_ === Code::CONNECTION_LOST, 'the callback error is CONNECTION_LOST: ' . ($callback === null ? 'none' : $callback->getMessage()));
+        check($e->rollback instanceof OrmException && $e->rollback->code_ === Code::CONNECTION_LOST, 'the rollback error is CONNECTION_LOST: ' . ($e->rollback === null ? 'none' : $e->rollback->getMessage()));
+    }
     if ($driver === 'sqlite' && $e instanceof OrmException && $e->getPrevious() !== null) {
         check(str_contains($e->getPrevious()->getMessage(), 'rollback probe ended the transaction'), 'callback error ' . $e->getPrevious()->getMessage());
         check((new RollbackProbe)($db)->getCount() === 0, 'the trigger rolled the transaction back and the connection serves later requests');

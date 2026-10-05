@@ -215,7 +215,7 @@ final class SchemaUtils
                 }
                 self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $target));
             } catch (\PDOException $e) {
-                throw OrmException::fromDriver($e, $driver);
+                throw $db->driverError($e);
             }
         });
         if ($driver !== 'mysql') {
@@ -271,7 +271,7 @@ final class SchemaUtils
                 self::verifySet(Dbspec::installedDifferences($live->document, $live->unsupported, $document));
                 return $added;
             } catch (\PDOException $e) {
-                throw OrmException::fromDriver($e, $driver);
+                throw $db->driverError($e);
             }
         });
         if ($driver === 'postgres') {
@@ -300,7 +300,7 @@ final class SchemaUtils
         return CatalogRows::observed(static function (string $query, int $start, ?\Throwable $failure) use ($db, $tx): void {
             $error = match (true) {
                 $failure === null => null,
-                $failure instanceof \PDOException => OrmException::fromDriver($failure, $db->driver()),
+                $failure instanceof \PDOException => $db->driverError($failure),
                 default => new OrmException(Code::DRIVER, $failure->getMessage(), $failure),
             };
             $db->publish(StatementEvent::SCHEMA, [], $tx, $query, [], $start, $error);
@@ -602,7 +602,7 @@ final class AesUtils
             try {
                 $up = $db->pdo()->prepare($pg ? preg_replace('/\$\d+/', '?', $update) : $update);
             } catch (\PDOException $e) {
-                throw OrmException::fromDriver($e, $db->driver());
+                throw $db->driverError($e);
             }
             while (true) {
                 $batch = $db->fetch(StatementEvent::UTILITY, $tables, $tx, $select, [$keyring->currentVersion]);

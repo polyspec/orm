@@ -132,6 +132,18 @@ func rollbackFailed(t *testing.T, driver string) {
 		return probeCreate(model, "end")
 	}, orm.Retry(0))
 	callback := checkRollback(t, err, "transaction")
+	if driver != "sqlite" {
+		// server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+		var coded *orm.Error
+		errors.As(err, &coded)
+		rollback := coded.Cause.(interface{ Unwrap() []error }).Unwrap()[1]
+		if orm.ErrorCode(callback) != orm.CodeConnectionLost {
+			t.Errorf("the callback error is %v, want CONNECTION_LOST", callback)
+		}
+		if orm.ErrorCode(rollback) != orm.CodeConnectionLost {
+			t.Errorf("the rollback error is %v, want CONNECTION_LOST", rollback)
+		}
+	}
 	if driver == "sqlite" {
 		if !strings.Contains(callback.Error(), "rollback probe ended the transaction") {
 			t.Fatalf("callback error %v", callback)

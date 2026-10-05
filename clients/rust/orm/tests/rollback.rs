@@ -163,6 +163,12 @@ async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
         .await
         .expect_err("transaction");
     let callback = check_rollback(driver, &error, "transaction");
+    if driver != "sqlite" {
+        // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
+        let orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
+        assert_eq!(callback.code(), orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
+        assert_eq!(rollback.code(), orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
+    }
     if driver == "sqlite" {
         assert!(callback.to_string().contains("rollback probe ended the transaction"), "callback error {callback}");
         assert_eq!(orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");

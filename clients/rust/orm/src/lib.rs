@@ -103,7 +103,9 @@ impl std::error::Error for Error {
 /// PostgreSQL 57014, SQLite 9, and SQLite BUSY (5, any extended form: another connection held the lock
 /// when busy_timeout ended) — maps to CANCELED. A write the read-only server or connection rejects —
 /// MySQL 1290 / 1792, PostgreSQL 25006, SQLite READONLY (8, primary code of any extended form) — maps
-/// to READ_ONLY. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
+/// to READ_ONLY. A connection the server ended or that broke — MySQL 4031, PostgreSQL SQLSTATE class 08 and
+/// 57P01 / 57P02 / 57P05, and an I/O error of an open connection's socket (end of stream, reset, aborted,
+/// broken pipe, not connected) — maps to CONNECTION_LOST. Every other driver error, such as a write that a trigger refuses, maps to DRIVER with the
 /// driver message. Each keeps the driver error as its source.
 impl From<sqlx::Error> for Error {
     fn from(e: sqlx::Error) -> Self {
@@ -120,6 +122,8 @@ impl From<sqlx::Error> for Error {
                     (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
                     (1290, _) | (1792, _) => Some((codes::READ_ONLY, m.message().to_owned())),
                     (3819, _) | (4025, _) => Some((codes::CONSTRAINT, m.message().to_owned())),
+                    // ER_CLIENT_INTERACTION_TIMEOUT: server가 쉬던 연결을 끝냈다.
+                    (4031, _) => Some((codes::CONNECTION_LOST, m.message().to_owned())),
                     (1298, _) => {
                         return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
                     }
@@ -135,6 +139,9 @@ impl From<sqlx::Error> for Error {
                     "57014" => Some((codes::CANCELED, msg())),
                     "25006" => Some((codes::READ_ONLY, msg())),
                     "23514" => Some((codes::CONSTRAINT, msg())),
+                    // class 08은 connection exception이다. 57P01(admin_shutdown), 57P02(crash_shutdown),
+                    // 57P05(idle_session_timeout)는 server가 session을 끝낼 때 보낸다.
+                    c if c.starts_with("08") || matches!(c, "57P01" | "57P02" | "57P05") => Some((codes::CONNECTION_LOST, msg())),
                     _ => Some((codes::DRIVER, msg())),
                 }
             } else if let Some(s) = d.try_downcast_ref::<sqlx::sqlite::SqliteError>() {
@@ -156,6 +163,14 @@ impl From<sqlx::Error> for Error {
             };
             if let Some((code, msg)) = mapped {
                 return Error::Driver { code: code.into(), msg, source: e };
+            }
+        }
+        // 연결의 socket이 끊겼다: server가 연결을 끝냈거나 연결이 깨졌다. 연결을 열지 못한
+        // 오류(ConnectionRefused 같은)는 연결을 잃은 오류가 아니다.
+        if let sqlx::Error::Io(io) = &e {
+            use std::io::ErrorKind::*;
+            if matches!(io.kind(), UnexpectedEof | ConnectionReset | ConnectionAborted | BrokenPipe | NotConnected) {
+                return Error::Driver { code: codes::CONNECTION_LOST.into(), msg: e.to_string(), source: e };
             }
         }
         Error::Driver { code: codes::DRIVER.into(), msg: e.to_string(), source: e }
