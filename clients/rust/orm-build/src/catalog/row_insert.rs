@@ -15,7 +15,7 @@ mod lock_tests;
 
 /// The statement that takes, on PostgreSQL, the lock an INSERT takes (ROW EXCLUSIVE) on the declared table. It
 /// conflicts with every schema change, which needs ACCESS EXCLUSIVE.
-pub(super) fn postgres_insert_lock(declared: &TableMetadata) -> Result<String, String> {
+fn postgres_insert_lock(declared: &TableMetadata) -> Result<String, String> {
     Ok(format!("LOCK TABLE {} IN ROW EXCLUSIVE MODE", qualified(declared, "postgres")?))
 }
 

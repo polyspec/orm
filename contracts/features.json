@@ -5741,6 +5741,7 @@
         "clients/rust/orm-build/tests/unit/mutation_safety.rs",
         "clients/rust/orm-build/tests/unit/read_only_disposal.rs",
         "clients/rust/orm-build/tests/unit/read_only_policy.rs",
+        "clients/rust/orm-build/tests/unit/row_insert_lock.rs",
         "clients/rust/orm-build/tests/unit/table_page_validation.rs",
         "clients/rust/orm-build/tests/unit/tool_column_budgets.rs",
         "clients/rust/orm-build/tests/unit/typed_bind_validation.rs",
@@ -5784,6 +5785,7 @@
             "clients/rust/orm-build/tests/unit/mutation_safety.rs",
             "clients/rust/orm-build/tests/unit/read_only_disposal.rs",
             "clients/rust/orm-build/tests/unit/read_only_policy.rs",
+            "clients/rust/orm-build/tests/unit/row_insert_lock.rs",
             "clients/rust/orm-build/tests/unit/table_page_validation.rs",
             "clients/rust/orm-build/tests/unit/tool_column_budgets.rs",
             "clients/rust/orm-build/tests/unit/typed_bind_validation.rs"
