@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-4: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test` 실행 앞의 `cargo test --no-run` build는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
+
 - G5.30-3: 기능 검증 명령의 tsc, go vet, cargo build 단계는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
 
 - G5.30-2: `tests/run-long.mjs`(Makefile의 `RUN_LONG`)와 `tests/testcase.mjs`의 `runLong`은 장기 작업을 단계 로그, 종료 코드, 결과와 함께 기한 없이 실행한다.
