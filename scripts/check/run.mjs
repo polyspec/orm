@@ -23,14 +23,14 @@
 //        node scripts/check/run.mjs --rerun-failed <servers env>
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { statfs } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
-import { failures, keepRunDirectory, limitLog, publish, reportDirectory, runName, summary, writeEnvironment } from './report.mjs';
+import { failures, keepRunDirectory, limitLog, publish, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
 // 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한 process의 id를 받는다.
@@ -112,9 +112,12 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   }
   const directory = resolve(root, '.runtime/check', runId);
   const report = reportDirectory(root, runId);
-  mkdirSync(join(report, 'targets'), { recursive: true });
+  // writer는 보고서의 모든 쓰기를 맡고 실패를 던지지 않고 모은다(reportWriter).
+  const writer = reportWriter();
+  writer.run(join(report, 'targets'), () => mkdirSync(join(report, 'targets'), { recursive: true }));
   if (current) current.report = relative(root, report);
-  writeEnvironment(root, report, { 'run id': runId, servers });
+  writer.run(join(report, 'environment.txt'), () => writeEnvironment(root, report, { 'run id': runId, servers }));
+  active = { recorder, writer, report, root, current };
   const testEnv = resolve(directory, 'env');
   const decimalEnv = resolve(directory, 'decimal-env');
 
@@ -129,20 +132,28 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     const header = kind === 'target'
       ? [`target ${label}`, `command: make --no-print-directory -k TEST_ENV=${testEnv} DECIMAL_ENV=${decimalEnv} ${label}`, 'recipe (Makefile):', recipeText(root, label), `inputs: ${targetInputs(root, label).join(' ')}`, '']
       : [`setup step ${label}`, ''];
-    writeFileSync(log, `${header.join('\n')}\n`);
+    const written = writer.failed.length;
+    writer.write(log, `${header.join('\n')}\n`);
     const passed = await runGroup(`check/${label}`, ({ step: report }) => body({
-      step: text => { appendFileSync(log, `${text}\n`); found.line(text); report(text); },
+      step: text => { writer.append(log, `${text}\n`); found.line(text); report(text); },
       spawned: child => { pid = child; },
-    }).catch(error => { appendFileSync(log, `${error.message}\n`); found.exit(error.message); throw error; }));
+    }).catch(error => { writer.append(log, `${error.message}\n`); found.exit(error.message); throw error; }));
     const elapsed = performance.now() - started;
-    const truncated = limitLog(log);
+    let truncated = null;
+    writer.run(log, () => { truncated = limitLog(log); });
     const details = { log: relative(root, log), elapsed: Math.round(elapsed), ...(passed ? {} : { failures: found.lines() }), ...(truncated ? { truncated } : {}) };
     // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 옮긴다.
     if (!passed && pid) {
       const runs = resolve(root, '.runtime/run');
       for (const entry of existsSync(runs) ? readdirSync(runs) : [])
-        if (entry.endsWith(`-${pid}`)) keepRunDirectory(join(runs, entry), join(report, 'targets', label.replaceAll('/', '-'), 'run', entry));
+        if (entry.endsWith(`-${pid}`)) {
+          const kept = join(report, 'targets', label.replaceAll('/', '-'), 'run', entry);
+          writer.run(kept, () => keepRunDirectory(join(runs, entry), kept));
+        }
     }
+    // 이 단계 동안 실패한 보고서 쓰기는 그 단계의 기록에 남는다.
+    const reportErrors = writer.failed.slice(written);
+    if (reportErrors.length) details.reportErrors = reportErrors;
     if (step) recorder.end(step, passed, details);
     results.push({ label, passed, elapsed, ...details });
     return passed;
@@ -195,16 +206,44 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
 
   for (const { label, passed, notRun, elapsed } of results)
     console.log(`check: ${notRun ? 'NOT-RUN' : passed ? 'PASS' : 'FAIL'} ${label} elapsed=${duration(elapsed)}${notRun ? `: ${notRun}` : ''}`);
+  // 단계 밖에서 실패한 보고서 쓰기와 기록 쓰기도 실행의 기록과 summary에 남는다.
+  const stepErrors = new Set(results.flatMap(result => result.reportErrors ?? []));
+  const runErrors = [...writer.failed.filter(error => !stepErrors.has(error)), ...(recorder?.writeErrors ?? [])];
+  if (current && runErrors.length) current.reportErrors = runErrors;
   const finished = recorder?.finish();
   const failed = results.filter(result => !result.passed);
+  const writeFailures = writer.failed.length + (recorder?.writeErrors.length ?? 0);
+  if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...(recorder?.writeErrors ?? [])].join('\n')}`);
   if (failed.length) console.log(`check: ${failed.length} of ${results.length} step(s) failed or did not run; report ${relative(root, report)}`);
   // summary는 기록에서 만든다. 기록이 없는 실행(make bench, make run-databases)은 이 실행의 결과로 만든다.
-  publish(summary(finished ?? {
+  writer.run(join(report, 'summary.md'), () => publish(summary(finished ?? {
     commit: '', tree: '', started: '', ended: new Date().toISOString(), result: failed.length ? 'failed' : 'passed',
     setup: results.filter(result => ['servers', 'databases/create', 'databases/drop'].includes(result.label)).map(toStep),
     targets: results.filter(result => !['servers', 'databases/create', 'databases/drop'].includes(result.label)).map(toStep),
-  }, { run: current, report: relative(root, report) }), report);
-  return failed.length ? 1 : 0;
+  }, { run: current, report: relative(root, report) }), report));
+  active = null;
+  return failed.length || writeFailures ? 1 : 0;
+}
+
+// active는 진행 중인 실행이다. runner가 처리하지 못한 오류(uncaughtException, unhandledRejection)는 crash가 기록한다.
+let active = null;
+
+// handleCrashes는 처리하지 못한 오류(uncaughtException, unhandledRejection)를 crash로 기록하고 1로 끝내게 한다.
+export function handleCrashes() {
+  for (const event of ['uncaughtException', 'unhandledRejection'])
+    process.on(event, error => { crash(error); process.exit(1); });
+}
+
+// crash는 처리하지 못한 오류를 `runner error: <stack>`으로 실행 기록에 남기고 실행을 crashed로 적은 뒤 summary를 쓴다.
+// 그 쓰기도 던지지 않는다. 호출한 쪽이 0이 아닌 상태로 끝낸다.
+export function crash(error) {
+  const reason = `runner error: ${error?.stack ?? String(error)}`;
+  console.error(`check: ${reason}`);
+  if (!active) return;
+  const { recorder, writer, report, root, current } = active;
+  active = null;
+  const record = recorder?.crash(reason);
+  if (record) writer.run(join(report, 'summary.md'), () => publish(summary(record, { run: current, report: relative(root, report), crashed: reason }), report));
 }
 
 const toStep = result => ({ name: result.label, status: result.notRun ? 'not-run' : result.passed ? 'passed' : 'failed', elapsed: result.elapsed, reason: result.notRun, failures: result.failures, log: result.log });
@@ -221,5 +260,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     process.exit(2);
   }
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+  handleCrashes();
   process.exitCode = await runChecks({ root, mode, servers: resolve(serversArgument), targets, run: command(root) });
 }

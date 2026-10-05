@@ -24,6 +24,29 @@ const DATABASE_FILE = /\.(sqlite|sqlite-wal|sqlite-shm|sqlite-journal|db|ibd)$/;
 
 export const reportDirectory = (root, id) => resolve(root, '.runtime/check', id, 'report');
 
+// reportWriter는 보고서의 모든 쓰기를 맡는다. 쓰기는 던지지 않는다: 실패하면 `report write failed: <path>: <code>
+// <message>`를 failed에 모으고 false를 돌려준다. runner는 그것을 단계 기록과 summary에 싣고 1로 끝난다. 없는
+// directory는 다시 만들지 않는다: 보고서 directory가 실행 도중 사라졌다면 그 사실이 실패로 남아야 한다.
+export function reportWriter() {
+  const failed = [];
+  const attempt = (path, action) => {
+    try {
+      action();
+      return true;
+    } catch (error) {
+      failed.push(`report write failed: ${path}: ${error.code ?? error.name}: ${error.message}`);
+      return false;
+    }
+  };
+  return {
+    failed,
+    write: (path, text) => attempt(path, () => writeFileSync(path, text)),
+    append: (path, text) => attempt(path, () => appendFileSync(path, text)),
+    // run은 보고서에 쓰는 다른 작업(환경, 실행 directory 보관, log 줄이기)을 같은 규칙으로 실행한다.
+    run: (path, action) => attempt(path, action),
+  };
+}
+
 // failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mjs, internal/testcase, PHP와 Rust의
 // testcase)는 case마다 `RUN <case>`, `STEP <case> ...`, `PASS <case>`나 `FAIL <case> ...: <이유>`를 쓴다. 끝나지
 // 않은 case(기한 초과로 멈춘 process, 죽은 process)는 RUN 뒤에 결과가 없으므로 그 case와 마지막 단계를 적는다.
@@ -185,12 +208,15 @@ export function summary(record, { run = record, report, crashed = null } = {}) {
   ];
   if (crashed) lines.push(`**The runner did not finish: ${crashed}.** The steps below are as the runner last recorded them; a step marked running stopped with the runner.`, '');
   lines.push(`${count('passed')} passed, ${count('failed')} failed, ${count('not-run')} not run because a setup step failed, ${count('running') + count('pending')} not finished.`, '');
+  if (run.reason) lines.push('```', run.reason, '```', '');
   if (report) lines.push(`Report: \`${report}\` (environment.txt, targets/<target>.log, targets/<target>/run/). A log or kept file larger than ${LIMIT_BYTES} bytes keeps only its last ${TAIL_BYTES} bytes, which its first line states.`, '');
   lines.push('| step | status | time | first failure lines |', '|---|---|---|---|');
   for (const step of steps) {
-    const detail = step.status === 'not-run' ? step.reason : (step.failures ?? []).slice(0, 3).join(' / ');
+    const detail = step.status === 'not-run' ? step.reason : [...(step.failures ?? []).slice(0, 3), ...(step.reportErrors ?? [])].join(' / ');
     lines.push(`| ${escape(step.name)} | ${step.status} | ${time(step)} | ${escape(detail ?? '')} |`);
   }
+  const writes = [...(run.reportErrors ?? []), ...steps.flatMap(step => step.reportErrors ?? [])];
+  if (writes.length) lines.push('', '## report write failures', '', '```', ...writes, '```');
   for (const step of steps.filter(step => step.status === 'failed' && step.failures?.length)) {
     lines.push('', `## ${step.name}`, '', `log: \`${step.log ?? ''}\``, '', '```', ...step.failures, '```');
   }
