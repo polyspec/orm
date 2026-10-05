@@ -12,9 +12,9 @@
 #   test-servers.sh stop
 #
 # start initializes the primaries and replicas, creates the databases
-# orm_test, orm_tools and orm_bench, seeds orm_bench and the SQLite bench file,
-# starts the poolers, and writes the environment file .runtime/servers/env
-# last. When that file exists, start prints it and changes nothing. A failed
+# orm_test and orm_tools, starts the poolers, and writes the environment file
+# .runtime/servers/env last. Each run creates its own bench and decimal
+# databases (scripts/check/databases.sh). When that file exists, start prints it and changes nothing. A failed
 # start stops the servers it started and keeps the logs in .runtime/servers.
 # stop stops the servers that start started and removes .runtime/servers.
 #
