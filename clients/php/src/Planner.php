@@ -124,10 +124,11 @@ final class Planner
         $sql .= $this->renderJoins($b, $root);
         $where = [];
         if ($rc !== null) {
+            $keyTypes = array_map(static fn(string $key): string => RuntimeModel::column($root->ent, $key)['type'], $rc->childKeys);
             if (count($rc->childKeys) === 1) {
-                $where[] = $this->qcol($root, $rc->childKeys[0]) . ' IN (' . $b->parent($rc->parentStep) . ')';
+                $where[] = $this->qcol($root, $rc->childKeys[0]) . ' IN (' . $b->parent($rc->parentStep, $keyTypes) . ')';
             } else {
-                $where[] = '(' . implode(', ', $this->qualified($root, $rc->childKeys)) . ') IN ((' . $b->parent($rc->parentStep) . '))';
+                $where[] = '(' . implode(', ', $this->qualified($root, $rc->childKeys)) . ') IN ((' . $b->parent($rc->parentStep, $keyTypes) . '))';
             }
         }
         if ($root->ent['soft_delete'] !== '') {
@@ -521,16 +522,17 @@ final class Planner
             $fn = $p['value']['name'];
             // datetime column과 비교하는 clock은 그 column의 소수 자리를 쓴다.
             $precision = ($col['type'] ?? '') === 'datetime' ? $col['precision'] : 6;
-            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0]), static fn(): string => $b->now($precision))
+            $value = $this->d->valueFunction($fn, static fn(): string => $b->param($p['value']['ps'][0], self::valueFunctionArgType($fn)), static fn(): string => $b->now($precision))
                 ?? throw self::err(Code::CAPABILITY_UNSUPPORTED, "$fn is not available on {$this->d->name}");
             return $lhs . ' ' . self::cmp($op) . ' ' . $value;
         }
         if (isset($p['fn'])) {
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
+            $type = self::functionType($p['fn']['name'], $col);
             return match ($op) {
-                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ', array_map(static fn(int $i): string => $b->param($i), $p['ps'])) . ')',
-                'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0]) . ' AND ' . $b->param($p['ps'][1]),
-                default => $fn . ' ' . self::cmp($op) . ' ' . $b->param($p['p']),
+                'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(', ', array_map(static fn(int $i): string => $b->param($i, $type), $p['ps'])) . ')',
+                'between' => $fn . ' BETWEEN ' . $b->param($p['ps'][0], $type) . ' AND ' . $b->param($p['ps'][1], $type),
+                default => $fn . ' ' . self::cmp($op) . ' ' . $b->param($p['p'], $type),
             };
         }
         $aes = RuntimeModel::encrypted($col);
@@ -545,7 +547,8 @@ final class Planner
                     if ($op !== 'eq' && $op !== 'not_eq') {
                         throw self::err(Code::OPERATOR_NOT_ALLOWED, 'AES columns support only equality through a declared blind index');
                     }
-                    return $this->qcol($s, $this->blindIndex($s, $col)) . ' ' . self::cmp($op) . ' ' . $b->blindIndex($p['p']);
+                    $index = $this->blindIndex($s, $col);
+                    return $this->qcol($s, $index) . ' ' . self::cmp($op) . ' ' . $b->blindIndex($p['p'], RuntimeModel::column($s->ent, $index)['type']);
                 }
                 return $lhs . ' ' . self::cmp($op) . ' ' . $this->renderValue($b, $col, $p['p']);
             case 'eq_col':
@@ -564,8 +567,10 @@ final class Planner
             case 'not_in':
                 $keyword = $op === 'not_in' ? 'NOT IN' : 'IN';
                 if ($aes) {
-                    $lhs = $this->qcol($s, $this->blindIndex($s, $col));
-                    $values = array_map(static fn(int $i): string => $b->blindIndex($i), $p['ps']);
+                    $index = $this->blindIndex($s, $col);
+                    $lhs = $this->qcol($s, $index);
+                    $indexType = RuntimeModel::column($s->ent, $index)['type'];
+                    $values = array_map(static fn(int $i): string => $b->blindIndex($i, $indexType), $p['ps']);
                 } else {
                     $values = array_map(fn(int $i): string => $this->renderValue($b, $col, $i), $p['ps']);
                 }
@@ -579,9 +584,9 @@ final class Planner
             case 'is_not_null':
                 return "$lhs IS NOT NULL";
             case 'contains':
-                return $this->d->contains($lhs, $b->param($p['p'], 'like_contains'));
+                return $this->d->contains($lhs, $b->colParam($p['p'], $col, 'like_contains'));
             case 'contains_binary':
-                return $this->d->containsBinary($lhs, static fn(string $transform): string => $b->param($p['p'], $transform));
+                return $this->d->containsBinary($lhs, static fn(string $transform): string => $b->colParam($p['p'], $col, $transform));
         }
         throw self::err(Code::OPERATOR_UNKNOWN, $op);
     }
@@ -599,17 +604,23 @@ final class Planner
     {
         $styles = $this->sqlStyles($col);
         $host = array_values(array_filter($col['codec'], fn(string $st): bool => in_array($st, RuntimeModel::HOST_STAGES, true) && !$this->d->handlesStyle($st)));
-        $ph = $b->param($i, '', $host, self::bindType($col), $col);
         if ($styles === []) {
-            return $ph;
+            return $b->colParam($i, $col, '', $host);
         }
-        return $this->d->writeExpr($ph, $styles);
+        // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+        return $this->d->writeExpr($b->param($i, self::styleInputType($styles[0]), '', $host), $styles);
     }
 
-    /** executor가 bind 전에 정규화하는 type이다. codec column은 codec이 값을 만든다. */
-    private static function bindType(array $col): string
+    /** SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다. hex는 byte를, ip는 IP 주소 text를 받는다. */
+    private static function styleInputType(string $style): string
     {
-        return $col['codec'] === [] && in_array($col['type'], ['date', 'time', 'datetime', 'decimal'], true) ? $col['type'] : '';
+        return $style === 'ip' ? 'text' : 'bytes';
+    }
+
+    /** 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다. */
+    private static function valueFunctionArgType(string $name): string
+    {
+        return (Dialect::VALUE_FUNCTION_UNITS[$name] ?? '') === 'second' ? 'f64' : 'i32';
     }
 
     private function resolvePath(PlanScope $s, string $path): PlanScope
@@ -668,7 +679,7 @@ final class Planner
         $parts = explode('?', $frag);
         $out = array_shift($parts);
         foreach ($parts as $k => $part) {
-            $out .= $b->param($ps[$k]) . $part;
+            $out .= $b->rawParam($ps[$k]) . $part;
         }
         return $out;
     }
@@ -791,7 +802,7 @@ final class Planner
             if (($a['expr'] ?? '') !== '' || isset($a['plus_p']) || isset($a['minus_p'])) {
                 throw self::err(Code::IR_INVALID, 'blind index assignment must use its AES source value');
             }
-            return !empty($a['null']) ? 'NULL' : $b->blindIndex($a['p']);
+            return !empty($a['null']) ? 'NULL' : $b->blindIndex($a['p'], $col['type']);
         }
         // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
         $q = $this->d->quote($ent['table']) . '.' . $this->d->quote($col['name']);
@@ -800,12 +811,12 @@ final class Planner
             return $this->fill($b, $this->renderExpr($scope, $a['expr']), $a['ps'] ?? []);
         }
         if (isset($a['plus_p'])) {
-            return $q . ' + ' . $b->param($a['plus_p']);
+            return $q . ' + ' . $b->colParam($a['plus_p'], $col);
         }
         if (isset($a['minus_p'])) {
             // clamp at zero
-            $ph = $b->param($a['minus_p']);
-            return "CASE WHEN $q > $ph THEN $q - " . $b->param($a['minus_p']) . ' ELSE 0 END';
+            $ph = $b->colParam($a['minus_p'], $col);
+            return "CASE WHEN $q > $ph THEN $q - " . $b->colParam($a['minus_p'], $col) . ' ELSE 0 END';
         }
         if (!empty($a['null'])) {
             return 'NULL';
@@ -844,7 +855,7 @@ final class Planner
         }
         if ($versioned) {
             $cols[] = $this->d->quote($ent['aes_version']);
-            $vals[] = $b->config('aes_version');
+            $vals[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
         }
         if ($audited) {
             $cols[] = $this->d->quote($ent['audit']);
@@ -869,7 +880,7 @@ final class Planner
                     $more[] = $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), ['column' => $a['column'], 'p' => $row[$source[$i]]]);
                 }
                 if ($versioned) {
-                    $more[] = $b->config('aes_version');
+                    $more[] = $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
                 }
                 if ($audited) {
                     $more[] = $b->audit($ent);
@@ -889,7 +900,7 @@ final class Planner
                 $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, RuntimeModel::column($ent, $a['column']), $a);
             }
             if (self::assignsAes($ent, $duplicate)) {
-                $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
+                $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
             }
             if ($audited) {
                 $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
@@ -923,7 +934,7 @@ final class Planner
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
         if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
         }
         // the updated time is always assigned: optimistic locking needs the same behavior everywhere
         $updated = $ent['updated'];
@@ -1003,7 +1014,7 @@ final class Planner
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
         if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version');
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = ' . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
         }
         $sets[] = $this->d->quote($soft) . ' = NULL';
         if ($ent['audit'] !== '') {
@@ -1151,11 +1162,21 @@ final class PlanBinds
         return $this->d->placeholder(count($this->slots));
     }
 
+    /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
+    private function typed(array $slot): string
+    {
+        if (($slot['col_type'] ?? '') === '') {
+            throw new OrmException(Code::IR_INVALID, sprintf('bind slot %d (%s) has no declared type', count($this->slots), $slot['from']));
+        }
+        return $this->add($slot);
+    }
+
     /**
+     * request 값 Params[$i]의 placeholder다. $type은 그 값의 dbspec type이다.
+     *
      * @param list<string> $hostStyles
-     * @param ?array $col decimal의 precision과 scale, datetime의 precision을 slot에 넣는 column
      */
-    public function param(int $i, string $transform = '', array $hostStyles = [], string $colType = '', ?array $col = null): string
+    public function param(int $i, string $type, string $transform = '', array $hostStyles = []): string
     {
         $slot = ['from' => 'param', 'param' => $i];
         if ($transform !== '') {
@@ -1164,27 +1185,54 @@ final class PlanBinds
         if ($hostStyles !== []) {
             $slot['host_styles'] = $hostStyles;
         }
-        if ($colType !== '') {
-            $slot['col_type'] = $colType;
+        $slot['col_type'] = $type;
+        return $this->typed($slot);
+    }
+
+    /**
+     * column $col과 비교하거나 $col에 할당하는 값 Params[$i]의 placeholder다. type은 $col의 type이고
+     * decimal의 precision과 scale, datetime의 precision을 싣는다.
+     *
+     * @param list<string> $hostStyles
+     */
+    public function colParam(int $i, array $col, string $transform = '', array $hostStyles = []): string
+    {
+        $slot = ['from' => 'param', 'param' => $i];
+        if ($transform !== '') {
+            $slot['transform'] = $transform;
         }
-        if ($colType === 'decimal') {
+        if ($hostStyles !== []) {
+            $slot['host_styles'] = $hostStyles;
+        }
+        $slot['col_type'] = $col['type'];
+        if ($col['type'] === 'decimal') {
             $slot['precision'] = $col['precision'];
             $slot['scale'] = $col['scale'];
-        } elseif ($colType === 'datetime') {
+        } elseif ($col['type'] === 'datetime') {
             $slot['precision'] = $col['precision'];
         }
-        return $this->add($slot);
+        return $this->typed($slot);
     }
 
-    /** Plaintext the executor hashes with the blind-index key. */
-    public function blindIndex(int $i): string
+    /**
+     * raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로 type이
+     * 없다. raw fragment는 G5.32-3에서 사라진다.
+     */
+    public function rawParam(int $i): string
     {
-        return $this->param($i, '', ['blind_index']);
+        return $this->add(['from' => 'param', 'param' => $i]);
     }
 
-    public function config(string $name): string
+    /** Plaintext the executor hashes with the blind-index key; $type is the index column's type. */
+    public function blindIndex(int $i, string $type): string
     {
-        return $this->add(['from' => 'config', 'param' => 0, 'name' => $name]);
+        return $this->param($i, $type, '', ['blind_index']);
+    }
+
+    /** executor 설정 값이다. $type은 그 값을 쓰는 column의 type이다. */
+    public function config(string $name, string $type): string
+    {
+        return $this->typed(['from' => 'config', 'param' => 0, 'name' => $name, 'col_type' => $type]);
     }
 
     /**
@@ -1194,25 +1242,30 @@ final class PlanBinds
      */
     public function now(int $precision): string
     {
-        return $this->add(['from' => 'now', 'param' => 0, 'precision' => $precision]);
+        return $this->typed(['from' => 'now', 'param' => 0, 'precision' => $precision, 'col_type' => 'datetime']);
     }
 
     /**
      * transaction의 audit 기록 key다. name은 audit 기록 table이며, executor는 transaction의
-     * audit이 그 table의 행인지 확인한다.
+     * audit이 그 table의 행인지 확인한다. type은 audit column의 type이다.
      */
     public function audit(array $ent): string
     {
-        return $this->add(['from' => 'audit', 'param' => 0, 'name' => $ent['audit_record']]);
+        return $this->typed(['from' => 'audit', 'param' => 0, 'name' => $ent['audit_record'], 'col_type' => RuntimeModel::column($ent, $ent['audit'])['type']]);
     }
 
-    /** The one placeholder the executor expands to the parent key values. */
-    public function parent(int $step): string
+    /**
+     * The one placeholder the executor expands to the parent key values.
+     *
+     * @param list<string> $keyTypes the types of the compared key columns, in key order
+     */
+    public function parent(int $step, array $keyTypes): string
     {
         $slot = ['from' => 'parent', 'param' => 0];
         if ($step !== 0) {
             $slot['step'] = $step;
         }
+        $slot['key_types'] = $keyTypes;
         return $this->add($slot);
     }
 }

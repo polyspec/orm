@@ -2,8 +2,8 @@
 declare(strict_types=1);
 // planner feature coverage: contracts/fixtures/planner.json의 요청에
 // schema/bench.dbs의 manifest hash를 더해 각 dialect의 PHP engine으로
-// compile하고, statement의 role, sql, bind slot의 param 순서나 오류 code를
-// fixture와 비교한다.
+// compile하고, statement의 role, sql, bind slot(출처, param 번호, type)이나 오류
+// code를 fixture와 비교한다.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
@@ -35,9 +35,14 @@ function plannerCase(string $root, array $fixture, string $id): void
             continue;
         }
         $plan = $engine->compile($request);
+        // key는 fixture의 정렬된 key 순서다.
         $statements = array_map(static fn(array $step): array => [
-            'params' => array_map(static fn(array $slot): mixed => match ($slot['from'] ?? '') { 'param' => $slot['param'], 'parent' => -1, default => $slot }, $step['bind_slots']),
             'role' => $step['role'],
+            'slots' => array_map(static fn(array $slot): array => match ($slot['from']) {
+                'param' => ['from' => 'param', 'param' => $slot['param'], 'type' => $slot['col_type'] ?? ''],
+                'parent' => ['from' => 'parent', 'key_types' => $slot['key_types']],
+                default => ['from' => $slot['from'], 'type' => $slot['col_type'] ?? ''],
+            }, $step['bind_slots']),
             'sql' => $step['sql'],
             'tables' => $step['tables'],
         ], $plan['steps']);
@@ -52,4 +57,8 @@ runCoverageCases($argv, [
     'planner_restore' => fn() => plannerCase($root, $fixture, 'planner_restore'),
     'planner_tables' => fn() => plannerCase($root, $fixture, 'planner_tables'),
     'planner_restore_rejects_non_key' => fn() => plannerCase($root, $fixture, 'planner_restore_rejects_non_key'),
+    'planner_bind_types_select' => fn() => plannerCase($root, $fixture, 'planner_bind_types_select'),
+    'planner_bind_types_update' => fn() => plannerCase($root, $fixture, 'planner_bind_types_update'),
+    'planner_bind_types_insert' => fn() => plannerCase($root, $fixture, 'planner_bind_types_insert'),
+    'planner_parent_key_types' => fn() => plannerCase($root, $fixture, 'planner_parent_key_types'),
 ]);

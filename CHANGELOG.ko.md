@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-2: 네 planner의 모든 bind slot은 placeholder가 받는 값의 dbspec type을 가진다(`col_type`, parent slot은 `key_types`). type 없는 slot은 `IR_INVALID`이고, G5.32-3까지 raw fragment의 placeholder만 type이 없다.
+
 - G5.30-13-1: test server는 Makefile이 장기 작업으로 build하는 Go 명령 `tests/stop-process`(macOS는 kqueue, Linux는 pidfd)로 멈춘다. Python helper는 없어졌고, `make repo-check`는 Go, PHP, Rust, TypeScript 밖의 언어로 쓴 도구를 실패시킨다.
 
 - G5.30-13: `make test-servers-stop`은 각 server process의 종료를 polling 대신 운영체제의 알림(`scripts/stop-process.py`: macOS는 kqueue, Linux는 pidfd)으로 기한 없이 기다린다.
