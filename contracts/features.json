@@ -87,7 +87,8 @@
         "clients/go/orm/mysql_tls_test.go",
         "clients/php/tests/mysql_tls.php",
         "clients/rust/orm/tests/mysql_tls.rs",
-        "clients/typescript/tests/mysql_tls.mjs"
+        "clients/typescript/tests/mysql_tls.mjs",
+        "tests/dsn/sqlite-paths.json"
       ],
       "docs": [
         "docs/config.md",
@@ -109,14 +110,16 @@
           "id": "dsn-php",
           "command": "php clients/php/tests/dsn.php",
           "inputs": [
-            "clients/php/tests/dsn.php"
+            "clients/php/tests/dsn.php",
+            "tests/dsn/sqlite-paths.json"
           ]
         },
         {
           "id": "dsn-typescript",
           "command": "node clients/typescript/tests/dsn.mjs",
           "inputs": [
-            "clients/typescript/tests/dsn.mjs"
+            "clients/typescript/tests/dsn.mjs",
+            "tests/dsn/sqlite-paths.json"
           ]
         },
         {
@@ -124,7 +127,9 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs dsn-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name",
           "inputs": [
             "clients/rust/orm/tests/zone.rs",
-            "clients/rust/orm/tests/sqlite_file_name.rs"
+            "clients/rust/orm/tests/sqlite_file_name.rs",
+            "contracts/fixtures/zone.dbs",
+            "tests/dsn/sqlite-paths.json"
           ]
         },
         {
@@ -162,6 +167,35 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs dsn-mysql-tls-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
           "inputs": [
             "clients/rust/orm/tests/mysql_tls.rs"
+          ]
+        },
+        {
+          "id": "sqlite-path-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestSQLitePathCases)$' -count=1",
+          "inputs": [
+            "clients/go/orm/sqlite_path_test.go",
+            "tests/dsn/sqlite-paths.json"
+          ]
+        },
+        {
+          "id": "replica-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run '^(TestPrimaryAndReplica|TestReadOnlySQLite)$' -count=1",
+          "inputs": [
+            "clients/go/model/replica_test.go"
+          ]
+        },
+        {
+          "id": "example-dsn-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs example-dsn-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test example_dsn",
+          "inputs": [
+            "clients/rust/tests/tests/example_dsn.rs"
+          ]
+        },
+        {
+          "id": "idle-connection-end-typescript",
+          "command": "node clients/typescript/tests/idle-connection-end.mjs",
+          "inputs": [
+            "clients/typescript/tests/idle-connection-end.mjs"
           ]
         }
       ],
@@ -549,7 +583,22 @@
         "clients/go/model/coverage_model_queries_test.go",
         "clients/php/tests/coverage_model_queries.php",
         "clients/rust/tests/src/coverage_model_queries.rs",
-        "clients/typescript/tests/coverage_model_queries.mjs"
+        "clients/typescript/tests/coverage_model_queries.mjs",
+        "clients/go/orm/shape_test.go",
+        "clients/go/orm/styled_state_test.go",
+        "clients/go/orm/styled_state_physical_test.go",
+        "clients/go/orm/decimal_model_test.go",
+        "contracts/fixtures/styled_column_states.json",
+        "clients/go/model/decimal_field_test.go",
+        "clients/go/model/styled_state_test.go",
+        "clients/go/decimalmodel/schema_set_test.go",
+        "contracts/fixtures/decimal_schema.dbs",
+        "clients/php/tests/runtime_db_test.php",
+        "clients/php/tests/deadlock_child.php",
+        "clients/rust/orm/tests/decimal_model.rs",
+        "clients/typescript/tests/typecheck.ts",
+        "clients/typescript/tests/decimal_model_type.ts",
+        "clients/typescript/src/bin/orm-gen.ts"
       ],
       "docs": [
         "docs/dsl.md",
@@ -577,7 +626,8 @@
           "command": "php clients/php/tests/model_test.php",
           "inputs": [
             "clients/php/tests/model_test.php",
-            "clients/php/tests/case_database.php"
+            "clients/php/tests/case_database.php",
+            "clients/php/tests/deadlock_child.php"
           ]
         },
         {
@@ -659,7 +709,8 @@
           "id": "decimal-php-mysql",
           "command": ". \"$DECIMAL_ENV\" && php clients/php/tests/decimal_model_db.php --dialect mysql",
           "inputs": [
-            "clients/php/tests/decimal_model_db.php"
+            "clients/php/tests/decimal_model_db.php",
+            "contracts/fixtures/decimal_schema.dbs"
           ]
         },
         {
@@ -695,7 +746,9 @@
           "command": "node tests/run-long.mjs typescript-types -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
           "inputs": [
             "clients/typescript/tsconfig.json",
-            "clients/typescript/tests/*.test.ts"
+            "clients/typescript/tests/*.test.ts",
+            "clients/typescript/tests/typecheck.ts",
+            "clients/typescript/tests/decimal_model_type.ts"
           ]
         },
         {
@@ -717,6 +770,60 @@
           "command": ". \"$DECIMAL_ENV\" && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite",
           "inputs": [
             "clients/typescript/tests/decimal_model_db.mjs"
+          ]
+        },
+        {
+          "id": "queries-orm-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "inputs": [
+            "clients/go/orm/collection_key_test.go",
+            "clients/go/orm/group_rows_test.go",
+            "clients/go/orm/related_test.go",
+            "clients/go/orm/shape_test.go",
+            "clients/go/orm/jsontext_order_test.go",
+            "clients/go/orm/value_types_test.go",
+            "clients/go/orm/styled_state_test.go",
+            "clients/go/orm/styled_state_physical_test.go",
+            "clients/go/orm/decimal_model_test.go",
+            "contracts/fixtures/styled_column_states.json"
+          ]
+        },
+        {
+          "id": "queries-model-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run '^(TestGeneratedDecimalFieldUsesExactText|TestGeneratedStyledGetterAndSetterStates|TestStyledStatesAcrossDatabases)$' -count=1",
+          "inputs": [
+            "clients/go/model/decimal_field_test.go",
+            "clients/go/model/styled_state_test.go"
+          ]
+        },
+        {
+          "id": "decimal-schema-set-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/decimalmodel -run '^(TestSchemaSetEditedManifestMySQL|TestSchemaSetEditedManifestPostgres|TestSchemaSetEditedManifestSQLite|TestSchemaSetMySQL|TestSchemaSetPostgres|TestSchemaSetSQLite|TestSchemaSetUnregisteredMySQL|TestSchemaSetUnregisteredPostgres|TestSchemaSetUnregisteredSQLite)$' -count=1",
+          "inputs": [
+            "clients/go/decimalmodel/schema_set_test.go",
+            "contracts/fixtures/decimal_schema.dbs"
+          ]
+        },
+        {
+          "id": "runtime-db-php",
+          "command": "php clients/php/tests/runtime_db_test.php",
+          "inputs": [
+            "clients/php/tests/runtime_db_test.php"
+          ]
+        },
+        {
+          "id": "decimal-model-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs decimal-model-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_model",
+          "inputs": [
+            "clients/rust/orm/tests/decimal_model.rs"
+          ]
+        },
+        {
+          "id": "values-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs values-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test value_decode --test value_types",
+          "inputs": [
+            "clients/rust/orm/tests/value_decode.rs",
+            "clients/rust/orm/tests/value_types.rs"
           ]
         }
       ],
@@ -992,7 +1099,13 @@
         "clients/go/model/coverage_model_writes_test.go",
         "clients/php/tests/coverage_model_writes.php",
         "clients/rust/tests/src/coverage_model_writes.rs",
-        "clients/typescript/tests/coverage_model_writes.mjs"
+        "clients/typescript/tests/coverage_model_writes.mjs",
+        "clients/go/orm/assignment_propagation_test.go",
+        "clients/go/orm/restore_test.go",
+        "contracts/fixtures/clock.dbs",
+        "contracts/fixtures/clock_mark.dbs",
+        "contracts/fixtures/styled_column_states.json",
+        "clients/rust/orm/tests/restore.rs"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1091,6 +1204,65 @@
           "command": ". \"$DECIMAL_ENV\" && node clients/typescript/tests/decimal_model_db.mjs --dialect sqlite",
           "inputs": [
             "clients/typescript/tests/decimal_model_db.mjs"
+          ]
+        },
+        {
+          "id": "writes-orm-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestAssemblerReturnsAssignmentError|TestClockMicrosecondsMySQL|TestClockMicrosecondsPostgres|TestClockMicrosecondsSQLite|TestClockNowConditionMySQL|TestClockNowConditionPostgres|TestClockNowConditionSQLite|TestClockSoftDeleteMicrosecondsMySQL|TestClockSoftDeleteMicrosecondsPostgres|TestClockSoftDeleteMicrosecondsSQLite|TestIdentityAssignmentValidationBeforeWrite|TestRestoreSoftDeletedRow|TestWasInsertedTracksGeneratedRows)$' -count=1",
+          "inputs": [
+            "clients/go/orm/assignment_propagation_test.go",
+            "clients/go/orm/write_set_test.go",
+            "clients/go/orm/restore_test.go",
+            "clients/go/orm/clock_test.go"
+          ]
+        },
+        {
+          "id": "assignment-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run '^(TestGeneratedAssignmentRejectsInvalidValues)$' -count=1",
+          "inputs": [
+            "clients/go/model/assignment_test.go"
+          ]
+        },
+        {
+          "id": "clock-php",
+          "command": "php clients/php/tests/clock_test.php",
+          "inputs": [
+            "clients/php/tests/clock_test.php",
+            "contracts/fixtures/clock.dbs",
+            "contracts/fixtures/clock_mark.dbs"
+          ]
+        },
+        {
+          "id": "styled-value-php",
+          "command": "php clients/php/tests/styled_value_test.php",
+          "inputs": [
+            "clients/php/tests/styled_value_test.php",
+            "contracts/fixtures/styled_column_states.json"
+          ]
+        },
+        {
+          "id": "clock-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs clock-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock",
+          "inputs": [
+            "clients/rust/orm/tests/clock.rs",
+            "contracts/fixtures/clock.dbs",
+            "contracts/fixtures/clock_mark.dbs"
+          ]
+        },
+        {
+          "id": "restore-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs restore-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test restore",
+          "inputs": [
+            "clients/rust/orm/tests/restore.rs"
+          ]
+        },
+        {
+          "id": "clock-typescript",
+          "command": "node clients/typescript/tests/clock.mjs",
+          "inputs": [
+            "clients/typescript/tests/clock.mjs",
+            "contracts/fixtures/clock.dbs",
+            "contracts/fixtures/clock_mark.dbs"
           ]
         }
       ],
@@ -1412,14 +1584,17 @@
           "id": "rollback-php",
           "command": "php clients/php/tests/rollback_test.php",
           "inputs": [
-            "clients/php/tests/rollback_test.php"
+            "clients/php/tests/rollback_test.php",
+            "clients/php/testing/Faults.php",
+            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
           "id": "rollback-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs rollback-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test rollback",
           "inputs": [
-            "clients/rust/orm/tests/rollback.rs"
+            "clients/rust/orm/tests/rollback.rs",
+            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
@@ -1443,7 +1618,37 @@
           "id": "rollback-typescript",
           "command": "node --conditions=orm-test clients/typescript/tests/rollback.mjs",
           "inputs": [
-            "clients/typescript/tests/rollback.mjs"
+            "clients/typescript/tests/rollback.mjs",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "cancel-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestRootIdentifiesTheConnection|TestTransactionRollsBackWhenTheCallbackLeaves|TestWithContextCancels|TestWithContextCancelsInsideTransaction|TestWithContextCancelsTransaction)$' -count=1",
+          "inputs": [
+            "clients/go/orm/cancel_test.go",
+            "clients/go/orm/goexit_test.go"
+          ]
+        },
+        {
+          "id": "sqlite-concurrency-php",
+          "command": "php clients/php/tests/sqlite_concurrency_test.php",
+          "inputs": [
+            "clients/php/tests/sqlite_concurrency_test.php"
+          ]
+        },
+        {
+          "id": "sqlite-concurrency-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs sqlite-concurrency-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test sqlite_concurrency",
+          "inputs": [
+            "clients/rust/orm/tests/sqlite_concurrency.rs"
+          ]
+        },
+        {
+          "id": "sqlite-concurrency-typescript",
+          "command": "node clients/typescript/tests/sqlite-concurrency.mjs",
+          "inputs": [
+            "clients/typescript/tests/sqlite-concurrency.mjs"
           ]
         }
       ],
@@ -2053,21 +2258,29 @@
           "command": "node clients/typescript/tests/generate.mjs && node clients/typescript/tests/generate-scan.mjs",
           "inputs": [
             "clients/typescript/tests/generate.mjs",
-            "clients/typescript/tests/generate-scan.mjs"
+            "clients/typescript/tests/generate-scan.mjs",
+            "clients/typescript/src/bin/orm-gen.ts",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         },
         {
           "id": "generation-php",
           "command": "php clients/php/tests/orm_gen_test.php",
           "inputs": [
-            "clients/php/tests/orm_gen_test.php"
+            "clients/php/tests/orm_gen_test.php",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         },
         {
           "id": "generation-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-rust-2 -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
           "inputs": [
-            "clients/rust/orm-build/tests/generate.rs"
+            "clients/rust/orm-build/tests/generate.rs",
+            "contracts/fixtures/zone.dbs",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         }
       ],
@@ -2112,7 +2325,10 @@
                   ]
                 }
               ]
-            }
+            },
+            "inputs": [
+              "clients/php/bin/orm-gen"
+            ]
           },
           "rust": {
             "part": "clients/rust/tests",
@@ -2270,7 +2486,8 @@
         "clients/php/tests/coverage_schema_definition.php",
         "clients/rust/orm-schema/tests/coverage_schema_definition.rs",
         "clients/typescript/tests/coverage_schema_definition.mjs",
-        "clients/typescript/tests/package-declarations.mjs"
+        "clients/typescript/tests/package-declarations.mjs",
+        "engine/dbspec/case_clock_test.go"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2296,7 +2513,9 @@
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
-            "tests/dbspec/mermaid.json"
+            "tests/dbspec/mermaid.json",
+            "engine/dbspec/case_clock_test.go",
+            "engine/dbspec/vector_reader_test.go"
           ]
         },
         {
@@ -2335,7 +2554,8 @@
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
-            "tests/dbspec/mermaid.json"
+            "tests/dbspec/mermaid.json",
+            "clients/rust/orm-schema/src/lib.rs"
           ]
         },
         {
@@ -2369,7 +2589,16 @@
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
-            "tests/dbspec/compare/**"
+            "tests/dbspec/compare/**",
+            "clients/rust/orm-schema/examples/dbspec_compare.rs",
+            "clients/rust/orm-schema/examples/dbspec_stress.rs",
+            "tests/cargo-target.mjs",
+            "tests/dbspec/input.mjs",
+            "tests/dbspec/input.php",
+            "tests/dbspec/files/invalid-utf8.dbs",
+            "tests/dbspec/files/shop.dbs",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         }
       ],
@@ -2581,7 +2810,8 @@
         "clients/rust/orm/tests/external_documents.rs",
         "clients/go/orm/register_test.go",
         "clients/rust/orm/tests/register.rs",
-        "clients/rust/orm/tests/install.rs"
+        "clients/rust/orm/tests/install.rs",
+        "clients/typescript/tests/dbspec_runtime_db.mjs"
       ],
       "docs": [
         "docs/schema.md",
@@ -2608,7 +2838,8 @@
           "id": "install-add-tables-and-columns-go",
           "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^TestAddTablesAndColumns' -count=1",
           "inputs": [
-            "clients/go/orm/add_tables_and_columns_test.go"
+            "clients/go/orm/add_tables_and_columns_test.go",
+            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
@@ -2616,7 +2847,8 @@
           "command": "php clients/php/tests/add_tables_and_columns_test.php",
           "inputs": [
             "clients/php/tests/add_tables_and_columns_test.php",
-            "clients/php/tests/case_database.php"
+            "clients/php/tests/case_database.php",
+            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
@@ -2624,14 +2856,16 @@
           "command": "node clients/typescript/tests/add-tables-and-columns.mjs",
           "inputs": [
             "clients/typescript/tests/add-tables-and-columns.mjs",
-            "clients/typescript/tests/case-database.mjs"
+            "clients/typescript/tests/case-database.mjs",
+            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
           "id": "install-add-tables-and-columns-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs install-add-tables-and-columns-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns",
           "inputs": [
-            "clients/rust/orm/tests/add_tables_and_columns.rs"
+            "clients/rust/orm/tests/add_tables_and_columns.rs",
+            "contracts/fixtures/add_tables_and_columns/*.dbs"
           ]
         },
         {
@@ -2642,7 +2876,8 @@
             "clients/go/orm/install_test.go",
             "clients/go/orm/register_test.go",
             "contracts/fixtures/install/note.dbs",
-            "contracts/fixtures/install/changed_database.json"
+            "contracts/fixtures/install/changed_database.json",
+            "contracts/fixtures/external/*.dbs"
           ]
         },
         {
@@ -2671,6 +2906,13 @@
             "clients/rust/orm/tests/install.rs",
             "clients/rust/orm/tests/external_documents.rs",
             "contracts/fixtures/install/changed_database.json"
+          ]
+        },
+        {
+          "id": "runtime-db-typescript",
+          "command": "node --test clients/typescript/tests/dbspec_runtime_db.mjs",
+          "inputs": [
+            "clients/typescript/tests/dbspec_runtime_db.mjs"
           ]
         }
       ],
@@ -3528,7 +3770,8 @@
         "clients/go/orm/coverage_authenticated_encryption_test.go",
         "clients/php/tests/coverage_authenticated_encryption.php",
         "clients/rust/orm/tests/coverage_authenticated_encryption.rs",
-        "clients/typescript/tests/coverage_authenticated_encryption.mjs"
+        "clients/typescript/tests/coverage_authenticated_encryption.mjs",
+        "contracts/fixtures/secret_config.dbs"
       ],
       "docs": [
         "docs/codec.md",
@@ -3571,6 +3814,22 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-rust-2 -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
           "inputs": [
             "clients/rust/orm/tests/aes_keys.rs"
+          ]
+        },
+        {
+          "id": "aes-json-php",
+          "command": "php clients/php/tests/aes_json_test.php",
+          "inputs": [
+            "clients/php/tests/aes_json_test.php",
+            "contracts/fixtures/secret_config.dbs"
+          ]
+        },
+        {
+          "id": "aes-json-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs aes-json-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_json",
+          "inputs": [
+            "clients/rust/orm/tests/aes_json.rs",
+            "contracts/fixtures/secret_config.dbs"
           ]
         }
       ],
@@ -3756,7 +4015,10 @@
         "clients/go/model/coverage_parameter_chunking_test.go",
         "clients/php/tests/coverage_parameter_chunking.php",
         "clients/rust/tests/src/coverage_parameter_chunking.rs",
-        "clients/typescript/tests/coverage_parameter_chunking.mjs"
+        "clients/typescript/tests/coverage_parameter_chunking.mjs",
+        "clients/rust/tests/src/result_chains.rs",
+        "clients/rust/tests/build.rs",
+        "clients/rust/tests/nonnull.dbs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -3775,7 +4037,10 @@
           "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- sh scripts/cargo-build-copy.sh \"$run\" debug/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
           "inputs": [
             "clients/rust/tests/src/integration.rs",
-            "schema/bench.dbs"
+            "schema/bench.dbs",
+            "clients/rust/tests/src/result_chains.rs",
+            "clients/rust/tests/build.rs",
+            "clients/rust/tests/nonnull.dbs"
           ]
         },
         {
@@ -4056,7 +4321,8 @@
         "clients/go/model/coverage_constraints_and_relations_test.go",
         "clients/php/tests/coverage_constraints_and_relations.php",
         "clients/rust/tests/src/coverage_constraints_and_relations.rs",
-        "clients/typescript/tests/coverage_constraints_and_relations.mjs"
+        "clients/typescript/tests/coverage_constraints_and_relations.mjs",
+        "contracts/fixtures/refusal.dbs"
       ],
       "docs": [
         "docs/schema.md",
@@ -4071,6 +4337,44 @@
             "clients/go/orm/driver_error_test.go",
             "clients/go/orm/pg/pg_test.go",
             "clients/go/orm/sqlite/sqlite_test.go"
+          ]
+        },
+        {
+          "id": "refusal-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestCheckRefusedMySQL|TestCheckRefusedPostgres|TestCheckRefusedSQLite|TestTriggerRefusedMySQL|TestTriggerRefusedPostgres|TestTriggerRefusedSQLite)$' -count=1",
+          "inputs": [
+            "clients/go/orm/refusal_test.go"
+          ]
+        },
+        {
+          "id": "driver-error-php",
+          "command": "php clients/php/tests/driver_error_test.php",
+          "inputs": [
+            "clients/php/tests/driver_error_test.php",
+            "contracts/fixtures/refusal.dbs"
+          ]
+        },
+        {
+          "id": "refusal-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs refusal-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test refusal",
+          "inputs": [
+            "clients/rust/orm/tests/refusal.rs",
+            "contracts/fixtures/refusal.dbs"
+          ]
+        },
+        {
+          "id": "soft-delete-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs soft-delete-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test soft_delete",
+          "inputs": [
+            "clients/rust/orm/tests/soft_delete.rs"
+          ]
+        },
+        {
+          "id": "driver-error-typescript",
+          "command": "node clients/typescript/tests/driver-error.mjs",
+          "inputs": [
+            "clients/typescript/tests/driver-error.mjs",
+            "contracts/fixtures/refusal.dbs"
           ]
         }
       ],
@@ -4326,7 +4630,12 @@
         "clients/php/tests/coverage_audit_columns.php",
         "clients/go/orm/restore_test.go",
         "clients/rust/orm/tests/restore.rs",
-        "clients/php/tests/audit_external_sets_test.php"
+        "clients/php/tests/audit_external_sets_test.php",
+        "contracts/fixtures/external/board.dbs",
+        "contracts/fixtures/external/core.dbs",
+        "contracts/fixtures/external/core_extra.dbs",
+        "contracts/fixtures/external/member.dbs",
+        "contracts/fixtures/external/member_v2.dbs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -4341,6 +4650,25 @@
             "clients/go/orm/coverage_audit_triggers_test.go",
             "contracts/fixtures/audit.dbs",
             "contracts/fixtures/audit_columns.dbs"
+          ]
+        },
+        {
+          "id": "audit-external-sets-php",
+          "command": "php clients/php/tests/audit_external_sets_test.php",
+          "inputs": [
+            "clients/php/tests/audit_external_sets_test.php",
+            "contracts/fixtures/external/board.dbs",
+            "contracts/fixtures/external/core.dbs",
+            "contracts/fixtures/external/core_extra.dbs",
+            "contracts/fixtures/external/member.dbs",
+            "contracts/fixtures/external/member_v2.dbs"
+          ]
+        },
+        {
+          "id": "audit-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs audit-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test audit",
+          "inputs": [
+            "clients/rust/orm/tests/audit.rs"
           ]
         }
       ],
@@ -4677,7 +5005,12 @@
         "clients/go/orm/coverage_interface_contract_test.go",
         "clients/php/tests/coverage_interface_contract.php",
         "clients/rust/orm/tests/coverage_interface_contract.rs",
-        "clients/typescript/tests/coverage_interface_contract.mjs"
+        "clients/typescript/tests/coverage_interface_contract.mjs",
+        "contracts/generate.go",
+        "contracts/validate.go",
+        "contracts/generate_test.go",
+        "clients/typescript/tests/package-declarations.mjs",
+        "clients/typescript/src/index.ts"
       ],
       "docs": [
         "docs/interfaces.md",
@@ -4691,6 +5024,23 @@
             "tests/interfaces/**",
             "contracts/interfaces.json",
             "contracts/symbols/*.json"
+          ]
+        },
+        {
+          "id": "contracts-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./contracts -count=1",
+          "inputs": [
+            "contracts/generate.go",
+            "contracts/validate.go",
+            "contracts/generate_test.go"
+          ]
+        },
+        {
+          "id": "package-declarations-typescript",
+          "command": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node clients/typescript/tests/package-declarations.mjs",
+          "inputs": [
+            "clients/typescript/tests/package-declarations.mjs",
+            "clients/typescript/src/index.ts"
           ]
         }
       ],
@@ -4860,7 +5210,8 @@
         "clients/go/bench/coverage_performance_gate_test.go",
         "clients/php/tests/coverage_performance_gate.php",
         "clients/rust/tests/tests/coverage_performance_gate.rs",
-        "clients/go/bench/statements_test.go"
+        "clients/go/bench/statements_test.go",
+        "tests/timing/preempted.test.mjs"
       ],
       "docs": [
         "docs/perf.md"
@@ -4875,6 +5226,31 @@
             "clients/go/bench/gate_test.go",
             "clients/php/tests/perf_gate.php",
             "clients/php/tests/perf_extensions.php"
+          ]
+        },
+        {
+          "id": "bench-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/bench -run '^(TestBenchDSNIsRequired)$' -count=1",
+          "inputs": [
+            "clients/go/bench/client_test.go",
+            "clients/go/bench/dsn_test.go",
+            "clients/go/bench/native_test.go"
+          ]
+        },
+        {
+          "id": "client-bench-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs client-bench-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test client_bench_args --test client_bench_dsn",
+          "inputs": [
+            "clients/rust/tests/tests/client_bench_args.rs",
+            "clients/rust/tests/tests/client_bench_dsn.rs",
+            "clients/rust/tests/src/client_bench.rs"
+          ]
+        },
+        {
+          "id": "preempted-timing",
+          "command": "make --no-print-directory timing-check",
+          "inputs": [
+            "tests/timing/preempted.test.mjs"
           ]
         }
       ],
@@ -5023,10 +5399,24 @@
           ]
         },
         {
+          "id": "conformance-check-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./tests/conformance/check -count=1",
+          "inputs": [
+            "tests/conformance/check/*.go"
+          ]
+        },
+        {
           "id": "conformance-runner-go",
           "command": "node tests/go-test.mjs -v -timeout 0 ./tests/conformance/runner_go -count=1",
           "inputs": [
             "tests/conformance/runner_go/main_test.go"
+          ]
+        },
+        {
+          "id": "conformance-runner-rust-build",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/conformance --cwd clients/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo build --locked -p orm-tests --bin conformance",
+          "inputs": [
+            "clients/rust/tests/src/conformance.rs"
           ]
         }
       ],
@@ -5352,6 +5742,26 @@
             "clients/rust/orm-build/tests/typed_binds.rs",
             "clients/rust/orm-build/tests/generate.rs"
           ]
+        },
+        {
+          "id": "catalog-unit-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-unit-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib catalog:: tool_db::",
+          "inputs": [
+            "clients/rust/orm-build/tests/unit/mutation_commit.rs",
+            "clients/rust/orm-build/tests/unit/mutation_safety.rs",
+            "clients/rust/orm-build/tests/unit/read_only_disposal.rs",
+            "clients/rust/orm-build/tests/unit/read_only_policy.rs",
+            "clients/rust/orm-build/tests/unit/table_page_validation.rs",
+            "clients/rust/orm-build/tests/unit/tool_column_budgets.rs",
+            "clients/rust/orm-build/tests/unit/typed_bind_validation.rs"
+          ]
+        },
+        {
+          "id": "row-insert-identity-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs row-insert-identity-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_insert_identity",
+          "inputs": [
+            "clients/rust/orm-build/tests/row_insert_identity/expression.rs"
+          ]
         }
       ],
       "coverage": {
@@ -5471,6 +5881,126 @@
       ],
       "tests": [],
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
+    },
+    {
+      "id": "error-codes",
+      "paths": [
+        "docs/errors.yaml",
+        "clients/go/orm/codes.go",
+        "clients/rust/orm/src/codes.rs",
+        "cmd/orm-gen/errors.go"
+      ],
+      "tests": [],
+      "command": "sh -c 'dir=$(mktemp -d) && trap \"rm -rf \\\"$dir\\\"\" EXIT && for pair in go:clients/go/orm/codes.go php:clients/php/src/Code.php rust:clients/rust/orm/src/codes.rs; do node tests/go-run.mjs orm-gen ./cmd/orm-gen errors --lang \"${pair%%:*}\" --out \"$dir/${pair%%:*}\" && diff -u \"${pair#*:}\" \"$dir/${pair%%:*}\" || exit 1; done'"
+    },
+    {
+      "id": "go-decimal-model-generated",
+      "paths": [
+        "clients/go/decimalmodel/generate.go",
+        "clients/go/decimalmodel/decimal_case.go",
+        "clients/go/decimalmodel/orm.go"
+      ],
+      "tests": [],
+      "command": "node tests/run-long.mjs go-decimal-model -- sh -c 'cd clients/go/decimalmodel && go generate ./ && git diff --exit-code -- .'"
+    },
+    {
+      "id": "stmtdiff",
+      "paths": [
+        "internal/stmtdiff/stmtdiff.go"
+      ],
+      "tests": [
+        "internal/stmtdiff/stmtdiff_test.go"
+      ],
+      "command": "node tests/go-test.mjs -v -timeout 0 ./internal/stmtdiff -count=1"
+    },
+    {
+      "id": "bench-database",
+      "paths": [
+        "scripts/bench-db.sh",
+        "bench/install/main.go",
+        "bench/seedaes/main.go",
+        "bench/sql/seed.mysql.sql",
+        "bench/sql/seed.pg.sql",
+        "bench/sql/seed.sqlite.sql",
+        "tests/go-run.mjs",
+        "scripts/decimal-db-setup.php"
+      ],
+      "tests": [],
+      "command": "sh scripts/bench-db.sh"
+    },
+    {
+      "id": "decimal-physical",
+      "paths": [
+        "scripts/decimal-physical-check.mjs"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-physical-check"
+    },
+    {
+      "id": "decimal-bench-sqlite",
+      "paths": [
+        "scripts/decimal-bench-sqlite.sh"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-bench-sqlite"
+    },
+    {
+      "id": "unselected-column-physical",
+      "paths": [
+        "scripts/unselected-column-physical-check.mjs",
+        "clients/php/tests/unselected_column.php",
+        "clients/php/tests/unselected_column_db.php"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" unselected-column-physical-check"
+    },
+    {
+      "id": "case-database",
+      "paths": [
+        "scripts/case-database-check.mjs"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" case-database-check"
+    },
+    {
+      "id": "conformance-result",
+      "paths": [
+        "tests/conformance/result_php.php",
+        "tests/conformance/result_php_helpers.php",
+        "tests/conformance/result_typescript.mjs"
+      ],
+      "tests": [
+        "tests/conformance/result_typescript.test.mjs"
+      ],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-result-check"
+    },
+    {
+      "id": "conformance-runners",
+      "paths": [
+        "tests/conformance/runner.php",
+        "tests/conformance/runner_typescript.mjs"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"
+    },
+    {
+      "id": "dbspec-stress",
+      "paths": [
+        "clients/php/tests/dbspec_stress_test.php",
+        "clients/php/tests/dbspec_introspect_stress_test.php",
+        "clients/typescript/tests/dbspec-stress.mjs",
+        "engine/dbspec/stress_test.go"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"
+    },
+    {
+      "id": "dbspec-apply-stress",
+      "paths": [
+        "tests/dialects/apply_stress_physical_test.go"
+      ],
+      "tests": [],
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-apply-stress-bench"
     }
   ]
 }

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.51: `make owner-check` fails when a changed path selects no behaviour test and declares no scope; `contracts/check-inputs.json` separates the `inputs` of a target from its `lints` and declares `lint` or `suite` scopes with reasons for 16 exact paths, every tracked file is connected to the test that reads it (40 new verification commands, 12 helpers, 27 targets with owner scope), a helper checks the generated error codes against `docs/errors.yaml`, and the database state of the conformance and decimal checks leaves out the ORM's SQLite row lock table.
+
 - G5.50: `make codec-check` runs the Go, Rust and TypeScript codec tests itself as independent parts into a directory of its own run, and the PHP checker compares only those outputs; the writers write only when `ORM_CODEC_OUT` is set, through a temporary file and a rename.
 
 - G5.49: the tracked `commit-msg` hook, which make installs through `core.hooksPath`, refuses a commit subject that breaks `git.subject-format`; a case that ends its process reports its error in its FAIL line; and the PHP `first_statement_lost` case finds the session of its `Db` also behind a pooler.
