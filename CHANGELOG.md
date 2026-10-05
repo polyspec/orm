@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
+
 - G5.30-9: the builds of the feature coverage checker run as long operations with step logs and no deadline; `COVERAGE_BUILD_DEADLINE` is removed, and each coverage run keeps its own deadline.
 
 - G5.30-8: no step or job of `ci.yml` and `docs-pages.yml` has `timeout-minutes`, and `make repo-check` fails a workflow with one.
