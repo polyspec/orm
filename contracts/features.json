@@ -1368,7 +1368,9 @@
         "clients/rust/tests/src/coverage_transactions.rs",
         "clients/typescript/tests/coverage_transactions.mjs",
         "clients/go/orm/rollback_fault_test.go",
-        "clients/go/orm/rollback_fault_entry_test.go"
+        "clients/go/orm/rollback_fault_entry_test.go",
+        "clients/rust/orm/src/tx.rs",
+        "clients/rust/orm/src/tx_send_tests.rs"
       ],
       "docs": [
         "docs/config.md",
@@ -1418,6 +1420,23 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs rollback-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test rollback",
           "inputs": [
             "clients/rust/orm/tests/rollback.rs"
+          ]
+        },
+        {
+          "id": "transaction-end-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^(TestTransactionReports|TestSavepointReportsFailedEnd|TestFailedTransactionEndDiscardsConnection|TestCancelledTransactionClearsSessionState)' -count=1",
+          "inputs": [
+            "clients/go/orm/transaction_end_test.go",
+            "clients/go/orm/context_reset_test.go",
+            "clients/go/orm/cancelled_session_test.go"
+          ]
+        },
+        {
+          "id": "transaction-end-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs transaction-end-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib tx::",
+          "inputs": [
+            "clients/rust/orm/src/tx.rs",
+            "clients/rust/orm/src/tx_send_tests.rs"
           ]
         },
         {

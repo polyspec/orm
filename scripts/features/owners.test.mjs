@@ -20,6 +20,17 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
   assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/php/tests/coverage_dsn.php'])), ['dsn_connection/coverage/owner/php']);
 });
 
+// transaction 끝 case(G5.45-1)는 test가 들어 있는 file이 그 test를 실행하는 명령을 고르는지 본다. Rust의 tx.rs는 자기
+// tests module과 tx_send_tests.rs를 가지고, Go의 transaction_end_test.go, context_reset_test.go,
+// cancelled_session_test.go는 transaction 끝의 정리를 test한다. 그 test가 쓰는 failing_driver_test.go는 helper이므로 자기
+// 검사(go-test-helpers)만 고른다.
+caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
+  for (const path of ['clients/rust/orm/src/tx.rs', 'clients/rust/orm/src/tx_send_tests.rs'])
+    assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
+  for (const path of ['clients/go/orm/transaction_end_test.go', 'clients/go/orm/context_reset_test.go', 'clients/go/orm/cancelled_session_test.go'])
+    assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
+});
+
 caseTest('a whole-suite command is split by package', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/php/tests/dbspec_render_test.php'])), ['schema_definition/schema-php']);
@@ -44,8 +55,9 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
   assert.deepEqual(ids(owners), ['schema_definition', 'audit_triggers']);
   assert.deepEqual(owners[0].parts[0].reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
-  // contracts/symbols/rust.json은 Rust source의 symbol을 적으므로 그 source는 Rust coverage 단위만 고른다.
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs'])), ['interface_contract/coverage/owner/rust']);
+  // contracts/symbols/rust.json은 Rust source의 symbol을 적으므로 그 source는 Rust coverage 단위를 고르고, 그 file이
+  // 담은 test의 명령(transaction-end-rust)도 고른다.
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['clients/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
 });
 
 caseTest('a path that no unit declares selects nothing', 5000, async () => {
