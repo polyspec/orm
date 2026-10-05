@@ -31,9 +31,10 @@ import { duration, runGroup } from '../../tests/testcase.mjs';
 import { failedCiSetup } from './ci-setup.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
 import { runStep } from './step.mjs';
+import { missingDownloads } from './downloads.mjs';
 
-// setupLabel은 runner의 setup 단계(servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
-const setupLabel = label => ['servers', 'databases/create', 'databases/drop'].includes(label) || label.startsWith('ci/');
+// setupLabel은 runner의 setup 단계(downloads, servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
+const setupLabel = label => ['downloads', 'servers', 'databases/create', 'databases/drop'].includes(label) || label.startsWith('ci/');
 import { cappedLog, diskSnapshot, failures, keepFile, keepRunDirectory, npmErrors, NPM_LOG, publish, spaceCause, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 단계 하나로 실행하고(runStep: 자기 임시 directory와 process group) 출력 줄을 단계로 내보낸다.
@@ -90,7 +91,7 @@ function targetInputs(root, target) {
 // 'rerun-failed'나 undefined(make bench, make run-databases: guard와 기록이 없다)다. run은
 // command(root)와 같은 모양의 함수다. needs는 target마다 필요한 setup 단계('databases')이고, id는 실행의 이름이며,
 // snapshot은 공간 기록(diskSnapshot과 같은 모양)이다.
-export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP }) {
+export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP, downloads = missingDownloads }) {
   // 실행의 이름은 주어진 id이거나 process id와 임의의 값이다. 같은 이름의 database가 있으면 그것은 이 실행이 만든
   // 것이 아니므로 bench-db.sh가 지우지 않도록 이름이 겹치지 않아야 한다.
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
@@ -223,6 +224,16 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       });
     failedSetup[need] ??= reason;
   }
+  // downloads: check가 읽는 download가 있는지 network 없이 확인한다(scripts/check/downloads.mjs). 빠진 download의 need를
+  // 선언한 target은 그 이유(`run make install`)와 함께 not-run으로 기록하고, 나머지 target은 실행한다.
+  let missing = [];
+  await record('downloads', 'setup', async ({ step }) => {
+    missing = downloads(root);
+    for (const { message } of missing) step(`downloads: ${message}`);
+    if (missing.length) throw new Error(`${missing.length} download(s) of the checks are missing; run make install, which downloads them`);
+    step('downloads: every download of the checks is present');
+  });
+  for (const { need, message } of missing) failedSetup[need] ??= message;
   // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다.
   const serversReady = await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);

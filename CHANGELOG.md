@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.65: every check runs offline: the Makefile exports the offline settings of cargo, go, npm and Composer, `make install` downloads what the checks read, the runner records a missing download as the setup step `downloads` with `run make install`, and the targets that need it are not run.
+
 - G5.64-1: `make repo-check` checks the full-suite rule by the wording of G5.64.
 
 - G5.64: development runs unit tests only; end-to-end runs, `make owner-check` and the full suite run in CI after the push, and no local check is required before a push.

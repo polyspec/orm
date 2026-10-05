@@ -41,6 +41,12 @@ jobs:
         id: go
         if: ${{ !cancelled() }}
         with: { go-version: "1.27" }
+      # make check runs go with GOPROXY=off; make install-go downloads the
+      # modules of go.mod.
+      - name: Go modules
+        id: go-modules
+        if: ${{ !cancelled() }}
+        run: make install-go
       # .node-version declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
@@ -57,12 +63,15 @@ jobs:
           npm ci
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
+          make install-node-min
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() }}
         # rustup installs the channel and components that rust-toolchain.toml
         # declares; every cargo and rustc run of the repository uses them.
-        run: rustup toolchain install && rustc --version
+        # make check runs cargo offline; make install-rust downloads the crates of
+        # every Cargo.lock.
+        run: rustup toolchain install && rustc --version && make install-rust
       - uses: Swatinem/rust-cache@v2
         id: rust-cache
         if: ${{ !cancelled() }}

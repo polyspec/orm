@@ -112,7 +112,7 @@ const removed = '## files under /tmp that were removed but are still open (lsof 
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : '' });
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : '' });
 `;
 
 function checkout(t, checklist) {
@@ -220,7 +220,7 @@ caseTest('a second full run of the same tree is refused naming the first', PROCE
     assert.deepEqual(c.ran(), ['sh create', 'a', 'b', 'c', 'sh drop']);
     const record = c.record();
     assert.deepEqual([record.result, record.failed, record.runner], ['failed', ['b'], null]);
-    assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
+    assert.deepEqual(record.setup.map(step => [step.name, step.status]), [['downloads', 'passed'], ['servers', 'passed'], ['databases/create', 'passed'], ['databases/drop', 'passed']]);
     assert.equal(record.tree, c.git('rev-parse', 'HEAD^{tree}').trim());
     for (const action of ['decide', 'run']) {
       const second = c.run(action, 'check');
@@ -669,8 +669,8 @@ caseTest('a target that runs out of space says so with the free space of / and /
     assert.match(b.failures[1], /disk quota exceeded$/);
     assert.ok(record.disk['/'] > 0 && b.disk['/tmp'] > 0, JSON.stringify([record.disk, b.disk]));
     const disk = join(c.root, '.runtime/check/ci_11_1/report/disk');
-    assert.deepEqual(readdirSync(disk), ['00-start.txt', '01-servers.txt', '02-databases-create.txt', '03-a.txt', '04-b.txt', '05-c.txt', '06-databases-drop.txt']);
-    assert.match(readFileSync(join(disk, '04-b.txt'), 'utf8'), /^## df -k \/ \/tmp[^\n]*\n[^]*## the largest entries of \/tmp \(KiB\)\n[^]*## files under \/tmp that were removed but are still open \(lsof \+L1\)/);
+    assert.deepEqual(readdirSync(disk), ['00-start.txt', '01-downloads.txt', '02-servers.txt', '03-databases-create.txt', '04-a.txt', '05-b.txt', '06-c.txt', '07-databases-drop.txt']);
+    assert.match(readFileSync(join(disk, '05-b.txt'), 'utf8'), /^## df -k \/ \/tmp[^\n]*\n[^]*## the largest entries of \/tmp \(KiB\)\n[^]*## files under \/tmp that were removed but are still open \(lsof \+L1\)/);
   } finally {
     cleanup();
   }

@@ -8,6 +8,7 @@
 // 실행된다: build cache를 되살릴 뿐이다.
 export const CI_SETUP = {
   go: 'go',
+  'go-modules': 'go',
   'node-modules': 'node-modules',
   rust: 'rust',
   'rust-cache': null,

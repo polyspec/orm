@@ -93,6 +93,9 @@ caseTest('a workflow that defines a server variable itself fails', COMPUTE, () =
 caseTest('a check before make test-servers fails', COMPUTE, () => {
   const early = steps.replace('      - name: database servers', '      - name: early\n        run: make feature-check\n      - name: database servers');
   assert.deepEqual(ciServerErrors(early, script), ['ci.yml step "early" runs make before make test-servers starts the servers']);
+  // make install과 그 부분은 download만 하므로 server보다 앞서도 된다.
+  const install = steps.replace('      - name: database servers', '      - name: downloads\n        run: make install-go install-node-min\n      - name: database servers');
+  assert.deepEqual(ciServerErrors(install, script), []);
 });
 
 caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {

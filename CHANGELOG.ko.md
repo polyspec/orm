@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.65: 모든 검사는 offline으로 실행된다. Makefile은 cargo, go, npm, Composer의 offline 설정을 export하고, `make install`이 검사가 읽는 것을 download하며, runner는 빠진 download를 `run make install`과 함께 setup 단계 `downloads`로 기록하고 그것이 필요한 target은 실행하지 않는다.
+
 - G5.64-1: `make repo-check`는 G5.64의 문구로 전체 suite 규칙을 확인한다.
 
 - G5.64: 개발하는 동안에는 unit test만 실행한다. end-to-end 실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.

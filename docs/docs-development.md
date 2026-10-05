@@ -7,7 +7,7 @@ The online documentation is at [polyspec.github.io/orm](https://polyspec.github.
 Use the Node.js release of `.node-version` (26.8.1) and npm. The local checks and every GitHub Actions workflow run that one release, and `make repo-check` fails on another. `package-lock.json` fixes tool versions. The TypeScript client supports the lowest release of `engines.node` in `package.json` (22.16.0), on which `make ts-min-check` runs its tests.
 
 ```sh
-npm ci
+make install
 npx playwright install chromium
 make docs-dev
 ```

@@ -7,7 +7,7 @@
 `.node-version`의 Node.js release(26.8.1)와 npm을 사용한다. 로컬 검사와 모든 GitHub Actions workflow가 이 release 하나로 실행하며, 다른 release에서는 `make repo-check`가 실패한다. 도구 버전은 `package-lock.json`으로 고정한다. TypeScript client는 `package.json` `engines.node`의 최저 release(22.16.0)를 지원하고, `make ts-min-check`가 그 release에서 test를 실행한다.
 
 ```sh
-npm ci
+make install
 npx playwright install chromium
 make docs-dev
 ```
