@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.1: the PHP extension orm_dbspec (clients/php-extension, built with ext-php-rs over the Rust dbspec) registers `Orm\Dbspec\Native\Dbspec` with readFile, readBytes, parse, emit, manifest and render and readonly result classes like those of the PHP client; `make dbspec-php-extension-check` checks its declarations against its stub and its results against the shared vectors and the PHP client, and CI installs the libclang of its build.
+
 - G5.77: cargo-test copies its test binaries to disk instead of the tmpfs `/tmp`, group signals refuse the runner's own group and groups of 0 or 1, and the check runner prints memory, disk, the largest processes and the group signals to the job log every 30 s.
 
 - G5.76: the Rust symbol inventory records the PostgreSQL insert lock helper of the catalog, and the introspection comparison test is gofmt-formatted.

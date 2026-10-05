@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.1: PHP 확장 orm_dbspec(clients/php-extension, Rust dbspec 위에 ext-php-rs로 build한다)은 readFile, readBytes, parse, emit, manifest, render를 가진 `Orm\Dbspec\Native\Dbspec`과 PHP client와 같은 readonly 결과 class를 등록한다. `make dbspec-php-extension-check`는 그 선언을 stub과, 그 결과를 공유 vector와 PHP client와 비교하고, CI는 그 build의 libclang을 설치한다.
+
 - G5.77: cargo-test는 test binary를 tmpfs인 `/tmp` 대신 disk에 복사하고, group signal은 runner 자신의 group과 0이나 1의 group을 거부하며, check runner는 30초마다 memory, disk, 가장 큰 process, group signal을 job log에 출력한다.
 
 - G5.76: Rust symbol 목록은 catalog의 PostgreSQL insert lock helper를 기록하고, introspection 비교 test는 gofmt로 format된다.

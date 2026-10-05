@@ -1,6 +1,6 @@
 .PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
-.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces rust-fmt-check/php-extension fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`)을 실행하고, 그 설정은 clone마다
@@ -469,6 +469,27 @@ dbspec-php-check/apply-cleanup:
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 
+.PHONY: dbspec-php-extension-check
+# dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, orm-schema의 dbspec 인터페이스를
+# Orm\Dbspec\Native\Dbspec으로 낸다)을 clippy로 검사하고 debug build를 실행의 directory로 복사한 뒤, 그 확장을
+# load해 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec vector, statement vector와 순수 PHP
+# client에 대해 같은 결과를 내는지 각각 두 번 확인한다. 확장 build는 PATH의 php-config와 bindgen의 libclang을 쓴다.
+PHP_EXTENSION_LIBRARY = debug/liborm_dbspec.$(if $(filter Darwin,$(shell uname -s)),dylib,so)
+dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
+.PHONY: dbspec-php-extension-check/clippy dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
+dbspec-php-extension-check: dbspec-php-extension-check/clippy dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
+	rm -rf $(RUN_DIR)
+dbspec-php-extension-check/clippy: cargo-downloads-check lease-tool
+	$(RUN_LONG) rust-clippy/orm_dbspec --cwd clients/php-extension -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -- -D warnings
+dbspec-php-extension-check/prepare: cargo-downloads-check lease-tool
+	$(RUN_LONG) rust-build/orm_dbspec --cwd clients/php-extension -- $(CARGO_COPY) $(PHP_EXTENSION_LIBRARY) -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline
+dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
+	ORM_DBSPEC_EXTENSION=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
+	ORM_DBSPEC_EXTENSION=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
+dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
+	php -d extension=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+	php -d extension=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지, CI workflow가 make test-servers로 서버를 시작하고 그 환경 파일의 모든 변수를
 # 검사 단계에 주는지(scripts/repo/ci.mjs) 확인한다.
@@ -795,13 +816,15 @@ codec-check/compare: codec-check/go codec-check/rust codec-check/typescript
 # workspace (clients/rust/rustfmt.toml).
 # rust-fmt-check는 저장소의 모든 Rust workspace(clients/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
 # 정리되어 있는지 확인한다.
-rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
+rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces rust-fmt-check/php-extension
 rust-fmt-check/clients:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd clients/rust -- cargo fmt --all --check
 rust-fmt-check/bench:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
 rust-fmt-check/interfaces:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
+rust-fmt-check/php-extension:
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/php-extension --cwd clients/php-extension -- cargo fmt --all --check
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
@@ -821,7 +844,7 @@ rust-check/clippy-test-faults: lease-tool
 # 부분은 서로 독립이다(make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
+.PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
 install: install-node install-php install-rust install-go install-node-min
 install-node:
 	$(ONLINE) npm ci
@@ -834,6 +857,7 @@ install-rust:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path clients/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path clients/php-extension/Cargo.toml
 install-go:
 	$(ONLINE) go mod download
 install-node-min:
@@ -844,6 +868,10 @@ install-browsers:
 	$(ONLINE) npx playwright install --with-deps chromium
 install-server-programs:
 	$(ONLINE) ./scripts/ci/server-programs.sh
+# install-php-extension-tools는 CI의 Linux runner에 PHP 확장 orm_dbspec의 build가 쓰는 libclang(ext-php-rs의
+# bindgen)을 설치하고 php-config가 PATH의 PHP를 가리키는지 확인한다(scripts/ci/php-extension-tools.sh).
+install-php-extension-tools:
+	$(ONLINE) ./scripts/ci/php-extension-tools.sh
 
 # CI의 setup step은 모두 make target을 실행한다(make repo-check). ci-php-min-version은 make php-min-check의 가장 낮은
 # PHP release를 setup-php의 입력(version=x.y)으로 적고, ci-php-sqlite는 PATH의 두 PHP와 그것이 link한 SQLite를

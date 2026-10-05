@@ -2501,7 +2501,10 @@
         "clients/rust/orm-schema/tests/coverage_schema_definition.rs",
         "clients/typescript/tests/coverage_schema_definition.mjs",
         "clients/typescript/tests/package-declarations.mjs",
-        "engine/dbspec/case_clock_test.go"
+        "engine/dbspec/case_clock_test.go",
+        "clients/php-extension/tests/declarations.php",
+        "clients/php-extension/tests/declarations_test.php",
+        "clients/php-extension/tests/dbspec_test.php"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2586,6 +2589,27 @@
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json"
+          ]
+        },
+        {
+          "id": "schema-php-extension",
+          "command": "make dbspec-php-extension-check",
+          "inputs": [
+            "clients/php-extension/Cargo.toml",
+            "clients/php-extension/Cargo.lock",
+            "clients/php-extension/build.rs",
+            "clients/php-extension/src/**",
+            "clients/php-extension/stubs/orm_dbspec.stub.php",
+            "clients/php-extension/tests/declarations.php",
+            "clients/php-extension/tests/declarations_test.php",
+            "clients/php-extension/tests/dbspec_test.php",
+            "clients/php/tests/dbspec_cases.php",
+            "tests/dbspec/cases.json",
+            "tests/dbspec/ddl.json",
+            "tests/dbspec/files/invalid-utf8.dbs",
+            "tests/dbspec/files/shop.dbs",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         },
         {
