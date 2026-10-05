@@ -12,7 +12,9 @@
 // DSNs that make test-servers writes into TEST_ENV), not through a pooler.
 // Each case runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when
-// one of the four is unset.
+// one of the four is unset. The case first_statement_lost ends the session of
+// a new Db before its first statement, which then fails with CONNECTION_LOST
+// and is sent once.
 // Usage: php clients/php/tests/rollback_test.php [case ...]
 declare(strict_types=1);
 
@@ -227,13 +229,54 @@ function rollbackFault(string $dsn): void
     $db->close();
 }
 
-$cases = ['rollback_failed' => rollbackFailed(...), 'savepoint_rollback_failed' => savepointRollbackFailed(...), 'rollback_fault' => rollbackFault(...)];
+/**
+ * The server ends the session of a new Db before its first statement. The
+ * statement fails with CONNECTION_LOST and is sent once: the client opens no
+ * other connection and does not send it again. The Db connects through the
+ * server DSN, as endSession does, so the ended session is the session of the
+ * Db and not a session behind a pooler; it is the only other session in the
+ * case database.
+ */
+function firstStatementLost(string $dsn): void
+{
+    [$driver] = Orm::parseDsn($dsn);
+    connect($dsn)->close();
+    $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
+    $server = getenv($env);
+    if ($server === false || $server === '') {
+        throw new RuntimeException("$env is required; database tests never skip");
+    }
+    $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
+    $db = Orm::connect($direct, new Config());
+    $db->utils()->schema()->register(\RollbackCase\Orm\schema());
+    $events = [];
+    $db->subscribe(function ($event) use (&$events): void {
+        $events[] = $event->error?->code_;
+    });
+    [, $pdo] = native($direct);
+    if ($driver === 'postgres') {
+        $pids = $pdo->query('SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()')->fetchAll(PDO::FETCH_COLUMN);
+        check(count($pids) === 1, 'the Db holds the only other session of the case database: ' . json_encode($pids));
+        $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([(int) $pids[0]]);
+    } else {
+        $ids = $pdo->query('SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()')->fetchAll(PDO::FETCH_COLUMN);
+        check(count($ids) === 1, 'the Db holds the only other session of the case database: ' . json_encode($ids));
+        $pdo->exec('KILL ' . (int) $ids[0]);
+    }
+    $e = raised(fn() => (new RollbackProbe)($db)->getCount());
+    check($e instanceof OrmException && $e->code_ === Code::CONNECTION_LOST, 'the first statement fails with CONNECTION_LOST: ' . ($e === null ? 'no error' : $e->getMessage()));
+    check($events === [Code::CONNECTION_LOST], 'the statement is sent once: ' . json_encode($events));
+}
+
+$cases = ['rollback_failed' => rollbackFailed(...), 'savepoint_rollback_failed' => savepointRollbackFailed(...), 'rollback_fault' => rollbackFault(...), 'first_statement_lost' => firstStatementLost(...)];
+// SQLite has no server session to end, so first_statement_lost runs on MySQL and PostgreSQL.
+$drivers = ['first_statement_lost' => ['mysql', 'postgres']];
 $selected = array_slice($argv, 1) ?: array_keys($cases);
 foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+    foreach ($drivers[$case] ?? ['sqlite', 'mysql', 'postgres'] as $driver) {
         $before = $failures;
         $current = "$case/$driver";
         // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.

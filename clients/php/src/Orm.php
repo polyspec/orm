@@ -6,6 +6,9 @@ namespace Orm;
 /** Opens connections and creates ORM function values. */
 final class Orm
 {
+    /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
+    private const SQLITE_BUSY_TIMEOUT_MS = 5000;
+
     /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
@@ -32,30 +35,23 @@ final class Orm
      * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다. 연결에는
      * 등록된 set이 없으므로 model 요청은 install이 그 set을 등록할 때까지
      * SCHEMA_HASH_MISMATCH다. 모든 connection은 datetime을 UTC로 읽고 쓴다
-     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다. Config의
-     * poolSize가 0보다 크면 연결은 process의 pool에서 나오고 요청을 넘어 다시 쓰인다
-     * (Connection).
+     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다. 연결은
+     * Db마다 하나이고 Db와 함께 끝난다. PHP client는 pool을 두지 않는다.
      */
     public static function connect(string $dsn, Config $config): Db
     {
         [$driver, $pdoDsn, $user, $password, $pragmas, $sslCa] = self::parseDsn($dsn);
-        if ($config->poolSize < 0) {
-            throw new OrmException(Code::CONFIG, 'pool size must not be negative');
+        if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
+            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/config.md "Connection poolers")');
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
         }
-        if ($config->poolIdleSize < 0 || $config->poolIdleSize > $config->poolSize) {
-            throw new OrmException(Code::CONFIG, "pool idle size must be between 0 and the pool size {$config->poolSize}");
-        }
-        if ($config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG, 'poolLifetimeMs is not supported by the PHP client: PDO cannot close a persistent connection of the pool');
-        }
         $options = [];
         switch ($driver) {
             case 'mysql':
-                // session 설정은 연결이 열릴 때 한 번 실행되는 init command다. pool이 다시 쓰는 연결은
-                // 그 설정을 그대로 가지므로 연결을 얻을 때마다 보내지 않는다.
+                // session 설정은 연결이 열릴 때 한 번 실행되는 init command 하나다. 설정마다
+                // statement를 따로 보내는 round trip이 들지 않는다.
                 $options = [
                     \Pdo\Mysql::ATTR_FOUND_ROWS => true,
                     // MySQL bounds SELECT statements with max_execution_time.
@@ -69,13 +65,25 @@ final class Orm
                 $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
                 break;
         }
-        $connection = Connection::take($driver, $pdoDsn, $user, $password, $options, $pragmas, $config);
         try {
-            return new Db($connection, $config, new \DateTimeZone('UTC'));
-        } catch (\Throwable $e) {
-            $connection->release();
-            throw $e;
+            $pdo = \PDO::connect($pdoDsn, $user, $password, $options);
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            if ($driver === 'sqlite') {
+                // pdo_sqlite가 link한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
+                $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
+                if (version_compare($version, '3.46', '<')) {
+                    throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
+                }
+                $pdo->exec('PRAGMA foreign_keys = ON');
+                $pdo->exec('PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT_MS);
+                foreach ($pragmas as [$name, $value]) {
+                    $pdo->exec("PRAGMA $name = $value");
+                }
+            }
+        } catch (\PDOException $e) {
+            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
+        return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
     /**
@@ -323,16 +331,13 @@ final class Config
         public readonly int $aesVersion = 1,
         /** @var array<int, string> every declared AES key version */
         public readonly array $aesKeys = [],
-        /**
-         * maximum connections a process holds for this database at once, each kept across the
-         * requests of the process; zero opens one connection per Db that ends with it
-         */
+        /** maximum connections of a pool; the PHP client opens one connection per Db, has no pool and accepts only zero */
         public readonly int $poolSize = 0,
         /** bound of every statement of the connection in milliseconds; zero keeps the server default */
         public readonly int $statementTimeoutMs = 0,
-        /** maximum idle connections the pool keeps for later requests; zero keeps up to the pool size */
+        /** maximum idle connections of a pool; the PHP client has no pool and accepts only zero */
         public readonly int $poolIdleSize = 0,
-        /** lifetime of a pool connection in milliseconds; the PHP client accepts only zero */
+        /** lifetime of a pool connection in milliseconds; the PHP client has no pool and accepts only zero */
         public readonly int $poolLifetimeMs = 0,
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,

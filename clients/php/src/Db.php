@@ -17,16 +17,8 @@ final class Db
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
-    /** 요청이 끝날 때 남은 transaction을 정리하는 함수를 이 요청에 등록했는지다. */
-    private static bool $endRegistered = false;
-
-    /** 연결의 PDO handle이다. close한 연결은 null이다. */
+    /** 연결의 PDO handle이다. close한 연결은 null이고, 그 PDO가 해제되면 연결이 닫힌다. */
     private ?\PDO $pdo;
-    /**
-     * 이 Db가 지금 연결에 statement를 보냈는지다. 보내기 전에 정한다. 첫 statement가 연결을 잃은
-     * 오류로 실패하면 연결을 다시 열고 그 statement를 한 번 다시 보낸다(send).
-     */
-    private bool $sent = false;
 
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
@@ -47,32 +39,24 @@ final class Db
     private int $transactions = 0;
     /** SQLite row lock table을 이 연결에서 만들었는지다. 연결의 첫 transaction 전에 한 번 만든다. */
     private bool $rowLockReady = false;
-    private readonly string $driver;
-
     /** @internal Orm::connect creates connections. */
     public function __construct(
-        private readonly Connection $connection,
+        \PDO $pdo,
+        private readonly string $driver,
         private readonly Config $config,
         private readonly \DateTimeZone $zone,
     ) {
-        $this->driver = $connection->driver;
-        $this->pdo = $connection->open();
-    }
-
-    /** Db가 끝나면 연결의 slot을 pool에 돌려준다. persistent slot의 연결은 다음 Db가 다시 쓴다. */
-    public function __destruct()
-    {
-        $this->pdo = null;
-        $this->connection->release();
-    }
-
-    /**
-     * The configured maximum of connections a process holds for this
-     * database at once (Config poolSize); zero when the Db has no pool.
-     */
-    public function poolSize(): int
-    {
-        return $this->config->poolSize;
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        // MySQL uses emulated prepares: a request runs most statement shapes once.
+        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
+        if ($driver === 'postgres') {
+            // PostgreSQL은 statement와 bind를 unnamed statement 하나로 한 round trip에 전송한다.
+            // named statement를 따로 prepare하는 round trip과 그 implicit transaction이 들지 않는다.
+            // bind는 prepare할 때와 같은 server-side parameter이고 type 추론도 같다.
+            $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
+        }
+        $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
+        $this->pdo = $pdo;
     }
 
     /**
@@ -104,25 +88,17 @@ final class Db
         return $this->config;
     }
 
-    /**
-     * @internal the PDO handle for statements that the caller sends itself; the
-     * connection counts them as sent, so a lost connection is not reopened
-     * for a later statement of the Db
-     */
+    /** @internal */
     public function pdo(): \PDO
     {
-        $this->sent = true;
         return $this->handle();
     }
 
     /** 연결의 PDO handle이다. close한 연결은 CONFIG다. */
     private function handle(): \PDO
     {
-        if ($this->closed) {
+        if ($this->closed || $this->pdo === null) {
             throw new OrmException(Code::CONFIG, 'database is closed');
-        }
-        if ($this->pdo === null) {
-            throw new OrmException(Code::CONNECTION_LOST, 'the connection was lost and opening it again failed');
         }
         return $this->pdo;
     }
@@ -140,8 +116,8 @@ final class Db
     }
 
     /**
-     * Releases cached statements and the connection; the Db cannot be used
-     * afterwards. A pooled connection returns to the pool of the process.
+     * Releases cached statements and closes the connection; the Db cannot be
+     * used afterwards.
      */
     public function close(): void
     {
@@ -159,7 +135,6 @@ final class Db
             $this->stmts = [];
             $this->stmtOrder = [];
             $this->pdo = null;
-            $this->connection->release();
         }
     }
 
@@ -248,10 +223,8 @@ final class Db
 
     /**
      * statement 하나를 보내고 그 event를 publish한다. $send는 statement를 보내 결과를 돌려주고,
-     * $done은 statement를 보내기 전의 hrtime과 오류로 event를 publish한다. 이 Db의 첫 statement가
-     * 연결을 잃은 오류(CONNECTION_LOST)로 실패하면 그 연결에서 이 Db의 statement가 실행된 적이
-     * 없으므로 연결을 다시 열고 statement를 한 번 다시 보낸다. 다른 오류와 그 뒤의 오류는 그대로
-     * 던진다. 실패한 시도도 event다.
+     * $done은 statement를 보내기 전의 hrtime과 오류로 event를 publish한다. driver 오류는 mapping한
+     * OrmException으로 event에 싣고 던진다.
      *
      * @template T
      * @param \Closure(): T $send
@@ -260,37 +233,16 @@ final class Db
      */
     private function send(\Closure $send, \Closure $done): mixed
     {
-        $resend = !$this->sent;
-        while (true) {
-            $this->sent = true;
-            $start = hrtime(true);
-            try {
-                $result = $send();
-            } catch (\PDOException $e) {
-                $error = $this->driverError($e);
-                $done($start, $error);
-                if (!$resend || $error->code_ !== Code::CONNECTION_LOST) {
-                    throw $error;
-                }
-                $resend = false;
-                $this->reconnect();
-                continue;
-            }
-            $done($start, null);
-            return $result;
+        $start = hrtime(true);
+        try {
+            $result = $send();
+        } catch (\PDOException $e) {
+            $error = $this->driverError($e);
+            $done($start, $error);
+            throw $error;
         }
-    }
-
-    /**
-     * 잃은 연결을 버리고 같은 slot의 연결을 새로 연다. 옛 handle의 statement를 먼저 버린다. PDO는
-     * persistent slot의 끊긴 연결을 확인하고 새로 연다.
-     */
-    private function reconnect(): void
-    {
-        $this->stmts = [];
-        $this->stmtOrder = [];
-        $this->pdo = null;
-        $this->pdo = $this->connection->open();
+        $done($start, null);
+        return $result;
     }
 
     /**
@@ -587,10 +539,6 @@ final class Db
             // SQLite의 row lock table은 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다.
             $this->ensureRowLockTable();
         }
-        if (!self::$endRegistered) {
-            register_shutdown_function(self::endRequest(...));
-            self::$endRegistered = true;
-        }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
         // transaction을 여는 statement다(docs/usage.md "Statement events"). driver의 transaction
         // API 대신 client가 이 text를 그대로 보낸다.
@@ -637,34 +585,6 @@ final class Db
             }
         }
         return $frame;
-    }
-
-    /**
-     * 요청이 transaction 안에서 끝나면(exit, fatal error) 끝나지 않은 transaction을 안쪽부터 끝낸다:
-     * MySQL named lock과 local 값, SQLite mode를 되돌리고 rollback한다. pool의 연결은 다음 요청이
-     * 다시 쓰므로 요청이 연결에 남긴 상태를 넘기지 않는다. 요청이 끝날 때 한 번 실행되며, 실패를 모두
-     * 모아 던진다.
-     */
-    private static function endRequest(): void
-    {
-        $errors = [];
-        $ended = [];
-        while (($frame = array_pop(self::$frames)) !== null) {
-            $id = spl_object_id($frame);
-            if ($frame->finished || isset($ended[$id]) || $frame->db->closed) {
-                continue;
-            }
-            $ended[$id] = true;
-            try {
-                $frame->db->finish($frame, false);
-            } catch (\Throwable $e) {
-                $errors[] = $e;
-            }
-        }
-        $failure = self::joined($errors);
-        if ($failure !== null) {
-            throw $failure;
-        }
     }
 
     /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
