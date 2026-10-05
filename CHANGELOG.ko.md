@@ -16,7 +16,7 @@
 
 - G5.32-5: Go PostgreSQL client는 다시 statement text를 연결마다 한 번 prepare한다(pgx statement cache). G5.32-1의 exec query mode가 pool의 steady state를 24~44% 느리게 했기 때문이다. pool 클라이언트는 연결마다 한 번 prepare하고 재사용하며, PHP만 문마다 round trip 하나로 실행한다.
 
-- G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-4).
+- G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-7, G5.33-10).
 
 - G5.33-4: `rust-send-savepoint-check`의 SQLite file과 `timing-check`의 Go test binary는 실행 directory에 두고, TypeScript client를 build하는 모든 make target은 그 build 출력의 유일한 보유자가 된다.
 
@@ -40,7 +40,7 @@
 
 - G5.32-1: PostgreSQL에서 Go client는 모든 statement를 pgx query mode `exec`로 prepare하지 않고 text bind와 함께 round trip 하나로 전송한다. 연결마다 statement text마다 따로 드는 prepare round trip과 transaction이 없다.
 
-- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-13).
+- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-14).
 
 - G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
 
