@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.70: Go 취소 test는 statement를 시작하기 전에 기다리지 않던 session이 lock을 기다릴 때만 취소하므로, 앞의 case가 기다리게 남긴 statement가 더 이상 statement가 실행되기 전에 case를 취소하지 않는다.
+
 - G5.69: 문서 검사는 자기 임시 directory로 Chromium을 시작하고 browser를 닫을 때 그것을 지우므로, Chromium이 남기는 `.org.chromium.Chromium.*` entry가 단계를 실패시키지 않는다.
 
 - G5.63-1: Rust catalog의 PostgreSQL insert lock helper는 private이므로 interface 목록 밖에 있고, 그 unit test는 catalog 검증의 입력으로 선언된다.
