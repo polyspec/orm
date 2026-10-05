@@ -97,17 +97,32 @@ async fn open(dsn: &str, count: usize) -> Vec<Db> {
     out
 }
 
-/// A new SQLite file with the schema installed and its DSN.
-async fn database(name: &str) -> String {
-    let dir = std::env::temp_dir().join(format!("orm-rust-sqlite-lock-{}", std::process::id()));
+/// A new SQLite file with the schema installed, in a directory of its own for one test. The directory is removed
+/// when the value is dropped, also when the test fails an assertion and unwinds.
+struct Database {
+    dsn: String,
+    dir: std::path::PathBuf,
+}
+
+impl Drop for Database {
+    fn drop(&mut self) {
+        if let Err(error) = std::fs::remove_dir_all(&self.dir) {
+            if !std::thread::panicking() {
+                panic!("remove {}: {error}", self.dir.display());
+            }
+        }
+    }
+}
+
+async fn database(name: &str) -> Database {
+    let dir = std::env::temp_dir().join(format!("orm-rust-sqlite-lock-{}-{name}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join(format!("{name}.sqlite"));
-    let _ = std::fs::remove_file(&path);
-    let dsn = format!("sqlite://{}", path.display());
+    let dsn = format!("sqlite://{}", dir.join(format!("{name}.sqlite")).display());
     let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
     db.close().await;
-    dsn
+    Database { dsn, dir }
 }
 
 /// Runs one writer per connection at the same time and returns the failures.
@@ -134,7 +149,8 @@ async fn dsn_rejects_txlock() {
 #[tokio::test]
 async fn writers_on_several_connections() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let dsn = database("connections").await;
+    let file = database("connections").await;
+    let dsn = file.dsn.clone();
     let dbs = open(&dsn, 8).await;
     let failures = run_writers(&dbs, "c", 10).await;
     assert!(failures.is_empty(), "failed writes: {failures:?}");
@@ -150,7 +166,8 @@ async fn writers_in_several_processes() {
         assert!(failures.is_empty(), "failed writes: {failures:?}");
         return;
     }
-    let dsn = database("processes").await;
+    let file = database("processes").await;
+    let dsn = file.dsn.clone();
     let exe = std::env::current_exe().unwrap();
     let children: Vec<_> = (0..3)
         .map(|i| {
@@ -174,7 +191,8 @@ async fn writers_in_several_processes() {
 #[tokio::test]
 async fn reads_during_write() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let dsn = database("reads").await;
+    let file = database("reads").await;
+    let dsn = file.dsn.clone();
     let dbs = open(&dsn, 2).await;
     let (writer, reader) = (&dbs[0], &dbs[1]);
     writer
@@ -196,7 +214,8 @@ async fn reads_during_write() {
 #[tokio::test]
 async fn lock_wait_expires() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let dsn = database("expiry").await;
+    let file = database("expiry").await;
+    let dsn = file.dsn.clone();
     let holder = &open(&dsn, 1).await[0];
     let waiter = &open(&format!("{dsn}?_pragma=busy_timeout(200)"), 1).await[0];
     let (code, waited) = holder
@@ -218,7 +237,8 @@ async fn lock_wait_expires() {
 #[tokio::test]
 async fn statement_timeout_bounds_sqlite_lock_wait() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let dsn = database("config-expiry").await;
+    let file = database("config-expiry").await;
+    let dsn = file.dsn.clone();
     let holder = open(&dsn, 1).await.remove(0);
     let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
     let (code, waited) = holder

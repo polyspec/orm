@@ -35,6 +35,13 @@
   수 있게 하며, 실패한 case는 무엇이, 어디서, 왜 실패했는지 적는다. 실행은 모든 target의 상태, 시간, 첫 실패
   줄을 담은 summary로 끝나고, CI는 그것을 job summary로 내고 그 실행 id의 보고서와 함께 올리며, target이
   실패하거나 실행되지 않으면 job은 실패한다.
+- test 단계는 아무것도 남기지 않는다. check runner와 `make owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
+  자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
+  process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
+  runner는 그 뒤 남은 것을 지우고 process를 끝낸다. code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
+  Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
+  임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
+  단계보다 오래 사는 server는 setup 단계만 시작한다.
 - 로컬 `make check`는 할 수 있지만 push 전에 필요한 단계가 아니다. 항목을 진행하는 동안에는 그 Red/Green
   테스트와 `make owner-check`만 실행한다(아래). push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을
   때만 한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.

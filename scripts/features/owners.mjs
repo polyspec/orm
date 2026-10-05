@@ -24,6 +24,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { runGroup, stepLines } from '../../tests/testcase.mjs';
 import { makeRecipes } from '../repo/testcases.mjs';
 import { NEEDS } from '../check/ci-setup.mjs';
+import { runStep } from '../check/step.mjs';
 
 // fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
 const pathPattern = /(?:contracts|tests|schema|clients|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
@@ -291,38 +292,17 @@ export function makeArguments(target, env) {
   return ['--no-print-directory', '-k', ...overrides, target];
 }
 
-// make는 한 make target을 실행하고 출력 줄을 step으로 내보낸다. 기한은 target 안의 case마다 있다.
+// make는 한 make target을 단계 하나로 실행하고(runStep: 자기 임시 directory와 process group) 출력 줄을 step으로
+// 내보낸다. 기한은 target 안의 case마다 있다.
 function make(root, target, { step }) {
-  return new Promise((resolveRun, rejectRun) => {
-    const env = { ...process.env };
-    for (const variable of ['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES']) delete env[variable];
-    const child = spawn('make', makeArguments(target, process.env), { cwd: root, env });
-    const lines = stepLines(step);
-    child.stdout.on('data', chunk => lines.write(String(chunk)));
-    child.stderr.on('data', chunk => lines.write(String(chunk)));
-    child.on('error', rejectRun);
-    child.on('close', code => {
-      lines.flush();
-      if (code === 0) resolveRun();
-      else rejectRun(new Error(`make ${target} exited with ${code}`));
-    });
-  });
+  const env = { ...process.env };
+  for (const variable of ['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES']) delete env[variable];
+  return runStep('make', makeArguments(target, process.env), { cwd: root, env, step, label: `owners/make/${target}` });
 }
 
-// execute는 명령을 실행하고 출력 줄을 step으로 내보낸다. 기한은 명령 안의 case마다 있다.
-function execute(root, args, { step }) {
-  return new Promise((resolveRun, rejectRun) => {
-    const child = spawn(process.execPath, args, { cwd: root, env: process.env });
-    const lines = stepLines(step);
-    child.stdout.on('data', chunk => lines.write(String(chunk)));
-    child.stderr.on('data', chunk => lines.write(String(chunk)));
-    child.on('error', rejectRun);
-    child.on('close', code => {
-      lines.flush();
-      if (code === 0) resolveRun();
-      else rejectRun(new Error(`node ${args.join(' ')} exited with ${code}`));
-    });
-  });
+// execute는 node 명령을 단계 하나로 실행하고 출력 줄을 step으로 내보낸다. 기한은 명령 안의 case마다 있다.
+function execute(root, args, { step }, label) {
+  return runStep(process.execPath, args, { cwd: root, env: process.env, step, label });
 }
 
 // usesTestEnv는 Makefile의 target 하나가 server 환경(WITH_TEST_ENV)을 읽는지다.
@@ -441,14 +421,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       }
     }
     for (const { helper } of helpers) {
-      if (!(await runGroup(`owners/helper/${helper.id}`, context => execute(root, ['scripts/features/check.mjs', '--run', '--helper', helper.id], context)))) failed++;
+      if (!(await runGroup(`owners/helper/${helper.id}`, context => execute(root, ['scripts/features/check.mjs', '--run', '--helper', helper.id], context, `owners/helper/${helper.id}`)))) failed++;
     }
     for (const { feature, commands, parts } of owners) {
       const steps = [];
       if (commands.length) steps.push(['verification', ['scripts/features/check.mjs', '--run', '--feature', feature.id, ...commands.flatMap(({ id }) => ['--command', id])]]);
       if (parts.length) steps.push(['coverage', ['scripts/features/coverage.mjs', '--feature', feature.id, ...parts.flatMap(({ part }) => ['--part', part])]]);
       for (const [kind, command] of steps) {
-        if (!(await runGroup(`owners/${feature.id}/${kind}`, context => execute(root, command, context)))) failed++;
+        if (!(await runGroup(`owners/${feature.id}/${kind}`, context => execute(root, command, context, `owners/${feature.id}/${kind}`)))) failed++;
       }
     }
     if (databases && !(await runGroup('owners/databases/drop', context =>

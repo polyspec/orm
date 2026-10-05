@@ -195,12 +195,19 @@ type failure string
 
 func (f failure) Error() string { return string(f) }
 
+// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: run의 defer가
+// 이 실행의 임시 directory를 지운다.
 func main() {
+	os.Exit(run())
+}
+
+func run() (code int) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			if f, ok := recovered.(failure); ok {
 				fmt.Fprintln(os.Stderr, string(f))
-				os.Exit(1)
+				code = 1
+				return
 			}
 			panic(recovered)
 		}
@@ -278,23 +285,22 @@ func main() {
 		s, err = runtimemodel.LoadFiles(filepath.Join(abs, m.Schema))
 		return err
 	}); err != nil {
-		os.Exit(1)
+		return 1
 	}
 	rust := ""
 	if slices.Contains(languages, "rust") {
-		// 추출기는 lease 아래에서 이 실행의 directory로 복사한 것을 실행한다. directory는 process가 끝날 때 지운다.
+		// 추출기는 lease 아래에서 이 실행의 directory로 복사한 것을 실행한다. directory는 run이 끝날 때 지운다.
 		directory, err := os.MkdirTemp("", "orm-interface-symbols-")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return 1
 		}
 		defer os.RemoveAll(directory)
 		if err := testcase.RunLong("interfaces/rust-build", func(c *testcase.Case) (err error) {
 			rust, err = buildRust(c, abs, directory)
 			return err
 		}); err != nil {
-			os.RemoveAll(directory)
-			os.Exit(1)
+			return 1
 		}
 	}
 	failed := false
@@ -320,8 +326,9 @@ func main() {
 		}
 	}
 	if failed {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // checkLanguage는 한 언어의 native 선언을 공통 contract, 기록된 symbol snapshot과 그 hash에

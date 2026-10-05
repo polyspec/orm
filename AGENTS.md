@@ -44,6 +44,15 @@
   case states what failed, where and why. The run ends with a summary of every target's status,
   time and first failure lines, which CI publishes as the job summary and uploads with the report
   of that run id, and the job fails when a target failed or did not run.
+- A test step leaves nothing behind. The check runner and `make owner-check` run each step with a
+  temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
+  leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its
+  group fails and names what it left, and a failed step's leftovers go into the report. Either way
+  the runner then removes them and ends the processes. Code removes its own temporary files on
+  every path, failure included: a Go `main` ends with `os.Exit(run())` and calls no `os.Exit` after
+  a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
+  removes it on drop. A process that starts a session of its own leaves the group and is not seen,
+  so only the setup steps start servers that outlive a step.
 - A local `make check` remains possible but is no required step before a push; during an item
   only its Red/Green tests and `make owner-check` run (below). A push needs the
   owner's approval each time and happens only when no checklist item is `[~]`. A CI failure is

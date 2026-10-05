@@ -21,7 +21,9 @@ const ELAPSED = 'elapsed=[0-9.]+(µs|ms|s|m[0-9.]+s)';
  */
 function fixture(string $source, array $options = []): array
 {
-    $file = tempnam(sys_get_temp_dir(), 'orm-testcase-') . '.php';
+    // tempnam은 이름을 차지하는 빈 file을 만든다. php가 실행할 file은 그 이름에 .php를 붙인 것이므로 둘 다 지운다.
+    $base = tempnam(sys_get_temp_dir(), 'orm-testcase-');
+    $file = $base . '.php';
     file_put_contents($file, "<?php\ndeclare(strict_types=1);\nrequire " . var_export(__DIR__ . '/testcase.php', true) . ";\n" . $source);
     try {
         $process = proc_open([PHP_BINARY, ...$options, $file], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
@@ -54,6 +56,7 @@ function fixture(string $source, array $options = []): array
         return [proc_close($process), $output[0]];
     } finally {
         unlink($file);
+        unlink($base);
     }
 }
 

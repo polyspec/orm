@@ -105,7 +105,37 @@ func vectorsPath() string {
 	return "tests/conformance/vectors." + driver + ".json"
 }
 
+// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패(must,
+// usage)는 panic으로 run까지 올라오고, 그 사이의 defer가 runner binary directory를 지우며, run이 잡은 lock을 푼다.
 func main() {
+	os.Exit(run())
+}
+
+// exitCode는 usage가 run을 끝내는 panic이다. failure는 must가 run을 끝내는 panic이다.
+type exitCode int
+type failure struct{ err error }
+
+func (f failure) Error() string { return f.err.Error() }
+
+func run() (code int) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			return
+		}
+		switch r := recovered.(type) {
+		case exitCode:
+			code = int(r)
+		case failure:
+			fmt.Fprintln(os.Stderr, "check:", r.err)
+			code = 1
+		default:
+			panic(recovered)
+		}
+		if cleanupErr := releaseLocks(); cleanupErr != nil {
+			fmt.Fprintln(os.Stderr, "check: release conformance lock:", cleanupErr)
+		}
+	}()
 	if len(os.Args) < 2 {
 		usage()
 	}
@@ -152,6 +182,7 @@ func main() {
 		must(lockDatabases(dsns...))
 		binaries, err := os.MkdirTemp("", "orm-conformance-runners-")
 		must(err)
+		defer os.RemoveAll(binaries)
 		must(testcase.RunLong("conformance/build", func(c *testcase.Case) error {
 			return buildRunners(c, root, binaries)
 		}))
@@ -162,12 +193,13 @@ func main() {
 		must(os.RemoveAll(binaries))
 		must(releaseLocks())
 	case "compare":
-		os.Exit(compare(root, fs.Args()))
+		return compare(root, fs.Args())
 	case "record":
 		must(recordVerified(root, fs.Args()))
 	default:
 		usage()
 	}
+	return 0
 }
 
 // newOutputDirectory는 run의 output directory를 만든다. 이미 있으면 거부한다: 이전 실행의 file이 이 실행의
@@ -279,16 +311,13 @@ func driverDir() string {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: check state -dsn x [-driver d] | check run -out <new dir> [-driver d] -dsn x [-driver d -dsn x]... | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
-	os.Exit(2)
+	panic(exitCode(2))
 }
 
+// must는 err가 있으면 run을 끝낸다(failure). case 안에서 부르면 testcase가 그 case의 FAIL 줄로 보고한다.
 func must(err error) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "check:", err)
-		if cleanupErr := releaseLocks(); cleanupErr != nil {
-			fmt.Fprintln(os.Stderr, "check: release conformance lock:", cleanupErr)
-		}
-		os.Exit(1)
+		panic(failure{err})
 	}
 }
 

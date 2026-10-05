@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.55: test 단계는 아무것도 남기지 않는다. check runner와 `make owner-check`는 단계마다 자기 임시 directory와 자기 process group에서 실행하고, 임시 entry나 실행 directory나 process를 남긴 통과한 단계를 실패시키며, 실패한 단계가 남긴 것은 보고서에 넣고, 두 경우 모두 지운다. interface와 conformance check는 `os.Exit(run())`으로 끝나고, Rust transaction test와 SQLite lock test는 drop할 때 directory를 지우며, PHP testcase test는 `tempnam` file을 지우고, `make repo-check`는 Go에서 `defer` 뒤의 `os.Exit`를 거부한다. 실행이 끝날 때 `databases.sh drop`은 replica가 적용한 MySQL test server의 binary log를 지금 file까지 지운다.
+
 - G5.54: test를 하나도 고르지 않은 test 실행은 실패한다. `tests/go-test.mjs`는 `go test -json`을 실행해 `-run` 선택의 test2json `run` event를 확인하고, `tests/cargo-test.mjs`는 실행 전에 `--list`가 고르는 test 수를 확인하며, `client-db-test.sh`는 모르는 lane 이름과 빈 선택을 거부한다. build tag 없이 한 번도 실행되지 않던 Go decimal physical test가 이제 실행된다.
 
 - G5.53: `client-db-test.sh`의 차례 lane, performance 검사, package 검사, 실행 database의 drop은 실패한 부분 뒤에도 독립된 부분을 모두 실행하고 실패를 적는다. 독립된 검사를 차례로 실행하던 recipe 일곱 개와 검증 명령 여섯 개는 부분과 따로 된 명령으로 나누었고, repository 규칙이 그런 recipe와 이어 쓴 명령을 거부한다.

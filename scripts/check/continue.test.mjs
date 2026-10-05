@@ -17,7 +17,7 @@ function fake(programs, failing) {
   mkdirSync(join(base, 'bin'));
   const log = join(base, 'ran.log');
   for (const program of programs)
-    writeFileSync(join(base, 'bin', program), `#!/bin/sh\necho "${program} $*" >> ${log}\ncase "$*" in *${failing}*) echo 'FAIL ${failing}: expected 1 row, actual 0'; exit 3;; esac\n`, { mode: 0o755 });
+    writeFileSync(join(base, 'bin', program), `#!/bin/sh\necho "${program} $*" >> ${log}\ncase "$*" in *'${failing}'*) echo 'FAIL ${failing}: expected 1 row, actual 0'; exit 3;; esac\n`, { mode: 0o755 });
   return {
     base,
     run: (args, env = {}) => spawnSync('sh', args, { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, ...env } }),
@@ -105,13 +105,55 @@ caseTest('dropping the run databases removes every part after a failed one and n
     writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\n");
     const dir = join(f.base, 'databases');
     mkdirSync(dir);
-    const result = f.run(['scripts/check/databases.sh', 'drop', servers, dir, 'orm_x']);
+    // 이 case의 servers file에는 replica가 없다. 바깥 실행의 환경이 준 replica도 쓰지 않는다.
+    const result = f.run(['scripts/check/databases.sh', 'drop', servers, dir, 'orm_x'], { ORM_TEST_MYSQL_REPLICA_DSN: '' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql']);
     assert.ok(!existsSync(dir), 'the run directory is left');
     assert.match(result.stderr, /databases: drop failed:\n {2}mysql /);
+    assert.match(result.stderr, /\n {2}purge the binary logs \(exit 1\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+// binary log case(G5.55-1)는 실행의 마지막 단계(databases.sh drop)가 MySQL 두 server의 binary log를 replica가 적용을
+// 마친 file까지 지우는지, replica가 적용하지 못했으면 지우지 않고 실패하는지 본다. 가짜 mysql은 port로 primary(1)와
+// replica(3)를 구분하고 상태 질의에 정해진 답을 낸다. 실제 server는 make owner-check의 drop 단계가 쓴다.
+caseTest('dropping the run databases purges the binary logs that the replica applied', PROCESS, () => {
+  for (const applied of ['7', 'NULL']) {
+    const base = realpathSync(mkdtempSync(join(tmpdir(), 'continue-')));
+    try {
+      mkdirSync(join(base, 'bin'));
+      const log = join(base, 'ran.log');
+      writeFileSync(join(base, 'bin', 'mysql'), `#!/bin/sh
+for a in "$@"; do last=$a; done
+case "$*" in *"-P 1 "*) server=primary ;; *) server=replica ;; esac
+echo "$server $last" >> ${log}
+case "$last" in
+'SHOW BINARY LOG STATUS') [ $server = primary ] && printf 'binlog.000012\t157\t\t\t\n' || printf 'binlog.000031\t157\t\t\t\n' ;;
+*SOURCE_POS_WAIT*) echo ${applied} ;;
+esac
+`, { mode: 0o755 });
+      writeFileSync(join(base, 'bin', 'psql'), '#!/bin/sh\n', { mode: 0o755 });
+      const servers = join(base, 'servers.env');
+      writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\nexport ORM_TEST_MYSQL_REPLICA_DSN='mysql://root@127.0.0.1:3/orm_test'\n");
+      const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}` } });
+      const ran = readFileSync(log, 'utf8').trim().split('\n');
+      assert.ok(!(result.stdout + result.stderr).includes('127.0.0.1'), 'no DSN or address is printed');
+      if (applied === '7') {
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.deepEqual(ran.slice(1), ['primary FLUSH BINARY LOGS', 'primary SHOW BINARY LOG STATUS', "replica SELECT IFNULL(SOURCE_POS_WAIT('binlog.000012', 157, 120), 'NULL')",
+          "primary PURGE BINARY LOGS TO 'binlog.000012'", 'replica FLUSH BINARY LOGS; FLUSH RELAY LOGS', 'replica SHOW BINARY LOG STATUS', "replica PURGE BINARY LOGS TO 'binlog.000031'"]);
+        assert.match(result.stdout, /databases: binary logs purged up to binlog.000012 on the primary and binlog.000031 on the replica/);
+      } else {
+        assert.equal(result.status, 1, result.stdout + result.stderr);
+        assert.ok(!ran.some(line => line.includes('PURGE')), ran.join('\n'));
+        assert.match(result.stderr, /the replica did not apply the primary's binary log up to binlog.000012:157 \(SOURCE_POS_WAIT returned NULL\); the binary logs are kept/);
+      }
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   }
 });
 
