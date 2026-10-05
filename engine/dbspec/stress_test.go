@@ -66,6 +66,19 @@ func TestStressDocument(t *testing.T) {
 		slices.Sort(references)
 		reference := references[parseRuns/2]
 		t.Logf("stress reference cpu median=%s ratio=%.2f", reference, float64(parseElapsed)/float64(reference))
+		// The allocating reference splits the document into lines and words and counts each word in a map: string
+		// slicing, allocation and hashing, the kind of work a parse does. It is printed and not asserted until the
+		// development machine and CI show whether its ratio holds across machines.
+		allocations := make([]time.Duration, parseRuns)
+		for i := range allocations {
+			clock := startCaseClock(t)
+			referenceWords = allocatingReference(text)
+			allocations[i], _ = clock.elapsed(t)
+			runtime.UnlockOSThread()
+		}
+		slices.Sort(allocations)
+		allocation := allocations[parseRuns/2]
+		t.Logf("stress allocating reference cpu median=%s ratio=%.2f words=%d", allocation, float64(parseElapsed)/float64(allocation), referenceWords)
 		if err := expectDocument(document, diagnostics); err != nil {
 			return err
 		}
@@ -106,4 +119,19 @@ func referenceScan(text string) uint32 {
 		h = h*31 + uint32(text[i])
 	}
 	return h
+}
+
+// referenceWords is the result of the allocating reference, kept in a package variable so the work is not removed.
+var referenceWords int
+
+// allocatingReference splits text into lines and the lines into words, and counts each word in a map; it returns
+// the number of distinct words.
+func allocatingReference(text string) int {
+	counts := map[string]int{}
+	for _, line := range strings.Split(text, "\n") {
+		for _, word := range strings.Fields(line) {
+			counts[word]++
+		}
+	}
+	return len(counts)
 }
