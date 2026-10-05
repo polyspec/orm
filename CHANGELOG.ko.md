@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-2: `tests/run-long.mjs`(Makefile의 `RUN_LONG`)와 `tests/testcase.mjs`의 `runLong`은 장기 작업을 단계 로그, 종료 코드, 결과와 함께 기한 없이 실행한다.
+
 - G5.30-1: AGENTS.md는 test case가 자기 timeout을 가지고, 장기 작업(build, 설치, 도구 실행, 전체 suite, server)은 timeout 대신 상세 단계 로그를 두며 기한이 없다고 적는다.
 
 - G5.31: PHP client는 PostgreSQL의 모든 statement를 statement text마다 따로 드는 prepare round trip과 transaction 없이 bind와 함께 round trip 하나로 보내고(`Pdo\Pgsql::ATTR_DISABLE_PREPARES`), session time zone을 `SET TIME ZONE` 대신 startup parameter `TimeZone=UTC`로 둔다. `tests/events/vectors.json`의 `server_transactions`가 네 client에서 statement당 server transaction 수를 검사한다.

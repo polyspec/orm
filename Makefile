@@ -60,6 +60,10 @@ GO_TEST = node tests/go-test.mjs -v -timeout 0
 # 의존성 전체를 compile한다(개발 machine에서 가장 긴 것이 2.5-4분, T27 측정 2m38s). 그 두 배다.
 # TOOL_DEADLINE: tsc, gofmt, cargo fmt, go generate 같은 도구 한 번의 실행(몇 초에서 1분).
 RUN_CASE = node tests/run-case.mjs
+# RUN_LONG은 장기 작업(build, 설치, 도구 실행) 하나를 기한 없이 실행한다(tests/run-long.mjs):
+# `RUN <name> no-deadline`, 명령의 출력 줄을 STEP으로, 종료 코드와 PASS나 FAIL을 출력한다. 성공과
+# 실패는 시계가 아니라 명령의 종료 코드와 오류로 정한다.
+RUN_LONG = node tests/run-long.mjs
 BUILD_DEADLINE = 8m
 TOOL_DEADLINE = 5m
 TSC_BUILD = $(RUN_CASE) typescript-build $(TOOL_DEADLINE) -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json

@@ -159,7 +159,7 @@ const tools = [
   ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
   ['cargo test --no-run', /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/],
 ];
-const wrapper = /(?:\brun-case\.mjs|\$\(RUN_CASE\)|\$\(TSC_BUILD\))/;
+const wrapper = /(?:\brun-case\.mjs|\$\(RUN_CASE\)|\brun-long\.mjs|\$\(RUN_LONG\)|\$\(TSC_BUILD\))/;
 
 // cargoArguments는 segment의 `cargo test` 인자 가운데 `--` 앞의 것을 `--no-run`과 toolchain(`+x`) 없이
 // 돌려준다. build와 실행이 같은 test binary를 쓰는지 비교한다.
