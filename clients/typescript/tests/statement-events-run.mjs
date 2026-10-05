@@ -166,7 +166,11 @@ export async function runServerTransactions(spec, dsn, check) {
   try {
     const u = db.utils();
     const zone = await u.read('utility', [], "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-    check(JSON.stringify(zone) === JSON.stringify([[spec.time_zone.setting, spec.time_zone.source]]), `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}`);
+    // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
+    // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+    const pooled = process.env.ORM_TEST_POSTGRES_DSN !== process.env.ORM_TEST_POSTGRES_SERVER_DSN;
+    check(zone.length === 1 && zone[0][0] === spec.time_zone.setting && (pooled || zone[0][1] === spec.time_zone.source),
+      `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}${pooled ? ' (pooled)' : ''}`);
     const probe = async () => Number((await u.read('utility', [], spec.probe))[0][0]);
     const first = await probe();
     const cost = await probe() - first;
