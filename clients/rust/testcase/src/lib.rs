@@ -49,6 +49,16 @@ pub fn manifest_dir() -> std::path::PathBuf {
     std::env::var_os("CARGO_MANIFEST_DIR").map(std::path::PathBuf::from).expect("CARGO_MANIFEST_DIR is unset; run the test through cargo test")
 }
 
+/// package의 program `name`(Cargo.toml의 `[[bin]]`)의 실행 file 경로를 test가 실행될 때 `ORM_PROGRAM_<NAME>`
+/// (대문자, `-`는 `_`)에서 읽는다. tests/cargo-test.mjs와 기능 coverage checker가 공유 Rust target
+/// directory의 lease 안에서 복사한 program을 그 변수로 준다. compile 시점의 `env!("CARGO_BIN_EXE_<name>")`는
+/// 공유 target directory의 경로를 binary에 넣으므로, 다른 checkout이 그 program을 다시 build하면 그것을
+/// 실행하게 된다. 값이 없으면 그 runner 밖에서 실행한 것이므로 경로를 추측하지 않고 panic한다.
+pub fn program(name: &str) -> String {
+    let variable = format!("ORM_PROGRAM_{}", name.to_uppercase().replace('-', "_"));
+    std::env::var(&variable).unwrap_or_else(|_| panic!("{variable} is unset; run the test through tests/cargo-test.mjs, which gives the copied program"))
+}
+
 /// test 함수 이름을 case 이름으로 쓰고 기한 `$deadline` 아래의 case를 시작한다. 돌려준 값이
 /// scope를 벗어나면 결과를 출력하므로 `let _case = orm_testcase::case!(..);`로 묶어 둔다.
 #[macro_export]

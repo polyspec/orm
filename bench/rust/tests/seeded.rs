@@ -25,7 +25,7 @@ fn assert_lines(program: &str, stdout: &str, names: &[&str]) {
 #[test]
 fn native_reads_the_seeded_database() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let program = env!("CARGO_BIN_EXE_native");
+    let program = &orm_testcase::program("native");
     let stdout = run_seeded(program, "30");
     assert_lines(program, &stdout, &["sqlx pk get", "sqlx list100", "sqlx insert", "sqlx relation4 + rust assembly"]);
 }
@@ -33,7 +33,7 @@ fn native_reads_the_seeded_database() {
 #[test]
 fn driver_compare_reads_the_seeded_database() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let program = env!("CARGO_BIN_EXE_driver_compare");
+    let program = &orm_testcase::program("driver_compare");
     let stdout = run_seeded(program, "10");
     assert_lines(program, &stdout, &["sqlx pk", "mysql_async pk", "sqlx list100", "mysql_async list100"]);
 }

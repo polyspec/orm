@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
-import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
+import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
@@ -616,6 +616,16 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
     'clients/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
     'clients/typescript/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
     'clients/rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
+  ]);
+});
+
+// program 경로 case는 Rust test가 package program의 경로를 compile 시점의 env!로 읽으면 거부한다.
+caseTest('Rust tests read the paths of package programs when they run', COMPUTE, () => {
+  assert.deepEqual(binExeErrors({
+    'bench/rust/tests/a.rs': 'let program = &orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
+  }), []);
+  assert.deepEqual(binExeErrors({ 'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\n' }), [
+    'bench/rust/tests/b.rs:1 reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with orm_testcase::program',
   ]);
 });
 

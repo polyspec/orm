@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-9: Rust test는 실행하는 package program의 경로를 target lease 아래에서 만든 복사본의 `ORM_PROGRAM_<NAME>`으로 받고(`orm_testcase::program`), `make repo-check`는 `env!("CARGO_BIN_EXE_...")`를 실패시킨다.
+
 - G5.33-8: conformance와 interface checker는 Rust program을 target lease 아래에서 build하고 복사본을 실행하며, `scripts/check/run.mjs`는 받은 target directory를 하위 make에 넘긴다.
 
 - G5.30-15: Go conformance와 interface checker는 runner를 단계 로그와 함께 기한 없는 장기 작업으로 build한다(`testcase.RunLong`).

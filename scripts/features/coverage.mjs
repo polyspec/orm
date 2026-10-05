@@ -8,6 +8,7 @@ import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mjs'
 
 // cargoTestScript는 lease 아래에서 test binary를 build하고 복사하는 script다.
 const cargoTestScript = new URL('../../tests/cargo-test.mjs', import.meta.url).pathname;
+const { programEnvironment } = await import(cargoTestScript);
 
 export const languages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
@@ -356,6 +357,7 @@ async function buildNative(plans, directory) {
     workspaces.get(workspace).push(crate);
   }
   const features = process.env.ORM_RUST_TEST_FEATURES ? ['--features', process.env.ORM_RUST_TEST_FEATURES] : [];
+  const programsOf = new Map();
   for (const [workspace, crates] of workspaces) {
     const files = new Map();
     const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
@@ -370,7 +372,9 @@ async function buildNative(plans, directory) {
         'cargo', 'test', '--no-run', '--workspace', ...features, '--manifest-path', resolve(workspace, 'Cargo.toml'),
         '--message-format=json-render-diagnostics'], workspace, null, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
-      for (const binary of JSON.parse(await readFile(resolve(copies, 'binaries.json'), 'utf8'))) {
+      const copied = JSON.parse(await readFile(resolve(copies, 'binaries.json'), 'utf8'));
+      programsOf.set(workspace, programEnvironment(copied.programs));
+      for (const binary of copied.tests) {
         for (const file of await dependencyFiles(binary.copy, workspace)) {
           if (!files.has(file)) files.set(file, []);
           files.get(file).push(binary.copy);
@@ -378,7 +382,7 @@ async function buildNative(plans, directory) {
       }
       step(`${new Set([...files.values()].flat()).size} test binaries`);
     });
-    for (const crate of crates) builds.cargo.set(crate, error ? { error } : { files });
+    for (const crate of crates) builds.cargo.set(crate, error ? { error } : { files, programs: programsOf.get(workspace) ?? {} });
   }
   return builds;
 }
@@ -405,7 +409,7 @@ function prepared(spec, builds) {
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
   return executables.map(executable => ({ program: executable,
     args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1'], cwd: spec.cwd,
-    env: { CARGO_MANIFEST_DIR: spec.cwd } }));
+    env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
 async function state(builds, database, dsn, timeoutMs) {
