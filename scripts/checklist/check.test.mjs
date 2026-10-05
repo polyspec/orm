@@ -59,3 +59,17 @@ caseTest('rejects a state marker anywhere but the leading state of an item', COM
   ]);
   assert.deepEqual(checkChecklistPair(`# Checklist\n\n${english}`, `# 체크리스트\n\n${korean}`), []);
 });
+
+// GitHub task list는 [x]와 [X]도 상태로 읽으므로, 그 표시도 항목 맨 앞의 상태가 아닌 곳에서는 거부한다. 맨 앞의
+// [x]는 이 checklist의 상태가 아니므로 invalid state 하나로만 보고한다.
+caseTest('rejects the GitHub task list markers x and X outside the leading state of an item', COMPUTE, () => {
+  const koreanText = `# 체크리스트\n\n- [ ] A1 대기, GitHub의 [x] 표시\n- [~] A2 진행\n  이어지는 [X] 글\n- [o] A3 완료\n- [!] A4 우회. 원인: 서버 사용 불가. 재시도: 서버 응답.\n`;
+  assert.deepEqual(checkChecklistPair(`# Checklist\n\n${english}`, koreanText), [
+    'docs/checklist.ko.md:3:22: state marker [x] outside the leading state of an item',
+    'docs/checklist.ko.md:5:8: state marker [X] outside the leading state of an item',
+  ]);
+  assert.deepEqual(checkChecklistPair(`# Checklist\n\n${english.replace('- [o] A3', '- [x] A3')}`, `# 체크리스트\n\n${korean}`), [
+    'en:5: invalid state [x] for A3',
+    'A3: English and Korean state differs',
+  ]);
+});
