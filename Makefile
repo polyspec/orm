@@ -32,6 +32,13 @@ export DECIMAL_ENV
 PHYSICAL_RUST_TOOLCHAIN := $(shell sed -n 's/^channel = "\(.*\)"$$/\1/p' rust-toolchain.toml)
 export RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)
 export CARGO_TARGET_DIR := $(abspath clients/rust/target)
+# target directory는 이 checkout 안에 있다(AGENTS.md). cargo는 artifact가 fresh인지를
+# source file의 경로(package root 기준)와 mtime으로만 판단하고 어느 checkout이 build했는지는 기록하지 않으므로,
+# 다른 checkout의 target directory를 쓰면 그 checkout이 build한 code를 이 checkout의 것으로 test한다. command
+# line의 CARGO_TARGET_DIR이 이 checkout 밖을 가리키면 make는 아무것도 실행하지 않고 멈춘다.
+ifeq ($(filter $(abspath .)/%,$(abspath $(CARGO_TARGET_DIR))),)
+$(error CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) is outside this checkout $(abspath .); each checkout builds Rust into its own target directory (AGENTS.md), because cargo would reuse what another checkout built as fresh)
+endif
 export CARGO_INCREMENTAL := 0
 export CARGO_PROFILE_DEV_DEBUG := line-tables-only
 # ORM_RUST_TEST_FEATURES는 Rust test가 쓰는 feature다. 모든 cargo test 명령(client DB test,
@@ -66,8 +73,8 @@ RUN_LONG = node tests/run-long.mjs
 # 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 LEASE = $(abspath .runtime/bin/lease)
 BUILD_LEASE = $(RUN_LONG) go-build/lease -- go build -o $(LEASE) ./tests/lease
-# CARGO_LEASED는 cargo의 build를 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)의
-# exclusive lease 아래에서 실행한다. 다른 checkout의 build가 lease를 가지면 directory 변경 알림을
+# CARGO_LEASED는 cargo의 build를 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)의
+# exclusive lease 아래에서 실행한다. 이 checkout의 다른 실행의 build가 lease를 가지면 directory 변경 알림을
 # 기다린다(--wait). build는 cargo의 자기 lock 때문에 어차피 하나씩 실행된다.
 CARGO_LEASES = $(CARGO_TARGET_DIR)/.leases
 CARGO_LEASED = $(LEASE) run $(CARGO_LEASES) exclusive --wait --
@@ -479,7 +486,7 @@ test-servers-leases-clear:
 # 실행한다(AGENTS.md "Owner checks").
 .PHONY: owner-check
 owner-check:
-	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) ORM_OWNER_CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) node scripts/features/owners.mjs $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners
 feature-unit-check/docs:

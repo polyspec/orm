@@ -2,8 +2,8 @@
 // JSON message에서 test binary와 그 package directory만 읽는다.
 import assert from 'node:assert/strict';
 import { executables, programEnvironment, programs, split } from './cargo-test.mjs';
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,4 +66,47 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+// 공유 target case(G5.46)는 cargo가 artifact의 freshness를 source의 mtime으로만 판단하고 어느 checkout이 build했는지
+// 기록하지 않는다는 것을 실제 cargo로 보인다. checkout a가 build한 target에 a보다 오래된 mtime의 다른 source를 가진
+// checkout b를 build하면 cargo는 a의 binary를 fresh로 보고 b에서도 a의 code("from a")를 실행한다. b가 자기 target
+// directory에 build하면 b의 code("from b")를 실행한다. 그래서 각 checkout은 자기 target directory에 build한다.
+caseTest('cargo reuses what another checkout built into a shared target, and a target of its own builds this checkout', PROCESS, () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-target-')));
+  try {
+    const old = new Date('2026-01-01T00:00:00Z');
+    const checkout = (name, text) => {
+      mkdirSync(join(base, name, 'src'), { recursive: true });
+      writeFileSync(join(base, name, 'Cargo.toml'), '[package]\nname = "probe"\nversion = "0.1.0"\nedition = "2021"\n\n[workspace]\n');
+      writeFileSync(join(base, name, 'src/main.rs'), `fn main() { println!("${text}"); }\n`);
+      for (const file of ['Cargo.toml', 'src/main.rs']) utimesSync(join(base, name, file), old, old);
+    };
+    const env = target => ({ ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}`, CARGO_TARGET_DIR: target });
+    const built = (name, target) => {
+      const build = spawnSync('cargo', ['build', '--offline', '--quiet'], { cwd: join(base, name), env: env(target), encoding: 'utf8' });
+      assert.equal(build.status, 0, build.stderr);
+      return execFileSync(join(target, 'debug', 'probe'), { encoding: 'utf8' }).trim();
+    };
+    checkout('a', 'from a');
+    checkout('b', 'from b');
+    const shared = join(base, 'shared-target');
+    assert.equal(built('a', shared), 'from a');
+    assert.equal(built('b', shared), 'from a', 'cargo rebuilt checkout b in the shared target');
+    assert.equal(built('b', join(base, 'b', 'target')), 'from b');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+// target directory guard case(G5.46)는 command line의 CARGO_TARGET_DIR이 이 checkout 밖을 가리키면 make가 아무것도
+// 실행하지 않고 그 이유를 적고 멈추는지, 이 checkout 안의 directory는 받는지 확인한다.
+caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
+  const repo = fileURLToPath(new URL('..', import.meta.url));
+  const make = target => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8' });
+  const other = make(join(tmpdir(), 'another-checkout', 'clients', 'rust', 'target'));
+  assert.notEqual(other.status, 0, 'make ran with the target directory of another checkout');
+  assert.match(other.stderr, /CARGO_TARGET_DIR=\S+ is outside this checkout \S+; each checkout builds Rust into its own target directory/);
+  assert.equal(make('').status, 0, make('').stderr);
+  assert.equal(make(join(repo, '.runtime', 'run', 'x', 'target')).status, 0);
 });

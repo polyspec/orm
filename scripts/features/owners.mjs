@@ -245,14 +245,13 @@ function headManifest(root) {
 }
 
 // makeArguments는 target 하나를 실행하는 make 인자다. owner-check가 받은 서버 환경(ORM_OWNER_TEST_ENV,
-// 곧 make의 TEST_ENV), decimal 환경(DECIMAL_ENV), Rust target directory(ORM_OWNER_CARGO_TARGET_DIR, 곧
-// CARGO_TARGET_DIR)를 target에도 준다: worktree는 main checkout의 서버와 target directory를 쓰고, make
-// 변수는 command line으로만 Makefile의 값을 바꾼다.
+// 곧 make의 TEST_ENV)과 decimal 환경(DECIMAL_ENV)을 target에도 준다: worktree는 main checkout의 서버를 쓰고,
+// make 변수는 command line으로만 Makefile의 값을 바꾼다. Rust target directory는 각 checkout의 것이므로
+// 넘기지 않는다(AGENTS.md).
 export function makeArguments(target, env) {
   const overrides = [];
   if (env.ORM_OWNER_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_OWNER_TEST_ENV}`);
   if (env.DECIMAL_ENV) overrides.push(`DECIMAL_ENV=${env.DECIMAL_ENV}`);
-  if (env.ORM_OWNER_CARGO_TARGET_DIR) overrides.push(`CARGO_TARGET_DIR=${env.ORM_OWNER_CARGO_TARGET_DIR}`);
   // -k: target의 독립된 부분(하위 target)은 앞 부분이 실패해도 실행한다.
   return ['--no-print-directory', '-k', ...overrides, target];
 }

@@ -10,6 +10,13 @@
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
   그런 다음 워크트리와 로컬 브랜치를 즉시 제거한다.
   미통합 작업이나 진행 중인 작업은 보존한다.
+- 각 checkout은 Rust를 자기 target directory(그 checkout의 `clients/rust/target`)에 build하고, 어떤 checkout도
+  `CARGO_TARGET_DIR`을 다른 checkout의 target directory로 정하지 않는다. command line이 checkout 밖의 것을
+  정하면 `make`가 멈춘다. cargo는 artifact가 fresh인지를 package 기준 source 경로와 그 수정 시각으로 판단하고
+  어느 checkout이 build했는지는 기록하지 않으므로, source가 다른 checkout의 build보다 오래된 checkout은 그
+  다른 checkout의 code를 test하게 된다. 공유하지 않으면 그 원인을 감지하는 대신 없앤다. target directory의
+  lease는 여전히 한 checkout의 실행들의 build 순서를 정한다. worktree를 지우면 그 target directory도 함께
+  지워진다. worktree에서 build하기 전에 남은 disk를 확인한다.
 - `main`에 통합할 수 없는 테스트 전용 브랜치의 의미 있는 커밋은 관련 기능을 커밋하기 전에 체리픽하고,
   나머지 테스트 전용 변경은 폐기한 뒤 워크트리와 브랜치를 제거한다. 제거할 수 없다면 먼저 소유
   체크리스트에 번호가 붙은 하위 항목을 추가하고 원인과 정확한 제거 조건을 기록한다.

@@ -1,6 +1,6 @@
-// cargo test를 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)가 아니라 실행 하나의
-// 복사본으로 실행한다. cargo test는 build한 test binary를 target directory에서 실행하므로, build와 실행 사이에
-// 다른 checkout이 다시 build하면 그 checkout의 code를 실행한다.
+// cargo test를 공유 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)가 아니라 실행
+// 하나의 복사본으로 실행한다. cargo test는 build한 test binary를 target directory에서 실행하므로, build와 실행
+// 사이에 다른 실행이 다시 build하면 그 실행이 build한 binary를 실행한다.
 //
 //   1. build: 같은 인자의 `cargo test --no-run --message-format=json-render-diagnostics`를 장기 작업
 //      `rust-build/<name>`(runLong, 기한 없음, compiler 출력을 STEP으로)으로 실행하고, cargo가 알린 test binary를

@@ -2,7 +2,7 @@
 # cargo-build-copy.sh <run target> <artifact>... -- <cargo command> [args...]
 #
 # 실행 하나가 쓸 Rust program을 공유 target directory(CARGO_TARGET_DIR)에서 build하고, 그 artifact를 실행의
-# directory <run target>의 같은 상대 경로로 복사한다. 실행은 복사본을 실행하므로, build 뒤에 다른 checkout이
+# directory <run target>의 같은 상대 경로로 복사한다. 실행은 복사본을 실행하므로, build 뒤에 이 checkout의 다른 실행이
 # 같은 target directory를 다시 build해도 이 실행의 program은 바뀌지 않는다. Makefile은 이 script를 target
 # directory의 exclusive lease(tests/lease, CARGO_LEASED) 아래에서 실행하므로 build와 복사 사이에 다른
 # build가 끼지 않는다. <artifact>는 CARGO_TARGET_DIR에 대한 상대 경로다(예: debug/examples/dbspec_apply).

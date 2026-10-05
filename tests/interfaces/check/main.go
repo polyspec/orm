@@ -475,7 +475,7 @@ func differences(want, got Symbols) []string {
 
 // buildRust는 Rust symbol 도구를 공유 Rust target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
 // 아래에서 build하고, 그 lease 안에서 directory로 복사한 실행 file을 돌려준다(scripts/cargo-build-copy.sh).
-// 다른 checkout의 build가 target directory를 바꿔도 이 실행의 추출기는 바뀌지 않는다. build는 장기 작업이므로
+// 이 checkout의 다른 실행의 build가 target directory를 바꿔도 이 실행의 추출기는 바뀌지 않는다. build는 장기 작업이므로
 // 기한이 없고, cargo의 진행 출력은 경과 시간과 함께 c의 단계로 보인다.
 func buildRust(c *testcase.Case, root, directory string) (string, error) {
 	lease, leases := os.Getenv("LEASE"), os.Getenv("CARGO_LEASES")

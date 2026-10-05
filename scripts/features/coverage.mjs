@@ -362,7 +362,7 @@ async function buildNative(plans, directory) {
     const files = new Map();
     const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
       // build와 복사는 공유 Rust target directory의 exclusive lease 아래에서 한다(tests/cargo-test.mjs --copy). 실행은
-      // 이 checker의 directory에 복사한 binary를 쓰므로, 다른 checkout의 build가 target directory를 바꿔도 이
+      // 이 checker의 directory에 복사한 binary를 쓰므로, 이 checkout의 다른 실행의 build가 target directory를 바꿔도 이
       // 실행의 test binary는 바뀌지 않는다.
       const { LEASE: lease, CARGO_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');

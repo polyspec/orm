@@ -229,8 +229,8 @@ export function unwrappedToolErrors(units) {
 
 // unbuiltCargoTestErrors는 units에서 `cargo test --no-run` build가 RUN_LONG 밖이나 기한 아래에서 실행될 때마다,
 // 그리고 `cargo test` 실행(--no-run 없음)이 tests/cargo-test.mjs(Makefile의 CARGO_TEST) 밖에 있을 때마다 오류
-// 하나를 돌려준다. cargo test는 공유 Rust target directory(여러 checkout이 함께 쓴다)의 test binary를 실행하므로,
-// build와 실행 사이에 다른 checkout이 다시 build하면 그 code를 실행한다. tests/cargo-test.mjs는 lease 아래에서
+// 하나를 돌려준다. cargo test는 공유 Rust target directory(이 checkout의 동시 실행이 함께 쓴다)의 test binary를
+// 실행하므로, build와 실행 사이에 다른 실행이 다시 build하면 그 code를 실행한다. tests/cargo-test.mjs는 lease 아래에서
 // build하고 복사한 실행 하나의 binary를 실행하며, 그 build는 단계 로그와 함께 기한 없는 장기 작업이다.
 export function unbuiltCargoTestErrors(units) {
   const errors = [];
@@ -355,7 +355,7 @@ export function rawGoTestErrors(units) {
   return errors;
 }
 
-// sharedTargetErrors는 Makefile이 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)를
+// sharedTargetErrors는 Makefile이 공유 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)를
 // 실행 하나의 것처럼 쓰는 곳마다 오류 하나를 돌려준다. 그 directory의 program을 실행하거나 file을 쓰면, 다른
 // checkout이 그 사이에 다시 build하거나 덮어쓴 것을 쓰게 된다. 실행은 자기 RUN_DIR의 복사본과 file을 쓰고
 // (CARGO_COPY), cargo build는 target directory의 lease 아래에서 한다(CARGO_LEASED). 주석은 보지 않는다.
