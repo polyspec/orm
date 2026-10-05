@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.76: the Rust symbol inventory records the PostgreSQL insert lock helper of the catalog, and the introspection comparison test is gofmt-formatted.
+
 - G5.75: the CI and documentation workflows cancel the run of the previous push on the same ref, and `make repo-check` requires that concurrency on every workflow that runs on push.
 
 - G5.73: performance is measured and reported and never fails a test: the stress tests, the CPU limits of test cases, the hot-path gates and the introspection comparison print their measurements and a `WARNING` line above their reference values (the stress ratios 11, 34, 63 and 185, 1.5 times the highest CI ratio), the check runner records warnings and writes them as GitHub annotations, and `make repo-check` refuses a test that fails on a measured time above a bound.

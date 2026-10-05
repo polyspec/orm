@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.76: Rust symbol 목록은 catalog의 PostgreSQL insert lock helper를 기록하고, introspection 비교 test는 gofmt로 format된다.
+
 - G5.75: CI와 문서 workflow는 같은 ref의 앞 push 실행을 취소하고, `make repo-check`는 push로 실행하는 모든 workflow에 그 concurrency를 요구한다.
 
 - G5.73: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. stress test, test case의 CPU 한도, hot-path 측정, introspection 비교는 측정을 출력하고 기준값(stress 비율 11, 34, 63, 185, CI의 가장 높은 비율의 1.5배)을 넘으면 `WARNING` 줄을 출력하며, check runner는 경고를 기록하고 GitHub annotation으로 쓰고, `make repo-check`는 측정한 시간이 한도를 넘었다고 실패하는 test를 거부한다.
