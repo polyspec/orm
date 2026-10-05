@@ -39,17 +39,9 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// runner와 build 명령의 기한이다. build는 run 한 번에 한 번만 하고, 모든 database와 두 번의
-// 실행이 build된 runner를 실행한다.
+// runner 실행과 확인의 기한이다. runner의 build는 장기 작업이므로 기한 없이 run 한 번에 한 번만
+// 하고(testcase.RunLong, 명령 출력을 단계로), 모든 database와 두 번의 실행이 build된 runner를 실행한다.
 const (
-	// rustBuildDeadline: orm-tests의 conformance binary를 debug로 build한다(test build와 의존성을
-	// 함께 쓴다). target이 비었으면 의존성 전체를 compile한다(개발 machine에서 2-4분).
-	rustBuildDeadline = 8 * time.Minute
-	// typescriptBuildDeadline: TypeScript client를 tsc로 build한다(개발 machine에서 약 11 s).
-	typescriptBuildDeadline = 2 * time.Minute
-	// goBuildDeadline: Go runner를 binary로 build한다. build cache가 비었으면 driver와 engine
-	// package를 compile한다(개발 machine에서 cache가 있으면 1 s 안, 비었으면 1분 안팎).
-	goBuildDeadline = 3 * time.Minute
 	// runnerDeadline: build된 runner process 하나가 bench database에서 모든 vector를 실행한다
 	// (개발 machine에서 1-3 s). 1분이 지난 runner는 멈춘 것이다.
 	runnerDeadline = time.Minute
@@ -143,7 +135,7 @@ func main() {
 		must(lockDatabases(dsns...))
 		binaries, err := os.MkdirTemp("", "orm-conformance-runners-")
 		must(err)
-		must(testcase.Run("conformance/build", rustBuildDeadline+typescriptBuildDeadline+goBuildDeadline, func(c *testcase.Case) error {
+		must(testcase.RunLong("conformance/build", func(c *testcase.Case) error {
 			return buildRunners(c, root, binaries)
 		}))
 		for index := range drivers {
@@ -294,14 +286,14 @@ var goRunner string
 // buildRunners는 Rust runner, TypeScript client와 Go runner를 한 번 build한다. Go runner는
 // directory에 binary로 남는다.
 func buildRunners(c *testcase.Case, root, directory string) error {
-	if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+	if err := runCommand(c, root, "", 0, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
 		return err
 	}
-	if err := runCommand(c, root, "", typescriptBuildDeadline, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
+	if err := runCommand(c, root, "", 0, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
 		return err
 	}
 	binary := filepath.Join(directory, "runner_go")
-	if err := runCommand(c, root, "", goBuildDeadline, "go", "build", "-o", binary, "./tests/conformance/runner_go"); err != nil {
+	if err := runCommand(c, root, "", 0, "go", "build", "-o", binary, "./tests/conformance/runner_go"); err != nil {
 		return err
 	}
 	goRunner = binary
@@ -337,9 +329,12 @@ func runOne(c *testcase.Case, root, output, language string) error {
 }
 
 // runCommand는 명령 하나를 timeout과 case c의 기한 가운데 먼저 오는 것 안에 실행하고, 시작을
-// c의 단계로 출력한다.
+// c의 단계로 출력한다. timeout이 0이면 장기 작업(build)이므로 timeout을 두지 않는다.
 func runCommand(c *testcase.Case, root, output string, timeout time.Duration, name string, args ...string) error {
-	ctx, cancel := context.WithTimeout(c.Context(), timeout)
+	ctx, cancel := context.WithCancel(c.Context())
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(c.Context(), timeout)
+	}
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Dir = root
