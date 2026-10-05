@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-6: 기능 검증 명령, 기능 coverage checker, script의 Rust build는 target lease를 가지고, 실행하는 program은 복사본이며, 복사본은 file system이 지원하면 copy-on-write clone이다.
+
 - G5.33-5: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test`는 `tests/cargo-test.mjs`로 실행한다. 그것은 target lease 아래에서 build하고, test binary를 실행 directory로 복사해 그 복사본을 실행한다.
 
 - G5.32-4: 연결은 probe statement를 보내지 않는다. 모든 클라이언트는 `SELECT sqlite_version()` 대신 driver가 link한 library에서 SQLite version을 읽고, TypeScript 클라이언트는 `SELECT 1` 없이 첫 연결을 연다.

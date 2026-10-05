@@ -454,7 +454,7 @@ feature-check: lease-tool
 feature-docs:
 	node scripts/features/build.mjs
 
-package-check:
+package-check: lease-tool
 	$(RUN_LONG) package -- ./scripts/package-check.sh
 
 # fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing(-fuzztime)을 함께 하는 장기 작업이므로
@@ -624,7 +624,7 @@ codec-check:
 rust-fmt-check:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd clients/rust -- cargo fmt --all --check
 
-rust-150-check:
+rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
 
 rust-check: lease-tool

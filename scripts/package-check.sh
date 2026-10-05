@@ -38,7 +38,8 @@ pub fn config_code() -> &'static str {
     orm::codes::CONFIG
 }
 EOF
-CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
+# 공유 Rust target directory에 build하므로 그 lease(make가 export하는 LEASE, CARGO_LEASES) 아래에서 실행한다.
+CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
 echo "rust package: orm builds as an external path dependency"
 
 (

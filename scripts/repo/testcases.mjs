@@ -404,3 +404,23 @@ export function typescriptHolderErrors(makefile) {
     .filter(unit => unit.name !== 'Makefile' && unit.commands.some(command => builds.test(command)) && unit.commands[0].trim() !== '$(HOLD_TYPESCRIPT)')
     .map(unit => `${unit.name} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
 }
+
+// unleasedCargoErrors는 Makefile 밖의 명령(검증 명령, script, package.json script)이 공유 Rust target
+// directory(CARGO_TARGET_DIR)에 lease 없이 build하거나 그곳의 program을 실행하는 segment마다 오류 하나를 돌려준다.
+// build는 `"$LEASE" run "$CARGO_LEASES" exclusive --wait --` 아래에서 하고(tests/cargo-test.mjs는 스스로 한다),
+// 실행할 program은 그 lease 안에서 실행 하나의 directory로 복사한다(scripts/cargo-build-copy.sh).
+export function unleasedCargoErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units)
+    for (const command of commands)
+      for (const segment of segments(command)) {
+        if (/\bcargo-test\.mjs\b/.test(segment)) continue;
+        const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
+        const leased = /"?\$\{?LEASE(?::\?[^}]*)?\}?"?\s+run\b/.exec(segment);
+        if (cargo && (!leased || leased.index > cargo.index))
+          errors.push(`${name} builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`);
+        if (/\$\{CARGO_TARGET_DIR[^}]*\}\/|\$CARGO_TARGET_DIR\//.test(segment))
+          errors.push(`${name} runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): ${segment}`);
+      }
+  return errors;
+}

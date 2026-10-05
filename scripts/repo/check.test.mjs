@@ -11,7 +11,7 @@ import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -445,6 +445,24 @@ caseTest('the files of one run live in its run directory and a TypeScript build 
     'Makefile:3 names a fixed file that runs would share; put the file of one run into $(RUN_DIR): TIMING = .runtime/timing/dbspec.test',
   ]);
   assert.deepEqual(typescriptHolderErrors(makefile), ['Makefile bare builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)']);
+});
+
+// lease case는 Makefile 밖의 명령과 최소 단위를 검사한다.
+caseTest('commands outside the Makefile build into the shared Rust target directory only under its lease', COMPUTE, () => {
+  const { packageUnits } = runUnits();
+  const files = new Set(trackedFiles('*'));
+  const commands = [...makeRecipes(text('Makefile')), ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command })));
+  const scripts = reachedScripts(commands, path => files.has(path) ? text(path) : undefined, { throughLong: true });
+  assert.deepEqual(unleasedCargoErrors([...featureUnits(), ...packageUnits, ...scripts]), []);
+  const unit = (name, command) => ({ name, commands: [command] });
+  const build = segment => `x builds into the shared Rust target directory without its lease; run the build under "$LEASE" run "$CARGO_LEASES" exclusive --wait --: ${segment}`;
+  assert.deepEqual(unleasedCargoErrors([
+    unit('x', 'node tests/run-long.mjs b -- cargo build --locked'),
+    unit('x', '"$LEASE" run "$CARGO_LEASES" exclusive --wait -- cargo test --no-run --locked'),
+    unit('x', 'node tests/cargo-test.mjs a -- cargo test --locked --test a'),
+    unit('x', '"${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a'),
+  ]), [build('node tests/run-long.mjs b -- cargo build --locked'),
+    'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
 });
 
 // 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.

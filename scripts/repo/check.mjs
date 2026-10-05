@@ -7,7 +7,7 @@ import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -94,6 +94,8 @@ failures.push(...rawGoTestErrors([...expandedRecipes, ...featureUnits, ...script
 // script)은 장기 작업에 기한을 두지 않는다. 기한은 test case 안에만 있다.
 const everyScriptUnit = reachedScripts(runCommands, readTracked, { throughLong: true });
 failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
+// Makefile 밖의 명령도 공유 Rust target directory에 lease 아래에서만 build하고 그곳의 program을 실행하지 않는다.
+failures.push(...unleasedCargoErrors([...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
 // Makefile은 공유 Rust target directory의 program을 실행하거나 그곳에 file을 쓰지 않고, 그곳의 build는 lease
 // 아래에서 한다.
 failures.push(...sharedTargetErrors(makefile));
