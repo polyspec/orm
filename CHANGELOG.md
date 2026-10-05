@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30: every build, install, tool run, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-10).
+
 - G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
 
 - G5.30-9: the builds of the feature coverage checker run as long operations with step logs and no deadline; `COVERAGE_BUILD_DEADLINE` is removed, and each coverage run keeps its own deadline.
