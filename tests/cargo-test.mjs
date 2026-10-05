@@ -17,7 +17,7 @@
 //        node tests/cargo-test.mjs --copy <run dir> -- <cargo test --no-run command>
 //            (lease 아래에서 실행한다: build하고 test binary와 dep-info를 <run dir>로 복사해 binaries.json에 적는다.
 //             scripts/features/coverage.mjs도 쓴다.)
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -148,6 +148,20 @@ async function main() {
     }
     const { tests: binaries, programs: programCopies } = JSON.parse(readFileSync(join(runDir, 'binaries.json'), 'utf8'));
     if (binaries.length === 0) throw new Error(`cargo test --no-run ${options.join(' ')} built no test binary`);
+    // 실행하기 전에 binary마다 `--list`로 filter가 고르는 test를 센다. 합이 0이면 이름을 잘못 쓴 filter가 아무것도
+    // 실행하지 않고도 모든 binary를 0으로 끝내므로, 실행하지 않고 실패한다.
+    let selected = 0;
+    for (const binary of binaries) {
+      const listed = spawnSync(binary.copy, ['--list', ...filters, ...binaryArgs], { cwd: binary.manifestDir, encoding: 'utf8', env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
+      if (listed.status !== 0) throw new Error(`${binary.copy} --list exited with ${listed.status ?? listed.signal}: ${listed.stderr || listed.stdout}`);
+      selected += listed.stdout.split('\n').filter(line => line.endsWith(': test')).length;
+    }
+    if (selected === 0) {
+      console.log(`cargo-test: the filters ${filters.join(' ') || '(none)'} select no test in ${binaries.length} test binaries`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`cargo-test: ${selected} tests selected in ${binaries.length} test binaries`);
     // 실패한 binary 뒤에도 나머지 binary를 실행한다(cargo test --no-fail-fast와 같다). 끝에 실패한 binary를 모두 적는다.
     const failed = [];
     for (const binary of binaries) {

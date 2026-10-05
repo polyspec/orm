@@ -6,7 +6,7 @@ import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { buildArguments, packages } from './go-test.mjs';
+import { buildArguments, packages, testEvents } from './go-test.mjs';
 import { caseTest, COMPUTE, PROCESS } from './testcase.mjs';
 
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
@@ -60,3 +60,44 @@ esac
     assert.doesNotMatch(failed.stdout, /TestFixture/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+// 빈 선택 case(G5.54)는 `-run`이 test를 하나도 고르지 않는 실행을 실패로 보는지 본다. 이름을 잘못 쓴 `-run`은 test를
+// 실행하지 않고도 go test를 0으로 끝내므로 아무것도 시험하지 않은 채 통과한다. 임시 module의 실제 go test로 실행한다.
+caseTest('a go test run whose -run selects no test fails', PROCESS, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orm-go-empty-'));
+  try {
+    await writeFile(join(dir, 'go.mod'), 'module example.com/empty\n\ngo 1.21\n');
+    await writeFile(join(dir, 'a_test.go'), 'package empty\n\nimport "testing"\n\nfunc TestPresent(t *testing.T) {}\n');
+    const script = new URL('./go-test.mjs', import.meta.url).pathname;
+    const run = async pattern => {
+      try {
+        const { stdout, stderr } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', '-run', pattern, '-count=1', '.'], { cwd: dir, env: { ...process.env, GOFLAGS: '', GOWORK: 'off' } });
+        return { code: 0, stdout, stderr };
+      } catch (error) {
+        return { code: error.code, stdout: error.stdout, stderr: error.stderr };
+      }
+    };
+    const none = await run('^TestNoSuchName$');
+    assert.equal(none.code, 1, none.stdout + none.stderr);
+    assert.match(none.stderr, /go-test: -run \^TestNoSuchName\$ selected no test in \.\n/);
+    const one = await run('^TestPresent$');
+    assert.equal(one.code, 0, one.stdout + one.stderr);
+    assert.match(one.stdout, /=== RUN {3}TestPresent/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// event 수 case(G5.54)는 고른 test의 수를 사람이 읽는 `=== RUN` 줄이 아니라 test2json의 `run` event로 세는지 본다.
+// Output에 `=== RUN`이 있어도 run event가 없으면 세지 않고, run event는 Output 없이도 센다. Output은 그대로 잇는다.
+caseTest('the selected tests are counted from the run events of test2json', COMPUTE, () => {
+  const written = [];
+  const events = testEvents(text => written.push(text));
+  events.write('{"Action":"output","Output":"=== RUN   TestText\\n"}\n{"Action":"run","Pack');
+  events.write('age":"p","Test":"TestEvent"}\n# build line\n{"Action":"run","Package":"p"}\n{"Action":"build-output","Output":"x.go:1: undefined\\n"}\n');
+  events.write('{"Action":"pass","Test":"TestEvent"}');
+  events.flush();
+  assert.equal(events.runs(), 1);
+  assert.deepEqual(written, ['=== RUN   TestText\n', '# build line\n', 'x.go:1: undefined\n']);
+});
+

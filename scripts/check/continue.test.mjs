@@ -115,3 +115,20 @@ caseTest('dropping the run databases removes every part after a failed one and n
   }
 });
 
+// lane 이름 case(G5.54)는 ORM_CLIENT_DB_LANGS가 lane이 아닌 이름을 담거나 lane을 하나도 고르지 않으면 실행하지 않고
+// 실패하는지 본다. 잘못 쓴 이름은 아무 lane도 실행하지 않고 통과했다.
+caseTest('client-db-test refuses an unknown lane name and an empty selection', PROCESS, () => {
+  const f = fake(['php', 'node'], 'none');
+  try {
+    const typo = f.run(['scripts/client-db-test.sh'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'typscript' });
+    assert.equal(typo.status, 2, typo.stdout + typo.stderr);
+    assert.match(typo.stderr, /client-db-test: ORM_CLIENT_DB_LANGS names typscript, which is no lane; the lanes are go, php, typescript and rust/);
+    const empty = f.run(['scripts/client-db-test.sh'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: ',' });
+    assert.equal(empty.status, 2, empty.stdout + empty.stderr);
+    assert.match(empty.stderr, /selects no lane/);
+    assert.ok(!existsSync(join(f.base, 'ran.log')), 'a lane ran');
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+

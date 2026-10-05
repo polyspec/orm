@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { executables, programEnvironment, programs, split } from './cargo-test.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,7 +51,8 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
     mkdirSync(join(base, 'bin'));
     const messages = ['one', 'two', 'three'].map(name => {
       const executable = join(base, `${name}-test`);
-      writeFileSync(executable, `#!/bin/sh\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`, { mode: 0o755 });
+      // --list는 그 binary의 test 하나를 libtest 형식으로 적는다.
+      writeFileSync(executable, `#!/bin/sh\nif [ "$1" = --list ]; then echo '${name}_case: test'; exit 0; fi\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`, { mode: 0o755 });
       return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
     });
     writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
@@ -110,3 +111,34 @@ caseTest('make refuses a Rust target directory outside its checkout', PROCESS, (
   assert.equal(make('').status, 0, make('').stderr);
   assert.equal(make(join(repo, '.runtime', 'run', 'x', 'target')).status, 0);
 });
+
+// 빈 선택 case(G5.54)는 test 이름 filter가 모든 test binary에서 test를 하나도 고르지 않는 실행을 실패로 보는지 본다.
+// cargo-test는 binary마다 `--list`로 고른 test를 세고, 합이 0이면 binary를 실행하지 않고 실패한다. 이름을 잘못 쓴
+// filter는 아무것도 실행하지 않고도 모든 binary가 0으로 끝나기 때문이다.
+caseTest('cargo-test fails when the name filters select no test in any test binary', PROCESS, () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-empty-')));
+  try {
+    const log = join(base, 'ran.log');
+    mkdirSync(join(base, 'bin'));
+    const messages = ['one', 'two'].map(name => {
+      const executable = join(base, `${name}-test`);
+      writeFileSync(executable, `#!/bin/sh\nif [ "$1" = --list ]; then case "$2" in ${name}*) echo '${name}_case: test';; esac; echo '0 benchmarks'; exit 0; fi\necho ${name} >> ${log}\n`, { mode: 0o755 });
+      return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
+    });
+    writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
+    writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
+    writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+    const run = filter => spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mjs', import.meta.url)), 'stub', '--', 'cargo', 'test', filter],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') } });
+    const none = run('no_such_name');
+    assert.equal(none.status, 1, none.stdout + none.stderr);
+    assert.match(none.stdout, /cargo-test: the filters no_such_name select no test in 2 test binaries/);
+    assert.ok(!existsSync(log), 'a test binary ran although nothing was selected');
+    const some = run('two');
+    assert.equal(some.status, 0, some.stdout + some.stderr);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['one', 'two']);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.54: a test run that selects no test fails: `tests/go-test.mjs` runs `go test -json` and counts the test2json `run` events of a `-run` selection, `tests/cargo-test.mjs` counts the tests that `--list` selects before it runs any, and `client-db-test.sh` refuses unknown lane names and an empty selection; the Go decimal physical tests, which never ran without their build tag, now run.
+
 - G5.53: the sequential lanes of `client-db-test.sh`, the performance checks, the package checks and the drop of the run databases run every independent part after a failed one and name the failures; seven recipes and six verification commands that ran independent checks in sequence are split into parts and separate commands, and repository rules refuse such recipes and chained commands.
 
 - G5.52: every CI setup step and `make check` run after a failed setup step; the runner reads the step results (`ORM_CI_SETUP`) and records the targets that need what a failed step installs as not-run with that step, the docs workflow runs each check that has what it needs, no workflow uses `continue-on-error`, and a repository rule enforces it.
