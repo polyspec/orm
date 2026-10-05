@@ -122,30 +122,6 @@ await new Promise(resolve => setTimeout(resolve, 60000));
   assert.doesNotMatch(stuck.stdout, /process ended inside/);
 });
 
-caseTest('testcase/run-case', PROCESS, async () => {
-  const runCaseScript = new URL('./run-case.mjs', import.meta.url).pathname;
-  const run = async args => {
-    try {
-      const { stdout } = await promisify(execFile)(process.execPath, [runCaseScript, ...args]);
-      return { code: 0, stdout };
-    } catch (error) {
-      return { code: error.code, stdout: error.stdout };
-    }
-  };
-  const passed = await run(['fixture/command', '60s', '--', process.execPath, '-e', "console.log('first line'); console.error('second line')"]);
-  assert.equal(passed.code, 0, passed.stdout);
-  inOrder(passed.stdout, ['RUN fixture/command deadline=1m0s', `STEP fixture/command ${elapsed}: first line`, `STEP fixture/command ${elapsed}: second line`,
-    `PASS fixture/command ${elapsed}`]);
-  const failed = await run(['fixture/exit', '60s', '--', process.execPath, '-e', 'process.exit(3)']);
-  assert.equal(failed.code, 1, failed.stdout);
-  inOrder(failed.stdout, ['RUN fixture/exit deadline=1m0s', `FAIL fixture/exit ${elapsed}: .* exited with 3`]);
-  const stuck = await run(['fixture/stuck', '1s', '--', process.execPath, '-e', 'setTimeout(() => {}, 60000)']);
-  assert.equal(stuck.code, 1, stuck.stdout);
-  inOrder(stuck.stdout, ['RUN fixture/stuck deadline=1s', `FAIL fixture/stuck ${elapsed}: deadline 1s exceeded`]);
-  const usage = await run(['fixture/usage', 'soon', '--', 'true']);
-  assert.equal(usage.code, 2, usage.stdout);
-});
-
 // run-long case는 느리지만 정상인 build(출력 사이에 1.5초를 쉬고 0으로 끝나는 명령)가 기한 없이
 // 끝까지 실행되어 출력 줄, 종료 코드 0과 PASS를 보고하는지, 실패한 명령은 종료 코드와 오류 출력을
 // 보고하는지, 기한 인자는 받지 않는지 확인한다. 같은 build는 기한 1초의 run-case에서 실패한다.

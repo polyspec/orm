@@ -1,5 +1,6 @@
-// test case 보고 규칙(AGENTS.md testing rule): 모든 test는 자기 기한 아래에서 실행, 단계, 결과와
-// 경과 시간을 보고한다. 이 module은 tracked file의 text에서 그 규칙을 어기는 test를 찾는다.
+// test case 보고 규칙(AGENTS.md testing rule): 모든 test case는 자기 기한 아래에서 실행, 단계, 결과와
+// 경과 시간을 보고하고, 장기 작업(build, 설치, 도구 실행, 전체 suite)은 단계 로그와 함께 기한 없이
+// 실행한다. 이 module은 tracked file의 text에서 그 규칙을 어기는 test와 명령을 찾는다.
 
 // nodeTestErrors는 node:test의 test 함수(test, it, describe나 default import)를 직접 쓰는 JavaScript
 // file마다 오류 하나를 돌려준다. node:test의 test는 case마다 RUN 줄과 기한을 내지 않으므로, test는
@@ -148,8 +149,9 @@ export function segments(command) {
   return out.map(item => item.trim()).filter(Boolean);
 }
 
-// 자기 case를 보고하지 않는 build와 lint 도구다. 이 도구는 tests/run-case.mjs(Makefile의 RUN_CASE,
-// TSC_BUILD) 아래에서만 실행해 RUN, STEP, PASS나 FAIL과 기한을 가진다.
+// 자기 case를 보고하지 않는 build와 lint 도구다. 이 도구는 장기 작업이므로 tests/run-long.mjs(Makefile의
+// RUN_LONG, TSC_BUILD) 아래에서 단계 로그(RUN, STEP, 종료 코드, PASS나 FAIL)와 함께 기한 없이 실행한다.
+// `cargo test --no-run`은 unbuiltCargoTestErrors가 본다.
 const tools = [
   ['tsc', /(?:^|[\s/])tsc(?=\s|$)/],
   ['a TypeScript build', /\bnpm\s+(?:--prefix\s+\S+\s+)?run\s+(?:typescript:build|typescript:check|build)(?=\s|$)/],
@@ -157,9 +159,36 @@ const tools = [
   ['go vet', /\bgo\s+vet\b/],
   ['go build', /\bgo\s+build\b/],
   ['cargo build', /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy)\b/],
-  ['cargo test --no-run', /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/],
 ];
-const wrapper = /(?:\brun-case\.mjs|\$\(RUN_CASE\)|\brun-long\.mjs|\$\(RUN_LONG\)|\$\(TSC_BUILD\))/;
+const noRun = /\bcargo\s+(?:\+\S+\s+)?test\b(?=.*\s--no-run\b)/;
+// longRunner는 장기 작업을 단계 로그와 함께 기한 없이 실행하는 runner다.
+const longRunner = /(?:\brun-long\.mjs|\$\(RUN_LONG\)|\$\(TSC_BUILD\))/;
+// deadlineForms는 명령 전체에 기한을 두는 형식이다: 기한을 받아 명령을 끝내는 tests/run-case.mjs(Makefile의
+// RUN_CASE)와 그 기한 변수, timeout(1), 그리고 0이 아닌 `-timeout`이나 그것이 없을 때의 기본 10분으로 test
+// binary 전체에 기한을 두는 go test 실행(`-c` build는 실행하지 않는다)이다.
+const deadlineForms = [
+  /\brun-case\.mjs\b/,
+  /\$\(RUN_CASE\)/,
+  /\$\((?:BUILD|TOOL)_DEADLINE\)/,
+  /(?:^|\s)g?timeout\s+(?:-\S+\s+)*[0-9][0-9.]*[smhd]?(?=\s)/,
+];
+const goTestRun = /(?:^|\s)(?:go\s+test|node\s+tests\/go-test\.mjs)(?=\s|$)(.*)$/;
+
+// deadline은 segment가 명령에 두는 기한의 형식(일치한 text)이고, 없으면 undefined다. before가 있으면 그
+// 위치 앞의 형식만 본다.
+export function deadline(segment, before = segment.length) {
+  for (const form of deadlineForms) {
+    const match = form.exec(segment);
+    if (match && match.index < before) return match[0].trim();
+  }
+  const go = goTestRun.exec(segment);
+  if (go && go.index < before && !/\s-c(?:\s|$)/.test(go[1])) {
+    const timeout = /\s-timeout(?:=|\s+)(\S+)/.exec(go[1]);
+    if (!timeout) return 'go test without -timeout 0 (the default 10m)';
+    if (timeout[1] !== '0') return `go test -timeout ${timeout[1]}`;
+  }
+  return undefined;
+}
 
 // cargoArguments는 segment의 `cargo test` 인자 가운데 `--` 앞의 것을 `--no-run`과 toolchain(`+x`) 없이
 // 돌려준다. build와 실행이 같은 test binary를 쓰는지 비교한다.
@@ -170,8 +199,19 @@ function cargoArguments(segment) {
   return before.trim().split(/\s+/).filter(token => token && token !== '--no-run').join(' ');
 }
 
-// unwrappedToolErrors는 units(이름과 차례로 실행하는 명령 목록)에서 tools의 도구를 RUN_CASE 밖에서
-// 실행하는 segment마다 오류 하나를 돌려준다.
+// longOperationError는 장기 작업(what)을 실행하는 segment가 규칙을 어기면 오류 하나를, 지키면 undefined를
+// 돌려준다: 장기 작업은 longRunner 아래에서 단계 로그와 함께 실행하고 기한을 두지 않는다. at은 segment
+// 안에서 작업이 시작하는 위치다.
+function longOperationError(name, what, segment, at) {
+  const form = deadline(segment, at);
+  if (form) return `${name} runs ${what} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
+  const runner = longRunner.exec(segment);
+  if (!runner || runner.index > at) return `${name} runs ${what} outside tests/run-long.mjs, so it has no RUN line or step log: ${segment}`;
+  return undefined;
+}
+
+// unwrappedToolErrors는 units(이름과 차례로 실행하는 명령 목록)에서 tools의 도구를 RUN_LONG 밖에서
+// 실행하거나 기한 아래에서 실행하는 segment마다 오류 하나를 돌려준다.
 export function unwrappedToolErrors(units) {
   const errors = [];
   for (const { name, commands } of units) {
@@ -179,19 +219,18 @@ export function unwrappedToolErrors(units) {
       for (const segment of segments(command)) {
         const found = tools.find(([, pattern]) => pattern.test(segment));
         if (!found) continue;
-        const wrapped = wrapper.exec(segment);
-        if (!wrapped || wrapped.index > found[1].exec(segment).index)
-          errors.push(`${name} runs ${found[0]} outside tests/run-case.mjs, so it has no deadline or RUN line: ${segment}`);
+        const error = longOperationError(name, found[0], segment, found[1].exec(segment).index);
+        if (error) errors.push(error);
       }
     }
   }
   return errors;
 }
 
-// unbuiltCargoTestErrors는 units에서 `cargo test` 실행(--no-run 없음) 앞에 같은 인자의 `cargo test
-// --no-run` build가 같은 단위 안에 없을 때마다 오류 하나를 돌려준다. cargo test는 test를 실행하기 전에
-// compile하고, 그 compile은 case로 보고되지 않으며 기한도 없다. build는 unwrappedToolErrors가
-// RUN_CASE 아래에 있는지 본다.
+// unbuiltCargoTestErrors는 units에서 `cargo test --no-run` build가 RUN_LONG 밖이나 기한 아래에서 실행될
+// 때마다, 그리고 `cargo test` 실행(--no-run 없음) 앞에 같은 인자의 build가 같은 단위 안에 없을 때마다 오류
+// 하나를 돌려준다. cargo test는 test를 실행하기 전에 compile하고, 그 compile은 case로 보고되지 않는
+// 장기 작업이므로 단계 로그와 함께 기한 없이 먼저 build한다. 실행 단계의 test는 case마다 자기 기한을 가진다.
 export function unbuiltCargoTestErrors(units) {
   const errors = [];
   for (const { name, commands } of units) {
@@ -200,12 +239,28 @@ export function unbuiltCargoTestErrors(units) {
       for (const segment of segments(command)) {
         const cargo = cargoArguments(segment);
         if (cargo === undefined) continue;
-        if (/\s--no-run\b/.test(segment)) built.add(cargo);
-        else if (!built.has(cargo))
-          errors.push(`${name} runs cargo test ${cargo} without a build of cargo test --no-run ${cargo} before it, so its compile has no deadline or RUN line`);
+        if (/\s--no-run\b/.test(segment)) {
+          const error = longOperationError(name, `the build cargo test --no-run ${cargo}`, segment, noRun.exec(segment).index);
+          if (error) errors.push(error);
+          built.add(cargo);
+        } else if (!built.has(cargo))
+          errors.push(`${name} runs cargo test ${cargo} without a build of cargo test --no-run ${cargo} before it, so its compile has no RUN line or step log`);
       }
     }
   }
+  return errors;
+}
+
+// longDeadlineErrors는 units에서 명령에 기한을 두는 segment(deadline)마다 오류 하나를 돌려준다. check의
+// 명령은 build, 설치, 도구 실행, 전체 suite인 장기 작업이고, 기한은 test case 안에만 둔다.
+export function longDeadlineErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units)
+    for (const command of commands)
+      for (const segment of segments(command)) {
+        const form = deadline(segment);
+        if (form) errors.push(`${name} puts a deadline (${form}) on a long operation; it gets step logs and no deadline, and only a test case has its own: ${segment}`);
+      }
   return errors;
 }
 
@@ -222,14 +277,15 @@ export function makeRecipes(makefile) {
   return units.filter(unit => unit.commands.length);
 }
 
-// reachedScripts는 명령(commands: {command})이 tests/run-case.mjs 밖에서 실행하는 scripts/의 shell
-// script와, 그 script가 다시 그렇게 실행하는 script다. run-case 아래의 script는 전체가 그 기한을
-// 가진다. read(path)는 tracked file의 text이거나 없으면 undefined다.
-export function reachedScripts(commands, read) {
+// reachedScripts는 명령(commands: {command})이 tests/run-long.mjs 밖에서 실행하는 scripts/의 shell
+// script와, 그 script가 다시 그렇게 실행하는 script다. run-long 아래의 script는 전체가 장기 작업 하나로
+// 단계 로그를 가진다. throughLong이면 run-long 아래의 script도 담는다: 그 안의 명령도 기한을 두지 않는다.
+// read(path)는 tracked file의 text이거나 없으면 undefined다.
+export function reachedScripts(commands, read, { throughLong = false } = {}) {
   const reached = new Map();
   const visit = command => {
     for (const segment of segments(command)) {
-      if (wrapper.test(segment)) continue;
+      if (!throughLong && longRunner.test(segment)) continue;
       for (const match of segment.matchAll(/(?:^|[\s"'/])(scripts\/[\w/.-]+\.sh)\b/g)) {
         const path = match[1];
         if (reached.has(path)) continue;
@@ -245,7 +301,7 @@ export function reachedScripts(commands, read) {
 }
 
 // generateRuns는 명령이 `go generate`를 실행하는 directory를 돌려준다. `sh -c '...'` 안도 읽고, 앞의
-// `cd <dir>`와 run-case의 `--cwd <dir>`로 directory를 정한다. 생성은 추적되는 file을 다시 쓰고 `git diff`로
+// `cd <dir>`와 run-long의 `--cwd <dir>`로 directory를 정한다. 생성은 추적되는 file을 다시 쓰고 `git diff`로
 // 비교하므로, 같은 directory의 생성은 make check에서 한 번만 실행한다.
 export function generateRuns(command) {
   const out = [];
@@ -279,10 +335,11 @@ export function repeatedGenerateErrors(units) {
     .map(([directory, names]) => `go generate of ${directory} runs ${names.length} times in make check: ${names.join(', ')}`);
 }
 
-// rawGoTestErrors는 units에서 `go test`를 tests/go-test.mjs나 RUN_CASE 없이 실행하는 segment마다 오류
-// 하나를 돌려준다. go test는 test를 실행하기 전에 compile하고, 그 compile은 case로 보고되지 않으며
-// 기한도 없다. tests/go-test.mjs는 build를 기한을 가진 case로 먼저 실행하고, RUN_CASE는 명령 전체에
-// 기한을 둔다(fuzzing처럼 instrument한 build가 실행과 함께인 경우). Makefile의 변수는 미리 풀어 둔다.
+// rawGoTestErrors는 units에서 `go test`를 tests/go-test.mjs나 RUN_LONG 없이, 또는 기한 아래에서 실행하는
+// segment마다 오류 하나를 돌려준다. go test는 test를 실행하기 전에 compile하고, 그 compile은 case로
+// 보고되지 않는 장기 작업이다. tests/go-test.mjs는 build를 단계 로그와 함께 기한 없이 먼저 실행하고,
+// RUN_LONG은 명령 전체를 장기 작업 하나로 실행한다(fuzzing처럼 instrument한 build가 실행과 함께인 경우).
+// test binary 전체의 기한(`-timeout`)은 longDeadlineErrors가 본다. Makefile의 변수는 미리 풀어 둔다.
 export function rawGoTestErrors(units) {
   const errors = [];
   for (const { name, commands } of units)
@@ -290,9 +347,13 @@ export function rawGoTestErrors(units) {
       for (const segment of segments(command)) {
         const match = /(?:^|\s)go\s+test\b/.exec(segment);
         if (!match || /\btests\/go-test\.mjs\b/.test(segment)) continue;
-        const wrapped = wrapper.exec(segment);
-        if (!wrapped || wrapped.index > match.index)
-          errors.push(`${name} runs go test outside tests/go-test.mjs, so its compile has no deadline or RUN line: ${segment}`);
+        const form = deadlineForms.map(pattern => pattern.exec(segment)).find(found => found && found.index < match.index);
+        if (form) errors.push(`${name} runs go test under a deadline (${form[0].trim()}); a long operation gets step logs and no deadline: ${segment}`);
+        else {
+          const runner = longRunner.exec(segment);
+          if (!runner || runner.index > match.index)
+            errors.push(`${name} runs go test outside tests/go-test.mjs, so its compile has no RUN line or step log: ${segment}`);
+        }
       }
   return errors;
 }

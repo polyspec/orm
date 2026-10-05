@@ -60,5 +60,5 @@ func TestExternalModuleCanImportClient(t *testing.T) {
 EOF
   go get "github.com/polyspec/orm@v$VERSION" >/dev/null
   go mod tidy >/dev/null
-  go test ./...
+  go test -timeout 0 ./...
 )

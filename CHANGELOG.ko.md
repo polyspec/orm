@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-7: Makefile은 build, 설치, 도구 실행을 `RUN_LONG` 아래에서 기한 없이 실행하고, `RUN_CASE`, `BUILD_DEADLINE`, `TOOL_DEADLINE`, `tests/run-case.mjs`는 없어졌으며, `make repo-check`는 run-long 밖이나 `go test` binary 기한을 포함한 어떤 기한 아래의 장기 작업도 실패시킨다.
+
 - G5.30-6: `tests/go-test.mjs`는 모든 `go test`의 test binary를 장기 작업 `go-build/<packages>`로 단계 로그와 함께 기한 없이 build하고, `fuzz-check`와 `timing-check`의 Go build는 `tests/run-long.mjs` 아래에서 실행한다.
 
 - G5.30-5: Makefile, `npm run typescript:test`, `scripts/typescript/sqlite-test.sh`의 모든 TypeScript build와 type check는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
