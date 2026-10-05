@@ -657,6 +657,25 @@ caseTest('a FAIL that points at the errors reported above keeps those errors as 
   ]);
 });
 
+// 통과한 case case(G5.71)는 CI run이 낸 feature-unit-check 줄이다. coverage test의 case는 검사하는 대상의 sample이
+// 일부러 실패하는 출력(`FAIL sample/...`)을 보이고 PASS로 끝난다. 그 줄은 target의 실패가 아니므로 첫 실패 줄에서 빠지고,
+// 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
+caseTest('the failure lines of a case that passed are not the first failure lines of the target', COMPUTE, async () => {
+  const { failures } = await import(resolve(repo, 'scripts/check/report.mjs'));
+  const found = failures();
+  const sample = Array.from({ length: 25 }, (_, i) => `FAIL sample/owner/typescript/none run ${i} elapsed=31ms: unexpected test output: {"success":true}`);
+  for (const line of [
+    'RUN a sample of every client runs through its owning file deadline=5m0s',
+    ...sample,
+    'PASS a sample of every client runs through its owning file elapsed=2.1s',
+    'RUN every tracked file selects a behaviour test or declares its scope deadline=1m0s',
+    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: clients/rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
+  ]) found.line(line);
+  assert.deepEqual(found.lines(), [
+    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: clients/rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
+  ]);
+});
+
 // 공간 case(G5.43-4)는 target b가 /tmp의 quota 초과(EDQUOT)로 실패하는 실행이다. 보고서는 시작할 때와 단계마다 공간을
 // 기록하고, b의 첫 실패 줄은 공간이 없어 실패했다는 것과 그 순간의 `/`와 `/tmp`의 남은 공간이다.
 caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {

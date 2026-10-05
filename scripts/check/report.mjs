@@ -87,6 +87,9 @@ export function failures() {
   // reports는 지금 case의 source 위치 보고 줄이다. `the errors reported above`인 FAIL 줄 앞에 첫 실패 줄로 넣는다:
   // 출력이 길어 log가 가운데를 줄여도 그 이유가 보고서와 summary에 남는다.
   const reports = [];
+  // starts는 열린 case마다 그 RUN 줄 때의 실패 줄 수다. case가 PASS로 끝나면 그 사이에 모인 줄은 그 case의 출력(검사하는
+  // 대상이 일부러 실패시킨 sample 같은 것)이지 target의 실패가 아니므로 버린다. 그래서 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
+  const starts = new Map();
   let exit = null;
   return {
     // exit는 명령이 끝난 방식이다(종료 코드나 signal). 실패 줄이 없는 실패는 출력의 끝과 이것을 적는다.
@@ -99,11 +102,18 @@ export function failures() {
       const line = text.replace(LANE, '');
       const lane = text.slice(0, text.length - line.length);
       const run = /^RUN (\S+)/.exec(line);
-      if (run) open.set(lane + run[1], null);
+      if (run) {
+        open.set(lane + run[1], null);
+        if (!starts.has(lane + run[1])) starts.set(lane + run[1], failed.length);
+      }
       const step = /^STEP (\S+) /.exec(line);
       if (step && open.has(lane + step[1])) open.set(lane + step[1], text);
       const done = /^(PASS|FAIL|TIMEOUT) (\S+)/.exec(line);
-      if (done) open.delete(lane + done[2]);
+      if (done) {
+        open.delete(lane + done[2]);
+        if (done[1] === 'PASS' && starts.has(lane + done[2])) failed.splice(starts.get(lane + done[2]));
+        starts.delete(lane + done[2]);
+      }
       const inner = innermost(text);
       if (/^(?:=== RUN|RUN |PASS |--- PASS)/.test(inner)) reports.length = 0;
       else if (REPORT.test(inner) && !failureLine(text)) {
@@ -111,10 +121,10 @@ export function failures() {
         if (reports.length > FAILURE_LINES) reports.shift();
       }
       if (failureLine(text) && /the errors reported above$/.test(inner)) {
-        for (const report of reports) if (failed.length < FAILURE_LINES) failed.push(report);
+        failed.push(...reports);
         reports.length = 0;
       }
-      if (failed.length < FAILURE_LINES && failureLine(text)) failed.push(text);
+      if (failureLine(text)) failed.push(text);
     },
     // lines는 실패한 target의 첫 실패 줄이다: 나온 순서대로의 실패와 오류 수준의 줄, 끝나지 않은 case, 둘 다 없으면
     // 출력의 마지막 줄들, 그리고 명령이 끝난 방식.
