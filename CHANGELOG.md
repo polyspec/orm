@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.66: every step of the CI and documentation workflows runs a make target (install, install-* and ci-* targets), apart from the summary step, and `make repo-check` refuses any other command in a workflow step.
+
 - G5.64-2: CONTRIBUTING.md states that development runs the unit tests of what changed and that the full suite runs in CI after every push.
 
 - G5.63: a PostgreSQL row insert of the Rust catalog takes the lock of an INSERT on its table before it checks the schema and publishes Locked, instead of relying on a lock the catalog reads happened to take.

@@ -34,10 +34,10 @@ jobs:
           cache: npm
       - id: node-modules
         if: ${{ !cancelled() }}
-        run: npm ci
+        run: make install-node
       - id: browsers
         if: ${{ !cancelled() }}
-        run: npx playwright install --with-deps chromium
+        run: make install-browsers
       # The job publishes docs/.vitepress/dist: the build step writes it, the
       # idempotence check builds it twice more and compares every byte, and the
       # smoke test serves it and opens it in a browser before the upload.

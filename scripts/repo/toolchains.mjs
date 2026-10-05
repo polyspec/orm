@@ -10,6 +10,8 @@ import { actionSteps, workflowSteps } from './ci.mjs';
 
 // MINIMUM_SCRIPT는 composer.json require.php의 최저 release를 출력하는 script다.
 const MINIMUM_SCRIPT = './scripts/php/php-min.sh';
+// MINIMUM_STEP은 그 release를 setup-php의 입력으로 적는 CI step의 명령이다.
+const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
 const runs = (workflow, pattern) => workflowSteps(workflow).some(step => pattern.test(step.run));
 const numbers = text => text.split('.').map(Number);
 const below = (a, b) => (numbers(a).map((part, index) => part - (numbers(b)[index] ?? 0)).find(d => d !== 0) ?? 0) < 0;
@@ -38,8 +40,9 @@ export function phpVersionErrors(declared, minimum, workflows, running) {
       errors.push(`${path} runs PHP without shivammathur/setup-php`);
     // php-min step은 composer.json의 최저 release를 output version으로 쓰고, 그 release를
     // 설치하는 setup-php step은 그 output만 읽는다.
+    // 그 step은 make ci-php-min-version(${MINIMUM_SCRIPT} --version을 version=x.y로 적는 target)을 실행한다.
     const minimumStep = workflowSteps(workflow).some(step => step.id === 'php-min' &&
-      step.run === `echo "version=$(${MINIMUM_SCRIPT} --version)" >> "$GITHUB_OUTPUT"`);
+      step.run === MINIMUM_STEP);
     const readsFile = step => /^\s*php-version-file:\s*["']?\.php-version["']?\s*$/m.test(step);
     const readsMinimum = step => /^\s*php-version:\s*\$\{\{\s*steps\.php-min\.outputs\.version\s*\}\}\s*$/m.test(step);
     for (const step of steps) {
@@ -92,7 +95,10 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
         /^\s*RUSTUP_TOOLCHAIN\s*:/m.test(workflow))
       errors.push(`${path} chooses a Rust toolchain itself; rust-toolchain.toml declares it`);
     const usesRust = runs(workflow, /(^|[\s;&|(])cargo\s/m) || actionSteps(workflow, 'Swatinem/rust-cache').length > 0;
-    if (usesRust && !runs(workflow, /^rustup toolchain install\s*(&&|$)/m))
+    // CI의 step은 make target을 실행하므로, 인자 없는 rustup toolchain install은 make install-rust의 recipe에 있다.
+    const installsRust = runs(workflow, /^rustup toolchain install\s*(&&|$)/m) ||
+      (runs(workflow, /^make\b.*\binstall-rust\b/m) && /^install-rust:[^\n]*\n(?:\t[^\n]*\n)*?\t[^\n]*\brustup toolchain install\s*\n/m.test(makefile));
+    if (usesRust && !installsRust)
       errors.push(`${path} does not install the toolchain of rust-toolchain.toml with rustup toolchain install`);
   }
   if (channel && running !== channel)

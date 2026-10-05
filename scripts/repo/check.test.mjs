@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { chainedCommandErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { chainedCommandErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -370,7 +370,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     '    steps:',
     '      - name: lowest PHP release of the PHP client',
     '        id: php-min',
-    '        run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"',
+    '        run: make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"',
     '      - uses: shivammathur/setup-php@v2',
     '        with:',
     '          php-version: ${{ steps.php-min.outputs.version }}',
@@ -1171,4 +1171,18 @@ caseTest('a script that starts a process group of its own checks that group afte
   const root = new URL('../..', import.meta.url).pathname;
   const tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs'], { cwd: root }).toString().split('\n').filter(Boolean);
   assert.deepEqual(detachedGroupErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(join(root, path), 'utf8')]))), []);
+});
+
+caseTest('every CI step runs a make target', COMPUTE, () => {
+  const workflow = (summary, extra = '') => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n      - name: install\n        run: make install-node\n${extra}      - name: summary\n        run: ${summary}\n`;
+  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mjs') }), []);
+  assert.deepEqual(ciMakeErrors({ '.github/workflows/ci.yml': workflow('node scripts/check/summary.mjs', '      - name: deps\n        run: |\n          npm ci\n          make install-php\n') }), [
+    '.github/workflows/ci.yml step "deps" runs npm ci; run it through a make target',
+  ]);
+  assert.deepEqual(ciMakeErrors({ '.github/workflows/docs-pages.yml': workflow('node scripts/check/summary.mjs') }), [
+    '.github/workflows/docs-pages.yml step "summary" runs node scripts/check/summary.mjs; run it through a make target',
+  ]);
+  const root = new URL('../..', import.meta.url).pathname;
+  const directory = join(root, '.github/workflows');
+  assert.deepEqual(ciMakeErrors(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]))), []);
 });
