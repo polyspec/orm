@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.83: AGENTS.md states the rules of pinned toolchains, atomic build outputs, failure messages with their fix, leased or owned ports and databases, and files found without compile-time paths.
+
 - G5.82: `make test-servers` chooses free ports for the servers of each checkout and records them in the server environment, so two checkouts no longer contend for fixed ports, and `make repo-check` refuses a fixed port.
 
 - G5.81: failure messages of a missing environment variable, argument or tool in the checks and tests name the fix after the cause, and `make repo-check` refuses one without it.
