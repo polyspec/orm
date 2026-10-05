@@ -1,5 +1,6 @@
 // make check(전체 suite)와 make rerun-failed(그 suite에서 통과하지 못한 target의 재실행)의 guard와 실행
-// 기록이다.
+// 기록이다. 전체 suite는 push 뒤 GitHub CI에서 실행되며(AGENTS.md), 로컬 make check는 할 수 있지만 push 전에
+// 필요한 단계가 아니다. guard는 어디서 실행하든 같은 규칙을 적용한다.
 //
 // guard는 어떤 단계보다 먼저 결정하고 그 결정을 이유와 함께 출력한다. docs/checklist.md의 항목(하위 항목
 // 포함)이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, 기록이

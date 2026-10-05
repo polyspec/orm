@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.38-5: AGENTS.md and AGENTS.ko.md state that the full suite runs on GitHub CI after a push and that one CI run collects enough information to fix every failure before the next one; a local `make check` is no required step before a push, and `make repo-check` keeps the rule.
+
+- G5.38: the full suite runs on GitHub CI after a push, never stops at a failure, records each failure with its command, inputs, output and environment, and publishes a summary and the report of its run id.
+
 - G5.38-4: CI runs `make check` after a failed server start, with `ORM_CHECK_RUN_ID`, and then always a `summary` step (the job summary, the run record and the server logs in the report) and a `report` step that uploads `.runtime/check/ci_<run id>_<attempt>/report/` alone; `make repo-check` allows exactly these two steps after `make check`.
 
 - G5.38-3: `scripts/client-db-test.sh` and `scripts/typescript/sqlite-test.sh` run every test after a failed one and name each failed command with its exit status, and `tests/cargo-test.mjs` runs every test binary as `--no-fail-fast` does and names the failed ones.

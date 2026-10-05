@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.38-5: AGENTS.md와 AGENTS.ko.md는 전체 suite가 push 뒤 GitHub CI에서 실행되고 CI 실행 한 번이 다음 실행 전에 모든 실패를 고칠 정보를 모은다고 적는다. 로컬 `make check`는 push 전에 필요한 단계가 아니며, `make repo-check`가 규칙을 지킨다.
+
+- G5.38: 전체 suite는 push 뒤 GitHub CI에서 실행되고, 실패에서 멈추지 않으며, 실패마다 명령, 입력, 출력, 환경을 기록하고, summary와 그 실행 id의 보고서를 낸다.
+
 - G5.38-4: CI는 server 시작이 실패해도 `ORM_CHECK_RUN_ID`와 함께 `make check`를 실행하고, 그 뒤 언제나 `summary` step(job summary, 보고서의 실행 기록과 server log)과 `.runtime/check/ci_<run id>_<attempt>/report/`만 올리는 `report` step을 실행한다. `make repo-check`는 `make check` 뒤에 정확히 이 두 step만 허용한다.
 
 - G5.38-3: `scripts/client-db-test.sh`와 `scripts/typescript/sqlite-test.sh`는 실패한 test 뒤에도 모든 test를 실행하고 실패한 명령을 종료 상태와 함께 적으며, `tests/cargo-test.mjs`는 `--no-fail-fast`처럼 모든 test binary를 실행하고 실패한 것을 적는다.
