@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.75: the CI and documentation workflows cancel the run of the previous push on the same ref, and `make repo-check` requires that concurrency on every workflow that runs on push.
+
 - G5.73: performance is measured and reported and never fails a test: the stress tests, the CPU limits of test cases, the hot-path gates and the introspection comparison print their measurements and a `WARNING` line above their reference values (the stress ratios 11, 34, 63 and 185, 1.5 times the highest CI ratio), the check runner records warnings and writes them as GitHub annotations, and `make repo-check` refuses a test that fails on a measured time above a bound.
 
 - G5.74: the Go stress test also prints the parse ratio to an allocating reference (lines and words counted in a map), measured on the CI runner before it is asserted.

@@ -18,6 +18,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A new push cancels the run of the push before it on the same ref: the runners are few, and only the run of the
+# newest head counts. make repo-check requires this on every workflow that runs on push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     # .github/runner declares the runner of every job; make repo-check
