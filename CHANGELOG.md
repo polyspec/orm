@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.56-1: the conformance lock helper test starts its case with the shared testcase package, which `make repo-check` requires.
+
 - G5.56: an ended holder blocks no lease or lock: a lease records its releaser and a request waits while the releaser runs; a lease whose holder and releaser both ended is taken over (shared by any request, exclusive by the next exclusive request, which makes the resource again); the conformance check locks with `flock`, and the decimal SQLite bench prepares under a lease.
 
 - G5.55: a test step leaves nothing behind: the check runner and `make owner-check` run each step with a temporary directory of its own and in a process group of its own, fail a passed step that leaves a temporary entry, a run directory or a process, keep a failed step's leftovers in the report and remove them in both cases; the interface and conformance checks end with `os.Exit(run())`, the Rust transaction and SQLite lock tests remove their directories on drop, the PHP testcase test removes its `tempnam` file, and `make repo-check` refuses an `os.Exit` after a `defer` in Go. At the end of each run, `databases.sh drop` also purges the binary logs of the MySQL test servers up to the current file once the replica has applied them.
