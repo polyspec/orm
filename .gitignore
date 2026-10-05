@@ -6,7 +6,6 @@
 /clients/rust/target/
 *.test
 /docs/perf-raw/
-/tests/codec/out/
 /tests/interfaces/rust/target/
 
 /node_modules/

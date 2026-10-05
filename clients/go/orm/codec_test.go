@@ -5,7 +5,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/json/jsontext"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -43,8 +45,9 @@ func canonStyled(t *testing.T, v StyledValue) string {
 }
 
 // TestCodecVectors: every PHP-produced vector decodes to the same value, and
-// deterministic styles re-encode to the same bytes. Go's encodings are written
-// to tests/codec/out/go.json for the PHP cross-check.
+// deterministic styles re-encode to the same bytes. When ORM_CODEC_OUT names a
+// directory (make codec-check), Go's encodings are written to go.json there for
+// the PHP cross-check, through a temporary file and a rename.
 func TestCodecVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../tests/codec/vectors.json")
@@ -104,10 +107,22 @@ func TestCodecVectors(t *testing.T) {
 			t.Errorf("%s: round trip %s (%v)", v.Name, canon(t, backValue), err)
 		}
 	}
-	os.MkdirAll("../../../tests/codec/out", 0o755)
-	b, _ := json.MarshalIndent(out, "", "  ")
-	if err := os.WriteFile("../../../tests/codec/out/go.json", b, 0o644); err != nil {
-		t.Fatal(err)
+	if dir := os.Getenv("ORM_CODEC_OUT"); dir != "" {
+		b, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "go.json")
+		temporary := fmt.Sprintf("%s.tmp-%d", path, os.Getpid())
+		if err := os.WriteFile(temporary, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(temporary, path); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

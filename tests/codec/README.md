@@ -5,9 +5,15 @@ the reference vectors for each style stack and value, with stored bytes (base64)
 
 | runner | what it checks | output |
 |---|---|---|
-| `go test ./clients/go/orm -run TestCodec` | decodes every vector to the value; deterministic styles re-encode byte-identically; round trip | `out/go.json` |
-| `cargo test -p orm codec` (in `clients/rust`) | same | `out/rust.json` |
-| `php tests/codec/check.php` | same for PHP, then decodes `out/*.json` — what Go and Rust wrote must read back as the same value | — |
+| `go test ./clients/go/orm -run TestCodecVectors` | decodes every vector to the value; deterministic styles re-encode byte-identically; round trip | `$ORM_CODEC_OUT/go.json` |
+| `cargo test -p orm --lib codec::tests::vectors` (in `clients/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
+| `node clients/typescript/tests/codec-vector.mjs` | same | `$ORM_CODEC_OUT/typescript.json` |
+| `php tests/codec/check.php` | same for PHP, then decodes the three outputs in `$ORM_CODEC_OUT` — what Go, Rust and TypeScript wrote must read back as the same value | — |
+
+`make codec-check` runs all four in that order with `ORM_CODEC_OUT` set to a directory of its own run,
+so the checker reads only what this run wrote, never an output that another target or an earlier run
+left. A runner writes its output only when `ORM_CODEC_OUT` is set, through a temporary file and a
+rename.
 
 `gz` and `json` are not byte-deterministic across implementations (compression, map key order);
 they are checked by value. Spec: `docs/codec.md`.

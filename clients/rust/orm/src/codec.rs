@@ -666,7 +666,8 @@ mod tests {
     }
 
     /// Every PHP-produced vector decodes to the same value; deterministic styles re-encode
-    /// to the same bytes. Rust's encodings go to tests/codec/out/rust.json for the PHP cross-check.
+    /// to the same bytes. When ORM_CODEC_OUT names a directory (make codec-check), Rust's encodings go
+    /// to rust.json there for the PHP cross-check, through a temporary file and a rename.
     #[test]
     fn vectors() {
         let _case = orm_testcase::case!(orm_testcase::COMPUTE);
@@ -741,8 +742,13 @@ mod tests {
                 }
             }
         }
-        std::fs::create_dir_all(root.join("out")).unwrap();
-        std::fs::write(root.join("out/rust.json"), serde_json::to_string_pretty(&Value::Object(out)).unwrap()).unwrap();
+        if let Some(dir) = std::env::var_os("ORM_CODEC_OUT") {
+            let dir = std::path::PathBuf::from(dir);
+            std::fs::create_dir_all(&dir).expect("ORM_CODEC_OUT directory");
+            let temporary = dir.join(format!("rust.json.tmp-{}", std::process::id()));
+            std::fs::write(&temporary, serde_json::to_string_pretty(&Value::Object(out)).unwrap()).expect("rust.json");
+            std::fs::rename(&temporary, dir.join("rust.json")).expect("rust.json rename");
+        }
         assert_eq!(fails, 0);
     }
 

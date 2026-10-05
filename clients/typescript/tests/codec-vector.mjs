@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
 import { cases, COMPUTE } from '../../../tests/testcase.mjs';
@@ -141,8 +141,14 @@ await suite.run('codec-vector', COMPUTE, async () => {
     catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { console.error(`${name} of a map: ${String(error)}`); failures++; } }
   }
 
-  await mkdir('tests/codec/out', { recursive: true });
-  await writeFile('tests/codec/out/typescript.json', `${JSON.stringify(output, null, 2)}\n`);
+  // ORM_CODEC_OUT(make codec-check)가 정한 directory에만 출력을 쓴다. 임시 file에 쓴 뒤 이름을 바꾼다.
+  const directory = process.env.ORM_CODEC_OUT;
+  if (directory) {
+    await mkdir(directory, { recursive: true });
+    const temporary = `${directory}/typescript.json.tmp-${process.pid}`;
+    await writeFile(temporary, `${JSON.stringify(output, null, 2)}\n`);
+    await rename(temporary, `${directory}/typescript.json`);
+  }
   if (failures > 0) throw new Error(`TypeScript codec vectors: ${failures} failure(s)`);
 });
 suite.finish();

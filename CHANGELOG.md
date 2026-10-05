@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.50: `make codec-check` runs the Go, Rust and TypeScript codec tests itself as independent parts into a directory of its own run, and the PHP checker compares only those outputs; the writers write only when `ORM_CODEC_OUT` is set, through a temporary file and a rename.
+
 - G5.49: the tracked `commit-msg` hook, which make installs through `core.hooksPath`, refuses a commit subject that breaks `git.subject-format`; a case that ends its process reports its error in its FAIL line; and the PHP `first_statement_lost` case finds the session of its `Db` also behind a pooler.
 
 - G5.46: each checkout builds Rust into its own `clients/rust/target`; make stops when `CARGO_TARGET_DIR` names a directory outside the checkout, and `make check` and `make owner-check` no longer pass a target directory to their targets, because cargo would treat what another checkout built as fresh.
