@@ -93,6 +93,7 @@
   "clients/rust/orm-build/src/catalog/read_only.rs::validate": "pub (super) fn validate (sql : \u0026 str , dialect : \u0026 str) -\u003e Result \u003c () , String \u003e",
   "clients/rust/orm-build/src/catalog/row_delete.rs::CatalogConnection::delete_row": "pub async fn delete_row (\u0026 self , original : \u0026 RowSnapshot , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit) -\u003e Result \u003c u64 , String \u003e",
   "clients/rust/orm-build/src/catalog/row_insert.rs::CatalogConnection::insert_row": "pub async fn insert_row (\u0026 self , declared : \u0026 TableMetadata , values : \u0026 [(String , P)] , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit ,) -\u003e Result \u003c GridQueryResult , String \u003e",
+  "clients/rust/orm-build/src/catalog/row_insert.rs::postgres_insert_lock": " fn postgres_insert_lock (declared : \u0026 TableMetadata) -\u003e Result \u003c String , String \u003e",
   "clients/rust/orm-build/src/catalog/row_snapshot.rs::RevisionWriter": " struct RevisionWriter  { hash : Sha256 , bytes : usize , }",
   "clients/rust/orm-build/src/catalog/row_snapshot.rs::RevisionWriter as Write::flush": " fn flush (\u0026 mut self) -\u003e std :: io :: Result \u003c () \u003e",
   "clients/rust/orm-build/src/catalog/row_snapshot.rs::RevisionWriter as Write::write": " fn write (\u0026 mut self , bytes : \u0026 [u8]) -\u003e std :: io :: Result \u003c usize \u003e",

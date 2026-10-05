@@ -11,10 +11,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
-	"runtime"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
