@@ -42,10 +42,15 @@ make conformance-check
 `make run-databases`), and runs
 
 ```sh
-go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
-go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
-go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
+go run ./tests/conformance/check run -out "$RUN_DIR/out" -driver mysql -dsn "$BENCH_MYSQL_DSN" -driver postgres -dsn "$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$BENCH_SQLITE_DSN"
+go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
+`$RUN_DIR` is the directory of that one run (`.runtime/run/conformance-check-<make pid>`),
+which the target removes at its end: every run writes its outputs into a new
+directory (`check run -out` refuses a directory that exists), and the common
+state contracts of `contracts/interfaces.json` are checked against the outputs
+of the same run, so the result depends only on the tree and never on outputs
+left by an earlier run.
 `check run` requires `-dsn` and passes the same DSN URI to all four runners;
 each DSN selects the time zone `+00:00`. Each runner executes twice. The
 checker requires identical JSON on both executions and an unchanged database
@@ -73,11 +78,11 @@ compares each with the recorded expectation of the selected database.
 
 `check compare` compares recorded files and does not establish that a runner
 executed now. It requires exactly one output from each of the four clients.
-`check run` removes earlier generated outputs when it starts and publishes its
+`check run` publishes its
 four output files only after the repeated executions, state checks, and
 expectation comparison pass. On failure it retains the current diagnostic files
 under an `.run-*` directory without treating them as verified outputs.
-`check record -driver <db> out/<db>/{go,php,rust,typescript}.json` refreshes
+`check record -driver <db> <out>/<db>/{go,php,rust,typescript}.json` refreshes
 that database's expectations only when all four outputs contain the declared
 vectors and agree. Rejected evidence leaves the expectation file unchanged.
 
@@ -90,7 +95,7 @@ database; a second run fails instead of waiting.
 1. Declare `{"name", "chain", "expect": null}` in `vectors.json`.
 2. Implement the same chain in all four runners (keep the statement order).
 3. Run `check record -driver <db>` with the four output files for each database
-   (MySQL files are directly under `out/`). Review the recorded SQL, binds, and
+   (MySQL files are directly under the `-out` directory of a `check run`). Review the recorded SQL, binds, and
    results, then commit. When an old expectation makes `check run` fail, use
    its four diagnostic files under `.run-*` after checking that all runners
    completed and the database state was restored.

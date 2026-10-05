@@ -1,4 +1,4 @@
-.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check interface-results-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -108,7 +108,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
@@ -553,9 +553,16 @@ case-database-check: lease-tool
 	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
 	rm -rf $(RUN_DIR)
 
+# conformance-check는 네 client의 conformance runner를 MySQL, PostgreSQL, SQLite의 bench database에서 실행해
+# output을 vector 기대값과 비교하고, 그 실행의 output을 공통 state contract(contracts/interfaces.json의
+# sequences)와 비교한다. output은 이 실행의 RUN_DIR에만 쓰고 끝에 지우므로, 결과는 tree에만 달렸고 이전
+# 실행이 남긴 output을 읽지 않는다. interfaces checker는 Rust 추출기를 target lease 아래에서 build한다.
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) node tests/go-run.mjs conformance-check ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	rm -rf $(RUN_DIR)
+	$(WITH_TEST_ENV) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
+	rm -rf $(RUN_DIR)
 
 decimal-bench-sqlite:
 	./scripts/decimal-bench-sqlite.sh
@@ -567,14 +574,6 @@ decimal-physical-check: rust-fetch lease-tool
 
 interface-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
-
-# interface-results-check는 make check의 conformance 출력(tests/conformance/out의 MySQL, PostgreSQL, SQLite
-# directory)의 state trace를 공통 state와 실행 계약과 비교한다. CI가 make check 뒤에 실행한다. checker는 Rust
-# 추출기를 공유 target directory의 lease 아래에서 build하므로 make가 export하는 LEASE와 CARGO_LEASES로 실행한다.
-interface-results-check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/postgres
-	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/sqlite
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'

@@ -22,13 +22,13 @@ go run ./tests/interfaces/check --self-test
 go run ./tests/interfaces/check --language php --self-test
 ```
 
-Check recorded conformance results:
+Check the conformance results against the common state contracts (`sequences` of `contracts/interfaces.json`): `make conformance-check` runs the conformance runners into a directory of its own run and then
 
 ```sh
-go run ./tests/interfaces/check --results tests/conformance/out
-go run ./tests/interfaces/check --results tests/conformance/out/postgres
-go run ./tests/interfaces/check --results tests/conformance/out/sqlite
+go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
+
+A sequence lists the kinds of the statements it sends, in order, except utility statements, whose number and place differ per dialect (the conformance vectors list them exactly). A difference names the added and missing statements with their position, kind and SQL, a different result with both values, and a missing output with its path.
 
 Regenerate the contract outputs after an interface change:
 

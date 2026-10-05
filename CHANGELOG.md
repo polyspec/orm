@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-14: `make conformance-check` checks the common state contracts on the outputs of its own run, which list the statement kinds of each sequence (transaction control included since T42), names every difference statement by statement, and `make check` now covers every CI check.
+
 - G5.33-13: CI runs the interface results checker through `make interface-results-check`, which exports the lease variables, and `make repo-check` fails a workflow step that runs a lease-reading program outside make.
 
 - G5.36: the PHP client keeps connections across the requests of a process with `new Config(poolSize: n)`: a `Db` takes a connection of the pool of its DSN, the first `poolIdleSize` connections (all when zero) stay open for the `Db` of a later request with the session settings of their connect, a `Db` beyond the pool gets `CONFIG`, and a request that ends inside a transaction has it rolled back with its MySQL named locks, MySQL local values and SQLite modes. Every client reports a connection that the server ended or that broke with the new code `CONNECTION_LOST`, and the PHP client sends the first statement of a `Db` once more on a new connection when it fails so.

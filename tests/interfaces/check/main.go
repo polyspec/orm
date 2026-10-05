@@ -28,6 +28,7 @@ import (
 
 	"github.com/polyspec/orm/contracts"
 	"github.com/polyspec/orm/engine/runtimemodel"
+	"github.com/polyspec/orm/internal/stmtdiff"
 	"github.com/polyspec/orm/internal/testcase"
 )
 
@@ -62,10 +63,118 @@ type Manifest struct {
 	Storage           []Rule              `json:"storage"`
 	Owners            []Owner             `json:"owners"`
 }
+
+// Sequence는 공통 state contract 하나다. Statements는 그 sequence가 보내는 statement의 kind를 순서대로 적는다:
+// model statement(select, insert, update, delete), transaction 제어(begin, commit, rollback, savepoint, release,
+// rollback_to)와 schema statement. utility statement(named lock, transaction-local 값 등)는 적지 않는다: 그
+// 수와 위치는 dialect마다 다르고(MySQL의 GET_LOCK과 RELEASE_LOCK), 정확한 목록은 conformance vector
+// (tests/conformance/vectors*.json)가 dialect마다 정해 make conformance-check가 비교한다.
 type Sequence struct {
-	ID         string `json:"id"`
-	Expected   any    `json:"expected"`
-	Statements int    `json:"statements"`
+	ID         string   `json:"id"`
+	Expected   any      `json:"expected"`
+	Statements []string `json:"statements"`
+}
+
+// sequenceOutput은 conformance 출력의 vector 하나다. 각 statement는 statement event의 kind를 가진다
+// (docs/usage.md "Statement events").
+type sequenceOutput struct {
+	Result     any `json:"result"`
+	Statements []struct {
+		Kind *string `json:"kind"`
+		SQL  string  `json:"sql"`
+	} `json:"statements"`
+}
+
+// statementKinds는 statement event의 모든 kind다.
+var statementKinds = map[string]bool{
+	"select": true, "insert": true, "update": true, "delete": true,
+	"begin": true, "commit": true, "rollback": true, "savepoint": true, "release": true, "rollback_to": true,
+	"schema": true, "utility": true,
+}
+
+// checkSequences는 한 언어의 conformance 출력(file)을 공통 state contract와 비교해 차이마다 그 이유를 적는다:
+// 없는 vector, 다른 result(두 값), kind가 없거나 알 수 없는 statement, 그리고 contract의 statement kind
+// 목록과 다른 statement(더해지거나 빠진 statement를 위치, kind, SQL과 함께).
+func checkSequences(file string, output map[string]sequenceOutput, sequences []Sequence) []string {
+	var problems []string
+	for _, s := range sequences {
+		prefix := fmt.Sprintf("%s: state contract %s", file, s.ID)
+		got, ok := output[s.ID]
+		if !ok {
+			problems = append(problems, fmt.Sprintf("%s: the output has no %s vector", prefix, s.ID))
+			continue
+		}
+		if !reflect.DeepEqual(got.Result, s.Expected) {
+			problems = append(problems, fmt.Sprintf("%s: result %s, expected %s", prefix, jsonText(got.Result), jsonText(s.Expected)))
+		}
+		var actual []stmtdiff.Statement
+		for index, statement := range got.Statements {
+			switch {
+			case statement.Kind == nil:
+				problems = append(problems, fmt.Sprintf("%s: statement #%d (%s) has no kind", prefix, index+1, statement.SQL))
+			case !statementKinds[*statement.Kind]:
+				problems = append(problems, fmt.Sprintf("%s: statement #%d (%s) has the unknown kind %q", prefix, index+1, statement.SQL, *statement.Kind))
+			case *statement.Kind != "utility":
+				actual = append(actual, stmtdiff.Statement{Kind: *statement.Kind, Text: statement.SQL, Key: *statement.Kind})
+			}
+		}
+		expected := make([]stmtdiff.Statement, len(s.Statements))
+		for index, kind := range s.Statements {
+			expected[index] = stmtdiff.Statement{Kind: kind, Key: kind}
+		}
+		if changes := stmtdiff.Diff(expected, actual); len(changes) > 0 {
+			lines := []string{fmt.Sprintf("%s: statements other than utility differ from the contract: %s", prefix, stmtdiff.Summary(changes, stmtdiff.Group))}
+			for _, change := range changes {
+				lines = append(lines, "  "+change.String())
+			}
+			problems = append(problems, strings.Join(lines, "\n"))
+		}
+	}
+	return problems
+}
+
+// resultDirectories는 반복할 수 있는 --results다.
+type resultDirectories []string
+
+func (r *resultDirectories) String() string { return strings.Join(*r, ",") }
+
+func (r *resultDirectories) Set(value string) error {
+	*r = append(*r, value)
+	return nil
+}
+
+// jsonText는 값을 한 줄 JSON으로 적는다.
+func jsonText(value any) string {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Sprint(value)
+	}
+	return string(b)
+}
+
+// checkResults는 conformance 실행의 output directory 하나(MySQL은 그 root, PostgreSQL과 SQLite는 그 안의
+// directory)의 네 언어 output을 공통 state contract와 비교한다. output file이 없으면 그 정확한 경로를 적는다.
+func checkResults(directory string, languages []string, sequences []Sequence) []string {
+	var problems []string
+	for _, lang := range languages {
+		path := filepath.Join(directory, lang+".json")
+		b, err := os.ReadFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			problems = append(problems, fmt.Sprintf("missing input %s: the conformance run of this check did not write the %s output", path, lang))
+			continue
+		}
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("read %s: %v", path, err))
+			continue
+		}
+		var output map[string]sequenceOutput
+		if err := decodeJSON(b, &output); err != nil {
+			problems = append(problems, fmt.Sprintf("%s is not a conformance output: %v", path, err))
+			continue
+		}
+		problems = append(problems, checkSequences(path, output, sequences)...)
+	}
+	return problems
 }
 
 // interface check의 case 기한이다.
@@ -100,7 +209,8 @@ func main() {
 	record := flag.Bool("record", false, "write candidate native symbol inventories after common-contract checks")
 	selfTest := flag.Bool("self-test", false, "also verify native parsers reject source mutations")
 	generate := flag.Bool("generate", false, "regenerate the component diagram from the manifest")
-	results := flag.String("results", "", "also check state traces in this conformance output directory")
+	var results resultDirectories
+	flag.Var(&results, "results", "also check the state traces of a conformance output directory of this run, repeatable")
 	language := flag.String("language", "", "check one language; empty checks all four")
 	flag.Parse()
 	languages := []string{"go", "php", "rust", "typescript"}
@@ -195,21 +305,11 @@ func main() {
 			failed = true
 		}
 	}
-	if *results != "" {
+	if len(results) > 0 {
 		if err := testcase.Run("interfaces/results", resultsDeadline, func(*testcase.Case) error {
 			var problems []string
-			for _, lang := range languages {
-				var output map[string]struct {
-					Result     any               `json:"result"`
-					Statements []json.RawMessage `json:"statements"`
-				}
-				readJSON(filepath.Join(abs, *results, lang+".json"), &output)
-				for _, s := range m.Sequences {
-					got, ok := output[s.ID]
-					if !ok || !reflect.DeepEqual(got.Result, s.Expected) || len(got.Statements) != s.Statements {
-						problems = append(problems, fmt.Sprintf("%s: state contract %s failed", lang, s.ID))
-					}
-				}
+			for _, directory := range results {
+				problems = append(problems, checkResults(directory, languages, m.Sequences)...)
 			}
 			if len(problems) > 0 {
 				return errors.New(strings.Join(problems, "\n"))
