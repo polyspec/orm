@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-9: Rust tests receive the paths of the package programs they run through `ORM_PROGRAM_<NAME>` from copies taken under the target lease (`orm_testcase::program`), and `make repo-check` fails `env!("CARGO_BIN_EXE_...")`.
+
 - G5.33-8: the conformance and interface checkers build their Rust programs under the target lease and run copies, and `scripts/check/run.mjs` passes the target directory it was given to its sub-makes.
 
 - G5.30-15: the Go conformance and interface checkers build their runners as long operations with step logs and no deadline (`testcase.RunLong`).

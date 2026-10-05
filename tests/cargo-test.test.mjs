@@ -1,7 +1,7 @@
 // tests/cargo-test.mjs의 인자 해석 test다. cargo test option과 test 이름 filter, binary 인자를 나누고, cargo의
 // JSON message에서 test binary와 그 package directory만 읽는다.
 import assert from 'node:assert/strict';
-import { executables, split } from './cargo-test.mjs';
+import { executables, programEnvironment, programs, split } from './cargo-test.mjs';
 import { caseTest, COMPUTE } from './testcase.mjs';
 
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
@@ -23,4 +23,16 @@ caseTest('cargo-test reads the test binaries and their package directories from 
     'not json',
   ];
   assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/clients/rust/orm', target: 'zone' }]);
+});
+
+caseTest('cargo-test reads the package programs and names their variables', COMPUTE, () => {
+  const lines = [
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/native', target: { name: 'native', kind: ['bin'] } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/driver-compare', target: { name: 'driver-compare', kind: ['bin'] } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/dsn-1', target: { name: 'dsn', kind: ['test'] } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: null, target: { name: 'orm', kind: ['lib'] } }),
+  ];
+  assert.deepEqual(programs(lines.join('\n')), { native: '/t/debug/native', 'driver-compare': '/t/debug/driver-compare' });
+  assert.deepEqual(programEnvironment({ native: '/r/programs/native', 'driver-compare': '/r/programs/driver-compare' }),
+    { ORM_PROGRAM_NATIVE: '/r/programs/native', ORM_PROGRAM_DRIVER_COMPARE: '/r/programs/driver-compare' });
 });

@@ -6,6 +6,7 @@
 //      `rust-build/<name>`(runLong, 기한 없음, compiler 출력을 STEP으로)으로 실행하고, cargo가 알린 test binary를
 //      실행 directory로 복사한다. build와 복사는 target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
 //      아래의 한 process에서 하므로 그 사이에 다른 build가 끼지 않는다.
+//      test가 실행하는 package의 program도 함께 복사하고, test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다.
 //   2. 실행: 복사본을 cargo test처럼 package directory에서 CARGO_MANIFEST_DIR과 함께, test 이름 filter와 `--`
 //      뒤의 인자로 하나씩 실행한다. 각 test case가 자기 기한과 RUN, PASS, FAIL 줄을 가진다. 실패한 binary에서
 //      멈추고 그 종료 코드로 끝난다(cargo test와 같다).
@@ -60,6 +61,24 @@ export function executables(stdout) {
   return out;
 }
 
+// programs는 cargo가 test와 함께 build한 package의 program(`[[bin]]`, test가 아닌 것)을 이름과 실행 file로 읽는다.
+// test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다(orm_testcase::program).
+export function programs(stdout) {
+  const out = {};
+  for (const line of stdout.split('\n')) {
+    if (!line.startsWith('{')) continue;
+    const message = JSON.parse(line);
+    if (message.reason === 'compiler-artifact' && !message.profile?.test && message.executable && message.target?.kind?.includes('bin'))
+      out[message.target.name] = message.executable;
+  }
+  return out;
+}
+
+// programEnvironment는 복사한 program마다 test가 읽는 ORM_PROGRAM_<NAME> 변수다.
+export function programEnvironment(copies) {
+  return Object.fromEntries(Object.entries(copies).map(([name, path]) => [`ORM_PROGRAM_${name.toUpperCase().replaceAll('-', '_')}`, path]));
+}
+
 function run(program, args, options, step) {
   return new Promise((finish, fail) => {
     const child = spawn(program, args, { ...options, stdio: ['ignore', step ? 'pipe' : 'inherit', step ? 'pipe' : 'inherit'] });
@@ -94,7 +113,16 @@ async function main() {
       console.error(`cargo-test: ${binary.executable} copied to ${copy}`);
       return { ...binary, copy };
     });
-    writeFileSync(join(runDir, 'binaries.json'), JSON.stringify(copies, null, 1) + '\n');
+    // test가 실행하는 package의 program도 같은 lease 안에서 복사한다.
+    const programCopies = {};
+    for (const [name, executable] of Object.entries(programs(stdout))) {
+      mkdirSync(join(runDir, 'programs'), { recursive: true });
+      const copy = join(runDir, 'programs', name);
+      copyFileSync(executable, copy, constants.COPYFILE_FICLONE);
+      console.error(`cargo-test: ${executable} copied to ${copy}`);
+      programCopies[name] = copy;
+    }
+    writeFileSync(join(runDir, 'binaries.json'), JSON.stringify({ tests: copies, programs: programCopies }, null, 1) + '\n');
     return;
   }
   const separator = args.indexOf('--');
@@ -118,11 +146,11 @@ async function main() {
       process.exitCode = 1;
       return;
     }
-    const binaries = JSON.parse(readFileSync(join(runDir, 'binaries.json'), 'utf8'));
+    const { tests: binaries, programs: programCopies } = JSON.parse(readFileSync(join(runDir, 'binaries.json'), 'utf8'));
     if (binaries.length === 0) throw new Error(`cargo test --no-run ${options.join(' ')} built no test binary`);
     for (const binary of binaries) {
       console.log(`cargo-test: running ${binary.target} (${binary.copy})`);
-      const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...process.env, CARGO_MANIFEST_DIR: binary.manifestDir } });
+      const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
       if (result.code !== 0) {
         console.log(`cargo-test: ${binary.target} exited with ${result.signal ?? result.code}`);
         process.exitCode = result.code;

@@ -16,7 +16,7 @@ const DEADLINE: Duration = Duration::from_secs(300);
 fn coverage_hot_path_gate() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let dsn = common::required("ORM_BENCH_MYSQL_DSN");
-    let mut command = Command::new(env!("CARGO_BIN_EXE_client_bench"));
+    let mut command = Command::new(orm_testcase::program("client_bench"));
     command.arg(ITERATIONS.to_string()).env("ORM_BENCH_MYSQL_DSN", &dsn);
     let output = common::run("client_bench", command, DEADLINE);
     let redact = |bytes: &[u8]| String::from_utf8_lossy(bytes).replace(&dsn, "[dsn]");

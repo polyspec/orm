@@ -13,7 +13,7 @@ const VECTORS: [&str; 2] = ["conditions_values", "relations"];
 const DEADLINE: Duration = Duration::from_secs(300);
 
 fn runner(dsn: &str, vectors: &[&str]) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_conformance"));
+    let mut command = Command::new(orm_testcase::program("conformance"));
     command.arg("--dsn").arg(dsn);
     for vector in vectors {
         command.arg("--vector").arg(vector);

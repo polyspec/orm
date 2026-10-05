@@ -2,7 +2,7 @@ use std::process::Command;
 
 // client_bench는 ORM_BENCH_MYSQL_DSN이 없거나 비어 있으면 연결하지 않고 그 변수 이름을 출력하며 실패한다.
 fn run_without_dsn(value: Option<&str>) -> std::process::Output {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_client_bench"));
+    let mut command = Command::new(orm_testcase::program("client_bench"));
     command.arg("1");
     match value {
         Some(v) => command.env("ORM_BENCH_MYSQL_DSN", v),

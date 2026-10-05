@@ -21,7 +21,7 @@ fn assert_dsn_required(program: &str, output: std::process::Output) {
 #[test]
 fn benchmarks_fail_when_dsn_is_unset() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in [env!("CARGO_BIN_EXE_native"), env!("CARGO_BIN_EXE_driver_compare")] {
+    for program in &[orm_testcase::program("native"), orm_testcase::program("driver_compare")] {
         assert_dsn_required(program, run_without_dsn(program, None));
     }
 }
@@ -29,7 +29,7 @@ fn benchmarks_fail_when_dsn_is_unset() {
 #[test]
 fn benchmarks_fail_when_dsn_is_empty() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in [env!("CARGO_BIN_EXE_native"), env!("CARGO_BIN_EXE_driver_compare")] {
+    for program in &[orm_testcase::program("native"), orm_testcase::program("driver_compare")] {
         assert_dsn_required(program, run_without_dsn(program, Some("")));
     }
 }
@@ -44,7 +44,7 @@ fn run_with_args(program: &str, args: &[&str]) -> (Option<i32>, String) {
 #[test]
 fn benchmarks_require_the_iterations_argument() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in [env!("CARGO_BIN_EXE_native"), env!("CARGO_BIN_EXE_driver_compare")] {
+    for program in &[orm_testcase::program("native"), orm_testcase::program("driver_compare")] {
         let (code, stderr) = run_with_args(program, &[]);
         assert_eq!(code, Some(1), "{program} without arguments: {stderr}");
         assert!(stderr.contains("the iterations argument is required"), "{program} stderr lacks the missing argument: {stderr}");
@@ -54,7 +54,8 @@ fn benchmarks_require_the_iterations_argument() {
 #[test]
 fn benchmarks_reject_an_invalid_iterations_argument() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for (program, minimum) in [(env!("CARGO_BIN_EXE_native"), 3), (env!("CARGO_BIN_EXE_driver_compare"), 10)] {
+    for (program, minimum) in [(orm_testcase::program("native"), 3), (orm_testcase::program("driver_compare"), 10)] {
+        let program = program.as_str();
         let small = (minimum - 1).to_string();
         for arg in ["many", "-1", "1.5", small.as_str()] {
             let (code, stderr) = run_with_args(program, &[arg]);

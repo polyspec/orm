@@ -43,3 +43,18 @@ export function manifestDirErrors(files) {
   }
   return errors;
 }
+
+// binExeErrors는 files({path: text})의 Rust file이 env!("CARGO_BIN_EXE_<name>")를 쓰는 줄마다 오류 하나를
+// 돌려준다. 그 macro는 compile 시점에 공유 Rust target directory의 program 경로를 binary에 넣으므로, 다른
+// checkout이 그 program을 다시 build하면 test가 그것을 실행한다. test는 실행될 때
+// orm_testcase::program(name)으로 tests/cargo-test.mjs가 복사한 program을 받는다. 주석은 보지 않는다.
+export function binExeErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files))
+    text.split('\n').forEach((line, index) => {
+      const code = line.replace(/\/\/.*$/, '');
+      if (/\benv!\s*\(\s*"CARGO_BIN_EXE_/.test(code))
+        errors.push(`${path}:${index + 1} reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with orm_testcase::program`);
+    });
+  return errors;
+}

@@ -20,7 +20,7 @@ fn assert_dsn_required(program: &str, output: std::process::Output) {
 #[test]
 fn examples_fail_when_dsn_is_unset() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in [env!("CARGO_BIN_EXE_complex"), env!("CARGO_BIN_EXE_demo")] {
+    for program in &[orm_testcase::program("complex"), orm_testcase::program("demo")] {
         assert_dsn_required(program, run_without_dsn(program, None));
     }
 }
@@ -28,7 +28,7 @@ fn examples_fail_when_dsn_is_unset() {
 #[test]
 fn examples_fail_when_dsn_is_empty() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in [env!("CARGO_BIN_EXE_complex"), env!("CARGO_BIN_EXE_demo")] {
+    for program in &[orm_testcase::program("complex"), orm_testcase::program("demo")] {
         assert_dsn_required(program, run_without_dsn(program, Some("")));
     }
 }
