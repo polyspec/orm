@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.57: 앞서 보고된 오류를 가리키는 FAIL 줄은 그 오류(Go의 `file_test.go:N: message` 줄)를 실행 기록과 summary의 첫 실패 줄로 남기므로, 줄어든 log가 그것을 잃지 않는다.
+
 - G5.56-1: conformance lock helper test는 `make repo-check`가 요구하는 공용 testcase package로 case를 시작한다.
 
 - G5.56: 끝난 보유자는 lease나 lock을 막지 않는다. lease는 releaser를 적고, 요청은 releaser가 실행되는 동안 기다린다. 보유자와 releaser가 모두 끝난 lease는 가져간다(shared는 어느 요청이든, exclusive는 다음 exclusive 요청이 가져가 자원을 다시 만든다). conformance check는 `flock`으로 lock을 잡고, decimal SQLite bench는 lease 아래에서 준비한다.

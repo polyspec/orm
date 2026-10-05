@@ -70,10 +70,23 @@ export function failureLine(text) {
 // testcase)는 case마다 `RUN <case>`, `STEP <case> ...`, `PASS <case>`나 `FAIL <case> ...: <이유>`를 쓴다. 끝나지
 // 않은 case(기한 초과로 멈춘 process, 죽은 process)는 RUN 뒤에 결과가 없으므로 그 case와 마지막 단계를 적는다.
 // lane 접두사가 붙은 줄도 같은 case 줄로 읽는다.
+// REPORT는 test framework가 실패를 source 위치와 함께 적은 줄이다(Go의 `    stress_test.go:80: <message>`). Go
+// testcase는 그런 줄 뒤에 `FAIL <case> ...: the errors reported above`만 쓰므로, 그 FAIL 줄의 이유는 앞의 줄에 있다.
+const REPORT = /^\s*[\w./-]+\.(?:go|rs|php|m?js|ts):\d+(?::\d+)?: \S/;
+// innermost는 lane 접두사와 겹친 단계 접두사(`STEP <case> elapsed=<경과>: `, runner 안의 runner가 붙인다)를 뗀 message다.
+function innermost(text) {
+  let line = text.replace(LANE, '');
+  for (let next; (next = line.replace(/^STEP .*? elapsed=\S+: /, '')) !== line;) line = next;
+  return line;
+}
+
 export function failures() {
   const failed = [];
   const open = new Map();
   const tail = [];
+  // reports는 지금 case의 source 위치 보고 줄이다. `the errors reported above`인 FAIL 줄 앞에 첫 실패 줄로 넣는다:
+  // 출력이 길어 log가 가운데를 줄여도 그 이유가 보고서와 summary에 남는다.
+  const reports = [];
   let exit = null;
   return {
     // exit는 명령이 끝난 방식이다(종료 코드나 signal). 실패 줄이 없는 실패는 출력의 끝과 이것을 적는다.
@@ -91,6 +104,16 @@ export function failures() {
       if (step && open.has(lane + step[1])) open.set(lane + step[1], text);
       const done = /^(PASS|FAIL|TIMEOUT) (\S+)/.exec(line);
       if (done) open.delete(lane + done[2]);
+      const inner = innermost(text);
+      if (/^(?:=== RUN|RUN |PASS |--- PASS)/.test(inner)) reports.length = 0;
+      else if (REPORT.test(inner) && !failureLine(text)) {
+        reports.push(text);
+        if (reports.length > FAILURE_LINES) reports.shift();
+      }
+      if (failureLine(text) && /the errors reported above$/.test(inner)) {
+        for (const report of reports) if (failed.length < FAILURE_LINES) failed.push(report);
+        reports.length = 0;
+      }
       if (failed.length < FAILURE_LINES && failureLine(text)) failed.push(text);
     },
     // lines는 실패한 target의 첫 실패 줄이다: 나온 순서대로의 실패와 오류 수준의 줄, 끝나지 않은 case, 둘 다 없으면

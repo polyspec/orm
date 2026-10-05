@@ -634,6 +634,29 @@ caseTest('the first failure lines of a target are its failure and error lines', 
   ]);
 });
 
+// 보고된 오류 case(G5.57)는 G5.53의 CI run이 낸 feature-check 줄이다. Go testcase는 실패를 `stress_test.go:80: ...`로
+// 적은 뒤 `FAIL <case> ...: the errors reported above`만 쓴다. 그 앞의 보고 줄이 FAIL 줄 앞의 첫 실패 줄이 되므로, log가
+// 가운데를 줄여도 이유가 남는다. 앞서 통과한 case의 줄은 들어가지 않는다.
+caseTest('a FAIL that points at the errors reported above keeps those errors as first failure lines', COMPUTE, async () => {
+  const { failures } = await import(resolve(repo, 'scripts/check/report.mjs'));
+  const found = failures();
+  const step = 'STEP features/performance_gate/preempted-timing elapsed=1m15.37s: ';
+  for (const line of [
+    `${step}=== RUN   TestOther`,
+    `${step}    other_test.go:12: a log line of a case that passed`,
+    `${step}--- PASS: TestOther (0.01s)`,
+    `${step}=== RUN   TestStressDocument`,
+    `${step}RUN TestStressDocument deadline=5m0s`,
+    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/dbspec.md, Verification)`,
+    `${step}FAIL TestStressDocument elapsed=10.25s: the errors reported above`,
+    `${step}--- FAIL: TestStressDocument (10.25s)`,
+  ]) found.line(line);
+  assert.deepEqual(found.lines().slice(0, 2), [
+    `${step}    stress_test.go:80: stress median parse used 131ms of CPU, over the 100ms budget (docs/dbspec.md, Verification)`,
+    `${step}FAIL TestStressDocument elapsed=10.25s: the errors reported above`,
+  ]);
+});
+
 // 공간 case(G5.43-4)는 target b가 /tmp의 quota 초과(EDQUOT)로 실패하는 실행이다. 보고서는 시작할 때와 단계마다 공간을
 // 기록하고, b의 첫 실패 줄은 공간이 없어 실패했다는 것과 그 순간의 `/`와 `/tmp`의 남은 공간이다.
 caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {
