@@ -236,6 +236,7 @@ func (s *shape) group(g *ir.Group) {
 	}
 	s.byte(1)
 	s.str(g.Conn)
+	s.bool(g.Not)
 	s.int(len(g.Items))
 	for i := range g.Items {
 		it := &g.Items[i]
