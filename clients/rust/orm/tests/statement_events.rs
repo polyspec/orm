@@ -291,14 +291,16 @@ async fn coverage_statement_events() {
 /// vector의 server_transactions를 PostgreSQL case database에서 실행한다. probe가 돌려주는
 /// backend의 local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. pool size
 /// 1이므로 모든 statement가 한 backend에서 실행된다. probe는 같은 pool에서 sqlx로 보내므로 event가
-/// 없다. sqlx는 처음 보내는 statement text마다 parameter type을 묻는 prepare를 따로 보내므로, rust가
-/// first_run_clients에 없으면 첫 실행은 보고만 한다.
+/// 없다. sqlx는 연결에서 처음 보내는 statement text를 실행 전에 자기 round trip으로 prepare하므로,
+/// rust가 first_run_prepare_clients에 있으면 첫 실행은 event 수에 statement text 수를 더한다.
 #[tokio::test]
 async fn statement_events_server_transactions() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     let spec = &vector["server_transactions"];
-    let compare_first = spec["first_run_clients"].as_array().expect("first_run_clients").iter().any(|c| c == "rust");
+    let listed = |key: &str| spec[key].as_array().unwrap_or_else(|| panic!("{key}")).iter().any(|c| c == "rust");
+    let (one_per_event, with_prepares) = (listed("first_run_clients"), listed("first_run_prepare_clients"));
+    assert!(one_per_event != with_prepares, "rust is in exactly one of first_run_clients and first_run_prepare_clients");
     let page = vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case");
     let probe_sql = spec["probe"].as_str().expect("probe").to_owned();
     let driver = "postgres";
@@ -329,13 +331,17 @@ async fn statement_events_server_transactions() {
             for s in page["steps"].as_array().expect("page steps") {
                 let _ = r.checked(s).await;
             }
-            let events = std::mem::take(&mut r.recorded.lock().unwrap().records).len() as i64;
+            let records = std::mem::take(&mut r.recorded.lock().unwrap().records);
+            let events = records.len() as i64;
+            let texts = records.iter().map(|e| e["sql"].as_str().unwrap_or_default().to_owned()).collect::<std::collections::BTreeSet<_>>().len() as i64;
             let after = probe().await;
             let transactions = after - before - cost;
             before = after;
-            println!("server_transactions {name} run: {events} events, {transactions} transactions");
-            if (name == "second" || compare_first) && transactions != events {
-                failures.push(format!("{name} run spent {transactions} server transactions for {events} statement events, want one per event"));
+            println!("server_transactions {name} run: {events} events, {texts} statement texts, {transactions} transactions");
+            let want = if name == "first" && with_prepares { events + texts } else { events };
+            if transactions != want {
+                failures
+                    .push(format!("{name} run spent {transactions} server transactions for {events} statement events of {texts} statement texts, want {want}"));
             }
         }
         db.close().await;

@@ -8,12 +8,12 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{FixedOffset, NaiveDateTime, Utc};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPool};
-use sqlx::postgres::{PgConnectOptions, PgPool, PgTypeInfo};
+use sqlx::postgres::{PgConnectOptions, PgPool};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 
 use crate::driver::{
-    exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg, fetch_pg_pool, fetch_sqlite,
-    fetch_sqlite_pool, masked, param_arg, pg_describe, statement, Target, TxInner,
+    arg_types, exec_mysql, exec_mysql_pool, exec_pg, exec_pg_pool, exec_sqlite, exec_sqlite_pool, fetch_mysql, fetch_mysql_pool, fetch_pg, fetch_pg_pool,
+    fetch_sqlite, fetch_sqlite_pool, masked, param_arg, statement, Target, TxInner,
 };
 pub use crate::driver::{NOW_MASK, SECRET_MASK};
 use crate::engine::{self, Dialect};
@@ -268,7 +268,6 @@ pub(crate) struct DbInner {
     sets: std::sync::RwLock<std::collections::HashSet<String>>,
     /// 등록한 set의 schema. audit 기록은 그 table을 가진 set으로 삽입한다.
     pub(crate) schemas: std::sync::RwLock<Vec<&'static Schema>>,
-    pg_types: Mutex<HashMap<String, Arc<[PgTypeInfo]>>>,
     pub(crate) closed: AtomicBool,
     pub(crate) sqlite_lock_ready: AtomicBool,
     /// 연결의 statement event subscriber와 transaction 번호다. 연결의 모든 clone이 공유한다.
@@ -434,7 +433,6 @@ impl Db {
                 plan_order: Mutex::new(VecDeque::new()),
                 sets: std::sync::RwLock::new(std::collections::HashSet::new()),
                 schemas: std::sync::RwLock::new(Vec::new()),
-                pg_types: Mutex::new(HashMap::new()),
                 closed: AtomicBool::new(false),
                 sqlite_lock_ready: AtomicBool::new(false),
                 subscribers: Subscribers::default(),
@@ -717,25 +715,6 @@ impl Db {
         result
     }
 
-    async fn pg_types_pool(&self, pool: &PgPool, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
-        if let Some(t) = self.inner.pg_types.lock().unwrap().get(sql) {
-            return Ok(t.clone());
-        }
-        let mut conn = pool.acquire().await?;
-        let t = pg_describe(&mut *conn, sql).await?;
-        self.inner.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
-        Ok(t)
-    }
-
-    async fn pg_types_conn(&self, conn: &mut sqlx::PgConnection, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
-        if let Some(t) = self.inner.pg_types.lock().unwrap().get(sql) {
-            return Ok(t.clone());
-        }
-        let t = pg_describe(conn, sql).await?;
-        self.inner.pg_types.lock().unwrap().insert(sql.to_owned(), t.clone());
-        Ok(t)
-    }
-
     pub(crate) async fn run_query(
         &self,
         mut target: Target<'_>,
@@ -755,14 +734,12 @@ impl Db {
                 .await
                 .map(|v| v.into_iter().map(DriverRow::MySql).collect())
                 .map_err(Error::from),
-            Target::Pool(Pool::Postgres(p)) => match self.pg_types_pool(p, &sql).await {
-                Ok(types) => fetch_pg_pool(&sql, &args, &types, self.inner.zone, p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
-                Err(e) => Err(e),
-            },
-            Target::Tx(TxInner::Postgres(t)) => match self.pg_types_conn(t, &sql).await {
-                Ok(types) => fetch_pg(&sql, &args, &types, self.inner.zone, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect()),
-                Err(e) => Err(e),
-            },
+            Target::Pool(Pool::Postgres(p)) => {
+                fetch_pg_pool(&sql, &args, &arg_types(st, parent_vals.len()), p).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect())
+            }
+            Target::Tx(TxInner::Postgres(t)) => {
+                fetch_pg(&sql, &args, &arg_types(st, parent_vals.len()), &mut **t).await.map(|v| v.into_iter().map(DriverRow::Postgres).collect())
+            }
             Target::Pool(Pool::Sqlite(p)) => {
                 fetch_sqlite_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
             }
@@ -789,14 +766,8 @@ impl Db {
             Target::Tx(TxInner::MySql(t)) => {
                 exec_mysql(sql, &args, &mut **t.conn.as_mut().expect("active MySQL transaction connection")).await.map_err(Error::from)
             }
-            Target::Pool(Pool::Postgres(p)) => match self.pg_types_pool(p, sql).await {
-                Ok(types) => exec_pg_pool(sql, &args, &types, self.inner.zone, p).await,
-                Err(e) => Err(e),
-            },
-            Target::Tx(TxInner::Postgres(t)) => match self.pg_types_conn(t, sql).await {
-                Ok(types) => exec_pg(sql, &args, &types, self.inner.zone, &mut **t).await,
-                Err(e) => Err(e),
-            },
+            Target::Pool(Pool::Postgres(p)) => exec_pg_pool(sql, &args, &arg_types(st, 0), p).await,
+            Target::Tx(TxInner::Postgres(t)) => exec_pg(sql, &args, &arg_types(st, 0), &mut **t).await,
             Target::Pool(Pool::Sqlite(p)) => exec_sqlite_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
         };

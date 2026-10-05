@@ -28,7 +28,9 @@ impl Db {
     }
 }
 
-fn step(sql: String, binds: usize) -> Step {
+/// utils statement 하나의 step이다. `types`는 bind 값마다의 dbspec type이며, utils의 bind는
+/// manifest의 column type이거나 이름과 key 같은 text다.
+fn step(sql: String, types: &[&str]) -> Step {
     Step {
         plan_id: 0,
         id: 0,
@@ -36,8 +38,10 @@ fn step(sql: String, binds: usize) -> Step {
         tables: Vec::new(),
         sql,
         lock: String::new(),
-        bind_slots: (0..binds)
-            .map(|i| BindSlot {
+        bind_slots: types
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| BindSlot {
                 from: "param".into(),
                 param: i,
                 transform: String::new(),
@@ -45,7 +49,7 @@ fn step(sql: String, binds: usize) -> Step {
                 step: 0,
                 column: String::new(),
                 host_styles: vec![],
-                col_type: String::new(),
+                col_type: (*ty).to_owned(),
                 key_types: Vec::new(),
                 precision: 0,
                 scale: 0,
@@ -104,14 +108,14 @@ impl<'a> Utils<'a> {
     }
 
     /// `kind`의 statement를 실행하고 행을 돌려준다. event는 `tables`를 싣는다.
-    async fn query(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param]) -> Result<Vec<Vec<Val>>> {
-        let rows = ex.query_as(Some(kind), Some(tables), &step(sql, params.len()), params, Vec::new()).await?;
+    async fn query(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param], types: &[&str]) -> Result<Vec<Vec<Val>>> {
+        let rows = ex.query_as(Some(kind), Some(tables), &step(sql, types), params, Vec::new()).await?;
         rows.iter().map(|r| read_row(r, r.len(), self.db.inner.zone)).collect()
     }
 
     /// `kind`의 statement를 실행하고 바뀐 행 수를 돌려준다. event는 `tables`를 싣는다.
-    async fn exec(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param]) -> Result<u64> {
-        Ok(ex.execute_as(Some(kind), Some(tables), &step(sql, params.len()), params).await?.1)
+    async fn exec(&self, ex: &Executor, kind: &str, tables: &[String], sql: String, params: &[Param], types: &[&str]) -> Result<u64> {
+        Ok(ex.execute_as(Some(kind), Some(tables), &step(sql, types), params).await?.1)
     }
 
     /// Runs f in the active transaction of the connection, or in a new one.
@@ -128,8 +132,9 @@ impl<'a> Utils<'a> {
         .await
     }
 
+    /// text bind만 받는 존재 확인 statement를 실행한다.
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
-        let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params).await?;
+        let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
@@ -142,7 +147,7 @@ impl<'a> Utils<'a> {
         let ex = Executor::Tx(t.clone());
         match self.db.driver() {
             "mysql" => {
-                let rows = self.query(&ex, KIND_UTILITY, &[], "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())]).await?;
+                let rows = self.query(&ex, KIND_UTILITY, &[], "SELECT GET_LOCK(?, 50)".into(), &[Param::Str(key.into())], &["text"]).await?;
                 let got = rows.first().and_then(|r| r.first()).cloned().unwrap_or(Val::Null);
                 if !matches!(got, Val::I64(1)) {
                     return Err(transaction_conflict(format!("lock {key} was not acquired")));
@@ -150,7 +155,7 @@ impl<'a> Utils<'a> {
                 t.locks.lock().unwrap().push(key.to_owned());
             }
             "postgres" => {
-                self.exec(&ex, KIND_UTILITY, &[], "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))".into(), &[Param::Str(key.into())]).await?;
+                self.exec(&ex, KIND_UTILITY, &[], "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))".into(), &[Param::Str(key.into())], &["text"]).await?;
             }
             _ => ex.sqlite_row_lock("update").await?,
         }
@@ -167,10 +172,10 @@ impl<'a> Utils<'a> {
         let params = [Param::Str(key.into()), Param::Str(value.into())];
         match self.db.driver() {
             "postgres" => {
-                self.exec(&ex, KIND_UTILITY, &[], "SELECT set_config($1, $2, true)".into(), &params).await?;
+                self.exec(&ex, KIND_UTILITY, &[], "SELECT set_config($1, $2, true)".into(), &params, &["text", "text"]).await?;
             }
             "mysql" => {
-                self.exec(&ex, KIND_UTILITY, &[], format!("SET @`orm.{key}` = ?"), &params[1..]).await?;
+                self.exec(&ex, KIND_UTILITY, &[], format!("SET @`orm.{key}` = ?"), &params[1..], &["text"]).await?;
             }
             // SQLite에는 transaction-local 값을 담는 database 기능이 없어 transaction이 값을 갖는다.
             _ => {}
@@ -418,8 +423,8 @@ impl PrivilegeUtils<'_> {
         let tables = [table.to_owned()];
         self.u
             .run(async |ex: &Executor| {
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[]).await?;
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT USAGE ON SCHEMA {schema} TO {role}"), &[], &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {role}"), &[], &[]).await?;
                 Ok(())
             })
             .await
@@ -436,7 +441,7 @@ impl PrivilegeUtils<'_> {
         }
         self.u
             .run(async |ex: &Executor| {
-                self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[]).await?;
+                self.u.exec(ex, KIND_UTILITY, &tables, format!("REVOKE {privilege} ON {qualified} FROM {role}"), &[], &[]).await?;
                 Ok(())
             })
             .await
@@ -446,7 +451,7 @@ impl PrivilegeUtils<'_> {
     pub async fn inspect_table(&self, table: &str) -> Result<TablePrivileges> {
         let (_, qualified) = self.table(table)?;
         let sql = "SELECT has_table_privilege(current_user, $1, 'INSERT'), has_table_privilege(current_user, $1, 'SELECT'), has_table_privilege(current_user, $1, 'UPDATE'), has_table_privilege(current_user, $1, 'DELETE'), has_table_privilege(current_user, $1, 'TRUNCATE')";
-        let rows = self.u.query(&self.u.read(), KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)]).await?;
+        let rows = self.u.query(&self.u.read(), KIND_UTILITY, &[table.to_owned()], sql.into(), &[Param::Str(qualified)], &["text"]).await?;
         let r = rows.into_iter().next().ok_or_else(|| Error::internal("privilege query returned no row"))?;
         Ok(TablePrivileges { insert: truthy(&r[0]), select: truthy(&r[1]), update: truthy(&r[2]), delete: truthy(&r[3]), truncate: truthy(&r[4]) })
     }
@@ -493,6 +498,12 @@ struct AesSpec {
     keys: Vec<String>,
     version: String,
     columns: Vec<(String, Vec<String>)>,
+    /// key column의 dbspec type이며 `keys` 순서다.
+    key_types: Vec<&'static str>,
+    /// AES key version column의 dbspec type이다.
+    version_type: &'static str,
+    /// AES column의 dbspec type이며 `columns` 순서다. 암호문은 이 type으로 저장된다.
+    column_types: Vec<&'static str>,
 }
 
 fn row_version(v: &Val) -> Result<i32> {
@@ -517,7 +528,13 @@ impl AesUtils<'_> {
         let Some(version) = ent.aes_version.clone().filter(|_| !columns.is_empty()) else {
             return Err(Error::Config(format!("entity {name} has no AES columns with a key version")));
         };
-        Ok(AesSpec { table: ent.table.clone(), keys: ent.primary_key.clone(), version, columns })
+        let type_of = |column: &str| -> Result<&'static str> {
+            ent.fields.iter().find(|f| f.name == column).map(|f| f.ty.name()).ok_or_else(|| Error::internal(format!("entity {name} has no column {column}")))
+        };
+        let key_types = ent.primary_key.iter().map(|k| type_of(k)).collect::<Result<Vec<_>>>()?;
+        let version_type = type_of(&version)?;
+        let column_types = columns.iter().map(|(c, _)| type_of(c)).collect::<Result<Vec<_>>>()?;
+        Ok(AesSpec { table: ent.table.clone(), keys: ent.primary_key.clone(), version, columns, key_types, version_type, column_types })
     }
 
     /// Reads the key version of every row of the model table.
@@ -527,7 +544,7 @@ impl AesUtils<'_> {
         let version = quote(d, &spec.version);
         let sql = format!("SELECT {version}, COUNT(*) FROM {} GROUP BY {version} ORDER BY {version}", quote(d, &spec.table));
         let mut status = AesRotationStatus { current: keyring.current, total: 0, pending: 0, versions: BTreeMap::new() };
-        for row in self.u.query(&self.u.read(), KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[]).await? {
+        for row in self.u.query(&self.u.read(), KIND_UTILITY, std::slice::from_ref(&spec.table), sql, &[], &[]).await? {
             let stored = row_version(&row[0])?;
             let count = row[1].as_i64()?;
             if count < 0 {
@@ -567,11 +584,16 @@ impl AesUtils<'_> {
         let update = format!("UPDATE {} SET {} WHERE {}", q(&spec.table), sets.join(", "), wheres.join(" AND "));
         let new_key = keyring.key(keyring.current)?;
         let tables = std::slice::from_ref(&spec.table);
+        // update의 bind 순서: AES column, 새 version, key, 이전 version.
+        let mut update_types = spec.column_types.clone();
+        update_types.push(spec.version_type);
+        update_types.extend(spec.key_types.iter().copied());
+        update_types.push(spec.version_type);
         self.u
             .run(async |ex: &Executor| {
                 let mut rotated = 0;
                 loop {
-                    let batch = self.u.query(ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)]).await?;
+                    let batch = self.u.query(ex, KIND_UTILITY, tables, select.clone(), &[Param::I64(keyring.current as i64)], &[spec.version_type]).await?;
                     if batch.is_empty() {
                         return Ok(rotated);
                     }
@@ -587,7 +609,7 @@ impl AesUtils<'_> {
                         args.push(Param::I64(keyring.current as i64));
                         args.extend(row[..k].iter().map(val_param));
                         args.push(Param::I64(version as i64));
-                        let affected = self.u.exec(ex, KIND_UTILITY, tables, update.clone(), &args).await?;
+                        let affected = self.u.exec(ex, KIND_UTILITY, tables, update.clone(), &args, &update_types).await?;
                         if affected != 1 {
                             return Err(transaction_conflict(format!("aes rotation of {} changed {affected} rows", spec.table)));
                         }
