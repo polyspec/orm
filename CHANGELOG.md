@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-4).
+
 - G5.33-4: the SQLite file of `rust-send-savepoint-check` and the Go test binary of `timing-check` live in the run directory, and every make target that builds the TypeScript client holds its build output as the only holder.
 
 - G5.33-3: make targets run copies of the Rust programs they built, taken under the lease of the shared target directory, write their stress documents into a run directory of their own, and every cargo build of the Makefile holds that lease.
