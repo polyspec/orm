@@ -22,6 +22,7 @@ shift
 "$@"
 for artifact in $artifacts; do
   mkdir -p "$(dirname "$run/$artifact")"
-  cp -p "$target/$artifact" "$run/$artifact"
+  # copy-on-write clone(macOS cp -c, Linux cp --reflink=auto)은 disk를 거의 쓰지 않는다.
+  if [ "$(uname)" = Darwin ]; then cp -c -p "$target/$artifact" "$run/$artifact" || cp -p "$target/$artifact" "$run/$artifact"; else cp --reflink=auto -p "$target/$artifact" "$run/$artifact"; fi
   echo "cargo-build-copy: $target/$artifact copied to $run/$artifact"
 done

@@ -3707,7 +3707,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\"",
+          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- sh scripts/cargo-build-copy.sh \"$run\" debug/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
           "inputs": [
             "clients/rust/tests/src/integration.rs",
             "schema/bench.dbs"
@@ -5405,7 +5405,7 @@
         "clients/rust/orm/tests/common/*.rs"
       ],
       "tests": [],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/test-helpers -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/test-helpers -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
     }
   ]
 }

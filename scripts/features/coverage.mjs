@@ -1,10 +1,13 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mjs';
+
+// cargoTestScript는 lease 아래에서 test binary를 build하고 복사하는 script다.
+const cargoTestScript = new URL('../../tests/cargo-test.mjs', import.meta.url).pathname;
 
 export const languages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
@@ -356,17 +359,21 @@ async function buildNative(plans, directory) {
   for (const [workspace, crates] of workspaces) {
     const files = new Map();
     const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
-      const result = await run('cargo', ['test', '--no-run', '--workspace', ...features,
-        '--manifest-path', resolve(workspace, 'Cargo.toml'), '--message-format=json-render-diagnostics'],
-        workspace, null, process.env, step, 100_000_000);
+      // build와 복사는 공유 Rust target directory의 exclusive lease 아래에서 한다(tests/cargo-test.mjs --copy). 실행은
+      // 이 checker의 directory에 복사한 binary를 쓰므로, 다른 checkout의 build가 target directory를 바꿔도 이
+      // 실행의 test binary는 바뀌지 않는다.
+      const { LEASE: lease, CARGO_LEASES: leases } = process.env;
+      if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
+      const copies = resolve(directory, `cargo-${workspaces.size}-${files.size}-${relative(plans.root, workspace).replaceAll('/', '_') || 'root'}`);
+      await mkdir(copies, { recursive: true });
+      const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',
+        'cargo', 'test', '--no-run', '--workspace', ...features, '--manifest-path', resolve(workspace, 'Cargo.toml'),
+        '--message-format=json-render-diagnostics'], workspace, null, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
-      for (const line of result.stdout.split('\n')) {
-        if (!line.startsWith('{')) continue;
-        const message = JSON.parse(line);
-        if (message.reason !== 'compiler-artifact' || !message.profile?.test || !message.executable) continue;
-        for (const file of await dependencyFiles(message.executable, workspace)) {
+      for (const binary of JSON.parse(await readFile(resolve(copies, 'binaries.json'), 'utf8'))) {
+        for (const file of await dependencyFiles(binary.copy, workspace)) {
           if (!files.has(file)) files.set(file, []);
-          files.get(file).push(message.executable);
+          files.get(file).push(binary.copy);
         }
       }
       step(`${new Set([...files.values()].flat()).size} test binaries`);

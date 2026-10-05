@@ -60,5 +60,6 @@ RS
 } > "$WORK/crate/src/lib.rs"
 cp clients/rust/Cargo.lock "$WORK/crate/Cargo.lock"
 # 생성한 crate는 workspace의 target을 함께 써서 orm과 의존성을 다시 compile하지 않는다.
-CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" cargo check --manifest-path "$WORK/crate/Cargo.toml"
+# 공유 Rust target directory에 build하므로 그 lease(make가 export하는 LEASE, CARGO_LEASES) 아래에서 실행한다.
+CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- cargo check --manifest-path "$WORK/crate/Cargo.toml"
 printf '%s\n' "rust-150: 150 generated entities compiled"

@@ -13,8 +13,11 @@
 // 이 repository의 Rust 문서 code는 모두 ```text라 실행할 doctest가 없으므로 doctest는 실행하지 않는다.
 //
 // Usage: node tests/cargo-test.mjs <name> -- cargo [+<toolchain>] test <cargo options and filters> [-- <test binary args>]
+//        node tests/cargo-test.mjs --copy <run dir> -- <cargo test --no-run command>
+//            (lease 아래에서 실행한다: build하고 test binary와 dep-info를 <run dir>로 복사해 binaries.json에 적는다.
+//             scripts/features/coverage.mjs도 쓴다.)
 import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { constants, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { runLong, stepLines } from './testcase.mjs';
@@ -82,7 +85,12 @@ async function main() {
     if (code !== 0) process.exit(code);
     const copies = executables(stdout).map((binary, index) => {
       const copy = join(runDir, `${index}-${basename(binary.executable)}`);
-      copyFileSync(binary.executable, copy);
+      // 복사는 copy-on-write clone(APFS clonefile, Linux reflink)을 먼저 시도해 disk를 거의 쓰지 않는다. 그것이 안 되는
+      // file system에서는 보통 복사다.
+      copyFileSync(binary.executable, copy, constants.COPYFILE_FICLONE);
+      // rustc가 binary 옆에 쓰는 dep-info(<binary>.d)도 함께 복사한다. feature coverage가 그것으로 binary가
+      // compile한 source file을 읽는다.
+      if (existsSync(`${binary.executable}.d`)) copyFileSync(`${binary.executable}.d`, `${copy}.d`, constants.COPYFILE_FICLONE);
       console.error(`cargo-test: ${binary.executable} copied to ${copy}`);
       return { ...binary, copy };
     });
