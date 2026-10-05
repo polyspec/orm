@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.34-1: 전체 실행 기록은 실패한 target만 `failed`에, 끝나지 않은 target은 `incomplete`에 적고, `make rerun-failed`는 둘을 모두 다시 실행한다.
+
 - G5.33-11: 각 실행의 환경 file이 자기 send-savepoint SQLite file을 정하므로, `client-db-check`의 Rust client database test가 다시 SQLite case를 실행한다.
 
 - G5.32-8: 네 client에서 raw SQL API를 없앤다: `raw`, `andRaw`, `orRaw`, `orderByRaw`, `groupByRaw`, `setRaw<Col>`, `addRawColumn<Alias>`와 `addColumn<Col>Alias<Name>`의 서식 문자열(이제 column 함수만 받는다). IR은 SQL text를 싣지 않고 모든 bind slot은 dbspec type을 가지며, Rust client는 MySQL `YEAR` cell을 읽는다.

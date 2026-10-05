@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { activeItems, decide } from './full-run.mjs';
+import { activeItems, decide, summarize } from './full-run.mjs';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const CHECKLIST = `# Checklist
@@ -30,7 +30,7 @@ function cleanup() {
 
 // stub은 runChecks를 stub 명령으로 실행한다. database 명령(sh)은 log에 `sh <action>`을, make target은 자기
 // 이름을 적는다. `b`는 추적하지 않는 file `pass-b`가 있을 때만 통과하므로 case는 tree를 바꾸지 않고 결과를
-// 바꾼다. kill을 주면 `a`가 runner process를 SIGKILL로 끝낸다. `decide`는 make check의 첫 줄을 실행한다.
+// 바꾼다. kill에 target 이름을 주면 그 target이 runner process를 SIGKILL로 끝낸다. `decide`는 make check의 첫 줄을 실행한다.
 const STUB = `import { appendFileSync, existsSync } from 'node:fs';
 import { runChecks } from ${JSON.stringify(resolve(repo, 'scripts/check/run.mjs'))};
 import { preflight } from ${JSON.stringify(resolve(repo, 'scripts/check/full-run.mjs'))};
@@ -39,7 +39,7 @@ if (action === 'decide') process.exit(preflight(root, mode));
 const run = async (program, args) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
-  if (name === 'a' && kill) process.kill(process.pid, 'SIGKILL');
+  if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
   if (name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 process.exitCode = await runChecks({ root, mode, servers: '/servers/env', targets: mode === 'check' ? ['a', 'b', 'c'] : [], run });
@@ -194,7 +194,7 @@ caseTest('a rerun runs only the recorded failed targets', PROCESS, () => {
 caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
   const c = checkout({ after: f => after.push(f) }, DONE);
   try {
-    const result = c.run('run', 'check', 'kill');
+    const result = c.run('run', 'check', 'a');
     assert.equal(result.signal, 'SIGKILL');
     const record = c.record();
     assert.equal(record.result, 'incomplete');
@@ -205,4 +205,31 @@ caseTest('a killed run stays recorded as incomplete', PROCESS, () => {
   } finally {
     cleanup();
   }
+});
+
+// 목록 case는 강제 종료된 실행의 기록이 실패한 target과 끝나지 않은 target을 나누어 담고, make rerun-failed가
+// 둘을 모두 다시 실행하는지 확인한다. `a`는 통과하고 `b`는 실패하며 `c`가 runner를 끝낸다.
+caseTest('a killed run records failed and unfinished targets apart', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const result = c.run('run', 'check', 'c');
+    assert.equal(result.signal, 'SIGKILL');
+    const record = c.record();
+    assert.deepEqual([record.result, record.failed, record.incomplete], ['incomplete', ['b'], ['c']]);
+    assert.deepEqual(record.targets.map(target => [target.name, target.status]), [['a', 'passed'], ['b', 'failed'], ['c', 'running']]);
+    c.ran();
+    writeFileSync(join(c.root, 'pass-b'), '');
+    const rerun = c.run('run', 'rerun-failed');
+    assert.equal(rerun.status, 0, rerun.stdout + rerun.stderr);
+    assert.deepEqual(c.ran(), ['sh create', 'b', 'c', 'sh drop']);
+    const after = c.record();
+    assert.deepEqual([after.result, after.failed, after.incomplete], ['passed', [], []]);
+  } finally {
+    cleanup();
+  }
+});
+
+caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
+  const record = summarize({ targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'running' }, { name: 'd', status: 'not run' }] });
+  assert.deepEqual([record.failed, record.incomplete], [['b'], ['c', 'd']]);
 });
