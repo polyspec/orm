@@ -413,7 +413,8 @@ impl Db {
             ConnectOptions::Sqlite(o) => {
                 let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
-                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;
+                // sqlx가 bundle한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
+                let version = libsqlite3_sys::SQLITE_VERSION.to_str().map_err(|_| Error::internal("the SQLite library version is not UTF-8"))?;
                 let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
                 let (major, minor) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0));
                 if major < 3 || (major == 3 && minor < 46) {

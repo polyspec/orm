@@ -386,4 +386,4 @@ Go는 `orm.Distance(…)`, Rust는 `orm::distance(…)`, TypeScript는 `orm.dist
 - SQLite 하버사인 식은 SQLite 수학 함수가 필요하다. 연결이 이를 확인하며 사용할 수 없으면 `distance`는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - 목록에 없는 컬럼 타입에 컬럼 함수를 사용하면 `OPERATOR_NOT_ALLOWED`를 반환한다.
 - SQLite는 `decimal` 값을 부동소수점으로 저장하므로 SQLite의 십진 계산 결과는 MySQL, PostgreSQL과 다를 수 있다. ORM은 SQLite 저장 형식을 바꾸지 않는다.
-- SQLite 최소 버전은 3.46이다.
+- SQLite 최소 버전은 3.46이다. 클라이언트는 driver가 link한 SQLite library의 version을 읽고(Go `modernc.org/sqlite`의 `RegisterSQLiteVersion`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`), 그것을 묻거나 연결을 확인하는 statement 없이 연결한다.

@@ -7,6 +7,7 @@ import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
+import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
@@ -561,6 +562,27 @@ caseTest('Rust source reads the package directory when the program runs', COMPUT
   }), [
     'clients/rust/orm/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
     'clients/rust/orm/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+  ]);
+});
+
+// 연결 probe case는 client runtime이 연결할 때 server에 묻는 statement를 거부한다.
+caseTest('a client connects without a probe statement', COMPUTE, () => {
+  assert.deepEqual(connectProbeErrors({
+    'clients/go/orm/db.go': '\tversion := sqliteVersion\n',
+    'clients/typescript/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
+    'clients/go/orm/cancel_test.go': '\tc.Raw("", "SELECT sqlite_version()", nil)\n',
+    'clients/php/src/Dbspec/SqliteCatalog.php': "SELECT sqlite_version()\n",
+  }), []);
+  assert.deepEqual(connectProbeErrors({
+    'clients/go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
+    'clients/php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
+    'clients/typescript/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
+    'clients/rust/orm/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
+  }), [
+    'clients/go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
+    'clients/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
+    'clients/typescript/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
+    'clients/rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
   ]);
 });
 

@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { blindIndex, decode, hostDecode, hostEncode } from './codec.js';
 import type { Assemble, BindSlot, Group, KeyReference, Plan, PlanStep, Request } from './ir.js';
-import { isolationSql, openDriver, parseDsn, sqliteBusy, unobserved, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
+import { isolationSql, openDriver, parseDsn, sqliteBusy, zoneOffset, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type Isolation, type PoolStats, type StatementDone } from './driver.js';
 import { Subscribers, statementKind, type StatementEvent, type StatementKind, type StatementSubscriber } from './events.js';
 import { OrmError, joinedErrors, rollbackFailed } from './runtime_error.js';
 import { Utils } from './utils.js';
@@ -402,8 +402,8 @@ export class Db {
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
     const pool = openDriver(dsn, parsed, { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 }, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, options);
-    // 연결을 여는 statement는 event가 아니다.
-    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { await pool.close(); throw error; }
+    // 연결 하나를 열어 pool에 돌려준다. 연결을 확인하려고 statement를 보내지 않는다.
+    try { (await pool.reserve()).release(false); } catch (error) { await pool.close(); throw error; }
     return db;
   }
 
