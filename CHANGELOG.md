@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.4: docs/dbspec.md describes the PHP extension (its classes, selection by namespace, build and checks), and the PHP client suggests `ext-orm_dbspec`.
+
 - T9.3: contracts/interfaces.json declares the PHP extension under `extensions` with the `Dbspec` rules and owners it implements, and the interface check compares its stub with those rules, its own symbol snapshot and hash.
 
 - T9.2: `make dbspec-compare-check` runs the PHP extension as a fifth runner on the shared cases, the stress document, the files, hashes and statement vectors, and fails unless its output equals the first Go output up to the first plan case.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.4: docs/dbspec.md는 PHP 확장(class, namespace로 고르기, build와 검사)을 설명하고, PHP client는 `ext-orm_dbspec`를 제안한다.
+
 - T9.3: contracts/interfaces.json은 PHP 확장을 그것이 구현하는 `Dbspec` rule, owner와 함께 `extensions`에 선언하고, interface 검사는 그 stub을 그 rule, 자기 symbol snapshot과 hash와 비교한다.
 
 - T9.2: `make dbspec-compare-check`는 PHP 확장을 다섯 번째 runner로 공유 case, stress 문서, files, hashes, statement vector에 실행하고, 그 출력이 첫 plan case 앞까지 첫 Go 출력과 같지 않으면 실패한다.
