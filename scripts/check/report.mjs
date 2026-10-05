@@ -50,17 +50,20 @@ export function reportWriter() {
 }
 
 // failureLine은 줄이 실패나 오류 수준의 출력인지다. 줄 앞의 lane 접두사(`[rust] `, client-db-test의 병렬 lane)와 GitHub의
-// annotation(`##[error]`)은 떼고 본다. 통과나 시작을 알리는 줄(PASS, RUN)은 오류 낱말을 담아도 실패가 아니다.
+// annotation(`##[error]`)은 떼고 본다. 통과나 시작을 알리는 줄(PASS, RUN)은 오류 낱말을 담아도 실패가 아니다. 단계
+// 줄(`STEP <case> elapsed=...: <message>`)은 case 이름이 아니라 그 message로 판단하고, 오류 낱말은 `driver-error/...`
+// 같은 이름의 일부(앞에 `-`, `/`, `.`이나 글자가 붙은 것)가 아닐 때만 센다.
 const LANE = /^(?:##\[\w+\])?(?:\[[\w-]+\] )?/;
 const FAILURE = [
   /^(?:FAIL|TIMEOUT)\b/, /^--- FAIL/, /^not ok\b/, /panicked at|^panic:/,
-  /\b(?:error|Error|ERROR)\b/, /\bfailed:|\bfailed lanes\b|\(exit [1-9]\d*\)|exited with [1-9]/,
+  /(?<![-/.\w])(?:error|Error|ERROR)\b/, /\bfailed:|\bfailed lanes\b|\(exit [1-9]\d*\)|exited with [1-9]/,
   /disk quota exceeded|No space left on device|errno:? (?:28|122)\b|ENOSPC|EDQUOT/i,
 ];
 export function failureLine(text) {
   const line = text.replace(LANE, '');
   if (/^(?:PASS|RUN) /.test(line)) return false;
-  return FAILURE.some(pattern => pattern.test(line));
+  const message = /^STEP \S+ [^:]*: ([^]*)$/.exec(line)?.[1] ?? line;
+  return FAILURE.some(pattern => pattern.test(message));
 }
 
 // failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mjs, internal/testcase, PHP와 Rust의
@@ -163,11 +166,45 @@ export function diskSnapshot(root, run) {
   return { text, places };
 }
 
-// spaceLine은 공간이 없어 실패한 target의 첫 실패 줄이다: 그 사실과 그 순간의 남은 공간, /tmp의 가장 큰 항목이다.
-export function spaceLine(snapshot) {
+// DISK_IO는 SQLite가 file을 쓰지 못한 줄이다(SQLITE_IOERR, 그 쓰기 형태 778). 공간이 없을 때도 나오지만 다른 원인도
+// 있으므로, 그 순간의 기록에서 file system 하나가 남은 공간 0일 때만 공간 부족으로 적는다.
+export const DISK_IO = /disk I\/O error|\(code: 778\)|SQLITE_IOERR/;
+
+// spaceLine은 공간이 없어 실패한 target의 첫 실패 줄이다: 실패 원인과 그 순간의 남은 공간, /tmp의 가장 큰 항목, 그리고
+// 지웠지만 process가 열어 둔 가장 큰 file이다. 지운 file은 du에 보이지 않으므로 그것이 공간을 채운 것일 때 따로 적는다.
+export function spaceLine(snapshot, cause = 'ENOSPC or EDQUOT') {
   const free = Object.entries(snapshot.places).map(([place, kib]) => `${place} ${(kib / 1024 ** 2).toFixed(2)} GiB free`).join(', ');
   const tmp = /## the largest entries of \/tmp \(KiB\)\n([^#]*)/.exec(snapshot.text)?.[1].trim().split('\n').slice(0, 3).map(line => line.trim().replace(/\s+/, ' KiB ')).join('; ');
-  return `out of space: the target failed with ENOSPC or EDQUOT; ${free}; the largest under /tmp: ${tmp || 'none listed'}`;
+  const open = (/\(lsof \+L1\)\n([^#]*)/.exec(snapshot.text)?.[1] ?? '').split('\n').map(line => line.trim().split(/\s+/))
+    .filter(fields => fields.length >= 11 && /^\d+$/.test(fields[6]) && fields.at(-1) === '(deleted)')
+    .sort((a, b) => Number(b[6]) - Number(a[6]))[0];
+  const removed = open ? `; the largest removed but open file: ${(Number(open[6]) / 1024 ** 2).toFixed(1)} MiB by lsof SIZE/OFF, ${open.slice(9, -1).join(' ')} (${open[0]} ${open[1]})` : '';
+  return `out of space: the target failed with ${cause}; ${free}; the largest under /tmp: ${tmp || 'none listed'}${removed}`;
+}
+
+// spaceCause는 실패한 target의 첫 실패 줄 앞에 둘 공간 부족 줄이다. ENOSPC나 EDQUOT 줄이 있으면 언제나, SQLite의 disk
+// I/O error 줄은 그 순간 남은 공간이 0인 file system이 있을 때만이다. 둘 다 아니면 null이다.
+export function spaceCause(lines, snapshot) {
+  if (lines.some(line => SPACE.test(line))) return spaceLine(snapshot);
+  const full = Object.entries(snapshot.places).filter(([, kib]) => kib === 0).map(([place]) => place);
+  if (full.length && lines.some(line => DISK_IO.test(line))) return spaceLine(snapshot, `a disk I/O error while ${full.join(', ')} had no free space`);
+  return null;
+}
+
+// NPM_LOG는 npm이 자기 debug log의 경로를 적는 줄이다. 그 log는 보고서 밖(~/.npm/_logs)에 있다.
+export const NPM_LOG = /A complete log of this run can be found in:\s*(\S+)/;
+
+// npmErrors는 npm debug log의 오류 줄(`<n> error <message>`)에서 message를 처음부터 5개 돌려준다.
+export function npmErrors(text) {
+  return text.split('\n').map(line => /^\d+ error (.*)$/.exec(line)?.[1]).filter(message => message && !NPM_LOG.test(message)).slice(0, 5);
+}
+
+// keepFile은 file 하나를 보고서로 옮긴다. LIMIT_BYTES보다 크면 끝만 남기고 그 사실을 첫 줄에 적는다.
+export function keepFile(source, destination) {
+  const { size } = statSync(source);
+  mkdirSync(resolve(destination, '..'), { recursive: true });
+  if (size > LIMIT_BYTES) writeFileSync(destination, Buffer.concat([Buffer.from(`[the last ${TAIL_BYTES} of ${size} bytes of ${source}]\n`), tail(source, size)]));
+  else writeFileSync(destination, readFileSync(source));
 }
 
 // tail은 file의 마지막 TAIL_BYTES를 읽는다.

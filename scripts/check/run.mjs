@@ -24,12 +24,12 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
-import { cappedLog, diskSnapshot, failures, keepRunDirectory, publish, SPACE, spaceLine, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
+import { cappedLog, diskSnapshot, failures, keepFile, keepRunDirectory, npmErrors, NPM_LOG, publish, spaceCause, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
 // 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한 process의 id를 받는다.
@@ -142,6 +142,8 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     const started = performance.now();
     const log = join(report, 'targets', `${label.replaceAll('/', '-')}.log`);
     const found = failures();
+    // npm이 적은 debug log의 경로다. 실패한 단계는 그 log를 보고서로 옮기고 그 오류 줄을 첫 실패 줄로 삼는다.
+    const npmLogs = new Set();
     let pid = null;
     const header = kind === 'target'
       ? [`target ${label}`, `command: make --no-print-directory -k TEST_ENV=${testEnv} DECIMAL_ENV=${decimalEnv} ${label}`, 'recipe (Makefile):', recipeText(root, label), `inputs: ${targetInputs(root, label).join(' ')}`, '']
@@ -149,7 +151,13 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     const written = writer.failed.length;
     const output = cappedLog(writer, log, `${header.join('\n')}\n`);
     const passed = await runGroup(`check/${label}`, ({ step: report }) => body({
-      step: text => { output.line(text); found.line(text); report(text); },
+      step: text => {
+        output.line(text);
+        found.line(text);
+        const npm = NPM_LOG.exec(text);
+        if (npm) npmLogs.add(npm[1]);
+        report(text);
+      },
       spawned: child => { pid = child; },
     }).catch(error => { output.line(error.message); found.exit(error.message); throw error; }));
     const elapsed = performance.now() - started;
@@ -157,8 +165,22 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     const after = disk(label);
     writer.append(log, `free space after the step (KiB): ${JSON.stringify(after.places)}\n`);
     const lines = passed ? [] : found.lines();
-    // 공간이 없어 실패한 단계는 그 사실과 그 순간의 공간을 첫 실패 줄로 적는다.
-    if (lines.some(line => SPACE.test(line))) lines.unshift(spaceLine(after));
+    // npm 오류는 보고서 밖의 debug log에 있다. 그 log를 targets/<단계>/에 옮기고 그 오류 줄을 첫 실패 줄 앞에 둔다.
+    if (!passed)
+      for (const path of npmLogs) {
+        if (!existsSync(path)) {
+          lines.unshift(`npm debug log ${path} is missing`);
+          continue;
+        }
+        const kept = join(report, 'targets', label.replaceAll('/', '-'), basename(path));
+        writer.run(kept, () => keepFile(path, kept));
+        let errors = [];
+        writer.run(kept, () => { errors = npmErrors(readFileSync(path, 'utf8')); });
+        lines.unshift(...errors.map(error => `npm debug log ${relative(root, kept)}: ${error}`));
+      }
+    // 공간이 없어 실패한 단계는 그 사실과 그 순간의 공간을 첫 실패 줄로 적는다(spaceCause).
+    const space = passed ? null : spaceCause(lines, after);
+    if (space) lines.unshift(space);
     const details = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(truncated ? { truncated } : {}) };
     // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 옮긴다.
     if (!passed && pid) {

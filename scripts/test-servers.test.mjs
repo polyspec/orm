@@ -183,7 +183,18 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
       assert.ok(line >= 0 && /\$MYSQLD_BINLOG\b/.test(script.split('\n').slice(line - 2, line + 1).join('\n')), `the mysqld with ${command} in scripts/test-servers.sh does not take $MYSQLD_BINLOG`);
     }
   } finally {
-    spawnSync('mysqladmin', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', 'shutdown']);
+    // mysqladmin shutdown over TCP returns before the server exits, and a server whose data directory is removed
+    // while it shuts down never exits: InnoDB retries its redo log file in the missing directory and writes an
+    // error for every try into its log, which fills the file system of the log. So the case stops the server
+    // through STOP_PROCESS, which returns on the exit event of the process, and removes the directories only
+    // after that; a server that does not stop fails the case and keeps its directories.
+    const pidFile = join(root, 'mysqld.pid');
+    if (existsSync(pidFile)) {
+      const pid = readFileSync(pidFile, 'utf8').trim();
+      const stopped = spawnSync(process.env.STOP_PROCESS ?? '', ['TERM', pid], { encoding: 'utf8' });
+      assert.equal(stopped.status, 0, `the fixture mysqld ${pid} did not stop (STOP_PROCESS ${process.env.STOP_PROCESS ?? 'unset'}): ${stopped.error?.message ?? stopped.stderr}; ${root} is kept`);
+      assert.throws(() => process.kill(Number(pid), 0), { code: 'ESRCH' }, `mysqld ${pid} still runs after STOP_PROCESS returned; ${root} is kept`);
+    }
     rmSync(root, { recursive: true, force: true });
     rmSync(socketDir, { recursive: true, force: true });
   }
