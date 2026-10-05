@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-3: 기능 검증 명령의 tsc, go vet, cargo build 단계는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
+
 - G5.30-2: `tests/run-long.mjs`(Makefile의 `RUN_LONG`)와 `tests/testcase.mjs`의 `runLong`은 장기 작업을 단계 로그, 종료 코드, 결과와 함께 기한 없이 실행한다.
 
 - G5.30-1: AGENTS.md는 test case가 자기 timeout을 가지고, 장기 작업(build, 설치, 도구 실행, 전체 suite, server)은 timeout 대신 상세 단계 로그를 두며 기한이 없다고 적는다.

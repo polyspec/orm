@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-3: the tsc, go vet and cargo build steps of the feature verification commands run under `tests/run-long.mjs` with step logs and no deadline.
+
 - G5.30-2: `tests/run-long.mjs` (`RUN_LONG` in the Makefile) and `runLong` of `tests/testcase.mjs` run a long operation with step logs, its exit code and result, and no deadline.
 
 - G5.30-1: AGENTS.md states that a test case has its own timeout and that a long operation (a build, an install, a tool run, a whole suite or a server) gets detailed step logs instead of a timeout, with no deadline.
