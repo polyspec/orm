@@ -9,7 +9,7 @@ import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -123,6 +123,8 @@ failures.push(...detachedGroupErrors(Object.fromEntries(tracked.filter(path => /
 failures.push(...sharedTargetErrors(makefile));
 // 실행 하나의 file은 그 실행의 RUN_DIR에 두고, TypeScript client를 build하는 target은 그 출력을 가진다.
 failures.push(...runtimePathErrors(makefile));
+// build 출력은 임시 file에 쓰고 rename으로 publish한다(scripts/publish-output.sh).
+failures.push(...unpublishedOutputErrors(makefile));
 failures.push(...typescriptHolderErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
 // make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.

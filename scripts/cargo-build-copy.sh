@@ -23,6 +23,9 @@ shift
 for artifact in $artifacts; do
   mkdir -p "$(dirname "$run/$artifact")"
   # copy-on-write clone(macOS cp -c, Linux cp --reflink=auto)은 disk를 거의 쓰지 않는다.
-  if [ "$(uname)" = Darwin ]; then cp -c -p "$target/$artifact" "$run/$artifact" || cp -p "$target/$artifact" "$run/$artifact"; else cp --reflink=auto -p "$target/$artifact" "$run/$artifact"; fi
+  # 복사본은 같은 directory의 임시 file에 쓰고 rename으로 publish하므로, 읽는 쪽은 반쪽 복사본을 보지 않는다.
+  next="$run/$artifact.next-$$"
+  if [ "$(uname)" = Darwin ]; then cp -c -p "$target/$artifact" "$next" || cp -p "$target/$artifact" "$next"; else cp --reflink=auto -p "$target/$artifact" "$next"; fi
+  mv -f "$next" "$run/$artifact"
   echo "cargo-build-copy: $target/$artifact copied to $run/$artifact"
 done

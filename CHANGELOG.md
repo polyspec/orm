@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.80: build outputs that other runs read (the `.runtime/bin` programs, stress documents, test binaries, clients/typescript/dist, run copies and the lowest Node) are built into a temporary path and renamed into place, and `make repo-check` refuses a Makefile line that writes one in place.
+
 - G5.79: `.go-version` and `.composer-version` pin the Go and Composer releases of the checks, CI installs them and libclang 21, and `make repo-check` refuses another release with its fix.
 
 - G5.78: Go tests find the repository from the working directory instead of `runtime.Caller`, and `make repo-check` refuses `runtime.Caller` in Go code.

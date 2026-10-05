@@ -36,7 +36,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && npm run models && tsc -p tsconfig.build.json",
+    "build": "node ../../scripts/typescript/build.mjs && npm run models && node ../../scripts/typescript/build.mjs",
     "models": "node dist/bin/orm-gen.js gen --schema ../../schema/bench.dbs --out src/models --scan ../../tests/conformance/runner_typescript.mjs --scan tests/coverage_composite_keys.mjs --scan tests/coverage_constraints_and_relations.mjs --scan tests/coverage_dsn.mjs --scan tests/coverage_model_queries.mjs --scan tests/coverage_model_writes.mjs --scan tests/coverage_parameter_chunking.mjs --scan tests/coverage_schema_install.mjs --scan tests/coverage_transactions.mjs --scan tests/decimal_model_type.ts --scan tests/group_rows.test.ts --scan tests/group_rows_db.mjs --scan tests/model.mjs --scan tests/sqlite-concurrency.mjs --scan tests/typecheck.ts"
   },
   "dependencies": {
