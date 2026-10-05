@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.34-2: `make rerun-failed` runs on a commit that descends from the recorded one, rerunning the targets that did not pass and the owner targets of the paths changed since that commit.
+
 - G5.33-12: the processes that one exclusive lease holder runs at once take that lease one exclusive holder at a time, so a feature step no longer rebuilds the TypeScript client while another loads it.
 
 - G5.30-16-1: the interface guard test requires the `tests/go-run.mjs` form of the interface self-test command.

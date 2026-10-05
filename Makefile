@@ -120,8 +120,9 @@ run-databases:
 # build하기 전에, docs/checklist.md의 항목(하위 항목 포함)이 [~]인 동안, 추적하는 file에 commit하지 않은 변경이
 # 있는 동안, 그리고 check이면 .runtime/full-run.json이 같은 tree의 전체 실행을 기록하고 있을 때 이유를 출력하고
 # 거부한다. runner(--full-run, --rerun-failed)는 실행을 기록하기 직전에 다시 결정하고, 첫 단계 전과 각 단계의
-# 시작과 끝마다 기록을 쓴다. rerun-failed는 현재 tree의 기록이 없으면 거부된다. 새 checkout(GitHub CI)에는
-# 기록이 없다.
+# 시작과 끝마다 기록을 쓴다. rerun-failed는 현재 commit이 기록된 commit(전체 실행이나 마지막 재실행)의 tree도
+# 후손도 아니면 거부되고, 통과하지 못한 target과 그 commit 뒤에 바뀐 path가 고르는 owner target을 실행한다. 새
+# checkout(GitHub CI)에는 기록이 없다.
 check:
 	node scripts/check/full-run.mjs decide check
 	$(WITH_TEST_ENV) node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)

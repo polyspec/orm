@@ -233,3 +233,72 @@ caseTest('summarize separates failed from unfinished targets', COMPUTE, () => {
   const record = summarize({ targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'running' }, { name: 'd', status: 'not run' }] });
   assert.deepEqual([record.failed, record.incomplete], [['b'], ['c', 'd']]);
 });
+
+// 후손 case의 기록은 a가 통과하고 b가 실패한 전체 실행이다. 그 뒤 commit에서 바뀐 path는 owner target c를 고른다.
+const DECLARED = { a: { scope: 'suite' }, b: { scope: 'suite' }, c: { scope: 'owner', inputs: ['src/**'] } };
+const RECORD = {
+  tree: 't1', commit: 'c1', started: 's', ended: 'e', result: 'failed', failed: ['b'], incomplete: [], reruns: [],
+  targets: [{ name: 'a', status: 'passed' }, { name: 'b', status: 'failed' }, { name: 'c', status: 'passed' }],
+};
+
+caseTest('a rerun on a descendant commit adds the owner targets of the changed paths', COMPUTE, () => {
+  const allowed = decide('rerun-failed', { items: [], changes: [], tree: 't2', commit: 'c2', record: RECORD, descends: true, changed: ['src/x.mjs', 'README.md'], declared: DECLARED });
+  assert.deepEqual([allowed.allowed, allowed.targets], [true, ['b', 'c']], allowed.reasons.join('\n'));
+  assert.deepEqual(allowed.owners, [{ target: 'c', reasons: ['src/x.mjs'] }]);
+  const unrelated = decide('rerun-failed', { items: [], changes: [], tree: 't2', commit: 'c2', record: RECORD, descends: true, changed: ['README.md'], declared: DECLARED });
+  assert.deepEqual([unrelated.allowed, unrelated.targets], [true, ['b']]);
+});
+
+caseTest('a rerun on a commit that does not descend from the recorded one is refused', COMPUTE, () => {
+  const refused = decide('rerun-failed', { items: [], changes: [], tree: 't2', commit: 'c2', record: RECORD, descends: false, changed: [], declared: DECLARED });
+  assert.equal(refused.allowed, false);
+  assert.match(refused.reasons.join('\n'), /the recorded run is of commit c1 \(tree t1\); the current commit c2 \(tree t2\) is neither that commit nor its descendant/);
+  const active = decide('rerun-failed', { items: activeItems(CHECKLIST), changes: [' M x'], tree: 't2', commit: 'c2', record: RECORD, descends: true, changed: ['src/x.mjs'], declared: DECLARED });
+  assert.equal(active.allowed, false);
+  assert.match(active.reasons.join('\n'), /checklist items are in progress[^]*uncommitted changes of tracked files/);
+});
+
+// 후손 실행 case는 실제 git checkout에서 전체 실행 뒤 owner target c의 입력을 바꾼 commit을 만들고 재실행한다.
+// 강제 종료된 재실행이 남긴 c는 다음 재실행이 다시 고르고, 끝난 재실행 뒤에는 그 commit이 기준이 된다. 기록된
+// commit의 조상으로 돌아간 checkout은 거부된다.
+caseTest('a rerun on a descendant commit reruns failed and changed owner targets and moves its base', PROCESS, ({ step }) => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const commit = message => c.git('-c', 'user.name=test', '-c', 'user.email=test@example.com', 'commit', '-q', '-am', message);
+    mkdirSync(join(c.root, 'contracts'));
+    mkdirSync(join(c.root, 'src'));
+    writeFileSync(join(c.root, 'contracts/check-inputs.json'), JSON.stringify({ targets: DECLARED }));
+    writeFileSync(join(c.root, 'src/x.mjs'), '1\n');
+    c.git('add', '.');
+    commit('contracts');
+    const first = c.git('rev-parse', 'HEAD').trim();
+    assert.equal(c.run('run', 'check').status, 1);
+    c.ran();
+    writeFileSync(join(c.root, 'src/x.mjs'), '2\n');
+    commit('change c');
+    const killed = c.run('run', 'rerun-failed', 'b');
+    step(`killed rerun: ${killed.signal}`);
+    assert.equal(killed.signal, 'SIGKILL', killed.stdout + killed.stderr);
+    assert.match(killed.stdout, /owner target c is selected by paths changed since [0-9a-f]+: src\/x\.mjs/);
+    assert.deepEqual(c.ran(), ['sh create', 'b']);
+    assert.deepEqual(c.record().targets.map(target => [target.name, target.status]), [['a', 'passed'], ['b', 'running'], ['c', 'not run']]);
+    writeFileSync(join(c.root, 'pass-b'), '');
+    const rerun = c.run('run', 'rerun-failed');
+    assert.equal(rerun.status, 0, rerun.stdout + rerun.stderr);
+    assert.deepEqual(c.ran(), ['sh create', 'b', 'c', 'sh drop']);
+    const record = c.record();
+    const head = c.git('rev-parse', 'HEAD').trim();
+    assert.deepEqual([record.result, record.commit, record.reruns.map(run => [run.commit, run.since, run.targets])],
+      ['passed', first, [[head, first, ['b', 'c']], [head, head, ['b', 'c']]]]);
+    const again = c.run('run', 'rerun-failed');
+    assert.equal(again.status, 2);
+    assert.match(again.stdout, /nothing to rerun/);
+    c.git('checkout', '-q', '--detach', first);
+    const older = c.run('run', 'rerun-failed');
+    assert.equal(older.status, 2);
+    assert.match(older.stdout, /is neither that commit nor its descendant/);
+    assert.deepEqual(c.ran(), []);
+  } finally {
+    cleanup();
+  }
+});
