@@ -35,7 +35,10 @@
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a
-  target run after a failed part; and the run completes the whole suite. Each failure records its
+  target run after a failed part; and the run completes the whole suite. The setup steps of CI
+  (installs, toolchains, servers) are setup steps too: each runs after a failed earlier one, and a
+  target that needs what a failed step installs is recorded as `not-run` with that step, so a
+  failed install never stops the suite. Each failure records its
   inputs, the exact command, its output, the expected against the actual value and the environment
   facts relevant to it, so that it can be diagnosed without running it again locally; a failing
   case states what failed, where and why. The run ends with a summary of every target's status,

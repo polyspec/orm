@@ -4,12 +4,13 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciAfterCheckErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciAfterCheckErrors, ciSetupErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
+import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
@@ -106,8 +107,8 @@ caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
 caseTest('a workflow runs only the summary and the report upload after make check', COMPUTE, () => {
   assert.deepEqual(ciAfterCheckErrors(workflows), []);
   const check = ['      - name: make check', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: make check'];
-  const summary = ['      - name: summary', '        if: always()', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: node scripts/check/summary.mjs'];
-  const report = ['      - name: report', '        if: always()', '        uses: actions/upload-artifact@v4', '        with:', '          name: check-${{ github.run_id }}-${{ github.run_attempt }}',
+  const summary = ['      - name: summary', '        if: ${{ !cancelled() }}', '        env:', '          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', '        run: node scripts/check/summary.mjs'];
+  const report = ['      - name: report', '        if: ${{ !cancelled() }}', '        uses: actions/upload-artifact@v4', '        with:', '          name: check-${{ github.run_id }}-${{ github.run_attempt }}',
     '          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', '          if-no-files-found: error'];
   const workflow = (...steps) => ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', ...steps.flat(), ''].join('\n');
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report) }), []);
@@ -1032,4 +1033,34 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
   ]);
   assert.ok(fullSuiteRuleErrors({ 'AGENTS.md': 'runs exactly once, when every active checklist\n  item is complete', 'AGENTS.ko.md': '' })
     .includes('AGENTS.md still states the local full-suite rule: "runs exactly once, when every active checklist   item is complete"'));
+});
+
+// CI setup case(G5.52)는 workflow의 setup step이 실패해도 뒤의 step과 make check가 실행되고 그 실패를 runner에 넘기는지
+// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP 없는 make check는 오류다.
+caseTest('a workflow runs every setup step and make check after a failed setup step and passes the results on', COMPUTE, () => {
+  const setup = { go: 'go', rust: 'rust' };
+  const runner = ['checkout'];
+  const workflow = (steps, check) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
+  const good = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: rust\n        id: rust\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
+    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check\n`);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
+  const bad = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        with: { go-version: "1.27" }\n      - name: rust\n        id: rustup\n        continue-on-error: true\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
+    `      - name: make check\n        run: make check\n`);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': bad }, { setup, runner }), [
+    'ci.yml uses continue-on-error, which hides a failed step from the job; run later steps with if: ${{ !cancelled() }} instead',
+    'ci.yml step "uses: actions/setup-go@v6" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mjs',
+    'ci.yml step "uses: actions/setup-go@v6" does not run after a failed earlier setup step; give it if: ${{ !cancelled() }}',
+    'ci.yml step "rust" has the id rustup, which scripts/check/ci-setup.mjs does not map to what it installs',
+    'ci.yml has no setup step with the id go of scripts/check/ci-setup.mjs',
+    'ci.yml has no setup step with the id rust of scripts/check/ci-setup.mjs',
+    'ci.yml step "make check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
+    'ci.yml step "make check" gives make check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
+  ]);
+  const pages = `jobs:\n  build:\n    steps:\n      - uses: actions/checkout@v5\n      - run: npm ci\n      - name: build\n        if: \${{ !cancelled() && steps.x.outcome == 'success' }}\n        run: make docs-build\n`;
+  assert.deepEqual(ciSetupErrors({ 'pages.yml': pages }, { setup, runner }), ['pages.yml step "run: npm ci" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
+  const root = new URL('../..', import.meta.url).pathname;
+  const workflows = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, readFileSync(join(root, '.github/workflows', name), 'utf8')]));
+  assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
+  const main = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, execFileSync('git', ['show', `main:.github/workflows/${name}`], { cwd: root, encoding: 'utf8' })]));
+  assert.ok(ciSetupErrors(main, { setup: CI_SETUP, runner: RUNNER_STEPS }).length > 0, 'the workflows before G5.52 pass the setup rule');
 });

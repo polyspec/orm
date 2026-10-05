@@ -18,22 +18,40 @@ jobs:
     runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
+    # Every step has an id and runs whatever the earlier steps did
+    # (if: !cancelled()), except that a step does not run without what it
+    # needs: the builds need the Node dependencies and the smoke test needs the
+    # built site and the browser. A failed step fails the job, and the upload
+    # runs only when every step passed.
     steps:
       - uses: actions/checkout@v5
+        id: checkout
       - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
         with:
           node-version-file: .node-version
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - id: node-modules
+        if: ${{ !cancelled() }}
+        run: npm ci
+      - id: browsers
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps chromium
       # The job publishes docs/.vitepress/dist: the build step writes it, the
       # idempotence check builds it twice more and compares every byte, and the
       # smoke test serves it and opens it in a browser before the upload.
       - name: Build the static site
+        id: build
+        if: ${{ !cancelled() && steps.node-modules.outcome == 'success' }}
         run: make docs-build
       - name: Build twice and compare every static file
+        id: idempotent
+        if: ${{ !cancelled() && steps.node-modules.outcome == 'success' }}
         run: make docs-verify-idempotent
       - name: Smoke test of the built site in a browser
+        id: smoke
+        if: ${{ !cancelled() && steps.build.outcome == 'success' && steps.browsers.outcome == 'success' }}
         run: make docs-static-check
       - uses: actions/upload-pages-artifact@v3
         with:

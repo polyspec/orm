@@ -340,10 +340,10 @@ export function ciLeaseErrors(workflows, tracked, read) {
 
 // AFTER_CHECK은 make check 뒤에 오는 step이다. 전체 suite는 push 뒤 CI에서 실행되고 실패에서 멈추지 않으므로, 그
 // 뒤에는 검사가 아니라 그 실행의 정보를 남기는 두 step만 온다: runner가 끝나지 않았어도 summary를 job summary와
-// 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: always()`다.
+// 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: ${{ !cancelled() }}`다.
 export const AFTER_CHECK = [
-  ['- name: summary', 'if: always()', 'env:', 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', 'run: node scripts/check/summary.mjs'],
-  ['- name: report', 'if: always()', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
+  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', 'run: node scripts/check/summary.mjs'],
+  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
     'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found: error'],
 ];
 
@@ -416,3 +416,37 @@ export function fullSuiteRuleErrors(documents) {
   }
   return errors;
 }
+
+// ciSetupErrors는 workflow의 setup step이 실패해도 그 뒤의 step이 실행되고 그 실패가 기록되지 않는 곳마다 오류 하나를
+// 돌려준다. make check를 실행하는 workflow에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
+// step(RUNNER_STEPS)이거나 scripts/check/ci-setup.mjs의 CI_SETUP이 그 step이 마련하는 것을 적은 step이다. 표의 step은
+// 모두 workflow에 있다. 첫 step 뒤의 step과 make check는 `if: ${{ !cancelled() }}`로 앞의 step이 실패해도 실행되고,
+// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로 받는다. 다른 workflow의 `run:` step도 앞의 step이
+// 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
+// 없다.
+export function ciSetupErrors(workflows, { setup, runner }) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows)) {
+    const steps = workflowSteps(workflow);
+    const texts = stepTexts(workflow);
+    if (/^\s*continue-on-error:/m.test(workflow)) errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
+    const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
+    const guarded = index => texts[index].some(line => /^if: \$\{\{ !cancelled\(\)/.test(line));
+    if (check === -1) {
+      for (const [index, step] of steps.entries())
+        if (index > 0 && step.run && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier step; give it if: \${{ !cancelled() ... }}`);
+      continue;
+    }
+    for (const [index, step] of steps.slice(0, check).entries()) {
+      if (!step.id) errors.push(`${path} step "${step.name}" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mjs`);
+      else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mjs does not map to what it installs`);
+      if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
+    }
+    const ids = new Set(steps.slice(0, check).map(step => step.id));
+    for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);
+    if (!guarded(check)) errors.push(`${path} step "${steps[check].name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
+    if (!texts[check].includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
+  }
+  return errors;
+}
+

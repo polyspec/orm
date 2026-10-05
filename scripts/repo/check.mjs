@@ -1,7 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { checkTargets, ciAfterCheckErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
+import { checkTargets, ciAfterCheckErrors, ciSetupErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
@@ -118,6 +119,7 @@ failures.push(...stepTimeoutErrors(workflows));
 failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
 // make check를 실행하는 workflow는 그 뒤에 다른 검사 step을 두지 않는다.
 failures.push(...ciAfterCheckErrors(workflows));
+failures.push(...ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }));
 // AGENTS.md와 AGENTS.ko.md는 전체 suite가 push 뒤 CI에서 실행된다는 규칙을 적는다.
 failures.push(...fullSuiteRuleErrors(Object.fromEntries(['AGENTS.md', 'AGENTS.ko.md'].map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.

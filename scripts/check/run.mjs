@@ -28,7 +28,11 @@ import { basename, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
+import { failedCiSetup } from './ci-setup.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
+
+// setupLabel은 runner의 setup 단계(servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
+const setupLabel = label => ['servers', 'databases/create', 'databases/drop'].includes(label) || label.startsWith('ci/');
 import { cappedLog, diskSnapshot, failures, keepFile, keepRunDirectory, npmErrors, NPM_LOG, publish, spaceCause, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
@@ -93,7 +97,7 @@ function targetInputs(root, target) {
 // 'rerun-failed'나 undefined(make bench, make run-databases: guard와 기록이 없다)다. run은
 // command(root)와 같은 모양의 함수다. needs는 target마다 필요한 setup 단계('databases')이고, id는 실행의 이름이며,
 // snapshot은 공간 기록(diskSnapshot과 같은 모양)이다.
-export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot }) {
+export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP }) {
   // 실행의 이름은 주어진 id이거나 process id와 임의의 값이다. 같은 이름의 database가 있으면 그것은 이 실행이 만든
   // 것이 아니므로 bench-db.sh가 지우지 않도록 이름이 겹치지 않아야 한다.
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
@@ -205,6 +209,18 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   };
 
   const failedSetup = {};
+  // CI setup step(scripts/check/ci-setup.mjs): workflow가 ORM_CI_SETUP으로 준 step 결과에서 실패한 step마다 setup 단계
+  // ci/<id>를 실패로 기록하고, 그 step이 마련하는 need를 선언한 target은 not-run으로 기록한다. step의 출력은 job
+  // log의 그 step에 있다.
+  for (const { id: step, need } of failedCiSetup(ciSetup)) {
+    const reason = `the CI setup step ${step} failed; its output is in the job log of that step`;
+    if (!results.some(result => result.label === `ci/${step}`))
+      await record(`ci/${step}`, 'setup', async ({ step: line }) => {
+        line(reason);
+        throw new Error(reason);
+      });
+    failedSetup[need] ??= reason;
+  }
   // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다.
   const serversReady = await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);
@@ -254,8 +270,8 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   // summary는 기록에서 만든다. 기록이 없는 실행(make bench, make run-databases)은 이 실행의 결과로 만든다.
   writer.run(join(report, 'summary.md'), () => publish(summary(finished ?? {
     commit: '', tree: '', started: '', ended: new Date().toISOString(), result: failed.length ? 'failed' : 'passed',
-    setup: results.filter(result => ['servers', 'databases/create', 'databases/drop'].includes(result.label)).map(toStep),
-    targets: results.filter(result => !['servers', 'databases/create', 'databases/drop'].includes(result.label)).map(toStep),
+    setup: results.filter(result => setupLabel(result.label)).map(toStep),
+    targets: results.filter(result => !setupLabel(result.label)).map(toStep),
   }, { run: current, report: relative(root, report) }), report));
   active = null;
   return failed.length || writeFailures ? 1 : 0;
