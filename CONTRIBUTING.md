@@ -7,6 +7,14 @@
 3. Implement the smallest complete change across the engine, generators, and all affected clients.
 4. Update the paired English and Korean documentation.
 5. Run the relevant local checks and record the result in the commit description when needed.
+6. Run the full suite `make check` once, when every active checklist item is complete. Before any
+   step it refuses, with the reasons and exit status 2, while an item of `docs/checklist.md` is `[~]`
+   (each is named with its ID and title), while tracked files have uncommitted changes, and when
+   `.runtime/full-run.json` records a full run of the same tree (`git rev-parse HEAD^{tree}`). The
+   record holds the tree, the commit, the result, the targets that did not pass and the times of
+   every step, and is written before the first step and after each step, so a killed run stays
+   `incomplete`. `make rerun-failed` runs only the targets of the current tree's record that did
+   not pass and is refused without such a record.
 
 ## Test database servers
 

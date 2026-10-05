@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.34: `make check`와 새 `make rerun-failed`는 전체 묶음의 guard(`scripts/check/full-run.mjs`)로 시작한다. guard는 어떤 단계보다 먼저 체크리스트 항목이 `[~]`인 동안(각 ID와 제목을 나열한다), 추적하는 file에 commit하지 않은 변경이 있는 동안, checkout의 다른 실행이 진행 중인 동안, 그리고 `make check`이면 `.runtime/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부한다. runner는 첫 단계 전과 각 단계마다 기록을 쓰므로 강제 종료된 실행은 `incomplete`로 남고, `make rerun-failed`는 현재 tree의 기록에서 통과하지 못한 target만 실행한다.
+
 - G5.30-16: check의 모든 `go run`은 `tests/go-run.mjs`로 단계 로그와 함께 기한 없는 장기 작업으로 build하고, `make repo-check`는 그냥 쓴 `go run`을 실패시킨다.
 
 - G5.35: `make rust-fmt-check`는 `clients/rust`와 함께 `bench/rust`, `tests/interfaces/rust`도 검사하고, 둘은 형식이 정리되었다.

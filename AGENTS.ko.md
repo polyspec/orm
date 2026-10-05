@@ -20,6 +20,13 @@
   우선순위에 따라 배치한 뒤 시작한다.
 - 저장소의 전체 테스트 묶음(`make check`)은 진행 중인 모든 체크리스트 항목이 완료되었을 때 정확히 한 번
   실행한다. 수정마다, 항목마다 실행하지 않는다. CI는 push마다 `make check`를 실행한다.
+- `make check`가 이 규칙을 강제한다: 어떤 단계보다 먼저, 체크리스트 항목(하위 항목 포함)이 `[~]`인 동안,
+  추적하는 file에 commit하지 않은 변경이 있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree의 전체 실행을
+  기록하고 있을 때 거부한다. commit하고 활성 항목을 모두 완료한 뒤 `make check`를 한 번 실행한다.
+  `make rerun-failed`는 원인이 tree 밖(환경이나 machine 자원)에 있는 실패에 대해, 기록된 tree에서 통과하지
+  못한 target만 다시 실행한다. code의 실패는 체크리스트 항목으로 고치고, 그 commit은 새 tree를 만들며 그 전체
+  묶음은 활성 항목이 모두 완료되었을 때 한 번 실행한다. 다시 실행하려고 기록을 지우거나 고치지 않는다. 새
+  checkout에는 기록이 없으므로 CI는 push마다 `make check`를 실행하고, push는 모든 항목이 완료되었을 때만 한다.
 - 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.

@@ -7,6 +7,12 @@
 3. engine, generator, 영향받은 모든 client에 완전한 변경을 구현한다.
 4. 영문과 한글 paired document를 함께 갱신한다.
 5. 관련 로컬 검사를 실행하고 필요하면 commit 설명에 결과를 기록한다.
+6. 전체 묶음 `make check`는 활성 checklist 항목이 모두 완료되었을 때 한 번 실행한다. 어떤 단계보다 먼저,
+   `docs/checklist.md`의 항목이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이
+   있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 기록하고
+   있을 때 이유와 종료 상태 2로 거부한다. 기록은 tree, commit, 결과, 통과하지 못한 target과 모든 단계의 시각을
+   담고, 첫 단계 전과 각 단계마다 쓰이므로 강제 종료된 실행은 `incomplete`로 남는다. `make rerun-failed`는 현재
+   tree의 기록에서 통과하지 못한 target만 실행하며, 그런 기록이 없으면 거부된다.
 
 ## Test database server
 
