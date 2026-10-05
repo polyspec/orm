@@ -98,7 +98,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   const checkTargets = /^CHECK_TARGETS = (.*)$/m.exec(makefile)[1].trim().split(/\s+/);
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
-  assert.deepEqual(checkInputErrors({ a: { scope: 'owner', inputs: ['docs/**'] }, b: { scope: 'owner', inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [
+  assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: [], inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [
     'contracts/check-inputs.json declares no scope of c of CHECK_TARGETS',
     'contracts/check-inputs.json declares b, which is not in CHECK_TARGETS',
     'contracts/check-inputs.json: b input nothing/** matches no tracked file',
@@ -140,10 +140,18 @@ caseTest('a target without a scope declaration fails the selection', 5000, async
   assert.throws(() => selectTargets({ a: ['docs/**'] }, ['README.md']),
     { message: 'contracts/check-inputs.json declares no scope of a; declare owner or suite' });
   assert.deepEqual(targets(selectTargets({ a: { scope: 'suite' }, b: { scope: 'owner', inputs: ['docs/**'] } }, ['docs/x.md'])), ['b']);
-  assert.deepEqual(checkInputErrors({ a: { inputs: ['docs/**'] }, b: { scope: 'suite', inputs: ['docs/**'] }, c: { scope: 'owner' } }, ['a', 'b', 'c'], ['docs/x.md']), [
+  assert.deepEqual(checkInputErrors({ a: { needs: [], inputs: ['docs/**'] }, b: { scope: 'suite', needs: [], inputs: ['docs/**'] }, c: { scope: 'owner', needs: [] } }, ['a', 'b', 'c'], ['docs/x.md']), [
     'contracts/check-inputs.json declares no scope of a of CHECK_TARGETS',
     'contracts/check-inputs.json: suite target b declares inputs, which owner-check never reads',
     'contracts/check-inputs.json declares no inputs of owner target c',
+  ]);
+});
+
+// needs case(G5.38-1)는 setup 단계 선언을 검사한다: 모든 target이 needs를 선언하고, 그 값은 setup 단계 databases다.
+caseTest('every target declares the setup steps it needs', 5000, async () => {
+  assert.deepEqual(checkInputErrors({ a: { scope: 'suite' }, b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['a', 'b', 'c'], []), [
+    'contracts/check-inputs.json declares no needs of a; declare [] or ["databases"]',
+    'contracts/check-inputs.json: b needs servers, which is no setup step; the setup step is databases',
   ]);
 });
 
