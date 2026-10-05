@@ -73,9 +73,6 @@ const (
 	// manifestDeadline: manifest, error catalog, component diagram, dbspec 문서를 읽고
 	// 비교하는 memory 안의 계산이다.
 	manifestDeadline = testcase.Compute
-	// rustBuildDeadline: tests/interfaces/rust의 symbol 추출기를 build한다. target이 비면
-	// 의존성까지 compile한다.
-	rustBuildDeadline = testcase.Process
 	// languageDeadline: 한 언어의 native 선언을 추출기 process로 읽고, --self-test면
 	// source mutation마다 추출기를 다시 실행한다.
 	languageDeadline = testcase.Process
@@ -175,8 +172,8 @@ func main() {
 	}
 	rust := ""
 	if slices.Contains(languages, "rust") {
-		if err := testcase.Run("interfaces/rust-build", rustBuildDeadline, func(c *testcase.Case) (err error) {
-			rust, err = buildRust(c.Context(), abs)
+		if err := testcase.RunLong("interfaces/rust-build", func(c *testcase.Case) (err error) {
+			rust, err = buildRust(c, abs)
 			return err
 		}); err != nil {
 			os.Exit(1)
@@ -372,14 +369,17 @@ func differences(want, got Symbols) []string {
 // target directory는 CARGO_TARGET_DIR이나 cargo 설정이 정하므로(Makefile은 모든
 // cargo 명령에 clients/rust/target을 준다) 경로를 짐작하지 않고 cargo의
 // compiler-artifact message에서 읽는다.
-func buildRust(ctx context.Context, root string) (string, error) {
+// build는 장기 작업이므로 기한이 없고, cargo의 진행 출력은 경과 시간과 함께 c의 단계로 보인다.
+func buildRust(c *testcase.Case, root string) (string, error) {
 	manifest := filepath.Join(root, "tests/interfaces/rust/Cargo.toml")
-	cmd := exec.CommandContext(ctx, "cargo", "build", "--quiet", "--locked", "--manifest-path", manifest, "--message-format", "json-render-diagnostics")
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	cmd := exec.CommandContext(c.Context(), "cargo", "build", "--locked", "--manifest-path", manifest, "--message-format", "json-render-diagnostics")
+	steps := c.StepWriter()
+	cmd.Stderr = steps
+	c.Step("run cargo build --locked --manifest-path %s", manifest)
 	out, err := cmd.Output()
+	steps.Flush()
 	if err != nil {
-		return "", errors.New(stderr.String() + err.Error())
+		return "", fmt.Errorf("cargo build: %w", err)
 	}
 	executable := ""
 	for _, line := range bytes.Split(out, []byte("\n")) {

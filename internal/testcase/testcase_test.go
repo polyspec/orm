@@ -71,6 +71,18 @@ func TestFixtureRun(t *testing.T) {
 	}); err == nil {
 		t.Error("runner/context returned no error")
 	}
+	// 느리지만 정상인 장기 작업은 기한 없이 끝까지 실행한다.
+	if err := RunLong("runner/long", func(c *Case) error {
+		c.Step("building")
+		time.Sleep(1500 * time.Millisecond)
+		c.Step("exit 0")
+		return nil
+	}); err != nil {
+		t.Errorf("runner/long: %v", err)
+	}
+	if err := RunLong("runner/long-fail", func(*Case) error { return errors.New("build exited with 3") }); err == nil {
+		t.Error("runner/long-fail returned no error")
+	}
 	if err := Run("runner/stuck", 100*time.Millisecond, func(*Case) error {
 		time.Sleep(time.Minute)
 		return nil
@@ -137,6 +149,8 @@ func TestReportForm(t *testing.T) {
 			`STEP runner/pass ` + elapsed + `: child line two`, `STEP runner/pass ` + elapsed + `: child tail`, `PASS runner/pass ` + elapsed},
 		{`RUN runner/fail deadline=1m0s`, `FAIL runner/fail ` + elapsed + `: runner failure reason`},
 		{`RUN runner/context deadline=100ms`, `FAIL runner/context ` + elapsed + `: context deadline exceeded`},
+		{`RUN runner/long no-deadline`, `STEP runner/long ` + elapsed + `: building`, `STEP runner/long ` + elapsed + `: exit 0`, `PASS runner/long elapsed=(1\.[5-9][0-9]*|[2-9](\.[0-9]+)?)s`},
+		{`RUN runner/long-fail no-deadline`, `FAIL runner/long-fail ` + elapsed + `: build exited with 3`},
 		{`RUN runner/stuck deadline=100ms`, `FAIL runner/stuck ` + elapsed + `: deadline 100ms exceeded`},
 	}
 	for _, patterns := range checks {

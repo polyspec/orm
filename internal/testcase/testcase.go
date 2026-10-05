@@ -9,7 +9,8 @@
 //	SKIP <case> elapsed=<경과>
 //
 // 여러 case를 묶는 test는 자기 기한 없이 "RUN <group> group"으로 시작하고, 묶인 case가
-// 저마다 기한을 가진다. 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case
+// 저마다 기한을 가진다. runner의 장기 작업(build, 설치, 도구 실행)은 RunLong으로 기한 없이
+// "RUN <작업> no-deadline"으로 시작한다. 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case
 // 자신의 계산 시간을 재는 제한이 아니기 때문이다(AGENTS.md testing rule).
 package testcase
 
@@ -147,6 +148,31 @@ func Run(name string, deadline time.Duration, work func(c *Case) error) error {
 	case <-timer.C:
 		err = fmt.Errorf("deadline %s exceeded", deadline)
 	}
+	if err != nil {
+		emit("FAIL %s elapsed=%s: %v", name, c.elapsed(), err)
+		return fmt.Errorf("%s: %w", name, err)
+	}
+	emit("PASS %s elapsed=%s", name, c.elapsed())
+	return nil
+}
+
+// RunLong은 test가 아닌 runner가 장기 작업 하나(build, 설치, 도구 실행)를 기한 없이 실행하고
+// "RUN <name> no-deadline", 단계, PASS나 FAIL과 경과 시간을 보고한다. 느리지만 정상인 작업이 시계
+// 때문에 실패하지 않도록 timer를 두지 않는다. 성공과 실패는 work가 관측한 결과(명령의 종료 코드와
+// 오류)로 정한다. c.Context()는 끝나지 않는다.
+func RunLong(name string, work func(c *Case) error) error {
+	c := &Case{name: name, started: time.Now()}
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	defer c.cancel()
+	emit("RUN %s no-deadline", name)
+	err := func() (err error) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err = fmt.Errorf("panic: %v", recovered)
+			}
+		}()
+		return work(c)
+	}()
 	if err != nil {
 		emit("FAIL %s elapsed=%s: %v", name, c.elapsed(), err)
 		return fmt.Errorf("%s: %w", name, err)

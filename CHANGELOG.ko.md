@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-15: Go conformance와 interface checker는 runner를 단계 로그와 함께 기한 없는 장기 작업으로 build한다(`testcase.RunLong`).
+
 - G5.32-4-1: `bench/rust/Cargo.lock`이 `orm`의 `libsqlite3-sys` 의존을 기록하므로 `make rust-fetch`가 다시 통과한다.
 
 - G5.32-6: 네 클라이언트의 timeout과 취소 test는 raw API로 sleep 함수를 부르는 대신 다른 연결이 잡은 row lock을 statement가 기다리게 한다.

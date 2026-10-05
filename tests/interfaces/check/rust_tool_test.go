@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,8 +19,11 @@ func TestBuildRustReturnsBuiltExecutable(t *testing.T) {
 	}
 	target := t.TempDir()
 	t.Setenv("CARGO_TARGET_DIR", target)
-	tool, err := buildRust(context.Background(), root)
-	if err != nil {
+	var tool string
+	if err := testcase.RunLong("interfaces/rust-build", func(c *testcase.Case) (err error) {
+		tool, err = buildRust(c, root)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if want := filepath.Join(target, "debug", "orm-interface-symbols"); tool != want {

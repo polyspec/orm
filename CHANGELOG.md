@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-15: the Go conformance and interface checkers build their runners as long operations with step logs and no deadline (`testcase.RunLong`).
+
 - G5.32-4-1: `bench/rust/Cargo.lock` records the `libsqlite3-sys` dependency of `orm`, so `make rust-fetch` passes again.
 
 - G5.32-6: the timeout and cancellation tests of the four clients make a statement wait for a row lock that another connection holds instead of calling a sleep function through the raw API.
