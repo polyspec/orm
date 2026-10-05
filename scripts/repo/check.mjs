@@ -92,7 +92,7 @@ failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...all
 // make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.
 const checkTargetSet = new Set(checkTargets(makefile));
 failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
-// 모든 workflow의 step은 자기 timeout-minutes를 가진다.
+// workflow의 step과 job은 timeout-minutes를 두지 않는다. step은 단계 로그를 가진 장기 작업이다.
 failures.push(...stepTimeoutErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));

@@ -220,29 +220,22 @@ export function runnerErrors(declared, workflows) {
   return errors;
 }
 
-// reportsCases는 step의 run text가 case를 보고하는 suite를 실행하는지다: 명령 조각이 repository의 make
-// target이나 test runner(go test, cargo test)로 시작한다. 그 case는 저마다 기한을 가진다.
-export function reportsCases(run) {
-  return run.split('\n').flatMap(segments).some(segment => /^(?:make\s|go\s+test\b|cargo\s+test\b)/.test(segment));
-}
-
-// stepTimeoutErrors는 workflow의 step 기한(timeout-minutes)이 규칙과 다를 때마다 오류 하나를 돌려준다
-// (AGENTS.md testing rule).
-//   - case를 보고하는 suite를 실행하는 step(reportsCases)은 timeout-minutes를 두지 않는다. 그 기한은 suite
-//     전체의 기한이고, suite의 case가 저마다 기한을 가진다.
-//   - 그 밖의 step(action, 설치, 도구 하나)은 자기 기한(양의 정수 timeout-minutes)을 가진다. 그 안에는
-//     기한을 가진 case가 없으므로 job 전체의 기한(GitHub 기본 360분)에 맡기지 않는다.
+// stepTimeoutErrors는 workflow의 step이나 job이 기한(timeout-minutes)을 가질 때마다 오류 하나를 돌려준다
+// (AGENTS.md testing rule). CI의 step은 checkout, 설치, server 시작, 도구 실행, 전체 suite 같은 장기
+// 작업이고, GitHub runner가 step마다 출력 줄을 실행하는 대로 log에 남기고 종료 코드로 결과를 정한다. 장기
+// 작업은 기한 없이 그 단계 로그로 관측하며, 기한은 test case 안에만 있다. step 밖의 timeout-minutes는 job
+// 전체의 기한이다.
 export function stepTimeoutErrors(workflows) {
   const errors = [];
-  for (const [path, workflow] of Object.entries(workflows))
-    for (const step of workflowSteps(workflow)) {
-      if (reportsCases(step.run)) {
-        if (step.timeout !== undefined)
-          errors.push(`${path} step "${step.name}" runs cases that carry their own deadlines and has timeout-minutes, a deadline for the whole suite; remove it`);
-      } else if (!/^[1-9][0-9]*$/.test(step.timeout ?? '')) {
-        errors.push(`${path} step "${step.name}" has no timeout-minutes of its own`);
-      }
-    }
+  for (const [path, workflow] of Object.entries(workflows)) {
+    const steps = workflowSteps(workflow);
+    for (const step of steps)
+      if (step.timeout !== undefined)
+        errors.push(`${path} step "${step.name}" has timeout-minutes; a long operation gets step logs and no deadline`);
+    const all = workflow.split('\n').filter(line => /^\s*timeout-minutes:/.test(line)).length;
+    const inSteps = steps.filter(step => step.timeout !== undefined).length;
+    if (all > inSteps) errors.push(`${path} has timeout-minutes outside its steps, a deadline for a whole job; a long operation gets step logs and no deadline`);
+  }
   return errors;
 }
 

@@ -441,38 +441,30 @@ caseTest('start_logged reports a ready line, an exit or its deadline', COMPUTE, 
   }
 });
 
-// timeout case는 저장소의 workflow와 최소 workflow의 step마다 timeout-minutes를 검사한다.
-caseTest('a suite step has no timeout-minutes and every other step has its own', COMPUTE, () => {
+// timeout case는 저장소의 workflow와 최소 workflow의 step과 job에 timeout-minutes가 없는지 검사한다.
+caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
   assert.deepEqual(stepTimeoutErrors(workflows), []);
-  const timed = [
+  const plain = [
     'jobs:',
     '  test:',
+    '    runs-on: ubuntu-26.04-arm',
     '    steps:',
     '      - uses: actions/checkout@v5',
-    '        timeout-minutes: 5',
+    '      - name: install',
+    '        run: npm ci',
     '      - name: checks',
     '        run: make check',
-    '      - name: tool',
-    '        timeout-minutes: 2',
-    '        run: sed -e s/a/b/ file',
-    '      - name: go',
-    '        run: go vet ./... && go test -v -timeout 0 ./...',
-    '      - name: codec',
-    '        run: |',
-    '          (cd clients/rust && cargo test --locked -p orm codec)',
     '',
   ].join('\n');
-  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed }), []);
-  const suite = name => `ci.yml step "${name}" runs cases that carry their own deadlines and has timeout-minutes, a deadline for the whole suite; remove it`;
-  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed
-    .replace('        run: make check', '        timeout-minutes: 90\n        run: make check')
-    .replace('        run: go vet', '        timeout-minutes: 30\n        run: go vet')
-    .replace('        run: |', '        timeout-minutes: 30\n        run: |') }), [suite('checks'), suite('go'), suite('codec')]);
-  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('        timeout-minutes: 2\n', '') }), [
-    'ci.yml step "tool" has no timeout-minutes of its own',
-  ]);
-  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': timed.replace('timeout-minutes: 5', 'timeout-minutes: 0') }), [
-    'ci.yml step "uses: actions/checkout@v5" has no timeout-minutes of its own',
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': plain }), []);
+  const step = name => `ci.yml step "${name}" has timeout-minutes; a long operation gets step logs and no deadline`;
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': plain
+    .replace('      - uses: actions/checkout@v5', '      - uses: actions/checkout@v5\n        timeout-minutes: 10')
+    .replace('        run: npm ci', '        timeout-minutes: 20\n        run: npm ci')
+    .replace('        run: make check', '        timeout-minutes: 90\n        run: make check') }),
+  [step('uses: actions/checkout@v5'), step('install'), step('checks')]);
+  assert.deepEqual(stepTimeoutErrors({ 'ci.yml': plain.replace('    runs-on:', '    timeout-minutes: 360\n    runs-on:') }), [
+    'ci.yml has timeout-minutes outside its steps, a deadline for a whole job; a long operation gets step logs and no deadline',
   ]);
 });
 

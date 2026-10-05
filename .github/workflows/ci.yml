@@ -4,11 +4,11 @@
 # conformance results. make check runs every test once; a check it lacks
 # belongs in a target of CHECK_TARGETS, not in another step.
 # make test-servers starts the database servers and writes their DSNs, as it
-# does for the local checks. A step that runs make or a test runner has no
-# timeout-minutes: its cases report RUN, PASS or FAIL with their own
-# deadlines, and a step deadline would be one deadline for the whole suite.
-# Every other step (actions, installs, one tool) has its own timeout-minutes.
-# make repo-check fails a step that breaks either rule.
+# does for the local checks. No step or job has timeout-minutes: every step
+# (a checkout, an install, a server start, a tool run or a whole suite) is a
+# long operation, which the runner logs line by line and judges by its exit
+# code, with no deadline; only a test case inside a suite has its own
+# deadline. make repo-check fails a workflow with timeout-minutes.
 name: ci
 on:
   push:
@@ -24,54 +24,45 @@ jobs:
       # git-check reads history from the recorded subject-format baseline, so
       # the checkout must carry the full commit graph.
       - uses: actions/checkout@v5
-        timeout-minutes: 10
         with:
           fetch-depth: 0
       - uses: actions/setup-go@v6
-        timeout-minutes: 10
         with: { go-version: "1.27" }
       # .node-version declares the one Node release of the checks, locally and
       # here; make repo-check requires it. make ts-min-check runs the
       # TypeScript client on the lowest release of package.json engines.node.
       - uses: actions/setup-node@v7
-        timeout-minutes: 10
         with:
           node-version-file: .node-version
           cache: npm
       - name: install Node dependencies
-        timeout-minutes: 20
         run: |
           npm ci
           npm ci --prefix clients/typescript
           npx playwright install --with-deps chromium
       - name: Rust toolchain of rust-toolchain.toml
-        timeout-minutes: 15
         # rustup installs the channel and components that rust-toolchain.toml
         # declares; every cargo and rustc run of the repository uses them.
         run: rustup toolchain install && rustc --version
       - uses: Swatinem/rust-cache@v2
-        timeout-minutes: 15
         with:
           workspaces: |
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
       - name: lowest PHP release of the PHP client
-        timeout-minutes: 2
         # make php-min-check runs the PHP client unit tests on the lowest release
         # of require.php in clients/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
         run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
-        timeout-minutes: 10
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
           coverage: none
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
-        timeout-minutes: 10
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
@@ -79,17 +70,14 @@ jobs:
           # PHP does; Xdebug changes the ratios of the hot-path gate.
           coverage: none
       - name: PHP releases and their SQLite
-        timeout-minutes: 5
         # Every client requires SQLite 3.46; PHP links the system SQLite of
         # the runner.
         run: |
           "$(./scripts/php/php-min.sh)" --version
           php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
       - name: install PHP dependencies
-        timeout-minutes: 10
         run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
       - name: programs of the database servers
-        timeout-minutes: 20
         # make test-servers starts the servers of the database checks from these
         # programs, as it does locally: MySQL 8.4.11 from the Ubuntu packages,
         # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
@@ -120,7 +108,6 @@ jobs:
         # file .runtime/servers/env that the database checks read.
         run: make test-servers
       - name: environment of the database servers
-        timeout-minutes: 2
         # Steps that run go test, cargo test or php without make read the same
         # variables from the process environment.
         run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
@@ -135,7 +122,6 @@ jobs:
         if: ${{ !cancelled() }}
         run: make fuzz-check
       - name: common state and execution contracts
-        timeout-minutes: 10
         if: ${{ !cancelled() }}
         run: |
           go run ./tests/interfaces/check --results tests/conformance/out
