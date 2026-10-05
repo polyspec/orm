@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.64-2: CONTRIBUTING.md는 개발 중에는 바뀐 것의 unit test를 실행하고 전체 묶음은 push마다 CI에서 실행한다고 적는다.
+
 - G5.63: Rust catalog의 PostgreSQL row insert는 catalog 읽기가 우연히 잡던 lock에 기대지 않고, schema를 확인하고 Locked를 알리기 전에 table에 INSERT의 lock을 잡는다.
 
 - G5.65: 모든 검사는 offline으로 실행된다. Makefile은 cargo, go, npm, Composer의 offline 설정을 export하고, `make install`이 검사가 읽는 것을 download하며, runner는 빠진 download를 `run make install`과 함께 setup 단계 `downloads`로 기록하고 그것이 필요한 target은 실행하지 않는다.
