@@ -188,7 +188,10 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     // 공간이 없어 실패한 단계는 그 사실과 그 순간의 공간을 첫 실패 줄로 적는다(spaceCause).
     const space = passed ? null : spaceCause(lines, after);
     if (space) lines.unshift(space);
-    const details = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(truncated ? { truncated } : {}) };
+    // 경고(`WARNING`)는 실패가 아니다. 단계의 기록과 summary에 남기고, GitHub Actions에서는 `::warning::` annotation으로도 쓴다.
+    const warnings = found.warnings();
+    if (process.env.GITHUB_ACTIONS === 'true') for (const warning of warnings) console.log(`::warning title=${label}::${warning}`);
+    const details = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(warnings.length ? { warnings } : {}), ...(truncated ? { truncated } : {}) };
     // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 복사한 뒤 지운다. 보고서가 그
     // 증거를 갖고, disk에는 남지 않는다.
     for (const path of runDirectories()) {
@@ -317,7 +320,7 @@ export function crash(error) {
   if (record) writer.run(join(report, 'summary.md'), () => publish(summary(record, { run: current, report: relative(root, report), crashed: reason }), report));
 }
 
-const toStep = result => ({ name: result.label, status: result.notRun ? 'not-run' : result.passed ? 'passed' : 'failed', elapsed: result.elapsed, reason: result.notRun, failures: result.failures, log: result.log });
+const toStep = result => ({ name: result.label, status: result.notRun ? 'not-run' : result.passed ? 'passed' : 'failed', elapsed: result.elapsed, reason: result.notRun, failures: result.failures, warnings: result.warnings, log: result.log });
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);

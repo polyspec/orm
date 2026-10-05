@@ -90,8 +90,12 @@ export function failures() {
   // starts는 열린 case마다 그 RUN 줄 때의 실패 줄 수다. case가 PASS로 끝나면 그 사이에 모인 줄은 그 case의 출력(검사하는
   // 대상이 일부러 실패시킨 sample 같은 것)이지 target의 실패가 아니므로 버린다. 그래서 그 뒤의 진짜 실패가 첫 실패 줄이 된다.
   const starts = new Map();
+  // warnings는 성능 측정이 문서의 기준값을 넘었다는 줄(`WARNING <message>`, AGENTS.md)이다. 실패가 아니므로 첫 실패 줄에
+  // 들지 않고, 실행 기록과 summary에 따로 남는다.
+  const warnings = [];
   let exit = null;
   return {
+    warnings: () => [...warnings],
     // exit는 명령이 끝난 방식이다(종료 코드나 signal). 실패 줄이 없는 실패는 출력의 끝과 이것을 적는다.
     exit(text) {
       exit = text;
@@ -115,6 +119,8 @@ export function failures() {
         starts.delete(lane + done[2]);
       }
       const inner = innermost(text);
+      const warned = /^WARNING (.+)$/.exec(inner);
+      if (warned) warnings.push(warned[1]);
       if (/^(?:=== RUN|RUN |PASS |--- PASS)/.test(inner)) reports.length = 0;
       else if (REPORT.test(inner) && !failureLine(text)) {
         reports.push(text);
@@ -374,6 +380,12 @@ export function summary(record, { run = record, report, crashed = null } = {}) {
   }
   const writes = [...(run.reportErrors ?? []), ...steps.flatMap(step => step.reportErrors ?? [])];
   if (writes.length) lines.push('', '## report write failures', '', '```', ...writes, '```');
+  // 경고는 실패가 아니다: 성능 측정이 문서의 기준값을 넘은 단계와 그 줄을 따로 적는다.
+  const warned = steps.filter(step => step.warnings?.length);
+  if (warned.length) {
+    lines.push('', '## warnings', '', 'A warning is no failure: a measurement exceeded its documented reference value (AGENTS.md).', '');
+    for (const step of warned) for (const warning of step.warnings) lines.push(`- ${escape(step.name)}: ${warning}`);
+  }
   for (const step of steps.filter(step => step.status === 'failed' && step.failures?.length)) {
     lines.push('', `## ${step.name}`, '', `log: \`${step.log ?? ''}\``, '', '```', ...step.failures, '```');
   }

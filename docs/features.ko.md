@@ -40,7 +40,7 @@
 - `constraints_and_relations`: CHECK 제약, index, 내부와 외부 foreign key, soft delete, 변경 불가 테이블, 관계 삭제 동작을 planner와 migration 시스템에서 유지한다.
 - `audit_triggers`: 테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 바깥 audit을 유지한다.
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
-- `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
+- `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
 - `catalog_connection`: live-db feature가 켜진 orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.
 

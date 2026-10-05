@@ -676,6 +676,20 @@ caseTest('the failure lines of a case that passed are not the first failure line
   ]);
 });
 
+// 경고 case(G5.73)는 성능 측정이 기준값을 넘은 `WARNING` 줄이 실패가 아니라 경고로 모이고, summary가 그것을 따로
+// 적는지 본다.
+caseTest('a WARNING line is kept as a warning, not a failure, and the summary lists it', COMPUTE, async () => {
+  const { failureLine, failures, summary } = await import(resolve(repo, 'scripts/check/report.mjs'));
+  const found = failures();
+  const warned = 'dbspec_stress median parse CPU of 401.000 ms is 11.50 times the reference CPU of 34.870 ms, above the reference ratio 11.0 (docs/dbspec.md, Verification); machine Linux aarch64, PHP 8.5.4';
+  for (const line of ['RUN dbspec_stress deadline=10m0s', `STEP features/helpers/dbspec-stress elapsed=2s: WARNING ${warned}`, 'PASS dbspec_stress elapsed=2.5s']) found.line(line);
+  assert.equal(failureLine(`STEP features/helpers/dbspec-stress elapsed=2s: WARNING ${warned}`), false, 'a warning is no failure line');
+  assert.deepEqual(found.warnings(), [warned]);
+  const text = summary({ commit: 'c', tree: 't', started: 's', ended: 'e', result: 'passed', setup: [], targets: [{ name: 'feature-check', status: 'passed', warnings: [warned] }] });
+  assert.match(text, /\| feature-check \| passed \|/);
+  assert.ok(text.includes(`## warnings\n\nA warning is no failure: a measurement exceeded its documented reference value (AGENTS.md).\n\n- feature-check: ${warned}`), text);
+});
+
 // 공간 case(G5.43-4)는 target b가 /tmp의 quota 초과(EDQUOT)로 실패하는 실행이다. 보고서는 시작할 때와 단계마다 공간을
 // 기록하고, b의 첫 실패 줄은 공간이 없어 실패했다는 것과 그 순간의 `/`와 `/tmp`의 남은 공간이다.
 caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {

@@ -11,11 +11,11 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 /**
- * CPU 시간 한도 $cpuSeconds를 가진 case $id를 시작한다(tests/testcase.php의 구역 case).
- * 멈춘 case를 끝내는 wall-clock 기한은 CPU 한도의 열 배다. timing-check가 process group에
- * CPU의 10분의 1만 주므로 그 아래에서도 CPU 한도만 판정한다.
+ * CPU 시간 기준값 $cpuSeconds를 가진 case $id를 시작한다(tests/testcase.php의 구역 case).
+ * 멈춘 case를 끝내는 wall-clock 기한은 기준값의 열 배다. timing-check가 process group에
+ * CPU의 10분의 1만 주므로 그 아래에서도 기한은 멈춘 case만 끝낸다.
  *
- * @return array{0: array, 1: float} cpuCaseEnd에 줄 [시작, 한도]
+ * @return array{0: array, 1: float} cpuCaseEnd에 줄 [시작, 기준값]
  */
 function cpuCaseBegin(string $id, float $cpuSeconds): array
 {
@@ -23,14 +23,18 @@ function cpuCaseBegin(string $id, float $cpuSeconds): array
     return [caseClockStart(), $cpuSeconds];
 }
 
-/** cpuCaseBegin으로 시작한 case가 CPU 한도 안에 끝났는지 확인하고 PASS로 끝낸다. */
+/**
+ * cpuCaseBegin으로 시작한 case의 CPU 시간을 출력하고 PASS로 끝낸다. 성능은 측정할 뿐 test를 실패시키지 않으므로
+ * (AGENTS.md), 기준값을 넘은 CPU 시간은 경고만 한다.
+ */
 function cpuCaseEnd(string $id, array $clock): void
 {
     [$cpuMs, $wallMs] = caseClockElapsed($clock[0]);
+    testcase_step(sprintf('cpu %.3f ms wall %.3f ms', $cpuMs, $wallMs));
     if ($cpuMs > $clock[1] * 1000) {
-        throw new RuntimeException("$id: CPU deadline of {$clock[1]} s exceeded ($cpuMs ms CPU, $wallMs ms wall)");
+        testcase_warning(sprintf('%s used %.3f ms of CPU (%.3f ms wall), above its reference of %s s; machine %s %s, PHP %s',
+            $id, $cpuMs, $wallMs, $clock[1], PHP_OS_FAMILY, php_uname('m'), PHP_VERSION));
     }
-    testcase_step(sprintf('cpu %.3f ms', $cpuMs));
     testcase_end();
 }
 

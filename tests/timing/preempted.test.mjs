@@ -1,7 +1,7 @@
-// 각 client가 자기 계산에 두는 시간 제한은 그 계산이 쓴 CPU 시간을 잰다. 이 test는 process
-// group을 SIGSTOP과 SIGCONT로 번갈아 멈춰, 공유 machine에서 다른 process가 CPU를 쓰는 동안
-// 기다리는 상태를 결정적으로 만든다. 멈춘 시간은 CPU 시간에 들어가지 않으므로 각 test는
-// 멈추지 않을 때와 같이 통과해야 한다. 멈춤과 재개 주기는 timer가 정한다: 멈춘 process는
+// 각 client의 시간 측정은 그 계산이 쓴 CPU 시간을 재고, 성능은 측정해 보고할 뿐 test를 실패시키지 않는다
+// (AGENTS.md). 이 test는 process group을 SIGSTOP과 SIGCONT로 번갈아 멈춰, 공유 machine에서 다른 process가 CPU를
+// 쓰는 동안 기다리는 상태를 결정적으로 만든다. 각 test는 멈추지 않을 때와 같이 통과해야 하고, 그 측정은
+// 출력된다. 멈춤과 재개 주기는 timer가 정한다: 멈춘 process는
 // event를 내지 않으므로 다른 event source가 없다.
 //
 // Usage: make timing-check (the target builds the Go test binary, the Rust stress example and
@@ -86,25 +86,25 @@ async function passesPreempted(step, command, args, cwd = root) {
 
 const stressDocument = () => declared('DBSPEC_STRESS_DOCUMENT');
 
-caseTest('go: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+caseTest('go: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
   await passesPreempted(step, declared('TIMING_GO_DBSPEC_TEST'), ['-test.run', '^TestStressDocument$', '-test.count', '1', '-test.v'], `${root}engine/dbspec`);
 });
 
-caseTest('rust: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
   await passesPreempted(step, declared('TIMING_RUST_STRESS'), [stressDocument()]);
 });
 
-caseTest('rust: the orm-schema vector deadlines hold while preempted', TIMEOUT, async ({ step }) => {
+caseTest('rust: the orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
   const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan', 'dbspec_mermaid'];
   await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}clients/rust`);
 });
 
 for (const script of ['dbspec_test', 'dbspec_rules_test', 'dbspec_manifest_test', 'dbspec_render_test', 'dbspec_mermaid_test', 'dbspec_plan_test', 'dbspec_stress_test']) {
-  caseTest(`php: ${script} deadlines hold while preempted`, TIMEOUT, async ({ step }) => {
+  caseTest(`php: ${script} passes while preempted`, TIMEOUT, async ({ step }) => {
     await passesPreempted(step, 'php', [`clients/php/tests/${script}.php`]);
   });
 }
 
-caseTest('typescript: the stress parse budget holds while preempted', TIMEOUT, async ({ step }) => {
+caseTest('typescript: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
   await passesPreempted(step, process.execPath, ['--test', 'clients/typescript/tests/dbspec-stress.mjs']);
 });

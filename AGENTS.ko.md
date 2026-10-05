@@ -42,6 +42,11 @@
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
+- 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
+  출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
+  실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
+  실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`는 측정한 시간이 한도를 넘었다고 실패하는 test를
+  거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
 - 검사는 network를 읽지 않는다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm,
   Composer를 offline으로 실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
   `COMPOSER_DISABLE_NETWORK`), install target만 `$(ONLINE)`으로 download한다. 빠진 download는 online으로 다시

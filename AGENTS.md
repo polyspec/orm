@@ -53,6 +53,13 @@
   a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
   so only the setup steps start servers that outlive a step.
+- Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
+  time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
+  `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record
+  and the summary and writes as a GitHub `::warning::` annotation; the test still passes. A test fails only on
+  correctness, and a deadline only ends a case that does not stop. `make repo-check` refuses a test that fails on a
+  measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
+  the same kind from the CI runner.
 - A check reads no network. `make install` downloads what the checks read, the Makefile runs cargo,
   go, npm and Composer offline (`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
   `COMPOSER_DISABLE_NETWORK`), only the install targets download, through `$(ONLINE)`, and a missing

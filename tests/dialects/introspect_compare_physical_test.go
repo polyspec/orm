@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"runtime"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -24,12 +25,12 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// introspectBudget는 2000 table stress database를 introspect하는 데 client마다
-// 허용하는 시간이다(docs/dialects.md "Introspection").
-const introspectBudget = 5 * time.Second
+// introspectReference는 2000 table stress database를 introspect하는 시간의 문서 기준값이다(docs/dialects.md
+// "Introspection"). 넘으면 경고할 뿐 test를 실패시키지 않는다(AGENTS.md).
+const introspectReference = 5 * time.Second
 
 // compareRunnerDeadline은 introspection runner process 하나의 기한이다. runner는 `go run`이면
-// compile을 포함하고, budget을 넘긴 runner도 끝까지 기다려 그 시간을 보고한다.
+// compile을 포함하고, 기준값을 넘긴 runner도 끝까지 기다려 그 시간을 보고한다.
 const compareRunnerDeadline = 5 * time.Minute
 
 // compareDeadline은 database 하나의 case 기한이다. 2000 table 문서의 statement 22000개를
@@ -44,7 +45,7 @@ const applyProgressEvery = 1000
 
 // TestIntrospectCompare는 stress 문서를 세 database에 적용하고 네 client의
 // introspection runner가 같은 출력을 내는지, 그 문서의 schema text가 원본과
-// 같은지, 미지원 객체가 없는지, 각 client가 budget 안에 끝나는지 확인한다.
+// 같은지, 미지원 객체가 없는지 확인하고, 각 client의 시간을 출력하며 기준값을 넘으면 경고한다.
 func TestIntrospectCompare(t *testing.T) {
 	testcase.Group(t)
 	stressPath, rustRunner := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST")
@@ -112,8 +113,8 @@ func TestIntrospectCompare(t *testing.T) {
 					t.Fatalf("%s: %v", r.client, err)
 				}
 				c.Step("%s %s: %d bytes, introspected in %s", dialect, r.client, stdout.Len(), elapsed)
-				if elapsed > introspectBudget {
-					t.Errorf("%s %s: introspection took %s, over the %s budget", dialect, r.client, elapsed, introspectBudget)
+				if elapsed > introspectReference {
+					testcase.Warn("%s %s: introspection took %s, above the %s reference (docs/dialects.md, Introspection); machine %s %s", dialect, r.client, elapsed, introspectReference, runtime.GOOS, runtime.GOARCH)
 				}
 				if reference == "" {
 					reference = stdout.String()

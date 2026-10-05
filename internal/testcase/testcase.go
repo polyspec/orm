@@ -57,6 +57,13 @@ func emit(format string, args ...any) {
 	fmt.Fprintf(os.Stdout, format+"\n", args...)
 }
 
+// Warn은 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를
+// 실패시키지 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을
+// 실행 기록과 summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
+func Warn(format string, args ...any) {
+	emit("WARNING "+format, args...)
+}
+
 // Case는 실행 중인 case 하나다.
 type Case struct {
 	name     string
