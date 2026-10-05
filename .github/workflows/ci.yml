@@ -1,8 +1,9 @@
 # CI: make check, the targets of the local checks, against MySQL, PostgreSQL,
 # and SQLite, with the common interfaces and the hot-path regression check of
-# feature-check, then the decoder fuzz checks and the common contracts of the
-# conformance results. make check runs every test once; a check it lacks
-# belongs in a target of CHECK_TARGETS, not in another step.
+# feature-check, the decoder fuzz checks and the common state contracts of the
+# conformance results. make check runs every check once, so one local run
+# covers what CI runs; a check it lacks belongs in a target of CHECK_TARGETS,
+# and make repo-check fails a step after make check.
 # make test-servers starts the database servers and writes their DSNs, as it
 # does for the local checks. No step or job has timeout-minutes: every step
 # (a checkout, an install, a server start, a tool run or a whole suite) is a
@@ -107,24 +108,9 @@ jobs:
         # the databases orm_test, orm_tools and orm_bench, and the environment
         # file .runtime/servers/env that the database checks read.
         run: make test-servers
-      - name: environment of the database servers
-        # Steps that run go test, cargo test or php without make read the same
-        # variables from the process environment.
-        run: sed -e 's/^export //' -e "s/='\(.*\)'$/=\1/" .runtime/servers/env >> "$GITHUB_ENV"
       - name: make check
         # The targets of CHECK_TARGETS through the runner of the local checks,
         # with its own bench and decimal databases; make repo-check fails
         # when this workflow omits or repeats one of them or a verification
-        # command of feature-check. The later steps run after a failure too, so
-        # one run reports every result.
+        # command of feature-check.
         run: make check
-      - name: decoder fuzz smoke checks
-        if: ${{ !cancelled() }}
-        run: make fuzz-check
-      - name: common state and execution contracts
-        if: ${{ !cancelled() }}
-        # The checker builds its Rust extractor under the lease of the shared
-        # target directory, so it runs through make, which exports the lease
-        # variables; make repo-check fails when a step runs such a program
-        # outside make.
-        run: make interface-results-check

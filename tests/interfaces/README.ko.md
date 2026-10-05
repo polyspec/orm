@@ -22,13 +22,13 @@ go run ./tests/interfaces/check --self-test
 go run ./tests/interfaces/check --language php --self-test
 ```
 
-기록된 적합성 결과를 검사한다.
+적합성 결과를 공통 state contract(`contracts/interfaces.json`의 `sequences`)와 비교한다: `make conformance-check`가 적합성 실행기를 자기 실행의 directory에 실행한 뒤 다음을 실행한다.
 
 ```sh
-go run ./tests/interfaces/check --results tests/conformance/out
-go run ./tests/interfaces/check --results tests/conformance/out/postgres
-go run ./tests/interfaces/check --results tests/conformance/out/sqlite
+go run ./tests/interfaces/check --results "$RUN_DIR/out" --results "$RUN_DIR/out/postgres" --results "$RUN_DIR/out/sqlite"
 ```
+
+sequence는 자기가 보내는 statement의 kind를 순서대로 적고, utility statement는 적지 않는다. 그 수와 위치는 dialect마다 다르다(적합성 vector가 정확히 적는다). 차이는 더해지거나 빠진 statement를 위치, kind, SQL과 함께, 다른 결과는 두 값으로, 없는 출력은 그 경로로 적는다.
 
 인터페이스 변경 후 계약 출력을 다시 생성한다.
 

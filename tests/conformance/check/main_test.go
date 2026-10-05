@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -247,21 +249,18 @@ func TestDuplicateJSONKeysFail(t *testing.T) {
 	}
 }
 
-func TestRunRemovesStaleVerifiedOutputs(t *testing.T) {
+func TestRunWritesIntoANewDirectory(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	dir := t.TempDir()
-	for _, language := range requiredLanguages {
-		if err := os.WriteFile(filepath.Join(dir, language+".json"), []byte(`{}`), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := removeVerifiedOutputs(dir); err != nil {
+	dir := filepath.Join(t.TempDir(), "out")
+	if err := newOutputDirectory(dir); err != nil {
 		t.Fatal(err)
 	}
-	for _, language := range requiredLanguages {
-		if _, err := os.Stat(filepath.Join(dir, language+".json")); !os.IsNotExist(err) {
-			t.Fatalf("stale %s output remained: %v", language, err)
-		}
+	if err := os.WriteFile(filepath.Join(dir, "go.json"), []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := newOutputDirectory(dir)
+	if err == nil || err.Error() != "output directory "+dir+" already exists; run writes into a new directory of its own so that no earlier output is read as this run's" {
+		t.Fatalf("an existing output directory was accepted or reported as %v", err)
 	}
 }
 
@@ -280,5 +279,24 @@ func TestCommandLogDoesNotExposeDSN(t *testing.T) {
 		if got != want {
 			t.Fatalf("DSN was exposed or command arguments changed: %q", got)
 		}
+	}
+}
+
+// difference case는 output이 vector 기대값과 다를 때 다른 result의 두 값과 더해지거나 빠진 statement를
+// 그 위치, kind, SQL, binds와 함께 적는지 확인한다.
+func TestDifferenceNamesStatementsAndResult(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	want := json.RawMessage(`{"result":1,"statements":[{"binds":[1],"error":null,"kind":"insert","sql":"INSERT a"}]}`)
+	got := json.RawMessage(`{"result":2,"statements":[{"binds":[],"error":null,"kind":"begin","sql":"START TRANSACTION"},{"binds":[2],"error":null,"kind":"insert","sql":"INSERT a"}]}`)
+	lines := describeDifference(want, got)
+	expected := []string{
+		"result: expected 1, got 2",
+		"statements: +1 model, +1 transaction-control, -1 model",
+		"  + #1 begin START TRANSACTION binds []",
+		"  + #2 insert INSERT a binds [2]",
+		"  - #1 insert INSERT a binds [1]",
+	}
+	if !reflect.DeepEqual(lines, expected) {
+		t.Fatalf("difference %q, want %q", lines, expected)
 	}
 }

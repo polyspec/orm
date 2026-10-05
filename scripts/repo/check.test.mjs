@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciAfterCheckErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -53,8 +53,6 @@ const steps = [
   '      - uses: actions/checkout@v5',
   '      - name: database servers',
   '        run: make test-servers',
-  '      - name: server environment',
-  `        run: sed -e 's/^export //' .runtime/servers/env >> "$GITHUB_ENV"`,
   '      - name: checks',
   '        run: |',
   '          make repo-check',
@@ -102,10 +100,18 @@ caseTest('a workflow that creates a symbolic link fails', COMPUTE, () => {
   }
 });
 
-caseTest('a workflow that does not export the server environment fails', COMPUTE, () => {
-  const unexported = steps.replace(`sed -e 's/^export //' .runtime/servers/env >> "$GITHUB_ENV"`, 'true');
-  assert.deepEqual(ciServerErrors(unexported, script), [
-    'ci.yml does not add .runtime/servers/env to $GITHUB_ENV in the step after make test-servers',
+// make check 뒤 case는 저장소의 workflow가 make check 뒤에 검사 step을 두지 않는지 보고, 최소 workflow에서 make
+// check 뒤의 명령 step(make target이든 직접 실행이든)을 거부하며 action step(uses)은 허용하는지 확인한다.
+caseTest('a workflow runs no step after make check', COMPUTE, () => {
+  assert.deepEqual(ciAfterCheckErrors(workflows), []);
+  const base = ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', '      - name: make check', '        run: make check', ''].join('\n');
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': base }), []);
+  const later = base + ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check',
+    '      - name: contracts', '        run: |', '          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results out', '      - uses: actions/upload-artifact@v4', ''].join('\n');
+  const after = (name, command) => `ci.yml step "${name}" runs ${command} after make check; make check runs every check, so one local run covers CI, and a check it lacks belongs in a target of CHECK_TARGETS`;
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': later }), [
+    after('decoder fuzz smoke checks', 'make fuzz-check'),
+    after('contracts', 'node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results out'),
   ]);
 });
 
@@ -597,7 +603,7 @@ caseTest('a workflow step runs a program that reads the lease variables only thr
     'node scripts/leased.mjs && sh scripts/leased.sh',
     'node tests/go-run.mjs plain ./tests/plain',
     'node scripts/plain.mjs',
-    'make interface-results-check',
+    'make conformance-check',
   ]) }, Object.keys(files), path => files[path]);
   const error = (program, file) => `ci.yml step "contracts" runs ${program} outside make; ${file} reads LEASE, which make exports, so the step runs it through a make target`;
   assert.deepEqual(errors, [

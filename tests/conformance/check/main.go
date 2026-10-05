@@ -2,10 +2,14 @@
 // compares each vector's statements and result against tests/conformance/vectors.json
 // with exact JSON number comparison and sorted object keys in diagnostics.
 //
-//	go run ./tests/conformance/check run -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
-//	go run ./tests/conformance/check run -driver mysql -dsn … -driver postgres -dsn … -driver sqlite -dsn …  # build once, check each database
+//	go run ./tests/conformance/check run -out <new dir> -dsn … [-driver postgres|sqlite]  # run all four runners twice, then compare
+//	go run ./tests/conformance/check run -out <new dir> -driver mysql -dsn … -driver postgres -dsn … -driver sqlite -dsn …  # build once, check each database
 //	go run ./tests/conformance/check compare [-driver …] out/…                                  # compare produced outputs (<lang>.json)
 //	go run ./tests/conformance/check record [-driver …] out/{go,php,rust,typescript}.json       # record agreed expectations
+//
+// `run` writes the verified outputs of a database into -out (MySQL) or -out/<driver>,
+// a directory that must not exist yet: every run starts from an empty directory of
+// its own, so no reader takes the outputs of an earlier run for this one.
 //
 // Expectations live in tests/conformance/vectors.json (MySQL) and
 // tests/conformance/vectors.<driver>.json for the other databases: statements
@@ -36,6 +40,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/polyspec/orm/internal/stmtdiff"
 	"github.com/polyspec/orm/internal/testcase"
 )
 
@@ -77,6 +82,8 @@ func chosen(name string) bool { return len(selected) == 0 || slices.Contains(sel
 var (
 	driver string
 	dsn    string
+	// outRoot는 run이 검증된 output을 쓰는 directory다(-out). run마다 새 directory다.
+	outRoot string
 )
 
 // listFlag는 여러 번 줄 수 있는 flag다. run은 -driver와 -dsn을 순서대로 짝짓는다.
@@ -106,6 +113,7 @@ func main() {
 	var drivers, dsns listFlag
 	fs.Var(&drivers, "driver", "mysql|postgres|sqlite (default mysql); run takes one -driver per -dsn")
 	fs.Var(&dsns, "dsn", "bench database DSN URI for every runner (required by run and state)")
+	fs.StringVar(&outRoot, "out", "", "run: a directory that does not exist yet; the verified outputs go to it (MySQL) and to its postgres and sqlite directories")
 	fs.Var(&selected, "vector", "a vector name, repeatable: run, compare and record only the named vectors (the runners' own selection)")
 	fs.Parse(os.Args[2:])
 	if len(drivers) == 0 {
@@ -137,9 +145,10 @@ func main() {
 		must(stateDB.Close())
 		fmt.Printf("%s state %s\n", driver, digest)
 	case "run":
-		if len(dsns) != len(drivers) || slices.Contains(dsns, "") {
+		if len(dsns) != len(drivers) || slices.Contains(dsns, "") || outRoot == "" {
 			usage()
 		}
+		must(newOutputDirectory(outRoot))
 		must(lockDatabases(dsns...))
 		binaries, err := os.MkdirTemp("", "orm-conformance-runners-")
 		must(err)
@@ -161,12 +170,22 @@ func main() {
 	}
 }
 
+// newOutputDirectory는 run의 output directory를 만든다. 이미 있으면 거부한다: 이전 실행의 file이 이 실행의
+// output으로 읽히지 않게, run은 언제나 빈 자기 directory에 쓴다.
+func newOutputDirectory(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("output directory %s already exists; run writes into a new directory of its own so that no earlier output is read as this run's", path)
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return os.MkdirAll(path, 0o755)
+}
+
 // runDatabase는 driver와 dsn의 database에서 네 runner를 두 번씩 실행해 state를 확인하고,
-// output을 vector 기대값과 비교한 뒤 검증된 output을 tests/conformance/out에 남긴다.
+// output을 vector 기대값과 비교한 뒤 검증된 output을 outRoot(MySQL)나 outRoot/<driver>에 남긴다.
 func runDatabase(root string) {
-	out := filepath.Join(root, "tests", "conformance", "out", driverDir())
+	out := filepath.Join(outRoot, driverDir())
 	must(os.MkdirAll(out, 0o755))
-	must(removeVerifiedOutputs(out))
 	pending, err := os.MkdirTemp(out, ".run-")
 	must(err)
 	stateDB, err := openStateDatabase(driver, dsn)
@@ -259,7 +278,7 @@ func driverDir() string {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: check state -dsn x [-driver d] | check run [-driver d] -dsn x [-driver d -dsn x]... | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
+	fmt.Fprintln(os.Stderr, "usage: check state -dsn x [-driver d] | check run -out <new dir> [-driver d] -dsn x [-driver d -dsn x]... | check compare|record [-driver d] <go.json> <php.json> <rust.json> <typescript.json>")
 	os.Exit(2)
 }
 
@@ -410,16 +429,6 @@ func validateOutputFiles(outputs []string) error {
 			return fmt.Errorf("duplicate or unknown language output %q", output)
 		}
 		delete(want, language)
-	}
-	return nil
-}
-
-func removeVerifiedOutputs(directory string) error {
-	for _, language := range requiredLanguages {
-		path := filepath.Join(directory, language+".json")
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return err
-		}
 	}
 	return nil
 }
@@ -644,6 +653,109 @@ func vectorNames(vectors []vec, path string) (map[string]vec, error) {
 	return names, nil
 }
 
+// describeDifference는 vector 기대값과 output의 차이를 적는다: 다른 result는 두 값을, statement는 더해지거나
+// 빠진 statement를 그 위치, kind, SQL, binds, error와 함께(internal/stmtdiff), 그 밖의 다른 field는 두 값을.
+func describeDifference(want, got json.RawMessage) []string {
+	var expected, actual map[string]json.RawMessage
+	if json.Unmarshal(want, &expected) != nil || json.Unmarshal(got, &actual) != nil {
+		return []string{"expected " + canon(want), "got " + canon(got)}
+	}
+	var lines []string
+	keys := map[string]bool{}
+	for key := range expected {
+		keys[key] = true
+	}
+	for key := range actual {
+		keys[key] = true
+	}
+	names := make([]string, 0, len(keys))
+	for key := range keys {
+		names = append(names, key)
+	}
+	slices.Sort(names)
+	for _, key := range names {
+		e, inExpected := expected[key]
+		a, inActual := actual[key]
+		switch {
+		case !inExpected:
+			lines = append(lines, fmt.Sprintf("%s: not expected, got %s", key, canon(a)))
+		case !inActual:
+			lines = append(lines, fmt.Sprintf("%s: missing, expected %s", key, canon(e)))
+		case key == "statements":
+			changes, err := statementChanges(e, a)
+			if err != nil {
+				lines = append(lines, fmt.Sprintf("statements: %v; expected %s, got %s", err, canon(e), canon(a)))
+				continue
+			}
+			if len(changes) == 0 {
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("statements: %s", stmtdiff.Summary(changes, stmtdiff.Group)))
+			for _, change := range changes {
+				lines = append(lines, "  "+change.String())
+			}
+		default:
+			if equal, err := equalJSON(e, a); err != nil || !equal {
+				lines = append(lines, fmt.Sprintf("%s: expected %s, got %s", key, compact(e), compact(a)))
+			}
+		}
+	}
+	return lines
+}
+
+// statementChanges는 두 statement 목록의 차이다. statement 하나의 비교 기준은 정렬된 key의 JSON 전체다.
+func statementChanges(want, got json.RawMessage) ([]stmtdiff.Change, error) {
+	convert := func(raw json.RawMessage) ([]stmtdiff.Statement, error) {
+		var list []json.RawMessage
+		if err := json.Unmarshal(raw, &list); err != nil {
+			return nil, fmt.Errorf("not a statement list: %w", err)
+		}
+		out := make([]stmtdiff.Statement, len(list))
+		for index, item := range list {
+			var fields struct {
+				Kind  string          `json:"kind"`
+				SQL   string          `json:"sql"`
+				Binds json.RawMessage `json:"binds"`
+				Error json.RawMessage `json:"error"`
+			}
+			if err := json.Unmarshal(item, &fields); err != nil {
+				return nil, fmt.Errorf("statement %d: %w", index+1, err)
+			}
+			text := fmt.Sprintf("%s binds %s", fields.SQL, compact(fields.Binds))
+			if len(fields.Error) > 0 && string(fields.Error) != "null" {
+				text += " error " + compact(fields.Error)
+			}
+			out[index] = stmtdiff.Statement{Kind: fields.Kind, Text: text, Key: compact(item)}
+		}
+		return out, nil
+	}
+	expected, err := convert(want)
+	if err != nil {
+		return nil, err
+	}
+	actual, err := convert(got)
+	if err != nil {
+		return nil, err
+	}
+	return stmtdiff.Diff(expected, actual), nil
+}
+
+// compact는 JSON을 정렬된 key의 한 줄로 적는다.
+func compact(raw json.RawMessage) string {
+	if len(raw) == 0 {
+		return "null"
+	}
+	v, err := decodeExact(raw)
+	if err != nil {
+		return string(raw)
+	}
+	b, err := json.Marshal(v)
+	if err != nil {
+		return string(raw)
+	}
+	return string(b)
+}
+
 // canon re-encodes JSON with sorted keys and without changing number precision.
 func canon(raw json.RawMessage) string {
 	v, err := decodeExact(raw)
@@ -691,7 +803,6 @@ func compare(root string, outputs []string) int {
 			failed++
 			continue
 		}
-		want := canon(v.Expect)
 		line := fmt.Sprintf("%-22s", v.Name)
 		var diffs []string
 		for _, lang := range langs {
@@ -704,10 +815,9 @@ func compare(root string, outputs []string) int {
 			equal, err := equalJSON(g, v.Expect)
 			must(err)
 			if !equal {
-				got := canon(g)
 				line += fmt.Sprintf(" %s:DIFF", lang)
 				failed++
-				diffs = append(diffs, fmt.Sprintf("--- %s expected\n%s\n--- %s got\n%s\n", v.Name, want, lang, got))
+				diffs = append(diffs, fmt.Sprintf("--- %s: %s output differs from %s\n%s\n", v.Name, lang, vectorsPath(), strings.Join(describeDifference(v.Expect, g), "\n")))
 			} else {
 				line += fmt.Sprintf(" %s:ok", lang)
 			}

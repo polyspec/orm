@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { checkTargets, ciAfterCheckErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
@@ -116,6 +116,8 @@ failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTarg
 failures.push(...stepTimeoutErrors(workflows));
 // workflow의 step은 lease 변수(LEASE)를 읽는 program을 make 밖에서 실행하지 않는다.
 failures.push(...ciLeaseErrors(workflows, tracked, readTracked));
+// make check를 실행하는 workflow는 그 뒤에 다른 검사 step을 두지 않는다.
+failures.push(...ciAfterCheckErrors(workflows));
 // 모든 workflow의 job은 .github/runner가 선언한 runner에서 실행한다.
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));
 failures.push(...nodeVersionErrors(existsSync(nodeVersionPath) ? readFileSync(nodeVersionPath, 'utf8') : '',

@@ -66,14 +66,11 @@ export function actionSteps(workflow, action) {
 // make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
 const startsServers = run => /^make test-servers\s*$/m.test(run);
 const runsMake = run => /^make\s/m.test(run) && !startsServers(run);
-const exportsServers = run => run.includes('.runtime/servers/env') && run.includes('GITHUB_ENV');
 
 // ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.sh와 같은 정의로 주지
 // 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
 //   - make test-servers를 실행하는 step이 없으면 workflow가 적지 않은 각 변수가 오류다.
 //   - make를 실행하는 다른 step이 그 step보다 앞서면 오류다.
-//   - 그 뒤 .runtime/servers/env를 $GITHUB_ENV에 더하는 step이 다음 step이 아니면 오류다: make를
-//     거치지 않는 검사(go test, cargo test, php)도 같은 변수를 process 환경에서 읽는다.
 //   - workflow가 그 변수를 직접 정의하거나 .runtime/servers/env를 직접 쓰면 오류다.
 //   - symbolic link를 만드는 step(ln -s, symlink)은 오류다.
 export function ciServerErrors(workflow, serversScript) {
@@ -91,8 +88,6 @@ export function ciServerErrors(workflow, serversScript) {
   } else {
     steps.slice(0, server).filter(step => runsMake(step.run)).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make test-servers starts the servers`));
-    if (!exportsServers(steps[server + 1]?.run ?? ''))
-      errors.push('ci.yml does not add .runtime/servers/env to $GITHUB_ENV in the step after make test-servers');
   }
   for (const variable of variables) {
     if (new RegExp(`^\\s*${variable}\\s*:`, 'm').test(workflow))
@@ -339,6 +334,23 @@ export function ciLeaseErrors(workflows, tracked, read) {
           errors.push(`${path} step "${step.name}" runs ${name} outside make; ${reading} reads LEASE, which make exports, so the step runs it through a make target`);
       }
     }
+  }
+  return errors;
+}
+
+// ciAfterCheckErrors는 make check를 실행하는 workflow에서 그 step 뒤에 명령을 실행하는 step마다 오류 하나를
+// 돌려준다. make check가 모든 검사를 실행하므로 로컬 실행 한 번이 CI가 실행하는 것을 모두 다룬다: CI는 준비
+// (checkout, 설치, server 시작) 뒤에 make check 하나만 실행하고, make check에 없는 검사는 CHECK_TARGETS의
+// target에 둔다.
+export function ciAfterCheckErrors(workflows) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows)) {
+    const steps = workflowSteps(workflow);
+    const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
+    if (check === -1) continue;
+    for (const step of steps.slice(check + 1))
+      if (step.run.trim())
+        errors.push(`${path} step "${step.name}" runs ${step.run.split('\n')[0]} after make check; make check runs every check, so one local run covers CI, and a check it lacks belongs in a target of CHECK_TARGETS`);
   }
   return errors;
 }

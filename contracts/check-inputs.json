@@ -25,6 +25,7 @@
     "example-check": {"scope": "suite"},
     "client-db-check": {"scope": "suite"},
     "codec-check": {"scope": "suite"},
+    "fuzz-check": {"scope": "suite"},
     "client-pooler-check": {"scope": "suite"},
     "case-database-check": {"scope": "suite"},
     "dialect-facts-check": {"scope": "suite"},

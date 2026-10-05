@@ -1609,13 +1609,19 @@
         2,
         1000
       ],
-      "statements": 3,
+      "statements": [
+        "select",
+        "select",
+        "select"
+      ],
       "suite": "tests/conformance"
     },
     {
       "id": "relation_empty",
       "expected": 0,
-      "statements": 1,
+      "statements": [
+        "select"
+      ],
       "suite": "tests/conformance"
     },
     {
@@ -1631,7 +1637,7 @@
         "LIMIT_IN_RELATION",
         "CONFIG"
       ],
-      "statements": 0,
+      "statements": [],
       "suite": "tests/conformance"
     },
     {
@@ -1640,7 +1646,13 @@
         "created_equals_updated": true,
         "created_near_clock": true
       },
-      "statements": 3,
+      "statements": [
+        "begin",
+        "insert",
+        "select",
+        "delete",
+        "commit"
+      ],
       "suite": "tests/conformance"
     },
     {
@@ -1661,7 +1673,23 @@
           }
         ]
       },
-      "statements": 9,
+      "statements": [
+        "begin",
+        "savepoint",
+        "insert",
+        "release",
+        "insert",
+        "update",
+        "select",
+        "select",
+        "savepoint",
+        "delete",
+        "delete",
+        "delete",
+        "release",
+        "select",
+        "commit"
+      ],
       "suite": "tests/conformance"
     },
     {
@@ -1671,7 +1699,22 @@
         "members_left": 0,
         "service_left": "NO_ROWS"
       },
-      "statements": 10,
+      "statements": [
+        "begin",
+        "insert",
+        "insert",
+        "insert",
+        "select",
+        "select",
+        "savepoint",
+        "delete",
+        "delete",
+        "delete",
+        "release",
+        "select",
+        "select",
+        "commit"
+      ],
       "suite": "tests/conformance"
     },
     {
@@ -1684,7 +1727,18 @@
         true,
         0
       ],
-      "statements": 5,
+      "statements": [
+        "begin",
+        "insert",
+        "savepoint",
+        "insert",
+        "rollback_to",
+        "release",
+        "select",
+        "select",
+        "rollback",
+        "select"
+      ],
       "suite": "tests/conformance"
     },
     {
@@ -1704,7 +1758,20 @@
           "seq": "$SEQ"
         }
       },
-      "statements": 10,
+      "statements": [
+        "begin",
+        "insert",
+        "update",
+        "select",
+        "update",
+        "select",
+        "update",
+        "select",
+        "update",
+        "select",
+        "rollback",
+        "select"
+      ],
       "suite": "tests/conformance"
     }
   ],
