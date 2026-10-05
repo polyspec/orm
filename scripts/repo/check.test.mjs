@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciAfterCheckErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciAfterCheckErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -992,4 +992,17 @@ caseTest('a deadline on a long operation fails', COMPUTE, () => {
     message('go-default', 'go test without -timeout 0 (the default 10m)', units['go-default']),
     message('go-timeout', 'go test -timeout 10m', units['go-timeout']),
   ]);
+});
+
+// 전체 suite 규칙 case(G5.38-5)는 AGENTS.md와 AGENTS.ko.md가 전체 suite를 push 뒤 CI에서 실행한다는 규칙을 적고 이전의
+// 로컬 규칙을 적지 않는지 확인한다.
+caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, () => {
+  const read = path => readFileSync(new URL(path, repository), 'utf8');
+  assert.deepEqual(fullSuiteRuleErrors({ 'AGENTS.md': read('AGENTS.md'), 'AGENTS.ko.md': read('AGENTS.ko.md') }), []);
+  assert.deepEqual(fullSuiteRuleErrors({ 'AGENTS.md': 'The full suite (`make check`) runs exactly once, when every active checklist\n  item is complete.', 'AGENTS.ko.md': '' }).slice(0, 2), [
+    'AGENTS.md does not state the full-suite rule: "runs on GitHub CI after a push"',
+    'AGENTS.md does not state the full-suite rule: "collect enough information to fix every failure it found before the next CI run"',
+  ]);
+  assert.ok(fullSuiteRuleErrors({ 'AGENTS.md': 'runs exactly once, when every active checklist\n  item is complete', 'AGENTS.ko.md': '' })
+    .includes('AGENTS.md still states the local full-suite rule: "runs exactly once, when every active checklist   item is complete"'));
 });

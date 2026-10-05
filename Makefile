@@ -117,7 +117,8 @@ CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo
 run-databases:
 	$(BUILD_LEASE) && node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(TARGETS)
 
-# check는 전체 suite이고 rerun-failed는 그 suite에서 통과하지 못한 target만 다시 실행한다. 두 진입점의 첫 줄은
+# check는 전체 suite이고 rerun-failed는 그 suite에서 통과하지 못한 target만 다시 실행한다. 전체 suite는 push 뒤
+# GitHub CI에서 실행되고(.github/workflows/ci.yml), 로컬 check는 push 전에 필요한 단계가 아니다. 두 진입점의 첫 줄은
 # 전체 suite의 guard(scripts/check/full-run.mjs)다: 어떤 단계보다 먼저, test server 환경을 읽고 lease program을
 # build하기 전에, docs/checklist.md의 항목(하위 항목 포함)이 [~]인 동안, 추적하는 file에 commit하지 않은 변경이
 # 있는 동안, 그리고 check이면 .runtime/full-run.json이 같은 tree의 전체 실행을 기록하고 있을 때 이유를 출력하고

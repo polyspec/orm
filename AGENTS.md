@@ -22,19 +22,29 @@
   changes cover one item only. A received instruction is triaged first: finish the item in
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
-- The repository's full test suite (`make check`) runs exactly once, when every active checklist
-  item is complete; it never runs per fix or per item. CI runs `make check` on push.
-- `make check` enforces this: before any step it refuses while a checklist item, sub-items
-  included, is `[~]`, while tracked files have uncommitted changes, and when
-  `.runtime/full-run.json` records a full run of the same tree. Commit, complete every active
-  item, then run `make check` once. `make rerun-failed` reruns, on the recorded commit or a
+- The repository's full test suite (`make check`) runs on GitHub CI after a push. One CI run must
+  collect enough information to fix every failure it found before the next CI run. The run never
+  stops at a failure: every target runs unless a setup step it needs failed, which records the
+  target as `not-run` with that step and its first failure lines; the independent parts of a
+  target run after a failed part; and the run completes the whole suite. Each failure records its
+  inputs, the exact command, its output, the expected against the actual value and the environment
+  facts relevant to it, so that it can be diagnosed without running it again locally; a failing
+  case states what failed, where and why. The run ends with a summary of every target's status,
+  time and first failure lines, which CI publishes as the job summary and uploads with the report
+  of that run id, and the job fails when a target failed or did not run.
+- A local `make check` remains possible but is no required step before a push; during an item
+  only its Red/Green tests and `make owner-check` run (below). A push needs the
+  owner's approval each time and happens only when no checklist item is `[~]`. A CI failure is
+  fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
+- `make check` refuses before any step while a checklist item, sub-items included, is `[~]`,
+  while tracked files have uncommitted changes, and when `.runtime/full-run.json` records a full
+  run of the same tree. `make rerun-failed` reruns, on the recorded commit or a
   commit that descends from it, only the targets that did not pass and the owner targets that the
   paths changed since that commit select: for a failure whose cause lies outside the tree (an
   environment or a machine resource), and for a failure of the code fixed as a checklist item
   after the full run. A commit that does not descend from the recorded one gets a new full suite,
   which runs once when every active item is complete. Do not delete or edit the record to run
-  again. A fresh checkout has no record, so CI runs `make check` on a push, and a
-  push happens only when every item is complete.
+  again. A fresh checkout has no record, so CI runs `make check` after every push.
 - Write commit messages in English as `type(scope): subject (#issue)`: a subject of at most 50
   characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
   near 72 characters explaining what changed and why; an optional footer for references. The
