@@ -3,28 +3,39 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { docs, dist, files, serve, siteBase } from './lib.mjs';
-import { PROCESS, sections } from '../../tests/testcase.mjs';
+import { COMPUTE, runCase, runLong } from '../../tests/testcase.mjs';
 
-// docs check는 build한 page를 browser로 읽는 case 하나다. 기한은 PROCESS다: browser 하나가 모든
-// page와 link를 연다.
-const log = sections();
-log.begin('docs-static', PROCESS);
+// docs check는 build한 site를 browser로 읽는다. server 시작과 browser 실행은 장기 작업이므로 runLong으로
+// 단계 로그와 함께 기한 없이 실행하고, page 하나의 검사, link 검사, 검색, theme와 mobile 탐색은 저마다
+// 자기 기한을 가진 case다.
+// PAGE: local server의 page 하나를 열고 본문, 그림, id와 link를 읽는 case. 한 page는 1초 안에 끝나고
+// Playwright 동작 하나의 기한(15초)이 그 안에 있으므로 30초를 넘긴 case는 멈춘 것이다.
+const PAGE = 30_000;
+// INTERACTION: 검색 결과로 이동하거나 theme를 바꾸고 mobile menu로 이동하는 case. 동작마다 15초의
+// Playwright 기한을 가지며, 몇 개의 동작이 2분 안에 끝난다.
+const INTERACTION = 120_000;
+let failed = 0;
+const check = async (name, deadline, body) => { if (!(await runCase(name, deadline, body))) failed++; };
 
 const base = siteBase();
-const prepared = JSON.parse(await readFile(path.join(docs, '.vitepress/generated/site.json'), 'utf8'));
-assert.equal(prepared.base, base, 'Rebuild with the same VITEPRESS_BASE before checking');
-const pages = (await files(dist)).filter(file => file.endsWith('.html'));
-assert.ok(pages.length > 1, 'No static pages were built');
-for (const source of (await files(docs)).filter(file => file.endsWith('.md'))) {
-  const relativeSource = path.relative(docs, source).split(path.sep).join('/');
-  const relativePage = relativeSource.endsWith('.ko.md')
-    ? `ko/${relativeSource.slice(0, -'.ko.md'.length)}.html`
-    : relativeSource.replace(/\.md$/, '.html');
-  const target = path.join(dist, relativePage);
-  assert.ok(pages.includes(target), `Missing HTML for ${source}`);
-}
+let pages = [];
+await check('docs-static/pages', COMPUTE, async () => {
+  const prepared = JSON.parse(await readFile(path.join(docs, '.vitepress/generated/site.json'), 'utf8'));
+  assert.equal(prepared.base, base, 'Rebuild with the same VITEPRESS_BASE before checking');
+  pages = (await files(dist)).filter(file => file.endsWith('.html'));
+  assert.ok(pages.length > 1, 'No static pages were built');
+  for (const source of (await files(docs)).filter(file => file.endsWith('.md'))) {
+    const relativeSource = path.relative(docs, source).split(path.sep).join('/');
+    const relativePage = relativeSource.endsWith('.ko.md')
+      ? `ko/${relativeSource.slice(0, -'.ko.md'.length)}.html`
+      : relativeSource.replace(/\.md$/, '.html');
+    const target = path.join(dist, relativePage);
+    assert.ok(pages.includes(target), `Missing HTML for ${source}`);
+  }
+});
+if (failed) process.exit(1);
 
-const server = await serve(dist, base);
+let server;
 let browser;
 const errors = [];
 const links = new Set();
@@ -41,7 +52,14 @@ function inspect(page, { scripting = true } = {}) {
   });
 }
 try {
-  browser = await chromium.launch({ headless: true });
+  if (!(await runLong('docs-static/server', async ({ step }) => {
+    server = await serve(dist, base);
+    step(`serving ${dist} at ${server.origin}${base}`);
+  }))) process.exit(1);
+  if (!(await runLong('docs-static/browser', async ({ step }) => {
+    browser = await chromium.launch({ headless: true });
+    step(`chromium ${browser.version()} launched headless`);
+  }))) process.exit(1);
   const staticContext = await browser.newContext({ javaScriptEnabled: false });
   staticContext.setDefaultTimeout(15000);
   await staticContext.route('**/*', route => {
@@ -56,83 +74,100 @@ try {
   let diagramCount = 0;
   for (const file of pages) {
     const relative = path.relative(dist, file).split(path.sep).join('/');
-    const url = `${server.origin}${base}${relative}`;
-    assert.equal((await page.goto(url)).status(), 200, relative);
-    const body = page.locator('#VPContent');
-    assert.ok((await body.innerText()).trim().length > 30, `Empty static body: ${relative}`);
-    if (relative === 'index.html') {
-      const text = await body.innerText();
-      assert.ok(text.includes('$count =') && text.includes('let count ='), 'All language examples must remain visible without JavaScript');
-    }
-    // Browsers load all images eagerly when scripting is disabled.
-    const state = await page.evaluate(async () => {
-      await Promise.all([...document.images].map(image => image.decode()));
-      return {
-        ids: [...document.querySelectorAll('[id]')].map(element => element.id),
-        urls: [...document.querySelectorAll('a[href], link[href], img[src], script[src]')].map(element => element.getAttribute('href') || element.getAttribute('src')),
-        diagrams: document.querySelectorAll('.orm-diagram img').length,
-        broken: [...document.images].filter(image => !image.naturalWidth).map(image => image.src),
-      };
+    await check(`docs-static/page/${relative}`, PAGE, async () => {
+      const before = errors.length;
+      const url = `${server.origin}${base}${relative}`;
+      assert.equal((await page.goto(url)).status(), 200, relative);
+      const body = page.locator('#VPContent');
+      assert.ok((await body.innerText()).trim().length > 30, `Empty static body: ${relative}`);
+      if (relative === 'index.html') {
+        const text = await body.innerText();
+        assert.ok(text.includes('$count =') && text.includes('let count ='), 'All language examples must remain visible without JavaScript');
+      }
+      // Browsers load all images eagerly when scripting is disabled.
+      const state = await page.evaluate(async () => {
+        await Promise.all([...document.images].map(image => image.decode()));
+        return {
+          ids: [...document.querySelectorAll('[id]')].map(element => element.id),
+          urls: [...document.querySelectorAll('a[href], link[href], img[src], script[src]')].map(element => element.getAttribute('href') || element.getAttribute('src')),
+          diagrams: document.querySelectorAll('.orm-diagram img').length,
+          broken: [...document.images].filter(image => !image.naturalWidth).map(image => image.src),
+        };
+      });
+      assert.deepEqual(state.broken, [], relative);
+      anchors.set(relative, new Set(state.ids));
+      diagramCount += state.diagrams;
+      for (const href of state.urls) {
+        const target = new URL(href, url);
+        if (target.origin === server.origin) links.add(target.href);
+      }
+      assert.deepEqual(errors.slice(before), [], `Browser errors on ${relative}`);
     });
-    assert.deepEqual(state.broken, [], relative);
-    anchors.set(relative, new Set(state.ids));
-    diagramCount += state.diagrams;
-    for (const href of state.urls) {
-      const target = new URL(href, url);
-      if (target.origin === server.origin) links.add(target.href);
-    }
   }
-  assert.ok(diagramCount >= 12, 'Expected interface and schema diagrams in static HTML');
-  for (const link of links) {
-    const url = new URL(link);
-    assert.ok(url.pathname.startsWith(base), `Link escapes the base: ${link}`);
-    let relative = decodeURIComponent(url.pathname.slice(base.length));
-    if (!relative || relative.endsWith('/')) relative += 'index.html';
-    const target = path.resolve(dist, relative);
-    assert.ok(target.startsWith(dist + path.sep), `Link escapes dist: ${link}`);
-    assert.ok((await stat(target)).isFile(), `Missing target: ${link}`);
-    if (url.hash && relative.endsWith('.html')) {
-      assert.ok(anchors.get(relative)?.has(decodeURIComponent(url.hash.slice(1))), `Missing anchor: ${link}`);
+  await check('docs-static/links', COMPUTE, async ({ step }) => {
+    assert.ok(diagramCount >= 12, 'Expected interface and schema diagrams in static HTML');
+    for (const link of links) {
+      const url = new URL(link);
+      assert.ok(url.pathname.startsWith(base), `Link escapes the base: ${link}`);
+      let relative = decodeURIComponent(url.pathname.slice(base.length));
+      if (!relative || relative.endsWith('/')) relative += 'index.html';
+      const target = path.resolve(dist, relative);
+      assert.ok(target.startsWith(dist + path.sep), `Link escapes dist: ${link}`);
+      assert.ok((await stat(target)).isFile(), `Missing target: ${link}`);
+      if (url.hash && relative.endsWith('.html')) {
+        assert.ok(anchors.get(relative)?.has(decodeURIComponent(url.hash.slice(1))), `Missing anchor: ${link}`);
+      }
     }
-  }
+    step(`${pages.length} HTML pages and ${links.size} internal targets passed without JavaScript`);
+  });
   await staticContext.close();
-  log.step(`${pages.length} HTML pages and ${links.size} internal targets passed without JavaScript`);
 
   const context = await browser.newContext();
   context.setDefaultTimeout(15000);
   const interactive = await context.newPage();
   inspect(interactive);
-  await interactive.goto(`${server.origin}${base}`);
-  await interactive.locator('.VPNavBarSearch button').click();
-  await interactive.locator('#localsearch-input').fill('getCountBy');
-  const result = interactive.locator('.VPLocalSearchBox .result').first();
-  await result.waitFor({ state: 'visible' });
-  const beforeSearch = interactive.url();
-  await result.click();
-  await interactive.waitForURL(url => url.href !== beforeSearch);
-  await interactive.waitForFunction(() => {
-    const id = decodeURIComponent(location.hash.slice(1));
-    return id && document.getElementById(id);
+  await check('docs-static/search', INTERACTION, async () => {
+    const before = errors.length;
+    await interactive.goto(`${server.origin}${base}`);
+    await interactive.locator('.VPNavBarSearch button').click();
+    await interactive.locator('#localsearch-input').fill('getCountBy');
+    const result = interactive.locator('.VPLocalSearchBox .result').first();
+    await result.waitFor({ state: 'visible' });
+    const beforeSearch = interactive.url();
+    await result.click();
+    await interactive.waitForURL(url => url.href !== beforeSearch);
+    await interactive.waitForFunction(() => {
+      const id = decodeURIComponent(location.hash.slice(1));
+      return id && document.getElementById(id);
+    });
+    assert.ok((await interactive.locator('#VPContent').innerText()).includes('getCountBy'), 'Search did not navigate to matching content');
+    assert.deepEqual(errors.slice(before), [], 'Browser errors during search');
   });
-  assert.ok((await interactive.locator('#VPContent').innerText()).includes('getCountBy'), 'Search did not navigate to matching content');
-  await interactive.goto(`${server.origin}${base}interfaces.html`);
-  await interactive.getByRole('switch').first().click();
-  await interactive.waitForFunction(() => document.documentElement.classList.contains('dark'));
-  await interactive.setViewportSize({ width: 390, height: 844 });
-  await interactive.reload();
-  const menu = interactive.locator('.VPLocalNav .menu');
-  await menu.click();
-  await interactive.locator('.VPSidebar.open').waitFor();
-  await interactive.locator('.VPSidebar.open a[href$="schema.html"]').click();
-  await interactive.waitForURL(url => url.pathname.endsWith('/schema.html'));
-  await interactive.waitForFunction(() => document.querySelector('.vp-doc h1')?.textContent.includes('Schema'));
-  const overflow = await interactive.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  assert.ok(overflow <= 1, `Mobile page overflows horizontally by ${overflow}px`);
+  await check('docs-static/theme-and-mobile', INTERACTION, async () => {
+    const before = errors.length;
+    await interactive.goto(`${server.origin}${base}interfaces.html`);
+    await interactive.getByRole('switch').first().click();
+    await interactive.waitForFunction(() => document.documentElement.classList.contains('dark'));
+    await interactive.setViewportSize({ width: 390, height: 844 });
+    await interactive.reload();
+    const menu = interactive.locator('.VPLocalNav .menu');
+    await menu.click();
+    await interactive.locator('.VPSidebar.open').waitFor();
+    await interactive.locator('.VPSidebar.open a[href$="schema.html"]').click();
+    await interactive.waitForURL(url => url.pathname.endsWith('/schema.html'));
+    await interactive.waitForFunction(() => document.querySelector('.vp-doc h1')?.textContent.includes('Schema'));
+    const overflow = await interactive.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(overflow <= 1, `Mobile page overflows horizontally by ${overflow}px`);
+    assert.deepEqual(errors.slice(before), [], 'Browser errors during theme and mobile navigation');
+  });
   await context.close();
-  assert.deepEqual(errors, [], 'Browser errors');
-  console.log(`docs: ${pages.length} static pages, ${links.size} internal links/assets, ${diagramCount} SVG diagrams; no-JS reading, search, theme and mobile navigation passed at ${base}`);
-  log.end();
+  if (failed) {
+    console.log(`docs: ${failed} case(s) failed`);
+    process.exitCode = 1;
+  } else {
+    console.log(`docs: ${pages.length} static pages, ${links.size} internal links/assets, ${diagramCount} SVG diagrams; no-JS reading, search, theme and mobile navigation passed at ${base}`);
+  }
 } finally {
   if (browser) await browser.close();
-  await server.close();
+  if (server) await server.close();
 }

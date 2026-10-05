@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-12: the documentation smoke test starts its server and browser as long operations with no deadline and checks each page, the links, search and mobile navigation as cases of their own; the package declaration test packs, installs and runs tsc as long operations, checks the result as a case and exits 1 when a case fails.
+
 - G5.30-11: `make test-servers` starts ProxySQL, PgBouncer and both PostgreSQL servers with no deadline, shows their log lines up to the ready line, returns on that line and fails with the log when a server exits first; PostgreSQL stops by fast shutdown without the 60 s limit of `pg_ctl -w`.
 
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
