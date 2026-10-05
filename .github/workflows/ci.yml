@@ -46,7 +46,9 @@ jobs:
       - uses: actions/setup-go@v6
         id: go
         if: ${{ !cancelled() }}
-        with: { go-version: "1.27" }
+        # .go-version declares the one Go release of the checks, locally and
+        # here; make repo-check requires it.
+        with: { go-version-file: .go-version }
       # make check runs go with GOPROXY=off; make install-go downloads the
       # modules of go.mod.
       - name: Go modules
@@ -104,6 +106,8 @@ jobs:
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
+          # .composer-version declares the one Composer release of the checks.
+          tools: composer:2.10.3
           coverage: none
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
@@ -112,6 +116,7 @@ jobs:
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
+          tools: composer:2.10.3
           # The checks run PHP without a debugger or coverage driver, as the local
           # PHP does; Xdebug changes the ratios of the hot-path gate.
           coverage: none

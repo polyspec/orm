@@ -105,3 +105,53 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
     errors.push(`rustc ${running} runs the checks; rust-toolchain.toml declares ${channel}`);
   return errors;
 }
+
+// goVersionErrors는 Go toolchain 선언이 하나가 아니거나 실행 중인 go와 다른 곳마다 오류 하나를 돌려준다. declared는
+// `.go-version`의 내용, goMod는 go.mod, workflows는 {path: text}, running은 `go env GOVERSION`에서 `go`를 뺀 version이다.
+//   - declared는 정확한 x.y.z 하나이고, go.mod의 `go x.y` 줄은 그 x.y다.
+//   - actions/setup-go step은 `go-version-file: .go-version`으로 읽고 `go-version`을 직접 적지 않는다. go를 실행하는
+//     workflow는 setup-go를 쓴다.
+//   - running은 declared와 같다.
+export function goVersionErrors(declared, goMod, workflows, running) {
+  const errors = [];
+  const exact = /^(\d+)\.(\d+)\.(\d+)$/.exec(declared.trim());
+  if (!exact || declared !== `${declared.trim()}\n`)
+    errors.push(`.go-version must hold one exact Go release x.y.z and a newline, found ${JSON.stringify(declared)}; write the release that CI and the local checks run`);
+  const line = /^go (\d+\.\d+(?:\.\d+)?)$/m.exec(goMod)?.[1];
+  if (exact && line !== `${exact[1]}.${exact[2]}`)
+    errors.push(`go.mod declares go ${line ?? '(nothing)'}, but .go-version declares ${declared.trim()}; write go ${exact[1]}.${exact[2]} in go.mod`);
+  for (const [path, workflow] of Object.entries(workflows)) {
+    const steps = actionSteps(workflow, 'actions/setup-go');
+    if (runs(workflow, /(^|[\s;&|(])(go\s|make (?:check|install-go)\b)/m) && steps.length === 0)
+      errors.push(`${path} runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version`);
+    for (const step of steps) {
+      if (/^\s*go-version:/m.test(step) || /\{\s*go-version:/.test(step)) errors.push(`${path} declares go-version itself; read go-version-file: .go-version in actions/setup-go`);
+      if (!/(?:^\s*|\{\s*)go-version-file:\s*["']?\.go-version["']?/m.test(step))
+        errors.push(`${path} does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version`);
+    }
+  }
+  if (exact && running !== declared.trim())
+    errors.push(`Go ${running} runs the checks; .go-version declares ${declared.trim()}; install Go ${declared.trim()} or change .go-version together with the CI evidence of the new release`);
+  return errors;
+}
+
+// composerVersionErrors는 Composer 선언이 하나가 아니거나 실행 중인 composer와 다른 곳마다 오류 하나를 돌려준다.
+// declared는 `.composer-version`의 내용, workflows는 {path: text}, running은 `composer --version`의 version이다.
+//   - declared는 정확한 x.y.z 하나다.
+//   - 모든 shivammathur/setup-php step은 `tools: composer:<declared>`로 그 release를 설치한다.
+//   - running은 declared와 같다.
+export function composerVersionErrors(declared, workflows, running) {
+  const errors = [];
+  const version = declared.trim();
+  const exact = /^\d+\.\d+\.\d+$/.test(version) && declared === `${version}\n`;
+  if (!exact) errors.push(`.composer-version must hold one exact Composer release x.y.z and a newline, found ${JSON.stringify(declared)}; write the release that CI and the local checks run`);
+  for (const [path, workflow] of Object.entries(workflows)) {
+    for (const step of actionSteps(workflow, 'shivammathur/setup-php')) {
+      if (exact && !new RegExp(`^\\s*tools:\\s*["']?composer:${version.replaceAll('.', '\\.')}["']?\\s*$`, 'm').test(step))
+        errors.push(`${path} sets up PHP without tools: composer:${version}; setup-php installs the newest Composer otherwise, so add tools: composer:${version}`);
+    }
+  }
+  if (exact && running !== version)
+    errors.push(`Composer ${running} runs the checks; .composer-version declares ${version}; install Composer ${version} (composer self-update ${version}) or change .composer-version together with the CI evidence of the new release`);
+  return errors;
+}

@@ -6,7 +6,7 @@ import { chainedCommandErrors, concurrencyErrors, ciMakeErrors, checkTargets, ci
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
-import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
+import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
@@ -153,6 +153,11 @@ const php = reported('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSI
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, php));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
+// Go와 Composer도 .go-version과 .composer-version이 선언한 정확한 release 하나다.
+const goRelease = reported('go', ['env', 'GOVERSION']).replace(/^go/, '');
+failures.push(...goVersionErrors(text('.go-version'), text('go.mod'), workflows, goRelease));
+const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';
+failures.push(...composerVersionErrors(text('.composer-version'), workflows, composerRelease));
 
 if (failures.length > 0) {
   console.error(failures.join('\n'));

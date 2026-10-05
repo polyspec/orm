@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.79: `.go-version`과 `.composer-version`이 검사의 Go와 Composer release를 고정하고, CI는 그것과 libclang 21을 설치하며, `make repo-check`는 다른 release를 고치는 방법과 함께 거부한다.
+
 - G5.78: Go test는 `runtime.Caller` 대신 working directory에서 저장소를 찾고, `make repo-check`는 Go code의 `runtime.Caller`를 거부한다.
 
 - T9.4: docs/dbspec.md는 PHP 확장(class, namespace로 고르기, build와 검사)을 설명하고, PHP client는 `ext-orm_dbspec`를 제안한다.

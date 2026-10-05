@@ -60,6 +60,8 @@
     "scripts/ci/php-sqlite.php": {"scope": "suite", "reason": "the CI setup step php-sqlite runs it to check the SQLite that the PHP of the runner links, so it gates every PHP target in CI"},
     ".gitignore": {"scope": "lint", "reason": "it only decides which files git ignores; no test reads it, and owner-check and make check list changed files through git"},
     ".node-version": {"scope": "suite", "reason": "it selects the Node release of every check, locally and in CI, so it changes the runtime of every Node and TypeScript target"},
+    ".go-version": {"scope": "suite", "reason": "it selects the Go release of every check, locally and in CI, so it changes the toolchain of every Go target"},
+    ".composer-version": {"scope": "suite", "reason": "it selects the Composer release that installs the PHP dependencies of every PHP check in CI"},
     ".php-version": {"scope": "suite", "reason": "it selects the PHP release of every check, locally and in CI, so it changes the runtime of every PHP target"},
     "LICENSE": {"scope": "lint", "reason": "license text; no code or test reads it"},
     "clients/php/composer.lock": {"scope": "suite", "reason": "it pins the PHP dependencies that every PHP check loads through the autoloader"},
