@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../tests/testcase.mjs';
@@ -42,13 +42,42 @@ function fixture(mysqlPort, replicaPort) {
   return {
     root,
     sql,
-    migrate: () => spawnSync('node', [join(root, 'scripts/test-servers-mysql.mjs'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'], { encoding: 'utf8' }),
+    leases: join(root, '.runtime/servers.leases'),
+    migrate: () => spawnSync('node', [join(root, 'scripts/test-servers-mysql.mjs'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
+      { encoding: 'utf8', env: { ...process.env, LEASES: join(root, '.runtime/servers.leases') } }),
     close: () => {
       spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });
       rmSync(root, { recursive: true, force: true });
     },
   };
 }
+
+// lease case는 다른 실행이 서버의 shared lease를 가진 동안 migration이 아무것도 바꾸지 않고 그 보유자를
+// 적으며 실패하는지 확인한다. 보유자는 FIFO를 읽으며 멈춰 있는 shell이고, 확인 뒤 FIFO에 써서 끝낸다.
+caseTest('the MySQL migration is refused while another run holds a lease of the servers', PROCESS, () => {
+  const lease = process.env.LEASE;
+  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  const servers = fixture(39305, 39306);
+  const release = join(servers.root, 'release');
+  const ready = join(servers.root, 'ready');
+  let holder;
+  try {
+    execFileSync('mkfifo', [release, ready]);
+    // 보유자는 lease를 얻은 뒤 ready에 쓰고 release를 읽으며 기다린다. 이 case는 ready를 읽어 보유를 안다.
+    holder = spawn('sh', ['-c', `${lease} hold ${servers.leases} shared --pid $$ && echo held > ${ready} && read line < ${release}`], { stdio: 'ignore' });
+    assert.equal(execFileSync('sh', ['-c', `read state < ${ready}; echo $state`], { encoding: 'utf8' }), 'held\n');
+    const refused = servers.migrate();
+    assert.notEqual(refused.status, 0, refused.stdout);
+    assert.match(refused.stderr, /lease: refused the exclusive lease of .*servers\.leases; held by:\n  shared lease of pid [0-9]+ \(/);
+    assert.match(refused.stderr, /the MySQL migration needs the exclusive lease of the servers; nothing changed/);
+    assert.ok(!existsSync(join(servers.root, '.runtime/mysql-migration')), 'the refused migration started its work');
+    assert.equal(readFileSync(join(servers.root, '.runtime/servers/mysql.settings'), 'utf8'), `lower_case_table_names=${platformDefault}\n`);
+    assert.equal(servers.sql(39305, 'SELECT @@lower_case_table_names').trim(), String(platformDefault));
+  } finally {
+    if (holder?.exitCode === null) holder.kill();
+    servers.close();
+  }
+});
 
 caseTest('a MySQL setting other than the declared one migrates the data with equal counts, then nothing', PROCESS, () => {
   const servers = fixture(39301, 39302);

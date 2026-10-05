@@ -29,6 +29,19 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 DIR="$ROOT/.runtime/servers"
 ENV_FILE="$DIR/env"
+# LEASES is the lease directory of the servers (tests/lease). A run that uses
+# the servers holds a shared lease there (WITH_TEST_ENV of the Makefile reads
+# the path from the environment file); stopping the servers, a fresh start and
+# the MySQL migration hold the exclusive lease, which is refused while any
+# lease is held, naming the holders. LEASE is the lease program that the
+# Makefile builds.
+LEASES="$ROOT/.runtime/servers.leases"
+
+# hold_exclusive holds the exclusive lease of the servers until this script
+# exits, or fails naming the holders of the leases that block it.
+hold_exclusive() {
+  "${LEASE:?LEASE is unset; run this through make, which builds it}" hold "$LEASES" exclusive --pid $$
+}
 MYSQL_PID="$DIR/mysql.pid"
 MYSQL_REPLICA_PID="$DIR/mysql-replica.pid"
 POSTGRES_DATA="$DIR/postgres"
@@ -326,6 +339,7 @@ export ORM_BENCH_MYSQL_DSN='$mysql/orm_bench'
 export BENCH_MYSQL_DSN='$mysql/orm_bench?timezone=%2B00:00'
 export BENCH_POSTGRES_DSN='$postgres/orm_bench?sslmode=disable&timezone=%2B00:00'
 export BENCH_SQLITE_DSN='sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00'
+export ORM_TEST_SERVERS_LEASES='$LEASES'
 EOF
   tls_env >> "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"
@@ -413,7 +427,7 @@ start() {
     fi
     # The running servers keep their data; a MySQL setting that differs from
     # the declared one moves the data into newly initialized directories.
-    node "$ROOT/scripts/test-servers-mysql.mjs" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
+    LEASES=$LEASES node "$ROOT/scripts/test-servers-mysql.mjs" "$0" "$DIR" "$MYSQL_PORT" "$MYSQL_REPLICA_PORT" "$MYSQL_LOWER_CASE"
     write_env
     echo "test-servers: running; environment $ENV_FILE"
     cat "$ENV_FILE"
@@ -427,6 +441,7 @@ start() {
   for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer; do
     command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed" >&2; exit 1; }
   done
+  hold_exclusive
   mkdir -p "$DIR"
   trap 'status=$?; if [ "$status" -ne 0 ]; then echo "test-servers: start failed; logs are in $DIR" >&2; stop_servers; fi' EXIT
 
@@ -504,6 +519,7 @@ case "$1" in
       echo "test-servers: no servers under $DIR"
       exit 0
     fi
+    hold_exclusive
     stop_servers
     rm -rf "$DIR"
     echo "test-servers: removed $DIR"

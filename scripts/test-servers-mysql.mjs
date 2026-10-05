@@ -17,7 +17,7 @@
 // 다음 단계부터 이어 간다. 새 data directory는 기존 것을 옮긴 뒤에만 지우고 다시 만든다.
 //
 // Usage: node scripts/test-servers-mysql.mjs <test-servers.sh> <servers dir> <mysql-port> <mysql-replica-port> <lower_case_table_names>
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -106,6 +106,19 @@ async function catalogCounts(port, schemas, context) {
   return counts;
 }
 
+// holdExclusive는 이 process가 끝날 때까지 서버의 exclusive lease(tests/lease)를 가진다. migration은
+// 서버를 멈추고 data를 옮기므로, 다른 실행이 서버의 lease를 가지고 있으면 아무것도 바꾸지 않고 그
+// 보유자를 적으며 실패한다. LEASE와 LEASES는 test-servers.sh가 준다.
+function holdExclusive() {
+  const { LEASE: lease, LEASES: leases } = process.env;
+  if (!lease || !leases) throw new Error('LEASE and LEASES are unset; run make test-servers');
+  const result = spawnSync(lease, ['hold', leases, 'exclusive', '--pid', String(process.pid)], { stdio: 'inherit' });
+  if (result.status !== 0) {
+    console.error('test-servers: the MySQL migration needs the exclusive lease of the servers; nothing changed');
+    process.exit(result.status ?? 1);
+  }
+}
+
 async function main() {
   const [script, dir, mysqlPort, replicaPort, declared] = process.argv.slice(2);
   if (!script || !dir || !mysqlPort || !replicaPort || !/^[0-2]$/.test(declared ?? '')) {
@@ -135,9 +148,11 @@ async function main() {
       return;
     }
     console.log(`test-servers: MySQL data has ${recorded.trim()}; the declared ${wanted.trim()} needs a migration under ${work}`);
+    holdExclusive();
     mkdirSync(work, { recursive: true });
     writeFileSync(state('stamp'), new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, '').replace('T', '-') + '\n');
   } else {
+    holdExclusive();
     console.log(`test-servers: resuming the MySQL migration under ${work}`);
   }
   const stamp = readFileSync(state('stamp'), 'utf8').trim();

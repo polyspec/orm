@@ -1,4 +1,4 @@
-.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop
+.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -45,7 +45,10 @@ export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
 # client-pooler-check가 ORM_TEST_*_DSN을 pooler DSN으로 바꾸어도 rollback 실패 case는 이 DSN으로
 # server에서 transaction의 session을 끝낸다. ProxySQL은 text protocol의 KILL을 자기 client session의
 # 명령으로 가로채기 때문이다.
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
+# WITH_TEST_ENV는 또 이 줄의 shell이 끝날 때까지 server의 shared lease(tests/lease)를 가진다. lease
+# directory는 TEST_ENV의 ORM_TEST_SERVERS_LEASES다. 서버의 정지, 새 시작, MySQL migration은 exclusive
+# lease를 요구하므로 이 줄이 실행되는 동안 거부되고, 보유자로 이 줄을 적는다.
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
@@ -58,6 +61,10 @@ GO_TEST = node tests/go-test.mjs -v -timeout 0
 # 종료 코드와 PASS나 FAIL을 출력한다. 성공과 실패는 시계가 아니라 명령의 종료 코드와 오류로 정한다.
 # 기한은 test case 안에만 있다.
 RUN_LONG = node tests/run-long.mjs
+# LEASE는 여러 실행이 함께 쓰는 test 자원의 보유를 다루는 program이다(tests/lease). 그 build는 장기
+# 작업이므로 RUN_LONG으로 기한 없이 실행한다.
+LEASE = $(abspath .runtime/bin/lease)
+BUILD_LEASE = $(RUN_LONG) go-build/lease -- go build -o $(LEASE) ./tests/lease
 TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 
 # check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
@@ -69,8 +76,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
 CHECK_TARGETS = checklist-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 check:
-	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
-	node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
 
 # bench는 성능 측정(2000 table stress 문서의 parse budget, 적용, introspection과 비교, CPU 시간
 # 제한)을 check와 같은 runner로 target마다 실행한다.
@@ -352,11 +358,13 @@ BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- go build -o $(STOP_PRO
 
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
-	STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mjs scripts/test-servers-mysql.test.mjs
+	$(BUILD_LEASE)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mjs scripts/test-servers-mysql.test.mjs
 
 test-servers:
 	$(BUILD_STOP_PROCESS)
-	STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
+	$(BUILD_LEASE)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the
@@ -366,7 +374,19 @@ test-servers-tls:
 
 test-servers-stop:
 	$(BUILD_STOP_PROCESS)
-	STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh stop
+	$(BUILD_LEASE)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh stop
+
+# test-servers-leases는 server의 lease 보유자를 적고, test-servers-leases-clear는 보유자 process가 없어진
+# 죽은 lease를 지우며 지운 것을 적는다. 죽은 lease는 저절로 가져가지 않는다.
+SERVERS_LEASES = $(abspath .runtime/servers.leases)
+test-servers-leases:
+	$(BUILD_LEASE)
+	$(LEASE) list $(SERVERS_LEASES)
+
+test-servers-leases-clear:
+	$(BUILD_LEASE)
+	$(LEASE) clear-dead $(SERVERS_LEASES)
 
 # feature-unit-check는 feature 문서가 manifest와 같은지와 coverage, owner 선택의 unit test를 실행한다.
 # feature-check는 TypeScript client를 한 번 build한 뒤 모든 기능의 coverage(native test binary를 한 번

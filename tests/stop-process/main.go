@@ -1,8 +1,8 @@
 // stop-process <signal> <pid>는 process 하나에 signal을 보내고, 그 process가 끝났다는 운영체제의 알림을
 // 받으면 돌아온다. polling도 기한도 없다: 서버 정지는 장기 작업이고, 끝났는지는 운영체제가 알리는
 // 종료로 판정한다. 감시를 먼저 등록한 뒤 signal을 보내므로 그 사이에 끝난 process도 놓치지 않는다.
-// 등록할 때 이미 없는 process는 그 사실을 출력하고 멈춘 것으로 본다. 감시는 운영체제마다 다르다:
-// darwin은 kqueue의 EVFILT_PROC NOTE_EXIT(watch_darwin.go), linux는 pidfd의 poll(watch_linux.go)이다.
+// 등록할 때 이미 없는 process는 그 사실을 출력하고 멈춘 것으로 본다. 감시는 internal/procevent의
+// WatchExit다(darwin은 kqueue의 EVFILT_PROC NOTE_EXIT, linux는 pidfd의 poll).
 //
 // scripts/test-servers.sh의 stop_pid가 Makefile이 build한 이 program(STOP_PROCESS)을 실행한다.
 package main
@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/polyspec/orm/internal/procevent"
 	"golang.org/x/sys/unix"
 )
 
@@ -32,7 +33,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "stop-process: invalid signal %q or pid %q\n", os.Args[1], os.Args[2])
 		os.Exit(2)
 	}
-	wait, err := watch(pid)
+	wait, err := procevent.WatchExit(pid)
 	if errors.Is(err, unix.ESRCH) {
 		fmt.Printf("stop-process: process %d had already exited\n", pid)
 		return
