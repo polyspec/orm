@@ -1,5 +1,5 @@
-.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
-.NOTPARALLEL: check docs-check docs-verify-idempotent
+.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
 # and the ProxySQL and PgBouncer poolers of the database checks on these ports
@@ -106,15 +106,27 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
 run-databases:
 	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(TARGETS)
 
+# check는 전체 suite이고 rerun-failed는 그 suite에서 통과하지 못한 target만 다시 실행한다. 두 진입점의 첫 줄은
+# 전체 suite의 guard(scripts/check/full-run.mjs)다: 어떤 단계보다 먼저, test server 환경을 읽고 lease program을
+# build하기 전에, docs/checklist.md의 항목(하위 항목 포함)이 [~]인 동안, 추적하는 file에 commit하지 않은 변경이
+# 있는 동안, 그리고 check이면 .runtime/full-run.json이 같은 tree의 전체 실행을 기록하고 있을 때 이유를 출력하고
+# 거부한다. runner(--full-run, --rerun-failed)는 실행을 기록하기 직전에 다시 결정하고, 첫 단계 전과 각 단계의
+# 시작과 끝마다 기록을 쓴다. rerun-failed는 현재 tree의 기록이 없으면 거부된다. 새 checkout(GitHub CI)에는
+# 기록이 없다.
 check:
-	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+	node scripts/check/full-run.mjs decide check
+	$(WITH_TEST_ENV) node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+
+rerun-failed:
+	node scripts/check/full-run.mjs decide rerun-failed
+	$(WITH_TEST_ENV) node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))
 
 # bench는 성능 측정(2000 table stress 문서의 parse budget, 적용, introspection과 비교, CPU 시간
 # 제한)을 check와 같은 runner로 target마다 실행한다.
@@ -153,6 +165,11 @@ client-pooler-check: lease-tool
 checklist-check:
 	node --test scripts/checklist/check.test.mjs
 	node scripts/checklist/check.mjs
+
+# full-run-check는 전체 suite의 guard와 runner(scripts/check/full-run.mjs, scripts/check/run.mjs)를 임시 git
+# checkout과 stub 단계로 검사한다. 실제 target과 database는 실행하지 않는다.
+full-run-check:
+	node --test scripts/check/full-run.test.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
