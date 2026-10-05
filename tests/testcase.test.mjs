@@ -146,6 +146,41 @@ caseTest('testcase/run-case', PROCESS, async () => {
   assert.equal(usage.code, 2, usage.stdout);
 });
 
+// run-long case는 느리지만 정상인 build(출력 사이에 1.5초를 쉬고 0으로 끝나는 명령)가 기한 없이
+// 끝까지 실행되어 출력 줄, 종료 코드 0과 PASS를 보고하는지, 실패한 명령은 종료 코드와 오류 출력을
+// 보고하는지, 기한 인자는 받지 않는지 확인한다. 같은 build는 기한 1초의 run-case에서 실패한다.
+caseTest('testcase/run-long', PROCESS, async () => {
+  const runLongScript = new URL('./run-long.mjs', import.meta.url).pathname;
+  const run = async args => {
+    try {
+      const { stdout, stderr } = await promisify(execFile)(process.execPath, [runLongScript, ...args]);
+      return { code: 0, stdout, stderr };
+    } catch (error) {
+      return { code: error.code, stdout: error.stdout, stderr: error.stderr };
+    }
+  };
+  const slow = "console.log('compiling one'); setTimeout(() => { console.error('compiling two'); console.log('finished'); }, 1500)";
+  const passed = await run(['fixture/slow-build', '--', process.execPath, '-e', slow]);
+  assert.equal(passed.code, 0, passed.stdout);
+  inOrder(passed.stdout, ['RUN fixture/slow-build no-deadline', `STEP fixture/slow-build ${elapsed}: compiling one`,
+    `STEP fixture/slow-build ${elapsed}: compiling two`, `STEP fixture/slow-build ${elapsed}: finished`,
+    `STEP fixture/slow-build ${elapsed}: exit 0`, `PASS fixture/slow-build ${elapsed}`]);
+  assert.match(passed.stdout, /PASS fixture\/slow-build elapsed=(?:1\.[5-9][0-9]*|[2-9](?:\.[0-9]+)?)s\n/);
+  const cwd = await mkdtemp(join(tmpdir(), 'orm-run-long-'));
+  try {
+    const moved = await run(['fixture/cwd', '--cwd', cwd, '--', process.execPath, '-e', 'console.log(process.cwd())']);
+    assert.equal(moved.code, 0, moved.stdout);
+    assert.ok(moved.stdout.includes(`: ${cwd}\n`) || moved.stdout.includes(`: /private${cwd}\n`), moved.stdout);
+  } finally { await rm(cwd, { recursive: true, force: true }); }
+  const failed = await run(['fixture/broken-build', '--', process.execPath, '-e', "console.error('error: missing symbol'); process.exit(3)"]);
+  assert.equal(failed.code, 1, failed.stdout);
+  inOrder(failed.stdout, ['RUN fixture/broken-build no-deadline', `STEP fixture/broken-build ${elapsed}: error: missing symbol`,
+    `FAIL fixture/broken-build ${elapsed}: .* exited with 3`]);
+  const deadline = await run(['fixture/deadline', '5m', '--', 'true']);
+  assert.equal(deadline.code, 2, deadline.stdout);
+  assert.match(deadline.stderr, /usage: node tests\/run-long\.mjs <name> \[--cwd <dir>\] -- /);
+});
+
 caseTest('testcase/caseTest', PROCESS, async () => {
   const { code, stdout } = await runChild(`
 import { caseTest } from ${JSON.stringify(harness)};

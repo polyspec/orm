@@ -264,8 +264,8 @@ export function expand(command, variables) {
 // 앞의 환경 변수 대입은 정체를 바꾸지 않는다. test runner가 아니면 undefined다.
 export function runnerIdentity(segment) {
   const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
-  // tests/run-case.mjs는 `--` 뒤의 명령을, tests/go-test.mjs는 go test를 실행한다.
-  const wrapped = /^node\s+tests\/run-case\.mjs\s.*?\s--\s+(.*)$/.exec(command);
+  // tests/run-case.mjs와 tests/run-long.mjs는 `--` 뒤의 명령을, tests/go-test.mjs는 go test를 실행한다.
+  const wrapped = /^node\s+tests\/run-(?:case|long)\.mjs\s.*?\s--\s+(.*)$/.exec(command);
   if (wrapped) return runnerIdentity(wrapped[1]);
   if (/^(?:go\s+test|node\s+tests\/go-test\.mjs)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';

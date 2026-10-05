@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-2: `tests/run-long.mjs` (`RUN_LONG` in the Makefile) and `runLong` of `tests/testcase.mjs` run a long operation with step logs, its exit code and result, and no deadline.
+
 - G5.30-1: AGENTS.md states that a test case has its own timeout and that a long operation (a build, an install, a tool run, a whole suite or a server) gets detailed step logs instead of a timeout, with no deadline.
 
 - G5.31: the PHP client sends every PostgreSQL statement with its binds in one round trip (`Pdo\Pgsql::ATTR_DISABLE_PREPARES`) instead of a separate prepare round trip and transaction per statement text, and sets the session time zone as the startup parameter `TimeZone=UTC` instead of `SET TIME ZONE`; `server_transactions` of `tests/events/vectors.json` counts the server transactions per statement in the four clients.

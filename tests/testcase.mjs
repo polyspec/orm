@@ -6,6 +6,9 @@
 //   PASS <case> elapsed=<경과>
 //   FAIL <case> elapsed=<경과>: <이유>
 //
+// 장기 작업(build, 설치, 도구 실행)은 기한이 없다. runLong은 RUN 줄에 기한 대신 `no-deadline`을
+// 쓴다(`RUN <작업> no-deadline`). 그 성공과 실패는 시계가 아니라 관측한 결과와 오류로 정한다.
+//
 // 기한은 wall-clock 시간이다. 멈춘 case를 끝내는 timer이고 case 자신의 계산 시간을 재는
 // 제한이 아니기 때문이다(AGENTS.md testing rule).
 import { performance } from 'node:perf_hooks';
@@ -139,11 +142,24 @@ export function sections() {
 // runGroup은 저마다 기한을 가진 case를 묶은 일 하나(다른 runner를 실행하는 명령)를 실행하고
 // "RUN <group> group", 결과와 경과 시간을 출력한다. 묶음 자신은 기한이 없다. body는
 // { step }을 받는다. 통과하면 true, 실패하면 false를 돌려준다.
-export async function runGroup(name, body) {
+export function runGroup(name, body) {
+  return runWithoutDeadline(name, 'group', body);
+}
+
+// runLong은 장기 작업 하나(build, 설치, 도구 실행)를 기한 없이 실행하고 "RUN <name> no-deadline",
+// 단계 줄, 결과와 경과 시간을 출력한다. 느리지만 정상인 작업이 시계 때문에 실패하지 않도록 timer를
+// 두지 않는다. 진행은 body가 step으로 내보내는 단계 줄(하위 process의 출력 줄)로 관측하고, 성공과
+// 실패는 body가 관측한 결과(종료 코드와 오류)로 정한다. body는 { step }을 받는다. 통과하면 true,
+// 실패하면 false를 돌려준다.
+export function runLong(name, body) {
+  return runWithoutDeadline(name, 'no-deadline', body);
+}
+
+async function runWithoutDeadline(name, kind, body) {
   const started = performance.now();
   const elapsed = () => duration(performance.now() - started);
   const step = text => console.log(`STEP ${name} elapsed=${elapsed()}: ${text}`);
-  console.log(`RUN ${name} group`);
+  console.log(`RUN ${name} ${kind}`);
   try {
     await body({ step });
     console.log(`PASS ${name} elapsed=${elapsed()}`);
