@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -572,6 +572,39 @@ caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
   [step('uses: actions/checkout@v5'), step('install'), step('checks')]);
   assert.deepEqual(stepTimeoutErrors({ 'ci.yml': plain.replace('    runs-on:', '    timeout-minutes: 360\n    runs-on:') }), [
     'ci.yml has timeout-minutes outside its steps, a deadline for a whole job; a long operation gets step logs and no deadline',
+  ]);
+});
+
+// lease case는 저장소의 workflow가 lease 변수를 읽는 program을 make 밖에서 실행하지 않는지 보고, 최소 workflow의
+// step이 그런 program(Go checker, Node script, shell script)을 직접 실행하면 거부하는지 확인한다. make target과
+// lease를 읽지 않는 program은 허용한다.
+caseTest('a workflow step runs a program that reads the lease variables only through make', COMPUTE, () => {
+  const all = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean);
+  const read = path => all.includes(path) ? text(path) : undefined;
+  assert.deepEqual(ciLeaseErrors(workflows, all, read), []);
+  const files = {
+    'tests/leased/main.go': 'package main\nfunc main() { _ = os.Getenv("LEASE") }\n',
+    'tests/leased/main_test.go': 'package main\n',
+    'tests/plain/main.go': 'package main\nfunc main() {}\n',
+    'scripts/leased.mjs': "const { LEASE: lease, CARGO_LEASES: leases } = process.env;\n",
+    'scripts/leased.sh': '"${LEASE:?}" run "$CARGO_LEASES" exclusive -- true\n',
+    'scripts/plain.mjs': 'console.log(1);\n',
+  };
+  const workflow = run => ['jobs:', '  test:', '    steps:', '      - name: contracts', '        run: |', ...run.map(line => `          ${line}`), ''].join('\n');
+  const errors = ciLeaseErrors({ 'ci.yml': workflow([
+    'node tests/go-run.mjs leased ./tests/leased --results out',
+    'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/leased',
+    'node scripts/leased.mjs && sh scripts/leased.sh',
+    'node tests/go-run.mjs plain ./tests/plain',
+    'node scripts/plain.mjs',
+    'make interface-results-check',
+  ]) }, Object.keys(files), path => files[path]);
+  const error = (program, file) => `ci.yml step "contracts" runs ${program} outside make; ${file} reads LEASE, which make exports, so the step runs it through a make target`;
+  assert.deepEqual(errors, [
+    error('./tests/leased', 'tests/leased/main.go'),
+    error('./tests/leased', 'tests/leased/main.go'),
+    error('scripts/leased.mjs', 'scripts/leased.mjs'),
+    error('scripts/leased.sh', 'scripts/leased.sh'),
   ]);
 });
 

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-13: CI는 interface 결과 checker를 lease 변수를 export하는 `make interface-results-check`로 실행하고, `make repo-check`는 lease를 읽는 program을 make 밖에서 실행하는 workflow step을 실패로 본다.
+
 - G5.36: PHP client는 `new Config(poolSize: n)`으로 process의 요청을 넘어 연결을 유지한다. `Db`는 DSN의 pool에서 연결을 잡고, 앞의 `poolIdleSize`개(0이면 모두) 연결은 연결할 때의 session 설정을 가진 채 뒤 요청의 `Db`를 위해 열려 있으며, pool을 넘는 `Db`는 `CONFIG`를 받고, transaction 안에서 끝난 요청의 transaction은 MySQL named lock, MySQL local 값, SQLite mode와 함께 rollback된다. 모든 client는 server가 끝냈거나 끊긴 연결을 새 code `CONNECTION_LOST`로 보고하며, PHP client는 `Db`의 첫 statement가 그렇게 실패하면 새 연결에서 한 번 더 전송한다.
 
 - G5.34-2: `make rerun-failed`는 기록된 commit의 후손 commit에서 실행되고, 통과하지 못한 target과 그 commit 뒤에 바뀐 path의 owner target을 다시 실행한다.

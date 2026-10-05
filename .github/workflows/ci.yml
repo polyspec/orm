@@ -123,7 +123,8 @@ jobs:
         run: make fuzz-check
       - name: common state and execution contracts
         if: ${{ !cancelled() }}
-        run: |
-          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out
-          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/postgres
-          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/sqlite
+        # The checker builds its Rust extractor under the lease of the shared
+        # target directory, so it runs through make, which exports the lease
+        # variables; make repo-check fails when a step runs such a program
+        # outside make.
+        run: make interface-results-check

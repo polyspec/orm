@@ -300,3 +300,45 @@ export function ciRerunErrors(workflow, makefile) {
   }
   return errors;
 }
+
+// LEASE_READ는 program이 lease 변수(LEASE, make가 export한다)를 환경에서 읽는 형태다: Go의 os.Getenv,
+// Node의 process.env, shell의 $LEASE.
+const LEASE_READ = /Getenv\("LEASE"\)|process\.env\.LEASE\b|\bLEASE\s*:\s*\w+[^\n]*\}\s*=\s*process\.env|\$\{?LEASE\b/;
+
+// leaseProgram은 명령 조각이 실행하는 repository program의 source file을 돌려준다: `node tests/go-run.mjs
+// <name> <package>`와 `go run <package>`는 그 package의 Go file(test 제외), `node <file>`과 `sh <file>`,
+// `./<file>`은 그 file이다. repository program이 아니면 빈 목록이다.
+function leaseProgram(segment, tracked) {
+  const command = segment.replace(/^(?:[A-Z_][A-Z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, '');
+  const goPackage = /^node\s+tests\/go-run\.mjs\s+\S+\s+(\S+)/.exec(command)?.[1] ?? /^go\s+run\s+(\.\/\S+)/.exec(command)?.[1];
+  if (goPackage) {
+    const directory = goPackage.replace(/^\.\//, '').replace(/\/$/, '');
+    return { name: goPackage, files: tracked.filter(path => path.startsWith(`${directory}/`) && !path.slice(directory.length + 1).includes('/') && path.endsWith('.go') && !path.endsWith('_test.go')) };
+  }
+  const file = /^node\s+(?:-\S+\s+)*([\w./-]+\.m?js)\b/.exec(command)?.[1]
+    ?? /^(?:sh|bash)\s+(?:-\S+\s+)*([\w./-]+)/.exec(command)?.[1]
+    ?? /^(\.\/[\w./-]+)/.exec(command)?.[1];
+  if (!file) return { name: '', files: [] };
+  const path = file.replace(/^\.\//, '');
+  return { name: file, files: tracked.includes(path) ? [path] : [] };
+}
+
+// ciLeaseErrors는 workflow의 step이 lease 변수를 읽는 repository program을 make 밖에서 실행하는 곳마다 오류
+// 하나를 돌려준다. 그런 program(예: Rust 추출기를 공유 target directory의 lease 아래에서 build하는
+// tests/interfaces/check)은 make가 export하는 LEASE와 lease directory 없이 실패하므로, CI도 make check처럼
+// 그것을 make target으로 실행한다. workflows는 {path: text}, tracked는 추적하는 file, read는 file의 내용을
+// 돌려주는 함수다.
+export function ciLeaseErrors(workflows, tracked, read) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows)) {
+    for (const step of workflowSteps(workflow)) {
+      for (const segment of step.run.split('\n').flatMap(segments)) {
+        const { name, files } = leaseProgram(segment, tracked);
+        const reading = files.find(file => LEASE_READ.test(read(file) ?? ''));
+        if (reading)
+          errors.push(`${path} step "${step.name}" runs ${name} outside make; ${reading} reads LEASE, which make exports, so the step runs it through a make target`);
+      }
+    }
+  }
+  return errors;
+}
