@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { chainedCommandErrors, concurrencyErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
@@ -113,6 +114,8 @@ failures.push(...goCargoErrors(goFiles));
 failures.push(...deferredExitErrors(goFiles));
 // Go code는 runtime.Caller로 file을 찾지 않는다: 그 경로는 binary가 compile된 곳이고 실행하는 checkout이 아니다.
 failures.push(...callerPathErrors(goFiles));
+// 실행 조건이 없다는 실패 message는 원인과 고치는 방법을 함께 적는다.
+failures.push(...fixlessMessageErrors(Object.fromEntries(messageFiles(tracked).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // test는 측정한 시간이 한도를 넘었다고 실패하지 않는다: 성능은 측정하고 경고로 보고한다(AGENTS.md).
 const testFile = path => /(?:_test\.go|\.test\.mjs|\/tests\/.*\.(?:php|rs|mjs|go)|^tests\/.*\.(?:mjs|go|php)|\/examples\/.*\.rs|\/src\/lib\.rs)$/.test(path);
 failures.push(...timeFailureErrors(Object.fromEntries(tracked.filter(testFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));

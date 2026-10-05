@@ -117,7 +117,7 @@ function endSession(string $dsn): void
     $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
     $server = getenv($env);
     if ($server === false || $server === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
+        throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
     }
     // case database 이름은 case DSN의 path다. server 연결도 그 database를 연다.
     $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
@@ -246,7 +246,7 @@ function firstStatementLost(string $dsn): void
     $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
     $server = getenv($env);
     if ($server === false || $server === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
+        throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
     }
     $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
     [, $pdo] = native($direct);

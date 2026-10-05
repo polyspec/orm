@@ -30,7 +30,7 @@ fn dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
         Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run");
             std::process::exit(1)
         }
         Err(e) => {

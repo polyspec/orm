@@ -133,7 +133,7 @@ $targets = ['sqlite' => "sqlite://$work/model.sqlite"];
 foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $env) {
     $v = getenv($env);
     if ($v === false || $v === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
+        throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
     }
     $targets[$driver] = $v;
 }
@@ -672,7 +672,7 @@ $probeTable = null;
 try {
     $single = getenv('ORM_TEST_PGBOUNCER_SINGLE_DSN');
     if ($single === false || $single === '') {
-        throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+        throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
     }
     $table = case_name();
     $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
@@ -829,7 +829,7 @@ foreach (['mysql' => 'MYSQL', 'postgres' => 'POSTGRES'] as $driver => $env) {
     try {
         $replica = getenv("ORM_TEST_{$env}_REPLICA_DSN");
         if ($replica === false || $replica === '') {
-            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip");
+            throw new RuntimeException("ORM_TEST_{$env}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
         }
         // replica는 primary의 case database를 같은 이름으로 복제한다. MySQL은 그 database가 replica에
         // 생긴 뒤에야 연결할 수 있으므로 공유 replica database로 기다린 뒤 연결한다.

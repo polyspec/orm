@@ -13,8 +13,9 @@ const DEADLINE: Duration = Duration::from_secs(300);
 const TENANT: i64 = 990005;
 
 async fn connect() -> (String, CatalogConnection) {
-    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    let driver = std::env::var("ORM_FEATURE_DATABASE")
+        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
     let catalog = CatalogConnection::connect(&dsn).await.unwrap_or_else(|e| panic!("{driver}: catalog connection: {}", e.replace(&dsn, "[dsn]")));
     assert_eq!(catalog.dialect(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");

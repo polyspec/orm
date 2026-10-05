@@ -118,7 +118,7 @@ func run() (code int) {
 func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {
-		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database")
+		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run")
 		panic(exit(1))
 	}
 	return v

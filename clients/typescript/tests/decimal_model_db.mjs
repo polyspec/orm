@@ -7,7 +7,7 @@ if (args.length !== 2 || args[0] !== '--dialect' || !['mysql', 'postgres', 'sqli
 const dialect = args[1];
 const name = `DECIMAL_${dialect.toUpperCase()}_DSN`;
 const dsn = process.env[name];
-if (!dsn) throw new Error(`${name} is required`);
+if (!dsn) throw new Error(`${name} is required; run the test through its make target, which reads the environment of make test-servers`);
 const [{ OrmError }, { activeFor }, { DecimalCase, connect }] = await Promise.all([
   import('../dist/index.js'),
   import('../dist/database.js'),

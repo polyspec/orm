@@ -110,7 +110,8 @@ fn external_schema(external: &str) -> &'static orm::Schema {
 async fn coverage_schema_install_external_documents() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("schema_install_external_documents", async {
-        let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+        let dsn =
+            std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
         let member = external_schema(EXTERNAL_USER);
         let connected = orm::Db::connect_schema(&dsn, member, 2, orm::Config::default())
             .await

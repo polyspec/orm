@@ -5,7 +5,9 @@ use orm::row::{read_cell_mysql, read_cell_pg, read_cell_sqlite, Cells, Src};
 use orm::{Db, Val};
 
 fn required_dsn(name: &str) -> String {
-    std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| panic!("{name} is required; database tests never skip"))
+    std::env::var(name).ok().filter(|dsn| !dsn.is_empty()).unwrap_or_else(|| {
+        panic!("{name} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers")
+    })
 }
 
 #[tokio::test]

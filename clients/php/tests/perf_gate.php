@@ -29,7 +29,7 @@ if ($refused !== []) {
 
 $benchDsn = getenv('ORM_BENCH_MYSQL_DSN');
 if ($benchDsn === false || $benchDsn === '') {
-    fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips\n");
+    fwrite(STDERR, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run\n");
     exit(1);
 }
 $db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(

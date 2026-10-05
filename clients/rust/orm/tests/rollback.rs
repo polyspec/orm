@@ -131,7 +131,7 @@ fn session_dsn(driver: &str, database: &CaseDatabase) -> String {
     let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
     match std::env::var(&env) {
         Ok(server) if !server.is_empty() => database.related_dsn(&server),
-        _ => panic!("{env} is required; database tests never skip"),
+        _ => panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers"),
     }
 }
 

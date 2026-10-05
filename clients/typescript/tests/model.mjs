@@ -649,8 +649,8 @@ const zones = ['', 'UTC', '+00:00'];
 // poolSize와 failedLocalReset, failedLockRelease는 schema를 설치하지 않고 table도 만들지 않으므로
 // DSN이 가리키는 database에 연결만 한다. 나머지 case는 저마다 case database를 받는다.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
-if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip');
-if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip');
+if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
+if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
 targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
 targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
 const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting };
@@ -783,7 +783,7 @@ try {
     begin('postgres/statementTimeoutThroughAPooler');
     try {
       const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip');
+      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers');
       const table = caseName();
       const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
       const { [table]: Probe } = documentModels(probeText);
@@ -911,7 +911,7 @@ try {
     // 복제하고, primaryAndReplica는 replica에 연결하기 전에 replica가 따라오기를 기다린다.
     await inCaseDatabase(dialect, async primary => {
       const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
-      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip`);
+      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
       await primaryAndReplica(dialect, primary, relatedDsn(replica, new URL(primary).pathname.slice(1)));
     });
     end();

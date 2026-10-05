@@ -13,7 +13,8 @@ mod decimal_model {
 async fn decimal_physical(env: &str) {
     use decimal_model::DecimalCase;
 
-    let dsn = std::env::var(env).unwrap_or_else(|_| panic!("{env} is required"));
+    let dsn = std::env::var(env)
+        .unwrap_or_else(|_| panic!("{env} is required; run the test through its make target, which reads the environment of make test-servers"));
     assert!(!dsn.is_empty(), "{env} is empty");
     let db = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
     let result: orm::Result<()> = db
@@ -71,7 +72,9 @@ async fn schema_set_database(driver: &str) -> (String, String) {
         return (format!("sqlite://{}/{name}.sqlite", std::env::temp_dir().display()), name);
     }
     let env = format!("ORM_TEST_{}_DSN", driver.to_uppercase());
-    let base = std::env::var(&env).unwrap_or_else(|_| panic!("{env} is required; database tests never skip"));
+    let base = std::env::var(&env).unwrap_or_else(|_| {
+        panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers")
+    });
     schema_set_server(driver, &format!("CREATE DATABASE {name}")).await;
     let (head, query) = base.split_once('?').map_or((base.as_str(), ""), |(h, q)| (h, q));
     let (server, _) = head.rsplit_once('/').expect("DSN names a database");
@@ -82,7 +85,9 @@ async fn schema_set_database(driver: &str) -> (String, String) {
 #[cfg(test)]
 async fn schema_set_server(driver: &str, statement: &str) {
     let env = format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase());
-    let base = std::env::var(&env).unwrap_or_else(|_| panic!("{env} is required; database tests never skip"));
+    let base = std::env::var(&env).unwrap_or_else(|_| {
+        panic!("{env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers")
+    });
     let base = base.as_str();
     let sql = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(statement.to_owned()));
     if driver == "mysql" {

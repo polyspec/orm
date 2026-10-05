@@ -78,7 +78,7 @@ $admins = [];
 $existing = [];
 foreach ($sources as $dialect => $source) {
     if (!is_string($source) || $source === '') {
-        throw new RuntimeException("BENCH_" . strtoupper($dialect) . '_DSN is required');
+        throw new RuntimeException("BENCH_" . strtoupper($dialect) . '_DSN is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run');
     }
     $admin = connection($source);
     $admins[$dialect] = $admin;

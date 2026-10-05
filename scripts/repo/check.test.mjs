@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { chainedCommandErrors, concurrencyErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
+import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
 import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
@@ -1275,4 +1276,15 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     'Makefile:7 runs tsc into dist in place',
   ]);
   assert.deepEqual(unpublishedOutputErrors(readFileSync(new URL('../../Makefile', import.meta.url), 'utf8')), []);
+});
+
+caseTest('a failure message for a missing condition names its fix', COMPUTE, () => {
+  // fixture의 문구는 이어 붙여 만든다: 이 file도 검사 대상이다.
+  const required = ['is', 'required'].join(' ');
+  const files = {
+    'tests/a.mjs': `if (!dsn) throw new Error('ORM_TEST_MYSQL_DSN ${required}; database tests never skip');\n// ORM_TEST_MYSQL_DSN ${required} in a comment\n`,
+    'tests/b_test.go': `\tt.Fatal("ORM_TEST_MYSQL_DSN ${required}; run the test through its make target, which reads the environment of make test-servers")\n`,
+    'scripts/c.sh': `: "\${BENCH_DSN:?BENCH_DSN ${required}}"\ncommand -v x >/dev/null || { echo "x ${['is', 'not', 'installed'].join(' ')}; run make install-server-programs" >&2; exit 1; }\n`,
+  };
+  assert.deepEqual(fixlessMessageErrors(files).map(error => error.split(': a failure')[0]), ['tests/a.mjs:1', 'scripts/c.sh:1']);
 });

@@ -4,7 +4,7 @@ import * as orm from '../dist/index.js';
 import { cases as caseRunner, COMPUTE } from '../../../tests/testcase.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/styled_column_states.json', import.meta.url), 'utf8'));
-if (typeof orm.StyledValue !== 'function') throw new Error('StyledValue is required');
+if (typeof orm.StyledValue !== 'function') throw new Error('the TypeScript client exports no StyledValue class');
 
 const suite = caseRunner();
 for (const entry of fixture.cases) await suite.run(`styled-value/${entry.id}`, COMPUTE, () => {

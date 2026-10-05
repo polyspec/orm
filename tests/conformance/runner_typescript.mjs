@@ -27,7 +27,7 @@ function parseArgs(args) {
     else if (flag === '--vector') throw new Error(`vector ${value} is selected twice`);
     else throw new Error(`unexpected argument ${flag}; ${usage}`);
   }
-  if (dsn === null) throw new Error(`--dsn is required; ${usage}`);
+  if (dsn === null) throw new Error(`--dsn is required; ${usage}; give the DSN of the bench database with --dsn`);
   return { dsn, vectors };
 }
 

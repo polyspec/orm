@@ -38,7 +38,7 @@ func TestPhysicalResultRunners(t *testing.T) {
 			testcase.Group(t)
 			driver, dsn = database.name, os.Getenv(database.env)
 			if dsn == "" {
-				t.Fatalf("%s is required", database.env)
+				t.Fatalf("%s is required; run the test through its make target, which reads the environment of make test-servers", database.env)
 			}
 			stateDB, err := openStateDatabase(driver, dsn)
 			if err != nil {

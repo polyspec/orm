@@ -14,7 +14,7 @@ func requireDSN(t *testing.T, env string) string {
 	t.Helper()
 	dsn := os.Getenv(env)
 	if dsn == "" {
-		t.Fatalf("%s is required; database tests never skip", env)
+		t.Fatalf("%s is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers", env)
 	}
 	return dsn
 }
@@ -24,7 +24,7 @@ func requireDSN(t *testing.T, env string) string {
 func requireTarget(t *testing.T, driver, dsn string) {
 	t.Helper()
 	if dsn == "" && driver != "sqlite" {
-		t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip", strings.ToUpper(driver))
+		t.Fatalf("ORM_TEST_%s_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers", strings.ToUpper(driver))
 	}
 }
 

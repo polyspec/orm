@@ -874,7 +874,7 @@ func parseArgs(args []string) (string, map[string]bool, error) {
 		}
 	}
 	if uri == "" {
-		return "", nil, errors.New("flag -dsn is required")
+		return "", nil, errors.New("flag -dsn is required; give the DSN of the bench database with -dsn")
 	}
 	return uri, selected, nil
 }

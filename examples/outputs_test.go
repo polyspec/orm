@@ -19,7 +19,7 @@ import (
 func TestExampleOutputsAreIdentical(t *testing.T) {
 	testcase.Group(t)
 	if os.Getenv("ORM_BENCH_MYSQL_DSN") == "" {
-		t.Fatal("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database")
+		t.Fatal("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run")
 	}
 	examples := map[string]string{"complex": "EXAMPLE_RUST_COMPLEX", "thin-slice": "EXAMPLE_RUST_DEMO"}
 	for name, rustVar := range examples {
@@ -28,7 +28,7 @@ func TestExampleOutputsAreIdentical(t *testing.T) {
 			c := testcase.Start(t, testcase.Process)
 			rust := os.Getenv(rustVar)
 			if rust == "" {
-				t.Fatalf("%s is required; it names the built Rust %s program", rustVar, name)
+				t.Fatalf("%s is required; it names the built Rust %s program; run make example-check, which builds it", rustVar, name)
 			}
 			bin := filepath.Join(t.TempDir(), name)
 			if out, err := exec.CommandContext(c.Context(), "go", "build", "-o", bin, "./"+name+"/go").CombinedOutput(); err != nil {

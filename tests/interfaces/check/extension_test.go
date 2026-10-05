@@ -16,7 +16,7 @@ import (
 func TestExtensionDeclarations(t *testing.T) {
 	c := testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
-		t.Fatalf("php CLI is required; tool tests never skip")
+		t.Fatalf("php CLI is required; tool tests never skip; install the PHP of .php-version")
 	}
 	repo, err := filepath.Abs("../../..")
 	if err != nil {

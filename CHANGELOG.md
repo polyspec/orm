@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.81: failure messages of a missing environment variable, argument or tool in the checks and tests name the fix after the cause, and `make repo-check` refuses one without it.
+
 - G5.80: build outputs that other runs read (the `.runtime/bin` programs, stress documents, test binaries, clients/typescript/dist, run copies and the lowest Node) are built into a temporary path and renamed into place, and `make repo-check` refuses a Makefile line that writes one in place.
 
 - G5.79: `.go-version` and `.composer-version` pin the Go and Composer releases of the checks, CI installs them and libclang 21, and `make repo-check` refuses another release with its fix.

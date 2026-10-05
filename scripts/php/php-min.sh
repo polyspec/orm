@@ -14,7 +14,7 @@ PROGRAM=$(command -v "php$VERSION" || true)
 if [ -z "$PROGRAM" ] && command -v brew >/dev/null; then
   PROGRAM="$(brew --prefix)/opt/php@$VERSION/bin/php"
 fi
-[ -n "$PROGRAM" ] && [ -x "$PROGRAM" ] || { echo "PHP $VERSION is not installed: no php$VERSION on PATH and no Homebrew php@$VERSION" >&2; exit 2; }
+[ -n "$PROGRAM" ] && [ -x "$PROGRAM" ] || { echo "PHP $VERSION is not installed: no php$VERSION on PATH and no Homebrew php@$VERSION; install it (Debian php$VERSION-cli or Homebrew php@$VERSION)" >&2; exit 2; }
 ACTUAL=$("$PROGRAM" -r 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;')
 [ "$ACTUAL" = "$VERSION" ] || { echo "$PROGRAM is PHP $ACTUAL, not $VERSION" >&2; exit 2; }
 echo "$PROGRAM"

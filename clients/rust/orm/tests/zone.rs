@@ -15,7 +15,7 @@ use orm_case_database::{CaseDatabase, CaseTable};
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {
         Ok(dsn) if !dsn.is_empty() => dsn,
-        _ => panic!("{var} is required; database tests never skip"),
+        _ => panic!("{var} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers"),
     }
 }
 
