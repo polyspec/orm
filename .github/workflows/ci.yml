@@ -59,19 +59,24 @@ jobs:
       - name: install Node dependencies
         id: node-modules
         if: ${{ !cancelled() }}
-        run: |
-          npm ci
-          npm ci --prefix clients/typescript
-          npx playwright install --with-deps chromium
-          make install-node-min
+        run: make install-node
+      - name: lowest Node release of the TypeScript client
+        id: node-min
+        if: ${{ !cancelled() }}
+        run: make install-node-min
+      - name: Chromium of the documentation smoke test
+        id: browsers
+        if: ${{ !cancelled() }}
+        run: make install-browsers
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() }}
         # rustup installs the channel and components that rust-toolchain.toml
         # declares; every cargo and rustc run of the repository uses them.
-        # make check runs cargo offline; make install-rust downloads the crates of
-        # every Cargo.lock.
-        run: rustup toolchain install && rustc --version && make install-rust
+        # rustup installs the channel and components of rust-toolchain.toml, and
+        # make check runs cargo offline on the crates of every Cargo.lock that
+        # make install-rust downloads.
+        run: make install-rust
       - uses: Swatinem/rust-cache@v2
         id: rust-cache
         if: ${{ !cancelled() }}
@@ -86,7 +91,7 @@ jobs:
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
         if: ${{ !cancelled() }}
-        run: echo "version=$(./scripts/php/php-min.sh --version)" >> "$GITHUB_OUTPUT"
+        run: make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
         id: php-min-release
         if: ${{ !cancelled() }}
@@ -109,40 +114,17 @@ jobs:
         if: ${{ !cancelled() }}
         # Every client requires SQLite 3.46; PHP links the system SQLite of
         # the runner.
-        run: |
-          "$(./scripts/php/php-min.sh)" --version
-          php -r '$v = (new PDO("sqlite::memory:"))->query("select sqlite_version()")->fetchColumn(); echo "PHP SQLite $v\n"; exit(version_compare($v, "3.46", "<") ? 1 : 0);'
+        run: make ci-php-sqlite
       - name: install PHP dependencies
         id: composer
         if: ${{ !cancelled() }}
-        run: composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
+        run: make install-php
       - name: programs of the database servers
         id: server-programs
         if: ${{ !cancelled() }}
-        # make test-servers starts the servers of the database checks from these
-        # programs, as it does locally: MySQL 8.4.11 from the Ubuntu packages,
-        # PostgreSQL 17 and PgBouncer from the PostgreSQL apt repository, and
-        # ProxySQL 3.0.9 from its Ubuntu 24.04 arm64 package, checked by its
-        # sha256, whose dependencies Ubuntu 26.04 provides. make test-servers
-        # finds mysqld at its package path /usr/sbin/mysqld on PATH. The image
-        # loads an AppArmor profile for /usr/sbin/mysqld that allows only
-        # /var/lib/mysql; it is removed because the servers keep their data in
-        # .runtime/servers.
-        run: |
-          sudo apt-get update -q >/dev/null
-          sudo apt-get install -y -q postgresql-common sqlite3 mysql-server-core mysql-client-core >/dev/null
-          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
-          sudo apt-get install -y -q postgresql-17 pgbouncer >/dev/null
-          curl -fsSL -o /tmp/proxysql.deb https://repo.proxysql.com/ProxySQL/proxysql-3.0.x/noble/proxysql_3.0.9-ubuntu24_arm64.deb
-          echo 'e12b272107f1ac65ae8a9f9015a9c696b7b2f78b6ad35f84b5ce086449eb2a0f  /tmp/proxysql.deb' | sha256sum -c -
-          sudo apt-get install -y -q /tmp/proxysql.deb >/dev/null
-          if sudo grep -qs '^/usr/sbin/mysqld ' /sys/kernel/security/apparmor/profiles; then
-            printf /usr/sbin/mysqld | sudo tee /sys/kernel/security/apparmor/.remove >/dev/null
-          fi
-          test "$(command -v mysqld)" = /usr/sbin/mysqld
-          mysqld --version | grep -E ' Ver 8\.4\.11[- ]'
-          proxysql --version | grep -F 'ProxySQL version 3.0.9-'
-          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+        # scripts/ci/server-programs.sh installs the programs from which make
+        # test-servers starts the servers.
+        run: make install-server-programs
       - name: database servers
         # The MySQL and PostgreSQL primaries and replicas, ProxySQL and PgBouncer,
         # the databases orm_test, orm_tools and orm_bench, and the environment

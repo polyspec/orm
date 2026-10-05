@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.66: CI와 문서 workflow의 모든 step은 summary step을 빼고 make target(install, install-*, ci-*)을 실행하며, `make repo-check`는 workflow step의 다른 명령을 거부한다.
+
 - G5.64-2: CONTRIBUTING.md는 개발 중에는 바뀐 것의 unit test를 실행하고 전체 묶음은 push마다 CI에서 실행한다고 적는다.
 
 - G5.63: Rust catalog의 PostgreSQL row insert는 catalog 읽기가 우연히 잡던 lock에 기대지 않고, schema를 확인하고 Locked를 알리기 전에 table에 INSERT의 lock을 잡는다.

@@ -1,4 +1,5 @@
 import { segments } from './testcases.mjs';
+import { CI_SETUP } from '../check/ci-setup.mjs';
 
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
 // (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
@@ -87,7 +88,8 @@ export function ciServerErrors(workflow, serversScript) {
     }
     errors.push('ci.yml does not start the database servers with make test-servers');
   } else {
-    steps.slice(0, server).filter(step => runsMake(step.run)).forEach(step =>
+    // CI setup step(scripts/check/ci-setup.mjs)은 server가 필요 없는 설치와 환경 확인이다.
+    steps.slice(0, server).filter(step => runsMake(step.run) && !Object.hasOwn(CI_SETUP, step.id ?? '')).forEach(step =>
       errors.push(`ci.yml step "${step.name}" runs make before make test-servers starts the servers`));
   }
   for (const variable of variables) {
@@ -280,6 +282,8 @@ export function ciRerunErrors(workflow, makefile) {
   const errors = [];
   const report = (step, identity, via) => errors.push(`ci.yml step "${step.name}" runs ${identity}${via} outside make check; make check runs every test once, and a check it lacks belongs in a target of CHECK_TARGETS`);
   for (const step of steps) {
+    // CI setup step(scripts/check/ci-setup.mjs)은 도구를 설치하고 그 환경을 확인할 뿐 test를 실행하지 않는다.
+    if (Object.hasOwn(CI_SETUP, step.id ?? '')) continue;
     for (const segment of step.run.split('\n').flatMap(segments)) {
       const identity = runnerIdentity(segment);
       if (identity) { report(step, identity, ''); continue; }
@@ -524,5 +528,24 @@ export function chainedCommandErrors(features) {
   };
   for (const feature of features.features ?? []) for (const verification of feature.verification ?? []) check(`${feature.id}/${verification.id}`, verification.command);
   for (const helper of features.helpers ?? []) check(`helper ${helper.id}`, helper.command);
+  return errors;
+}
+
+// CI_RUN_EXCEPTIONS는 make target이 아닌 명령을 실행해도 되는 step이다: summary는 make check가 끝나지 않았어도 실행되어
+// 그 실행의 summary를 쓰므로 make를 거치지 않는다.
+export const CI_RUN_EXCEPTIONS = { '.github/workflows/ci.yml': { summary: 'node scripts/check/summary.mjs' } };
+
+// ciMakeErrors는 workflow의 step이 make target이 아닌 명령을 실행하는 곳마다 오류 하나를 돌려준다. 모든 step은
+// 로컬과 같은 make target을 실행하므로, CI만 아는 명령이 없다. workflows는 {path: text}다.
+export function ciMakeErrors(workflows) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows)) {
+    for (const step of workflowSteps(workflow)) {
+      if (!step.run) continue;
+      if (CI_RUN_EXCEPTIONS[path]?.[step.name] === step.run) continue;
+      for (const line of step.run.split('\n').map(line => line.trim()).filter(Boolean))
+        if (!/^make(\s|$)/.test(line)) errors.push(`${path} step "${step.name}" runs ${line}; run it through a make target`);
+    }
+  }
   return errors;
 }

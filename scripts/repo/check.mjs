@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { chainedCommandErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { chainedCommandErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
@@ -46,6 +46,8 @@ const nodeVersionPath = join(root, '.node-version');
 const workflowDirectory = join(root, '.github/workflows');
 const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
+// CI의 모든 step은 make target을 실행한다(summary만 예외다).
+failures.push(...ciMakeErrors(workflows));
 // CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
 // owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;

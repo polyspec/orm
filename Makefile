@@ -807,7 +807,7 @@ rust-check/clippy-test-faults: lease-tool
 # install은 check가 읽는 것을 download한다: npm package(root와 TypeScript client), Composer package, Rust
 # toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node. 이미 받은 것은 다시 받지 않는다.
 # 부분은 서로 독립이다(make -k).
-.PHONY: install install-node install-php install-rust install-go install-node-min downloads-check cargo-downloads-check
+.PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
 install: install-node install-php install-rust install-go install-node-min
 install-node:
 	$(ONLINE) npm ci
@@ -816,6 +816,7 @@ install-php:
 	$(ONLINE) composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
 install-rust:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
+	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path clients/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
@@ -823,6 +824,21 @@ install-go:
 	$(ONLINE) go mod download
 install-node-min:
 	$(ONLINE) ORM_NODE_MIN_INSTALL=1 ./scripts/typescript/node-min.sh
+# install-browsers는 docs-static-check의 Chromium과 그 system package를, install-server-programs는 CI의 Linux runner에
+# make test-servers가 시작하는 server program을 설치한다(scripts/ci/server-programs.sh).
+install-browsers:
+	$(ONLINE) npx playwright install --with-deps chromium
+install-server-programs:
+	$(ONLINE) ./scripts/ci/server-programs.sh
+
+# CI의 setup step은 모두 make target을 실행한다(make repo-check). ci-php-min-version은 make php-min-check의 가장 낮은
+# PHP release를 setup-php의 입력(version=x.y)으로 적고, ci-php-sqlite는 PATH의 두 PHP와 그것이 link한 SQLite를
+# 확인한다.
+ci-php-min-version:
+	@echo "version=$$(./scripts/php/php-min.sh --version)"
+ci-php-sqlite:
+	"$$(./scripts/php/php-min.sh)" --version
+	php scripts/ci/php-sqlite.php
 
 # downloads-check는 check가 읽는 download가 모두 있는지 network 없이 확인하고, 빠진 것을 `run make install`과
 # 함께 적는다(scripts/check/downloads.mjs). cargo-downloads-check는 그 가운데 crate만 본다: cargo를 --offline으로

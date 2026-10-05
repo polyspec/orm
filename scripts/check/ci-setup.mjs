@@ -10,6 +10,8 @@ export const CI_SETUP = {
   go: 'go',
   'go-modules': 'go',
   'node-modules': 'node-modules',
+  'node-min': 'node-modules',
+  browsers: 'node-modules',
   rust: 'rust',
   'rust-cache': null,
   'php-min': 'php-min',
