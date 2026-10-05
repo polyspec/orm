@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-6: the timeout and cancellation tests of the four clients make a statement wait for a row lock that another connection holds instead of calling a sleep function through the raw API.
+
 - G5.33-10: a lease that its holder released while another run was being refused is no longer taken for a dead lease, so waiting runs no longer fail on it.
 
 - G5.30-14: the MySQL migration of `make test-servers` runs each step with step logs and no deadline, and waits for the replica without a timeout.

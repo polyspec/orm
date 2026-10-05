@@ -196,6 +196,29 @@ async function seed(db) {
 
 const names = rows => rows.values().map(b => b.getName()).join(',');
 
+/**
+ * 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock을 잡는다(MySQL, PostgreSQL).
+ * 돌려준 함수는 그 transaction을 rollback하고 연결을 닫으며, 두 번째 호출은 아무것도 하지 않는다.
+ */
+async function holdRows(dialect, dsn, table) {
+  if (dialect === 'mysql') {
+    const connection = await mysqlConnection(dsn);
+    await connection.query('START TRANSACTION');
+    await connection.query(`UPDATE \`${table}\` SET \`seq\` = \`seq\``);
+    let released = false;
+    return async () => { if (released) return; released = true; await connection.query('ROLLBACK'); await connection.end(); };
+  }
+  const client = postgresClient(dsn);
+  await client.connect();
+  await client.query('BEGIN');
+  await client.query(`UPDATE "${table}" SET "seq" = "seq"`);
+  let released = false;
+  return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
+}
+
+/** connection의 transaction에서 Model의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다. */
+const lockedRead = (db, Model) => db.transaction(async () => { await new Model().forUpdate().get(); }, { retry: 0 });
+
 async function conditions(db) {
   const f = await seed(db);
   const svc = f.service.getSeq();
@@ -736,13 +759,16 @@ try {
       await install(dsn);
       check(await code(connectBench(dsn, { statementTimeoutMs: -1 })) === 'CONFIG', 'negative statement timeout');
       // MySQL bounds SELECT statements, PostgreSQL bounds every statement, and
-      // SQLite has no session timeout.
-      const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
-      if (slow !== undefined) {
+      // SQLite has no session timeout. The bounded statement is a locking read
+      // of a row that another connection holds, so it waits past the bound.
+      if (dialect !== 'sqlite') {
         const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
         try {
           await seed(bounded);
-          check(await code(new Author().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'a statement past the timeout');
+          const release = await holdRows(dialect, dsn, 'author');
+          try {
+            check(await code(lockedRead(bounded, Author)) === 'CANCELED', 'a statement past the timeout');
+          } finally { await release(); }
         } finally { await bounded.close(); }
       }
     });
@@ -768,22 +794,31 @@ try {
       try {
         await setup.utils().schema().install(probe);
         caseLog.step(`table ${table} created`);
-        // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
         for (let i = 0; i < 4; i++) {
           const row = new Probe().connect(setup);
           row[CORE].setValue('label', `row-${i}`);
           await row.create();
         }
-        const slow = 'pg_sleep(0.1) IS NOT NULL';
         const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
         const plain = await Db.connect(single, {});
+        // A direct connection holds the rows, so a locking read through the pooler waits for the lock.
+        const base = process.env.ORM_TEST_POSTGRES_DSN;
+        let release = await holdRows('postgres', base, table);
         try {
           await bounded.utils().schema().install(probe);
           await plain.utils().schema().install(probe);
-          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection through the pooler');
-          check(await new Probe().connect(plain).raw(slow).getCount() === 4, 'a connection without a timeout after the bounded one');
-          check(await code(new Probe().connect(bounded).raw(slow).getCount()) === 'CANCELED', 'the bounded connection after the plain one');
-        } finally { await bounded.close(); await plain.close(); }
+          check(await code(lockedRead(bounded, Probe)) === 'CANCELED', 'the bounded connection through the pooler');
+          // The holder keeps the rows for a declared 400 ms, past the 200 ms bound of the other
+          // connection, so the plain read waits that long and then succeeds.
+          const held = setTimeout(() => { release(); }, 400);
+          const started = Date.now();
+          try {
+            await lockedRead(plain, Probe);
+            check(Date.now() - started >= 200, 'a connection without a timeout after the bounded one waits past the bound');
+          } catch (error) { check(false, `a connection without a timeout after the bounded one: ${error.message}`); } finally { clearTimeout(held); await release(); }
+          release = await holdRows('postgres', base, table);
+          check(await code(lockedRead(bounded, Probe)) === 'CANCELED', 'the bounded connection after the plain one');
+        } finally { await release(); await bounded.close(); await plain.close(); }
       } finally {
         await setup.close();
         const client = postgresClient(single);
@@ -802,19 +837,24 @@ try {
       await install(dsn);
       const db = await connect(dsn);
       try {
-        // The slow condition is evaluated per row, so the table holds rows.
-        await seed(db);
-        const slow = { mysql: 'SLEEP(5) = 0', postgres: 'pg_sleep(5) IS NULL' }[dialect];
+        const fixture = await seed(db);
         const before = new AbortController();
         before.abort();
         check(await code(new Author().connect(db.withSignal(before.signal)).getCount()) === 'CANCELED', 'a signal aborted before the statement');
-        if (slow !== undefined) {
-          const running = new AbortController();
-          const timer = setTimeout(() => running.abort(), 300);
-          const started = Date.now();
-          check(await code(new Author().connect(db.withSignal(running.signal)).raw(slow).getCount()) === 'CANCELED', 'a statement cancelled while it runs');
-          check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
-          clearTimeout(timer);
+        // The running statement is an update of a row that another connection holds, so it waits
+        // for the lock until the signal aborts. SQLite waits for a lock in its busy handler, which
+        // an abort does not interrupt, so SQLite checks only the signal aborted before.
+        if (dialect !== 'sqlite') {
+          const release = await holdRows(dialect, dsn, 'author');
+          try {
+            const row = fixture.authors[0];
+            const running = new AbortController();
+            const timer = setTimeout(() => running.abort(), 300);
+            const started = Date.now();
+            check(await code(row.connect(db.withSignal(running.signal)).setName('changed').update()) === 'CANCELED', 'a statement cancelled while it runs');
+            check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
+            clearTimeout(timer);
+          } finally { await release(); }
         }
         check(typeof await new Author().connect(db).getCount() === 'number', 'the connection is usable after a cancellation');
       } finally { await db.close(); }

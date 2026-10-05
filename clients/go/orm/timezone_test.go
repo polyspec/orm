@@ -304,15 +304,11 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 
 // TestStatementTimeout bounds every statement of the connection. MySQL bounds
 // SELECT statements, PostgreSQL bounds every statement, and SQLite has no
-// session timeout.
+// session timeout. The bounded statement is a locking read of a row that
+// another connection holds in an open transaction, so it waits for the lock
+// past the bound.
 func TestStatementTimeout(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	// MySQL interrupts a statement that does work; its timeout does not
-	// interrupt SLEEP. PostgreSQL interrupts any statement.
-	slow := map[string]string{
-		"mysql":    "(SELECT COUNT(*) FROM zone_event a, zone_event b WHERE MD5(a.start_dt) < MD5(b.start_dt)) >= 0",
-		"postgres": "pg_sleep(2) IS NULL",
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	for _, driver := range []string{"mysql", "postgres"} {
@@ -329,31 +325,20 @@ func TestStatementTimeout(t *testing.T) {
 				t.Fatal(err)
 			}
 			ent := zoneEntity(s)
-			{
-				rows := 2000
-				if driver == "postgres" {
-					rows = 1
-				}
-				for i := 0; i < rows; i++ {
-					row := orm.NewCore(ent)
-					ent.New(row)
-					row.Connect(setup)
-					row.Set("start_dt", time.Now())
-					if _, err := row.Create(); err != nil {
-						t.Fatal(err)
-					}
-				}
+			row := orm.NewCore(ent)
+			ent.New(row)
+			row.Connect(setup)
+			row.Set("start_dt", time.Now())
+			if _, err := row.Create(); err != nil {
+				t.Fatal(err)
 			}
+			holdRows(t, driver, dsn, "zone_event")
 			db, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			c := orm.NewCore(ent)
-			ent.New(c)
-			c.Connect(db)
-			c.Raw("", slow[driver], nil)
-			if _, err := c.GetCount(); orm.ErrorCode(err) != orm.CodeCanceled {
+			if err := lockedRead(db, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
 			}
 			if _, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
@@ -361,6 +346,19 @@ func TestStatementTimeout(t *testing.T) {
 			}
 		})
 	}
+}
+
+// lockedRead는 db의 transaction에서 ent의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고
+// 있으면 lock을 기다린다.
+func lockedRead(db *orm.DB, ent *orm.Entity) error {
+	return db.Transaction(func() error {
+		c := orm.NewCore(ent)
+		ent.New(c)
+		c.Connect(db)
+		c.Lock("update")
+		_, err := c.Get()
+		return err
+	}, orm.Retry(0))
 }
 
 // TestStatementTimeoutThroughAPooler checks that the statement timeout of one
@@ -396,7 +394,6 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	}
 	c.Step("table %s created", table)
 	ent := rowEntity(table, s, zoneColumns...)
-	// Three rows sleep 0.1 s each, so the statement runs past 200 ms.
 	for i := 0; i < 3; i++ {
 		row := orm.NewCore(ent)
 		ent.New(row)
@@ -406,19 +403,15 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	slowCount := func(db *orm.DB) (int64, error) {
-		c := orm.NewCore(ent)
-		ent.New(c)
-		c.Connect(db)
-		c.Raw("", "pg_sleep(0.1) IS NOT NULL", nil)
-		return c.GetCount()
-	}
+	// A direct connection holds the rows, so a locking read through the pooler
+	// waits for the lock.
+	release := holdRows(t, "postgres", base, table)
 	bounded, err := orm.ConnectSchema(single, s, orm.Config{StatementTimeoutMs: 200})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer bounded.Close()
-	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
+	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection through the pooler: %v", err)
 	}
 	plain, err := orm.ConnectSchema(single, s, orm.Config{})
@@ -426,10 +419,19 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer plain.Close()
-	if n, err := slowCount(plain); err != nil || n != 3 {
-		t.Fatalf("a connection without a timeout after the bounded one: %d, %v", n, err)
+	// The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
+	// the other connection, so the plain read waits that long and then succeeds.
+	held := time.AfterFunc(400*time.Millisecond, release)
+	defer held.Stop()
+	started := time.Now()
+	if err := lockedRead(plain, ent); err != nil {
+		t.Fatalf("a connection without a timeout after the bounded one: %v", err)
 	}
-	if _, err := slowCount(bounded); orm.ErrorCode(err) != orm.CodeCanceled {
+	if waited := time.Since(started); waited < 200*time.Millisecond {
+		t.Fatalf("the plain read waited %s, not past the bound of the other connection", waited)
+	}
+	holdRows(t, "postgres", base, table)
+	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection after the plain one: %v", err)
 	}
 }

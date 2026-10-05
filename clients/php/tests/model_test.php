@@ -587,23 +587,65 @@ foreach ($targets as $driver => $dsn) {
     modelEnd();
 }
 
+/**
+ * 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock을 잡는다(MySQL, PostgreSQL).
+ * rollback하면 lock을 놓는다.
+ */
+function holdRows(string $driver, string $dsn, string $table): PDO
+{
+    $pdo = case_admin($dsn);
+    $quote = $driver === 'mysql' ? static fn(string $n): string => "`$n`" : static fn(string $n): string => "\"$n\"";
+    $pdo->beginTransaction();
+    $pdo->exec('UPDATE ' . $quote($table) . ' SET ' . $quote('seq') . ' = ' . $quote('seq'));
+    return $pdo;
+}
+
+/**
+ * 다른 process가 PostgreSQL table의 모든 행을 $ms millisecond 동안 잡는다. process가 행을 잡은 뒤에
+ * 돌아오고, 돌려준 resource는 proc_close로 기다린다.
+ *
+ * @return resource
+ */
+function holdRowsFor(string $dsn, string $table, int $ms)
+{
+    $code = 'require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
+        . ' $pdo = case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
+        . ' $pdo->exec(' . var_export('UPDATE "' . $table . '" SET "seq" = "seq"', true) . '); echo "held\n"; fflush(STDOUT);'
+        . ' usleep(' . ($ms * 1000) . '); $pdo->rollBack();';
+    $process = proc_open([PHP_BINARY, '-r', $code], [1 => ['pipe', 'w']], $pipes);
+    if (!is_resource($process) || trim((string) fgets($pipes[1])) !== 'held') {
+        throw new RuntimeException('the holder process did not hold the rows');
+    }
+    return $process;
+}
+
+/** $db의 transaction에서 $model의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다. */
+function lockedRead(\Orm\Db $db, string $model): void
+{
+    $db->transaction(static function () use ($db, $model): void {
+        (new $model)($db)->forUpdate()->get();
+    }, retry: 0);
+}
+
 foreach ($targets as $driver => $dsn) {
     $current = "statement timeout/$driver";
     modelBegin($current);
     try {
         check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))) === Code::CONFIG, 'negative statement timeout');
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
-        // bounds every statement, and SQLite has no session timeout.
-        $slow = ['mysql' => 'SLEEP(5) = 0', 'postgres' => 'pg_sleep(5) IS NULL'][$driver] ?? null;
-        if ($slow !== null) {
+        // bounds every statement, and SQLite has no session timeout. The bounded
+        // statement is a locking read of a row that another connection holds, so
+        // it waits past the bound.
+        if ($driver !== 'sqlite') {
             $caseDsn = caseDsn($driver);
             $db = database($driver, $caseDsn);
             seed($db);
             $db->close();
+            $holder = holdRows($driver, $caseDsn, 'author');
             $bounded = \Polyspec\Orm\Tests\Model\connect($caseDsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200));
-            // The condition is evaluated per row, so the table holds rows.
-            check(code(fn() => (new Author)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'a statement past the timeout');
+            check(code(fn() => lockedRead($bounded, Author::class)) === Code::CANCELED, 'a statement past the timeout');
             $bounded->close();
+            $holder->rollBack();
         }
     } catch (Throwable $e) {
         $failures++;
@@ -645,13 +687,23 @@ try {
     for ($i = 0; $i < 4; $i++) {
         (new $model)($probeSetup)->setLabel("probe-$i")->create();
     }
-    // Four rows sleep 0.1 s each, so the statement runs past 200 ms.
-    $slow = 'pg_sleep(0.1) IS NOT NULL';
+    // A direct connection holds the rows, so a locking read through the pooler
+    // waits for the lock.
+    $holder = holdRows('postgres', $targets['postgres'], $table);
     $bounded = \PoolerProbe\Orm\connect($single, new Config(statementTimeoutMs: 200));
-    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection through the pooler');
+    check(code(fn() => lockedRead($bounded, $model)) === Code::CANCELED, 'the bounded connection through the pooler');
+    $holder->rollBack();
     $plain = \PoolerProbe\Orm\connect($single, new Config());
-    check((new $model)($plain)->raw($slow)->getCount() === 4, 'a connection without a timeout after the bounded one');
-    check(code(fn() => (new $model)($bounded)->raw($slow)->getCount()) === Code::CANCELED, 'the bounded connection after the plain one');
+    // Another process holds the rows for a declared 400 ms, past the 200 ms
+    // bound of the other connection, so the plain read waits that long.
+    $process = holdRowsFor($targets['postgres'], $table, 400);
+    $started = hrtime(true);
+    lockedRead($plain, $model);
+    check((hrtime(true) - $started) / 1e6 >= 200, 'a connection without a timeout after the bounded one waits past the bound');
+    proc_close($process);
+    $holder = holdRows('postgres', $targets['postgres'], $table);
+    check(code(fn() => lockedRead($bounded, $model)) === Code::CANCELED, 'the bounded connection after the plain one');
+    $holder->rollBack();
     $bounded->close();
     $plain->close();
 } catch (Throwable $e) {
