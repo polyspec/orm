@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-7-1: the Go plan cache key includes the `not` of a condition group, so a negated group no longer reuses the plan of the same group without `not`.
+
 - G5.34: `make check` and the new `make rerun-failed` start with the full suite guard (`scripts/check/full-run.mjs`), which refuses before any step while a checklist item is `[~]` (listing each ID and title), while tracked files have uncommitted changes, while another run of the checkout is in progress and, for `make check`, when `.runtime/full-run.json` records a full run of the same tree. The runner writes the record before the first step and after each step, so a killed run stays `incomplete`; `make rerun-failed` runs only the targets of the current tree's record that did not pass.
 
 - G5.30-16: every `go run` of the checks builds through `tests/go-run.mjs` as a long operation with step logs and no deadline, and `make repo-check` fails a raw `go run`.
