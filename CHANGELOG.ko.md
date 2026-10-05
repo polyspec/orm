@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-1: AGENTS.md는 test case가 자기 timeout을 가지고, 장기 작업(build, 설치, 도구 실행, 전체 suite, server)은 timeout 대신 상세 단계 로그를 두며 기한이 없다고 적는다.
+
 - G5.31: PHP client는 PostgreSQL의 모든 statement를 statement text마다 따로 드는 prepare round trip과 transaction 없이 bind와 함께 round trip 하나로 보내고(`Pdo\Pgsql::ATTR_DISABLE_PREPARES`), session time zone을 `SET TIME ZONE` 대신 startup parameter `TimeZone=UTC`로 둔다. `tests/events/vectors.json`의 `server_transactions`가 네 client에서 statement당 server transaction 수를 검사한다.
 
 - G5.29: 모든 check는 case마다 자기 기한과 함께 보고하고, suite를 실행하는 CI step에는 자기 기한이 없으며, test는 push마다 한 번 실행하고, `make owner-check`는 바뀐 file이 입력인 것만 실행한다(G5.29-1에서 G5.29-13).

@@ -51,10 +51,13 @@
   `make php-without-mysql-check`, runs on the Linux runner of `.github/runner`; `make check` on
   another machine prints it as a RUNNER line and does not count it. CI runs it there.
 - During an item run only the Red/Green tests of what changed and `make owner-check`; never rerun
-  tests mechanically after each fix. Every test reports its own running, completion, success or failure with
-  its elapsed time and has its own timeout; a whole-suite timeout is not used. A long
-  operation gets detailed step logs in addition to its own timeout, so its process and result
-  stay observable. A time limit on a test's own computation measures the CPU time of the thread or
+  tests mechanically after each fix. Every test case, a short verification unit, reports its own
+  running, completion, success or failure with its elapsed time and has its own timeout; a
+  whole-suite timeout is not used. A long operation (a build, an install, `tsc`, `go build`,
+  `go generate`, `go vet`, `cargo build`, `cargo test --no-run`, a whole suite, a server or a tool
+  run) gets detailed step logs instead of a timeout, with no deadline at all, a no-output deadline
+  included, so its process and result stay observable; its success or failure comes from its
+  observed result and errors, never from a clock. A time limit on a test's own computation measures the CPU time of the thread or
   process that runs it, because wall-clock time on a shared machine includes the time other
   processes hold the processors; a timer that stops a stuck case, a limit on work that a database
   or another process does, and a test of timing behavior measure wall-clock time.
