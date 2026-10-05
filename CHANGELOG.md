@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.57: a FAIL line that points at the errors reported above keeps those errors (the Go `file_test.go:N: message` lines) as first failure lines in the record and the summary, so a capped log no longer loses them.
+
 - G5.56-1: the conformance lock helper test starts its case with the shared testcase package, which `make repo-check` requires.
 
 - G5.56: an ended holder blocks no lease or lock: a lease records its releaser and a request waits while the releaser runs; a lease whose holder and releaser both ended is taken over (shared by any request, exclusive by the next exclusive request, which makes the resource again); the conformance check locks with `flock`, and the decimal SQLite bench prepares under a lease.
