@@ -42,7 +42,7 @@
 
 - G5.32-5: the Go PostgreSQL client prepares a statement text once per connection again (pgx statement cache), since the exec query mode of G5.32-1 made the steady state of a pool 24 to 44 % slower; pooled clients prepare once per connection and reuse, and only PHP sends each statement in one round trip.
 
-- G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-10).
+- G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-11).
 
 - G5.33-4: the SQLite file of `rust-send-savepoint-check` and the Go test binary of `timing-check` live in the run directory, and every make target that builds the TypeScript client holds its build output as the only holder.
 

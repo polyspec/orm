@@ -42,7 +42,7 @@
 
 - G5.32-5: Go PostgreSQL client는 다시 statement text를 연결마다 한 번 prepare한다(pgx statement cache). G5.32-1의 exec query mode가 pool의 steady state를 24~44% 느리게 했기 때문이다. pool 클라이언트는 연결마다 한 번 prepare하고 재사용하며, PHP만 문마다 round trip 하나로 실행한다.
 
-- G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-10).
+- G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-11).
 
 - G5.33-4: `rust-send-savepoint-check`의 SQLite file과 `timing-check`의 Go test binary는 실행 directory에 두고, TypeScript client를 build하는 모든 make target은 그 build 출력의 유일한 보유자가 된다.
 
