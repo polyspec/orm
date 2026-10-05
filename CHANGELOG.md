@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.58: the four stress tests also time a reference workload (one checksum pass over the same document) and print its median CPU time and the ratio of the parse to it, without asserting it, so that CI shows whether a ratio budget holds across machines.
+
 - G5.57: a FAIL line that points at the errors reported above keeps those errors (the Go `file_test.go:N: message` lines) as first failure lines in the record and the summary, so a capped log no longer loses them.
 
 - G5.56-1: the conformance lock helper test starts its case with the shared testcase package, which `make repo-check` requires.

@@ -36,6 +36,16 @@ for ($i = 0; $i < 5; $i++) {
 }
 sort($parses);
 $parseMs = $parses[2];
+// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
+// 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+$references = [];
+for ($i = 0; $i < 5; $i++) {
+    $referenceStarted = caseClockStart();
+    $referenceSum = referenceScan($text);
+    $references[] = caseClockElapsed($referenceStarted)[0];
+}
+sort($references);
+testcase_step(sprintf('reference cpu medianMs=%.3f ratio=%.2f sum=%d', $references[2], $parseMs / $references[2], $referenceSum));
 if ($result->document === null) {
     $first = array_slice($result->diagnostics, 0, 5);
     throw new RuntimeException('Stress document rejected: ' . implode('; ', array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $first)));
@@ -74,3 +84,14 @@ if ($parseMs > $parseBudgetMs) {
 }
 testcase_step("parseMs=$parseMs emitMs=$emitMs peakBytes=" . memory_get_peak_usage(true));
 cpuCaseEnd('dbspec_stress', $clock);
+
+/** stress 문서의 기준 작업: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다. */
+function referenceScan(string $text): int
+{
+    $h = 0;
+    $length = strlen($text);
+    for ($i = 0; $i < $length; $i++) {
+        $h = ($h * 31 + ord($text[$i])) & 0xFFFFFFFF;
+    }
+    return $h;
+}

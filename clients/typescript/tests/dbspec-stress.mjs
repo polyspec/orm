@@ -49,6 +49,20 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     }
     parses.sort((a, b) => a - b);
     const parseMs = parses[Math.floor(PARSES / 2)];
+    // 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
+    // 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+    const bytes = Buffer.from(text);
+    const references = [];
+    let sum = 0;
+    for (let i = 0; i < PARSES; i++) {
+      const cpuStart = process.threadCpuUsage();
+      sum = referenceScan(bytes);
+      const cpu = process.threadCpuUsage(cpuStart);
+      references.push((cpu.user + cpu.system) / 1000);
+    }
+    references.sort((a, b) => a - b);
+    const referenceMs = references[Math.floor(PARSES / 2)];
+    step(`reference cpu median ${referenceMs.toFixed(3)} ms ratio ${(parseMs / referenceMs).toFixed(2)} sum ${sum}`);
     assert.deepEqual(result.diagnostics, []);
     const document = result.document;
     assert.equal(document.tables.length, 2000);
@@ -63,3 +77,10 @@ caseTest('dbspec stress document parses and emits canonically', TIMEOUT, async (
     assert.equal(second, first);
     assert.ok(parseMs <= PARSE_BUDGET_MS, `median parse CPU ${parseMs.toFixed(1)} ms exceeds the ${PARSE_BUDGET_MS} ms budget`);
 });
+
+// referenceScan은 stress 문서의 기준 작업이다: byte마다 h = h*31 + b(mod 2^32)를 차례로 계산한다.
+function referenceScan(bytes) {
+  let h = 0;
+  for (let i = 0; i < bytes.length; i++) h = (Math.imul(h, 31) + bytes[i]) >>> 0;
+  return h;
+}

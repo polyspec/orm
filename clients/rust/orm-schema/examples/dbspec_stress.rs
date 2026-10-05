@@ -62,6 +62,18 @@ fn main() -> ExitCode {
     let parse_time = parses[PARSES / 2];
     let ms = |d: Duration| d.as_secs_f64() * 1000.0;
     case.step(format_args!("parse cpu min {:.3} median {:.3} max {:.3} ms", ms(parses[0]), ms(parse_time), ms(parses[PARSES - 1])));
+    // 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
+    // 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+    let mut references = Vec::with_capacity(PARSES);
+    let mut sum = 0;
+    for _ in 0..PARSES {
+        let reference = CaseClock::start();
+        sum = std::hint::black_box(reference_scan(std::hint::black_box(text.as_bytes())));
+        references.push(reference.cpu());
+    }
+    references.sort();
+    let reference_time = references[PARSES / 2];
+    case.step(format_args!("reference cpu median {:.3} ms ratio {:.2} sum {sum}", ms(reference_time), parse_time.as_secs_f64() / reference_time.as_secs_f64()));
     let emit = CaseClock::start();
     let emitted = orm_schema::dbspec::emit(&document);
     let emit_time = emit.cpu();
@@ -88,4 +100,9 @@ fn main() -> ExitCode {
     }
     case.step(format_args!("parse={:.3}ms emit={:.3}ms cpu={cpu:?} wall={wall:?}", parse_time.as_secs_f64() * 1000.0, emit_time.as_secs_f64() * 1000.0));
     ExitCode::SUCCESS
+}
+
+/// The reference work of the stress document: for each byte, h = h * 31 + b (mod 2^32), in order.
+fn reference_scan(bytes: &[u8]) -> u32 {
+    bytes.iter().fold(0u32, |h, &b| h.wrapping_mul(31).wrapping_add(u32::from(b)))
 }
