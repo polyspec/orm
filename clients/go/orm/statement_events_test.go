@@ -367,8 +367,11 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 	if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
 		t.Fatal(err)
 	}
-	if setting != spec.TimeZone.Setting || source != spec.TimeZone.Source {
-		t.Errorf("TimeZone setting and source = %s, %s, want %s, %s", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source)
+	// pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
+	// source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+	pooled := os.Getenv("ORM_TEST_POSTGRES_DSN") != os.Getenv("ORM_TEST_POSTGRES_SERVER_DSN")
+	if setting != spec.TimeZone.Setting || (!pooled && source != spec.TimeZone.Source) {
+		t.Errorf("TimeZone setting and source = %s, %s, want %s, %s (pooled %v)", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source, pooled)
 	}
 	probe := func() int64 {
 		var n int64

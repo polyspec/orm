@@ -247,7 +247,11 @@ function runServerTransactions(array $spec, array $cases, string $dsn): void
     try {
         $u = $db->utils();
         $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
-        check($zone === [[$spec['time_zone']['setting'], $spec['time_zone']['source']]], 'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']));
+        // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
+        // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+        $pooled = getenv('ORM_TEST_POSTGRES_DSN') !== getenv('ORM_TEST_POSTGRES_SERVER_DSN');
+        check(count($zone) === 1 && $zone[0][0] === $spec['time_zone']['setting'] && ($pooled || $zone[0][1] === $spec['time_zone']['source']),
+            'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']) . ($pooled ? ' (pooled)' : ''));
         $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
         $first = $probe();
         $cost = $probe() - $first;

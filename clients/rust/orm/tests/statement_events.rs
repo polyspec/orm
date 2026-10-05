@@ -314,7 +314,13 @@ async fn statement_events_server_transactions() {
         let orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
         let (setting, source): (String, String) =
             sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
-        assert_eq!(json!({"setting": setting, "source": source}), spec["time_zone"], "TimeZone setting and source");
+        // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로
+        // source는 client를 말하지 않는다. source는 server에 바로 닿을 때만 비교한다.
+        let pooled = std::env::var("ORM_TEST_POSTGRES_DSN").ok() != std::env::var("ORM_TEST_POSTGRES_SERVER_DSN").ok();
+        assert_eq!(setting, spec["time_zone"]["setting"], "TimeZone setting");
+        if !pooled {
+            assert_eq!(source, spec["time_zone"]["source"], "TimeZone source");
+        }
         let probe = || async { sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(probe_sql.clone())).fetch_one(pool).await.expect("probe") };
         let first = probe().await;
         let cost = probe().await - first;
