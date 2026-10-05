@@ -6,7 +6,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors } from './scripts.mjs';
-import { goTestCaseErrors, makeRecipes, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, longDeadlineErrors, makeRecipes, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -63,26 +63,32 @@ const runCommands = [
   ...Object.values(rootPackage.scripts ?? {}).map(command => ({ source: 'package.json', command })),
 ];
 failures.push(...reportingScriptErrors(runCommands, path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined));
-// build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 tests/run-case.mjs 아래에서 실행한다.
+// build와 lint 도구(tsc, go generate, go vet, go build, cargo build)는 장기 작업이므로 tests/run-long.mjs
+// 아래에서 단계 로그와 함께 기한 없이 실행한다.
 const featureUnits = [...features.features.flatMap(feature => feature.verification.filter(check => (check.cwd ?? '.') === '.')
   .map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command] }))),
   ...(features.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command] }))];
 failures.push(...unwrappedToolErrors(featureUnits));
-// cargo test 실행 앞에는 같은 인자의 RUN_CASE `cargo test --no-run` build가 있다. Makefile recipe,
-// 검증 명령, 그리고 그 명령이 run-case 밖에서 실행하는 scripts/의 shell script를 본다.
+// cargo test 실행 앞에는 같은 인자의 `cargo test --no-run` build가 RUN_LONG 아래에서 기한 없이 있다.
+// Makefile recipe, 검증 명령, root package.json script, 그리고 그 명령이 run-long 밖에서 실행하는
+// scripts/의 shell script를 본다.
 const readTracked = path => trackedSet.has(path) ? readFileSync(join(root, path), 'utf8') : undefined;
 const recipeUnits = makeRecipes(makefile);
 const scriptUnits = reachedScripts(runCommands, readTracked);
-failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...scriptUnits]));
+const allPackageUnits = Object.entries(rootPackage.scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+failures.push(...unbuiltCargoTestErrors([...recipeUnits, ...featureUnits, ...allPackageUnits, ...scriptUnits]));
 // Makefile recipe, 명령 여럿인 root package.json script(명령 하나인 script는 도구의 정의이고 그
-// 호출을 본다), run-case 밖의 shell script도 build 도구를 run-case 아래에서 실행한다.
-const packageUnits = Object.entries(rootPackage.scripts ?? {}).filter(([, command]) => segments(command).length > 1)
-  .map(([name, command]) => ({ name: `package.json ${name}`, commands: [command] }));
+// 호출을 본다), run-long 밖의 shell script도 build 도구를 run-long 아래에서 기한 없이 실행한다.
+const packageUnits = allPackageUnits.filter(unit => segments(unit.commands[0]).length > 1);
 failures.push(...unwrappedToolErrors([...recipeUnits, ...packageUnits, ...scriptUnits]));
-// go test는 tests/go-test.mjs(build case 뒤 실행)나 RUN_CASE 아래에서 실행한다.
+// go test는 tests/go-test.mjs(기한 없는 build 뒤 실행)나 RUN_LONG 아래에서 실행한다.
 const variables = makeVariables(makefile);
 const expandedRecipes = recipeUnits.map(unit => ({ name: unit.name, commands: unit.commands.map(command => expand(command, variables)) }));
 failures.push(...rawGoTestErrors([...expandedRecipes, ...featureUnits, ...scriptUnits]));
+// check의 명령(Makefile recipe, 검증 명령, package.json script, run-long 아래의 것까지 scripts/의 shell
+// script)은 장기 작업에 기한을 두지 않는다. 기한은 test case 안에만 있다.
+const everyScriptUnit = reachedScripts(runCommands, readTracked, { throughLong: true });
+failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
 // make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.
 const checkTargetSet = new Set(checkTargets(makefile));
 failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
