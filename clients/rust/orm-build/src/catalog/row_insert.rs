@@ -9,6 +9,16 @@ use super::{
 use crate::tool_db::{Conn, GridQueryResult, QueryLimits, P};
 use std::sync::{atomic::AtomicBool, Arc};
 
+#[cfg(test)]
+#[path = "../../tests/unit/row_insert_lock.rs"]
+mod lock_tests;
+
+/// The statement that takes, on PostgreSQL, the lock an INSERT takes (ROW EXCLUSIVE) on the declared table. It
+/// conflicts with every schema change, which needs ACCESS EXCLUSIVE.
+pub(super) fn postgres_insert_lock(declared: &TableMetadata) -> Result<String, String> {
+    Ok(format!("LOCK TABLE {} IN ROW EXCLUSIVE MODE", qualified(declared, "postgres")?))
+}
+
 impl CatalogConnection {
     /// Insert with explicit or database-returned primary-key values, never guessed.
     pub async fn insert_row(
@@ -50,6 +60,12 @@ impl CatalogConnection {
                     )
                     .await
                     .map_err(|error| error.to_string())?;
+            }
+            if self.dialect == "postgres" {
+                // The catalog reads of describe take no lock on PostgreSQL. Take the lock that the insert itself
+                // takes before checking the schema, so no DDL changes the table between the check and the write,
+                // and Locked is published only while it is held.
+                connection.exec(&postgres_insert_lock(declared)?, &[]).await.map_err(|error| error.to_string())?;
             }
             if let Some(keys) = &keys {
                 let existing = lookup(&mut connection, declared, &self.dialect, keys, true).await?;

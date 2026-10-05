@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.63: a PostgreSQL row insert of the Rust catalog takes the lock of an INSERT on its table before it checks the schema and publishes Locked, instead of relying on a lock the catalog reads happened to take.
+
 - G5.65: every check runs offline: the Makefile exports the offline settings of cargo, go, npm and Composer, `make install` downloads what the checks read, the runner records a missing download as the setup step `downloads` with `run make install`, and the targets that need it are not run.
 
 - G5.64-1: `make repo-check` checks the full-suite rule by the wording of G5.64.
