@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-3: make targets run copies of the Rust programs they built, taken under the lease of the shared target directory, write their stress documents into a run directory of their own, and every cargo build of the Makefile holds that lease.
+
 - G5.33-2: no bench or decimal database is shared: `make check`, `make owner-check` and the new `make run-databases` create the databases of their run, and the environment of `make test-servers` names only the server DSNs those runs build theirs from.
 
 - G5.33-1: runs that use the test servers hold a shared lease (`tests/lease`), and `make test-servers-stop`, a fresh start and the MySQL migration hold the exclusive lease and are refused while a lease is held, naming the holders; `make test-servers-leases` and `make test-servers-leases-clear` list the leases and remove dead ones.

@@ -10,7 +10,7 @@ import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, sharedTargetErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -397,6 +397,27 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+// 공유 target case는 저장소의 Makefile과 최소 Makefile을 검사한다.
+caseTest('the Makefile runs no program from the shared Rust target directory and builds there under its lease', COMPUTE, () => {
+  assert.deepEqual(sharedTargetErrors(text('Makefile')), []);
+  const makefile = [
+    'DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs',
+    'run:',
+    '\t$(RUN_LONG) rust-build/x --cwd clients/rust -- cargo build --locked --example x',
+    '\tX=$(CARGO_TARGET_DIR)/debug/examples/x go test ./a',
+    'copied:',
+    '\t$(RUN_LONG) rust-build/y --cwd clients/rust -- $(CARGO_COPY) debug/y -- cargo build --locked --bin y',
+    '\t$(RUN_LONG) rust-build/z -- $(CARGO_LEASED) cargo test --no-run --locked',
+    '\t# $(CARGO_TARGET_DIR)/debug/y in a comment',
+    '',
+  ].join('\n');
+  assert.deepEqual(sharedTargetErrors(makefile), [
+    'Makefile:1 uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs',
+    'Makefile:4 uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): X=$(CARGO_TARGET_DIR)/debug/examples/x go test ./a',
+    'Makefile run builds into the shared Rust target directory without its lease; run the build under $(CARGO_LEASED) or $(CARGO_COPY): $(RUN_LONG) rust-build/x --cwd clients/rust -- cargo build --locked --example x',
+  ]);
 });
 
 // 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.

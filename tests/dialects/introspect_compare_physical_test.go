@@ -56,9 +56,9 @@ func TestIntrospectCompare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// make는 CARGO_TARGET_DIR 아래의 절대 경로를 준다.
+	// make는 자기 실행 directory(RUN_DIR)의 문서와 program 복사본을 절대 경로로 준다.
 	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) {
-		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q and DBSPEC_INTROSPECT_RUST %q must be absolute paths under CARGO_TARGET_DIR", stressPath, rustRunner)
+		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q and DBSPEC_INTROSPECT_RUST %q must be absolute paths in the run directory of make", stressPath, rustRunner)
 	}
 	text, diagnostics, err := dbspec.ReadFile(stressPath)
 	if err != nil {
