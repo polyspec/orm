@@ -58,6 +58,9 @@ type builder struct {
 	n      int
 	subs   int             // subquery alias counter
 	tables map[string]bool // statement이 이름으로 쓴 table
+	// err는 type 없는 slot처럼 placeholder를 만들며 생긴 첫 planner 오류다.
+	// statement를 만드는 곳이 step을 돌려주기 전에 확인한다.
+	err error
 }
 
 // table은 ent의 table 이름을 quote하고 statement의 table로 기록한다.
@@ -79,44 +82,61 @@ func (b *builder) tableList() []string {
 	return out
 }
 
-func (b *builder) param(i int) string {
+// slot은 bind slot 하나를 더하고 그 placeholder를 돌려준다. type 없는 slot은
+// planner 오류다.
+func (b *builder) slot(s plan.BindSlot) string {
+	if s.ColType == "" && b.err == nil {
+		b.err = &ir.Error{Code: "IR_INVALID", Msg: fmt.Sprintf("bind slot %d (%s) has no declared type", len(b.binds), s.From)}
+	}
+	b.binds = append(b.binds, s)
+	b.n++
+	return b.p.D.Placeholder(b.n)
+}
+
+// param은 request 값 Params[i]의 placeholder다. typ은 그 값의 dbspec type이다.
+func (b *builder) param(i int, typ string) string {
+	return b.slot(plan.BindSlot{From: "param", Param: i, ColType: typ})
+}
+
+// colParam은 column col과 비교하거나 col에 할당하는 값 Params[i]의
+// placeholder다. type은 col의 type이고 decimal은 그 자릿수를 싣는다.
+func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) string {
+	s := plan.BindSlot{From: "param", Param: i, Transform: transform, ColType: col.Type}
+	if col.Type == "decimal" {
+		s.Precision, s.Scale = col.Precision, col.Scale
+	}
+	return b.slot(s)
+}
+
+// rawParam은 raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을
+// 어디에 쓰는지 모르므로 type이 없다. raw fragment는 G5.32-3에서 사라진다.
+func (b *builder) rawParam(i int) string {
 	b.binds = append(b.binds, plan.BindSlot{From: "param", Param: i})
 	b.n++
 	return b.p.D.Placeholder(b.n)
 }
 
-func (b *builder) paramT(i int, transform string) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "param", Param: i, Transform: transform})
-	b.n++
-	return b.p.D.Placeholder(b.n)
-}
-
+// secret은 executor 설정의 key다. key는 text다.
 func (b *builder) secret(name string) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "secret", Name: name})
-	b.n++
-	return b.p.D.Placeholder(b.n)
+	return b.slot(plan.BindSlot{From: "secret", Name: name, ColType: "text"})
 }
 
-func (b *builder) config(name string) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "config", Name: name})
-	b.n++
-	return b.p.D.Placeholder(b.n)
+// config는 executor 설정 값이다. typ은 그 값을 쓰는 column의 type이다.
+func (b *builder) config(name, typ string) string {
+	return b.slot(plan.BindSlot{From: "config", Name: name, ColType: typ})
 }
 
 // now은 sub-second clock 함수가 없는 dialect에서 executor가 주는 시각이다.
 // precision은 그 시각이 들어가는 datetime column의 소수 자리다.
 func (b *builder) now(precision int) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "now", Precision: precision})
-	b.n++
-	return b.p.D.Placeholder(b.n)
+	return b.slot(plan.BindSlot{From: "now", Precision: precision, ColType: "datetime"})
 }
 
 // audit은 executor가 채우는 transaction의 audit 기록 key다. Name은 audit 기록
-// table이며, executor는 transaction의 audit이 그 table의 행인지 확인한다.
+// table이며, executor는 transaction의 audit이 그 table의 행인지 확인한다. type은
+// audit column의 type이다.
 func (b *builder) audit(ent *runtimemodel.Entity) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "audit", Name: ent.Audit.Record})
-	b.n++
-	return b.p.D.Placeholder(b.n)
+	return b.slot(plan.BindSlot{From: "audit", Name: ent.Audit.Record, ColType: ent.Field(ent.Audit.Column).Type})
 }
 
 // fillPlaceholders replaces each `?` of a user fragment with the dialect's
@@ -129,7 +149,7 @@ func (p *Planner) fillPlaceholders(b *builder, frag string, ps []int) (string, e
 	k := 0
 	for i := 0; i < len(frag); i++ {
 		if frag[i] == '?' {
-			sb.WriteString(b.param(ps[k]))
+			sb.WriteString(b.rawParam(ps[k]))
 			k++
 			continue
 		}
@@ -139,8 +159,9 @@ func (p *Planner) fillPlaceholders(b *builder, frag string, ps []int) (string, e
 }
 
 // parentList is the one placeholder an executor expands to the parent values.
-func (b *builder) parentList(step int) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "parent", Step: step})
+// keyTypes are the dbspec types of the compared key columns, in key order.
+func (b *builder) parentList(step int, keyTypes []string) string {
+	b.binds = append(b.binds, plan.BindSlot{From: "parent", Step: step, KeyTypes: keyTypes})
 	b.n++
 	return b.p.D.Placeholder(b.n)
 }
@@ -276,10 +297,14 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	// WHERE = [parent IN list] AND root group AND each join's where group (declaration order).
 	var where []string
 	if rc != nil {
+		keyTypes := make([]string, len(rc.childKeys))
+		for i, key := range rc.childKeys {
+			keyTypes[i] = root.ent.Field(key).Type
+		}
 		if len(rc.childKeys) == 1 {
-			where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep)+")")
+			where = append(where, p.qcol(root, rc.childKeys[0])+" IN ("+b.parentList(rc.parentStep, keyTypes)+")")
 		} else {
-			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep)+"))")
+			where = append(where, "("+strings.Join(p.qualified(root, rc.childKeys), ", ")+") IN (("+b.parentList(rc.parentStep, keyTypes)+"))")
 		}
 	}
 	if root.ent.SoftDelete != "" {
@@ -353,6 +378,9 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 				sb.WriteString(lock)
 			}
 		}
+	}
+	if b.err != nil {
+		return nil, b.err
 	}
 	st := &plan.Step{Role: "main", SQL: sb.String(), Tables: b.tableList(), Lock: q.Lock, BindSlots: b.binds}
 	switch {
@@ -864,7 +892,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		return lhs + op + "(" + inner + ")", nil
 	}
 	if pr.Value != nil {
-		arg := func() string { return b.param(pr.Value.Ps[0]) }
+		arg := func() string { return b.param(pr.Value.Ps[0], valueFunctionArgType(pr.Value.Name)) }
 		// datetime column과 비교하는 clock은 그 column의 소수 자리를 쓴다.
 		precision := 6
 		if col != nil && col.Type == "datetime" {
@@ -881,7 +909,8 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		plain := func(i int) string { return b.param(i) }
+		fnType := functionType(pr.Fn.Name, col)
+		plain := func(i int) string { return b.param(i, fnType) }
 		switch pr.Op {
 		case "in", "not_in":
 			phs := make([]string, len(pr.Ps))
@@ -909,7 +938,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 				return "", &ir.Error{Code: "IR_INVALID", Msg: s.ent.Name + "." + col.Name + " requires a declared blind index for equality search"}
 			}
 			lhs = p.qcol(s, col.BlindIndex)
-			rhs, err := p.renderBlindIndexValue(b, *pr.P)
+			rhs, err := p.renderBlindIndexValue(b, s.ent.Field(col.BlindIndex), *pr.P)
 			if err != nil {
 				return "", err
 			}
@@ -937,7 +966,7 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 			lhs = p.qcol(s, col.BlindIndex)
 			var phs []string
 			for _, i := range pr.Ps {
-				rhs, err := p.renderBlindIndexValue(b, i)
+				rhs, err := p.renderBlindIndexValue(b, s.ent.Field(col.BlindIndex), i)
 				if err != nil {
 					return "", err
 				}
@@ -977,9 +1006,9 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 	case "is_not_null":
 		return lhs + " IS NOT NULL", nil
 	case "contains":
-		return p.D.Like(lhs, b.paramT(*pr.P, "like_contains")), nil
+		return p.D.Like(lhs, b.colParam(*pr.P, col, "like_contains")), nil
 	case "contains_binary":
-		return p.D.ContainsBinary(lhs, func(transform string) string { return b.paramT(*pr.P, transform) }), nil
+		return p.D.ContainsBinary(lhs, func(transform string) string { return b.colParam(*pr.P, col, transform) }), nil
 	}
 	return "", &ir.Error{Code: "OPERATOR_UNKNOWN", Msg: pr.Op}
 }
@@ -997,24 +1026,16 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 		}
 	}
 	if len(styles) == 0 {
-		ph := b.param(i)
+		ph := b.colParam(i, col, "")
 		b.binds[len(b.binds)-1].HostStyles = host
-		b.binds[len(b.binds)-1].ColType = bindType(col)
-		if col.Type == "decimal" {
-			b.binds[len(b.binds)-1].Precision, b.binds[len(b.binds)-1].Scale = col.Precision, col.Scale
-		}
 		return ph, nil
 	}
 	first := true
 	e, _ := p.D.WriteExpr(func() string {
 		if first {
 			first = false
-			ph := b.param(i)
+			ph := b.param(i, styleInputType(styles[0]))
 			b.binds[len(b.binds)-1].HostStyles = host
-			b.binds[len(b.binds)-1].ColType = bindType(col)
-			if col.Type == "decimal" {
-				b.binds[len(b.binds)-1].Precision, b.binds[len(b.binds)-1].Scale = col.Precision, col.Scale
-			}
 			return ph
 		}
 		return b.secret("aes")
@@ -1024,23 +1045,30 @@ func (p *Planner) renderValue(b *builder, col *runtimemodel.Field, i int) (strin
 
 // renderBlindIndexValue binds plaintext for executor-side keyed hashing. The
 // index key never reaches the compiler or the SQL text.
-func (p *Planner) renderBlindIndexValue(b *builder, i int) (string, error) {
-	ph := b.param(i)
+// index는 blind index column이며 slot의 type은 그 column의 type이다. 값은
+// executor가 hash한 text다.
+func (p *Planner) renderBlindIndexValue(b *builder, index *runtimemodel.Field, i int) (string, error) {
+	ph := b.param(i, index.Type)
 	b.binds[len(b.binds)-1].HostStyles = []string{"blind_index"}
-	b.binds[len(b.binds)-1].ColType = ""
 	return ph, nil
 }
 
-// bindType names types that executors must normalize before driver binding.
-func bindType(col *runtimemodel.Field) string {
-	if col == nil {
-		return ""
+// styleInputType은 SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다.
+// hex는 byte를, ip는 IP 주소 text를 받는다.
+func styleInputType(style string) string {
+	if style == "ip" {
+		return "text"
 	}
-	switch col.Type {
-	case "date", "time", "datetime", "decimal":
-		return col.Type
+	return "bytes"
+}
+
+// valueFunctionArgType은 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를
+// 받고 나머지 단위는 정수를 받는다.
+func valueFunctionArgType(name string) string {
+	if dialect.ValueFunctionUnits[name] == "second" {
+		return "f64"
 	}
-	return ""
+	return "i32"
 }
 
 func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
@@ -1171,6 +1199,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			}
 			sql += ", (" + strings.Join(more, ", ") + ")"
 		}
+		if b.err != nil {
+			return nil, b.err
+		}
 		return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
 	if len(r.OnDuplicate) > 0 {
@@ -1191,7 +1222,7 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 			sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 		}
 		if version := ent.AESVersion; version != "" && assignsAES(ent, r.OnDuplicate) {
-			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
+			sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
 		}
 		// 기존 행을 바꾸는 duplicate update도 audit table의 update다.
 		if ent.Audit != nil {
@@ -1205,6 +1236,9 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	}
 	if p.D.InsertReturningID() && ent.Identity != "" {
 		sql += " RETURNING " + p.D.Quote(ent.Identity)
+	}
+	if b.err != nil {
+		return nil, b.err
 	}
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
@@ -1220,7 +1254,7 @@ type managedColumn struct {
 func (p *Planner) managedInsertColumns(ent *runtimemodel.Entity, set []ir.Assign) []managedColumn {
 	var out []managedColumn
 	if ent.AESVersion != "" && !assigned(set, ent.AESVersion) {
-		out = append(out, managedColumn{ent.AESVersion, func(b *builder) string { return b.config("aes_version") }})
+		out = append(out, managedColumn{ent.AESVersion, func(b *builder) string { return b.config("aes_version", ent.Field(ent.AESVersion).Type) }})
 	}
 	if ent.Audit != nil {
 		out = append(out, managedColumn{ent.Audit.Column, func(b *builder) string { return b.audit(ent) }})
@@ -1348,7 +1382,7 @@ func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtim
 		if a.Null {
 			return "NULL", nil
 		}
-		return p.renderBlindIndexValue(b, *a.P)
+		return p.renderBlindIndexValue(b, col, *a.P)
 	}
 	switch {
 	case a.Expr != "":
@@ -1359,12 +1393,12 @@ func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtim
 		return p.fillPlaceholders(b, e, a.Ps)
 	case a.PlusP != nil:
 		// the reference is table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
-		return p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name) + " + " + b.param(*a.PlusP), nil
+		return p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name) + " + " + b.colParam(*a.PlusP, col, ""), nil
 	case a.MinusP != nil:
 		// clamp at zero
 		q := p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name)
-		ph := b.param(*a.MinusP)
-		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.param(*a.MinusP) + " ELSE 0 END", nil
+		ph := b.colParam(*a.MinusP, col, "")
+		return "CASE WHEN " + q + " > " + ph + " THEN " + q + " - " + b.colParam(*a.MinusP, col, "") + " ELSE 0 END", nil
 	case a.Null:
 		return "NULL", nil
 	default:
@@ -1396,7 +1430,7 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 	}
 	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
-		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
+		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
 	}
 	// updated setting의 column은 executor가 statement 시각으로 쓴다. 사용자가
 	// 직접 assign하면 그 값이 남는다.
@@ -1411,12 +1445,15 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	if r.Optimistic != nil {
-		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.param(r.Optimistic.P)
+		where += " AND " + p.qcol(root, r.Optimistic.Column) + " = " + b.colParam(r.Optimistic.P, root.ent.Field(r.Optimistic.Column), "")
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
 	}
 	sql := "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where
+	if b.err != nil {
+		return nil, b.err
+	}
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
@@ -1448,9 +1485,15 @@ func (p *Planner) deleteStep(r *ir.Request) (*plan.Step, error) {
 	}
 	if ent.SoftDelete != "" {
 		where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NULL"
+		if b.err != nil {
+			return nil, b.err
+		}
 		return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
 	sql := "DELETE FROM " + b.table(ent) + " WHERE " + where
+	if b.err != nil {
+		return nil, b.err
+	}
 	return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
@@ -1490,7 +1533,7 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 		sets = append(sets, p.D.Quote(a.Column)+" = "+v)
 	}
 	if version := ent.AESVersion; version != "" && assignsAES(ent, set) {
-		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version"))
+		sets = append(sets, p.D.Quote(version)+" = "+b.config("aes_version", ent.Field(version).Type))
 	}
 	sets = append(sets, p.D.Quote(ent.SoftDelete)+" = NULL")
 	if ent.Audit != nil {
@@ -1501,6 +1544,9 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 		return nil, err
 	}
 	where += " AND " + p.qcol(root, ent.SoftDelete) + " IS NOT NULL"
+	if b.err != nil {
+		return nil, b.err
+	}
 	return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
 }
 
@@ -1608,7 +1654,9 @@ func placedJoins(g *ir.Group, out map[string]bool) {
 
 // columnFunction renders an ORM column function on a column of s.
 func (p *Planner) columnFunction(b *builder, s *scope, column string, f *ir.Func) (string, error) {
-	out, ok := p.D.ColumnFunction(f.Name, p.qcol(s, column), func(i int) string { return b.param(f.Ps[i]) })
+	// column 함수의 인자는 아직 없다(dialect.ColumnFunctionArity는 모두 0). 인자의
+	// type을 선언하지 않은 함수가 인자를 받으면 type 없는 slot으로 planner 오류다.
+	out, ok := p.D.ColumnFunction(f.Name, p.qcol(s, column), func(i int) string { return b.param(f.Ps[i], "") })
 	if !ok {
 		return "", &ir.Error{Code: "CAPABILITY_UNSUPPORTED", Msg: f.Name + " is not available on " + p.D.Name()}
 	}

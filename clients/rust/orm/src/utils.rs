@@ -46,6 +46,7 @@ fn step(sql: String, binds: usize) -> Step {
                 column: String::new(),
                 host_styles: vec![],
                 col_type: String::new(),
+                key_types: Vec::new(),
                 precision: 0,
                 scale: 0,
             })

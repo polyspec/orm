@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-2: every bind slot of the four planners carries the dbspec type of the value its placeholder takes (`col_type`, and `key_types` for a parent slot); a slot without a type is `IR_INVALID`, and only raw fragment placeholders stay untyped until G5.32-3.
+
 - G5.30-13-1: the test servers stop through the Go command `tests/stop-process` (kqueue on macOS, pidfd on Linux), which the Makefile builds as a long operation; the Python helper is removed, and `make repo-check` fails a tool in a language outside Go, PHP, Rust and TypeScript.
 
 - G5.30-13: `make test-servers-stop` waits for each server process to exit through an operating system event (`scripts/stop-process.py`: kqueue on macOS, pidfd on Linux) instead of polling, with no deadline.

@@ -1,5 +1,5 @@
 // planner coverage: contracts/fixtures/planner.json 의 request 를 schema/bench.dbs 의 manifest hash
-// 와 함께 dialect 마다 client engine 으로 compile 해서 statement (role, sql, bind slot param 순서)
+// 와 함께 dialect 마다 client engine 으로 compile 해서 statement (role, sql, bind slot 의 출처, param 번호, type)
 // 또는 오류 code 가 기대값과 같은지 확인한다.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -13,6 +13,13 @@ assert.deepEqual(parsed.diagnostics, [], 'schema/bench.dbs parses');
 const { manifest } = dbspecManifest([parsed.document]);
 const model = registerModel(manifest.manifestText, manifest.manifestHash);
 const dialects = ['mysql', 'postgres', 'sqlite'];
+
+/** A bind slot's source and type: the request value number of a param slot, the key types of a parent slot. */
+function plannerSlot(slot) {
+  if (slot.from === 'param') return { from: slot.from, param: slot.param, type: slot.col_type };
+  if (slot.from === 'parent') return { from: slot.from, key_types: slot.key_types };
+  return { from: slot.from, type: slot.col_type };
+}
 
 /** Compiles the request of a fixture case in every dialect and compares the expectation. */
 function compileCase(id) {
@@ -28,7 +35,7 @@ function compileCase(id) {
       continue;
     }
     const plan = engine.compile(request);
-    const statements = plan.steps.map(step => ({ params: step.bind_slots.map(slot => slot.from === 'parent' ? -1 : slot.param), role: step.role, sql: step.sql, tables: step.tables }));
+    const statements = plan.steps.map(step => ({ role: step.role, sql: step.sql, slots: step.bind_slots.map(plannerSlot), tables: step.tables }));
     assert.deepEqual(statements, c.expected[dialect], `${dialect} statements`);
   }
 }
@@ -40,4 +47,8 @@ await runCases('coverage_planner.mjs', {
   async planner_restore() { compileCase('planner_restore'); },
   async planner_tables() { compileCase('planner_tables'); },
   async planner_restore_rejects_non_key() { compileCase('planner_restore_rejects_non_key'); },
+  async planner_bind_types_select() { compileCase('planner_bind_types_select'); },
+  async planner_bind_types_update() { compileCase('planner_bind_types_update'); },
+  async planner_bind_types_insert() { compileCase('planner_bind_types_insert'); },
+  async planner_parent_key_types() { compileCase('planner_parent_key_types'); },
 }, 60_000);

@@ -61,12 +61,18 @@ type BindSlot struct {
 	// value (aes/hex/ip on PostgreSQL/SQLite): the executor applies them to
 	// the bound value before sending it (write order). Empty on MySQL.
 	HostStyles []string `json:"host_styles,omitempty"`
-	// ColType은 값이 비교되거나 할당되는 column의 dbspec type이다. param
-	// slot은 date, time, datetime, decimal만 싣고(datetime type이 없는 언어의
-	// executor는 정확히 이 값만 정규화한다).
-	ColType   string `json:"col_type,omitempty"`
-	Precision int    `json:"precision,omitempty"`
-	Scale     int    `json:"scale,omitempty"`
+	// ColType은 placeholder가 받는 값의 dbspec type이다. column과 비교하거나
+	// column에 할당하는 값은 그 column의 type이고(host style을 거친 값도 column에
+	// 저장되는 값이므로 같다), SQL 쪽 style 함수가 받는 값은 그 함수 입력의 type,
+	// 함수와 비교하는 값은 함수 결과의 type, secret은 text, config는 그 값을 쓰는
+	// column의 type, now는 datetime, audit은 audit column의 type이다. parent
+	// slot은 ColType 대신 KeyTypes를 싣는다. raw fragment의 placeholder만 type이
+	// 없다(G5.32-3이 raw fragment를 없앤다).
+	ColType string `json:"col_type,omitempty"`
+	// KeyTypes는 parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.
+	KeyTypes  []string `json:"key_types,omitempty"`
+	Precision int      `json:"precision,omitempty"`
+	Scale     int      `json:"scale,omitempty"`
 }
 
 // Assemble maps result columns positionally and describes how rows attach.

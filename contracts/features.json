@@ -2995,7 +2995,11 @@
           "planner_rejects_unknown_column",
           "planner_restore",
           "planner_tables",
-          "planner_restore_rejects_non_key"
+          "planner_restore_rejects_non_key",
+          "planner_bind_types_select",
+          "planner_bind_types_update",
+          "planner_bind_types_insert",
+          "planner_parent_key_types"
         ],
         "owners": {
           "go": {
@@ -3017,7 +3021,11 @@
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
-                    "planner_restore_rejects_non_key"
+                    "planner_restore_rejects_non_key",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_parent_key_types"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3025,6 +3033,10 @@
                     "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn",
                     "planner_restore": "TestCoveragePlannerRestore",
                     "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey",
+                    "planner_bind_types_select": "TestCoveragePlannerBindTypesSelect",
+                    "planner_bind_types_update": "TestCoveragePlannerBindTypesUpdate",
+                    "planner_bind_types_insert": "TestCoveragePlannerBindTypesInsert",
+                    "planner_parent_key_types": "TestCoveragePlannerParentKeyTypes",
                     "planner_tables": "TestCoveragePlannerTables"
                   }
                 }
@@ -3050,7 +3062,11 @@
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
-                    "planner_restore_rejects_non_key"
+                    "planner_restore_rejects_non_key",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_parent_key_types"
                   ]
                 }
               ]
@@ -3075,7 +3091,11 @@
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
-                    "planner_restore_rejects_non_key"
+                    "planner_restore_rejects_non_key",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_parent_key_types"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3083,6 +3103,10 @@
                     "planner_rejects_unknown_column": "engine::coverage_planner::coverage_planner_rejects_unknown_column",
                     "planner_restore": "engine::coverage_planner::coverage_planner_restore",
                     "planner_restore_rejects_non_key": "engine::coverage_planner::coverage_planner_restore_rejects_non_key",
+                    "planner_bind_types_select": "engine::coverage_planner::coverage_planner_bind_types_select",
+                    "planner_bind_types_update": "engine::coverage_planner::coverage_planner_bind_types_update",
+                    "planner_bind_types_insert": "engine::coverage_planner::coverage_planner_bind_types_insert",
+                    "planner_parent_key_types": "engine::coverage_planner::coverage_planner_parent_key_types",
                     "planner_tables": "engine::coverage_planner::coverage_planner_tables"
                   }
                 }
@@ -3108,7 +3132,11 @@
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
-                    "planner_restore_rejects_non_key"
+                    "planner_restore_rejects_non_key",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_parent_key_types"
                   ]
                 }
               ]

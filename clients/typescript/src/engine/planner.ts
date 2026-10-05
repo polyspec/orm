@@ -3,7 +3,7 @@
 // rows, and INSERT, UPDATE, and DELETE statements.
 import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFunction, Plan, PlanStep, Predicate, Request, RequestQuery, Subquery } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
-import { CURRENT_TIME_TOKEN, type Dialect } from './dialect.js';
+import { CURRENT_TIME_TOKEN, type Dialect, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
@@ -61,20 +61,41 @@ class Builder {
     this.binds.push(s);
     return this.d.placeholder(this.binds.length);
   }
-  public param(i: number, transform = ''): string { return this.push(slot({ from: 'param', param: i, transform })); }
-  public secret(name: string): string { return this.push(slot({ from: 'secret', name })); }
-  public config(name: string): string { return this.push(slot({ from: 'config', name })); }
+  /** type 있는 slot을 더한다. type 없는 slot은 planner 오류다. */
+  private typed(s: BindSlot): string {
+    if (s.col_type === '') fail('IR_INVALID', `bind slot ${this.binds.length} (${s.from}) has no declared type`);
+    return this.push(s);
+  }
+  /** The value Params[i] whose dbspec type is type. */
+  public param(i: number, type: string): string { return this.typed(slot({ from: 'param', param: i, col_type: type })); }
+  /** The value Params[i] compared with or assigned to col: col's type, with the digits of a decimal, time or datetime. */
+  public colParam(i: number, col: Column, transform = ''): string {
+    const s = slot({ from: 'param', param: i, transform, col_type: col.type });
+    if (col.type === 'decimal' || col.type === 'time' || col.type === 'datetime') s.precision = col.precision;
+    if (col.type === 'decimal') s.scale = col.scale;
+    return this.typed(s);
+  }
+  /**
+   * raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로 type이
+   * 없다. raw fragment는 G5.32-3에서 사라진다.
+   */
+  public rawParam(i: number): string { return this.push(slot({ from: 'param', param: i })); }
+  /** A key of the executor configuration; a key is text. */
+  public secret(name: string): string { return this.typed(slot({ from: 'secret', name, col_type: 'text' })); }
+  /** A value of the executor configuration; type is the type of the column it is written to. */
+  public config(name: string, type: string): string { return this.typed(slot({ from: 'config', name, col_type: type })); }
   /** A timestamp the executor supplies (dialects without a sub-second clock) with p fraction digits. */
-  public now(precision: number): string { return this.push(slot({ from: 'now', precision })); }
+  public now(precision: number): string { return this.typed(slot({ from: 'now', precision, col_type: 'datetime' })); }
   /**
    * The key of the transaction's audit record, written to the audit column of an audited table. name is the
-   * audit record table; the executor checks that the transaction's audit is a row of it.
+   * audit record table; the executor checks that the transaction's audit is a row of it. The type is the audit
+   * column's type.
    */
   public audit(ent: Entity): string {
-    return this.push(slot({ from: 'audit', name: ent.auditRecord }));
+    return this.typed(slot({ from: 'audit', name: ent.auditRecord, col_type: columnOf(ent, ent.auditColumn)!.type }));
   }
-  /** The one placeholder an executor expands to the parent values. */
-  public parentList(step: number): string { return this.push(slot({ from: 'parent', step })); }
+  /** The one placeholder an executor expands to the parent values; keyTypes are the compared key columns' types. */
+  public parentList(step: number, keyTypes: string[]): string { return this.push(slot({ from: 'parent', step, key_types: keyTypes })); }
   public last(): BindSlot { return this.binds[this.binds.length - 1]!; }
 }
 
@@ -166,12 +187,14 @@ function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly strin
   return ent.primaryKey;
 }
 
-/** Normalized bind type for executors without a date type. */
-function bindType(col: Column | undefined): string {
-  switch (col?.type) {
-    case 'date': case 'time': case 'datetime': case 'decimal': return col.type;
-  }
-  return '';
+/** The type of the value a SQL-side style function takes from its placeholder: hex takes bytes, ip takes text. */
+function styleInputType(style: string): string {
+  return style === 'ip' ? 'text' : 'bytes';
+}
+
+/** The type of the interval a relative time function takes: seconds take a fraction, the other units an integer. */
+function valueFunctionArgType(name: string): string {
+  return valueFunctionUnits[name] === 'second' ? 'f64' : 'i32';
 }
 
 function functionType(name: string, col: Column | undefined): string {
@@ -285,8 +308,9 @@ export class Planner {
     sql += this.renderJoins(b, root);
     const where: string[] = [];
     if (rc) {
-      if (rc.childKeys.length === 1) where.push(`${this.qcol(root, rc.childKeys[0]!)} IN (${b.parentList(rc.parentStep)})`);
-      else where.push(`(${this.qualified(root, rc.childKeys).join(', ')}) IN ((${b.parentList(rc.parentStep)}))`);
+      const keyTypes = rc.childKeys.map(key => columnOf(root.ent, key)!.type);
+      if (rc.childKeys.length === 1) where.push(`${this.qcol(root, rc.childKeys[0]!)} IN (${b.parentList(rc.parentStep, keyTypes)})`);
+      else where.push(`(${this.qualified(root, rc.childKeys).join(', ')}) IN ((${b.parentList(rc.parentStep, keyTypes)}))`);
     }
     if (root.ent.softDelete) where.push(`${this.qcol(root, root.ent.softDelete)} IS NULL`);
     if (q.where && q.where.items.length > 0) where.push(this.renderGroup(b, root, q.where, rc === undefined));
@@ -551,19 +575,20 @@ export class Planner {
     if (pr.sub) return `${lhs}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${this.subSelect(b, s, pr.sub)})`;
     if (pr.value) {
       const fn = pr.value;
-      const value = this.d.valueFunction(fn.name, () => b.param(fn.ps![0]!), () => b.now(col.type === 'datetime' ? col.precision : 6));
+      const value = this.d.valueFunction(fn.name, () => b.param(fn.ps![0]!, valueFunctionArgType(fn.name)), () => b.now(col.type === 'datetime' ? col.precision : 6));
       if (value === undefined) fail('CAPABILITY_UNSUPPORTED', `${fn.name} is not available on ${this.d.name}`);
       return `${lhs} ${cmp(op)} ${value}`;
     }
     if (pr.fn) {
       const fn = this.columnFunction(b, s, pr.column!, pr.fn);
+      const type = functionType(pr.fn.name, col);
       switch (op) {
         case 'in': case 'not_in':
-          return `${fn}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${pr.ps!.map(i => b.param(i)).join(', ')})`;
+          return `${fn}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${pr.ps!.map(i => b.param(i, type)).join(', ')})`;
         case 'between':
-          return `${fn} BETWEEN ${b.param(pr.ps![0]!)} AND ${b.param(pr.ps![1]!)}`;
+          return `${fn} BETWEEN ${b.param(pr.ps![0]!, type)} AND ${b.param(pr.ps![1]!, type)}`;
       }
-      return `${fn} ${cmp(op)} ${b.param(pr.p!)}`;
+      return `${fn} ${cmp(op)} ${b.param(pr.p!, type)}`;
     }
     const aes = styles(col).includes('aes');
     switch (op) {
@@ -572,7 +597,7 @@ export class Planner {
           if (op !== 'eq' && op !== 'not_eq') fail('OPERATOR_NOT_ALLOWED', 'AES columns support only equality through a declared blind index');
           if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
-          return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, pr.p!)}`;
+          return `${lhs} ${cmp(op)} ${this.renderBlindIndexValue(b, columnOf(s.ent, col.blindIndex)!, pr.p!)}`;
         }
         return `${lhs} ${cmp(op)} ${this.renderValue(b, col, pr.p!)}`;
       }
@@ -586,7 +611,7 @@ export class Planner {
         if (aes) {
           if (col.blindIndex === '') fail('IR_INVALID', `${s.ent.name}.${col.name} requires a declared blind index for equality search`);
           lhs = this.qcol(s, col.blindIndex);
-          values = pr.ps!.map(i => this.renderBlindIndexValue(b, i));
+          values = pr.ps!.map(i => this.renderBlindIndexValue(b, columnOf(s.ent, col.blindIndex)!, i));
         } else {
           values = pr.ps!.map(i => this.renderValue(b, col, i));
         }
@@ -599,9 +624,9 @@ export class Planner {
       case 'is_not_null':
         return `${lhs} IS NOT NULL`;
       case 'contains':
-        return this.d.like(lhs, b.param(pr.p!, 'like_contains'));
+        return this.d.like(lhs, b.colParam(pr.p!, col, 'like_contains'));
       case 'contains_binary':
-        return this.d.containsBinary(lhs, transform => b.param(pr.p!, transform));
+        return this.d.containsBinary(lhs, transform => b.colParam(pr.p!, col, transform));
     }
     return fail('OPERATOR_UNKNOWN', op);
   }
@@ -609,17 +634,16 @@ export class Planner {
   /** Binds one value; SQL-side stages wrap it, host-side stages are recorded on the slot. */
   private renderValue(b: Builder, col: Column, i: number): string {
     const host = styles(col).filter(st => (st === 'aes' || st === 'hex' || st === 'ip') && !this.d.handlesStage(st));
-    const ph = b.param(i);
+    const sql = this.sqlStyles(styles(col));
+    // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+    const ph = sql.length === 0 ? b.colParam(i, col) : b.param(i, styleInputType(sql[0]!));
     b.last().host_styles = host;
-    b.last().col_type = bindType(col);
-    if (col.type === 'decimal' || col.type === 'time' || col.type === 'datetime') b.last().precision = col.precision;
-    if (col.type === 'decimal') b.last().scale = col.scale;
-    return this.d.writeExpr(ph, this.sqlStyles(styles(col)));
+    return this.d.writeExpr(ph, sql);
   }
 
-  /** Binds plaintext that the executor hashes with the blind index key. */
-  private renderBlindIndexValue(b: Builder, i: number): string {
-    const ph = b.param(i);
+  /** Binds plaintext that the executor hashes with the blind index key; the type is the index column's. */
+  private renderBlindIndexValue(b: Builder, index: Column, i: number): string {
+    const ph = b.param(i, index.type);
     b.last().host_styles = ['blind_index'];
     return ph;
   }
@@ -657,11 +681,13 @@ export class Planner {
     const count = frag.split('?').length - 1;
     if (count !== ps.length) fail('IR_INVALID', `fragment has ${count} placeholders but ${ps.length} binds`);
     let k = 0;
-    return frag.replace(/\?/g, () => b.param(ps[k++]!));
+    return frag.replace(/\?/g, () => b.rawParam(ps[k++]!));
   }
 
   private columnFunction(b: Builder, s: Scope, column: string, f: OrmFunction): string {
-    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(f.ps![i]!)) ?? fail('CAPABILITY_UNSUPPORTED', `${f.name} is not available on ${this.d.name}`);
+    // column 함수의 인자는 아직 없다(arity는 모두 0). 인자의 type을 선언하지 않은 함수가 인자를 받으면
+    // type 없는 slot으로 planner 오류다.
+    return this.d.columnFunction(f.name, this.qcol(s, column), i => b.param(f.ps![i]!, '')) ?? fail('CAPABILITY_UNSUPPORTED', `${f.name} is not available on ${this.d.name}`);
   }
 
   /** A subquery for an IN list or a scalar column; "^" refers to outer. */
@@ -699,7 +725,7 @@ export class Planner {
     if (blindIndexSource(ent, col.name)) {
       if ((a.expr ?? '') !== '' || a.plus_p !== undefined || a.minus_p !== undefined) fail('IR_INVALID', 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
-      return this.renderBlindIndexValue(b, a.p!);
+      return this.renderBlindIndexValue(b, col, a.p!);
     }
     if ((a.expr ?? '') !== '') {
       const scope: Scope = { ent, alias: ent.table, q: { entity: ent.name }, joins: new Map(), parent: undefined, outer: undefined, extra: [] };
@@ -707,10 +733,10 @@ export class Planner {
     }
     // table-qualified: a bare name is ambiguous inside ON CONFLICT DO UPDATE
     const q = `${this.d.quote(ent.table)}.${this.d.quote(col.name)}`;
-    if (a.plus_p !== undefined) return `${q} + ${b.param(a.plus_p)}`;
+    if (a.plus_p !== undefined) return `${q} + ${b.colParam(a.plus_p, col)}`;
     if (a.minus_p !== undefined) {
-      const ph = b.param(a.minus_p);
-      return `CASE WHEN ${q} > ${ph} THEN ${q} - ${b.param(a.minus_p)} ELSE 0 END`;
+      const ph = b.colParam(a.minus_p, col);
+      return `CASE WHEN ${q} > ${ph} THEN ${q} - ${b.colParam(a.minus_p, col)} ELSE 0 END`;
     }
     if (a.null) return 'NULL';
     return this.renderValue(b, col, a.p!);
@@ -739,7 +765,7 @@ export class Planner {
   private managedInsertColumns(ent: Entity, set: readonly Assignment[]): { column: string; value: (b: Builder) => string }[] {
     const out: { column: string; value: (b: Builder) => string }[] = [];
     const version = aesVersionColumn(ent);
-    if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version') });
+    if (version !== '' && !assigned(set, version)) out.push({ column: version, value: b => b.config('aes_version', columnOf(ent, version)!.type) });
     if (ent.auditColumn !== '') {
       out.push({ column: ent.auditColumn, value: b => b.audit(ent) });
     }
@@ -789,7 +815,7 @@ export class Planner {
       const duplicate = addBlindIndexAssignments(ent, [...r.on_duplicate!]);
       validateAESAssignments(ent, duplicate, true);
       const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnOf(ent, a.column)!, a)}`);
-      if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
+      if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
       const op = this.auditAssignment(b, ent);
       if (op !== undefined) sets.push(op);
       if (ent.identity !== '' && !this.d.insertReturningId) {
@@ -815,13 +841,13 @@ export class Planner {
       sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
     }
     const version = aesVersionColumn(ent);
-    if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
+    if (version !== '' && assignsAES(ent, set) && !assigned(set, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
     // The update time is always assigned: optimistic locking needs the same behavior on every dialect.
     if (ent.updated !== '' && !assigned(r.set ?? [], ent.updated)) sets.push(`${this.d.quote(ent.updated)} = ${this.clock(b, columnOf(ent, ent.updated)!)}`);
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);
     let where = this.renderGroup(b, root, r.where!, true);
-    if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.param(r.optimistic.p)}`;
+    if (r.optimistic) where += ` AND ${this.qcol(root, r.optimistic.column)} = ${b.colParam(r.optimistic.p, columnOf(root.ent, r.optimistic.column)!)}`;
     if (ent.softDelete !== '') where += ` AND ${this.qcol(root, ent.softDelete)} IS NULL`;
     return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
   }
@@ -862,7 +888,7 @@ export class Planner {
       sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
     }
     const version = aesVersionColumn(ent);
-    if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version')}`);
+    if (version !== '' && assignsAES(ent, set)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnOf(ent, version)!.type)}`);
     sets.push(`${this.d.quote(ent.softDelete)} = NULL`);
     const op = this.auditAssignment(b, ent);
     if (op !== undefined) sets.push(op);

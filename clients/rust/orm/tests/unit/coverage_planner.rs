@@ -60,6 +60,41 @@ fn count(value: Option<&Value>, at: &str) -> u32 {
     value.and_then(Value::as_u64).and_then(|n| u32::try_from(n).ok()).unwrap_or_else(|| panic!("{at}: expected a count"))
 }
 
+/// column 함수나 value 함수 하나를 IR로 읽는다.
+fn func(value: &Value, at: &str) -> ir::Func {
+    let object = members(value, at, &["name", "ps"]);
+    ir::Func { name: string(object, at, "name"), ps: indexes(object, at, "ps") }
+}
+
+/// `key`의 parameter 번호 목록이며 없으면 비어 있다.
+fn indexes(object: &Map<String, Value>, at: &str, key: &str) -> Vec<usize> {
+    object
+        .get(key)
+        .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{at}.{key}: expected an array")).iter().map(|p| index(p, &format!("{at}.{key}"))).collect())
+        .unwrap_or_default()
+}
+
+/// write의 assignment 목록을 IR로 읽는다.
+fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
+    value
+        .as_array()
+        .unwrap_or_else(|| panic!("{at}: expected an array"))
+        .iter()
+        .enumerate()
+        .map(|(i, a)| {
+            let at = format!("{at}[{i}]");
+            let a = members(a, &at, &["column", "p", "plus_p", "minus_p"]);
+            ir::Assign {
+                column: string(a, &at, "column"),
+                p: a.get("p").map(|p| index(p, &format!("{at}.p"))),
+                plus_p: a.get("plus_p").map(|p| index(p, &format!("{at}.plus_p"))),
+                minus_p: a.get("minus_p").map(|p| index(p, &format!("{at}.minus_p"))),
+                ..Default::default()
+            }
+        })
+        .collect()
+}
+
 fn group(value: &Value, at: &str) -> ir::Group {
     let object = members(value, at, &["conn", "items"]);
     let items = object.get("items").and_then(Value::as_array).unwrap_or_else(|| panic!("{at}.items: expected an array"));
@@ -71,7 +106,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
             let pred = members(
                 members(item, &at, &["pred"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
                 &format!("{at}.pred"),
-                &["conn", "column", "op", "p", "ps", "sub"],
+                &["conn", "column", "op", "p", "ps", "sub", "fn", "value"],
             );
             let at = format!("{at}.pred");
             ir::Item::Pred {
@@ -84,6 +119,8 @@ fn group(value: &Value, at: &str) -> ir::Group {
                         .get("ps")
                         .map(|ps| ps.as_array().unwrap_or_else(|| panic!("{at}.ps: expected an array")).iter().map(|p| index(p, &format!("{at}.ps"))).collect())
                         .unwrap_or_default(),
+                    r#fn: pred.get("fn").map(|f| func(f, &format!("{at}.fn"))),
+                    value: pred.get("value").map(|f| func(f, &format!("{at}.value"))),
                     sub: pred.get("sub").map(|sub| {
                         let at = format!("{at}.sub");
                         let object = members(sub, &at, &["query", "column", "agg"]);
@@ -184,9 +221,9 @@ fn query(value: &Value, at: &str) -> ir::Query {
 /// 값이 manifest hash를 더한 입력과 같아야 한다.
 fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
-    let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where", "joins", "relations"]);
+    let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where", "joins", "relations", "set", "optimistic"]);
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params"] {
+    for key in ["ir_version", "kind", "n_params", "set", "optimistic"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -195,6 +232,14 @@ fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         kind: string(object, at, "kind"),
         query: query(&query_input, at),
         n_params: index(object.get("n_params").unwrap_or_else(|| panic!("input.n_params: expected a count")), "input.n_params"),
+        set: object.get("set").map(|set| assigns(set, "input.set")).unwrap_or_default(),
+        optimistic: object.get("optimistic").map(|o| {
+            let o = members(o, "input.optimistic", &["column", "p"]);
+            ir::Optimist {
+                column: string(o, "input.optimistic", "column"),
+                p: index(o.get("p").unwrap_or_else(|| panic!("input.optimistic.p: expected a parameter index")), "input.optimistic.p"),
+            }
+        }),
         ..Default::default()
     };
     let mut with_hash = input.clone();
@@ -216,8 +261,16 @@ fn run(id: &str) {
                     .steps
                     .iter()
                     .map(|step| {
-                        let params: Vec<i64> = step.bind_slots.iter().map(|slot| if slot.from == "parent" { -1 } else { slot.param as i64 }).collect();
-                        json!({"role": step.role, "sql": step.sql, "params": params, "tables": step.tables})
+                        let slots: Vec<Value> = step
+                            .bind_slots
+                            .iter()
+                            .map(|slot| match slot.from.as_str() {
+                                "param" => json!({"from": slot.from, "param": slot.param, "type": slot.col_type}),
+                                "parent" => json!({"from": slot.from, "key_types": slot.key_types}),
+                                _ => json!({"from": slot.from, "type": slot.col_type}),
+                            })
+                            .collect();
+                        json!({"role": step.role, "sql": step.sql, "slots": slots, "tables": step.tables})
                     })
                     .collect();
                 json!(statements)
@@ -278,4 +331,32 @@ fn coverage_planner_restore_rejects_non_key() {
 fn coverage_planner_tables() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     run("planner_tables");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_bind_types_select() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_bind_types_select");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_bind_types_update() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_bind_types_update");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_bind_types_insert() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_bind_types_insert");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_parent_key_types() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    run("planner_parent_key_types");
 }

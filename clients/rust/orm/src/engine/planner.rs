@@ -102,11 +102,21 @@ struct Builder {
     subs: usize,
     /// statement가 이름으로 쓴 table이다.
     tables: std::collections::BTreeSet<String>,
+    /// type 없는 slot처럼 placeholder를 만들며 생긴 첫 planner 오류다. step을 만드는 곳이 확인한다.
+    error: Option<crate::Error>,
 }
 
 impl Builder {
     fn new(d: Dialect) -> Builder {
-        Builder { d, binds: Vec::new(), subs: 0, tables: std::collections::BTreeSet::new() }
+        Builder { d, binds: Vec::new(), subs: 0, tables: std::collections::BTreeSet::new(), error: None }
+    }
+
+    /// placeholder를 만들며 생긴 첫 오류를 돌려준다.
+    fn checked(&mut self) -> Result<()> {
+        match self.error.take() {
+            Some(e) => Err(e),
+            None => Ok(()),
+        }
     }
 
     /// table 이름을 quote하고 statement의 table로 기록한다.
@@ -120,37 +130,65 @@ impl Builder {
         self.tables.iter().cloned().collect()
     }
 
-    fn slot(&mut self, slot: BindSlot) -> String {
+    fn push(&mut self, slot: BindSlot) -> String {
         self.binds.push(slot);
         self.d.placeholder(self.binds.len())
     }
 
-    fn param(&mut self, i: usize) -> String {
-        self.slot(BindSlot { from: "param".into(), param: i, ..Default::default() })
+    /// type 있는 slot을 더한다. type 없는 slot은 planner 오류다.
+    fn slot(&mut self, slot: BindSlot) -> String {
+        if slot.col_type.is_empty() && self.error.is_none() {
+            self.error = Some(err(codes::IR_INVALID, format!("bind slot {} ({}) has no declared type", self.binds.len(), slot.from)));
+        }
+        self.push(slot)
     }
 
-    fn param_t(&mut self, i: usize, transform: &str) -> String {
-        self.slot(BindSlot { from: "param".into(), param: i, transform: transform.into(), ..Default::default() })
+    /// request 값 Params[i]의 placeholder다. `ty`는 그 값의 dbspec type이다.
+    fn param(&mut self, i: usize, ty: &str) -> String {
+        self.slot(BindSlot { from: "param".into(), param: i, col_type: ty.into(), ..Default::default() })
     }
 
-    fn config(&mut self, name: &str) -> String {
-        self.slot(BindSlot { from: "config".into(), name: name.into(), ..Default::default() })
+    /// column `col`과 비교하거나 `col`에 할당하는 값 Params[i]의 placeholder다. type은 `col`의
+    /// type이고 decimal, time, datetime은 그 자릿수를 싣는다.
+    fn col_param(&mut self, i: usize, col: &Field, transform: &str) -> String {
+        let (precision, scale) = col_digits(col);
+        self.slot(BindSlot {
+            from: "param".into(),
+            param: i,
+            transform: transform.into(),
+            col_type: col.ty.name().into(),
+            precision,
+            scale,
+            ..Default::default()
+        })
+    }
+
+    /// raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을 어디에 쓰는지 모르므로
+    /// type이 없다. raw fragment는 G5.32-3에서 사라진다.
+    fn raw_param(&mut self, i: usize) -> String {
+        self.push(BindSlot { from: "param".into(), param: i, ..Default::default() })
+    }
+
+    /// executor 설정 값이다. `ty`는 그 값을 쓰는 column의 type이다.
+    fn config(&mut self, name: &str, ty: &str) -> String {
+        self.slot(BindSlot { from: "config".into(), name: name.into(), col_type: ty.into(), ..Default::default() })
     }
 
     /// executor가 주는 시각. `precision`은 slot의 소수 자리다(`clock_precision`).
     fn now(&mut self, precision: u8) -> String {
-        self.slot(BindSlot { from: "now".into(), precision: precision.into(), ..Default::default() })
+        self.slot(BindSlot { from: "now".into(), precision: precision.into(), col_type: "datetime".into(), ..Default::default() })
     }
 
     /// executor가 채우는 transaction의 audit 기록 key다. name은 audit 기록 entity이며, executor는
-    /// transaction의 audit이 그 entity의 행인지 확인한다.
+    /// transaction의 audit이 그 entity의 행인지 확인한다. type은 audit column의 type이다.
     fn audit(&mut self, col: &Field, record: &str) -> String {
-        let ph = self.slot(BindSlot { from: "audit".into(), name: record.to_owned(), ..Default::default() });
+        let ph = self.slot(BindSlot { from: "audit".into(), name: record.to_owned(), col_type: col.ty.name().into(), ..Default::default() });
         self.d.write_expr(ph, col.ty, &[])
     }
 
-    fn parent_list(&mut self, step: usize) -> String {
-        self.slot(BindSlot { from: "parent".into(), step: step as u32, ..Default::default() })
+    /// executor가 parent 값으로 펼치는 placeholder 하나다. `key_types`는 비교하는 key column의 type이다.
+    fn parent_list(&mut self, step: usize, key_types: Vec<String>) -> String {
+        self.push(BindSlot { from: "parent".into(), step: step as u32, key_types, ..Default::default() })
     }
 
     /// Replaces each `?` of a fragment with the placeholder of the next bind.
@@ -163,7 +201,7 @@ impl Builder {
         let mut k = 0;
         for ch in frag.chars() {
             if ch == '?' {
-                let ph = self.param(ps[k]);
+                let ph = self.raw_param(ps[k]);
                 out.push_str(&ph);
                 k += 1;
             } else {
@@ -297,14 +335,30 @@ fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Vec<String> {
     ent.primary_key.clone()
 }
 
-/// executor가 bind 전에 정규화하는 type과 그 precision, scale.
-fn bind_type(col: &Field) -> (String, i64, i64) {
+/// column 값 slot이 싣는 precision과 scale이다: decimal(p,s), time(p), datetime(p).
+fn col_digits(col: &Field) -> (i64, i64) {
     match col.ty {
-        Type::Decimal(p, s) => ("decimal".into(), p.into(), s.into()),
-        Type::Time(p) => ("time".into(), p.into(), 0),
-        Type::DateTime(p) => ("datetime".into(), p.into(), 0),
-        Type::Date => ("date".into(), 0, 0),
-        _ => (String::new(), 0, 0),
+        Type::Decimal(p, s) => (p.into(), s.into()),
+        Type::Time(p) | Type::DateTime(p) => (p.into(), 0),
+        _ => (0, 0),
+    }
+}
+
+/// SQL 쪽 style 함수가 placeholder에서 받는 값의 type이다. hex는 byte를, ip는 IP 주소 text를 받는다.
+fn style_input_type(style: &str) -> &'static str {
+    if style == "ip" {
+        "text"
+    } else {
+        "bytes"
+    }
+}
+
+/// 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다.
+fn value_function_arg_type(name: &str) -> &'static str {
+    if super::dialect::value_function_unit(name) == Some("second") {
+        "f64"
+    } else {
+        "i32"
     }
 }
 
@@ -444,7 +498,8 @@ impl<'m> Planner<'m> {
         self.render_joins(&mut b, root, root, &mut sb)?;
         let mut where_ = Vec::new();
         if let Some(rc) = rc {
-            let list = b.parent_list(rc.parent_step);
+            let key_types = rc.child_keys.iter().map(|k| self.column_of(root.ent, k).map(|f| f.ty.name().to_owned())).collect::<Result<Vec<_>>>()?;
+            let list = b.parent_list(rc.parent_step, key_types);
             if rc.child_keys.len() == 1 {
                 where_.push(format!("{} IN ({list})", self.qcol(root, &rc.child_keys[0])));
             } else {
@@ -493,6 +548,7 @@ impl<'m> Planner<'m> {
                 }
             }
         }
+        b.checked()?;
         let mut st = Step { role: "main".into(), sql: sb, tables: b.tables(), lock: q.lock.clone(), bind_slots: b.binds, ..Default::default() };
         if kind == "count" && !steps.is_empty() {
             st.role = "count".into();
@@ -846,7 +902,7 @@ impl<'m> Planner<'m> {
             let first = v.ps.first().copied();
             let cell = std::cell::RefCell::new(&mut *b);
             let mut arg = || match first {
-                Some(i) => cell.borrow_mut().param(i),
+                Some(i) => cell.borrow_mut().param(i, value_function_arg_type(&v.name)),
                 None => String::new(),
             };
             let precision = clock_precision(col);
@@ -859,18 +915,19 @@ impl<'m> Planner<'m> {
         }
         if let Some(f) = &pr.r#fn {
             let fcol = self.column_function(s, &pr.column, f)?;
+            let ty = function_type(&f.name, Some(col));
             return Ok(match pr.op.as_str() {
                 "in" | "not_in" => {
-                    let phs: Vec<String> = pr.ps.iter().map(|i| b.param(*i)).collect();
+                    let phs: Vec<String> = pr.ps.iter().map(|i| b.param(*i, &ty)).collect();
                     let op = if pr.op == "not_in" { " NOT IN " } else { " IN " };
                     format!("{fcol}{op}({})", phs.join(", "))
                 }
                 "between" => {
-                    let lo = b.param(pr.ps[0]);
-                    let hi = b.param(pr.ps[1]);
+                    let lo = b.param(pr.ps[0], &ty);
+                    let hi = b.param(pr.ps[1], &ty);
                     format!("{fcol} BETWEEN {lo} AND {hi}")
                 }
-                _ => format!("{fcol} {} {}", cmp(&pr.op), b.param(p()?)),
+                _ => format!("{fcol} {} {}", cmp(&pr.op), b.param(p()?, &ty)),
             });
         }
         let op = pr.op.as_str();
@@ -881,7 +938,7 @@ impl<'m> Planner<'m> {
                         return Err(err(codes::OPERATOR_NOT_ALLOWED, "AES columns support only equality through a declared blind index"));
                     }
                     lhs = self.blind_lhs(s, col)?;
-                    let rhs = self.blind_value(b, p()?);
+                    let rhs = self.blind_value(b, self.blind_index(s, col)?, p()?);
                     return Ok(format!("{lhs} {} {rhs}", cmp(op)));
                 }
                 let rhs = self.render_value(b, col, p()?);
@@ -896,11 +953,20 @@ impl<'m> Planner<'m> {
                 format!("{lhs} {} {}", cmp(op.trim_end_matches("_col")), self.qcol(rs, &r.column))
             }
             "in" | "not_in" => {
-                let aes = col.aes();
-                if aes {
+                let index = if col.aes() {
                     lhs = self.blind_lhs(s, col)?;
-                }
-                let phs: Vec<String> = pr.ps.iter().map(|i| if aes { self.blind_value(b, *i) } else { self.render_value(b, col, *i) }).collect();
+                    Some(self.blind_index(s, col)?)
+                } else {
+                    None
+                };
+                let phs: Vec<String> = pr
+                    .ps
+                    .iter()
+                    .map(|i| match index {
+                        Some(index) => self.blind_value(b, index, *i),
+                        None => self.render_value(b, col, *i),
+                    })
+                    .collect();
                 format!("{lhs} {} ({})", if op == "not_in" { "NOT IN" } else { "IN" }, phs.join(", "))
             }
             "between" => {
@@ -911,12 +977,12 @@ impl<'m> Planner<'m> {
             "is_null" => format!("{lhs} IS NULL"),
             "is_not_null" => format!("{lhs} IS NOT NULL"),
             "contains" => {
-                let ph = b.param_t(p()?, "like_contains");
+                let ph = b.col_param(p()?, col, "like_contains");
                 self.d.like(&lhs, &ph)
             }
             "contains_binary" => {
                 let i = p()?;
-                self.d.contains_binary(&lhs, &mut |t| b.param_t(i, t))
+                self.d.contains_binary(&lhs, &mut |t| b.col_param(i, col, t))
             }
             _ => return Err(err(codes::OPERATOR_UNKNOWN, op.to_owned())),
         })
@@ -930,9 +996,18 @@ impl<'m> Planner<'m> {
         Ok(self.qcol(s, index))
     }
 
-    /// Binds plaintext for executor-side keyed hashing.
-    fn blind_value(&self, b: &mut Builder, i: usize) -> String {
-        b.slot(BindSlot { from: "param".into(), param: i, host_styles: vec!["blind_index".into()], ..Default::default() })
+    /// The blind index column of the AES column `col`.
+    fn blind_index<'e>(&self, s: &Scope<'e>, col: &Field) -> Result<&'e Field> {
+        let index = col
+            .blind_index
+            .as_ref()
+            .ok_or_else(|| err(codes::IR_INVALID, format!("{}.{} requires a declared blind index for equality search", s.ent.name, col.name)))?;
+        self.column_of(s.ent, index)
+    }
+
+    /// Binds plaintext for executor-side keyed hashing; the type is the blind index column's.
+    fn blind_value(&self, b: &mut Builder, index: &Field, i: usize) -> String {
+        b.slot(BindSlot { from: "param".into(), param: i, host_styles: vec!["blind_index".into()], col_type: index.ty.name().into(), ..Default::default() })
     }
 
     /// Binds one value, wrapped in the SQL-side stages of the column; the
@@ -940,8 +1015,12 @@ impl<'m> Planner<'m> {
     fn render_value(&self, b: &mut Builder, col: &Field, i: usize) -> String {
         let styles = self.sql_styles(&col.codec);
         let host: Vec<String> = col.codec.iter().filter(|s| matches!(s.as_str(), "aes" | "hex" | "ip") && !self.d.handles_style(s)).cloned().collect();
-        let (col_type, precision, scale) = bind_type(col);
-        let ph = b.slot(BindSlot { from: "param".into(), param: i, host_styles: host, col_type, precision, scale, ..Default::default() });
+        // SQL 쪽 style 함수가 감싸는 값의 type은 그 함수 입력의 type이다.
+        let ph = match styles.first() {
+            None => b.col_param(i, col, ""),
+            Some(style) => b.param(i, style_input_type(style)),
+        };
+        b.binds.last_mut().expect("the slot just added").host_styles = host;
         self.d.write_expr(ph, col.ty, &styles)
     }
 
@@ -1047,7 +1126,7 @@ impl<'m> Planner<'m> {
             if a.null {
                 return Ok("NULL".into());
             }
-            return Ok(self.blind_value(b, a.p.unwrap_or_default()));
+            return Ok(self.blind_value(b, col, a.p.unwrap_or_default()));
         }
         let qualified = || format!("{}.{}", self.d.quote(&ent.table), self.d.quote(&col.name));
         if !a.expr.is_empty() {
@@ -1058,12 +1137,12 @@ impl<'m> Planner<'m> {
         }
         if let Some(i) = a.plus_p {
             // table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
-            return Ok(format!("{} + {}", qualified(), b.param(i)));
+            return Ok(format!("{} + {}", qualified(), b.col_param(i, col, "")));
         }
         if let Some(i) = a.minus_p {
             let q = qualified();
-            let first = b.param(i);
-            let second = b.param(i);
+            let first = b.col_param(i, col, "");
+            let second = b.col_param(i, col, "");
             return Ok(format!("CASE WHEN {q} > {first} THEN {q} - {second} ELSE 0 END"));
         }
         if a.null {
@@ -1126,6 +1205,7 @@ impl<'m> Planner<'m> {
                 }
                 sql.push_str(&format!(", ({})", more.join(", ")));
             }
+            b.checked()?;
             return Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() });
         }
         if !r.on_duplicate.is_empty() {
@@ -1138,7 +1218,7 @@ impl<'m> Planner<'m> {
                 sets.push(format!("{} = {v}", self.d.quote(&a.column)));
             }
             if !version.is_empty() && assigns_aes(ent, &duplicate) && !assigned(&duplicate, version) {
-                sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
+                sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
             }
             if !audited.is_empty() {
                 sets.push(format!("{} = {}", self.d.quote(audited), b.audit(self.column_of(ent, audited)?, audit_record(ent))));
@@ -1153,6 +1233,7 @@ impl<'m> Planner<'m> {
         if let Some(identity) = ent.identity.as_deref().filter(|_| self.d.insert_returning_id()) {
             sql.push_str(&format!(" RETURNING {}", self.d.quote(identity)));
         }
+        b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
@@ -1162,7 +1243,7 @@ impl<'m> Planner<'m> {
         let mut out = Vec::new();
         let version = aes_version_column(ent);
         if !version.is_empty() && !assigned(set, version) {
-            out.push(Managed::AesVersion(version));
+            out.push(Managed::AesVersion(self.column_of(ent, version)?));
         }
         let audited = audit_column(ent);
         if !audited.is_empty() {
@@ -1209,7 +1290,7 @@ impl<'m> Planner<'m> {
         }
         let version = aes_version_column(ent);
         if !version.is_empty() && assigns_aes(ent, &set) && !assigned(&set, version) {
-            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
+            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
         }
         // updated 시각은 항상 명시적으로 쓰므로 모든 dialect와 optimistic locking이 같게 동작한다.
         if let Some(updated) = ent.updated.as_deref().filter(|u| !assigned(&r.set, u)) {
@@ -1223,13 +1304,14 @@ impl<'m> Planner<'m> {
         let w = r.query.where_.as_ref().filter(|g| !g.items.is_empty()).ok_or_else(|| err(codes::IR_INVALID, "update without where"))?;
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         if let Some(o) = &r.optimistic {
-            let ph = b.param(o.p);
+            let ph = b.col_param(o.p, self.column_of(ent, &o.column)?, "");
             where_.push_str(&format!(" AND {} = {ph}", self.qcol(&root, &o.column)));
         }
         if let Some(soft_delete) = &ent.soft_delete {
             where_.push_str(&format!(" AND {} IS NULL", self.qcol(&root, soft_delete)));
         }
         let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
+        b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
@@ -1257,6 +1339,7 @@ impl<'m> Planner<'m> {
             }
             None => format!("DELETE FROM {} WHERE {where_}", b.table(&ent.table)),
         };
+        b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 
@@ -1287,7 +1370,7 @@ impl<'m> Planner<'m> {
         }
         let version = aes_version_column(ent);
         if !version.is_empty() && assigns_aes(ent, &set) {
-            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version")));
+            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
         }
         sets.push(format!("{} = NULL", self.d.quote(soft_delete)));
         let audited = audit_column(ent);
@@ -1297,6 +1380,7 @@ impl<'m> Planner<'m> {
         let mut where_ = self.render_group(&mut b, &root, &root, w, true)?;
         where_.push_str(&format!(" AND {} IS NOT NULL", self.qcol(&root, soft_delete)));
         let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
+        b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
     }
 }
@@ -1334,7 +1418,7 @@ fn restore_key(ent: &Entity, w: &ir::Group) -> Result<()> {
 
 /// insert마다 executor가 값을 주는 column과 그 bind slot.
 enum Managed<'e> {
-    AesVersion(&'e str),
+    AesVersion(&'e Field),
     /// audit column과 그 audit 기록 entity.
     Audit(&'e Field, &'e str),
     Now(&'e Field),
@@ -1343,14 +1427,13 @@ enum Managed<'e> {
 impl Managed<'_> {
     fn column(&self) -> &str {
         match self {
-            Managed::AesVersion(name) => name,
-            Managed::Audit(f, _) | Managed::Now(f) => &f.name,
+            Managed::AesVersion(f) | Managed::Audit(f, _) | Managed::Now(f) => &f.name,
         }
     }
 
     fn value(&self, b: &mut Builder) -> String {
         match self {
-            Managed::AesVersion(_) => b.config("aes_version"),
+            Managed::AesVersion(f) => b.config("aes_version", f.ty.name()),
             Managed::Audit(f, record) => b.audit(f, record),
             Managed::Now(f) => b.now(clock_precision(f)),
         }

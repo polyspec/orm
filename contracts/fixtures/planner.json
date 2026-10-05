@@ -4,12 +4,24 @@
       "expected": {
         "mysql": [
           {
-            "params": [
-              0,
-              1,
-              2
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
             "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`name` = ? AND `a`.`seq` IN (?, ?) ORDER BY `a`.`seq` DESC LIMIT 0, 3",
             "tables": [
               "user"
@@ -18,12 +30,24 @@
         ],
         "postgres": [
           {
-            "params": [
-              0,
-              1,
-              2
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1 AND \"a\".\"seq\" IN ($2, $3) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0",
             "tables": [
               "user"
@@ -32,12 +56,24 @@
         ],
         "sqlite": [
           {
-            "params": [
-              0,
-              1,
-              2
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ? AND \"a\".\"seq\" IN (?, ?) ORDER BY \"a\".\"seq\" DESC LIMIT 3 OFFSET 0",
             "tables": [
               "user"
@@ -90,10 +126,14 @@
       "expected": {
         "mysql": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
             "sql": "SELECT COUNT(*) FROM `user` AS `a` WHERE `a`.`name` = ?",
             "tables": [
               "user"
@@ -102,10 +142,14 @@
         ],
         "postgres": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
             "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = $1",
             "tables": [
               "user"
@@ -114,10 +158,14 @@
         ],
         "sqlite": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              }
+            ],
             "sql": "SELECT COUNT(*) FROM \"user\" AS \"a\" WHERE \"a\".\"name\" = ?",
             "tables": [
               "user"
@@ -173,10 +221,14 @@
       "expected": {
         "mysql": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
             "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
             "tables": [
               "soft_record"
@@ -185,10 +237,14 @@
         ],
         "postgres": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
             "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $1 AND \"soft_record\".\"deleted_at\" IS NOT NULL",
             "tables": [
               "soft_record"
@@ -197,10 +253,14 @@
         ],
         "sqlite": [
           {
-            "params": [
-              0
-            ],
             "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
             "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL",
             "tables": [
               "soft_record"
@@ -256,8 +316,8 @@
       "expected": {
         "mysql": [
           {
-            "params": [],
             "role": "main",
+            "slots": [],
             "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name` FROM `user` AS `a` WHERE `a`.`seq` IN (SELECT `s1`.`user_seq` FROM `service_member` AS `s1`)",
             "tables": [
               "service_member",
@@ -265,10 +325,15 @@
             ]
           },
           {
-            "params": [
-              -1
-            ],
             "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64"
+                ]
+              }
+            ],
             "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`, UNHEX(`a`.`aes_hex_phone`) AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version`, `service_model`.`seq` AS `service_model__seq`, `service_model`.`name` AS `service_model__name` FROM `author` AS `a` INNER JOIN `service` AS `service_model` ON `a`.`service_seq` = `service_model`.`seq` WHERE `a`.`user_seq` IN (?)",
             "tables": [
               "author",
@@ -278,8 +343,8 @@
         ],
         "postgres": [
           {
-            "params": [],
             "role": "main",
+            "slots": [],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (SELECT \"s1\".\"user_seq\" FROM \"service_member\" AS \"s1\")",
             "tables": [
               "service_member",
@@ -287,10 +352,15 @@
             ]
           },
           {
-            "params": [
-              -1
-            ],
             "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64"
+                ]
+              }
+            ],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"service_model\".\"seq\" AS \"service_model__seq\", \"service_model\".\"name\" AS \"service_model__name\" FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service_model\" ON \"a\".\"service_seq\" = \"service_model\".\"seq\" WHERE \"a\".\"user_seq\" IN ($1)",
             "tables": [
               "author",
@@ -300,8 +370,8 @@
         ],
         "sqlite": [
           {
-            "params": [],
             "role": "main",
+            "slots": [],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\" FROM \"user\" AS \"a\" WHERE \"a\".\"seq\" IN (SELECT \"s1\".\"user_seq\" FROM \"service_member\" AS \"s1\")",
             "tables": [
               "service_member",
@@ -309,10 +379,15 @@
             ]
           },
           {
-            "params": [
-              -1
-            ],
             "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64"
+                ]
+              }
+            ],
             "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\", \"service_model\".\"seq\" AS \"service_model__seq\", \"service_model\".\"name\" AS \"service_model__name\" FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service_model\" ON \"a\".\"service_seq\" = \"service_model\".\"seq\" WHERE \"a\".\"user_seq\" IN (?)",
             "tables": [
               "author",
@@ -369,6 +444,787 @@
             }
           ]
         }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "decimal"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "text"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`name` LIKE ? AND `a`.`read_count` BETWEEN ? AND ? AND `a`.`price` = ? AND `a`.`email_blind_index` = ? AND `a`.`start_dt` > DATE_SUB(NOW(6), INTERVAL ? DAY) AND YEAR(`a`.`created_ts`) = ? AND `a`.`ip` = INET6_ATON(?)",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "decimal"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "bytes"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" ILIKE $1 AND \"a\".\"read_count\" BETWEEN $2 AND $3 AND \"a\".\"price\" = $4 AND \"a\".\"email_blind_index\" = $5 AND \"a\".\"start_dt\" > (now() - make_interval(days => CAST($6 AS integer))) AND EXTRACT(YEAR FROM \"a\".\"created_ts\")::int = $7 AND \"a\".\"ip\" = $8",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "decimal"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "varchar"
+              },
+              {
+                "from": "now",
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "bytes"
+              }
+            ],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"name\" LIKE ? ESCAPE '\\' AND \"a\".\"read_count\" BETWEEN ? AND ? AND \"a\".\"price\" = ? AND \"a\".\"email_blind_index\" = ? AND \"a\".\"start_dt\" > (datetime(?, '-' || CAST(? AS TEXT) || ' days') || substr(?, 20)) AND CAST(strftime('%Y', \"a\".\"created_ts\") AS INTEGER) = ? AND \"a\".\"ip\" = ?",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_bind_types_select",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 8,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "contains",
+                "p": 0
+              }
+            },
+            {
+              "pred": {
+                "column": "read_count",
+                "conn": "and",
+                "op": "between",
+                "ps": [
+                  1,
+                  2
+                ]
+              }
+            },
+            {
+              "pred": {
+                "column": "price",
+                "conn": "and",
+                "op": "eq",
+                "p": 3
+              }
+            },
+            {
+              "pred": {
+                "column": "aes_hex_email",
+                "conn": "and",
+                "op": "eq",
+                "p": 4
+              }
+            },
+            {
+              "pred": {
+                "column": "start_dt",
+                "conn": "and",
+                "op": "gt",
+                "value": {
+                  "name": "days_ago",
+                  "ps": [
+                    5
+                  ]
+                }
+              }
+            },
+            {
+              "pred": {
+                "column": "created_ts",
+                "conn": "and",
+                "fn": {
+                  "name": "year"
+                },
+                "op": "eq",
+                "p": 6
+              }
+            },
+            {
+              "pred": {
+                "column": "ip",
+                "conn": "and",
+                "op": "eq",
+                "p": 7
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "bytes"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "bytes"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "datetime"
+              }
+            ],
+            "sql": "UPDATE `author` SET `read_count` = `author`.`read_count` + ?, `aes_hex_email` = HEX(?), `aes_hex_phone` = HEX(?), `email_blind_index` = ?, `phone_blind_index` = ?, `aes_key_version` = ?, `updated_ts` = CURRENT_TIMESTAMP(6) WHERE `author`.`seq` = ? AND `author`.`updated_ts` = ?",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "datetime"
+              }
+            ],
+            "sql": "UPDATE \"author\" SET \"read_count\" = \"author\".\"read_count\" + $1, \"aes_hex_email\" = $2, \"aes_hex_phone\" = $3, \"email_blind_index\" = $4, \"phone_blind_index\" = $5, \"aes_key_version\" = $6, \"updated_ts\" = CURRENT_TIMESTAMP WHERE \"author\".\"seq\" = $7 AND \"author\".\"updated_ts\" = $8",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "datetime"
+              }
+            ],
+            "sql": "UPDATE \"author\" SET \"read_count\" = \"author\".\"read_count\" + ?, \"aes_hex_email\" = ?, \"aes_hex_phone\" = ?, \"email_blind_index\" = ?, \"phone_blind_index\" = ?, \"aes_key_version\" = ?, \"updated_ts\" = ? WHERE \"author\".\"seq\" = ? AND \"author\".\"updated_ts\" = ?",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_bind_types_update",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "update",
+        "n_params": 5,
+        "optimistic": {
+          "column": "updated_ts",
+          "p": 4
+        },
+        "set": [
+          {
+            "column": "read_count",
+            "plus_p": 0
+          },
+          {
+            "column": "aes_hex_email",
+            "p": 1
+          },
+          {
+            "column": "aes_hex_phone",
+            "p": 2
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "eq",
+                "p": 3
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "bytes"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              }
+            ],
+            "sql": "INSERT INTO `author` (`name`, `aes_hex_email`, `start_dt`, `end_dt`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `email_blind_index`, `aes_key_version`) VALUES (?, HEX(?), ?, ?, ?, ?, ?, ?, ?, ?)",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              }
+            ],
+            "sql": "INSERT INTO \"author\" (\"name\", \"aes_hex_email\", \"start_dt\", \"end_dt\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"email_blind_index\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING \"seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 5,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 6,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 7,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "type": "datetime"
+              }
+            ],
+            "sql": "INSERT INTO \"author\" (\"name\", \"aes_hex_email\", \"start_dt\", \"end_dt\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"email_blind_index\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING \"seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_bind_types_insert",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 8,
+        "set": [
+          {
+            "column": "name",
+            "p": 0
+          },
+          {
+            "column": "aes_hex_email",
+            "p": 1
+          },
+          {
+            "column": "start_dt",
+            "p": 2
+          },
+          {
+            "column": "end_dt",
+            "p": 3
+          },
+          {
+            "column": "user_seq",
+            "p": 4
+          },
+          {
+            "column": "service_seq",
+            "p": 5
+          },
+          {
+            "column": "service_region_seq",
+            "p": 6
+          },
+          {
+            "column": "service_member_seq",
+            "p": 7
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`name` AS `a__name` FROM `composite_account` AS `a`",
+            "tables": [
+              "composite_account"
+            ]
+          },
+          {
+            "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64",
+                  "i64"
+                ]
+              }
+            ],
+            "sql": "SELECT `a`.`tenant_id` AS `a__tenant_id`, `a`.`account_id` AS `a__account_id`, `a`.`role` AS `a__role` FROM `composite_membership` AS `a` WHERE (`a`.`tenant_id`, `a`.`account_id`) IN ((?))",
+            "tables": [
+              "composite_membership"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\"",
+            "tables": [
+              "composite_account"
+            ]
+          },
+          {
+            "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64",
+                  "i64"
+                ]
+              }
+            ],
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_membership\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN (($1))",
+            "tables": [
+              "composite_membership"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"name\" AS \"a__name\" FROM \"composite_account\" AS \"a\"",
+            "tables": [
+              "composite_account"
+            ]
+          },
+          {
+            "role": "relation",
+            "slots": [
+              {
+                "from": "parent",
+                "key_types": [
+                  "i64",
+                  "i64"
+                ]
+              }
+            ],
+            "sql": "SELECT \"a\".\"tenant_id\" AS \"a__tenant_id\", \"a\".\"account_id\" AS \"a__account_id\", \"a\".\"role\" AS \"a__role\" FROM \"composite_membership\" AS \"a\" WHERE (\"a\".\"tenant_id\", \"a\".\"account_id\") IN ((?))",
+            "tables": [
+              "composite_membership"
+            ]
+          }
+        ]
+      },
+      "id": "planner_parent_key_types",
+      "input": {
+        "entity": "composite_account",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "tenant_id",
+                "right": "tenant_id"
+              },
+              {
+                "left": "account_id",
+                "right": "account_id"
+              }
+            ],
+            "kind": "many",
+            "query": {
+              "entity": "composite_membership"
+            },
+            "rel": "memberships"
+          }
+        ]
       },
       "operation": "compile"
     }

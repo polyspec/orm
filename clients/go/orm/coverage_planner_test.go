@@ -5,7 +5,6 @@ package orm_test
 import (
 	"encoding/json"
 	"path/filepath"
-	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -15,13 +14,21 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-// plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot param,
-// table이다. parent에서 오는 bind slot의 param은 -1이다.
+// plannerStatement는 compile된 plan step 하나의 role, SQL, bind slot, table이다.
 type plannerStatement struct {
-	Role   string   `json:"role"`
-	SQL    string   `json:"sql"`
-	Params []int    `json:"params"`
-	Tables []string `json:"tables"`
+	Role   string        `json:"role"`
+	SQL    string        `json:"sql"`
+	Slots  []plannerSlot `json:"slots"`
+	Tables []string      `json:"tables"`
+}
+
+// plannerSlot은 bind slot 하나의 출처와 type이다. param slot은 request 값의
+// 번호를, parent slot은 key의 type을, 나머지 slot은 type을 싣는다.
+type plannerSlot struct {
+	From     string   `json:"from"`
+	Param    *int     `json:"param,omitempty"`
+	Type     string   `json:"type,omitempty"`
+	KeyTypes []string `json:"key_types,omitempty"`
 }
 
 // compilePlannerCase는 planner fixture case의 input에 schema/bench.dbs의
@@ -72,23 +79,25 @@ func compilePlannerCase(t *testing.T, id string) {
 		}
 		got := []plannerStatement{}
 		for _, step := range compiled.Steps {
-			params := []int{}
+			slots := []plannerSlot{}
 			for _, slot := range step.BindSlots {
+				s := plannerSlot{From: slot.From}
 				switch slot.From {
 				case "param":
-					params = append(params, slot.Param)
+					s.Param, s.Type = &slot.Param, slot.ColType
 				case "parent":
-					params = append(params, -1)
+					s.KeyTypes = slot.KeyTypes
 				default:
-					t.Fatalf("%s: step %d binds from %s", dialect, step.ID, slot.From)
+					s.Type = slot.ColType
 				}
+				slots = append(slots, s)
 			}
-			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Params: params, Tables: step.Tables})
+			got = append(got, plannerStatement{Role: step.Role, SQL: step.SQL, Slots: slots, Tables: step.Tables})
 		}
-		if len(want) == 0 || !slices.EqualFunc(got, want, func(a, b plannerStatement) bool {
-			return a.Role == b.Role && a.SQL == b.SQL && slices.Equal(a.Params, b.Params) && slices.Equal(a.Tables, b.Tables)
-		}) {
-			t.Fatalf("%s statements:\n got %+v\nwant %+v", dialect, got, want)
+		gotJSON, _ := json.Marshal(got)
+		wantJSON, _ := json.Marshal(want)
+		if len(want) == 0 || string(gotJSON) != string(wantJSON) {
+			t.Fatalf("%s statements:\n got %s\nwant %s", dialect, gotJSON, wantJSON)
 		}
 	}
 }
@@ -128,4 +137,28 @@ func TestCoveragePlannerRestoreRejectsNonKey(t *testing.T) {
 func TestCoveragePlannerTables(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_tables")
+}
+
+// TestCoveragePlannerBindTypesSelect는 select의 조건 slot이 column, 함수, 상대 시각 함수의 type을 싣는지 확인한다.
+func TestCoveragePlannerBindTypesSelect(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_bind_types_select")
+}
+
+// TestCoveragePlannerBindTypesUpdate는 update의 할당, AES, blind index, config, optimistic slot의 type을 확인한다.
+func TestCoveragePlannerBindTypesUpdate(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_bind_types_update")
+}
+
+// TestCoveragePlannerBindTypesInsert는 insert의 값, AES, blind index, config, now slot의 type을 확인한다.
+func TestCoveragePlannerBindTypesInsert(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_bind_types_insert")
+}
+
+// TestCoveragePlannerParentKeyTypes는 composite key relation의 parent slot이 key type을 싣는지 확인한다.
+func TestCoveragePlannerParentKeyTypes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_parent_key_types")
 }
