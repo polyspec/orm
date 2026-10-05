@@ -106,9 +106,9 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
 });
 
 caseTest('a selected make target runs with the environments and the Rust target directory of owner-check', 5000, async () => {
-  assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', 'docs-check']);
+  assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', '-k', 'docs-check']);
   assert.deepEqual(makeArguments('client-db-check', { ORM_OWNER_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', ORM_OWNER_CARGO_TARGET_DIR: '/main/cargo-target' }),
-    ['--no-print-directory', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'CARGO_TARGET_DIR=/main/cargo-target', 'client-db-check']);
+    ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'CARGO_TARGET_DIR=/main/cargo-target', 'client-db-check']);
 });
 
 // T42은 네 client에 걸친 변경이었다. 그 모양의 변경은 바뀐 기능의 검사와 file 단위의 owner target만

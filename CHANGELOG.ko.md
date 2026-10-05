@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.38-2: `CHECK_TARGETS`의 13개 target은 독립된 명령을 부분 `<target>/<part>`(모두 40개)로 실행하고, runner와 `make owner-check`의 `make -k`는 실패한 부분 뒤에도 그것을 실행한다.
+
 - G5.38-1: `make check`는 실패한 setup 단계(`servers`, `databases/create`)가 막은 target을 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지를 실행하며(`contracts/check-inputs.json`의 `needs`), target마다 `make -k`로 실행하고, 보고서 `.runtime/check/<run id>/report`(환경, target마다 명령, recipe, 입력과 출력, 실패한 target의 실행 directory, `summary.md`)를 쓴다. `scripts/check/summary.mjs`는 끝나지 않은 runner를 포함해 `ORM_CHECK_RUN_ID`의 summary를 낸다.
 
 - G5.39: load되지 않는 문서 page는 남은 request와 그 나이와 server의 상태, 실패한 request, console과 page error, event loop 지연, host load를 적는다.

@@ -99,7 +99,7 @@ function checkout(t, checklist) {
 function recipe(target) {
   const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
   const body = [];
-  for (const line of lines.slice(lines.indexOf(`${target}:`) + 1)) {
+  for (const line of lines.slice(lines.findIndex(line => line.startsWith(`${target}:`) && !line.startsWith(`${target}:=`)) + 1)) {
     if (!line.startsWith('\t')) break;
     body.push(line.trim());
   }
@@ -399,5 +399,65 @@ caseTest('the summary step reports a runner that did not finish, with the partia
     assert.match(missing.text, /make check recorded no run ci_77_1/);
   } finally {
     cleanup();
+  }
+});
+
+// recipe 부분 case(G5.38-2)는 서로의 결과를 읽지 않는 명령을 가진 target이 그 명령마다 하위 target(부분)을 두는지
+// 확인한다. runner는 target을 `make -k`로 실행하므로 앞 부분이 실패해도 뒤 부분이 실행된다. setup 부분(lease, build)에
+// 기대는 부분은 그 setup 부분을 prerequisite으로 가진다.
+const PARTS = {
+  'checklist-check': ['unit', 'run'], 'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'], 'git-check': ['unit', 'run'],
+  'testcase-check': ['go', 'node', 'runners', 'php', 'rust'], 'ts-check': ['hold', 'types', 'test'],
+  'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
+  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners'],
+  'feature-check': ['build', 'coverage', 'verification'],
+  'client-unit-check': ['dsn', 'relation-keys', 'hostcodec', 'engine', 'runtime-model', 'orm-gen', 'perf-extensions'],
+};
+
+caseTest('a target of independent commands runs each as a part of its own', COMPUTE, () => {
+  const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
+  const problems = [];
+  for (const [target, parts] of Object.entries(PARTS)) {
+    const head = lines.find(line => line.startsWith(`${target}:`));
+    const want = parts.map(part => `${target}/${part}`);
+    if (head?.slice(target.length + 1).trim().split(/\s+/).join(' ') !== want.join(' ')) problems.push(`${target}: prerequisites ${head} instead of ${want.join(' ')}`);
+    for (const part of want) if (!recipe(part).length) problems.push(`${part}: no recipe`);
+    if (recipe(target).length) problems.push(`${target}: commands of its own besides its parts: ${recipe(target).join(' | ')}`);
+  }
+  assert.deepEqual(problems, []);
+});
+
+// make -k case는 checklist-check의 실제 정의를 임시 Makefile에 두고, 첫 부분의 node가 실패하는 PATH에서 runner의
+// command로 `make -k checklist-check`를 실행한다. 둘째 부분이 실행되고 make는 실패로 끝난다.
+caseTest('the parts of a target after a failed part still run under make -k', PROCESS, async () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'parts-')));
+  try {
+    const lines = readFileSync(resolve(repo, 'Makefile'), 'utf8').split('\n');
+    const definition = [];
+    for (const target of ['checklist-check', 'checklist-check/unit', 'checklist-check/run']) {
+      const at = lines.findIndex(line => line.startsWith(`${target}:`));
+      if (at < 0) continue;
+      definition.push(lines[at], ...recipe(target).map(line => `\t${line}`));
+    }
+    writeFileSync(join(base, 'Makefile'), `${definition.join('\n')}\n`);
+    mkdirSync(join(base, 'bin'));
+    const log = join(base, 'ran.log');
+    writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mjs*) echo 'FAIL checklist unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
+    const { command } = await import(resolve(repo, 'scripts/check/run.mjs'));
+    const lines2 = [];
+    const previous = process.env.PATH;
+    process.env.PATH = `${join(base, 'bin')}:${previous}`;
+    let failure = null;
+    try {
+      await command(base)('make', ['--no-print-directory', '-k', 'checklist-check'], line => lines2.push(line));
+    } catch (error) {
+      failure = error;
+    } finally {
+      process.env.PATH = previous;
+    }
+    assert.match(String(failure?.message), /make --no-print-directory -k checklist-check exited with 2/);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['--test scripts/checklist/check.test.mjs', 'scripts/checklist/check.mjs']);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
   }
 });

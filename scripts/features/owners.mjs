@@ -253,7 +253,8 @@ export function makeArguments(target, env) {
   if (env.ORM_OWNER_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_OWNER_TEST_ENV}`);
   if (env.DECIMAL_ENV) overrides.push(`DECIMAL_ENV=${env.DECIMAL_ENV}`);
   if (env.ORM_OWNER_CARGO_TARGET_DIR) overrides.push(`CARGO_TARGET_DIR=${env.ORM_OWNER_CARGO_TARGET_DIR}`);
-  return ['--no-print-directory', ...overrides, target];
+  // -k: target의 독립된 부분(하위 target)은 앞 부분이 실패해도 실행한다.
+  return ['--no-print-directory', '-k', ...overrides, target];
 }
 
 // make는 한 make target을 실행하고 출력 줄을 step으로 내보낸다. 기한은 target 안의 case마다 있다.
