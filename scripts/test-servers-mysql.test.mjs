@@ -94,8 +94,12 @@ caseTest('a MySQL setting other than the declared one migrates the data with equ
     assert.equal(servers.sql(39301, 'SELECT @@lower_case_table_names').trim(), String(platformDefault));
     const first = servers.migrate();
     assert.equal(first.status, 0, first.stdout + first.stderr);
-    for (const step of ['preflight', 'dump', 'stop', 'keep', 'start', 'restore', 'verify', 'record'])
+    // migration 단계는 장기 작업이므로 기한이 없다.
+    for (const step of ['preflight', 'dump', 'stop', 'keep', 'start', 'restore', 'verify', 'record']) {
+      assert.match(first.stdout, new RegExp(`^RUN mysql-migration/${step} no-deadline$`, 'm'));
       assert.match(first.stdout, new RegExp(`^PASS mysql-migration/${step} elapsed=`, 'm'));
+    }
+    assert.doesNotMatch(first.stdout, /^RUN mysql-migration\/\S+ deadline=/m);
     for (const port of [39301, 39302]) {
       assert.equal(servers.sql(port, 'SELECT @@lower_case_table_names').trim(), '1');
       assert.equal(servers.sql(port, 'SELECT COUNT(*) FROM shopdb.item').trim(), '3');
