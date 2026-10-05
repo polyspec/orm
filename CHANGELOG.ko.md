@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-8: conformance와 interface checker는 Rust program을 target lease 아래에서 build하고 복사본을 실행하며, `scripts/check/run.mjs`는 받은 target directory를 하위 make에 넘긴다.
+
 - G5.30-15: Go conformance와 interface checker는 runner를 단계 로그와 함께 기한 없는 장기 작업으로 build한다(`testcase.RunLong`).
 
 - G5.32-4-1: `bench/rust/Cargo.lock`이 `orm`의 `libsqlite3-sys` 의존을 기록하므로 `make rust-fetch`가 다시 통과한다.

@@ -172,10 +172,18 @@ func main() {
 	}
 	rust := ""
 	if slices.Contains(languages, "rust") {
+		// 추출기는 lease 아래에서 이 실행의 directory로 복사한 것을 실행한다. directory는 process가 끝날 때 지운다.
+		directory, err := os.MkdirTemp("", "orm-interface-symbols-")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		defer os.RemoveAll(directory)
 		if err := testcase.RunLong("interfaces/rust-build", func(c *testcase.Case) (err error) {
-			rust, err = buildRust(c, abs)
+			rust, err = buildRust(c, abs, directory)
 			return err
 		}); err != nil {
+			os.RemoveAll(directory)
 			os.Exit(1)
 		}
 	}
@@ -365,41 +373,30 @@ func differences(want, got Symbols) []string {
 	return out
 }
 
-// buildRust는 Rust symbol 도구를 build하고 cargo가 보고한 실행 file을 돌려준다.
-// target directory는 CARGO_TARGET_DIR이나 cargo 설정이 정하므로(Makefile은 모든
-// cargo 명령에 clients/rust/target을 준다) 경로를 짐작하지 않고 cargo의
-// compiler-artifact message에서 읽는다.
-// build는 장기 작업이므로 기한이 없고, cargo의 진행 출력은 경과 시간과 함께 c의 단계로 보인다.
-func buildRust(c *testcase.Case, root string) (string, error) {
+// buildRust는 Rust symbol 도구를 공유 Rust target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
+// 아래에서 build하고, 그 lease 안에서 directory로 복사한 실행 file을 돌려준다(scripts/cargo-build-copy.sh).
+// 다른 checkout의 build가 target directory를 바꿔도 이 실행의 추출기는 바뀌지 않는다. build는 장기 작업이므로
+// 기한이 없고, cargo의 진행 출력은 경과 시간과 함께 c의 단계로 보인다.
+func buildRust(c *testcase.Case, root, directory string) (string, error) {
+	lease, leases := os.Getenv("LEASE"), os.Getenv("CARGO_LEASES")
+	if lease == "" || leases == "" {
+		return "", errors.New("LEASE and CARGO_LEASES are unset; run this through make, which exports them")
+	}
 	manifest := filepath.Join(root, "tests/interfaces/rust/Cargo.toml")
-	cmd := exec.CommandContext(c.Context(), "cargo", "build", "--locked", "--manifest-path", manifest, "--message-format", "json-render-diagnostics")
+	cmd := exec.CommandContext(c.Context(), lease, "run", leases, "exclusive", "--wait", "--", "sh", filepath.Join(root, "scripts", "cargo-build-copy.sh"),
+		directory, "debug/orm-interface-symbols", "--", "cargo", "build", "--locked", "--manifest-path", manifest)
 	steps := c.StepWriter()
+	cmd.Stdout = steps
 	cmd.Stderr = steps
-	c.Step("run cargo build --locked --manifest-path %s", manifest)
-	out, err := cmd.Output()
+	c.Step("run cargo build --locked --manifest-path %s under the target lease", manifest)
+	err := cmd.Run()
 	steps.Flush()
 	if err != nil {
 		return "", fmt.Errorf("cargo build: %w", err)
 	}
-	executable := ""
-	for _, line := range bytes.Split(out, []byte("\n")) {
-		var message struct {
-			Reason     string                `json:"reason"`
-			Target     struct{ Name string } `json:"target"`
-			Executable string                `json:"executable"`
-		}
-		if len(bytes.TrimSpace(line)) == 0 {
-			continue
-		}
-		if err := json.Unmarshal(line, &message); err != nil {
-			return "", fmt.Errorf("cargo build message %q: %w", line, err)
-		}
-		if message.Reason == "compiler-artifact" && message.Target.Name == "orm-interface-symbols" && message.Executable != "" {
-			executable = message.Executable
-		}
-	}
-	if executable == "" {
-		return "", errors.New("cargo build reported no orm-interface-symbols executable")
+	executable := filepath.Join(directory, "debug", "orm-interface-symbols")
+	if info, err := os.Stat(executable); err != nil || info.IsDir() {
+		return "", fmt.Errorf("cargo build left no executable %s: %v", executable, err)
 	}
 	return executable, nil
 }

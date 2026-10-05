@@ -18,13 +18,10 @@ func TestPhysicalRustGroupBoolean(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !t.Run("build", func(t *testing.T) {
-		c := testcase.Start(t, rustBuildDeadline)
-		if err := runCommand(c, root, "", rustBuildDeadline, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
-			t.Fatal(err)
-		}
-	}) {
-		return
+	// build는 장기 작업이므로 기한 없이 실행하고, Rust runner는 이 test의 directory로 복사한다.
+	binaries := t.TempDir()
+	if err := testcase.RunLong("conformance/rust-build", func(c *testcase.Case) error { return buildRustRunner(c, root, binaries) }); err != nil {
+		t.Fatal(err)
 	}
 	for _, database := range []struct{ name, env string }{
 		{"mysql", "BENCH_MYSQL_DSN"},

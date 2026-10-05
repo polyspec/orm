@@ -510,10 +510,11 @@ conformance-result-check: lease-tool
 	node --test tests/conformance/result_typescript.test.mjs
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
 
-conformance-result-physical-check:
+conformance-result-physical-check: lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
-conformance-rust-group-check:
+conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
 
 group-rows-physical-check:
@@ -544,7 +545,7 @@ decimal-physical-check: rust-fetch lease-tool
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
-interface-check:
+interface-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
 
 go-model-check:

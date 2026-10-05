@@ -7,7 +7,7 @@ import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goCargoErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -96,6 +96,8 @@ const everyScriptUnit = reachedScripts(runCommands, readTracked, { throughLong: 
 failures.push(...longDeadlineErrors([...expandedRecipes, ...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
 // Makefile 밖의 명령도 공유 Rust target directory에 lease 아래에서만 build하고 그곳의 program을 실행하지 않는다.
 failures.push(...unleasedCargoErrors([...featureUnits, ...allPackageUnits, ...everyScriptUnit]));
+// Go checker도 cargo를 lease 아래에서 실행하고 복사한 program을 실행한다.
+failures.push(...goCargoErrors(Object.fromEntries(tracked.filter(path => path.endsWith('.go')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // Makefile은 공유 Rust target directory의 program을 실행하거나 그곳에 file을 쓰지 않고, 그곳의 build는 lease
 // 아래에서 한다.
 failures.push(...sharedTargetErrors(makefile));
