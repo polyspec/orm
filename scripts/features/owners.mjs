@@ -383,7 +383,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     // 기능 단계와 helper는 TypeScript client의 build 출력을 쓰고, 그 일부는 그 출력을 build하는 make target을 하위
     // process로 실행한다(make dbspec-ts-check 같은 검증 명령). 그래서 make target을 모두 실행한 뒤부터 이 process가
-    // 끝날 때까지 그 출력의 exclusive lease를 가진다. 하위 process의 보유는 조상인 이 process의 보유를 그대로 쓴다.
+    // 끝날 때까지 그 출력의 exclusive lease를 가진다. 하위 process는 조상인 이 process의 보유 안에서
+    // 같은 규칙으로 보유를 나눈다.
     if (owners.length > 0 || helpers.length > 0) {
       const { LEASE: lease, TYPESCRIPT_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and TYPESCRIPT_LEASES are unset; run make owner-check');

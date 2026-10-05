@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-12: the processes that one exclusive lease holder runs at once take that lease one exclusive holder at a time, so a feature step no longer rebuilds the TypeScript client while another loads it.
+
 - G5.30-16-1: the interface guard test requires the `tests/go-run.mjs` form of the interface self-test command.
 
 - G5.32-9: the `server_transactions` event case compares the TimeZone source only on a direct PostgreSQL connection; through a pooler, which applies startup parameters with SET, it compares the setting and the transaction counts.

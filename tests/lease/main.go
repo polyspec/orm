@@ -10,6 +10,11 @@
 // exclusive가 있는지, exclusive는 만든 뒤 shared가 있는지 보고, 있으면 자기 file을 지우고 거부한다. 그래서
 // 두 보유가 겹치지 않는다.
 //
+// exclusive를 가진 process의 하위 process가 다시 보유를 청하면, 그 보유는 조상의 보유 안에서 나뉜다: 하위
+// process는 조상 보유의 안쪽 directory(<dir>/within-<pid>-<시작 시각>)에서 같은 규칙으로 보유를 얻는다. 그래서
+// 조상(예: make feature-check)이 동시에 실행하는 하위 process들도 서로의 exclusive를 막고, 같은 process가 다시
+// 청한 보유만 그대로 쓴다. 안쪽 directory는 조상의 보유가 풀릴 때 함께 지운다.
+//
 // 기다리는 일은 polling이 아니다: 거부되면 곧바로 보유자를 적고 끝나거나(--wait 없음), directory 변경을
 // 운영체제의 알림(internal/procevent)으로 기다린 뒤 다시 얻는다(--wait). 보유자 process가 없어진 보유(죽은
 // 보유)는 저절로 가져가지 않는다: 거부 message가 그것을 죽은 보유로 적고, clear-dead가 명시적으로 지우며
@@ -18,8 +23,9 @@
 // Usage:
 //
 //	lease hold <dir> shared|exclusive [--wait] --pid <pid>
-//	                                                  pid의 process가 끝날 때까지 보유한다. pid나 그 조상 process가
-//	                                                  이미 exclusive를 가지면 그 보유를 그대로 쓴다
+//	                                                  pid의 process가 끝날 때까지 보유한다. pid가 이미 exclusive를
+//	                                                  가지면 그 보유를 그대로 쓰고, 조상 process가 가지면 그 보유
+//	                                                  안에서 얻는다
 //	lease run <dir> shared|exclusive [--wait] -- <command> [args...]
 //	                                                  command를 실행하는 동안 보유한다
 //	lease list <dir>                                  보유자를 적는다
@@ -47,8 +53,35 @@ import (
 
 const exclusiveName = "exclusive.json"
 
-// errHeld는 그 process나 조상 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
+// errHeld는 그 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
 var errHeld = errors.New("the process already holds the exclusive lease")
+
+// errAgain은 안쪽 directory에서 기다리는 동안 조상의 보유가 풀렸다는 뜻이다. 바깥 directory부터 다시 얻는다.
+var errAgain = errors.New("the enclosing lease was released")
+
+// inside는 조상 process가 exclusive를 가진다는 뜻이다. 보유는 그 보유의 안쪽 directory에서 얻는다.
+type inside struct {
+	holder holder
+}
+
+func (i inside) Error() string {
+	return "an ancestor process holds the exclusive lease: " + i.holder.String()
+}
+
+// within은 exclusive 보유 h의 안쪽 directory다. 그 보유를 가진 process의 하위 process들이 여기서 보유를 나눈다.
+func within(dir string, h holder) string {
+	return filepath.Join(dir, fmt.Sprintf("within-%d-%s", h.PID, strings.ReplaceAll(h.Started, ":", "")))
+}
+
+// release는 보유 file을 지우고, exclusive였으면 그 안쪽 directory도 지운다.
+func release(file string) {
+	text, err := os.ReadFile(file)
+	var h holder
+	if err == nil && json.Unmarshal(text, &h) == nil && h.Kind == "exclusive" {
+		defer os.RemoveAll(within(filepath.Dir(file), h))
+	}
+	os.Remove(file)
+}
 
 // holder는 보유 file의 내용이다.
 type holder struct {
@@ -127,7 +160,7 @@ func holders(dir string) ([]holder, error) {
 	var out []holder
 	for _, entry := range entries {
 		name := entry.Name()
-		if !strings.HasSuffix(name, ".json") {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") {
 			continue
 		}
 		text, err := os.ReadFile(filepath.Join(dir, name))
@@ -188,9 +221,12 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		for _, h := range all {
 			if h.Kind == "exclusive" {
 				os.Remove(file)
-				// 조상 process가 exclusive를 가지면 이 process는 이미 그 보유 안에 있다.
-				if ancestorOrSelf(h.PID, pid) {
+				// 이 process가 exclusive를 가지면 이미 그 보유 안에 있고, 조상 process가 가지면 그 안에서 얻는다.
+				if h.PID == pid {
 					return "", errHeld
+				}
+				if ancestorOrSelf(h.PID, pid) {
+					return "", inside{holder: h}
 				}
 				return "", refusal{blocking: []holder{h}}
 			}
@@ -207,9 +243,13 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 			var blocking []holder
 			for _, h := range all {
 				if h.Kind == "exclusive" {
-					// 같은 process나 그 조상 process(예: 하위 make를 실행한 make)가 이미 가진 exclusive는 그 process의 것이다.
-					if ancestorOrSelf(h.PID, pid) {
+					// 같은 process가 이미 가진 exclusive는 그 process의 것이다. 조상 process(예: 하위 make를 실행한
+					// make)가 가진 exclusive 안에서는 그 하위 process들이 안쪽 directory에서 보유를 나눈다.
+					if h.PID == pid {
 						return "", errHeld
+					}
+					if ancestorOrSelf(h.PID, pid) {
+						return "", inside{holder: h}
 					}
 					blocking = append(blocking, h)
 				}
@@ -237,8 +277,9 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 }
 
 // acquireWaiting은 acquire를 하고, wait이면 막힐 때 dir의 변경 알림을 기다려 다시 시도한다. 감시는 시도
-// 전에 등록한다. 죽은 보유가 막으면 기다리지 않는다.
-func acquireWaiting(dir, kind string, pid int, command string, wait bool) (string, error) {
+// 전에 등록한다. 죽은 보유가 막으면 기다리지 않는다. 조상 process가 exclusive를 가지면 그 안쪽 directory에서
+// 같은 일을 하고, 거기서 기다리는 동안 조상의 보유(enclosing)가 풀리면 바깥 directory부터 다시 얻는다.
+func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclosing *holder) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -249,6 +290,15 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool) (strin
 			return "", err
 		}
 		file, err := acquire(dir, kind, pid, command)
+		var ancestor inside
+		if errors.As(err, &ancestor) {
+			closeWatch()
+			file, err = acquireWaiting(within(dir, ancestor.holder), kind, pid, command, wait, &ancestor.holder)
+			if errors.Is(err, errAgain) {
+				continue
+			}
+			return file, err
+		}
 		var refused refusal
 		if errors.As(err, &refused) && refused.released() {
 			// 거부를 만든 보유가 그 사이에 풀렸다. 그 변경 알림은 감시 등록 뒤에 왔으므로 기다리지 않고 다시 시도한다.
@@ -267,6 +317,9 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool) (strin
 		closeWatch()
 		if err != nil {
 			return "", err
+		}
+		if enclosing != nil && !current(*enclosing) {
+			return "", errAgain
 		}
 	}
 }
@@ -313,7 +366,7 @@ func main() {
 		if err != nil || pid <= 0 {
 			usage()
 		}
-		file, err := acquireWaiting(dir, os.Args[3], pid, parentCommand(pid), wait)
+		file, err := acquireWaiting(dir, os.Args[3], pid, parentCommand(pid), wait, nil)
 		if errors.Is(err, errHeld) {
 			return
 		}
@@ -323,13 +376,14 @@ func main() {
 		releaser := exec.Command(os.Args[0], "release-on-exit", file, strconv.Itoa(pid))
 		releaser.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 		if err := releaser.Start(); err != nil {
-			os.Remove(file)
+			release(file)
 			fmt.Fprintf(os.Stderr, "lease: start the releaser: %v\n", err)
 			os.Exit(1)
 		}
 		releaser.Process.Release()
 	case "release-on-exit":
-		// release-on-exit <file> <pid>: hold가 남기는 process다. pid의 종료 알림을 받으면 보유를 지운다.
+		// release-on-exit <file> <pid>: hold가 남기는 process다. pid의 종료 알림을 받으면 보유와 그 안쪽
+		// directory를 지운다.
 		if len(os.Args) != 4 {
 			usage()
 		}
@@ -347,7 +401,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "lease: watch pid %d: %v\n", pid, err)
 			os.Exit(1)
 		}
-		os.Remove(file)
+		release(file)
 	case "run":
 		if len(os.Args) < 6 {
 			usage()
@@ -363,7 +417,7 @@ func main() {
 		if len(rest) < 2 || rest[0] != "--" {
 			usage()
 		}
-		file, err := acquireWaiting(dir, kind, os.Getpid(), strings.Join(rest[1:], " "), wait)
+		file, err := acquireWaiting(dir, kind, os.Getpid(), strings.Join(rest[1:], " "), wait, nil)
 		if err != nil {
 			refuse(dir, kind, err)
 		}
@@ -373,7 +427,7 @@ func main() {
 		// signal로 끝나지 않고 명령이 끝나기를 기다려 보유를 지운다.
 		signal.Ignore(syscall.SIGINT, syscall.SIGQUIT)
 		runErr := child.Run()
-		os.Remove(file)
+		release(file)
 		var exit *exec.ExitError
 		if errors.As(runErr, &exit) {
 			if status, ok := exit.Sys().(syscall.WaitStatus); ok && status.Signaled() {
@@ -386,7 +440,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "list":
-		all, err := holders(dir)
+		all, err := nestedHolders(dir)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "lease: %v\n", err)
 			os.Exit(1)
@@ -395,10 +449,14 @@ func main() {
 			fmt.Printf("lease: no lease of %s\n", dir)
 		}
 		for _, h := range all {
+			if filepath.Dir(h.file) != filepath.Clean(dir) {
+				fmt.Printf("%s (within %s)\n", h, filepath.Dir(h.file))
+				continue
+			}
 			fmt.Println(h)
 		}
 	case "clear-dead":
-		all, err := holders(dir)
+		all, err := nestedHolders(dir)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			fmt.Fprintf(os.Stderr, "lease: %v\n", err)
 			os.Exit(1)
@@ -419,6 +477,29 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+// nestedHolders는 dir의 보유와 그 안쪽 directory(within-)의 보유를 모두 읽는다.
+func nestedHolders(dir string) ([]holder, error) {
+	out, err := holders(dir)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), "within-") {
+			continue
+		}
+		inner, err := nestedHolders(filepath.Join(dir, entry.Name()))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+		out = append(out, inner...)
+	}
+	return out, nil
 }
 
 // ancestorOrSelf는 holder가 pid 자신이거나 그 조상 process인지다. 조상은 ps로 parent process id를 따라 찾는다.

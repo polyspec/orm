@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-12: exclusive lease 보유자 하나가 동시에 실행하는 process들은 그 lease를 한 번에 하나의 exclusive 보유자로 가지므로, 기능 단계가 다른 단계가 읽는 TypeScript client를 다시 build하지 않는다.
+
 - G5.30-16-1: interface guard test는 interface self-test 명령의 `tests/go-run.mjs` 형식을 요구한다.
 
 - G5.32-9: `server_transactions` event case는 TimeZone source를 PostgreSQL 직접 연결에서만 비교한다. startup parameter를 SET으로 적용하는 pooler를 거치면 setting과 transaction 수를 비교한다.
