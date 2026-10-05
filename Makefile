@@ -1,4 +1,4 @@
-.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check interface-results-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -567,6 +567,14 @@ decimal-physical-check: rust-fetch lease-tool
 
 interface-check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
+
+# interface-results-check는 make check의 conformance 출력(tests/conformance/out의 MySQL, PostgreSQL, SQLite
+# directory)의 state trace를 공통 state와 실행 계약과 비교한다. CI가 make check 뒤에 실행한다. checker는 Rust
+# 추출기를 공유 target directory의 lease 아래에서 build하므로 make가 export하는 LEASE와 CARGO_LEASES로 실행한다.
+interface-results-check: lease-tool
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/postgres
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/sqlite
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'
