@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-5: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test`는 `tests/cargo-test.mjs`로 실행한다. 그것은 target lease 아래에서 build하고, test binary를 실행 directory로 복사해 그 복사본을 실행한다.
+
 - G5.32-4: 연결은 probe statement를 보내지 않는다. 모든 클라이언트는 `SELECT sqlite_version()` 대신 driver가 link한 library에서 SQLite version을 읽고, TypeScript 클라이언트는 `SELECT 1` 없이 첫 연결을 연다.
 
 - G5.32-5: Go PostgreSQL client는 다시 statement text를 연결마다 한 번 prepare한다(pgx statement cache). G5.32-1의 exec query mode가 pool의 steady state를 24~44% 느리게 했기 때문이다. pool 클라이언트는 연결마다 한 번 prepare하고 재사용하며, PHP만 문마다 round trip 하나로 실행한다.

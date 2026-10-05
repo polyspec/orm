@@ -47,10 +47,9 @@ typescript_lane() {
   ./scripts/typescript/sqlite-test.sh
 }
 rust_lane() {
-  # cargo test의 compile은 case를 보고하지 않으므로 같은 인자의 --no-run build를 장기 작업으로
-  # tests/run-long.mjs에서 단계 로그와 함께 기한 없이 먼저 실행한다.
-  node tests/run-long.mjs rust-build/workspace-tests --cwd clients/rust -- cargo test --no-run --locked --workspace --features "$ORM_RUST_TEST_FEATURES"
-  (cd clients/rust && cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES")
+  # tests/cargo-test.mjs는 test binary를 공유 target directory의 lease 아래에서 기한 없는 장기 작업으로 build해
+  # 실행 하나의 directory로 복사하고, 그 복사본을 실행한다.
+  (cd clients/rust && node "$ROOT/tests/cargo-test.mjs" workspace-tests -- cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES")
   # build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mjs로 기한 없이 실행한다.
   node tests/run-long.mjs rust-build/integration --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
   "${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration" "$ROOT/schema/bench.dbs"

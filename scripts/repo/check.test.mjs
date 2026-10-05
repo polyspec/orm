@@ -737,27 +737,24 @@ const runUnits = () => {
   return { recipes, packageUnits, scripts: reachedScripts(commands, path => files.has(path) ? text(path) : undefined) };
 };
 
-caseTest('every cargo test run follows a run-long build of the same test binaries', COMPUTE, () => {
+caseTest('every cargo test run goes through cargo-test.mjs', COMPUTE, () => {
   const { recipes, packageUnits, scripts } = runUnits();
   assert.ok(scripts.some(unit => unit.name === 'scripts/client-db-test.sh'));
   assert.ok(!scripts.some(unit => unit.name === 'scripts/package-check.sh'), 'package-check.sh runs under run-long');
   assert.deepEqual(unbuiltCargoTestErrors([...recipes, ...featureUnits(), ...packageUnits, ...scripts]), []);
 });
 
-caseTest('a cargo test run without its build, or a build under a deadline, fails', COMPUTE, () => {
+caseTest('a cargo test run outside cargo-test.mjs, or a build under a deadline, fails', COMPUTE, () => {
   assert.deepEqual(makeRecipes('A = 1\nx: y\n\tcd a && cargo test\n\n# c\nz:\n\techo\n').map(unit => unit.name), ['Makefile x', 'Makefile z']);
-  const message = (name, args) => `${name} runs cargo test ${args} without a build of cargo test --no-run ${args} before it, so its compile has no RUN line or step log`;
+  const message = (name, args) => `${name} runs cargo test ${args} outside tests/cargo-test.mjs, so it runs the test binaries of the shared Rust target directory`;
   const timed = (name, args, form, segment) => `${name} runs the build cargo test --no-run ${args} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
-  const bareBuild = 'cd clients/rust && cargo test --no-run --locked --test c';
   assert.deepEqual(unbuiltCargoTestErrors([
     { name: 'bare', commands: ['$(WITH_TEST_ENV) cd clients/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
-    { name: 'built', commands: ['$(RUN_LONG) b --cwd clients/rust -- cargo +$(T) test --no-run --locked --test a', 'cd clients/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
-    { name: 'other', commands: ['node tests/run-long.mjs b -- cargo test --no-run --locked --test a && cargo test --locked --test b'] },
-    { name: 'timed', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a && cargo test --locked --test a'] },
-    { name: 'unlogged', commands: [bareBuild, 'cargo test --locked --test c'] },
-  ]), [message('bare', '--locked --test a'), message('other', '--locked --test b'),
-    timed('timed', '--locked --test a', 'run-case.mjs', 'node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a'),
-    `unlogged runs the build cargo test --no-run --locked --test c outside tests/run-long.mjs, so it has no RUN line or step log: cargo test --no-run --locked --test c`]);
+    { name: 'built', commands: ['$(RUN_LONG) b --cwd clients/rust -- $(CARGO_LEASED) cargo +$(T) test --no-run --locked --test a', 'cd clients/rust && cargo +$(T) test --locked --test a'] },
+    { name: 'copied', commands: ['cd clients/rust && $(CARGO_TEST) c -- cargo +$(T) test --locked --test a -- --nocapture', 'node tests/cargo-test.mjs d -- cargo test --locked --lib'] },
+    { name: 'timed', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a'] },
+  ]), [message('bare', '--locked --test a'), message('built', '--locked --test a'),
+    timed('timed', '--locked --test a', 'run-case.mjs', 'node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a')]);
 });
 
 caseTest('every build tool of the Makefile, package.json and the scripts runs under run-long', COMPUTE, () => {
