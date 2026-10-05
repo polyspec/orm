@@ -687,7 +687,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mjs typescript-types -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
           "inputs": [
             "clients/typescript/tsconfig.json",
             "clients/typescript/tests/*.test.ts"
@@ -1062,7 +1062,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mjs typescript-types -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
           "inputs": [
             "clients/typescript/tsconfig.json",
             "clients/typescript/tests/*.test.ts"
@@ -3679,7 +3679,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/integration 8m -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\"",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}/debug/integration\" \"$PWD/schema/bench.dbs\"",
           "inputs": [
             "clients/rust/tests/src/integration.rs",
             "schema/bench.dbs"
@@ -4923,7 +4923,7 @@
       "verification": [
         {
           "id": "conformance-build",
-          "command": "node tests/run-case.mjs go-vet/conformance 5m -- go vet ./tests/conformance/check ./tests/conformance/runner_go",
+          "command": "node tests/run-long.mjs go-vet/conformance -- go vet ./tests/conformance/check ./tests/conformance/runner_go",
           "inputs": [
             "tests/conformance/check/*.go",
             "tests/conformance/runner_go/*.go"
@@ -5367,7 +5367,7 @@
         "clients/go/orm/test_helpers_test.go"
       ],
       "tests": [],
-      "command": "node tests/run-case.mjs go-vet/test-helpers 8m -- go vet -tags featurecoverage,ormtest ./clients/go/orm ./clients/go/model"
+      "command": "node tests/run-long.mjs go-vet/test-helpers -- go vet -tags featurecoverage,ormtest ./clients/go/orm ./clients/go/model"
     },
     {
       "id": "rust-test-helpers",
