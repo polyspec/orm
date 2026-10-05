@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-3: PostgreSQL에서 Rust client는 모든 값을 plan slot이 선언한 type으로 bind하고 statement를 describe하거나 catalog에서 column origin을 읽지 않는다. `server_transactions`의 첫 실행은 statement 8개에 server transaction 15개 대신 13개를 쓴다.
+
 - G5.32-2: 네 planner의 모든 bind slot은 placeholder가 받는 값의 dbspec type을 가진다(`col_type`, parent slot은 `key_types`). type 없는 slot은 `IR_INVALID`이고, G5.32-3까지 raw fragment의 placeholder만 type이 없다.
 
 - G5.30-13-1: test server는 Makefile이 장기 작업으로 build하는 Go 명령 `tests/stop-process`(macOS는 kqueue, Linux는 pidfd)로 멈춘다. Python helper는 없어졌고, `make repo-check`는 Go, PHP, Rust, TypeScript 밖의 언어로 쓴 도구를 실패시킨다.

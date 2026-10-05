@@ -5,13 +5,12 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
-use std::sync::Arc;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
 use sqlx::postgres::{PgPool, PgRow, PgTypeInfo, Postgres};
 use sqlx::sqlite::{Sqlite, SqlitePool, SqliteRow};
-use sqlx::{Executor, SqlSafeStr as _, Statement as _, TypeInfo as _};
+use sqlx::Executor;
 
 use crate::collection::Key;
 use crate::db::Pool;
@@ -216,12 +215,77 @@ pub(crate) fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
     plan.steps.iter().filter_map(|s| s.assemble.as_deref()).find_map(|a| find(a, id)).expect("relation step without a child spec")
 }
 
-/// Prepares `sql` with no declared parameter types so the server infers them, and returns them.
-pub(crate) async fn pg_describe<'e, E: Executor<'e, Database = Postgres>>(e: E, sql: &str) -> Result<Arc<[PgTypeInfo]>> {
-    let stmt = e.prepare(sqlx::AssertSqlSafe(sql.to_owned()).into_sql_str()).await?;
-    match stmt.parameters() {
-        Some(sqlx::Either::Left(types)) => Ok(Arc::from(types.to_vec())),
-        _ => Err(Error::internal("postgres did not describe the statement's parameters")),
+/// step이 보내는 bind 값마다의 dbspec type이다. parent slot은 펼친 parent 값 `n_parent`개에 key
+/// type을 key 순서로 되풀이한다. raw fragment의 placeholder는 type이 없어 빈 문자열이다.
+pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
+    let mut out = Vec::with_capacity(st.bind_slots.len() + n_parent);
+    for b in &st.bind_slots {
+        if b.from == "parent" {
+            out.extend(b.key_types.iter().map(String::as_str).cycle().take(n_parent));
+        } else {
+            out.push(b.col_type.as_str());
+        }
+    }
+    out
+}
+
+/// type을 선언하지 않은 NULL이다. PostgreSQL은 parameter type을 추론하고 NULL에는 값 byte가 없다.
+struct UntypedNull;
+
+impl sqlx::Type<Postgres> for UntypedNull {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(0))
+    }
+}
+
+impl sqlx::Encode<'_, Postgres> for UntypedNull {
+    fn encode_by_ref(&self, _: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        Ok(sqlx::encode::IsNull::Yes)
+    }
+}
+
+/// PostgreSQL `uuid` 값이다. binary 형식은 16 byte다.
+struct PgUuid([u8; 16]);
+
+impl PgUuid {
+    /// 하이픈이 있는 canonical text(`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`)를 읽는다.
+    fn parse(text: &str) -> Option<PgUuid> {
+        let hex: String = text.chars().filter(|c| *c != '-').collect();
+        if text.len() != 36 || hex.len() != 32 || [8, 13, 18, 23].iter().any(|&i| text.as_bytes()[i] != b'-') {
+            return None;
+        }
+        let mut out = [0u8; 16];
+        for (i, byte) in out.iter_mut().enumerate() {
+            *byte = u8::from_str_radix(hex.get(2 * i..2 * i + 2)?, 16).ok()?;
+        }
+        Some(PgUuid(out))
+    }
+}
+
+impl sqlx::Type<Postgres> for PgUuid {
+    fn type_info() -> PgTypeInfo {
+        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(2950))
+    }
+}
+
+impl sqlx::Encode<'_, Postgres> for PgUuid {
+    fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        buf.extend_from_slice(&self.0);
+        Ok(sqlx::encode::IsNull::No)
+    }
+}
+
+/// raw fragment의 placeholder는 plan에 type이 없으므로 그 값의 type으로 bind한다(G5.32-3까지).
+fn value_type(p: &Param) -> &'static str {
+    match p {
+        Param::Null => "",
+        Param::Bool(_) => "bool",
+        Param::I64(_) => "i64",
+        Param::F64(_) => "f64",
+        Param::Str(_) => "text",
+        Param::Bytes(_) => "bytes",
+        Param::DateTime(_) => "datetime",
+        Param::Date(_) => "date",
     }
 }
 
@@ -265,8 +329,13 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
 /// Binds one PostgreSQL parameter as the type the server inferred for its placeholder
 /// (`ty`), converting the executor value the way pgx would; a value that cannot become
 /// that type is CONFIG (the statement text and the value are named).
-pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usize, zone: Zone) -> Result<PgQuery<'q>> {
-    let name = ty.name();
+/// 값 `p`를 plan이 선언한 dbspec type `ty`로 bind한다. sqlx는 그 Rust type의 PostgreSQL type을
+/// parameter type으로 선언하므로 server에 type을 묻지 않는다.
+pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> Result<PgQuery<'q>> {
+    let name = if ty.is_empty() { value_type(p) } else { ty };
+    if name.is_empty() {
+        return Ok(q.bind(UntypedNull));
+    }
     let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
     macro_rules! int {
         ($t:ty) => {
@@ -292,26 +361,25 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
         };
     }
     Ok(match name {
-        "INT2" => int!(i16),
-        "INT4" => int!(i32),
-        "INT8" => int!(i64),
-        "FLOAT4" => float!(f32),
-        "FLOAT8" => float!(f64),
-        "NUMERIC" => match p {
+        "i16" => int!(i16),
+        "i32" => int!(i32),
+        "i64" => int!(i64),
+        "f64" => float!(f64),
+        "decimal" => match p {
             Param::Null => q.bind(Option::<rust_decimal::Decimal>::None),
             Param::F64(x) => q.bind(rust_decimal::Decimal::try_from(*x).map_err(|_| bad())?),
             Param::I64(x) => q.bind(rust_decimal::Decimal::from(*x)),
             Param::Str(s) => q.bind(rust_decimal::Decimal::from_str(s.trim()).map_err(|_| bad())?),
             _ => return Err(bad()),
         },
-        "BOOL" => match p {
+        "bool" => match p {
             Param::Null => q.bind(Option::<bool>::None),
             Param::Bool(b) => q.bind(*b),
             Param::I64(x) => q.bind(*x != 0),
             Param::Str(s) => q.bind(matches!(s.trim(), "1" | "true" | "t" | "TRUE")),
             _ => return Err(bad()),
         },
-        "TEXT" | "VARCHAR" | "CHAR" | "\"CHAR\"" | "NAME" | "UNKNOWN" => match p {
+        "varchar" | "text" => match p {
             Param::Null => q.bind(Option::<&str>::None),
             Param::Str(s) => q.bind(s.as_str()),
             Param::I64(x) => q.bind(x.to_string()),
@@ -321,47 +389,34 @@ pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &PgTypeInfo, i: usiz
             Param::Date(d) => q.bind(d.to_string()),
             Param::Bytes(b) => q.bind(std::str::from_utf8(b).map_err(|_| bad())?),
         },
-        "TIMESTAMP" => match p {
+        "datetime" => match p {
             Param::Null => q.bind(Option::<NaiveDateTime>::None),
             Param::DateTime(t) => q.bind(*t),
             Param::Date(d) => q.bind(d.and_hms_opt(0, 0, 0).unwrap()),
             Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?),
             _ => return Err(bad()),
         },
-        // wall-clock values are in the connection zone; text with an offset is an instant
-        "TIMESTAMPTZ" => match p {
-            Param::Null => q.bind(Option::<chrono::DateTime<chrono::Utc>>::None),
-            Param::DateTime(t) => q.bind(zone.instant(*t).ok_or_else(bad)?),
-            Param::Date(d) => q.bind(zone.instant(d.and_hms_opt(0, 0, 0).unwrap()).ok_or_else(bad)?),
-            Param::Str(s) => {
-                match chrono::DateTime::parse_from_str(s.trim(), "%Y-%m-%d %H:%M:%S%.f%:z").or_else(|_| chrono::DateTime::parse_from_rfc3339(s.trim())) {
-                    Ok(t) => q.bind(t.with_timezone(&chrono::Utc)),
-                    Err(_) => q.bind(zone.instant(parse_datetime(s).ok_or_else(bad)?).ok_or_else(bad)?),
-                }
-            }
-            _ => return Err(bad()),
-        },
-        "DATE" => match p {
+        "date" => match p {
             Param::Null => q.bind(Option::<NaiveDate>::None),
             Param::Date(d) => q.bind(*d),
             Param::DateTime(t) => q.bind(t.date()),
             Param::Str(s) => q.bind(parse_datetime(s).ok_or_else(bad)?.date()),
             _ => return Err(bad()),
         },
-        "JSONB" | "JSON" => match p {
-            Param::Null => q.bind(Option::<sqlx::types::Json<serde_json::Value>>::None),
-            Param::Str(s) => q.bind(sqlx::types::Json(serde_json::value::RawValue::from_string(s.clone()).map_err(|_| bad())?)),
+        "time" => match p {
+            Param::Null => q.bind(Option::<chrono::NaiveTime>::None),
+            Param::Str(s) => q.bind(chrono::NaiveTime::parse_from_str(s.trim(), "%H:%M:%S%.f").map_err(|_| bad())?),
             _ => return Err(bad()),
         },
-        "BYTEA" => match p {
+        "bytes" => match p {
             Param::Null => q.bind(Option::<&[u8]>::None),
             Param::Bytes(b) => q.bind(b.as_slice()),
             Param::Str(s) => q.bind(s.as_bytes()),
             _ => return Err(bad()),
         },
-        "INET" => match p {
-            Param::Null => q.bind(Option::<std::net::IpAddr>::None),
-            Param::Str(s) => q.bind(s.trim().parse::<std::net::IpAddr>().map_err(|_| bad())?),
+        "uuid" => match p {
+            Param::Null => q.bind(Option::<PgUuid>::None),
+            Param::Str(s) => q.bind(PgUuid::parse(s.trim()).ok_or_else(bad)?),
             _ => return Err(bad()),
         },
         other => return Err(Error::Config(format!("postgres parameter ${} has type {other}, which the executor cannot bind", i + 1))),
@@ -403,44 +458,38 @@ pub(crate) async fn exec_mysql_pool(sql: &str, args: &[Param], pool: &MySqlPool)
     result
 }
 
-pub(crate) fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[PgTypeInfo], zone: Zone) -> Result<PgQuery<'q>> {
+pub(crate) fn pg_query<'q>(sql: &str, args: &'q [Param], types: &[&str]) -> Result<PgQuery<'q>> {
     if types.len() != args.len() {
-        return Err(Error::internal(format!("postgres described {} parameters, the plan binds {}", types.len(), args.len())));
+        return Err(Error::internal(format!("the plan types {} parameters and binds {}", types.len(), args.len())));
     }
     let mut q = sqlx::query(sqlx::AssertSqlSafe(sql));
     for (i, (a, ty)) in args.iter().zip(types).enumerate() {
-        q = bind_pg(q, a, ty, i, zone)?;
+        q = bind_pg(q, a, ty, i)?;
     }
     Ok(q)
 }
 
-pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(
-    sql: &str,
-    args: &[Param],
-    types: &[PgTypeInfo],
-    zone: Zone,
-    e: E,
-) -> Result<Vec<PgRow>> {
-    Ok(pg_query(sql, args, types, zone)?.fetch_all(e).await?)
+pub(crate) async fn fetch_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[&str], e: E) -> Result<Vec<PgRow>> {
+    Ok(pg_query(sql, args, types)?.fetch_all(e).await?)
 }
 
-pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, pool: &PgPool) -> Result<Vec<PgRow>> {
+pub(crate) async fn fetch_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<Vec<PgRow>> {
     let mut connection = CancellableConnection::new(pool.acquire().await?);
-    let result = fetch_pg(sql, args, types, zone, &mut *connection).await;
+    let result = fetch_pg(sql, args, types, &mut *connection).await;
     if result.is_ok() {
         connection.completed();
     }
     result
 }
 
-pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, e: E) -> Result<(u64, u64)> {
-    let r = pg_query(sql, args, types, zone)?.execute(e).await?;
+pub(crate) async fn exec_pg<'e, E: Executor<'e, Database = Postgres>>(sql: &str, args: &[Param], types: &[&str], e: E) -> Result<(u64, u64)> {
+    let r = pg_query(sql, args, types)?.execute(e).await?;
     Ok((0, r.rows_affected()))
 }
 
-pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[PgTypeInfo], zone: Zone, pool: &PgPool) -> Result<(u64, u64)> {
+pub(crate) async fn exec_pg_pool(sql: &str, args: &[Param], types: &[&str], pool: &PgPool) -> Result<(u64, u64)> {
     let mut connection = CancellableConnection::new(pool.acquire().await?);
-    let result = exec_pg(sql, args, types, zone, &mut *connection).await;
+    let result = exec_pg(sql, args, types, &mut *connection).await;
     if result.is_ok() {
         connection.completed();
     }
