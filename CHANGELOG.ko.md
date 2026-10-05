@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.36: PHP client는 `new Config(poolSize: n)`으로 process의 요청을 넘어 연결을 유지한다. `Db`는 DSN의 pool에서 연결을 잡고, 앞의 `poolIdleSize`개(0이면 모두) 연결은 연결할 때의 session 설정을 가진 채 뒤 요청의 `Db`를 위해 열려 있으며, pool을 넘는 `Db`는 `CONFIG`를 받고, transaction 안에서 끝난 요청의 transaction은 MySQL named lock, MySQL local 값, SQLite mode와 함께 rollback된다. 모든 client는 server가 끝냈거나 끊긴 연결을 새 code `CONNECTION_LOST`로 보고하며, PHP client는 `Db`의 첫 statement가 그렇게 실패하면 새 연결에서 한 번 더 전송한다.
+
 - G5.34-2: `make rerun-failed`는 기록된 commit의 후손 commit에서 실행되고, 통과하지 못한 target과 그 commit 뒤에 바뀐 path의 owner target을 다시 실행한다.
 
 - G5.33-12: exclusive lease 보유자 하나가 동시에 실행하는 process들은 그 lease를 한 번에 하나의 exclusive 보유자로 가지므로, 기능 단계가 다른 단계가 읽는 TypeScript client를 다시 build하지 않는다.
@@ -440,7 +442,7 @@
 
 - T8.6.1: docs/plans.md가 plan 적용을 정한다: lock, history, drift, 검증, event, MySQL recovery.
 
-- T8.5.2.1: Go plan writer는 버리는 결과와 쓰지 않는 renderer 상태를 두지 않는다.
+- T8.5.2.1: Go plan writer는 버리는 결과와 쓰지 않는 renderer 상태를 만들지 않는다.
 
 - T8.5.2: Go engine은 schema plan을 parse, chain, diff하고 MySQL, PostgreSQL, SQLite용으로 쓴다. `make dbspec-plan-check`가 이를 적용한다.
 
