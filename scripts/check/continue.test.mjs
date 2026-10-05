@@ -157,6 +157,41 @@ esac
   }
 });
 
+// 끝난 실행 case(G5.59)는 실행을 만들기 전에 kill된 실행의 database를 지우는지 본다. 가짜 mysql과 psql은 database
+// 목록을 내고 DROP을 log에 적는다. 끝난 pid의 orm_owner_와 orm_check_ database만 지우고, 살아 있는 pid(이 test
+// process)의 것, CI 이름, 다른 database는 남긴다.
+caseTest('a run first drops the databases of runs whose process no longer runs', PROCESS, () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'continue-')));
+  try {
+    const dead = spawnSync('true').pid;
+    const live = process.pid;
+    const names = [`orm_owner_${dead}_ab12cd34_bench`, `orm_owner_${dead}_ab12cd34_decimal`, `orm_check_${dead}_0f0f0f0f_bench`,
+      `orm_owner_${live}_ab12cd34_bench`, 'orm_check_ci_1001_1_bench', 'orm_test', 'orm_run'];
+    mkdirSync(join(base, 'bin'));
+    const log = join(base, 'ran.log');
+    for (const program of ['mysql', 'psql'])
+      writeFileSync(join(base, 'bin', program), `#!/bin/sh
+for a in "$@"; do last=$a; done
+case "$last" in
+'SHOW DATABASES'|'SELECT datname FROM pg_database') printf '%s\\n' ${names.join(' ')} ;;
+DROP*) echo "${program} $last" >> ${log} ;;
+esac
+`, { mode: 0o755 });
+    const servers = join(base, 'servers.env');
+    writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\n");
+    const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop-dead', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}` } });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const dropped = readFileSync(log, 'utf8').trim().split('\n');
+    assert.deepEqual(dropped, [
+      ...names.slice(0, 3).map(name => `mysql DROP DATABASE IF EXISTS \`${name}\``),
+      ...names.slice(0, 3).map(name => `psql DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`),
+    ]);
+    assert.match(result.stdout, new RegExp(`databases: dropped the MySQL database orm_owner_${dead}_ab12cd34_bench of run pid ${dead}, which no longer runs`));
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 // lane 이름 case(G5.54)는 ORM_CLIENT_DB_LANGS가 lane이 아닌 이름을 담거나 lane을 하나도 고르지 않으면 실행하지 않고
 // 실패하는지 본다. 잘못 쓴 이름은 아무 lane도 실행하지 않고 통과했다.
 caseTest('client-db-test refuses an unknown lane name and an empty selection', PROCESS, () => {
