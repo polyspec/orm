@@ -24,7 +24,25 @@ import (
 
 const iterations = 500
 
+// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
+// check/dsn은 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
 func main() {
+	os.Exit(run())
+}
+
+// exit는 check/dsn이 run을 끝내는 panic이고, 값은 종료 코드다.
+type exit int
+
+func run() (code int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			value, ok := recovered.(exit)
+			if !ok {
+				panic(recovered)
+			}
+			code = int(value)
+		}
+	}()
 	const aesKey = "bench-salt"
 	var lastSQL string
 	var lastArgs []any
@@ -92,6 +110,7 @@ func main() {
 		rs.Close()
 	})
 	fmt.Fprintf(os.Stderr, "go: client p50 %dµs, native p50 %dµs (%d iterations)\n", client, native, iterations)
+	return 0
 }
 
 // dsn은 시드된 bench database를 가리키는 ORM_BENCH_MYSQL_DSN이다. 없거나 비어
@@ -100,7 +119,7 @@ func dsn() string {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {
 		fmt.Fprintln(os.Stderr, "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database")
-		os.Exit(1)
+		panic(exit(1))
 	}
 	return v
 }
@@ -133,6 +152,6 @@ func p50(f func()) int64 {
 func check(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "demo:", err)
-		os.Exit(1)
+		panic(exit(1))
 	}
 }

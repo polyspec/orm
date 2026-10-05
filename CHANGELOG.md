@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.60: `make repo-check` also refuses an `os.Exit` reached through a helper of the same package after a `defer`, and the five programs that did so (the bench installer, two examples, the Go conformance runner and the Go introspection tool) end with `os.Exit(run())`, so their deferred close runs.
+
 - G5.59: a run first drops the bench and decimal databases that a killed run (`orm_owner_<pid>_…`, `orm_check_<pid>_…` whose process no longer runs) left on the test servers.
 
 - G5.58: the four stress tests also time a reference workload (one checksum pass over the same document) and print its median CPU time and the ratio of the parse to it, without asserting it, so that CI shows whether a ratio budget holds across machines.

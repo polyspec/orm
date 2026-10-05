@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.60: `make repo-check`는 `defer` 뒤에 같은 package의 helper를 거쳐 닿는 `os.Exit`도 거부하고, 그렇게 하던 다섯 program(bench installer, example 둘, Go conformance runner, Go introspection 도구)은 `os.Exit(run())`으로 끝나므로 defer된 close가 실행된다.
+
 - G5.59: 실행은 먼저 kill된 실행(process가 더 이상 실행되지 않는 `orm_owner_<pid>_…`, `orm_check_<pid>_…`)이 test server에 남긴 bench와 decimal database를 지운다.
 
 - G5.58: 네 stress test는 기준 작업(같은 문서를 한 번 지나는 checksum)도 재고, 그 median CPU 시간과 그것에 대한 parse의 비율을 판정 없이 출력한다. 그래서 CI가 비율 budget이 기계 사이에서 유지되는지 보여 준다.

@@ -21,10 +21,28 @@ import (
 	"github.com/polyspec/orm/engine/dbspec"
 )
 
+// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
+// fail은 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
 func main() {
+	os.Exit(run())
+}
+
+// exit는 fail이 run을 끝내는 panic이고, 값은 종료 코드다.
+type exit int
+
+func run() (code int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			value, ok := recovered.(exit)
+			if !ok {
+				panic(recovered)
+			}
+			code = int(value)
+		}
+	}()
 	if len(os.Args) != 3 {
 		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/introspect/go <mysql|postgres|sqlite> <uri>")
-		os.Exit(2)
+		return 2
 	}
 	dialect, uri := os.Args[1], os.Args[2]
 	db, err := open(dialect, uri)
@@ -46,6 +64,7 @@ func main() {
 	}
 	os.Stdout.WriteString(b.String())
 	fmt.Fprintf(os.Stderr, "elapsed %.1f\n", float64(elapsed.Microseconds())/1000)
+	return 0
 }
 
 // open은 URI를 dialect의 database/sql driver로 연다.
@@ -84,5 +103,5 @@ func open(dialect, uri string) (*sql.DB, error) {
 
 func fail(err error) {
 	fmt.Fprintln(os.Stderr, "introspect:", err)
-	os.Exit(1)
+	panic(exit(1))
 }
