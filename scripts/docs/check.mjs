@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { docs, dist, files, serve, siteBase } from './lib.mjs';
+import { loading, openPage, trackLoad } from './load.mjs';
 import { COMPUTE, runCase, runLong } from '../../tests/testcase.mjs';
 
 // docs check는 build한 site를 browser로 읽는다. server 시작과 browser 실행은 장기 작업이므로 runLong으로
@@ -71,13 +72,15 @@ try {
   });
   const page = await staticContext.newPage();
   inspect(page, { scripting: false });
+  // 열지 못한 page는 Playwright의 기한 초과만이 아니라 남은 request, 실패한 request, error와 host load를 적는다.
+  const load = trackLoad(page, server);
   let diagramCount = 0;
   for (const file of pages) {
     const relative = path.relative(dist, file).split(path.sep).join('/');
     await check(`docs-static/page/${relative}`, PAGE, async () => {
       const before = errors.length;
       const url = `${server.origin}${base}${relative}`;
-      assert.equal((await page.goto(url)).status(), 200, relative);
+      assert.equal((await openPage(page, url, load)).status(), 200, relative);
       const body = page.locator('#VPContent');
       assert.ok((await body.innerText()).trim().length > 30, `Empty static body: ${relative}`);
       if (relative === 'index.html') {
@@ -126,9 +129,10 @@ try {
   context.setDefaultTimeout(15000);
   const interactive = await context.newPage();
   inspect(interactive);
+  const interactiveLoad = trackLoad(interactive, server);
   await check('docs-static/search', INTERACTION, async () => {
     const before = errors.length;
-    await interactive.goto(`${server.origin}${base}`);
+    await openPage(interactive, `${server.origin}${base}`, interactiveLoad);
     await interactive.locator('.VPNavBarSearch button').click();
     await interactive.locator('#localsearch-input').fill('getCountBy');
     const result = interactive.locator('.VPLocalSearchBox .result').first();
@@ -145,11 +149,11 @@ try {
   });
   await check('docs-static/theme-and-mobile', INTERACTION, async () => {
     const before = errors.length;
-    await interactive.goto(`${server.origin}${base}interfaces.html`);
+    await openPage(interactive, `${server.origin}${base}interfaces.html`, interactiveLoad);
     await interactive.getByRole('switch').first().click();
     await interactive.waitForFunction(() => document.documentElement.classList.contains('dark'));
     await interactive.setViewportSize({ width: 390, height: 844 });
-    await interactive.reload();
+    await loading(interactiveLoad, 'reloading the page at the mobile viewport', () => interactive.reload());
     const menu = interactive.locator('.VPLocalNav .menu');
     await menu.click();
     await interactive.locator('.VPSidebar.open').waitFor();

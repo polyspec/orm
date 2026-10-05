@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.39: a docs page that does not load names its pending requests with their age and the server's view, its failed requests, console and page errors, the event loop delay and the host load.
+
 - G5.37: `addTablesAndColumns` creates the missing indexes of existing tables along with missing tables and columns and returns each as `table.index`; a missing unique key stays `SCHEMA_DIFFERS`, named `add_unique <table>.<name>: a missing unique key can fail on the existing rows; add it with a plan`.
 
 - G5.37-1: the test MySQL servers rotate their binary logs every 64 MiB and remove a log an hour after its last write (`MYSQLD_BINLOG` of `scripts/test-servers.sh`), from the next `make test-servers`.
