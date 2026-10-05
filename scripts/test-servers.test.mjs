@@ -80,3 +80,18 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// 공유 database case는 server 환경 file이 bench database를 정하지 않고, Makefile이 함께 쓰는 decimal
+// database를 두지 않는지 확인한다. 그 database는 실행마다 scripts/check/databases.sh가 만든다.
+caseTest('the server environment names no bench or decimal database that runs share', COMPUTE, () => {
+  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
+  const start = script.indexOf('write_env() {');
+  const writeEnv = script.slice(start, script.indexOf('\n}\n', start));
+  assert.ok(start >= 0, 'write_env is absent from scripts/test-servers.sh');
+  assert.doesNotMatch(writeEnv, /export (?:ORM_)?BENCH_[A-Z_]*=/, 'the server environment names a shared bench database');
+  assert.match(writeEnv, /export ORM_RUN_MYSQL_DSN='\$mysql\/orm_run\?timezone=%2B00:00'/);
+  assert.doesNotMatch(script, /bench-db\.sh/, 'make test-servers seeds a shared bench database');
+  const makefile = readFileSync(new URL('../Makefile', import.meta.url), 'utf8');
+  assert.match(makefile, /^DECIMAL_ENV =$/m, 'the Makefile names a shared decimal environment');
+  assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
+});

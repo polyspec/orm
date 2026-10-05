@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-2: 함께 쓰는 bench나 decimal database는 없다. `make check`, `make owner-check`, 새 `make run-databases`가 자기 실행의 database를 만들고, `make test-servers`의 환경은 그 실행이 database를 만들 server DSN만 정한다.
+
 - G5.33-1: test server를 쓰는 실행은 shared lease(`tests/lease`)를 가지고, `make test-servers-stop`, 새 시작, MySQL migration은 exclusive lease를 가지며 lease가 있으면 보유자를 적고 거부된다. `make test-servers-leases`와 `make test-servers-leases-clear`는 lease를 적고 보유자 없는 것을 지운다.
 
 - G5.32-3: PostgreSQL에서 Rust client는 모든 값을 plan slot이 선언한 type으로 bind하고 statement를 describe하거나 catalog에서 column origin을 읽지 않는다. `server_transactions`의 첫 실행은 statement 8개에 server transaction 15개 대신 13개를 쓴다.

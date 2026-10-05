@@ -163,3 +163,16 @@ caseTest('a changed feature entry of contracts/features.json selects that featur
   assert.deepEqual((await selectHelpers(helped, root, ['contracts/features.json'], manifestChanges(after, helped))).map(({ helper, reasons }) => [helper.id, reasons]),
     [['h', ['contracts/features.json (entry of h)']]]);
 });
+
+// 실행 database case는 owner-check가 자기 bench와 decimal database를 만들 target을 고르는 방법과, 그
+// database의 환경 file을 읽는 방법을 확인한다.
+caseTest('owner-check creates the databases of its run for a target that reads the server environment', 5000, () => {
+  const { environmentFile, usesTestEnv } = ownerSelection;
+  const makefile = 'WITH_TEST_ENV = x\nuses:\n\t$(WITH_TEST_ENV) go test ./a\n\nplain:\n\tnode --test a.test.mjs\n';
+  assert.equal(usesTestEnv(makefile, 'uses'), true);
+  assert.equal(usesTestEnv(makefile, 'plain'), false);
+  assert.equal(usesTestEnv(makefile, 'absent'), false);
+  assert.deepEqual(environmentFile("export BENCH_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00'\n\nexport A='b c'\n"),
+    { BENCH_MYSQL_DSN: 'mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00', A: 'b c' });
+  assert.throws(() => environmentFile('A=b\n'), /unexpected environment line: A=b/);
+});

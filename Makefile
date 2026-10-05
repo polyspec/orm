@@ -1,4 +1,4 @@
-.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-db-setup decimal-physical-check perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 .NOTPARALLEL: check docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -13,11 +13,11 @@ TEST_PROXYSQL_PORT = 33182
 TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 SEND_SQLITE_DSN = sqlite://$(dir $(abspath $(TEST_ENV)))send-savepoint.sqlite
-# DECIMAL_ENV는 decimal database의 DSN을 담은 file이고, DECIMAL_DATABASE는 그 MySQL과
-# PostgreSQL database 이름이다. make decimal-db-setup이 둘을 만들고, decimal 검사와 feature-check의
-# decimal 명령이 DECIMAL_ENV를 읽는다. make check는 실행마다 자기 file과 database를 준다.
-DECIMAL_ENV = $(abspath .runtime/decimal-env)
-DECIMAL_DATABASE = orm_decimal_case
+# DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
+# 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
+# 실행마다 자기 database와 file을 만들어(scripts/check/databases.sh) 이 변수와 TEST_ENV로 준다. bench
+# database의 DSN(BENCH_*, ORM_BENCH_MYSQL_DSN)도 그 실행의 TEST_ENV에만 있다.
+DECIMAL_ENV =
 export DECIMAL_ENV
 
 # 모든 cargo 명령(cargo +$(PHYSICAL_RUST_TOOLCHAIN), PATH의 cargo, feature coverage와 conformance
@@ -75,6 +75,12 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
 CHECK_TARGETS = checklist-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+# run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
+# (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
+# 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
+run-databases:
+	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(TARGETS)
+
 check:
 	$(WITH_TEST_ENV) node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
 
@@ -488,11 +494,8 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 decimal-bench-sqlite:
 	./scripts/decimal-bench-sqlite.sh
 
-decimal-db-setup:
-	$(WITH_TEST_ENV) ORM_DECIMAL_DATABASE=$(DECIMAL_DATABASE) php scripts/decimal-db-setup.php
-
 decimal-physical-check: rust-fetch
-	test -f $(DECIMAL_ENV) || { echo '$(DECIMAL_ENV) is missing; run make decimal-db-setup' >&2; exit 1; }
+	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
 interface-check:
