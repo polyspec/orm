@@ -11,7 +11,7 @@ runCoverageCases($argv, [
     'hot_path_gate' => function (): void {
         $dsn = getenv('ORM_BENCH_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required');
+            throw new RuntimeException('ORM_BENCH_MYSQL_DSN is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run');
         }
         [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, __DIR__ . '/perf_gate.php'], dirname(__DIR__, 3));
         if ($status !== 0) {

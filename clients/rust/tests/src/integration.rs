@@ -66,8 +66,9 @@ use orm_case_database::CaseDatabase;
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_generated_model_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    let driver = std::env::var("ORM_FEATURE_DATABASE")
+        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
     assert!(!dsn.is_empty());
     let db = model::connect(&dsn, 1, orm::Config::default()).await.unwrap();
@@ -730,7 +731,11 @@ async fn main() {
                 case.step("read_only_sqlite");
             } else {
                 let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
-                let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| panic!("{var} is required; database tests never skip"));
+                let replica = std::env::var(&var).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| {
+                    panic!(
+                        "{var} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers"
+                    )
+                });
                 primary_and_replica(&t, &replica).await;
             }
             t.finish().await;

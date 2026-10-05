@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.81: 검사와 test에서 환경 변수, 인자, 도구가 없다는 실패 message는 원인 뒤에 고치는 방법을 적고, `make repo-check`는 그것이 없는 message를 거부한다.
+
 - G5.80: 다른 실행이 읽는 build 출력(`.runtime/bin`의 program, stress 문서, test binary, clients/typescript/dist, 실행 복사본, 가장 낮은 Node)은 임시 경로에 build하고 rename으로 최종 경로에 놓으며, `make repo-check`는 그것을 최종 경로에 바로 쓰는 Makefile 줄을 거부한다.
 
 - G5.79: `.go-version`과 `.composer-version`이 검사의 Go와 Composer release를 고정하고, CI는 그것과 libclang 21을 설치하며, `make repo-check`는 다른 release를 고치는 방법과 함께 거부한다.

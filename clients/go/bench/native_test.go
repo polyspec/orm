@@ -27,7 +27,7 @@ import (
 func benchDSN() (string, error) {
 	v := os.Getenv("ORM_BENCH_MYSQL_DSN")
 	if v == "" {
-		return "", fmt.Errorf("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and bench tests never skip")
+		return "", fmt.Errorf("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and bench tests never skip; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run")
 	}
 	return v, nil
 }

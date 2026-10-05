@@ -37,7 +37,7 @@ export function runSummary(root, id, servers = resolve(root, '.runtime/servers')
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const id = process.env.ORM_CHECK_RUN_ID;
   if (!id) {
-    console.error('ORM_CHECK_RUN_ID is unset: the summary names the run of make check by it');
+    console.error('ORM_CHECK_RUN_ID is unset: the summary names the run of make check by it; set it to the run id that make check used (CI sets it from the run id and attempt)');
     process.exit(2);
   }
   const { text } = runSummary(resolve(fileURLToPath(new URL('../..', import.meta.url))), id);

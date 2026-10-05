@@ -105,7 +105,7 @@ function case_database(string $driver, callable $step): CaseDatabase
     $env = 'ORM_TEST_' . strtoupper($driver) . '_DSN';
     $admin = getenv($env);
     if ($admin === false || $admin === '') {
-        throw new RuntimeException("$env is required; database tests never skip");
+        throw new RuntimeException("$env is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers");
     }
     try {
         case_admin($admin)->exec("CREATE DATABASE $name");

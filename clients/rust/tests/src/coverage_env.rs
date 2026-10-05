@@ -11,8 +11,9 @@ const DEADLINE: Duration = Duration::from_secs(300);
 /// ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN으로 연결한다. 둘 중 하나가 없거나 DSN이
 /// 다른 database를 고르면 실패한다.
 pub async fn connect() -> Db {
-    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    let driver = std::env::var("ORM_FEATURE_DATABASE")
+        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
     let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = super::model::connect(&dsn, 2, config).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));

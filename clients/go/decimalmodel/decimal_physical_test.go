@@ -19,7 +19,7 @@ func decimalPhysical(t *testing.T, env string) {
 	t.Helper()
 	dsn := os.Getenv(env)
 	if dsn == "" {
-		t.Fatalf("%s is required", env)
+		t.Fatalf("%s is required; run the test through its make target, which reads the environment of make test-servers", env)
 	}
 	db, err := decimalmodel.Connect(dsn, orm.Config{})
 	if err != nil {

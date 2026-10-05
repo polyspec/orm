@@ -14,7 +14,7 @@ import (
 func TestPHPRelativeTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
-		t.Fatalf("php CLI is required; tool tests never skip")
+		t.Fatalf("php CLI is required; tool tests never skip; install the PHP of .php-version")
 	}
 	root, err := filepath.Abs("../../..")
 	if err != nil {
@@ -76,7 +76,7 @@ class Row extends Base {
 func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
-		t.Fatalf("php CLI is required: %v", err)
+		t.Fatalf("php CLI is required: %v; install the PHP of .php-version", err)
 	}
 	root, err := filepath.Abs("../../..")
 	if err != nil {
@@ -129,7 +129,7 @@ func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 func TestPHPRecordsMatchCommonContract(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	if _, err := exec.LookPath("php"); err != nil {
-		t.Fatalf("php CLI is required: %v", err)
+		t.Fatalf("php CLI is required: %v; install the PHP of .php-version", err)
 	}
 	root, err := filepath.Abs("../../..")
 	if err != nil {

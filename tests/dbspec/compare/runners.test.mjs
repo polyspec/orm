@@ -15,7 +15,7 @@ import { root, runRunner, runners } from './runners.mjs';
 // 실행하고, Go runner는 `go run` compile을 포함한다.
 const TIMEOUT = 120000;
 const stress = process.env.DBSPEC_STRESS_DOCUMENT;
-if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required');
+if (stress === undefined || stress === '') throw new Error('DBSPEC_STRESS_DOCUMENT is required; run it through make dbspec-compare-check, which writes the stress document');
 
 const files = ['cases', 'ddl', 'plans', 'mermaid'];
 const vectors = Object.fromEntries(files.map(name => [name, readFileSync(join(root, `tests/dbspec/${name}.json`), 'utf8')]));

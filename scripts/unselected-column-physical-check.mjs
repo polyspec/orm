@@ -51,7 +51,7 @@ async function state(database, dsn) {
 for (const database of ['mysql', 'postgres', 'sqlite']) {
   const key = `BENCH_${database.toUpperCase()}_DSN`;
   const dsn = process.env[key];
-  if (!dsn) throw new Error(`${key} is required`);
+  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make test-servers`);
   let before;
   await step(`unselected-column/${database}/state`, timeoutMs, async ({ step: progress }) => {
     before = await state(database, dsn);

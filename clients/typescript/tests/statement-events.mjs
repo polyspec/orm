@@ -18,7 +18,7 @@ for (let i = 0; i < args.length; i++) {
 const cases = vectors.cases.filter(c => selected.length === 0 || selected.includes(c.id));
 for (const id of selected) if (id !== 'server_transactions' && !vectors.cases.some(c => c.id === id)) throw new Error(`unknown case ${id}`);
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip`);
+  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
 }
 let failures = 0;
 for (const dialect of dialects.length > 0 ? dialects : ['mysql', 'postgres', 'sqlite']) {

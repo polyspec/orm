@@ -104,7 +104,7 @@ fn bench_dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
         Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run");
             std::process::exit(1)
         }
         Err(e) => {
@@ -118,7 +118,7 @@ fn bench_dsn() -> String {
 /// 출력하며 끝난다. 기본 반복 횟수는 없다.
 fn iterations(minimum: usize) -> usize {
     let Some(arg) = std::env::args().nth(1) else {
-        eprintln!("usage: driver_compare <iterations>; the iterations argument is required");
+        eprintln!("usage: driver_compare <iterations>; the iterations argument is required; give the number of iterations as the first argument");
         std::process::exit(1)
     };
     match arg.parse::<usize>() {

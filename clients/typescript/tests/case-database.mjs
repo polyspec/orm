@@ -55,7 +55,7 @@ const adminEnv = { mysql: 'ORM_TEST_MYSQL_DSN', postgres: 'ORM_TEST_POSTGRES_DSN
 /** admin DSN으로 statement 하나를 실행한다. MySQL 연결은 database 없이 연다. */
 async function admin(dialect, statement) {
   const dsn = process.env[adminEnv[dialect]];
-  if (!dsn) throw new Error(`${adminEnv[dialect]} is required; database tests never skip`);
+  if (!dsn) throw new Error(`${adminEnv[dialect]} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
   if (dialect === 'mysql') {
     const conn = await mysqlConnection(dsn, null);
     try { await conn.query(statement); } finally { await conn.end(); }

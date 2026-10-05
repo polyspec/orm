@@ -34,7 +34,7 @@ func TestPhysicalQueryForms(t *testing.T) {
 	for _, target := range targets {
 		t.Run(target.driver, func(t *testing.T) {
 			if target.dsn == "" {
-				t.Fatalf("ORM_MIGRATION_%s_DSN is required; physical DB tests never skip", strings.ToUpper(target.driver))
+				t.Fatalf("ORM_MIGRATION_%s_DSN is required; physical DB tests never skip; run the test through its make target, which reads the environment of make test-servers", strings.ToUpper(target.driver))
 			}
 			testPhysicalQueryForms(t, target.driver, target.dsn)
 		})

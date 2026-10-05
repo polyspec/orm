@@ -37,8 +37,9 @@ async fn table_exists(db: &Db, table: &str) -> bool {
 
 /// 고른 database와 DSN이다. 둘 중 하나라도 없으면 실패한다.
 fn feature_database() -> (String, String) {
-    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    let driver = std::env::var("ORM_FEATURE_DATABASE")
+        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
     (driver, dsn)
 }

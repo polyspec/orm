@@ -6,9 +6,9 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
-: "${BENCH_MYSQL_DSN:?BENCH_MYSQL_DSN is required}"
-: "${BENCH_POSTGRES_DSN:?BENCH_POSTGRES_DSN is required}"
-: "${BENCH_SQLITE_DSN:?BENCH_SQLITE_DSN is required}"
+: "${BENCH_MYSQL_DSN:?BENCH_MYSQL_DSN is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run}"
+: "${BENCH_POSTGRES_DSN:?BENCH_POSTGRES_DSN is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run}"
+: "${BENCH_SQLITE_DSN:?BENCH_SQLITE_DSN is required; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run}"
 
 # mysql://user@host:port/db?query -> user, host, port, db
 mysql_rest=${BENCH_MYSQL_DSN#mysql://}

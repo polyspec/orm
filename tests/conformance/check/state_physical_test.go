@@ -27,7 +27,7 @@ func TestPhysicalCounterCleanup(t *testing.T) {
 			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
-				t.Fatalf("%s is required", test.env)
+				t.Fatalf("%s is required; run the test through its make target, which reads the environment of make test-servers", test.env)
 			}
 			db, err := openStateDatabase(test.driver, raw)
 			if err != nil {
@@ -141,7 +141,7 @@ func TestPhysicalFailedRunnerStateCheck(t *testing.T) {
 			testcase.Start(t, 3*stateDeadline)
 			raw := os.Getenv(test.env)
 			if raw == "" {
-				t.Fatalf("%s is required", test.env)
+				t.Fatalf("%s is required; run the test through its make target, which reads the environment of make test-servers", test.env)
 			}
 			db, err := openStateDatabase(test.driver, raw)
 			if err != nil {

@@ -5,8 +5,9 @@ use orm::db::Pool;
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_dsn_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let driver = std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required");
+    let driver = std::env::var("ORM_FEATURE_DATABASE")
+        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
+    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
     assert!(!dsn.is_empty());
     assert!(orm::Db::connect("invalid://database", 1, orm::Config::default()).await.is_err());

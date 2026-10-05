@@ -157,7 +157,7 @@ fn bench_dsn() -> String {
     match std::env::var("ORM_BENCH_MYSQL_DSN") {
         Ok(v) if !v.is_empty() => v,
         Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database");
+            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make check or make run-databases TARGETS=<target>, which create the bench database of the run");
             std::process::exit(1)
         }
         Err(e) => {
@@ -172,7 +172,7 @@ fn bench_dsn() -> String {
 /// 반복 횟수의 1/3을 재므로 최소 3이다.
 fn iterations(minimum: usize) -> usize {
     let Some(arg) = std::env::args().nth(1) else {
-        eprintln!("usage: native <iterations>; the iterations argument is required");
+        eprintln!("usage: native <iterations>; the iterations argument is required; give the number of iterations as the first argument");
         std::process::exit(1)
     };
     match arg.parse::<usize>() {

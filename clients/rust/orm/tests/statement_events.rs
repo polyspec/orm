@@ -283,7 +283,7 @@ async fn coverage_statement_events() {
         Ok("mysql") => "mysql",
         Ok("postgres") => "postgres",
         Ok("sqlite") => "sqlite",
-        _ => panic!("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required"),
+        _ => panic!("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run it through make feature-check, which sets it for each coverage case"),
     };
     run_cases(driver).await;
 }

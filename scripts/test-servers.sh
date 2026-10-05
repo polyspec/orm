@@ -275,7 +275,7 @@ start_logged() {
 # into the environment file in place of earlier ones. The MySQL TLS cases of the clients
 # connect with ssl-mode=VERIFY_IDENTITY (docs/config.md).
 tls() {
-  command -v openssl >/dev/null || { echo "test-servers: openssl is not installed" >&2; exit 1; }
+  command -v openssl >/dev/null || { echo "test-servers: openssl is not installed; run make install-server-programs, or install it with the package manager of the machine" >&2; exit 1; }
   TLS="$DIR/tls"
   if [ ! -f "$TLS/other-ca.pem" ]; then
     rm -rf "$TLS.tmp"
@@ -447,7 +447,7 @@ start() {
   fi
   check_socket_paths
   for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer; do
-    command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed" >&2; exit 1; }
+    command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed; run make install-server-programs, or install it with the package manager of the machine" >&2; exit 1; }
   done
   hold_exclusive
   mkdir -p "$DIR"

@@ -18,7 +18,7 @@ $dialect = $argv[2];
 $env = 'DECIMAL_' . strtoupper($dialect) . '_DSN';
 $dsn = getenv($env);
 if (!is_string($dsn) || $dsn === '') {
-    throw new RuntimeException("$env is required");
+    throw new RuntimeException("$env is required; run the test through its make target, which reads the environment of make test-servers");
 }
 // case는 셋이다: model 생성(COMPUTE), 생성된 setter의 거부(COMPUTE), database에서 쓰고 읽은 뒤
 // rollback(DATABASE). 생성한 file은 마지막에 지운다.
