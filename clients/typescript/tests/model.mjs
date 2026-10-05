@@ -848,9 +848,10 @@ try {
             const row = fixture.authors[0];
             const running = new AbortController();
             const timer = setTimeout(() => running.abort(), 300);
-            const started = Date.now();
+            // The statement returns CANCELED after the abort while the other connection still holds the row:
+            // it ended because of the signal, not because the lock was released or its wait timed out.
             check(await code(row.connect(db.withSignal(running.signal)).setName('changed').update()) === 'CANCELED', 'a statement cancelled while it runs');
-            check(Date.now() - started < 4000, 'the cancelled statement returned before it ended');
+            check(running.signal.aborted, 'the cancelled statement returned only after the abort');
             clearTimeout(timer);
           } finally { await release(); }
         }

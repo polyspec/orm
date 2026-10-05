@@ -579,21 +579,24 @@ caseTest('start_logged waits for a ready line or an exit, with no deadline', COM
         { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
-    const started = Date.now();
+    const alive = () => spawnSync('sh', ['-c', `kill -0 $(cat ${dir}/fake.pid)`]).status === 0;
     const ready = run('echo starting; echo now accepting connections; echo serving; exec sleep 30');
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(ready.stdout, 'returned\n');
     assert.equal(ready.stderr, 'test-servers: fake: starting\ntest-servers: fake: now accepting connections\n');
-    assert.ok(Date.now() - started < 10_000, `start_logged returned after ${Date.now() - started} ms`);
+    // start_logged는 서버가 끝나기 전에 돌아왔다: 돌아온 뒤에도 서버가 실행 중이다.
+    assert.ok(alive(), 'start_logged returned only after the server ended');
     assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
     spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
     rmSync(join(dir, 'fake.log'));
-    const slowStarted = Date.now();
-    const slow = run('echo starting; sleep 1.5; echo still starting; sleep 1; echo now accepting connections; exec sleep 30');
+    // 느린 서버는 준비 줄 바로 앞에 marker file을 만든다. start_logged가 돌아왔을 때 그 file이 있으면 준비 줄을
+    // 기다린 것이다. 앞의 줄에 돌아왔다면 file은 아직 없다.
+    const slow = run(`echo starting; sleep 1.5; echo still starting; sleep 1; touch ${dir}/ready-marker; echo now accepting connections; exec sleep 30`);
     assert.equal(slow.status, 0, slow.stderr);
     assert.equal(slow.stdout, 'returned\n');
     assert.equal(slow.stderr, 'test-servers: fake: starting\ntest-servers: fake: still starting\ntest-servers: fake: now accepting connections\n');
-    assert.ok(Date.now() - slowStarted >= 2_500, `the slow server was ready after ${Date.now() - slowStarted} ms`);
+    assert.ok(existsSync(join(dir, 'ready-marker')), 'start_logged returned before the slow server logged its ready line');
+    assert.ok(alive(), 'start_logged returned only after the slow server ended');
     spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
     rmSync(join(dir, 'fake.log'));
     const exited = run('echo starting; exit 3');
