@@ -189,14 +189,32 @@ func executeVector(name string, fn func() (any, error), transaction func(func() 
 	return result, nil
 }
 
+// main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한
+// check는 exit panic으로 run까지 올라오고, 그 사이의 defer(연결 닫기)가 실행된다.
 func main() {
+	os.Exit(run())
+}
+
+// exit는 check가 run을 끝내는 panic이고, 값은 종료 코드다.
+type exit int
+
+func run() (status int) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			value, ok := recovered.(exit)
+			if !ok {
+				panic(recovered)
+			}
+			status = int(value)
+		}
+	}()
 	var err error
 	var selected map[string]bool
 	dsn, selected, err = parseArgs(os.Args[1:])
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "runner_go:", err)
 		fmt.Fprintln(os.Stderr, "usage: runner_go -dsn URI [-vector NAME]...")
-		os.Exit(2)
+		return 2
 	}
 	db, err := model.Connect(dsn, orm.Config{
 		AESKey:        "bench-salt",
@@ -819,6 +837,7 @@ func main() {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	check(enc.Encode(out))
+	return 0
 }
 
 // declaredVector는 runner가 선언한 vector 하나다.
@@ -890,6 +909,6 @@ func selectVectors(declared []declaredVector, selected map[string]bool) ([]decla
 func check(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "runner_go:", err)
-		os.Exit(1)
+		panic(exit(1))
 	}
 }

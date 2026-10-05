@@ -1128,6 +1128,29 @@ func usage() {
 \tos.Exit(2)
 }
 `;
+  const helper = `package main
+
+func main() {
+\tdb := open()
+\tdefer db.Close()
+\tcheck(db.Ping())
+}
+
+func check(err error) {
+\tif err != nil {
+\t\tfail(err)
+\t}
+}
+`;
+  const helperExit = `package main
+
+func fail(err error) {
+\tos.Exit(1)
+}
+`;
+  assert.deepEqual(deferredExitErrors({ 'd/main.go': helper, 'd/fail.go': helperExit }), [
+    'd/main.go:6: main calls check, which calls os.Exit, after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
+  ]);
   assert.deepEqual(deferredExitErrors({ 'a/main.go': leaking, 'b/main.go': recovering, 'c/main.go': returning }), [
     'a/main.go:8: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
     'b/main.go:6: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
