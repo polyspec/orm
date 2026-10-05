@@ -258,7 +258,7 @@ final class SchemaUtils
                 $live = self::introspectSet($pdo, $driver, $documents);
                 [$added, $steps, $differences] = Dbspec::addTablesAndColumnsSteps($live->document, $live->unsupported, $document, $driver);
                 if ($differences !== []) {
-                    throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ' . implode('; ', $differences));
+                    throw new OrmException(Code::SCHEMA_DIFFERS, 'the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ' . implode('; ', $differences));
                 }
                 foreach ($steps as $step) {
                     // step은 그 effect의 table을 만들거나 바꾼다.

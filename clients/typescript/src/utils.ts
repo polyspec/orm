@@ -286,7 +286,7 @@ export class SchemaUtils {
     const apply = async (run: Runner): Promise<string[]> => {
       let live = await introspectSet(run, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
-      if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: ${differences.join('; ')}`);
+      if (differences.length > 0) throw new OrmError('SCHEMA_DIFFERS', `the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: ${differences.join('; ')}`);
       // step의 statement는 그 효과가 가리키는 table을 만들거나 바꾼다.
       for (const step of steps) await run('schema', step.effect.table === '' ? [] : [step.effect.table], step.statement);
       // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.

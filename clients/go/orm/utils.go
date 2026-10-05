@@ -325,7 +325,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		}
 		additions, steps, differences := dbspec.AddTablesAndColumnsSteps(live, unsupported, target, dialect)
 		if len(differences) > 0 {
-			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: " + strings.Join(differences, "; ")}
+			return &ir.Error{Code: CodeSchemaDiffers, Msg: "the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: " + strings.Join(differences, "; ")}
 		}
 		for _, step := range steps {
 			var tables []string

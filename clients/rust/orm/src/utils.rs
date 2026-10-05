@@ -639,7 +639,7 @@ where
         return Err(Error::Engine {
             code: codes::SCHEMA_DIFFERS.into(),
             msg: format!(
-                "the existing tables of the document set differ beyond missing tables and missing columns that are null or have a default: {}",
+                "the existing tables of the document set differ beyond missing tables, missing columns that are null or have a default and missing indexes: {}",
                 planned.differences.join("; ")
             ),
         });

@@ -3,7 +3,8 @@
 // 가진다. version 2로 addTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가 있는
 // column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을
 // index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로 둔다. 다시
-// 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도 바꾸기 전에 SCHEMA_DIFFERS다.
+// 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고, 빠진 unique key는 그 이유를 적은
+// SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도 바꾸기 전에 SCHEMA_DIFFERS다.
 // fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각 case는 자기 case
 // database(case-database.mjs)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이 없으면
 // 실패한다.
@@ -23,7 +24,10 @@ const ADDED = [
   'addcol_item_history.note', 'addcol_item_history.priority', 'addcol_item_history.archived', 'addcol_item_history.status',
   'addcol_tag.color',
 ];
-const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'index', 'unique', 'reorder'];
+const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'unique', 'reorder'];
+// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+const ADDED_INDEX = ['addcol_item.note', 'addcol_item.ix_addcol_item_label', 'addcol_item_history.note'];
+const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan';
 let failures = 0;
 let current = '';
 function check(cond, message) {
@@ -121,6 +125,23 @@ async function addTablesAndColumnsDiffers(driver, dsn) {
   } finally { await db.close(); }
 }
 
+/** 있는 table에 빠진 index는 더하고 다시 부르면 아무것도 하지 않는다. 빠진 unique key는 그 이유를 적은 SCHEMA_DIFFERS다. */
+async function addTablesAndColumnsIndex(driver, dsn) {
+  const db = await installed(driver, dsn);
+  try {
+    const unique = await thrown(async () => db.utils().schema().addTablesAndColumns(await fixture('unique')));
+    check(unique?.code === 'SCHEMA_DIFFERS' && unique.message.includes(MISSING_UNIQUE), `a missing unique key: ${unique?.message ?? 'no error'}`);
+    const index = await fixture('index');
+    const added = await db.utils().schema().addTablesAndColumns(index);
+    check(same(added, ADDED_INDEX), `addTablesAndColumns with a missing index = ${JSON.stringify(added)}`);
+    const again = await db.utils().schema().addTablesAndColumns(index);
+    check(same(again, []), `repeated addTablesAndColumns with the index = ${JSON.stringify(again)}`);
+    // install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+    const install = await thrown(() => db.utils().schema().install(index));
+    check(install === null, `install of the set with the index: ${install?.message}`);
+  } finally { await db.close(); }
+}
+
 async function addTablesAndColumnsTransaction(driver, dsn) {
   const db = await installed(driver, dsn);
   try {
@@ -161,6 +182,7 @@ async function addTablesAndColumnsEditedManifest(driver, dsn) {
 const cases = {
   add_tables_and_columns: addTablesAndColumns,
   add_tables_and_columns_differs: addTablesAndColumnsDiffers,
+  add_tables_and_columns_index: addTablesAndColumnsIndex,
   add_tables_and_columns_transaction: addTablesAndColumnsTransaction,
   add_tables_and_columns_edited_manifest: addTablesAndColumnsEditedManifest,
 };

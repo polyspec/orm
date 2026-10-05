@@ -156,7 +156,7 @@ await master.utils().schema().install(SCHEMA);
 
 `orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`; then it fails with `CONFIG` naming each difference when the tables of the set differ from the set.
 
-Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed set to a version that only adds: it creates the tables the database lacks, adds the missing columns of its existing tables that are null or have a default, and returns `SCHEMA_DIFFERS` before any change for every other difference ([schema.md](schema.md#_5-adding-tables-and-columns)). Both run at installation or upgrade and verify the database there; `connection.utils().schema().register(schema)` and the connect helper register a set on each connection without reading the database ([schema.md](schema.md#_6-schema-registration)).
+Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed set to a version that only adds: it creates the tables the database lacks, adds the missing columns of its existing tables that are null or have a default, creates their missing indexes, and returns `SCHEMA_DIFFERS` before any change for every other difference, a missing unique key included, because it can fail on the existing rows and belongs to a plan ([schema.md](schema.md#_5-adding-tables-and-columns)). Both verify the database when they run; `connection.utils().schema().register(schema)` and the connect helper register a set on each connection without reading the database ([schema.md](schema.md#_6-schema-registration)).
 
 ---
 
@@ -402,7 +402,7 @@ The same statement produces the same result on all three databases, although sta
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
-| Add the missing tables and columns of an installed set | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
+| Add the missing tables, columns and indexes of an installed set | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 
 ---
 

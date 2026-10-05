@@ -4,7 +4,8 @@
 // 함께 가진다. version 2로 addTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가
 // 있는 column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는
 // table을 index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로
-// 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도 바꾸기 전에
+// 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고, 빠진 unique key는
+// 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도 바꾸기 전에
 // SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각 case는 자기
 // case database(case_database.php)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
 // 없으면 실패한다.
@@ -34,7 +35,10 @@ const ADDED = [
     'addcol_item_history.note', 'addcol_item_history.priority', 'addcol_item_history.archived', 'addcol_item_history.status',
     'addcol_tag.color',
 ];
-const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'index', 'unique', 'reorder'];
+const DIFFERS = ['required', 'removed', 'changed', 'nullable', 'default', 'unique', 'reorder'];
+// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+const ADDED_INDEX = ['addcol_item.note', 'addcol_item.ix_addcol_item_label', 'addcol_item_history.note'];
+const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan';
 
 $failures = 0;
 $current = '';
@@ -167,6 +171,28 @@ function addTablesAndColumnsDiffers(string $dsn, string $driver): void
     }
 }
 
+/**
+ * 있는 table에 빠진 index는 더하고 다시 부르면 아무것도 하지 않는다. 빠진 unique key는 있는
+ * 행에서 실패할 수 있으므로 그 이유를 적은 SCHEMA_DIFFERS다.
+ */
+function addTablesAndColumnsIndex(string $dsn, string $driver): void
+{
+    $db = installed($dsn);
+    try {
+        $unique = thrown(fn() => $db->utils()->schema()->addTablesAndColumns(fixture('unique')));
+        check($unique?->code_ === Code::SCHEMA_DIFFERS && str_contains($unique->getMessage(), MISSING_UNIQUE), 'a missing unique key: ' . ($unique?->getMessage() ?? 'no error'));
+        $added = $db->utils()->schema()->addTablesAndColumns(fixture('index'));
+        check($added === ADDED_INDEX, 'addTablesAndColumns with a missing index = ' . json_encode($added));
+        $again = $db->utils()->schema()->addTablesAndColumns(fixture('index'));
+        check($again === [], 'repeated addTablesAndColumns with the index = ' . json_encode($again));
+        // install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+        $install = thrown(fn() => $db->utils()->schema()->install(fixture('index')));
+        check($install === null, 'install of the set with the index: ' . ($install?->getMessage() ?? ''));
+    } finally {
+        $db->close();
+    }
+}
+
 function addTablesAndColumnsTransaction(string $dsn, string $driver): void
 {
     $db = installed($dsn);
@@ -215,6 +241,7 @@ function addTablesAndColumnsEditedManifest(string $dsn, string $driver): void
 $cases = [
     'add_tables_and_columns' => addTablesAndColumns(...),
     'add_tables_and_columns_differs' => addTablesAndColumnsDiffers(...),
+    'add_tables_and_columns_index' => addTablesAndColumnsIndex(...),
     'add_tables_and_columns_transaction' => addTablesAndColumnsTransaction(...),
     'add_tables_and_columns_edited_manifest' => addTablesAndColumnsEditedManifest(...),
 ];

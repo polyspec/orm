@@ -160,13 +160,17 @@ MYSQLD_FILES=--secure-file-priv=NULL
 # data directory의 값과 다르면 start가 data를 옮긴다(scripts/test-servers-mysql.mjs).
 MYSQL_LOWER_CASE=1
 MYSQLD_NAMES=--lower-case-table-names=$MYSQL_LOWER_CASE
+# MYSQLD_BINLOG는 두 mysqld의 binary log 보존이다. server는 만료된 log를 시작할 때와 log를 회전할 때만
+# 지우므로 만료 시간(1시간)만으로는 기본 크기(1 GB)까지 회전하지 않는 log가 남는다. 64 MiB마다 회전해
+# 만료가 실제로 적용된다. option은 다음 `make test-servers`가 서버를 시작할 때 적용된다.
+MYSQLD_BINLOG="--binlog-expire-logs-seconds=3600 --max-binlog-size=67108864"
 
 start_mysql() {
   mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql" --log-error="$DIR/mysql-init.log"
   # --daemonize returns after the server accepts connections or fails.
   mysqld --no-defaults --daemonize "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql" --pid-file="$MYSQL_PID" \
     --log-error="$DIR/mysql.log" --bind-address=127.0.0.1 --port="$MYSQL_PORT" \
-    --socket="$MYSQL_SOCKET" --mysqlx=OFF --server-id=1
+    --socket="$MYSQL_SOCKET" --mysqlx=OFF $MYSQLD_BINLOG --server-id=1
   echo "test-servers: MySQL on 127.0.0.1:$MYSQL_PORT"
 
   # The replica starts before the primary holds data and reads the binary log
@@ -174,7 +178,7 @@ start_mysql() {
   mysqld --no-defaults --initialize-insecure "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql-replica" --log-error="$DIR/mysql-replica-init.log"
   mysqld --no-defaults --daemonize "$MYSQLD_FILES" "$MYSQLD_NAMES" --datadir="$DIR/mysql-replica" --pid-file="$MYSQL_REPLICA_PID" \
     --log-error="$DIR/mysql-replica.log" --bind-address=127.0.0.1 --port="$MYSQL_REPLICA_PORT" \
-    --socket="$MYSQL_REPLICA_SOCKET" --mysqlx=OFF --server-id=2 --skip-replica-start
+    --socket="$MYSQL_REPLICA_SOCKET" --mysqlx=OFF $MYSQLD_BINLOG --server-id=2 --skip-replica-start
   mysql --no-defaults --protocol=TCP -h 127.0.0.1 -P "$MYSQL_REPLICA_PORT" -u root -e "
     CHANGE REPLICATION SOURCE TO SOURCE_HOST='127.0.0.1', SOURCE_PORT=$MYSQL_PORT, SOURCE_USER='root', GET_SOURCE_PUBLIC_KEY=1;
     START REPLICA;
