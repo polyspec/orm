@@ -64,6 +64,24 @@
   go, npm and Composer offline (`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
   `COMPOSER_DISABLE_NETWORK`), only the install targets download, through `$(ONLINE)`, and a missing
   download fails with `run make install`, never with a retry online.
+- Every toolchain the checks use is pinned in one declaration and checked: `.node-version`,
+  `.go-version`, `.composer-version` and `rust-toolchain.toml` hold exact releases, `.php-version`
+  and the PostgreSQL major release are as exact as their installers allow, CI installs what they
+  declare, and `make repo-check` fails when a running tool differs. A new release is adopted by
+  changing its declaration with the CI evidence of that release.
+- A build output that another run or a later step reads is published atomically: it is built into a
+  temporary file or directory beside it and renamed into place (`$(PUBLISH)`,
+  scripts/typescript/build.mjs), so a stopped build never leaves half an output.
+- A failure message names the cause and the fix: a missing variable, argument, file or tool says what
+  is missing and then how to provide it (`; run make <target>, which ...`). `make repo-check`
+  refuses a missing-condition message without a fix.
+- A port or database that runs share is held by a lease or owned by one run: the servers of a
+  checkout listen on free ports that `make test-servers` chooses, each run creates its own bench and
+  decimal databases, each database case its own database, and a test names what it creates in a
+  shared database after its process. No code fixes a TCP port.
+- Code finds its files from the working directory or from paths the Makefile gives it, never from
+  the path a binary was compiled at (`runtime.Caller` in Go): that path names the checkout that
+  built the binary, not the one that runs it.
 - During development run unit tests only: the Red/Green unit cases of what changed. End-to-end runs
   (real database servers, conformance across languages, browsers, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required

@@ -51,6 +51,22 @@
   Composer를 offline으로 실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
   `COMPOSER_DISABLE_NETWORK`), install target만 `$(ONLINE)`으로 download한다. 빠진 download는 online으로 다시
   시도하라는 말이 아니라 `run make install`과 함께 실패한다.
+- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `.go-version`,
+  `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
+  설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
+  `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
+- 다른 실행이나 뒤의 단계가 읽는 build 출력은 원자적으로 publish한다: 옆의 임시 file이나 directory에
+  build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mjs) 멈춘 build가 반쪽
+  출력을 남기지 않는다.
+- 실패 message는 원인과 고치는 방법을 적는다: 빠진 변수, 인자, file, 도구는 무엇이 빠졌는지와 그것을 주는
+  방법(`; run make <target>, which ...`)을 적는다. `make repo-check`는 고치는 방법이 없는 빠진 조건의
+  message를 거부한다.
+- 실행들이 함께 쓰는 port와 database는 lease로 갖거나 한 실행이 소유한다: checkout의 server는
+  `make test-servers`가 고른 빈 port에서 listen하고, 실행마다 자기 bench와 decimal database를, database
+  case마다 자기 database를 만들며, test는 공유 database에 만드는 것의 이름에 자기 process를 넣는다. 어떤
+  code도 TCP port를 고정하지 않는다.
+- code는 file을 working directory나 Makefile이 준 경로에서 찾고, binary가 compile된 경로(Go의
+  `runtime.Caller`)에서 찾지 않는다: 그 경로는 실행하는 checkout이 아니라 binary를 build한 checkout을 가리킨다.
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을
