@@ -676,7 +676,8 @@ export class Db {
    * key 순서로 지운다. 이 상태는 COMMIT과 ROLLBACK 뒤에도 connection에 남으므로 모든 단계를 시도하고
    * 실패를 모두 보고한다. cleanup이 실패한 commit은 rollback하고 cleanup 오류를 던진다. signal이 취소된
    * transaction은 ROLLBACK 대신 session을 닫아 server가 transaction과 그 상태를 함께 끝내게 한다. SQLite의
-   * 하나뿐인 연결은 닫을 수 없으므로 ROLLBACK한다.
+   * 하나뿐인 연결은 닫을 수 없으므로 ROLLBACK한다. 정리, COMMIT이나 ROLLBACK이 실패한 session은 상태를 알 수
+   * 없으므로 pool에 돌려주지 않고 닫는다.
    */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
@@ -707,6 +708,9 @@ export class Db {
         for (const key of [...frame.locals.keys()].sort()) await attempt(`SET @\`orm.${key}\` = NULL`);
       }
       const failure = joinedErrors(errors);
+      // pool에 돌아가는 session은 깨끗하거나 버려진다. 정리 statement가 실패했으면(subscriber만 실패한 것은
+      // statement가 효과를 냈으므로 제외) session의 상태를 알 수 없으므로 pool에 돌려주지 않는다.
+      if (errors.some(error => !subscriberError(error))) discard = true;
       if (commit && failure === undefined) {
         try {
           await frame.run('commit', [], 'COMMIT');

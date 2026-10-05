@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.45: Go, TypeScript, Rust client는 transaction 끝의 한 단계(named lock 해제, local 값 reset, SQLite mode 복원, COMMIT이나 ROLLBACK)가 실패하면 connection을 pool에 돌려주지 않고 닫는다. 그러므로 pool의 connection은 깨끗하거나 버려지고, 뒤의 사용자가 잡힌 lock을 물려받지 않는다.
+
 - G5.44: `test-servers-check`의 binary log case는 fixture MySQL 서버를 멈추고 그 종료를 기다린 뒤에 서버의 directory를 지우므로, 지운 log에 오류를 써서 `/tmp`를 채우는 서버가 남지 않는다. `make check` 보고서는 첫 실패 줄을 case 이름이 아니라 실패에서 찾고, SQLite의 disk I/O error는 남은 공간이 없는 file system이 있을 때만 공간 부족으로 적으며, `/tmp` 아래의 지웠지만 열린 가장 큰 file을 적고, 실패한 target의 npm debug log를 그 오류 줄과 함께 남긴다.
 
 - G5.47: PHP client는 다시 `Db`마다 연결 하나를 열고 요청을 넘어 유지하지 않는다. PHP 연결의 pool은 PgBouncer나 ProxySQL이 맡는다. 0이 아닌 `new Config(poolSize: n)`, `poolIdleSize`, `poolLifetimeMs`는 `CONFIG`를 반환하고, `Db::poolSize()`는 없어지며, `stats()`는 `maxOpenConnections` 1을 보고하고, `CONNECTION_LOST`로 실패한 statement는 더 이상 다시 전송하지 않는다.

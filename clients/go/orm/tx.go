@@ -59,6 +59,9 @@ type txConn struct {
 	stmts      map[string]*sql.Stmt
 	locals     map[string]string
 	locks      []string
+	// unclean은 transaction 끝의 정리(SQLite mode, named lock, local 값) 가운데 하나가 실패했는지다. 실패한
+	// 정리 뒤의 session 상태는 알 수 없으므로 그 connection은 pool에 돌려주지 않고 버린다.
+	unclean    bool
 	readOnly   bool
 	isolation  IsolationLevel
 	sqliteMode bool
@@ -597,6 +600,9 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 // rollback은 SQLite mode 복원, named lock 해제, local 값 reset, native
 // rollback을 모두 시도하고 실패한 것을 모두 돌려준다. transaction의 context가
 // 취소되었으면 그 context로 statement를 실행할 수 없으므로 connection을 닫는다.
+// pool에 돌아가는 connection은 깨끗하거나 버려진다: 정리나 rollback이 하나라도
+// 실패했으면(commit이 실패한 정리 뒤에 부른 rollback 포함) session의 상태를 알 수
+// 없으므로 connection을 pool에 돌려주지 않고 닫는다(closeSession).
 func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
@@ -616,7 +622,11 @@ func (t *txConn) rollback() error {
 	errs := []error{t.finishSQLiteMode(), t.releaseLocks(), t.clearLocals()}
 	t.finished.Store(true)
 	t.closeStatements()
-	errs = append(errs, t.rollbackNative(), t.conn.Close())
+	errs = append(errs, t.rollbackNative())
+	if t.unclean || errors.Join(errs...) != nil {
+		errs = append(errs, t.closeSession())
+	}
+	errs = append(errs, t.conn.Close())
 	t.cancel()
 	return errors.Join(errs...)
 }
@@ -660,12 +670,15 @@ func (t *txConn) commit() error {
 		return t.rollbackAfter(&ir.Error{Code: CodeCanceled, Msg: err.Error()})
 	}
 	if err := t.finishSQLiteMode(); err != nil {
+		t.unclean = true
 		return t.rollbackAfter(err)
 	}
 	if err := t.releaseLocks(); err != nil {
+		t.unclean = true
 		return t.rollbackAfter(err)
 	}
 	if err := t.clearLocals(); err != nil {
+		t.unclean = true
 		return t.rollbackAfter(err)
 	}
 	t.closeStatements()

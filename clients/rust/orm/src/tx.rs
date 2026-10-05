@@ -947,23 +947,30 @@ async fn finish(tx: &TxShared, inner: &mut TxInner) -> Result<()> {
     joined(errors)
 }
 
-/// transaction을 끝내는 statement(COMMIT이나 ROLLBACK)를 실행한다. 성공하면 연결을 pool에
-/// 돌려주고, 실패하면 상태를 알 수 없는 연결을 닫는다.
-async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str) -> Result<()> {
+/// transaction을 끝내는 statement(COMMIT이나 ROLLBACK)를 실행한다. 성공하고 `clean`이면 연결을 pool에
+/// 돌려주고, 실패하거나 앞의 정리가 실패했으면(`clean`이 아니면) 상태를 알 수 없는 연결을 닫는다. pool에
+/// 돌아가는 연결은 깨끗하거나 버려진다.
+async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) -> Result<()> {
     let s = Sent::bare(kind, &[], Some(tx.number), sql);
     match inner {
         TxInner::MySql(mut t) => {
             let mut conn = t.conn.take().expect("active MySQL transaction connection");
             events::raw(&tx.db, &mut *conn, s).await?;
-            conn.completed();
+            if clean {
+                conn.completed();
+            }
         }
         TxInner::Postgres(mut t) => {
             events::raw(&tx.db, &mut *t, s).await?;
-            t.completed();
+            if clean {
+                t.completed();
+            }
         }
         TxInner::Sqlite(mut t) => {
             events::raw(&tx.db, &mut *t, s).await?;
-            t.completed();
+            if clean {
+                t.completed();
+            }
         }
     }
     Ok(())
@@ -976,7 +983,7 @@ async fn commit(tx: &TxShared) -> Result<()> {
         return Err(Error::Config("transaction already finished".into()));
     };
     finish(tx, &mut inner).await?;
-    end(tx, inner, KIND_COMMIT, "COMMIT").await
+    end(tx, inner, KIND_COMMIT, "COMMIT", true).await
 }
 
 /// transaction이 rollback된 뒤 설정된 test fault를 소비한다: 그 rollback은
@@ -996,7 +1003,7 @@ async fn rollback(tx: &TxShared) -> Result<()> {
         return Err(Error::Config("transaction already finished".into()));
     };
     let cleanup = finish(tx, &mut inner).await;
-    let rolled_back = end(tx, inner, KIND_ROLLBACK, "ROLLBACK").await;
+    let rolled_back = end(tx, inner, KIND_ROLLBACK, "ROLLBACK", cleanup.is_ok()).await;
     match (cleanup, rolled_back) {
         (Ok(()), Ok(())) => Ok(()),
         (Err(e), Ok(())) => Err(e),
@@ -1250,6 +1257,46 @@ mod tests {
             .await;
         let error = result.expect_err("a lock released early is reported");
         assert!(error.to_string().contains(&format!("lock {key} was not held at transaction end")), "{error}");
+        db.close().await;
+    }
+
+    // transaction 끝의 정리가 실패한 connection은 pool에 돌아가지 않고 닫힌다. 실패한 정리 뒤 session의
+    // 상태는 알 수 없으므로 pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool의
+    // 다음 사용이 같은 session(CONNECTION_ID)을 받으면 connection이 돌아간 것이다. commit은 실패한 정리 뒤
+    // connection을 닫고, rollback도 그래야 한다. 깨끗하게 끝난 transaction은 같은 session을 다시 쓴다.
+    // session을 보는 test이므로 pooler가 아니라 ORM_TEST_MYSQL_SERVER_DSN의 server에 연결한다.
+    #[tokio::test]
+    async fn failed_cleanup_discards_the_connection() {
+        let _case = orm_testcase::case!(orm_testcase::DATABASE);
+        let db = Db::connect(&required_dsn("ORM_TEST_MYSQL_SERVER_DSN"), 1, crate::Config::default()).await.expect("connect");
+        let Pool::MySql(pool) = db.pool() else { panic!("MySQL pool") };
+        let session = || async {
+            let mut conn = pool.acquire().await.expect("pool connection");
+            let id: u64 = sqlx::query_scalar("SELECT CONNECTION_ID()").fetch_one(&mut *conn).await.expect("connection id");
+            id
+        };
+        let clean = session().await;
+        db.transaction(async || db.utils().lock(&format!("orm_test.clean.{}", std::process::id())).await).retry(0).await.expect("a clean transaction");
+        assert_eq!(session().await, clean, "a transaction that ended cleanly keeps its session");
+        for fail in [true, false] {
+            let before = session().await;
+            let key = format!("orm_test.discard.{fail}.{}", std::process::id());
+            let result = db
+                .transaction(async || {
+                    db.utils().lock(&key).await?;
+                    // lock을 미리 풀면 transaction 끝의 RELEASE_LOCK은 0을 돌려주어 정리가 실패한다.
+                    active_for(&db).expect("transaction active").raw(KIND_UTILITY, &format!("DO RELEASE_LOCK('{key}')")).await?;
+                    if fail {
+                        return Err(Error::Config("callback failed".into()));
+                    }
+                    Ok(())
+                })
+                .retry(0)
+                .await;
+            assert!(result.is_err(), "the failed cleanup is reported");
+            let path = if fail { "rollback" } else { "commit" };
+            assert_ne!(session().await, before, "{path}: session {before} returned to the pool after its cleanup failed");
+        }
         db.close().await;
     }
 

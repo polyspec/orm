@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -51,7 +52,7 @@ func recovered(fn func()) (value any) {
 
 // TestTransactionReportsFailedLockRelease는 transaction 끝의 MySQL
 // RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
-// 돌려주는지 확인한다. 풀리지 않은 named lock은 pool connection에 남는다.
+// 돌려주는지 확인한다. 그 connection은 pool에 돌아가지 않는다(TestFailedTransactionEndDiscardsConnection).
 func TestTransactionReportsFailedLockRelease(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
@@ -93,6 +94,100 @@ func TestTransactionReportsFailedLockRelease(t *testing.T) {
 			t.Fatalf("want %q, got %v", want, err)
 		}
 	})
+}
+
+// TestFailedTransactionEndDiscardsConnection은 transaction 끝의 정리(named lock 해제, native rollback)가
+// 실패하면 그 connection을 pool에 돌려주지 않고 버리는지 확인한다. 실패한 정리 뒤 session의 상태는 알 수
+// 없으므로, pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool에서 다음 사용이
+// 같은 session(CONNECTION_ID)을 받으면 연결이 돌아간 것이고, 풀리지 않은 named lock은 그 session에 남는다.
+func TestFailedTransactionEndDiscardsConnection(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	dsn := os.Getenv("ORM_TEST_MYSQL_DSN")
+	if dsn == "" {
+		t.Fatal("ORM_TEST_MYSQL_DSN is required; database tests never skip")
+	}
+	useFailingDriver(t, "mysql")
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := ConnectSchema(dsn, &Schema{Hash: m.ManifestHash, Text: m.ManifestText}, Config{PoolSize: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Close() })
+	other := connectBench(t, dsn)
+	session := func(t *testing.T) int64 {
+		t.Helper()
+		var id int64
+		if err := db.sql.QueryRow("SELECT CONNECTION_ID()").Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	key := func(name string) string { return fmt.Sprintf("orm_test.discard.%s.%d", name, os.Getpid()) }
+	// free는 다른 connection이 lock을 5초 안에 얻을 수 있는지다. 끝난 session의 lock은 server가 곧 푼다.
+	free := func(t *testing.T, key string) bool {
+		t.Helper()
+		var got sql.NullInt64
+		if err := other.sql.QueryRow("SELECT GET_LOCK(?, 5)", key).Scan(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Valid && got.Int64 == 1 {
+			if _, err := other.sql.Exec("DO RELEASE_LOCK(?)", key); err != nil {
+				t.Fatal(err)
+			}
+			return true
+		}
+		return false
+	}
+	releaseRejected := injectedFailure{statement: func(query string) bool { return strings.HasPrefix(query, "SELECT RELEASE_LOCK") }}
+
+	t.Run("clean end keeps the connection", func(t *testing.T) {
+		before := session(t)
+		if err := db.Transaction(func() error { return db.Utils().Lock(key("clean")) }, Retry(0)); err != nil {
+			t.Fatal(err)
+		}
+		if after := session(t); after != before {
+			t.Fatalf("a transaction that ended cleanly changed the session from %d to %d", before, after)
+		}
+	})
+	for _, c := range []struct {
+		name    string
+		failure injectedFailure
+		fail    bool
+	}{
+		{"release rejected at rollback", releaseRejected, true},
+		{"release rejected at commit", releaseRejected, false},
+		{"rollback rejected", injectedFailure{rollback: true}, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			before := session(t)
+			lock := key(strings.ReplaceAll(c.name, " ", "_"))
+			func() {
+				inject(t, c.failure)
+				defer injected.Store(nil)
+				err := db.Transaction(func() error {
+					if err := db.Utils().Lock(lock); err != nil {
+						return err
+					}
+					if c.fail {
+						return errors.New("callback failed")
+					}
+					return nil
+				}, Retry(0))
+				if err == nil {
+					t.Fatal("the transaction end did not report the injected failure")
+				}
+			}()
+			if after := session(t); after == before {
+				t.Errorf("session %d returned to the pool after its transaction end failed", before)
+			}
+			if !free(t, lock) {
+				t.Errorf("the lock %s is still held after its transaction end failed", lock)
+			}
+		})
+	}
 }
 
 // TestTransactionReportsFailedRollback는 native rollback이 실패하면 callback
