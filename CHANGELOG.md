@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-8: no step or job of `ci.yml` and `docs-pages.yml` has `timeout-minutes`, and `make repo-check` fails a workflow with one.
+
 - G5.30-7: the Makefile runs its builds, installs and tool runs under `RUN_LONG` with no deadline, `RUN_CASE`, `BUILD_DEADLINE`, `TOOL_DEADLINE` and `tests/run-case.mjs` are removed, and `make repo-check` fails a long operation outside run-long or under any deadline, a `go test` binary deadline included.
 
 - G5.30-6: `tests/go-test.mjs` builds the test binaries of every `go test` as the long operation `go-build/<packages>` with step logs and no deadline, and `fuzz-check` and the Go build of `timing-check` run under `tests/run-long.mjs`.

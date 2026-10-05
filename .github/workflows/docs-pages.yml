@@ -20,16 +20,12 @@ jobs:
       VITEPRESS_BASE: /orm/
     steps:
       - uses: actions/checkout@v5
-        timeout-minutes: 10
       - uses: actions/setup-node@v7
-        timeout-minutes: 10
         with:
           node-version-file: .node-version
           cache: npm
       - run: npm ci
-        timeout-minutes: 15
       - run: npx playwright install --with-deps chromium
-        timeout-minutes: 20
       # The job publishes docs/.vitepress/dist: the build step writes it, the
       # idempotence check builds it twice more and compares every byte, and the
       # smoke test serves it and opens it in a browser before the upload.
@@ -40,7 +36,6 @@ jobs:
       - name: Smoke test of the built site in a browser
         run: make docs-static-check
       - uses: actions/upload-pages-artifact@v3
-        timeout-minutes: 10
         with:
           path: docs/.vitepress/dist
 
@@ -56,6 +51,5 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy static documentation
-        timeout-minutes: 10
         id: deployment
         uses: actions/deploy-pages@v4
