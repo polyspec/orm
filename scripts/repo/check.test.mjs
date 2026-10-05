@@ -13,7 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -1255,4 +1255,24 @@ caseTest('every setup-php step installs the Composer of .composer-version', COMP
     'ci.yml sets up PHP without tools: composer:2.10.3; setup-php installs the newest Composer otherwise, so add tools: composer:2.10.3',
     'Composer 2.10.4 runs the checks; .composer-version declares 2.10.3; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release',
   ]);
+});
+
+caseTest('a Makefile build output is published through a temporary file', COMPUTE, () => {
+  const makefile = [
+    'LEASE_BUILD = go build -o $(LEASE) ./tests/lease',
+    'PUBLISHED = $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease',
+    'doc:',
+    '\tnode tests/dbspec/stress.mjs > $(DOC)',
+    '\t$(PUBLISH) $(DOC) node tests/dbspec/stress.mjs',
+    '\ttest -f x || { echo "x is missing" >&2; exit 1; }',
+    '\tnode clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json',
+    '\tnode clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit',
+    '# go build -o $(LEASE) in a comment',
+  ].join('\n');
+  assert.deepEqual(unpublishedOutputErrors(makefile).map(error => error.split(', so ')[0]), [
+    'Makefile:1 writes a Go build output in place',
+    'Makefile:4 redirects a command into a file in place',
+    'Makefile:7 runs tsc into dist in place',
+  ]);
+  assert.deepEqual(unpublishedOutputErrors(readFileSync(new URL('../../Makefile', import.meta.url), 'utf8')), []);
 });

@@ -395,6 +395,24 @@ export function runtimePathErrors(makefile) {
   return errors;
 }
 
+// unpublishedOutputErrors는 build 출력을 그 자리에 바로 쓰는 Makefile 줄마다 오류 하나를 돌려준다: `go build -o`나
+// `go test -c -o`의 출력이 @OUT@이 아닌 줄, 표준 출력을 file로 redirect하는 줄(`> file`), tsc를 직접 실행하는 줄.
+// 그런 출력은 끊긴 build가 반쪽 file을 남기고, 다른 실행이나 뒤의 단계가 쓰는 도중의 file을 읽는다. 출력은
+// $(PUBLISH)(scripts/publish-output.sh)로 임시 file에 쓰고 rename하며, TypeScript client는 scripts/typescript/build.mjs로
+// build한다. 주석 줄과 stderr redirect(>&2), /dev/null은 보지 않는다.
+export function unpublishedOutputErrors(makefile) {
+  const errors = [];
+  for (const [index, line] of makefile.split('\n').entries()) {
+    if (/^\s*#/.test(line)) continue;
+    const text = line.replace(/\d?>&\d|>\s*\/dev\/null/g, '');
+    const direct = /\bgo (?:build|test -c)\b[^#]*\s-o\s+(?!@OUT@)\S/.test(text) ? 'writes a Go build output in place'
+      : /(?<![-=<>])>>?\s*[^\s&>]/.test(text) && !/^\s*@?echo /.test(text.replace(/^\t/, '')) ? 'redirects a command into a file in place'
+      : /typescript\/bin\/tsc\b(?![^#]*--noEmit)/.test(text) ? 'runs tsc into dist in place' : '';
+    if (direct) errors.push(`Makefile:${index + 1} ${direct}, so a stopped build leaves half a file that another run reads; write it through $(PUBLISH) <output> <command> (@OUT@ names the temporary file) or scripts/typescript/build.mjs: ${line.trim()}`);
+  }
+  return errors;
+}
+
 // typescriptHolderErrors는 TypeScript client를 build하는(TSC_BUILD, npm의 typescript:build, typescript:test,
 // typescript:check, 그것을 하는 scripts/client-db-test.sh) make target 가운데 첫 줄에서 그 build 출력의 보유
 // ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.

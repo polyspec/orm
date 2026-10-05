@@ -28,7 +28,13 @@ if [ ! -x "$CACHE/$NAME/bin/node" ]; then
     echo "node-min: Node $VERSION is not in $CACHE; run make install, which downloads it" >&2
     exit 1
   fi
-  mkdir -p "$CACHE"
-  curl -fsSL "https://nodejs.org/dist/v$VERSION/$NAME.tar.gz" | tar -xz -C "$CACHE"
+  # 압축은 cache의 임시 directory에 풀고 끝나면 rename으로 publish하므로, 끊긴 download가 반쪽 Node를 남기지 않는다.
+  next="$CACHE/$NAME.next-$$"
+  rm -rf "$next"
+  mkdir -p "$next"
+  curl -fsSL "https://nodejs.org/dist/v$VERSION/$NAME.tar.gz" | tar -xz -C "$next"
+  rm -rf "${CACHE:?}/$NAME"
+  mv "$next/$NAME" "$CACHE/$NAME"
+  rmdir "$next"
 fi
 echo "$CACHE/$NAME/bin"

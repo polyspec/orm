@@ -85,10 +85,14 @@ GO_TEST = node tests/go-test.mjs -v -timeout 0
 # 종료 코드와 PASS나 FAIL을 출력한다. 성공과 실패는 시계가 아니라 명령의 종료 코드와 오류로 정한다.
 # 기한은 test case 안에만 있다.
 RUN_LONG = node tests/run-long.mjs
+# PUBLISH는 다른 실행이나 뒤의 단계가 읽는 build 출력 file을 같은 directory의 임시 file에 쓰고 rename으로
+# 바꾼다(scripts/publish-output.sh): `$(PUBLISH) <output> <command>`에서 명령의 인자 @OUT@이 임시 file이고,
+# @OUT@이 없으면 명령의 표준 출력이 임시 file이다. 읽는 쪽은 끝난 build의 file만 본다.
+PUBLISH = sh $(abspath scripts/publish-output.sh)
 # LEASE는 여러 실행이 함께 쓰는 test 자원의 보유를 다루는 program이다(tests/lease). 그 build는 장기
 # 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 LEASE = $(abspath .runtime/bin/lease)
-BUILD_LEASE = $(RUN_LONG) go-build/lease -- go build -o $(LEASE) ./tests/lease
+BUILD_LEASE = $(RUN_LONG) go-build/lease -- $(PUBLISH) $(LEASE) go build -o @OUT@ ./tests/lease
 # CARGO_LEASED는 cargo의 build를 Rust target directory(CARGO_TARGET_DIR, 이 checkout의 동시 실행이 함께 쓴다)의
 # exclusive lease 아래에서 실행한다. 이 checkout의 다른 실행의 build가 lease를 가지면 directory 변경 알림을
 # 기다린다(--wait). build는 cargo의 자기 lock 때문에 어차피 하나씩 실행된다.
@@ -124,7 +128,7 @@ SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 .PHONY: lease-tool
 lease-tool:
 	$(BUILD_LEASE)
-TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
+TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 
 # check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
 # database와 decimal database를 만들어 TEST_ENV와 DECIMAL_ENV로 넘기고 끝에 지우며, target마다
@@ -345,7 +349,7 @@ dbspec-apply-php-check:
 dbspec-introspect-compare-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
-	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
+	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd clients/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
 	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
@@ -376,7 +380,7 @@ dbspec-compare-check/unit:
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
-	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
+	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
@@ -402,7 +406,7 @@ dbspec-stress-bench: dbspec-stress-bench/go dbspec-stress-bench/php dbspec-stres
 	rm -rf $(RUN_DIR)
 dbspec-stress-bench/prepare:
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT))
-	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
+	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mjs
 dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
@@ -518,11 +522,11 @@ repo-check/run:
 # STOP_PROCESS는 test server를 멈출 때 process 종료를 운영체제의 알림으로 기다리는 program이다
 # (tests/stop-process). 그 build는 장기 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 STOP_PROCESS = $(abspath .runtime/bin/stop-process)
-BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- go build -o $(STOP_PROCESS) ./tests/stop-process
+BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- $(PUBLISH) $(STOP_PROCESS) go build -o @OUT@ ./tests/stop-process
 # NEW_SESSION은 test server를 새 session에서 시작하는 program이다(tests/new-session): 시작한 shell의 process group을
 # 끝내는 일이 함께 쓰는 server에 닿지 않는다.
 NEW_SESSION = $(abspath .runtime/bin/new-session)
-BUILD_NEW_SESSION = $(RUN_LONG) go-build/new-session -- go build -o $(NEW_SESSION) ./tests/new-session
+BUILD_NEW_SESSION = $(RUN_LONG) go-build/new-session -- $(PUBLISH) $(NEW_SESSION) go build -o @OUT@ ./tests/new-session
 
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
@@ -913,8 +917,8 @@ TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
 timing-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
-	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	$(RUN_LONG) go-build/dbspec-test -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
+	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mjs
+	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd clients/rust -- $(CARGO_LEASED) cargo test --locked --offline -p orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
