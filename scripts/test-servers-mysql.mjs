@@ -12,7 +12,9 @@
 //   verify     primary와 replica의 수가 기록과 같은지 확인하고, 다르면 그 차이로 실패한다
 //   record     새 data directory에 설정 marker를 쓰고 migration 기록을 보관한다
 //
-// 각 단계는 tests/testcase.mjs의 RUN, STEP, PASS, FAIL과 경과 시간, 자기 기한을 가진다. 진행은
+// 각 단계는 장기 작업이므로 tests/testcase.mjs의 runLong으로 RUN(no-deadline), STEP, PASS나 FAIL과 경과 시간을
+// 출력하고 기한이 없다. 성공과 실패는 각 명령의 종료 코드와 확인한 수로 정한다. replica가 primary의 binary log
+// 위치에 이르기를 기다리는 SOURCE_POS_WAIT에도 timeout이 없다. 진행은
 // .runtime/mysql-migration에 단계마다 기록되므로, 실패한 뒤 다시 실행하면 끝난 단계는 건너뛰고
 // 다음 단계부터 이어 간다. 새 data directory는 기존 것을 옮긴 뒤에만 지우고 다시 만든다.
 //
@@ -21,7 +23,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { runCase, stepLines } from '../tests/testcase.mjs';
+import { runLong, stepLines } from '../tests/testcase.mjs';
 
 // SYSTEM_SCHEMAS는 dump하지 않는 MySQL system schema다. SYSTEM_USERS는 초기화가 만드는 계정이다.
 export const SYSTEM_SCHEMAS = ['mysql', 'information_schema', 'performance_schema', 'sys'];
@@ -158,7 +160,7 @@ async function main() {
   const stamp = readFileSync(state('stamp'), 'utf8').trim();
   const kept = join(runtime, `mysql-before-${stamp}`);
   const steps = [
-    ['preflight', 60_000, async context => {
+    ['preflight', async context => {
       const schemas = (await rows(mysqlPort, 'SELECT schema_name FROM information_schema.schemata', context)).map(([name]) => name).filter(name => !SYSTEM_SCHEMAS.includes(name));
       const tables = await rows(mysqlPort, `SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN (${SYSTEM_SCHEMAS.map(name => `'${name}'`).join(', ')})`, context);
       const found = collisions(schemas, tables);
@@ -166,7 +168,7 @@ async function main() {
       context.step(`${schemas.length} database(s), no name collides under ${wanted.trim()}`);
       writeFileSync(state('schemas.json'), JSON.stringify(schemas.sort()) + '\n');
     }],
-    ['dump', 30 * 60_000, async context => {
+    ['dump', async context => {
       const schemas = JSON.parse(readFileSync(state('schemas.json'), 'utf8'));
       const counts = await catalogCounts(mysqlPort, schemas, context);
       writeFileSync(state('counts.json'), JSON.stringify(counts, null, 1) + '\n');
@@ -189,28 +191,28 @@ async function main() {
       writeFileSync(state('dump.sql'), Buffer.concat(dump));
       context.step(`${schemas.length} database(s) and ${users.length} user(s) dumped to ${state('dump.sql')}`);
     }],
-    ['stop', 5 * 60_000, context => run('sh', [script, 'mysql-stop'], context)],
-    ['keep', 60_000, async context => {
+    ['stop', context => run('sh', [script, 'mysql-stop'], context)],
+    ['keep', async context => {
       mkdirSync(kept, { recursive: true });
       for (const name of ['mysql', 'mysql-replica']) {
         if (existsSync(join(dir, name))) renameSync(join(dir, name), join(kept, name));
         context.step(`${join(dir, name)} kept as ${join(kept, name)}`);
       }
     }],
-    ['start', 5 * 60_000, async context => {
+    ['start', async context => {
       // 기존 data는 keep 단계가 옮겼으므로, 앞선 시도가 남긴 새 data directory만 지운다.
       for (const name of ['mysql', 'mysql-replica']) rmSync(join(dir, name), { recursive: true, force: true });
       await run('sh', [script, 'mysql-start', mysqlPort, replicaPort], context);
     }],
-    ['restore', 30 * 60_000, async context => {
+    ['restore', async context => {
       await run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', mysqlPort, '-u', 'root'], { ...context, input: readFileSync(state('users.sql')) });
       await run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', mysqlPort, '-u', 'root'], { ...context, input: readFileSync(state('dump.sql')) });
     }],
-    ['verify', 10 * 60_000, async context => {
+    ['verify', async context => {
       const before = JSON.parse(readFileSync(state('counts.json'), 'utf8'));
       const schemas = JSON.parse(readFileSync(state('schemas.json'), 'utf8')).map(name => name.toLowerCase());
       const [[file, position]] = await rows(mysqlPort, 'SHOW BINARY LOG STATUS', context);
-      const [[waited]] = await rows(replicaPort, `SELECT SOURCE_POS_WAIT('${file}', ${position}, 600)`, context);
+      const [[waited]] = await rows(replicaPort, `SELECT SOURCE_POS_WAIT('${file}', ${position})`, context);
       if (waited === 'NULL' || Number(waited) < 0) throw new Error(`the replica did not reach ${file}:${position}`);
       for (const [label, port] of [['primary', mysqlPort], ['replica', replicaPort]]) {
         const differences = countDifferences(before, await catalogCounts(port, schemas, context));
@@ -218,15 +220,15 @@ async function main() {
         context.step(`the ${label} holds the ${Object.keys(before).length} recorded counts`);
       }
     }],
-    ['record', 60_000, async context => {
+    ['record', async context => {
       writeFileSync(marker, wanted);
       renameSync(work, join(kept, 'migration'));
       context.step(`${marker} records ${wanted.trim()}; the earlier data is kept in ${kept}`);
     }],
   ];
-  for (const [name, deadline, body] of steps) {
+  for (const [name, body] of steps) {
     if (existsSync(work) && done(name)) { console.log(`test-servers: MySQL migration step ${name} done earlier`); continue; }
-    if (!(await runCase(`mysql-migration/${name}`, deadline, body))) {
+    if (!(await runLong(`mysql-migration/${name}`, body))) {
       console.error(`test-servers: the MySQL migration stopped in ${name}; run make test-servers again to resume`);
       process.exit(1);
     }

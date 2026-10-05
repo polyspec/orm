@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-14: `make test-servers`의 MySQL migration은 각 단계를 단계 로그와 함께 기한 없이 실행하고, replica를 timeout 없이 기다린다.
+
 - G5.33-7: TypeScript build 출력을 읽기만 하는 target은 shared lease를, `conformance-check`와 `make owner-check`의 기능 단계는 exclusive lease를 가지며, 조상 process가 가진 lease는 하위 process도 가진 것으로 본다.
 
 - G5.33-6: 기능 검증 명령, 기능 coverage checker, script의 Rust build는 target lease를 가지고, 실행하는 program은 복사본이며, 복사본은 file system이 지원하면 copy-on-write clone이다.
