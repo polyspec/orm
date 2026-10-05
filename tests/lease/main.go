@@ -16,9 +16,15 @@
 // 청한 보유만 그대로 쓴다. 안쪽 directory는 조상의 보유가 풀릴 때 함께 지운다.
 //
 // 기다리는 일은 polling이 아니다: 거부되면 곧바로 보유자를 적고 끝나거나(--wait 없음), directory 변경을
-// 운영체제의 알림(internal/procevent)으로 기다린 뒤 다시 얻는다(--wait). 보유자 process가 없어진 보유(죽은
-// 보유)는 저절로 가져가지 않는다: 거부 message가 그것을 죽은 보유로 적고, clear-dead가 명시적으로 지우며
-// 지운 것을 보고한다. 죽은 보유가 막고 있으면 --wait도 기다리지 않고 거부한다.
+// 운영체제의 알림(internal/procevent)으로 기다린 뒤 다시 얻는다(--wait).
+//
+// hold의 보유는 보유자 process가 끝난 뒤 releaser process(release-on-exit)가 지우므로, 보유 file은 releaser의
+// pid도 담는다. 보유자가 끝났고 releaser가 살아 있는 보유는 풀리는 중이다: --wait는 directory 변경이나 releaser의
+// 종료를 기다린다. 보유자와 releaser가 모두 없는 보유(죽은 보유)는 아무도 지우지 않으므로 막지 않게 가져간다.
+// shared는 자원을 읽기만 했으므로 누구든 그 file을 지우고 진행한다. exclusive는 자원을 바꾸다 끝났을 수 있으므로
+// 다음 exclusive 보유자만 가져가고 자원을 다시 만든다. shared로 청한 실행은 죽은 exclusive가 남긴 자원을 읽지
+// 않도록 거부되며, 거부 message가 그것을 적는다. 가져간 보유는 stderr에 적는다. clear-dead는 죽은 보유를
+// 명시적으로 지우고 지운 것을 보고한다.
 //
 // Usage:
 //
@@ -33,6 +39,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -90,12 +97,26 @@ type holder struct {
 	PID      int    `json:"pid"`
 	Started  string `json:"started"`
 	Command  string `json:"command"`
+	// Releaser는 hold가 남긴 release-on-exit process의 pid다. run의 보유는 보유자 자신이 지우므로 0이다.
+	Releaser int `json:"releaser,omitempty"`
 	file     string
+}
+
+// releasing은 보유자는 끝났지만 그 보유를 지울 releaser가 아직 살아 있는지다.
+func (h holder) releasing() bool {
+	return !procevent.Alive(h.PID) && h.Releaser != 0 && procevent.Alive(h.Releaser)
+}
+
+// gone은 보유자도 releaser도 없는지다. 그 보유는 아무도 지우지 않는다.
+func (h holder) gone() bool {
+	return !procevent.Alive(h.PID) && (h.Releaser == 0 || !procevent.Alive(h.Releaser))
 }
 
 func (h holder) String() string {
 	state := "running"
-	if !procevent.Alive(h.PID) {
+	if h.releasing() {
+		state = fmt.Sprintf("ended, releaser %d running", h.Releaser)
+	} else if h.gone() {
 		state = "dead"
 	}
 	return fmt.Sprintf("%s lease of pid %d (%s) from %s since %s: %s", h.Kind, h.PID, state, h.Checkout, h.Started, h.Command)
@@ -130,15 +151,41 @@ func current(h holder) bool {
 	return json.Unmarshal(text, &now) == nil && now.PID == h.PID && now.Started == h.Started
 }
 
-// dead는 막는 보유 가운데 보유자 process가 없는데 그 보유가 아직 남은 것이 있는지다. process를 본 뒤에 보유가
-// 남았는지 다시 본다: 정상으로 끝난 보유자는 그 사이에 자기 file을 지운다.
+// dead는 막는 보유 가운데 보유자와 releaser가 모두 없는데 그 보유가 아직 남은 것이 있는지다. process를 본 뒤에
+// 보유가 남았는지 다시 본다: 정상으로 끝난 보유는 그 사이에 지워진다.
 func (r refusal) dead() bool {
 	for _, h := range r.blocking {
-		if !procevent.Alive(h.PID) && current(h) {
+		if h.gone() && current(h) {
 			return true
 		}
 	}
 	return false
+}
+
+// releasers는 막는 보유 가운데 풀리는 중인 것의 releaser pid다.
+func (r refusal) releasers() []int {
+	var out []int
+	for _, h := range r.blocking {
+		if h.releasing() {
+			out = append(out, h.Releaser)
+		}
+	}
+	return out
+}
+
+// takeOver는 kind로 청한 실행이 가져갈 수 있는 죽은 보유를 지우고 지운 것이 있는지 돌려준다. 죽은 shared는
+// 누구든, 죽은 exclusive는 exclusive로 청한 실행만 가져간다. 지우기 직전에 그 file이 아직 같은 보유인지 본다.
+func (r refusal) takeOver(kind string) bool {
+	took := false
+	for _, h := range r.blocking {
+		if !h.gone() || !current(h) || (h.Kind == "exclusive" && kind != "exclusive") {
+			continue
+		}
+		release(h.file)
+		fmt.Fprintf(os.Stderr, "lease: took over the dead %s\n", h)
+		took = true
+	}
+	return took
 }
 
 // released는 막는 보유 가운데 이미 풀린 것이 있는지다. 그러면 기다리지 않고 다시 시도한다.
@@ -305,6 +352,11 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 			closeWatch()
 			continue
 		}
+		if errors.As(err, &refused) && refused.takeOver(kind) {
+			// 죽은 보유를 가져갔다. 그 보유가 없는 상태에서 다시 시도한다.
+			closeWatch()
+			continue
+		}
 		if err == nil || !wait || !errors.As(err, &refused) || refused.dead() {
 			closeWatch()
 			return file, err
@@ -313,7 +365,7 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 			fmt.Fprintf(os.Stderr, "lease: waiting for the %s lease of %s; %v\n", kind, dir, err)
 			announced = true
 		}
-		err = next()
+		err = waitChange(next, refused.releasers())
 		closeWatch()
 		if err != nil {
 			return "", err
@@ -324,12 +376,30 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool, enclos
 	}
 }
 
+// waitChange는 directory의 다음 변경이나, 풀리는 중인 보유의 releaser 가운데 하나의 종료를 기다린다. releaser가
+// 보유를 지우지 못하고 끝나면 directory는 바뀌지 않으므로 그 종료도 기다린다.
+func waitChange(next func() error, releasers []int) error {
+	done := make(chan error, 1+len(releasers))
+	go func() { done <- next() }()
+	for _, pid := range releasers {
+		wait, err := procevent.WatchExit(pid)
+		if err != nil {
+			if errors.Is(err, syscall.ESRCH) {
+				return nil
+			}
+			return err
+		}
+		go func() { done <- wait() }()
+	}
+	return <-done
+}
+
 func refuse(dir, kind string, err error) {
 	var refused refusal
 	if errors.As(err, &refused) {
 		hint := ""
 		if refused.dead() {
-			hint = fmt.Sprintf("\na dead lease is never taken over; remove it with: lease clear-dead %s", dir)
+			hint = "\nthe dead exclusive holder may have left the resource half made; the next exclusive holder takes its lease over and makes the resource again"
 		}
 		fmt.Fprintf(os.Stderr, "lease: refused the %s lease of %s; %v%s\n", kind, dir, err, hint)
 		os.Exit(3)
@@ -373,11 +443,23 @@ func main() {
 		if err != nil {
 			refuse(dir, os.Args[3], err)
 		}
+		// releaser는 보유 file에 자기 pid를 적은 뒤 stdout에 한 줄을 쓴다. hold는 그 줄을 받은 뒤에 끝나므로, 보유자가
+		// hold 뒤에 끝나도 그 보유를 기다리는 실행은 releaser가 살아 있는 동안 기다린다.
 		releaser := exec.Command(os.Args[0], "release-on-exit", file, strconv.Itoa(pid))
 		releaser.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-		if err := releaser.Start(); err != nil {
+		recorded, err := releaser.StdoutPipe()
+		if err == nil {
+			err = releaser.Start()
+		}
+		if err != nil {
 			release(file)
 			fmt.Fprintf(os.Stderr, "lease: start the releaser: %v\n", err)
+			os.Exit(1)
+		}
+		line, _ := bufio.NewReader(recorded).ReadString('\n')
+		if line != "recorded\n" {
+			release(file)
+			fmt.Fprintf(os.Stderr, "lease: the releaser of %s did not record itself\n", file)
 			os.Exit(1)
 		}
 		releaser.Process.Release()
@@ -392,7 +474,14 @@ func main() {
 			usage()
 		}
 		file := os.Args[2]
-		signal.Ignore(syscall.SIGHUP, syscall.SIGINT)
+		signal.Ignore(syscall.SIGHUP, syscall.SIGINT, syscall.SIGPIPE)
+		if err := recordReleaser(file, os.Getpid()); err != nil {
+			fmt.Fprintf(os.Stderr, "lease: record the releaser in %s: %v\n", file, err)
+			os.Exit(1)
+		}
+		// hold는 이 줄을 기다린다. 그 뒤 stdout은 닫는다: hold가 끝난 뒤에는 읽는 쪽이 없다.
+		fmt.Println("recorded")
+		os.Stdout.Close()
 		wait, err := procevent.WatchExit(pid)
 		if err == nil {
 			err = wait()
@@ -463,7 +552,7 @@ func main() {
 		}
 		removed := 0
 		for _, h := range all {
-			if procevent.Alive(h.PID) {
+			if !h.gone() {
 				continue
 			}
 			if err := os.Remove(h.file); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -477,6 +566,29 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+// recordReleaser는 보유 file에 releaser pid를 더해 같은 이름으로 바꿔 쓴다. 바꿔 쓰기는 임시 file의 rename이라
+// 읽는 쪽은 언제나 온전한 file 하나를 본다.
+func recordReleaser(file string, pid int) error {
+	text, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	var h holder
+	if err := json.Unmarshal(text, &h); err != nil {
+		return err
+	}
+	h.Releaser = pid
+	text, err = json.Marshal(h)
+	if err != nil {
+		return err
+	}
+	temporary := filepath.Join(filepath.Dir(file), ".tmp-"+random())
+	if err := os.WriteFile(temporary, text, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(temporary, file)
 }
 
 // nestedHolders는 dir의 보유와 그 안쪽 directory(within-)의 보유를 모두 읽는다.

@@ -508,7 +508,7 @@ test-servers-stop:
 	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh stop
 
 # test-servers-leases는 server의 lease 보유자를 적고, test-servers-leases-clear는 보유자 process가 없어진
-# 죽은 lease를 지우며 지운 것을 적는다. 죽은 lease는 저절로 가져가지 않는다.
+# 죽은 lease(보유자와 releaser가 모두 끝난 것)를 지우며 지운 것을 적는다. 죽은 lease는 다음 요청이 가져가기도 한다(tests/lease).
 SERVERS_LEASES = $(abspath .runtime/servers.leases)
 test-servers-leases:
 	$(BUILD_LEASE)
@@ -661,7 +661,7 @@ conformance-check/run: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
-decimal-bench-sqlite:
+decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
 
 decimal-physical-check: rust-fetch lease-tool

@@ -5,16 +5,17 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 RUNTIME="$ROOT/.runtime"
 DB="$RUNTIME/decimal-bench.sqlite"
-LOCK="$RUNTIME/decimal-bench.lock"
+LEASES="$RUNTIME/decimal-bench.leases"
 mkdir -p "$RUNTIME"
-if ! mkdir "$LOCK" 2>/dev/null; then
-  echo "decimal SQLite bench preparation is already running" >&2
-  exit 1
+# 준비는 exclusive lease(tests/lease) 아래에서 한다. lease는 보유자가 어떻게 끝나든 막지 않는다: 끝난 보유자의
+# lease는 releaser가 지우거나 다음 exclusive 보유자가 가져가므로, kill된 준비가 다음 준비를 막지 않는다.
+if [ -z "${DECIMAL_BENCH_LEASED:-}" ]; then
+  exec "${LEASE:?LEASE is unset; run this through make, which exports it}" run "$LEASES" exclusive --wait -- \
+    env DECIMAL_BENCH_LEASED=1 sh "$0" "$@"
 fi
 TMP=""
 cleanup() {
   if [ -n "$TMP" ]; then rm -f -- "$TMP"; fi
-  rmdir "$LOCK"
 }
 trap cleanup EXIT HUP INT TERM
 

@@ -15,9 +15,10 @@
 // tests/conformance/vectors.<driver>.json for the other databases: statements
 // differ per dialect, results must not.
 //
-// `run` holds a directory lock per bench database (/tmp/orm-conformance-<DSN hash>.lock)
-// while the runners use it; a second run on the same database fails instead of
-// waiting, and runs on other databases do not conflict.
+// `run` holds a file lock (flock) per bench database (orm-conformance-<DSN hash>.lock in
+// the temporary directory) while the runners use it; a second run on the same database
+// fails instead of waiting, runs on other databases do not conflict, and the lock of a
+// run that ended in any way no longer holds.
 package main
 
 import (
@@ -38,6 +39,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/polyspec/orm/internal/stmtdiff"
@@ -267,36 +269,83 @@ func runAndCheckState(db *sql.DB, database, language, phase string, run func() e
 	return errors.Join(runErr, restoreErr, snapshotErr, stateErr)
 }
 
-// lockPath는 bench database 하나를 쓰는 동안 잡는 lock directory다. runner가 database에 쓰고
-// 되돌리므로 같은 database를 쓰는 두 실행만 겹치면 안 된다. 이름은 DSN의 hash다.
+// lockPath는 bench database 하나를 쓰는 동안 잡는 lock file이다. runner가 database에 쓰고 되돌리므로 같은
+// database를 쓰는 두 실행만 겹치면 안 된다. 이름은 DSN의 hash다. lock은 file의 flock이라 lock을 가진 process가
+// 어떻게 끝나든 운영체제가 풀므로, 끝난 실행의 lock이 다음 실행을 막지 않는다. file은 임시 directory에 둔다:
+// check runner의 단계에서는 그 단계의 것이므로, kill된 실행의 file도 단계와 함께 지워진다.
 func lockPath(dsn string) string {
 	sum := sha256.Sum256([]byte(dsn))
-	return "/tmp/orm-conformance-" + hex.EncodeToString(sum[:8]) + ".lock"
+	return filepath.Join(os.TempDir(), "orm-conformance-"+hex.EncodeToString(sum[:8])+".lock")
 }
 
-// held는 이 process가 잡은 lock directory다. must가 실패할 때 놓는다.
-var held []string
+// heldLock은 이 process가 가진 lock file과 그 열린 file이다.
+type heldLock struct {
+	path string
+	file *os.File
+}
 
-// lockDatabases는 dsns의 database마다 lock을 잡는다. 이미 잡힌 lock이 있으면 기다리지 않고
-// 실패한다.
+// held는 이 process가 잡은 lock이다. run이 끝날 때 놓는다.
+var held []heldLock
+
+// lockDatabases는 dsns의 database마다 lock을 잡는다. 다른 process가 가진 lock이 있으면 기다리지 않고 그 pid와
+// 함께 실패한다.
 func lockDatabases(dsns ...string) error {
 	for _, value := range dsns {
 		path := lockPath(value)
-		if slices.Contains(held, path) {
+		if slices.ContainsFunc(held, func(h heldLock) bool { return h.path == path }) {
 			continue
 		}
-		if err := os.Mkdir(path, 0o755); err != nil {
-			return fmt.Errorf("another conformance run holds %s: %w", path, err)
+		file, err := lockFile(path)
+		if err != nil {
+			return err
 		}
-		held = append(held, path)
+		held = append(held, heldLock{path, file})
 	}
 	return nil
 }
 
+// lockFile은 path의 flock을 잡는다. lock을 놓는 process는 file을 지운 뒤 놓으므로, 잡은 뒤에 path가 아직 그
+// file인지 보고 아니면 다시 연다.
+func lockFile(path string) (*os.File, error) {
+	for {
+		file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+		if err != nil {
+			return nil, err
+		}
+		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+			holder, _ := os.ReadFile(path)
+			file.Close()
+			if errors.Is(err, syscall.EWOULDBLOCK) {
+				return nil, fmt.Errorf("another conformance run (%s) holds %s", strings.TrimSpace(string(holder)), path)
+			}
+			return nil, fmt.Errorf("lock %s: %w", path, err)
+		}
+		opened, openErr := file.Stat()
+		named, nameErr := os.Stat(path)
+		if openErr != nil || nameErr != nil || !os.SameFile(opened, named) {
+			file.Close()
+			if openErr != nil {
+				return nil, openErr
+			}
+			continue
+		}
+		if err := file.Truncate(0); err != nil {
+			file.Close()
+			return nil, err
+		}
+		if _, err := file.WriteAt([]byte(fmt.Sprintf("pid %d\n", os.Getpid())), 0); err != nil {
+			file.Close()
+			return nil, err
+		}
+		return file, nil
+	}
+}
+
+// releaseLocks는 lock file을 지우고 lock을 놓는다.
 func releaseLocks() error {
 	var errs []error
-	for _, path := range held {
-		errs = append(errs, os.Remove(path))
+	for _, h := range held {
+		errs = append(errs, os.Remove(h.path), h.file.Close())
 	}
 	held = nil
 	return errors.Join(errs...)

@@ -2,7 +2,7 @@
 // build하고 그 경로를 STOP_PROCESS와 LEASE로 준다.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
@@ -117,6 +117,93 @@ echo done > "$R/release"; wait
         new RegExp(`^lease: refused the ${kind} lease of ${leases.replace(/[.]/g, '\\.')}; held by:\n  exclusive lease of pid \\d+ \\(running\\) from \\S+ since \\S+: sh -c `));
     }
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// 죽은 보유 case(G5.56)는 보유 file을 직접 두고 lease가 그것을 어떻게 다루는지 본다. 보유자 pid는 이미 끝난
+// process의 것이다. releaser가 살아 있는 보유는 풀리는 중이므로 --wait가 기다리고, releaser가 보유를 지우지 못하고
+// 끝나면 가져간다. 보유자도 releaser도 없는 shared는 누구든, exclusive는 exclusive로 청한 실행만 가져간다.
+function deadPid() {
+  return spawnSync('true').pid;
+}
+function writeHolder(dir, name, fields) {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, name), JSON.stringify({ checkout: '/x', started: '2026-10-06T00:00:00Z', command: 'make x', ...fields }));
+}
+
+caseTest('an ended holder whose releaser still runs is waited for, and taken over when the releaser ends without removing it', COMPUTE, async () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
+  const releaser = spawn('sleep', ['30'], { stdio: 'ignore' });
+  try {
+    const leases = join(root, 'leases');
+    writeHolder(leases, 'shared-1-a.json', { kind: 'shared', pid: deadPid(), releaser: releaser.pid });
+    const waiter = spawn(lease, ['run', leases, 'exclusive', '--wait', '--', 'echo', 'got'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', err = '';
+    waiter.stdout.on('data', chunk => { out += chunk; });
+    waiter.stderr.on('data', chunk => { err += chunk; });
+    const ended = new Promise(resolve => waiter.on('close', code => resolve(code)));
+    const early = await Promise.race([ended, new Promise(resolve => setTimeout(() => resolve('waiting'), 500))]);
+    assert.equal(early, 'waiting', `the waiter ended while the releaser ran: ${err}`);
+    assert.match(err, /waiting for the exclusive lease .*ended, releaser \d+ running/s);
+    releaser.kill('SIGKILL');
+    assert.equal(await ended, 0, err);
+    assert.equal(out, 'got\n');
+    assert.match(err, /lease: took over the dead shared lease of pid \d+ \(dead\)/);
+  } finally {
+    releaser.kill('SIGKILL');
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('a dead shared lease is taken over by any request, a dead exclusive one only by an exclusive request', COMPUTE, () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
+  try {
+    const shared = join(root, 'shared');
+    writeHolder(shared, 'shared-1-a.json', { kind: 'shared', pid: deadPid() });
+    const exclusiveRun = spawnSync(lease, ['run', shared, 'exclusive', '--', 'echo', 'got'], { encoding: 'utf8' });
+    assert.equal(exclusiveRun.status, 0, exclusiveRun.stderr);
+    assert.equal(exclusiveRun.stdout, 'got\n');
+    assert.match(exclusiveRun.stderr, /^lease: took over the dead shared lease of pid \d+ \(dead\)/);
+
+    const exclusive = join(root, 'exclusive');
+    writeHolder(exclusive, 'exclusive.json', { kind: 'exclusive', pid: deadPid() });
+    const sharedRun = spawnSync(lease, ['run', exclusive, 'shared', '--wait', '--', 'echo', 'got'], { encoding: 'utf8' });
+    assert.equal(sharedRun.status, 3, sharedRun.stdout + sharedRun.stderr);
+    assert.match(sharedRun.stderr, /exclusive lease of pid \d+ \(dead\).*\nthe dead exclusive holder may have left the resource half made; the next exclusive holder takes its lease over and makes the resource again\n$/s);
+    const takeover = spawnSync(lease, ['run', exclusive, 'exclusive', '--', 'echo', 'got'], { encoding: 'utf8' });
+    assert.equal(takeover.status, 0, takeover.stderr);
+    assert.match(takeover.stderr, /^lease: took over the dead exclusive lease of pid \d+ \(dead\)/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('hold records its releaser in the lease file before it returns', COMPUTE, async () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-dead-'));
+  const holder = spawn('sleep', ['30'], { stdio: 'ignore' });
+  try {
+    const leases = join(root, 'leases');
+    const held = spawnSync(lease, ['hold', leases, 'shared', '--pid', String(holder.pid)], { encoding: 'utf8' });
+    assert.equal(held.status, 0, held.stderr);
+    const files = readdirSync(leases).filter(name => name.endsWith('.json'));
+    assert.equal(files.length, 1, files.join(' '));
+    const record = JSON.parse(readFileSync(join(leases, files[0]), 'utf8'));
+    assert.equal(record.pid, holder.pid);
+    assert.ok(record.releaser > 0 && record.releaser !== holder.pid, JSON.stringify(record));
+    process.kill(record.releaser, 0);
+    holder.kill('SIGKILL');
+    const after = spawnSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'true'], { encoding: 'utf8', timeout: 20_000 });
+    assert.equal(after.status, 0, after.stderr);
+    assert.doesNotMatch(after.stderr, /took over/, 'the releaser removed the lease itself');
+  } finally {
+    holder.kill('SIGKILL');
     rmSync(root, { recursive: true, force: true });
   }
 });
