@@ -4,7 +4,7 @@
 // target과 database는 실행하지 않는다.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,6 +48,8 @@ const throws = process.env.STUB_SUITE === 'throws';
 // 3 MiB를 출력하는 suite다(G5.43-2).
 const drop = process.env.STUB_SUITE === 'drop';
 const verbose = process.env.STUB_SUITE === 'verbose';
+// STUB_SUITE=space는 target b가 /tmp의 quota 초과로 실패하는 suite다(G5.43-4).
+const space = process.env.STUB_SUITE === 'space';
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
@@ -69,6 +71,10 @@ const run = async (program, args, step, spawned = () => {}) => {
     throw new Error('make --no-print-directory -k b exited with 2');
   }
   if (drop && name === 'sh drop') rmSync(args[3], { recursive: true, force: true });
+  if (space && name === 'b') {
+    step('STEP fuzz/engine-ir elapsed=33ms: write /tmp/go-build3971832083/b001/_testmain.go: disk quota exceeded');
+    throw new Error('make --no-print-directory -k b exited with 2');
+  }
   if (verbose && name === 'b') {
     for (let i = 0; i < 3 * 1024; i++) step(\`line \${i} \${'v'.repeat(1000)}\`);
     return;
@@ -81,11 +87,13 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
-process.exitCode = await runChecks({ root, mode, servers, targets, run, needs });
+// 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
+const snapshot = space ? undefined : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot });
 `;
 
 function checkout(t, checklist) {
@@ -576,7 +584,7 @@ caseTest('a target log keeps its head and its tail within the size limit', PROCE
     assert.match(log, /^target b\ncommand: make --no-print-directory -k /);
     assert.match(log, /\nline 0 v+\n/);
     assert.match(log, /\n\[\.\.\. \d+ bytes of output omitted; the last \d+ bytes follow \.\.\.\]\n/);
-    assert.match(log, /\nline 3071 v+\n$/);
+    assert.match(log, /\nline 3071 v+\nfree space after the step \(KiB\): \{[^\n]*\}\n$/);
     assert.ok(Buffer.byteLength(log) <= 1024 * 1024 + 256 * 1024 + 2048, `the log has ${Buffer.byteLength(log)} bytes`);
     assert.equal(c.record().targets.find(target => target.name === 'b').truncated > 0, true);
   } finally {
@@ -603,4 +611,23 @@ caseTest('the first failure lines of a target are its failure and error lines', 
     'make: *** [Makefile:549: client-db-check] Error 1',
     'make --no-print-directory -k client-db-check exited with 2',
   ]);
+});
+
+// 공간 case(G5.43-4)는 target b가 /tmp의 quota 초과(EDQUOT)로 실패하는 실행이다. 보고서는 시작할 때와 단계마다 공간을
+// 기록하고, b의 첫 실패 줄은 공간이 없어 실패했다는 것과 그 순간의 `/`와 `/tmp`의 남은 공간이다.
+caseTest('a target that runs out of space says so with the free space of / and /tmp', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'space', ORM_CHECK_RUN_ID: '11-1' }).status, 1);
+    const record = c.record();
+    const b = record.targets.find(target => target.name === 'b');
+    assert.match(b.failures[0], /^out of space: the target failed with ENOSPC or EDQUOT; \/ \d+\.\d\d GiB free, \/tmp \d+\.\d\d GiB free.*; the largest under \/tmp: /);
+    assert.match(b.failures[1], /disk quota exceeded$/);
+    assert.ok(record.disk['/'] > 0 && b.disk['/tmp'] > 0, JSON.stringify([record.disk, b.disk]));
+    const disk = join(c.root, '.runtime/check/ci_11_1/report/disk');
+    assert.deepEqual(readdirSync(disk), ['00-start.txt', '01-servers.txt', '02-databases-create.txt', '03-a.txt', '04-b.txt', '05-c.txt', '06-databases-drop.txt']);
+    assert.match(readFileSync(join(disk, '04-b.txt'), 'utf8'), /^## df -k \/ \/tmp[^\n]*\n[^]*## the largest entries of \/tmp \(KiB\)\n[^]*## files under \/tmp that were removed but are still open \(lsof \+L1\)/);
+  } finally {
+    cleanup();
+  }
 });

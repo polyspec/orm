@@ -24,13 +24,12 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
-import { statfs } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
-import { cappedLog, failures, keepRunDirectory, publish, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
+import { cappedLog, diskSnapshot, failures, keepRunDirectory, publish, SPACE, spaceLine, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
 // 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한 process의 id를 받는다.
@@ -92,8 +91,9 @@ function targetInputs(root, target) {
 
 // runChecks는 실행 하나를 하고 종료 상태를 돌려준다: 거부 2, 실패 1, 통과 0. mode는 'check'(전체 suite),
 // 'rerun-failed'나 undefined(make bench, make run-databases: guard와 기록이 없다)다. run은
-// command(root)와 같은 모양의 함수다. needs는 target마다 필요한 setup 단계('databases')이고, id는 실행의 이름이다.
-export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID }) {
+// command(root)와 같은 모양의 함수다. needs는 target마다 필요한 setup 단계('databases')이고, id는 실행의 이름이며,
+// snapshot은 공간 기록(diskSnapshot과 같은 모양)이다.
+export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot }) {
   // 실행의 이름은 주어진 id이거나 process id와 임의의 값이다. 같은 이름의 database가 있으면 그것은 이 실행이 만든
   // 것이 아니므로 bench-db.sh가 지우지 않도록 이름이 겹치지 않아야 한다.
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
@@ -120,6 +120,18 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   if (current) current.report = relative(root, report);
   writer.run(join(report, 'environment.txt'), () => writeEnvironment(root, report, { 'run id': runId, servers }));
   active = { recorder, writer, report, root, current };
+  // disk는 실행의 공간 기록이다(diskSnapshot): 시작할 때와 단계마다 끝난 뒤 report/disk/<n>-<단계>.txt에 쓴다. 실패한
+  // 단계 뒤의 기록이 그 실패 순간의 공간이다.
+  let snapshots = 0;
+  const disk = label => {
+    const taken = snapshot(root, resolve(root, '.runtime/check', runId));
+    const file = join(report, 'disk', `${String(snapshots++).padStart(2, '0')}-${label.replaceAll('/', '-')}.txt`);
+    writer.run(file, () => { mkdirSync(join(report, 'disk'), { recursive: true }); });
+    writer.write(file, taken.text);
+    return taken;
+  };
+  const started = disk('start');
+  if (current) current.disk = started.places;
   const testEnv = resolve(directory, 'env');
   const decimalEnv = resolve(directory, 'decimal-env');
 
@@ -142,7 +154,12 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     }).catch(error => { output.line(error.message); found.exit(error.message); throw error; }));
     const elapsed = performance.now() - started;
     const truncated = output.close() || null;
-    const details = { log: relative(root, log), elapsed: Math.round(elapsed), ...(passed ? {} : { failures: found.lines() }), ...(truncated ? { truncated } : {}) };
+    const after = disk(label);
+    writer.append(log, `free space after the step (KiB): ${JSON.stringify(after.places)}\n`);
+    const lines = passed ? [] : found.lines();
+    // 공간이 없어 실패한 단계는 그 사실과 그 순간의 공간을 첫 실패 줄로 적는다.
+    if (lines.some(line => SPACE.test(line))) lines.unshift(spaceLine(after));
+    const details = { log: relative(root, log), elapsed: Math.round(elapsed), disk: after.places, ...(passed ? {} : { failures: lines }), ...(truncated ? { truncated } : {}) };
     // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 옮긴다.
     if (!passed && pid) {
       const runs = resolve(root, '.runtime/run');
@@ -191,8 +208,6 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       continue;
     }
     await record(target, 'target', async ({ step, spawned }) => {
-      const disk = await statfs(root);
-      step(`free disk ${(disk.bavail * disk.bsize / 2 ** 30).toFixed(1)} GiB`);
       // 하위 make는 MAKEFLAGS를 받지 않으므로, 이 runner를 실행한 make의 CARGO_TARGET_DIR(worktree가 main checkout의
       // target directory를 쓸 때 그 값)도 command line으로 넘긴다. 그렇지 않으면 Makefile이 자기 checkout의
       // target directory를 정한다. -k는 recipe의 하위 target 하나가 실패해도 그와 무관한 하위 target을 실행한다.
