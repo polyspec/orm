@@ -1,8 +1,8 @@
-// scripts/test-servers.sh의 server 정지 test다. make test-servers-check가 tests/stop-process를 build하고 그
-// 경로를 STOP_PROCESS로 준다.
+// scripts/test-servers.sh의 server 정지 test다. make test-servers-check가 tests/stop-process와 tests/lease를
+// build하고 그 경로를 STOP_PROCESS와 LEASE로 준다.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../tests/testcase.mjs';
@@ -40,5 +40,43 @@ read state < ${ready}`], { timeout: 10_000 });
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// lease case는 이 checkout의 script를 임시 root로 복사하고, 다른 실행이 서버의 shared lease를 가진 동안
+// `test-servers.sh stop`이 그 보유자를 적으며 거부되고 서버 directory를 남기는지, 보유가 끝나면 정지가
+// 진행되는지 확인한다. 보유자는 FIFO를 읽으며 기다리는 shell이고, 준비와 끝은 FIFO로 알린다.
+caseTest('stopping the test servers is refused while another run holds a lease, naming the holder', COMPUTE, () => {
+  const { LEASE: lease, STOP_PROCESS: stopProcess } = process.env;
+  assert.ok(lease && stopProcess, 'LEASE or STOP_PROCESS is unset; run make test-servers-check, which builds them');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-'));
+  const release = join(root, 'release');
+  const ready = join(root, 'ready');
+  const leases = join(root, '.runtime/servers.leases');
+  let holder;
+  const stop = () => spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'stop'], { encoding: 'utf8', env: { ...process.env, LEASE: lease, STOP_PROCESS: stopProcess } });
+  try {
+    mkdirSync(join(root, 'scripts'));
+    copyFileSync(new URL('./test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
+    mkdirSync(join(root, '.runtime/servers'), { recursive: true });
+    execFileSync('mkfifo', [release, ready]);
+    holder = spawn('sh', ['-c', `${lease} hold ${leases} shared --pid $$ && echo held > ${ready} && read line < ${release}`], { stdio: 'ignore' });
+    assert.equal(execFileSync('sh', ['-c', `read state < ${ready}; echo $state`], { encoding: 'utf8' }), 'held\n');
+    const refused = stop();
+    assert.equal(refused.status, 3, refused.stdout + refused.stderr);
+    assert.match(refused.stderr, new RegExp(`^lease: refused the exclusive lease of ${leases.replace(/[.]/g, '\\.')}; held by:\n  shared lease of pid ${holder.pid} \\(running\\) from \\S+ since \\S+: sh -c `));
+    assert.ok(existsSync(join(root, '.runtime/servers')), 'the refused stop removed the servers directory');
+    execFileSync('sh', ['-c', `echo done > ${release}`]);
+    // 보유자 shell이 끝나면 releaser가 lease를 지운다. 그 뒤의 정지는 lease directory의 변경 알림을 기다리지
+    // 않고 곧바로 시도하므로, lease가 지워질 때까지 `lease run --wait`로 기다린 다음 정지한다.
+    execFileSync(lease, ['run', leases, 'exclusive', '--wait', '--', 'true']);
+    const stopped = stop();
+    assert.equal(stopped.status, 0, stopped.stdout + stopped.stderr);
+    assert.match(stopped.stdout, /test-servers: removed .*\.runtime\/servers\n$/);
+    assert.ok(!existsSync(join(root, '.runtime/servers')), 'the stop left the servers directory');
+  } finally {
+    // 실패한 case가 남긴 보유자는 끝낸다. 보유자가 끝나면 releaser가 lease를 지운다.
+    if (holder?.exitCode === null) holder.kill();
+    rmSync(root, { recursive: true, force: true });
   }
 });
