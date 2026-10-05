@@ -8,8 +8,8 @@
 //      아래의 한 process에서 하므로 그 사이에 다른 build가 끼지 않는다.
 //      test가 실행하는 package의 program도 함께 복사하고, test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다.
 //   2. 실행: 복사본을 cargo test처럼 package directory에서 CARGO_MANIFEST_DIR과 함께, test 이름 filter와 `--`
-//      뒤의 인자로 하나씩 실행한다. 각 test case가 자기 기한과 RUN, PASS, FAIL 줄을 가진다. 실패한 binary에서
-//      멈추고 그 종료 코드로 끝난다(cargo test와 같다).
+//      뒤의 인자로 하나씩 실행한다. 각 test case가 자기 기한과 RUN, PASS, FAIL 줄을 가진다. 실패한 binary 뒤에도
+//      나머지를 실행하고(cargo test --no-fail-fast와 같다), 실패한 binary를 모두 적은 뒤 첫 실패의 종료 코드로 끝난다.
 //
 // 이 repository의 Rust 문서 code는 모두 ```text라 실행할 doctest가 없으므로 doctest는 실행하지 않는다.
 //
@@ -148,14 +148,19 @@ async function main() {
     }
     const { tests: binaries, programs: programCopies } = JSON.parse(readFileSync(join(runDir, 'binaries.json'), 'utf8'));
     if (binaries.length === 0) throw new Error(`cargo test --no-run ${options.join(' ')} built no test binary`);
+    // 실패한 binary 뒤에도 나머지 binary를 실행한다(cargo test --no-fail-fast와 같다). 끝에 실패한 binary를 모두 적는다.
+    const failed = [];
     for (const binary of binaries) {
       console.log(`cargo-test: running ${binary.target} (${binary.copy})`);
       const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...process.env, ...programEnvironment(programCopies), CARGO_MANIFEST_DIR: binary.manifestDir } });
       if (result.code !== 0) {
         console.log(`cargo-test: ${binary.target} exited with ${result.signal ?? result.code}`);
-        process.exitCode = result.code;
-        return;
+        failed.push({ target: binary.target, code: result.code, signal: result.signal });
       }
+    }
+    if (failed.length) {
+      console.log(`cargo-test: ${failed.length} of ${binaries.length} test binaries failed: ${failed.map(({ target, code, signal }) => `${target} (${signal ?? `exit ${code}`})`).join(', ')}`);
+      process.exitCode = failed[0].code || 1;
     }
   } finally {
     rmSync(runDir, { recursive: true, force: true });

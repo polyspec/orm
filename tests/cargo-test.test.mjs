@@ -2,7 +2,12 @@
 // JSON message에서 test binary와 그 package directory만 읽는다.
 import assert from 'node:assert/strict';
 import { executables, programEnvironment, programs, split } from './cargo-test.mjs';
-import { caseTest, COMPUTE } from './testcase.mjs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { caseTest, COMPUTE, PROCESS } from './testcase.mjs';
 
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
   assert.deepEqual(split(['cargo', '+1.98.1', 'test', '--locked', '--features', 'a,b', '--test', 'x', 'codec', '--', '--nocapture']),
@@ -35,4 +40,30 @@ caseTest('cargo-test reads the package programs and names their variables', COMP
   assert.deepEqual(programs(lines.join('\n')), { native: '/t/debug/native', 'driver-compare': '/t/debug/driver-compare' });
   assert.deepEqual(programEnvironment({ native: '/r/programs/native', 'driver-compare': '/r/programs/driver-compare' }),
     { ORM_PROGRAM_NATIVE: '/r/programs/native', ORM_PROGRAM_DRIVER_COMPARE: '/r/programs/driver-compare' });
+});
+
+// 실패 뒤 계속 case(G5.38-3)는 가짜 cargo와 lease로 cargo-test.mjs를 실행한다. cargo는 test binary 셋을 알리고,
+// 둘째 binary가 실패해도 셋째가 실행되며, 끝에 실패한 binary와 그 종료 코드를 적고 그 코드로 끝난다.
+caseTest('cargo-test runs every test binary after a failed one and names the failures', PROCESS, () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'cargo-test-')));
+  try {
+    const log = join(base, 'ran.log');
+    mkdirSync(join(base, 'bin'));
+    const messages = ['one', 'two', 'three'].map(name => {
+      const executable = join(base, `${name}-test`);
+      writeFileSync(executable, `#!/bin/sh\necho ${name} >> ${log}\n${name === 'two' ? "echo 'FAIL two_case: expected 1, actual 2'; exit 4" : 'exit 0'}\n`, { mode: 0o755 });
+      return JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable, manifest_path: join(base, 'Cargo.toml'), target: { name } });
+    });
+    writeFileSync(join(base, 'messages.json'), `${messages.join('\n')}\n`);
+    writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
+    // 가짜 lease는 `--` 뒤의 명령을 그대로 실행한다.
+    writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mjs', import.meta.url)), 'stub', '--', 'cargo', 'test'],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') } });
+    assert.equal(result.status, 4, result.stdout + result.stderr);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['one', 'two', 'three']);
+    assert.match(result.stdout, /cargo-test: 1 of 3 test binaries failed: two \(exit 4\)/);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });
