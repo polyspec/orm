@@ -2,13 +2,15 @@
 
 ## 0.0.2
 
+- G5.30-13: `make test-servers-stop`은 각 server process의 종료를 polling 대신 운영체제의 알림(`scripts/stop-process.py`: macOS는 kqueue, Linux는 pidfd)으로 기한 없이 기다린다.
+
 - G5.30-12: 문서 smoke test는 server와 browser를 기한 없는 장기 작업으로 시작하고 page마다, link, 검색, mobile 탐색을 저마다의 case로 검사한다. package 선언 test는 pack, 설치, tsc를 장기 작업으로 실행하고 결과를 case로 검사하며 case가 실패하면 1로 끝난다.
 
 - G5.30-11: `make test-servers`는 ProxySQL, PgBouncer, 두 PostgreSQL server를 기한 없이 시작하고, 준비 줄까지의 log 줄을 보이며, 그 줄에서 돌아오고 server가 먼저 끝나면 log와 함께 실패한다. PostgreSQL은 `pg_ctl -w`의 60 s 제한 없이 fast shutdown으로 멈춘다.
 
 - G5.32-1: PostgreSQL에서 Go client는 모든 statement를 pgx query mode `exec`로 prepare하지 않고 text bind와 함께 round trip 하나로 전송한다. 연결마다 statement text마다 따로 드는 prepare round trip과 transaction이 없다.
 
-- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-12).
+- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-13).
 
 - G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
 

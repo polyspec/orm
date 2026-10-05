@@ -2,13 +2,15 @@
 
 ## 0.0.2
 
+- G5.30-13: `make test-servers-stop` waits for each server process to exit through an operating system event (`scripts/stop-process.py`: kqueue on macOS, pidfd on Linux) instead of polling, with no deadline.
+
 - G5.30-12: the documentation smoke test starts its server and browser as long operations with no deadline and checks each page, the links, search and mobile navigation as cases of their own; the package declaration test packs, installs and runs tsc as long operations, checks the result as a case and exits 1 when a case fails.
 
 - G5.30-11: `make test-servers` starts ProxySQL, PgBouncer and both PostgreSQL servers with no deadline, shows their log lines up to the ready line, returns on that line and fails with the log when a server exits first; PostgreSQL stops by fast shutdown without the 60 s limit of `pg_ctl -w`.
 
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
 
-- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-12).
+- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-13).
 
 - G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
 
