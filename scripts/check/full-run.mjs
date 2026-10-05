@@ -5,12 +5,15 @@
 // 포함)이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, 기록이
 // 적은 실행의 process가 아직 실행 중인 동안 두 진입점을 모두 거부한다. make check는 기록이 같은
 // tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 담고 있으면 거부한다: 전체 suite는 tree마다 한 번
-// 실행한다. make rerun-failed는 기록이 현재 tree의 것이고 통과하지 못한 target을 담고 있을 때만 그
-// target만 실행한다. GitHub CI의 checkout처럼 새 checkout에는 기록이 없다.
+// 실행한다. make rerun-failed는 현재 commit이 기록된 commit(전체 실행이나 마지막 재실행의 commit)이거나
+// 그 후손일 때만 실행한다. 다시 실행하는 target은 통과하지 못한 target(실패한 것과 끝나지 않은 것)과,
+// 기록된 commit 뒤에 바뀐 path가 contracts/check-inputs.json에서 고르는 owner target이다(make
+// owner-check와 같은 선택). 재실행은 고른 target을 시작 전에 `not run`으로 되돌리므로, 강제 종료된 재실행이
+// 남긴 target도 다음 재실행이 고른다. GitHub CI의 checkout처럼 새 checkout에는 기록이 없다.
 //
 // 기록 .runtime/full-run.json(git이 무시한다)은 checkout의 마지막 전체 실행이다: tree, commit, 결과,
 // 통과하지 못한 target, runner의 단계(실행의 database 만들기와 지우기)와 target마다 상태와 시각, 그리고
-// 재실행들. runner(scripts/check/run.mjs)가 첫 단계 전과 각 단계의 시작과 끝마다 쓰므로, 강제 종료된
+// 재실행들(각 재실행의 commit, tree, 바뀐 path가 고른 owner target). runner(scripts/check/run.mjs)가 첫 단계 전과 각 단계의 시작과 끝마다 쓰므로, 강제 종료된
 // 실행은 결과 `incomplete`로 남는다. 결정과 첫 기록은 .runtime/full-run.lock을 배타적으로 만든 동안
 // 하므로, 동시에 시작한 두 실행이 둘 다 허용되지 않는다.
 //
@@ -23,6 +26,7 @@ import { spawnSync } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { selectTargets } from '../features/owners.mjs';
 
 export const ENTRIES = { check: 'make check', 'rerun-failed': 'make rerun-failed' };
 const ITEM = /^\s*- \[(.)\] (\S+)\s+(.*)$/gm;
@@ -51,9 +55,16 @@ export function summarize(record) {
   return record;
 }
 
+// base는 재실행이 기준으로 삼는 기록된 commit과 tree다: 마지막 재실행의 것, 재실행이 없으면 전체 실행의 것.
+export function base(record) {
+  const last = record.reruns.findLast(rerun => rerun.commit);
+  return last ? { commit: last.commit, tree: last.tree } : { commit: record.commit, tree: record.tree };
+}
+
 // decide는 mode를 실행할 수 있는지 정한다. targets는 전체 실행의 target이고, running은 기록이 적은 실행
-// process가 아직 실행 중인지다.
-export function decide(mode, { items, changes, tree, record, targets, running = false }) {
+// process가 아직 실행 중인지다. rerun-failed에서 commit은 현재 commit, descends는 그것이 base(record)의 commit의
+// 후손인지, changed는 그 commit 뒤에 바뀐 path, declared는 contracts/check-inputs.json의 targets다.
+export function decide(mode, { items, changes, tree, commit, record, targets, running = false, descends = false, changed = [], declared = {} }) {
   const reasons = [];
   if (items.length) {
     reasons.push('checklist items are in progress (docs/checklist.md):');
@@ -66,19 +77,24 @@ export function decide(mode, { items, changes, tree, record, targets, running = 
   if (record?.runner && running)
     reasons.push(`pid ${record.runner.pid} runs ${record.runner.entry} since ${record.runner.started}; it removes its runner entry from .runtime/full-run.json when it ends`);
   let selected = [];
+  let owners = [];
   if (mode === 'check') {
     if (record && record.tree === tree)
       reasons.push(`${describe(record)}; the full suite runs once per tree${record.failed.length ? '; rerun the targets that did not pass with make rerun-failed' : ''}`);
     selected = targets;
   } else if (!record) {
     reasons.push('no full run is recorded (.runtime/full-run.json); run make check');
-  } else if (record.tree !== tree) {
-    reasons.push(`the recorded full run is of tree ${record.tree}, not of the current tree ${tree}; rerun-failed reruns targets of the current tree only`);
+  } else if (base(record).tree !== tree && !descends) {
+    const { commit: recorded, tree: recordedTree } = base(record);
+    reasons.push(`the recorded run is of commit ${recorded} (tree ${recordedTree}); the current commit ${commit} (tree ${tree}) is neither that commit nor its descendant; rerun-failed reruns on the recorded commit and its descendants only`);
   } else {
-    selected = unfinished(record);
-    if (!selected.length) reasons.push(`${describe(record)}; every target passed, nothing to rerun`);
+    const names = record.targets.map(target => target.name);
+    owners = selectTargets(declared, changed).filter(({ target }) => names.includes(target));
+    const failing = unfinished(record);
+    selected = names.filter(name => failing.includes(name) || owners.some(({ target }) => target === name));
+    if (!selected.length) reasons.push(`${describe(record)}; every target passed and no path changed since commit ${base(record).commit} selects an owner target, nothing to rerun`);
   }
-  return { allowed: reasons.length === 0, reasons, targets: selected };
+  return { allowed: reasons.length === 0, reasons, targets: selected, owners };
 }
 
 function git(root, ...args) {
@@ -119,10 +135,35 @@ function alive(pid) {
   }
 }
 
+// since는 기록된 commit에서 현재 commit까지의 관계를 읽는다: 후손인지와 그 사이에 바뀐 path. 기록된 commit이
+// 현재 commit의 조상이 아니거나 저장소에 없으면 후손이 아니다.
+function since(root, recorded) {
+  if (!recorded) return { descends: false, changed: [] };
+  const ancestor = spawnSync('git', ['merge-base', '--is-ancestor', recorded, 'HEAD'], { cwd: root, encoding: 'utf8' });
+  if (ancestor.error) throw ancestor.error;
+  if (ancestor.status !== 0) return { descends: false, changed: [] };
+  return { descends: true, changed: git(root, 'diff', '--name-only', recorded, 'HEAD').split('\n').filter(Boolean) };
+}
+
+// declaredTargets는 contracts/check-inputs.json의 targets다. 바뀐 path가 있는데 그 file이 없으면 owner target을
+// 고를 수 없으므로 던진다.
+function declaredTargets(root, changed) {
+  const path = resolve(root, 'contracts/check-inputs.json');
+  if (!existsSync(path)) {
+    if (changed.length) throw new Error(`${path} is missing; rerun-failed cannot select the owner targets of ${changed.length} changed paths`);
+    return {};
+  }
+  return JSON.parse(readFileSync(path, 'utf8')).targets;
+}
+
 // state는 checkout의 결정 입력을 읽는다.
 function state(root) {
   const record = read(recordPath(root));
+  const relation = since(root, record && base(record).commit);
   return {
+    ...relation,
+    declared: declaredTargets(root, relation.changed),
+    commit: git(root, 'rev-parse', 'HEAD').trim(),
     tree: git(root, 'rev-parse', 'HEAD^{tree}').trim(),
     changes: git(root, 'status', '--porcelain', '--untracked-files=no').split('\n').filter(Boolean),
     items: activeItems(readFileSync(resolve(root, 'docs/checklist.md'), 'utf8')),
@@ -177,14 +218,25 @@ function start(root, mode, entry, targets) {
   if (mode === 'check') {
     console.log(`full-run: allowed ${entry}: no checklist item is in progress, the tracked files are committed and no full run of tree ${current.tree} is recorded; running ${targets.length} targets: ${targets.join(' ')}`);
     record = {
-      entry, tree: current.tree, commit: git(root, 'rev-parse', 'HEAD').trim(), started, ended: null, result: 'incomplete',
+      entry, tree: current.tree, commit: current.commit, started, ended: null, result: 'incomplete',
       failed: [], incomplete: [...targets], runner, setup: [], targets: targets.map(newStep), reruns: [],
     };
     run = record;
   } else {
-    console.log(`full-run: allowed ${entry}: the full run of tree ${current.tree} recorded ${decision.targets.length} targets that did not pass; rerunning only: ${decision.targets.join(' ')}`);
+    const from = base(current.record);
+    const failing = unfinished(current.record);
+    console.log(`full-run: allowed ${entry}: commit ${current.commit} is of the recorded tree ${from.tree} or descends from the recorded commit ${from.commit}; targets that did not pass: ${failing.join(' ') || 'none'}`);
+    for (const { target, reasons } of decision.owners)
+      console.log(`full-run: owner target ${target} is selected by paths changed since ${from.commit}: ${reasons.join(' ')}`);
+    console.log(`full-run: rerunning only: ${decision.targets.join(' ')}`);
     record = { ...current.record, ended: null, result: 'incomplete', runner };
-    run = { started, ended: null, result: 'incomplete', targets: decision.targets, setup: [] };
+    // 고른 target은 이 재실행에서 다시 정해지므로 시작 전에 되돌린다. 강제 종료되면 끝나지 않은 target으로 남는다.
+    for (const step of record.targets)
+      if (decision.targets.includes(step.name)) Object.assign(step, { status: 'not run', started: null, ended: null });
+    run = {
+      started, ended: null, result: 'incomplete', commit: current.commit, tree: current.tree, since: from.commit,
+      owners: decision.owners, targets: decision.targets, setup: [],
+    };
     record.reruns.push(run);
   }
   write(path, record);

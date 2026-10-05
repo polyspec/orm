@@ -27,11 +27,13 @@
 - `make check` enforces this: before any step it refuses while a checklist item, sub-items
   included, is `[~]`, while tracked files have uncommitted changes, and when
   `.runtime/full-run.json` records a full run of the same tree. Commit, complete every active
-  item, then run `make check` once. `make rerun-failed` reruns, on the recorded tree, only the
-  targets that did not pass, for a failure whose cause lies outside the tree (an environment or a
-  machine resource). A failure of the code is fixed as a checklist item; its commit makes a new
-  tree, whose full suite runs once when every active item is complete. Do not delete or edit the
-  record to run again. A fresh checkout has no record, so CI runs `make check` on a push, and a
+  item, then run `make check` once. `make rerun-failed` reruns, on the recorded commit or a
+  commit that descends from it, only the targets that did not pass and the owner targets that the
+  paths changed since that commit select: for a failure whose cause lies outside the tree (an
+  environment or a machine resource), and for a failure of the code fixed as a checklist item
+  after the full run. A commit that does not descend from the recorded one gets a new full suite,
+  which runs once when every active item is complete. Do not delete or edit the record to run
+  again. A fresh checkout has no record, so CI runs `make check` on a push, and a
   push happens only when every item is complete.
 - Write commit messages in English as `type(scope): subject (#issue)`: a subject of at most 50
   characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
