@@ -501,6 +501,33 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
   ]);
 });
 
+// 이름만 적는 case(G5.40)는 TypeScript test의 경로를 실행하지 않고 문자열로만 적는 test(가짜 node의 기대 출력, stub
+// template, 정규식)를 읽는 것으로 세지 않고, 그 경로를 node로 실행하는 file(program과 인자 배열, exec나 spawn의 shell
+// 문자열)은 여전히 읽는 것으로 세며, 여러 줄에 걸친 import도 읽는 것으로 세는지 확인한다.
+caseTest('a test that only names a TypeScript test path does not read the build output', COMPUTE, () => {
+  const sources = {
+    'clients/typescript/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'scripts/names.test.mjs': [
+      "assert.deepEqual(ran, ['node clients/typescript/tests/db.mjs']);",
+      "assert.match(stderr, /node clients\\/typescript\\/tests\\/db\\.mjs \\(exit 3\\)/);",
+      "const stub = `#!/bin/sh\\necho \"node $*\" >> log # node clients/typescript/tests/db.mjs`;",
+      '',
+    ].join('\n'),
+    'scripts/array.mjs': "const run = ['node', ['clients/typescript/tests/db.mjs']];\n",
+    'scripts/exec-path.mjs': "spawnSync(process.execPath, ['clients/typescript/tests/db.mjs', '--x']);\n",
+    'scripts/shell.mjs': "execSync('node --conditions=orm-test clients/typescript/tests/db.mjs');\n",
+    // 여러 줄의 import는 읽는 것이다. 함수 본문 뒤 주석에 적은 import 예시는 아니다.
+    'clients/typescript/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
+    'scripts/multi.mjs': "const run = ['node', ['clients/typescript/tests/multi.mjs']];\n",
+    'scripts/comment.mjs': "export function f(a) {\n  // an import may span lines: `import {\\n  a,\\n} from '../dist/index.js'`\n}\n",
+  };
+  const makefile = 'names:\n\tnode --test scripts/names.test.mjs\narray:\n\tnode scripts/array.mjs\nexec-path:\n\tnode scripts/exec-path.mjs\nshell:\n\tnode scripts/shell.mjs\nmulti:\n\tnode scripts/multi.mjs\ncomment:\n\tnode scripts/comment.mjs\n';
+  const reader = (target, file) => `Makefile ${target} runs ${file}, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)`;
+  assert.deepEqual(typescriptReaderErrors(makefile, path => sources[path]), [
+    reader('array', 'scripts/array.mjs'), reader('exec-path', 'scripts/exec-path.mjs'), reader('shell', 'scripts/shell.mjs'), reader('multi', 'scripts/multi.mjs'),
+  ]);
+});
+
 // go run case는 최소 단위를 검사한다. 저장소 전체는 repository check가 본다.
 caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   assert.deepEqual(goRunErrors([
