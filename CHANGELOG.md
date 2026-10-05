@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.36: the PHP client keeps connections across the requests of a process with `new Config(poolSize: n)`: a `Db` takes a connection of the pool of its DSN, the first `poolIdleSize` connections (all when zero) stay open for the `Db` of a later request with the session settings of their connect, a `Db` beyond the pool gets `CONFIG`, and a request that ends inside a transaction has it rolled back with its MySQL named locks, MySQL local values and SQLite modes. Every client reports a connection that the server ended or that broke with the new code `CONNECTION_LOST`, and the PHP client sends the first statement of a `Db` once more on a new connection when it fails so.
+
 - G5.34-2: `make rerun-failed` runs on a commit that descends from the recorded one, rerunning the targets that did not pass and the owner targets of the paths changed since that commit.
 
 - G5.33-12: the processes that one exclusive lease holder runs at once take that lease one exclusive holder at a time, so a feature step no longer rebuilds the TypeScript client while another loads it.
