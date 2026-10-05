@@ -25,6 +25,7 @@ import { runGroup, stepLines } from '../../tests/testcase.mjs';
 import { makeRecipes } from '../repo/testcases.mjs';
 import { NEEDS } from '../check/ci-setup.mjs';
 import { runStep } from '../check/step.mjs';
+import { missingDownloads } from '../check/downloads.mjs';
 
 // fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
 const pathPattern = /(?:contracts|tests|schema|clients|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
@@ -379,6 +380,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     process.exit(1);
   }
   if (!list) {
+    // check가 읽는 download가 빠졌으면 아무것도 실행하지 않고 그것을 `run make install`과 함께 적는다.
+    const missing = missingDownloads(root);
+    if (missing.length) {
+      for (const { message } of missing) console.error(`owners: ${message}`);
+      process.exit(1);
+    }
     let failed = 0;
     // 기능, helper, server 환경을 읽는 make target은 이 실행의 자기 bench database와 decimal database를
     // 쓴다(scripts/check/databases.sh, make check와 같은 것). 함께 쓰는 bench나 decimal database는 없다.

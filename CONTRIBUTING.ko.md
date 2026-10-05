@@ -2,7 +2,9 @@
 
 ## 필수 작업 순서
 
-1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다.
+1. `AGENTS.md`가 있으면 읽고 `contracts/features.json`에서 관련 경로를 읽는다. `make install`을 한 번
+   실행한다. 그것은 검사가 읽는 것(npm, Composer, Go 의존성, Rust toolchain과 crate, 가장 낮은 Node)을
+   download하고, 검사는 offline으로 실행되므로 빠진 download는 `run make install`과 함께 실패한다.
 2. 예상하거나 확인한 결함을 재현하는 test를 추가한다.
 3. engine, generator, 영향받은 모든 client에 완전한 변경을 구현한다.
 4. 영문과 한글 paired document를 함께 갱신한다.

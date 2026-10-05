@@ -2,7 +2,10 @@
 
 ## Required workflow
 
-1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`.
+1. Read `AGENTS.md` when it is present and read the relevant files in `contracts/features.json`. Run
+   `make install` once: it downloads what the checks read (npm, Composer and Go dependencies, the Rust
+   toolchain and crates, the lowest Node), and the checks run offline, so a missing download fails
+   with `run make install`.
 2. Add a reproducing test for a predicted or observed defect.
 3. Implement the smallest complete change across the engine, generators, and all affected clients.
 4. Update the paired English and Korean documentation.

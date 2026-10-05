@@ -42,6 +42,10 @@
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
+- 검사는 network를 읽지 않는다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm,
+  Composer를 offline으로 실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
+  `COMPOSER_DISABLE_NETWORK`), install target만 `$(ONLINE)`으로 download한다. 빠진 download는 online으로 다시
+  시도하라는 말이 아니라 `run make install`과 함께 실패한다.
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을

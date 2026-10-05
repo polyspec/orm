@@ -53,6 +53,10 @@
   a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
   so only the setup steps start servers that outlive a step.
+- A check reads no network. `make install` downloads what the checks read, the Makefile runs cargo,
+  go, npm and Composer offline (`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
+  `COMPOSER_DISABLE_NETWORK`), only the install targets download, through `$(ONLINE)`, and a missing
+  download fails with `run make install`, never with a retry online.
 - During development run unit tests only: the Red/Green unit cases of what changed. End-to-end runs
   (real database servers, conformance across languages, browsers, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required

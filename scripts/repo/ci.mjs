@@ -65,7 +65,8 @@ export function actionSteps(workflow, action) {
 // repository의 make target은 run text의 줄 머리에서 실행한다. 다른 directory에서 build하는
 // make(예: `(cd /tmp/sqlite && make)`)는 검사가 아니다.
 const startsServers = run => /^make test-servers\s*$/m.test(run);
-const runsMake = run => /^make\s/m.test(run) && !startsServers(run);
+// make install과 그 부분(install-*)은 server 없이 download만 하므로 server보다 앞서도 된다.
+const runsMake = run => /^make\s+(?!install(?:-[\w-]+)?(?:\s+install(?:-[\w-]+)?)*\s*$)/m.test(run) && !startsServers(run);
 
 // ciServerErrors는 workflow가 database 검사의 서버와 변수를 test-servers.sh와 같은 정의로 주지
 // 않거나 symbolic link를 만드는 곳마다 오류 하나를 돌려준다.
