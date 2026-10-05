@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-5: every `cargo test` of the Makefile, the feature verification commands and `scripts/client-db-test.sh` runs through `tests/cargo-test.mjs`, which builds under the target lease, copies the test binaries into a run directory and runs the copies.
+
 - G5.32-4: connecting sends no probe statement: every client reads the SQLite version from the library its driver links instead of `SELECT sqlite_version()`, and the TypeScript client opens its first connection without `SELECT 1`.
 
 - G5.32-5: the Go PostgreSQL client prepares a statement text once per connection again (pgx statement cache), since the exec query mode of G5.32-1 made the steady state of a pool 24 to 44 % slower; pooled clients prepare once per connection and reuse, and only PHP sends each statement in one round trip.

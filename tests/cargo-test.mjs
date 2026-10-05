@@ -1,0 +1,129 @@
+// cargo test를 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)가 아니라 실행 하나의
+// 복사본으로 실행한다. cargo test는 build한 test binary를 target directory에서 실행하므로, build와 실행 사이에
+// 다른 checkout이 다시 build하면 그 checkout의 code를 실행한다.
+//
+//   1. build: 같은 인자의 `cargo test --no-run --message-format=json-render-diagnostics`를 장기 작업
+//      `rust-build/<name>`(runLong, 기한 없음, compiler 출력을 STEP으로)으로 실행하고, cargo가 알린 test binary를
+//      실행 directory로 복사한다. build와 복사는 target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
+//      아래의 한 process에서 하므로 그 사이에 다른 build가 끼지 않는다.
+//   2. 실행: 복사본을 cargo test처럼 package directory에서 CARGO_MANIFEST_DIR과 함께, test 이름 filter와 `--`
+//      뒤의 인자로 하나씩 실행한다. 각 test case가 자기 기한과 RUN, PASS, FAIL 줄을 가진다. 실패한 binary에서
+//      멈추고 그 종료 코드로 끝난다(cargo test와 같다).
+//
+// 이 repository의 Rust 문서 code는 모두 ```text라 실행할 doctest가 없으므로 doctest는 실행하지 않는다.
+//
+// Usage: node tests/cargo-test.mjs <name> -- cargo [+<toolchain>] test <cargo options and filters> [-- <test binary args>]
+import { spawn } from 'node:child_process';
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
+import { randomBytes } from 'node:crypto';
+import { runLong, stepLines } from './testcase.mjs';
+
+// valued는 값을 따로 받는 cargo test option이다. 그 다음 인자는 test 이름 filter가 아니다.
+const valued = new Set(['--manifest-path', '--features', '-F', '-p', '--package', '--test', '--bin', '--example', '--bench', '--exclude',
+  '--target', '--target-dir', '--profile', '-j', '--jobs', '--color', '--message-format', '--config', '-Z']);
+
+// split은 cargo 명령을 program 앞부분(cargo와 toolchain), cargo test option, test 이름 filter, binary 인자로 나눈다.
+export function split(command) {
+  const testIndex = command.indexOf('test');
+  if (command[0] !== 'cargo' || testIndex < 1 || command.slice(1, testIndex).some(arg => !arg.startsWith('+')))
+    throw new Error(`not a cargo test command: ${command.join(' ')}`);
+  const rest = command.slice(testIndex + 1);
+  const separator = rest.indexOf('--');
+  const before = separator === -1 ? rest : rest.slice(0, separator);
+  const binaryArgs = separator === -1 ? [] : rest.slice(separator + 1);
+  const options = [];
+  const filters = [];
+  for (let index = 0; index < before.length; index++) {
+    const arg = before[index];
+    if (arg === '--no-run') throw new Error('cargo-test.mjs builds with --no-run itself');
+    if (arg.startsWith('-')) {
+      options.push(arg);
+      if (valued.has(arg) && !arg.includes('=')) options.push(before[++index]);
+    } else filters.push(arg);
+  }
+  return { cargo: command.slice(0, testIndex), options, filters, binaryArgs };
+}
+
+// executables는 cargo의 JSON message에서 test binary와 그 package directory를 읽는다.
+export function executables(stdout) {
+  const out = [];
+  for (const line of stdout.split('\n')) {
+    if (!line.startsWith('{')) continue;
+    const message = JSON.parse(line);
+    if (message.reason === 'compiler-artifact' && message.profile?.test && message.executable)
+      out.push({ executable: message.executable, manifestDir: dirname(message.manifest_path), target: message.target?.name ?? basename(message.executable) });
+  }
+  return out;
+}
+
+function run(program, args, options, step) {
+  return new Promise((finish, fail) => {
+    const child = spawn(program, args, { ...options, stdio: ['ignore', step ? 'pipe' : 'inherit', step ? 'pipe' : 'inherit'] });
+    const lines = step ? stepLines(step) : null;
+    let stdout = '';
+    child.stdout?.on('data', chunk => { stdout += chunk; });
+    child.stderr?.on('data', chunk => lines.write(String(chunk)));
+    child.on('error', fail);
+    child.on('close', (code, signal) => { lines?.flush(); finish({ code: code ?? 128, signal, stdout }); });
+  });
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  if (args[0] === '--copy') {
+    // --copy <run dir> -- <cargo build command>: lease 아래에서 build하고 test binary를 복사한다.
+    const [, runDir, separator, ...build] = args;
+    if (separator !== '--') throw new Error('usage: cargo-test.mjs --copy <run dir> -- <cargo command>');
+    const child = spawn(build[0], build.slice(1), { stdio: ['ignore', 'pipe', 'inherit'] });
+    let stdout = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    const code = await new Promise(finish => child.on('close', status => finish(status ?? 1)));
+    if (code !== 0) process.exit(code);
+    const copies = executables(stdout).map((binary, index) => {
+      const copy = join(runDir, `${index}-${basename(binary.executable)}`);
+      copyFileSync(binary.executable, copy);
+      console.error(`cargo-test: ${binary.executable} copied to ${copy}`);
+      return { ...binary, copy };
+    });
+    writeFileSync(join(runDir, 'binaries.json'), JSON.stringify(copies, null, 1) + '\n');
+    return;
+  }
+  const separator = args.indexOf('--');
+  if (separator !== 1) throw new Error('usage: node tests/cargo-test.mjs <name> -- cargo [+<toolchain>] test ...');
+  const name = args[0];
+  const { cargo, options, filters, binaryArgs } = split(args.slice(2));
+  const { LEASE: lease, CARGO_LEASES: leases } = process.env;
+  if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
+  const runDir = resolve(new URL('..', import.meta.url).pathname, '.runtime/run', `cargo-test-${process.pid}-${randomBytes(4).toString('hex')}`);
+  mkdirSync(runDir, { recursive: true });
+  try {
+    let built = false;
+    const passed = await runLong(`rust-build/${name}`, async ({ step }) => {
+      const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, new URL(import.meta.url).pathname, '--copy', runDir, '--',
+        ...cargo, 'test', '--no-run', '--message-format=json-render-diagnostics', ...options], {}, step);
+      if (result.code !== 0) throw new Error(`cargo test --no-run exited with ${result.code}`);
+      step('exit 0');
+      built = true;
+    });
+    if (!passed || !built) {
+      process.exitCode = 1;
+      return;
+    }
+    const binaries = JSON.parse(readFileSync(join(runDir, 'binaries.json'), 'utf8'));
+    if (binaries.length === 0) throw new Error(`cargo test --no-run ${options.join(' ')} built no test binary`);
+    for (const binary of binaries) {
+      console.log(`cargo-test: running ${binary.target} (${binary.copy})`);
+      const result = await run(binary.copy, [...filters, ...binaryArgs], { cwd: binary.manifestDir, env: { ...process.env, CARGO_MANIFEST_DIR: binary.manifestDir } });
+      if (result.code !== 0) {
+        console.log(`cargo-test: ${binary.target} exited with ${result.signal ?? result.code}`);
+        process.exitCode = result.code;
+        return;
+      }
+    }
+  } finally {
+    rmSync(runDir, { recursive: true, force: true });
+  }
+}
+
+if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) await main();

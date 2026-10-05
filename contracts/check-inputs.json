@@ -3,7 +3,7 @@
   "targets": {
     "checklist-check": {"scope": "owner", "inputs": ["docs/checklist.md", "docs/checklist.ko.md", "scripts/checklist/**"]},
     "version-check": {"scope": "owner", "inputs": ["VERSION", "scripts/version/**", "**/Cargo.toml", "**/Cargo.lock", "clients/php/composer.json", "clients/typescript/package.json", "clients/typescript/package-lock.json", "contracts/features.json", "**/*.md"]},
-    "testcase-check": {"scope": "owner", "inputs": ["internal/testcase/**", "tests/testcase.mjs", "tests/testcase.test.mjs", "tests/go-test.mjs", "tests/go-test.test.mjs", "tests/run-long.mjs", "tests/testcase.php", "tests/testcase_test.php", "clients/rust/testcase/**"]},
+    "testcase-check": {"scope": "owner", "inputs": ["internal/testcase/**", "tests/testcase.mjs", "tests/testcase.test.mjs", "tests/go-test.mjs", "tests/go-test.test.mjs", "tests/cargo-test.mjs", "tests/cargo-test.test.mjs", "tests/run-long.mjs", "tests/testcase.php", "tests/testcase_test.php", "clients/rust/testcase/**"]},
     "repo-check": {"scope": "owner", "inputs": ["**"]},
     "test-servers-check": {"scope": "owner", "inputs": ["scripts/test-servers.sh", "scripts/test-servers.test.mjs", "scripts/test-servers-mysql.mjs", "scripts/test-servers-mysql.test.mjs", "tests/stop-process/**", "tests/lease/**", "internal/procevent/**", "tests/testcase.mjs"]},
     "git-check": {"scope": "owner", "inputs": ["scripts/git/**", "contracts/rules.json"]},

@@ -227,27 +227,24 @@ export function unwrappedToolErrors(units) {
   return errors;
 }
 
-// unbuiltCargoTestErrors는 units에서 `cargo test --no-run` build가 RUN_LONG 밖이나 기한 아래에서 실행될
-// 때마다, 그리고 `cargo test` 실행(--no-run 없음) 앞에 같은 인자의 build가 같은 단위 안에 없을 때마다 오류
-// 하나를 돌려준다. cargo test는 test를 실행하기 전에 compile하고, 그 compile은 case로 보고되지 않는
-// 장기 작업이므로 단계 로그와 함께 기한 없이 먼저 build한다. 실행 단계의 test는 case마다 자기 기한을 가진다.
+// unbuiltCargoTestErrors는 units에서 `cargo test --no-run` build가 RUN_LONG 밖이나 기한 아래에서 실행될 때마다,
+// 그리고 `cargo test` 실행(--no-run 없음)이 tests/cargo-test.mjs(Makefile의 CARGO_TEST) 밖에 있을 때마다 오류
+// 하나를 돌려준다. cargo test는 공유 Rust target directory(여러 checkout이 함께 쓴다)의 test binary를 실행하므로,
+// build와 실행 사이에 다른 checkout이 다시 build하면 그 code를 실행한다. tests/cargo-test.mjs는 lease 아래에서
+// build하고 복사한 실행 하나의 binary를 실행하며, 그 build는 단계 로그와 함께 기한 없는 장기 작업이다.
 export function unbuiltCargoTestErrors(units) {
   const errors = [];
-  for (const { name, commands } of units) {
-    const built = new Set();
-    for (const command of commands) {
+  for (const { name, commands } of units)
+    for (const command of commands)
       for (const segment of segments(command)) {
         const cargo = cargoArguments(segment);
         if (cargo === undefined) continue;
         if (/\s--no-run\b/.test(segment)) {
           const error = longOperationError(name, `the build cargo test --no-run ${cargo}`, segment, noRun.exec(segment).index);
           if (error) errors.push(error);
-          built.add(cargo);
-        } else if (!built.has(cargo))
-          errors.push(`${name} runs cargo test ${cargo} without a build of cargo test --no-run ${cargo} before it, so its compile has no RUN line or step log`);
+        } else if (!/\bcargo-test\.mjs\b|\$\(CARGO_TEST\)/.test(segment))
+          errors.push(`${name} runs cargo test ${cargo} outside tests/cargo-test.mjs, so it runs the test binaries of the shared Rust target directory`);
       }
-    }
-  }
   return errors;
 }
 
