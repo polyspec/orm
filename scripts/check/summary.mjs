@@ -26,7 +26,9 @@ export function runSummary(root, id, servers = resolve(root, '.runtime/servers')
     publish(text, report, { step: true });
     return { text, passed: false };
   }
-  const crashed = run.result === 'incomplete' ? `the runner process ${record.runner?.pid ?? ''} ended without recording the end of run ${name}` : null;
+  // crashed는 runner가 처리하지 못한 오류로 멈춘 실행(그 이유가 기록에 있다)이거나, 끝을 기록하지 못하고 사라진 실행이다.
+  const crashed = run.result === 'crashed' ? run.reason
+    : run.result === 'incomplete' ? `the runner process ${record.runner?.pid ?? ''} ended without recording the end of run ${name}` : null;
   const text = summary(record, { run, report: relative(root, report), crashed });
   publish(text, report, { step: true });
   return { text, passed: run.result === 'passed' };

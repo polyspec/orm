@@ -243,32 +243,57 @@ function start(root, mode, entry, targets, id) {
     record.reruns.push(run);
   }
   write(path, record);
+  // save는 기록을 쓴다. 쓰기가 실패해도 실행을 멈추지 않고 그 오류를 writeErrors에 모아 출력한다. runner는 그것을
+  // summary와 종료 코드에 싣는다.
+  const writeErrors = [];
+  const save = () => {
+    try {
+      write(path, record);
+    } catch (error) {
+      const message = `record write failed: ${path}: ${error.code ?? error.name}: ${error.message}`;
+      writeErrors.push(message);
+      console.log(`full-run: ${message}`);
+    }
+  };
   const recorder = {
+    writeErrors,
     begin(name, kind) {
       let step;
       if (kind === 'setup') run.setup.push(step = newStep(name));
       else step = record.targets.find(target => target.name === name);
       Object.assign(step, { status: 'running', started: now(), ended: null });
-      write(path, record);
+      save();
       return step;
     },
     // details는 단계의 log path, 경과 시간(ms)과 실패한 단계의 첫 실패 줄이다.
     end(step, passed, details = {}) {
       Object.assign(step, { status: passed ? 'passed' : 'failed', ended: now() }, details);
-      write(path, record);
+      save();
     },
     // notRun은 필요한 setup 단계가 실패해 실행하지 않은 target을 그 이유와 함께 적는다.
     notRun(name, reason) {
       Object.assign(record.targets.find(target => target.name === name), { status: 'not-run', started: null, ended: now(), reason });
-      write(path, record);
+      save();
+    },
+    // crash는 runner가 처리하지 못한 오류로 멈출 때 부른다: 실행을 crashed와 그 이유로 기록한다.
+    crash(reason) {
+      summarize(record);
+      record.result = run.result = 'crashed';
+      run.reason = reason;
+      record.ended = run.ended = now();
+      record.runner = null;
+      save();
+      return record;
     },
     finish() {
       summarize(record);
-      const failed = record.failed.length > 0 || record.incomplete.length > 0 || run.setup.some(step => step.status !== 'passed');
+      // 보고서나 기록의 쓰기가 실패한 실행도 실패다: 그 실행의 정보가 완전하지 않다.
+      const lostWrites = (run.reportErrors?.length ?? 0) + writeErrors.length + [...record.targets, ...run.setup].filter(step => step.reportErrors?.length).length;
+      const failed = record.failed.length > 0 || record.incomplete.length > 0 || run.setup.some(step => step.status !== 'passed') || lostWrites > 0;
       record.result = run.result = failed ? 'failed' : 'passed';
       record.ended = run.ended = now();
       record.runner = null;
-      write(path, record);
+      save();
       console.log(`full-run: ${entry} result ${record.result}; targets that failed: ${record.failed.join(', ') || 'none'}; targets that did not finish: ${record.incomplete.join(', ') || 'none'}; record ${path}`);
       if (unfinished(record).length) console.log('full-run: run make rerun-failed to rerun only those targets');
       return record;

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.43-1: the runner of `make check` records a report or record write that fails (`report write failed: ...`) in the step and the summary and exits 1 instead of crashing, and records an unhandled error as `runner error: <stack>` of a `crashed` run.
+
 - G5.41-1: `make checklist-check` also rejects the GitHub task list markers x and X outside an item state.
 
 - G5.42: every browser wait of the docs check goes through one helper and, on failure, names what it waited for, the matching elements with visibility, state and the element on top, or the accessibility tree, and the requests, errors, event loop delay and host load.

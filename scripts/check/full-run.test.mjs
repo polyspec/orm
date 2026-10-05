@@ -34,12 +34,17 @@ function cleanup() {
 //
 // STUB_SUITE=failing는 setup 실패 case의 suite다: target a, b, c, d 가운데 a와 c는 database가 필요하고, database
 // 만들기는 실패하며, b는 실패한 case 하나와 끝나지 않은 case 하나를 출력하고 실행 directory를 남기며, d는 통과한다.
-const STUB = `import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { runChecks } from ${JSON.stringify(resolve(repo, 'scripts/check/run.mjs'))};
+const STUB = `import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { handleCrashes, runChecks } from ${JSON.stringify(resolve(repo, 'scripts/check/run.mjs'))};
 import { preflight } from ${JSON.stringify(resolve(repo, 'scripts/check/full-run.mjs'))};
 const [root, action, mode, log, kill, servers] = process.argv.slice(2);
 if (action === 'decide') process.exit(preflight(root, mode));
 const failing = process.env.STUB_SUITE === 'failing';
+// STUB_SUITE=lost는 target b가 실행 도중 보고서 directory를 지우고 출력을 더 쓰는 suite, STUB_SUITE=throws는 target b가
+// runner의 콜백 밖에서 처리되지 않는 오류를 던지는 suite다(G5.43-1).
+const lost = process.env.STUB_SUITE === 'lost';
+const throws = process.env.STUB_SUITE === 'throws';
+handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
@@ -59,7 +64,15 @@ const run = async (program, args, step, spawned = () => {}) => {
       step(line);
     throw new Error('make --no-print-directory -k b exited with 2');
   }
-  if (!failing && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (lost && name === 'b') {
+    rmSync(root + '/.runtime/check/' + process.env.STUB_REPORT_RUN + '/report', { recursive: true, force: true });
+    step('a line after the report directory is gone');
+    return;
+  }
+  if (throws && name === 'b') {
+    await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
+  }
+  if (!failing && !lost && !throws && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
@@ -480,6 +493,46 @@ caseTest('the summary step keeps the record and the server logs in the report of
     assert.equal(readFileSync(join(report, 'servers/postgres.log'), 'utf8'), 'FATAL:  role "orm" does not exist\n');
     assert.match(readFileSync(join(report, 'servers/mysql.log'), 'utf8'), /^\[the last 262144 of 2097169 bytes of .*mysql\.log\]\ny+\[ERROR\] Aborting\n$/);
     assert.equal(existsSync(join(report, 'servers/mysql')), false);
+  } finally {
+    cleanup();
+  }
+});
+
+// 보고서 쓰기 case(G5.43-1)는 target b가 실행 도중 보고서 directory를 지우는 실행이다. runner는 죽지 않고 끝까지
+// 실행하며, b의 기록에 `report write failed`를 남기고 1로 끝난다.
+caseTest('a report write that fails is recorded and does not stop the runner', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const result = c.run('run', 'check', '', { STUB_SUITE: 'lost', ORM_CHECK_RUN_ID: '7-1', STUB_REPORT_RUN: 'ci_7_1' });
+    assert.equal(result.signal, null, result.stdout + result.stderr);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.deepEqual(c.ran(), ['sh create', 'a', 'b', 'c', 'sh drop']);
+    const record = c.record();
+    assert.equal(record.result, 'failed');
+    const b = record.targets.find(target => target.name === 'b');
+    assert.equal(b.status, 'passed');
+    assert.match(b.reportErrors[0], /^report write failed: .*\/report\/targets\/b\.log: ENOENT: /);
+    assert.equal(record.targets.find(target => target.name === 'c').status, 'passed');
+    assert.match(result.stdout, /report or record write\(s\) failed:\nreport write failed: .*b\.log: ENOENT/);
+  } finally {
+    cleanup();
+  }
+});
+
+// crash case(G5.43-1)는 target b가 runner 밖에서 처리되지 않는 오류를 던지는 실행이다. runner는 그 오류를 `runner
+// error: <stack>`으로 기록하고 실행을 crashed로 적고 1로 끝난다.
+caseTest('an unhandled error of the runner is recorded as the reason of a crashed run', PROCESS, async () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const result = c.run('run', 'check', '', { STUB_SUITE: 'throws', ORM_CHECK_RUN_ID: '8-1' });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    const record = c.record();
+    assert.equal(record.result, 'crashed');
+    assert.match(record.reason, /^runner error: Error: boom outside the runner\n {4}at /);
+    assert.equal(record.runner, null);
+    const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mjs'));
+    const { text } = runSummary(c.root, '8-1');
+    assert.match(text, /The runner did not finish: runner error: Error: boom outside the runner/);
   } finally {
     cleanup();
   }

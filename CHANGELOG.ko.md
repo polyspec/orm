@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.43-1: `make check`의 runner는 실패한 보고서나 기록의 쓰기(`report write failed: ...`)를 crash하는 대신 단계와 summary에 기록하고 1로 끝나며, 처리하지 못한 오류는 `crashed` 실행의 `runner error: <stack>`으로 기록한다.
+
 - G5.41-1: `make checklist-check`는 GitHub task list의 x와 X 표시도 항목 상태 밖에서 거부한다.
 
 - G5.42: docs check의 모든 browser 기다림은 하나의 helper를 거치고, 실패하면 기다린 것, 맞는 요소와 그 보임, 상태, 위에 있는 요소나 accessibility tree, request, error, event loop 지연, host load를 적는다.
