@@ -75,6 +75,3 @@ export async function loading(tracker, what, action) {
     throw new Error(`${error.message.split('\n')[0]} ${what}\n${tracker.report()}`);
   }
 }
-
-// openPage는 url을 열고 load event를 기다린다.
-export const openPage = (page, url, tracker) => loading(tracker, `opening ${url}`, () => page.goto(url));
