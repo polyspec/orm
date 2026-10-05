@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-3: make target은 공유 target directory의 lease 아래에서 만든, 자기가 build한 Rust program의 복사본을 실행하고, stress 문서를 자기 실행 directory에 쓰며, Makefile의 모든 cargo build는 그 lease를 가진다.
+
 - G5.33-2: 함께 쓰는 bench나 decimal database는 없다. `make check`, `make owner-check`, 새 `make run-databases`가 자기 실행의 database를 만들고, `make test-servers`의 환경은 그 실행이 database를 만들 server DSN만 정한다.
 
 - G5.33-1: test server를 쓰는 실행은 shared lease(`tests/lease`)를 가지고, `make test-servers-stop`, 새 시작, MySQL migration은 exclusive lease를 가지며 lease가 있으면 보유자를 적고 거부된다. `make test-servers-leases`와 `make test-servers-leases-clear`는 lease를 적고 보유자 없는 것을 지운다.

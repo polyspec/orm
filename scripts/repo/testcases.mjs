@@ -357,3 +357,28 @@ export function rawGoTestErrors(units) {
       }
   return errors;
 }
+
+// sharedTargetErrors는 Makefile이 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)를
+// 실행 하나의 것처럼 쓰는 곳마다 오류 하나를 돌려준다. 그 directory의 program을 실행하거나 file을 쓰면, 다른
+// checkout이 그 사이에 다시 build하거나 덮어쓴 것을 쓰게 된다. 실행은 자기 RUN_DIR의 복사본과 file을 쓰고
+// (CARGO_COPY), cargo build는 target directory의 lease 아래에서 한다(CARGO_LEASED). 주석은 보지 않는다.
+export function sharedTargetErrors(makefile) {
+  const errors = [];
+  for (const [index, line] of makefile.split('\n').entries()) {
+    // lease directory(CARGO_LEASES)는 target directory 안에 둔다: 그 directory를 함께 쓰는 모든 checkout이 같은
+    // lease를 본다.
+    if (/^\s*#/.test(line) || /^CARGO_LEASES = \$\(CARGO_TARGET_DIR\)\/\.leases$/.test(line)) continue;
+    if (line.includes('$(CARGO_TARGET_DIR)/'))
+      errors.push(`Makefile:${index + 1} uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): ${line.trim()}`);
+  }
+  for (const { name, commands } of makeRecipes(makefile))
+    for (const command of commands)
+      for (const segment of segments(command)) {
+        const cargo = /\bcargo\s+(?:\+\S+\s+)?(?:build|check|clippy|test\b(?=.*\s--no-run\b))/.exec(segment);
+        if (!cargo) continue;
+        const leased = /\$\((?:CARGO_LEASED|CARGO_COPY)\)/.exec(segment);
+        if (!leased || leased.index > cargo.index)
+          errors.push(`${name} builds into the shared Rust target directory without its lease; run the build under $(CARGO_LEASED) or $(CARGO_COPY): ${segment}`);
+      }
+  return errors;
+}

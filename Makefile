@@ -65,6 +65,22 @@ RUN_LONG = node tests/run-long.mjs
 # 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 LEASE = $(abspath .runtime/bin/lease)
 BUILD_LEASE = $(RUN_LONG) go-build/lease -- go build -o $(LEASE) ./tests/lease
+# CARGO_LEASED는 cargo의 build를 공유 Rust target directory(CARGO_TARGET_DIR, 여러 checkout이 함께 쓴다)의
+# exclusive lease 아래에서 실행한다. 다른 checkout의 build가 lease를 가지면 directory 변경 알림을
+# 기다린다(--wait). build는 cargo의 자기 lock 때문에 어차피 하나씩 실행된다.
+CARGO_LEASES = $(CARGO_TARGET_DIR)/.leases
+CARGO_LEASED = $(LEASE) run $(CARGO_LEASES) exclusive --wait --
+# RUN_DIR은 target 실행 하나의 directory다($@와 make process id). 그 실행이 쓰는 stress 문서와 build한
+# program의 복사본(RUN_TARGET, CARGO_TARGET_DIR과 같은 배치)을 둔다. 실행은 공유 target directory의
+# program이 아니라 이 복사본을 실행한다. CARGO_COPY는 build와 복사를 한 lease 아래에서 한다
+# (scripts/cargo-build-copy.sh). target은 끝에 RUN_DIR을 지운다.
+RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
+RUN_TARGET = $(RUN_DIR)/target
+CARGO_COPY = $(CARGO_LEASED) sh $(abspath scripts/cargo-build-copy.sh) $(RUN_TARGET)
+
+.PHONY: lease-tool
+lease-tool:
+	$(BUILD_LEASE)
 TSC_BUILD = $(RUN_LONG) typescript-build -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json
 
 # check는 CHECK_TARGETS를 scripts/check/run.mjs로 하나씩 실행한다. runner는 실행마다 자기 bench
@@ -110,7 +126,7 @@ testcase-check: rust-fetch
 	node --test tests/testcase.test.mjs
 	node --test tests/go-test.test.mjs
 	php tests/testcase_test.php
-	$(RUN_LONG) rust-build/testcase-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm-testcase
+	$(RUN_LONG) rust-build/testcase-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm-testcase
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -130,11 +146,11 @@ checklist-check:
 # dbspec-compare-check와 dbspec-introspect-compare-check는 같은 모양의 작은 문서
 # (DBSPEC_COMPARE_TABLES, DBSPEC_INTROSPECT_TABLES개 table)로 같은 code path를 실행하고, make
 # bench는 같은 target을 2000 table로 실행한다.
-DBSPEC_STRESS_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs
+DBSPEC_STRESS_DOCUMENT = $(RUN_DIR)/stress.dbs
 DBSPEC_COMPARE_TABLES ?= 20
-DBSPEC_COMPARE_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress-$(DBSPEC_COMPARE_TABLES).dbs
+DBSPEC_COMPARE_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_COMPARE_TABLES).dbs
 DBSPEC_INTROSPECT_TABLES ?= 20
-DBSPEC_INTROSPECT_DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
+DBSPEC_INTROSPECT_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
 # DBSPEC_INTROSPECT_PROFILE은 Rust introspection runner의 cargo profile이다. make check는 test
 # build와 의존성을 함께 쓰는 dev, make bench는 introspection budget을 재는 release다.
 DBSPEC_INTROSPECT_PROFILE ?= dev
@@ -171,7 +187,7 @@ dbspec-introspect-php-check:
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check: rust-fetch
-	$(RUN_LONG) rust-build/dbspec-introspect-rust-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect
+	$(RUN_LONG) rust-build/dbspec-introspect-rust-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
@@ -204,14 +220,15 @@ dbspec-apply-stress-bench:
 .PHONY: dbspec-apply-pairs-check
 dbspec-apply-pairs-check: rust-fetch
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(CARGO_TARGET_DIR)/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	rm -rf $(RUN_DIR)
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
 # orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check: rust-fetch
-	$(RUN_LONG) rust-build/dbspec-apply-rust-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply
+	$(RUN_LONG) rust-build/dbspec-apply-rust-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
@@ -232,7 +249,7 @@ dbspec-apply-ts-check:
 # orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check: rust-fetch
-	$(RUN_LONG) rust-build/dbspec-plan-rust-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply
+	$(RUN_LONG) rust-build/dbspec-plan-rust-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
@@ -257,8 +274,9 @@ dbspec-introspect-compare-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES) > $(DBSPEC_INTROSPECT_DOCUMENT)
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_introspect --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(CARGO_TARGET_DIR)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(RUN_LONG) rust-build/dbspec_introspect --cwd clients/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	rm -rf $(RUN_DIR)
 
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
@@ -276,11 +294,12 @@ dbspec-compare-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES) > $(DBSPEC_COMPARE_DOCUMENT)
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
-	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
-	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
-	DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
-	node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
+	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
+	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	rm -rf $(RUN_DIR)
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -300,22 +319,23 @@ dbspec-stress-bench: rust-fetch
 	$(TSC_BUILD)
 	node --test clients/typescript/tests/dbspec-stress.mjs
 	node --test clients/typescript/tests/dbspec-stress.mjs
-	$(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
-	$(CARGO_TARGET_DIR)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
-	$(CARGO_TARGET_DIR)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	$(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p orm-schema --example dbspec_stress
+	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
+	rm -rf $(RUN_DIR)
 
 dbspec-rust-check: rust-fetch
-	$(RUN_LONG) rust-build/dbspec-rust-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid
+	$(RUN_LONG) rust-build/dbspec-rust-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	$(RUN_LONG) rust-build/dbspec-rust-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup
+	$(RUN_LONG) rust-build/dbspec-rust-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 rust-send-savepoint-check: rust-fetch
-	$(RUN_LONG) rust-clippy/orm-lib --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
-	$(RUN_LONG) rust-build/rust-send-savepoint-check --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm --lib tx::send_tests::
+	$(RUN_LONG) rust-clippy/orm-lib --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p orm --lib -- -D warnings
+	$(RUN_LONG) rust-build/rust-send-savepoint-check --cwd clients/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --no-run --locked --offline -p orm --lib tx::send_tests::
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 	$(WITH_TEST_ENV) cd clients/rust && cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm --lib tx::send_tests:: -- --nocapture
 
@@ -483,10 +503,11 @@ unselected-column-physical-check:
 # case-database-check는 공유 test database 두 곳에 table 하나를 남겨 둔 채 네 client의 model
 # case를 실행하고, case가 통과하며 공유 database와 PostgreSQL schema를 바꾸지 않고 자기
 # `orm_case_` database와 `orm-case-` SQLite file을 남기지 않는지 확인한다(T25).
-case-database-check:
+case-database-check: lease-tool
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd clients/rust -- cargo build --locked -p orm-tests --bin integration
-	$(WITH_TEST_ENV) node scripts/case-database-check.mjs
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd clients/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p orm-tests --bin integration
+	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
+	rm -rf $(RUN_DIR)
 
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
@@ -584,30 +605,31 @@ rust-fmt-check:
 rust-150-check:
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
 
-rust-check:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd clients/rust -- cargo check --locked
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd clients/rust -- cargo clippy --locked --workspace --all-targets -- -D warnings
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd clients/rust -- cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd clients/rust -- cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
+rust-check: lease-tool
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd clients/rust -- $(CARGO_LEASED) cargo check --locked
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked --workspace --all-targets -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
 
 # rust-fetch는 clients/rust와 bench/rust의 Cargo.lock이 고정한 crate를 받는다. cargo를 --offline으로
 # 실행하는 target은 이것을 먼저 실행한다: 새 machine(CI runner)의 cargo cache에는 crate가 없으므로
 # 앞선 다른 target이 받아 두었는지에 기대지 않는다. 받아 둔 crate는 다시 받지 않는다.
 .PHONY: rust-fetch
-rust-fetch:
+rust-fetch: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fetch -- sh -c 'cargo fetch --locked --manifest-path clients/rust/Cargo.toml && cargo fetch --locked --manifest-path bench/rust/Cargo.toml'
 
 # rust-driver-check는 bench/rust의 native와 driver_compare를 DSN 없이 실행해 거부를 확인하고,
 # 시드된 bench database에서 한 번에 하나씩 실행해 모든 workload가 끝나는지 확인한다.
 rust-driver-check: rust-fetch
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/rust-driver-check --cwd bench/rust -- cargo test --no-run --locked --offline
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/rust-driver-check --cwd bench/rust -- $(CARGO_LEASED) cargo test --no-run --locked --offline
 	$(WITH_TEST_ENV) cd bench/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" cargo test --locked --offline -- --test-threads=1
 
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check: rust-fetch
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd clients/rust -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
-	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(CARGO_TARGET_DIR)/debug/complex EXAMPLE_RUST_DEMO=$(CARGO_TARGET_DIR)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd clients/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
+	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
+	rm -rf $(RUN_DIR)
 
 # timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
 # 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
@@ -617,10 +639,11 @@ timing-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
 	$(RUN_LONG) go-build/dbspec-test -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd clients/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd clients/rust -- $(CARGO_LEASED) cargo test --locked --offline -p orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(CARGO_TARGET_DIR)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
+	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
+	rm -rf $(RUN_DIR)
 
 typescript-build:
 	$(RUN_LONG) typescript-build -- npm run typescript:build
