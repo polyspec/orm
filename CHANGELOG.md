@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-4: connecting sends no probe statement: every client reads the SQLite version from the library its driver links instead of `SELECT sqlite_version()`, and the TypeScript client opens its first connection without `SELECT 1`.
+
 - G5.32-5: the Go PostgreSQL client prepares a statement text once per connection again (pgx statement cache), since the exec query mode of G5.32-1 made the steady state of a pool 24 to 44 % slower; pooled clients prepare once per connection and reuse, and only PHP sends each statement in one round trip.
 
 - G5.33: runs from different checkouts and sessions no longer break each other's test resources: the test servers, the shared Rust target directory and the TypeScript build output are leased, and the bench and decimal databases and the run files are per run (G5.33-1 to G5.33-4).

@@ -386,4 +386,4 @@ Go uses `orm.Distance(…)`, Rust uses `orm::distance(…)`, and TypeScript uses
 - The SQLite haversine formula requires SQLite math functions. The connection checks them, and `distance` returns `CAPABILITY_UNSUPPORTED` when they are unavailable.
 - A column function on a column type that it does not list returns `OPERATOR_NOT_ALLOWED`.
 - SQLite stores `decimal` values as floating-point numbers, so decimal arithmetic in SQLite can differ from MySQL and PostgreSQL. The ORM does not change the SQLite storage.
-- The minimum SQLite version is 3.46.
+- The minimum SQLite version is 3.46. A client reads the version of the SQLite library its driver links (Go `RegisterSQLiteVersion` from `modernc.org/sqlite`, PHP `PDO::ATTR_SERVER_VERSION`, TypeScript `process.versions.sqlite`, Rust `libsqlite3_sys::SQLITE_VERSION`) and connects without a statement that asks for it or checks the connection.

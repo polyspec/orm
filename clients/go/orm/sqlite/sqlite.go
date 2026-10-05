@@ -13,12 +13,16 @@ import (
 	"strings"
 
 	sqlite "modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
 
 	"github.com/polyspec/orm/clients/go/orm"
 	"github.com/polyspec/orm/engine/ir"
 )
 
-func init() { orm.RegisterDriver("sqlite", "sqlite", mapErr) }
+func init() {
+	orm.RegisterDriver("sqlite", "sqlite", mapErr)
+	orm.RegisterSQLiteVersion(sqlite3.SQLITE_VERSION)
+}
 
 // mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
 // 나머지 driver 오류를 DRIVER로 보고한다. SQLITE_BUSY reports a lock that another connection

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-4: 연결은 probe statement를 보내지 않는다. 모든 클라이언트는 `SELECT sqlite_version()` 대신 driver가 link한 library에서 SQLite version을 읽고, TypeScript 클라이언트는 `SELECT 1` 없이 첫 연결을 연다.
+
 - G5.32-5: Go PostgreSQL client는 다시 statement text를 연결마다 한 번 prepare한다(pgx statement cache). G5.32-1의 exec query mode가 pool의 steady state를 24~44% 느리게 했기 때문이다. pool 클라이언트는 연결마다 한 번 prepare하고 재사용하며, PHP만 문마다 round trip 하나로 실행한다.
 
 - G5.33: 서로 다른 checkout과 session의 실행이 더는 서로의 test 자원을 망가뜨리지 않는다. test server, 공유 Rust target directory, TypeScript build 출력은 lease로 다루고, bench와 decimal database와 실행 file은 실행마다 따로 둔다(G5.33-1에서 G5.33-4).

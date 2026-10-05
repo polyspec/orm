@@ -313,7 +313,7 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 		return nil, mapDriverErr(err)
 	}
 	if dsn.driver == "sqlite" {
-		if err := checkSQLite(ctx, s); err != nil {
+		if err := checkSQLite(); err != nil {
 			s.Close()
 			return nil, err
 		}
@@ -335,11 +335,15 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	return &DB{sql: s, ctx: ctx, m: &dbMutable{engines: map[string]*engine.Engine{}, schemas: map[string]*Schema{}}, cfg: cfg, driver: dsn.driver, location: dsn.location, plans: map[uint64]*cached{}, stmts: map[string]*sql.Stmt{}}, nil
 }
 
-// checkSQLite rejects SQLite builds older than the supported minimum.
-func checkSQLite(ctx context.Context, s *sql.DB) error {
-	var version string
-	if err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {
-		return mapDriverErr(err)
+// checkSQLite rejects SQLite builds older than the supported minimum. The
+// version is the library version the SQLite driver package registers, so
+// connecting sends no statement to learn it.
+func checkSQLite() error {
+	driverMu.RLock()
+	version := sqliteVersion
+	driverMu.RUnlock()
+	if version == "" {
+		return &ir.Error{Code: CodeConfig, Msg: "the SQLite driver registered no library version"}
 	}
 	var major, minor int
 	fmt.Sscanf(version, "%d.%d", &major, &minor)
@@ -413,7 +417,17 @@ var (
 	driverMu   sync.RWMutex
 	sqlDrivers = map[string]string{"mysql": "mysql"}
 	errMappers = map[string]func(error) error{"mysql": mapMySQLErr}
+	// sqliteVersion은 SQLite driver package가 등록한 library version이다.
+	sqliteVersion string
 )
+
+// RegisterSQLiteVersion registers the version of the SQLite library that the
+// SQLite driver package links. The SQLite driver package calls it from init.
+func RegisterSQLiteVersion(version string) {
+	driverMu.Lock()
+	defer driverMu.Unlock()
+	sqliteVersion = version
+}
 
 // RegisterDriver registers a database driver and its error mapping. Driver
 // packages call it from init.

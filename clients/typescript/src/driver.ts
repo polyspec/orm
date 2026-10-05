@@ -43,8 +43,6 @@ export type SentOrigin = 'statement' | 'deallocate' | 'kill';
  */
 export type StatementDone = (sql: string, elapsed: number, error: OrmError | null, origin: SentOrigin) => void;
 
-/** statement를 보내지만 event를 publish하지 않는 done이다. 연결을 여는 statement가 쓴다. */
-export const unobserved: StatementDone = () => undefined;
 
 /** A connection pool or one reserved connection. */
 export interface DriverConnection {
@@ -650,7 +648,8 @@ export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, s
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
       const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
-      const version = String((db.prepare('SELECT sqlite_version() AS v').get() as { v: string }).v);
+      // node:sqlite가 link한 SQLite library의 version이다. 연결은 그것을 묻는 statement를 보내지 않는다.
+      const version = process.versions.sqlite ?? '';
       const [major, minor] = version.split('.').map(Number);
       if (major! < 3 || (major === 3 && minor! < 46)) {
         db.close();

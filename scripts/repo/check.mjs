@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
+import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
@@ -50,6 +51,8 @@ failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked))
 // cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.
 failures.push(...targetPathErrors(Object.fromEntries(tracked.filter(runFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...manifestDirErrors(Object.fromEntries(tracked.filter(path => path.endsWith('.rs')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
+// 연결은 server에 SQLite version이나 연결 여부를 묻는 statement를 보내지 않는다.
+failures.push(...connectProbeErrors(Object.fromEntries(tracked.filter(runtimeSource).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // 모든 test는 자기 기한 아래 case로 보고한다(scripts/repo/testcases.mjs).
 const trackedText = paths => Object.fromEntries(paths.map(path => [path, readFileSync(join(root, path), 'utf8')]));
 failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|js)$/.test(path) && !path.startsWith('docs/')))));

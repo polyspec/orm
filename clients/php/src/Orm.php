@@ -72,7 +72,8 @@ final class Orm
                     // time zone과 statement timeout은 DSN의 startup parameter다.
                     break;
                 default:
-                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();
+                    // pdo_sqlite가 link한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
+                    $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
                     if (version_compare($version, '3.46', '<')) {
                         throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
                     }
