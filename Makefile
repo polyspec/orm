@@ -1,4 +1,6 @@
 .PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+# 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
+.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
@@ -154,11 +156,16 @@ go-test-check:
 # 결과(PASS, FAIL과 이유)와 경과 시간을 이 순서로 출력하고, 기한이 지난 case를 FAIL로
 # 보고하는지 하위 process의 출력으로 확인한다.
 .PHONY: testcase-check
-testcase-check: rust-fetch
+testcase-check: testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust
+testcase-check/go:
 	$(GO_TEST) ./internal/testcase -count=1
+testcase-check/node:
 	node --test tests/testcase.test.mjs
+testcase-check/runners:
 	node --test tests/go-test.test.mjs tests/cargo-test.test.mjs
+testcase-check/php:
 	php tests/testcase_test.php
+testcase-check/rust: rust-fetch
 	cd clients/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
@@ -167,8 +174,10 @@ client-pooler-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_TEST_POSTGRES_DSN="$$ORM_TEST_PGBOUNCER_DSN" ORM_TEST_MYSQL_DSN="$$ORM_TEST_PROXYSQL_DSN" ./scripts/client-db-test.sh
 
-checklist-check:
+checklist-check: checklist-check/unit checklist-check/run
+checklist-check/unit:
 	node --test scripts/checklist/check.test.mjs
+checklist-check/run:
 	node scripts/checklist/check.mjs
 
 # full-run-check는 전체 suite의 guard와 runner(scripts/check/full-run.mjs, scripts/check/run.mjs)를 임시 git
@@ -406,12 +415,16 @@ dbspec-php-check:
 # 검사 단계에 주는지(scripts/repo/ci.mjs) 확인한다.
 # version-check는 VERSION 파일과 orm의 모든 version 선언(Rust manifest와 lockfile, PHP composer,
 # TypeScript package와 lockfile, feature contract, 문서)이 같은지 확인한다.
-version-check:
+version-check: version-check/unit version-check/run
+version-check/unit:
 	node --test scripts/version/check.test.mjs
+version-check/run:
 	node scripts/version/check.mjs
 
-repo-check:
+repo-check: repo-check/unit repo-check/run
+repo-check/unit:
 	node --test scripts/repo/check.test.mjs
+repo-check/run:
 	node scripts/repo/check.mjs
 
 # test-servers-check는 test-servers.sh의 MySQL 설정 migration(scripts/test-servers-mysql.mjs)을 임시
@@ -467,15 +480,21 @@ test-servers-leases-clear:
 owner-check:
 	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) ORM_OWNER_CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) node scripts/features/owners.mjs $(PATHS)
 
-feature-unit-check:
+feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners
+feature-unit-check/docs:
 	node scripts/features/build.mjs --check
+feature-unit-check/coverage:
 	node --test scripts/features/coverage.test.mjs
+feature-unit-check/owners:
 	node --test scripts/features/owners.test.mjs
 
-feature-check: lease-tool
+feature-check: feature-check/build feature-check/coverage feature-check/verification
+feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
+feature-check/coverage: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
+feature-check/verification: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
 
 feature-docs:
@@ -486,15 +505,30 @@ package-check: lease-tool
 
 # fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing(-fuzztime)을 함께 하는 장기 작업이므로
 # 각 명령을 RUN_LONG으로 기한 없이 실행한다. fuzzing의 길이는 -fuzztime이 정한다.
-fuzz-check:
+fuzz-check: fuzz-check/engine-ir fuzz-check/clients-go-orm
+fuzz-check/engine-ir:
 	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+fuzz-check/clients-go-orm:
 	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
-client-unit-check:
-	$(PHP) clients/php/tests/dsn.php && $(PHP) clients/php/tests/relation_keys.php && $(PHP) clients/php/tests/hostcodec.php && $(PHP) clients/php/tests/engine_test.php && $(PHP) clients/php/tests/runtime_model_test.php && $(PHP) clients/php/tests/orm_gen_test.php && $(PHP) clients/php/tests/perf_extensions_test.php
+client-unit-check: client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+client-unit-check/dsn:
+	$(PHP) clients/php/tests/dsn.php
+client-unit-check/relation-keys:
+	$(PHP) clients/php/tests/relation_keys.php
+client-unit-check/hostcodec:
+	$(PHP) clients/php/tests/hostcodec.php
+client-unit-check/engine:
+	$(PHP) clients/php/tests/engine_test.php
+client-unit-check/runtime-model:
+	$(PHP) clients/php/tests/runtime_model_test.php
+client-unit-check/orm-gen:
+	$(PHP) clients/php/tests/orm_gen_test.php
+client-unit-check/perf-extensions:
+	$(PHP) clients/php/tests/perf_extensions_test.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
 # clients/php/composer.json supports.
@@ -516,8 +550,10 @@ client-db-check: lease-tool
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
 # and records which SQLite openers keep a DSN query in the file name.
-dialect-facts-check:
+dialect-facts-check: dialect-facts-check/probes dialect-facts-check/facts
+dialect-facts-check/probes:
 	$(GO_TEST) ./tests/dialects -run '^TestProbeIDs$$' -count=1
+dialect-facts-check/facts:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestDialectFacts|TestSQLiteFileNameWithQuery)$$' -count=1
 
 conformance-counter-check:
@@ -591,9 +627,12 @@ ts-model-check: lease-tool
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
 
-ts-check: lease-tool
+ts-check: ts-check/hold ts-check/types ts-check/test
+ts-check/hold: lease-tool
 	$(HOLD_TYPESCRIPT)
+ts-check/types: ts-check/hold
 	$(RUN_LONG) typescript-check -- npm run typescript:check
+ts-check/test: ts-check/hold
 	$(WITH_TEST_ENV) npm run typescript:test
 
 # ts-min-check runs the TypeScript tests on the lowest Node release that
@@ -660,18 +699,25 @@ codec-check:
 # workspace (clients/rust/rustfmt.toml).
 # rust-fmt-check는 저장소의 모든 Rust workspace(clients/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
 # 정리되어 있는지 확인한다.
-rust-fmt-check:
+rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
+rust-fmt-check/clients:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd clients/rust -- cargo fmt --all --check
+rust-fmt-check/bench:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
+rust-fmt-check/interfaces:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
 
-rust-check: lease-tool
+rust-check: rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults
+rust-check/check: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd clients/rust -- $(CARGO_LEASED) cargo check --locked
+rust-check/clippy: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked --workspace --all-targets -- -D warnings
+rust-check/clippy-live-db: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked -p orm-build --all-targets --features live-db -- -D warnings
+rust-check/clippy-test-faults: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
 
 # rust-fetch는 clients/rust와 bench/rust의 Cargo.lock이 고정한 crate를 받는다. cargo를 --offline으로
@@ -712,6 +758,8 @@ typescript-build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 
-git-check:
+git-check: git-check/unit git-check/run
+git-check/unit:
 	node --test scripts/git/check.test.mjs
+git-check/run:
 	node scripts/git/check.mjs

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.38-2: 13 targets of `CHECK_TARGETS` run their independent commands as parts `<target>/<part>` (40 in all), which `make -k` of the runner and of `make owner-check` runs after a failed part.
+
 - G5.38-1: `make check` records a target that a failed setup step (`servers`, `databases/create`) blocks as `not-run` with that step and its first failure lines and runs the others (`needs` of `contracts/check-inputs.json`), runs each target with `make -k`, and writes the report `.runtime/check/<run id>/report` (environment, the command, recipe, inputs and output of each target, the run directories of failed targets, `summary.md`); `scripts/check/summary.mjs` publishes the summary of `ORM_CHECK_RUN_ID`, also of a runner that did not finish.
 
 - G5.39: a docs page that does not load names its pending requests with their age and the server's view, its failed requests, console and page errors, the event loop delay and the host load.
