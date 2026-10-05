@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-9: the builds of the feature coverage checker run as long operations with step logs and no deadline; `COVERAGE_BUILD_DEADLINE` is removed, and each coverage run keeps its own deadline.
+
 - G5.30-8: no step or job of `ci.yml` and `docs-pages.yml` has `timeout-minutes`, and `make repo-check` fails a workflow with one.
 
 - G5.30-7: the Makefile runs its builds, installs and tool runs under `RUN_LONG` with no deadline, `RUN_CASE`, `BUILD_DEADLINE`, `TOOL_DEADLINE` and `tests/run-case.mjs` are removed, and `make repo-check` fails a long operation outside run-long or under any deadline, a `go test` binary deadline included.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-9: 기능 coverage checker의 build는 단계 로그와 함께 기한 없는 장기 작업으로 실행하고 `COVERAGE_BUILD_DEADLINE`은 없어졌으며, 각 coverage 실행은 자기 기한을 유지한다.
+
 - G5.30-8: `ci.yml`과 `docs-pages.yml`의 어떤 step이나 job에도 `timeout-minutes`가 없고, `make repo-check`는 그것을 가진 workflow를 실패시킨다.
 
 - G5.30-7: Makefile은 build, 설치, 도구 실행을 `RUN_LONG` 아래에서 기한 없이 실행하고, `RUN_CASE`, `BUILD_DEADLINE`, `TOOL_DEADLINE`, `tests/run-case.mjs`는 없어졌으며, `make repo-check`는 run-long 밖이나 `go test` binary 기한을 포함한 어떤 기한 아래의 장기 작업도 실패시킨다.

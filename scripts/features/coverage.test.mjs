@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { caseTest } from '../../tests/testcase.mjs';
-import { mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { performance } from 'node:perf_hooks';
+import { chmod, mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -202,6 +204,35 @@ func TestFirst(t *testing.T) {
     assert.deepEqual(await executeCoverage(manifest, root, 60000), []);
     assert.equal((await readdir(runs)).length, 2);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+// 느리지만 정상인 build는 기한 없이 끝까지 실행한다. PATH 앞의 go는 1.5초를 쉰 뒤 실제 go를 실행하므로
+// test2json build와 test binary build가 각각 1.5초 이상 걸리고, 두 build와 두 실행이 모두 통과한다.
+caseTest('a slow but healthy coverage build runs to its end without a deadline', 120000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
+  const owner = 'clients/go/sample/sample_test.go';
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'],
+      owners: { go: { part: 'clients/go/sample', tests: [owner],
+        commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
+      dependents: [] } }] };
+  const path = process.env.PATH;
+  try {
+    const realGo = execFileSync('sh', ['-c', 'command -v go']).toString().trim();
+    await mkdir(join(root, 'bin'), { recursive: true });
+    await writeFile(join(root, 'bin/go'), `#!/bin/sh\nsleep 1.5\nexec ${JSON.stringify(realGo)} "$@"\n`);
+    await chmod(join(root, 'bin/go'), 0o755);
+    await mkdir(join(root, 'clients/go/sample'), { recursive: true });
+    await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
+    await writeFile(join(root, owner), '//go:build featurecoverage\n\npackage sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\n');
+    process.env.PATH = `${join(root, 'bin')}:${path}`;
+    const started = performance.now();
+    assert.deepEqual(await executeCoverage(manifest, root, 60000), []);
+    assert.ok(performance.now() - started >= 3000, 'both builds ran through the slow go');
+  } finally {
+    process.env.PATH = path;
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 caseTest('invented JSON success from an arbitrary command is not execution evidence', 8000, async () => {

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { DATABASE, runCase, stepLines } from '../../tests/testcase.mjs';
+import { DATABASE, runCase, runLong, stepLines } from '../../tests/testcase.mjs';
 
 export const languages = ['go', 'php', 'rust', 'typescript'];
 export const databases = ['mysql', 'postgres', 'sqlite'];
@@ -159,7 +159,7 @@ function validJSON(value) {
 // run은 program을 실행해 출력을 모은다. step이 있으면 stderr 줄(cargo와 go의 build 진행)을
 // 실행 중에 단계로 내보낸다. stdout은 test event이므로 모아서 읽기만 한다. limit은 모으는
 // 출력의 최대 길이다. test 출력은 1000000자를 넘지 않고, build의 JSON message는 의존성마다
-// 한 줄이라 더 길다.
+// 한 줄이라 더 길다. timeoutMs는 실행 process의 기한이고, 장기 작업인 build는 null로 기한 없이 실행한다.
 function run(program, args, cwd, timeoutMs, env = process.env, step = undefined, limit = 1_000_000) {
   return new Promise((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
@@ -191,7 +191,8 @@ function run(program, args, cwd, timeoutMs, env = process.env, step = undefined,
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
       done(null, output);
     });
-    const timer = setTimeout(() => {
+    // timeoutMs가 null이면 장기 작업(build)이므로 timer를 두지 않는다.
+    const timer = timeoutMs === null ? undefined : setTimeout(() => {
       stop();
       done(`timeout after ${timeoutMs} ms`);
     }, timeoutMs);
@@ -300,21 +301,22 @@ async function dependencyFiles(executable, workspace) {
 
 // buildNative는 coverage case보다 먼저 build를 한 번씩 한다. state reader binary, Go
 // package마다 `go test -c` test binary와 test2json, Rust crate마다 `cargo test --no-run`의
-// test binary다. 두 번의 실행과 모든 database가 같은 binary를 실행한다. build 하나는 case
-// 하나로 시작, 진행(compiler 출력), 결과와 경과 시간을 보고하고 buildTimeoutMs를 기한으로
-// 가진다. 실패한 build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다.
-async function buildNative(plans, directory, buildTimeoutMs) {
+// test binary다. 두 번의 실행과 모든 database가 같은 binary를 실행한다. build 하나는 장기 작업
+// 하나로 시작, 진행(compiler 출력), 종료 코드, 결과와 경과 시간을 보고하고 기한이 없다(runLong). 실패한
+// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다.
+async function buildNative(plans, directory) {
   const builds = { state: null, test2json: null, go: new Map(), cargo: new Map() };
   const build = async (name, work) => {
     let failure;
-    const passed = await runCase(`features/coverage/build/${name}`, buildTimeoutMs, async ({ step }) => {
+    const passed = await runLong(`features/coverage/build/${name}`, async ({ step }) => {
       try { await work(step); }
       catch (error) { failure = String(error.message); throw error; }
+      step('exit 0');
     });
-    return passed ? null : failure ?? `build deadline ${buildTimeoutMs} ms exceeded`;
+    return passed ? null : failure;
   };
   const go = async (args, cwd, step) => {
-    const result = await run('go', args, cwd, buildTimeoutMs, process.env, step);
+    const result = await run('go', args, cwd, null, process.env, step);
     if (result.error) throw new Error(result.error);
   };
   if (plans.some(plan => plan.dsn)) {
@@ -341,7 +343,7 @@ async function buildNative(plans, directory, buildTimeoutMs) {
   const workspaces = new Map();
   for (const crate of new Set(specs.filter(spec => spec.format === 'cargo').map(spec => spec.cwd))) {
     const located = await run('cargo', ['locate-project', '--workspace', '--message-format', 'plain',
-      '--manifest-path', resolve(crate, 'Cargo.toml')], crate, buildTimeoutMs);
+      '--manifest-path', resolve(crate, 'Cargo.toml')], crate, null);
     const workspace = located.error ? null : dirname(located.stdout.trim());
     if (!workspace) {
       builds.cargo.set(crate, { error: `cargo locate-project: ${located.error}` });
@@ -356,7 +358,7 @@ async function buildNative(plans, directory, buildTimeoutMs) {
     const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
       const result = await run('cargo', ['test', '--no-run', '--workspace', ...features,
         '--manifest-path', resolve(workspace, 'Cargo.toml'), '--message-format=json-render-diagnostics'],
-        workspace, buildTimeoutMs, process.env, step, 100_000_000);
+        workspace, null, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
       for (const line of result.stdout.split('\n')) {
         if (!line.startsWith('{')) continue;
@@ -412,13 +414,8 @@ async function state(builds, database, dsn, timeoutMs) {
 // timeoutMs: 실행 하나가 띄우는 process 하나의 기한이다. process는 build된 binary로, database
 // 하나의 catalog digest를 읽는 state reader이거나, 선언된 case를 실행하는 test binary다. 그
 // case는 database에 연결해 자기 database를 만들고 지우며 정해진 statement를 실행하므로
-// DATABASE 등급(2분)이다.
-// buildTimeoutMs: build 하나의 기한이다. 가장 큰 build는 orm-tests crate의 `cargo test
-// --no-run`이고, target이 비었을 때 의존성 전체를 compile한다. 그 기준은 Makefile의
-// BUILD_DEADLINE(개발 machine에서 가장 긴 clean build 2.5-4분의 두 배)과 같다.
-export const COVERAGE_BUILD_DEADLINE = 8 * 60_000;
-
-export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buildTimeoutMs = COVERAGE_BUILD_DEADLINE) {
+// DATABASE 등급(2분)이다. 그 앞의 build는 장기 작업이므로 기한이 없다.
+export async function executeCoverage(manifest, root, timeoutMs = DATABASE) {
   const reports = {};
   const errors = [];
   const plans = [];
@@ -473,7 +470,7 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE, buil
   const directory = await mkdtemp(join(tmpdir(), 'orm-coverage-'));
   let builds;
   try {
-    builds = await buildNative(plans, directory, buildTimeoutMs);
+    builds = await buildNative(plans, directory);
     // 실행은 database마다 한 줄(lane)로 차례로 하고, 줄끼리는 함께 진행한다. 한 database의 state는
     // 그 database의 실행만 바꿀 수 있으므로 앞뒤 state 비교는 그대로이고, 세 database와
     // database가 없는 실행이 서로 기다리지 않는다.
