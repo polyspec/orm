@@ -6,19 +6,20 @@
 #
 #   databases.sh create <servers env> <directory> <name>
 #   databases.sh drop <servers env> <directory> <name>
+#   databases.sh drop-dead <servers env> <directory> <name>
 #
 # create는 <servers env>(make test-servers가 쓴 file)의 server에 MySQL과 PostgreSQL database
 # <name>_bench와 <name>_decimal, <directory>의 SQLite file을 만들어 scripts/bench-db.sh와
 # scripts/decimal-db-setup.php로 설치하고, <directory>/env(<servers env>에 이 database의 BENCH_*,
 # ORM_BENCH_MYSQL_DSN, 이 directory의 send-savepoint SQLite file인 ORM_SEND_SQLITE_DSN을 더한 것)와
 # <directory>/decimal-env를 쓴다.
-# drop은 그 database들을 지우고, MySQL 두 server의 binary log에서 replica가 적용을 마친 것을 지운다(purge_binlogs).
+# create는 먼저 끝난 실행이 남긴 database를 지운다(drop-dead, drop_dead_runs). drop은 그 database들을 지우고, MySQL 두 server의 binary log에서 replica가 적용을 마친 것을 지운다(purge_binlogs).
 # drop은 실행의 마지막 단계이고 앞 단계가 실패해도 실행되므로, 실행의 쓰기가 남긴 binary log도 실행과 함께
 # 사라진다. <name>은 소문자, 숫자와 밑줄로 된 이름이다.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-[ $# -eq 4 ] || { echo "usage: databases.sh create|drop <servers env> <directory> <name>" >&2; exit 2; }
+[ $# -eq 4 ] || { echo "usage: databases.sh create|drop|drop-dead <servers env> <directory> <name>" >&2; exit 2; }
 action=$1
 servers=$2
 dir=$3
@@ -85,8 +86,40 @@ purge_binlogs() {
   echo "databases: binary logs purged up to $file on the primary and $own on the replica"
 }
 
+# dead_runs는 stdin의 database 이름 가운데, 이 host에서 끝난 process의 실행(make owner-check의 orm_owner_<pid>_<hex>,
+# make check의 orm_check_<pid>_<hex>)이 남긴 bench와 decimal database의 이름을 적는다. 그 실행은 kill되어 자기
+# drop을 실행하지 못했다. process가 살아 있는 실행과 CI의 이름(ci_<id>)은 적지 않는다. test server는 127.0.0.1에만
+# 열리므로 실행은 모두 이 host의 process다.
+dead_runs() {
+  while IFS= read -r database; do
+    case "$database" in
+    orm_owner_*_bench | orm_owner_*_decimal) rest=${database#orm_owner_} ;;
+    orm_check_*_bench | orm_check_*_decimal) rest=${database#orm_check_} ;;
+    *) continue ;;
+    esac
+    pid=${rest%%_*}
+    case "$pid" in *[!0-9]* | '') continue ;; esac
+    ps -p "$pid" >/dev/null 2>&1 || printf '%s %s\n' "$database" "$pid"
+  done
+}
+
+# drop_dead_runs는 끝난 실행이 남긴 database를 MySQL과 PostgreSQL에서 지우고 지운 것을 적는다.
+drop_dead_runs() {
+  mysql_at "$ORM_RUN_MYSQL_DSN" -N -e 'SHOW DATABASES' | dead_runs | while read -r database pid; do
+    mysql_at "$ORM_RUN_MYSQL_DSN" -e "DROP DATABASE IF EXISTS \`$database\`" || return 1
+    echo "databases: dropped the MySQL database $database of run pid $pid, which no longer runs"
+  done || return 1
+  server=${ORM_RUN_POSTGRES_DSN#postgres://}; server=${server%%/*}
+  psql -X -q -At -v ON_ERROR_STOP=1 "postgres://$server/postgres?sslmode=disable" -c 'SELECT datname FROM pg_database' | dead_runs | while read -r database pid; do
+    psql -X -q -v ON_ERROR_STOP=1 "postgres://$server/postgres?sslmode=disable" -c "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)" || return 1
+    echo "databases: dropped the PostgreSQL database $database of run pid $pid, which no longer runs"
+  done
+}
+
 case "$action" in
 create)
+  # kill된 실행은 자기 database를 지우지 못하므로, 만들기 전에 끝난 실행의 database를 지운다.
+  drop_dead_runs
   mkdir -p "$dir"
   BENCH_MYSQL_DSN=$mysql_bench BENCH_POSTGRES_DSN=$postgres_bench BENCH_SQLITE_DSN=$sqlite_bench "$ROOT/scripts/bench-db.sh"
   BENCH_MYSQL_DSN=$mysql_bench BENCH_POSTGRES_DSN=$postgres_bench DECIMAL_ENV="$dir/decimal-env" \
@@ -126,8 +159,11 @@ drop)
   fi
   echo "databases: ${name}_bench and ${name}_decimal dropped"
   ;;
+drop-dead)
+  drop_dead_runs
+  ;;
 *)
-  echo "usage: databases.sh create|drop <servers env> <directory> <name>" >&2
+  echo "usage: databases.sh create|drop|drop-dead <servers env> <directory> <name>" >&2
   exit 2
   ;;
 esac
