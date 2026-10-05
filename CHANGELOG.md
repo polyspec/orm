@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.45-1: `make owner-check` runs the transaction end tests of Go (`transaction-end-go`) and of the Rust `tx::` tests (`transaction-end-rust`) when their files change.
+
 - G5.45: the Go, TypeScript and Rust clients close a connection instead of returning it to the pool when a step of its transaction end (a named lock release, a local value reset, a SQLite mode reset, COMMIT or ROLLBACK) failed, so a pooled connection is clean or discarded and no later user inherits a held lock.
 
 - G5.44: the binary log case of `test-servers-check` stops its fixture MySQL server and waits for its exit before it removes the server's directories, so no server is left writing errors into a removed log that fills `/tmp`; a `make check` report takes first failure lines from failures and not from case names, labels a SQLite disk I/O error as out of space only when a file system has no free space, names the largest removed but open file under `/tmp`, and keeps the npm debug log of a failed target with its error lines.
