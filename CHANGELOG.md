@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.37: `addTablesAndColumns` creates the missing indexes of existing tables along with missing tables and columns and returns each as `table.index`; a missing unique key stays `SCHEMA_DIFFERS`, named `add_unique <table>.<name>: a missing unique key can fail on the existing rows; add it with a plan`.
+
+- G5.37-1: the test MySQL servers rotate their binary logs every 64 MiB and remove a log an hour after its last write (`MYSQLD_BINLOG` of `scripts/test-servers.sh`), from the next `make test-servers`.
+
 - G5.33-14: `make conformance-check` checks the common state contracts on the outputs of its own run, which list the statement kinds of each sequence (transaction control included since T42), names every difference statement by statement, and `make check` now covers every CI check.
 
 - G5.33-13: CI runs the interface results checker through `make interface-results-check`, which exports the lease variables, and `make repo-check` fails a workflow step that runs a lease-reading program outside make.

@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.37: `addTablesAndColumns`는 빠진 table, column과 함께 기존 table에 빠진 index를 만들고 각각을 `table.index`로 돌려준다. 빠진 unique key는 여전히 `SCHEMA_DIFFERS`이며 `add_unique <table>.<name>: a missing unique key can fail on the existing rows; add it with a plan`으로 적는다.
+
+- G5.37-1: test MySQL 서버는 다음 `make test-servers`부터 binary log를 64 MiB마다 회전하고 마지막 쓰기 한 시간 뒤 지운다(`scripts/test-servers.sh`의 `MYSQLD_BINLOG`).
+
 - G5.33-14: `make conformance-check`는 자기 실행의 출력으로 공통 state contract(T42 이후 transaction 제어를 포함한 sequence마다의 statement kind 목록)를 검사하고 모든 차이를 statement 단위로 적으며, `make check`가 CI의 모든 검사를 다룬다.
 
 - G5.33-13: CI는 interface 결과 checker를 lease 변수를 export하는 `make interface-results-check`로 실행하고, `make repo-check`는 lease를 읽는 program을 make 밖에서 실행하는 workflow step을 실패로 본다.
