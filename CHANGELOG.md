@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-16-1: the interface guard test requires the `tests/go-run.mjs` form of the interface self-test command.
+
 - G5.32-9: the `server_transactions` event case compares the TimeZone source only on a direct PostgreSQL connection; through a pooler, which applies startup parameters with SET, it compares the setting and the transaction counts.
 
 - G5.34-1: the full-run record lists only the failed targets under `failed` and the unfinished ones under `incomplete`, and `make rerun-failed` reruns both.
