@@ -36,10 +36,20 @@ export function activeItems(checklist) {
 }
 
 function describe(record) {
-  return `the full run of tree ${record.tree} started ${record.started}, ended ${record.ended ?? 'never (killed or still running)'}, result ${record.result}, targets that did not pass: ${record.failed.join(', ') || 'none'}`;
+  return `the full run of tree ${record.tree} started ${record.started}, ended ${record.ended ?? 'never (killed or still running)'}, result ${record.result}, targets that failed: ${record.failed.join(', ') || 'none'}, targets that did not finish: ${(record.incomplete ?? []).join(', ') || 'none'}`;
 }
 
+// unfinished는 통과하지 못한 target이다: 실패한 것과 끝나지 않은 것(실행 중이었거나 실행하지 않은 것).
+// make rerun-failed는 이것만 다시 실행한다.
 const unfinished = record => record.targets.filter(target => target.status !== 'passed').map(target => target.name);
+
+// summarize는 기록의 failed(실패한 target)와 incomplete(시작하지 않았거나 끝나지 않은 target)를 target의
+// 상태에서 다시 정한다. 기록을 쓸 때마다 부르므로 강제 종료된 실행의 기록에서도 두 목록이 맞다.
+export function summarize(record) {
+  record.failed = record.targets.filter(target => target.status === 'failed').map(target => target.name);
+  record.incomplete = record.targets.filter(target => target.status !== 'passed' && target.status !== 'failed').map(target => target.name);
+  return record;
+}
 
 // decide는 mode를 실행할 수 있는지 정한다. targets는 전체 실행의 target이고, running은 기록이 적은 실행
 // process가 아직 실행 중인지다.
@@ -88,8 +98,10 @@ function read(path) {
   return record;
 }
 
-// 기록은 임시 file을 rename해 한 번에 바꾸므로 읽는 쪽은 쓰다 만 기록을 보지 않는다.
+// 기록은 임시 file을 rename해 한 번에 바꾸므로 읽는 쪽은 쓰다 만 기록을 보지 않는다. 쓰기 전에 failed와
+// incomplete를 target의 상태에서 다시 정한다.
 function write(path, record) {
+  summarize(record);
   mkdirSync(resolve(path, '..'), { recursive: true });
   const written = `${path}.${process.pid}`;
   writeFileSync(written, `${JSON.stringify(record, null, 2)}\n`);
@@ -166,7 +178,7 @@ function start(root, mode, entry, targets) {
     console.log(`full-run: allowed ${entry}: no checklist item is in progress, the tracked files are committed and no full run of tree ${current.tree} is recorded; running ${targets.length} targets: ${targets.join(' ')}`);
     record = {
       entry, tree: current.tree, commit: git(root, 'rev-parse', 'HEAD').trim(), started, ended: null, result: 'incomplete',
-      failed: [...targets], runner, setup: [], targets: targets.map(newStep), reruns: [],
+      failed: [], incomplete: [...targets], runner, setup: [], targets: targets.map(newStep), reruns: [],
     };
     run = record;
   } else {
@@ -190,14 +202,14 @@ function start(root, mode, entry, targets) {
       write(path, record);
     },
     finish() {
-      record.failed = unfinished(record);
-      const failed = record.failed.length > 0 || run.setup.some(step => step.status !== 'passed');
+      summarize(record);
+      const failed = record.failed.length > 0 || record.incomplete.length > 0 || run.setup.some(step => step.status !== 'passed');
       record.result = run.result = failed ? 'failed' : 'passed';
       record.ended = run.ended = now();
       record.runner = null;
       write(path, record);
-      console.log(`full-run: ${entry} result ${record.result}; targets that did not pass: ${record.failed.join(', ') || 'none'}; record ${path}`);
-      if (record.failed.length) console.log('full-run: run make rerun-failed to rerun only those targets');
+      console.log(`full-run: ${entry} result ${record.result}; targets that failed: ${record.failed.join(', ') || 'none'}; targets that did not finish: ${record.incomplete.join(', ') || 'none'}; record ${path}`);
+      if (unfinished(record).length) console.log('full-run: run make rerun-failed to rerun only those targets');
       return record;
     },
   };
