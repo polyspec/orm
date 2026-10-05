@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.53: `client-db-test.sh`의 차례 lane, performance 검사, package 검사, 실행 database의 drop은 실패한 부분 뒤에도 독립된 부분을 모두 실행하고 실패를 적는다. 독립된 검사를 차례로 실행하던 recipe 일곱 개와 검증 명령 여섯 개는 부분과 따로 된 명령으로 나누었고, repository 규칙이 그런 recipe와 이어 쓴 명령을 거부한다.
+
 - G5.52: 모든 CI setup step과 `make check`는 앞의 setup step이 실패해도 실행된다. runner는 step 결과(`ORM_CI_SETUP`)를 읽고, 실패한 step이 설치하는 것이 필요한 target을 그 step과 함께 not-run으로 기록한다. docs workflow는 필요한 것을 가진 검사를 모두 실행하고, 어떤 workflow도 `continue-on-error`를 쓰지 않으며, repository 규칙이 이것을 강제한다.
 
 - G5.51: 바뀐 path가 행동 시험을 하나도 고르지 않고 scope도 선언하지 않으면 `make owner-check`가 실패한다. `contracts/check-inputs.json`은 target의 `inputs`와 `lints`를 나누고 정확한 path 16개에 이유와 함께 `lint`나 `suite` scope를 선언한다. 추적하는 모든 file은 그것을 읽는 test에 이어졌고(새 검증 명령 40개, helper 12개, owner scope target 27개), helper 하나가 생성된 오류 code를 `docs/errors.yaml`과 비교하며, conformance와 decimal 검사의 database 상태는 ORM의 SQLite row lock table을 뺀다.

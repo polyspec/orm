@@ -2255,13 +2255,20 @@
         },
         {
           "id": "generation-typescript",
-          "command": "node clients/typescript/tests/generate.mjs && node clients/typescript/tests/generate-scan.mjs",
+          "command": "node clients/typescript/tests/generate.mjs",
           "inputs": [
             "clients/typescript/tests/generate.mjs",
-            "clients/typescript/tests/generate-scan.mjs",
             "clients/typescript/src/bin/orm-gen.ts",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
+          ]
+        },
+        {
+          "id": "generation-scan-typescript",
+          "command": "node clients/typescript/tests/generate-scan.mjs",
+          "inputs": [
+            "clients/typescript/tests/generate-scan.mjs",
+            "clients/typescript/src/bin/orm-gen.ts"
           ]
         },
         {
@@ -2275,12 +2282,19 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-rust-2 -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate",
           "inputs": [
             "clients/rust/orm-build/tests/generate.rs",
             "contracts/fixtures/zone.dbs",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
+          ]
+        },
+        {
+          "id": "generation-lib-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs generation-lib-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
+          "inputs": [
+            "clients/rust/orm-build/src/generate.rs"
           ]
         }
       ],
@@ -3780,7 +3794,7 @@
       "verification": [
         {
           "id": "encryption-go",
-          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1 && node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'AESRotation' -count=1",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run 'Codec|AES|Rotation|BlindIndex' -count=1",
           "inputs": [
             "clients/go/orm/aes_json_test.go",
             "clients/go/orm/aes_keys_test.go",
@@ -3788,9 +3802,15 @@
             "clients/go/orm/codec_test.go",
             "clients/go/orm/coverage_authenticated_encryption_test.go",
             "clients/go/orm/hostcodec_test.go",
-            "clients/go/model/model_test.go",
             "tests/codec/vectors.json",
             "contracts/fixtures/authenticated_encryption.json"
+          ]
+        },
+        {
+          "id": "encryption-model-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/model -run 'AESRotation' -count=1",
+          "inputs": [
+            "clients/go/model/model_test.go"
           ]
         },
         {
@@ -3810,8 +3830,15 @@
           ]
         },
         {
+          "id": "encryption-codec-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec",
+          "inputs": [
+            "clients/rust/orm/src/codec.rs"
+          ]
+        },
+        {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-rust-2 -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
           "inputs": [
             "clients/rust/orm/tests/aes_keys.rs"
           ]
@@ -4330,10 +4357,16 @@
       ],
       "verification": [
         {
-          "id": "constraints-go",
-          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1 && node tests/go-test.mjs -v -timeout 0 ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1",
+          "id": "constraints-engine-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/... -run 'External|Immutable|Overlapping|SoftDelete|Check' -count=1",
           "inputs": [
-            "engine/planner/soft_delete_test.go",
+            "engine/planner/soft_delete_test.go"
+          ]
+        },
+        {
+          "id": "constraints-driver-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm ./clients/go/orm/pg ./clients/go/orm/sqlite -run 'MapErr|MapMySQLErr' -count=1",
+          "inputs": [
             "clients/go/orm/driver_error_test.go",
             "clients/go/orm/pg/pg_test.go",
             "clients/go/orm/sqlite/sqlite_test.go"
@@ -5720,7 +5753,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-rust-2 -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate",
           "inputs": [
             "clients/rust/orm-build/tests/catalog.rs",
             "clients/rust/orm-build/tests/tool_cells.rs",
@@ -5744,8 +5777,8 @@
           ]
         },
         {
-          "id": "catalog-unit-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-unit-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib catalog:: tool_db::",
+          "id": "catalog-lib-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs catalog-lib-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
           "inputs": [
             "clients/rust/orm-build/tests/unit/mutation_commit.rs",
             "clients/rust/orm-build/tests/unit/mutation_safety.rs",

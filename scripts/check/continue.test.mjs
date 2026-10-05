@@ -3,7 +3,7 @@
 // database는 실행하지 않는다.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,3 +52,66 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
     rmSync(f.base, { recursive: true, force: true });
   }
 });
+
+// 차례 lane case(G5.53)는 lane을 병렬이 아니라 차례로 실행할 때 실패한 lane 뒤의 lane도 실행되는지 본다. 각 lane은 자기
+// subshell에서 실행되므로 앞 lane의 finish가 실행 전체를 끝내지 않는다.
+caseTest('client-db-test runs the next lane after a failed lane in sequence and names the failed lanes', PROCESS, () => {
+  const f = fake(['php', 'node'], 'model_test');
+  try {
+    const result = f.run(['scripts/client-db-test.sh'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php,typescript', ORM_CLIENT_DB_LANES: '' });
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    const ran = f.ran();
+    assert.ok(ran.includes('node clients/typescript/tests/model.mjs'), ran.join('\n'));
+    assert.match(result.stderr, /client-db-test: failed lanes: php\n/);
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+// perf case(G5.53)는 performance gate의 네 측정이 앞의 측정이 실패해도 모두 실행되는지 본다.
+caseTest('the performance gates run every gate after a failed one and name the failures', PROCESS, () => {
+  const f = fake(['node', 'php'], 'TestNative');
+  try {
+    const result = f.run(['scripts/perf-test.sh']);
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    assert.equal(f.ran().length, 4, f.ran().join('\n'));
+    assert.match(result.stderr, /perf-test: failed:\n {2}node tests\/go-test\.mjs .*TestNative.* \(exit 3\)/);
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+// package case(G5.53)는 package 검사 넷(TypeScript, PHP, Rust, Go)이 앞의 검사가 실패해도 모두 실행되는지 본다.
+caseTest('the package checks run every package after a failed one and name the failures', PROCESS, () => {
+  const f = fake(['npm', 'node', 'composer', 'cargo', 'go'], 'pack');
+  try {
+    writeFileSync(join(f.base, 'bin', 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
+    // HOME은 가짜 bin 앞에 $HOME/.cargo/bin을 두는 script가 실제 cargo를 고르지 않게 한다.
+    const result = f.run(['scripts/package-check.sh'], { HOME: f.base, CARGO_TARGET_DIR: join(f.base, 'target'), LEASE: join(f.base, 'bin', 'lease'), CARGO_LEASES: join(f.base, 'leases') });
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    const ran = f.ran().map(line => line.split(' ')[0]);
+    for (const program of ['composer', 'cargo', 'go']) assert.ok(ran.includes(program), `${program} did not run: ${ran.join(' ')}`);
+    assert.match(result.stderr, /package-check: failed:\n {2}typescript package/);
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
+// drop case(G5.53)는 MySQL database를 지우지 못해도 PostgreSQL database와 실행 directory를 지우는지 본다.
+caseTest('dropping the run databases removes every part after a failed one and names the failures', PROCESS, () => {
+  const f = fake(['mysql', 'psql'], 'DROP DATABASE IF EXISTS `orm_x_bench`');
+  try {
+    const servers = join(f.base, 'servers.env');
+    writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\n");
+    const dir = join(f.base, 'databases');
+    mkdirSync(dir);
+    const result = f.run(['scripts/check/databases.sh', 'drop', servers, dir, 'orm_x']);
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql']);
+    assert.ok(!existsSync(dir), 'the run directory is left');
+    assert.match(result.stderr, /databases: drop failed:\n {2}mysql /);
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
