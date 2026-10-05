@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.67: 문서 workflow는 `make docs-ci`로 검사를 `make check`의 runner로 test server 없이 실행하고, 검사마다의 log와 summary를 `!cancelled()` 아래에서 보고서로 올린다.
+
 - G5.66: CI와 문서 workflow의 모든 step은 summary step을 빼고 make target(install, install-*, ci-*)을 실행하며, `make repo-check`는 workflow step의 다른 명령을 거부한다.
 
 - G5.64-2: CONTRIBUTING.md는 개발 중에는 바뀐 것의 unit test를 실행하고 전체 묶음은 push마다 CI에서 실행한다고 적는다.

@@ -761,3 +761,30 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
   }
 });
 
+
+// server 없는 실행 case(G5.67)는 문서 workflow의 make docs-ci처럼 servers 없이 runner를 실행한다. server와 database
+// 단계가 없고, database가 필요한 target은 not-run이며, 나머지 target은 실행되고, summary와 target log가 그 실행의
+// 보고서에 남는다.
+caseTest('a run without servers runs the targets that need no database and reports them', PROCESS, async () => {
+  const { runChecks } = await import(resolve(repo, 'scripts/check/run.mjs'));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'full-run-')));
+  try {
+    const ran = [];
+    const run = async (program, args, step) => { ran.push(args.at(-1)); step(`ran ${args.at(-1)}`); };
+    const code = await runChecks({ root, servers: null, targets: ['docs-a', 'db-b'], run, needs: { 'docs-a': [], 'db-b': ['databases'] },
+      id: '77-1-docs', snapshot: () => ({ text: 'stub\n', places: { '/': 1 } }), ciSetup: '',
+      // 빠진 crate는 이 실행의 target이 필요로 하지 않으므로 downloads 단계를 실패시키지 않는다.
+      downloads: () => [{ need: 'rust', message: 'the crates of clients/rust/Cargo.lock are not downloaded; run make install, which downloads it' }] });
+    assert.equal(code, 1);
+    assert.deepEqual(ran, ['docs-a']);
+    const report = join(root, '.runtime/check/ci_77_1_docs/report');
+    const text = readFileSync(join(report, 'summary.md'), 'utf8');
+    assert.match(text, /\| downloads \| passed \|/);
+    assert.match(text, /\| docs-a \| passed \|/);
+    assert.match(text, /\| db-b \| not-run \| [0-9.]+ s \| this run has no database servers \|/);
+    assert.doesNotMatch(text, /\| servers \||databases\/create/);
+    assert.match(readFileSync(join(report, 'targets/docs-a.log'), 'utf8'), /ran docs-a/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
