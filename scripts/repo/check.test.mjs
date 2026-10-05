@@ -12,7 +12,7 @@ import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { deferredExitErrors, detachedGroupErrors } from './gosource.mjs';
+import { deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -1194,4 +1194,19 @@ caseTest('every CI step runs a make target', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   assert.deepEqual(ciMakeErrors(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]))), []);
+});
+
+caseTest('a test does not fail on a measured time above a bound', COMPUTE, () => {
+  assert.deepEqual(timeFailureErrors({
+    'a_test.go': 'func TestA(t *testing.T) {\n\tif elapsed > parseBudget {\n\t\tt.Fatalf("slow")\n\t}\n}\n',
+    'b.rs': '    assert!(cpu < Duration::from_secs(1), "cpu {cpu:?}");\n',
+    'c.test.mjs': "    assert.ok(parseMs <= PARSE_BUDGET_MS, 'slow');\n",
+    'd.php': "if ($cpuMs > 10000) {\n    throw new RuntimeException('slow');\n}\n",
+  }).map(error => error.split(' fails ')[0]), ['a_test.go:2', 'b.rs:1', 'c.test.mjs:1', 'd.php:1']);
+  // 경고, 하한, 두 측정의 비교, 0과의 비교는 실패가 아니거나 정확성 검사다.
+  assert.deepEqual(timeFailureErrors({
+    'e_test.go': 'func TestE(t *testing.T) {\n\tif elapsed > parseBudget {\n\t\ttestcase.Warn("slow")\n\t}\n}\n',
+    'f.rs': '    assert!(waited >= Duration::from_millis(200), "too early");\n    assert!(cpu * 4 < wall, "clock");\n',
+    'g.test.mjs': "    check(event.elapsed >= 0, 'negative');\n",
+  }), []);
 });

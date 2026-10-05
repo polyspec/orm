@@ -1,8 +1,9 @@
 //! Measures dbspec parse and emit of the shared stress document
 //! (`node tests/dbspec/stress.mjs`, 2000 tables, 60000 columns, 10000 foreign
-//! keys). Run in release mode: the document is parsed five times and the
-//! median parse must use at most 300 ms of the main thread's CPU time
-//! (docs/dbspec.md, "Verification"),
+//! keys). Run in release mode: the document is parsed five times, and the
+//! median parse CPU time of the main thread and its ratio to the reference
+//! work are printed, with a warning above the reference ratio (docs/dbspec.md,
+//! "Verification"); a measurement never fails the run,
 //! emission must reproduce the canonical document, and two emissions must be
 //! identical.
 //!
@@ -13,7 +14,9 @@ use std::collections::BTreeMap;
 use std::process::ExitCode;
 use std::time::Duration;
 
-const PARSE_BUDGET: Duration = Duration::from_millis(300);
+/// The documented reference value of the ratio of the median parse CPU time to the median CPU time of the reference
+/// work (docs/dbspec.md, "Verification"). A ratio above it prints a warning; a measurement never fails the run.
+const REFERENCE_RATIO: f64 = 34.0;
 const PARSES: usize = 5;
 const RUN_DEADLINE: Duration = Duration::from_secs(10);
 
@@ -80,8 +83,18 @@ fn main() -> ExitCode {
     case.step(format_args!("emit {:.3} ms", emit_time.as_secs_f64() * 1000.0));
     let second = orm_schema::dbspec::emit(&document);
     let mut failures = Vec::new();
-    if parse_time > PARSE_BUDGET {
-        failures.push(format!("median parse cpu {parse_time:?} exceeds {PARSE_BUDGET:?}"));
+    let ratio = parse_time.as_secs_f64() / reference_time.as_secs_f64();
+    case.step(format_args!(
+        "parse ratio {ratio:.2} to the reference on {} {} (reference ratio {REFERENCE_RATIO})",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    ));
+    if ratio > REFERENCE_RATIO {
+        orm_testcase::warning(format_args!(
+            "median parse cpu {:.3} ms is {ratio:.2} times the reference cpu {:.3} ms, above the reference ratio {REFERENCE_RATIO} (docs/dbspec.md, Verification)",
+            ms(parse_time),
+            ms(reference_time)
+        ));
     }
     if emitted != text {
         let at = emitted.bytes().zip(text.bytes()).position(|(a, b)| a != b).unwrap_or(emitted.len().min(text.len()));
@@ -92,7 +105,7 @@ fn main() -> ExitCode {
     }
     let (cpu, wall) = (run.cpu(), run.wall());
     if cpu > RUN_DEADLINE {
-        failures.push(format!("cpu {cpu:?} exceeds {RUN_DEADLINE:?} (wall {wall:?})"));
+        orm_testcase::warning(format_args!("dbspec stress used cpu {cpu:?} (wall {wall:?}), above its reference of {RUN_DEADLINE:?}"));
     }
     if !failures.is_empty() {
         case.fail(failures.join("; "));

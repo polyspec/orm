@@ -159,8 +159,8 @@ rerun-failed:
 	node scripts/check/full-run.mjs decide rerun-failed
 	$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))
 
-# bench는 성능 측정(2000 table stress 문서의 parse budget, 적용, introspection과 비교, CPU 시간
-# 제한)을 check와 같은 runner로 target마다 실행한다.
+# bench는 성능 측정(2000 table stress 문서의 parse, 적용, introspection과 비교, CPU 시간)을 check와 같은
+# runner로 target마다 실행한다. 측정은 출력하고 기준값을 넘으면 경고할 뿐 실패시키지 않는다(AGENTS.md).
 BENCH_TARGETS = dbspec-stress-bench dbspec-apply-stress-bench dbspec-introspect-compare-bench dbspec-compare-bench timing-check
 .PHONY: bench
 bench:
@@ -212,8 +212,8 @@ full-run-check:
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
 #
-# DBSPEC_STRESS_DOCUMENT는 tests/dbspec/stress.mjs의 2000 table 문서다. 그 문서의 parse 시간
-# budget, 적용, introspection과 비교는 성능 측정이므로 make bench가 실행한다. make check의
+# DBSPEC_STRESS_DOCUMENT는 tests/dbspec/stress.mjs의 2000 table 문서다. 그 문서의 parse 시간,
+# 적용, introspection과 비교는 성능 측정이므로 make bench가 실행한다. make check의
 # dbspec-compare-check와 dbspec-introspect-compare-check는 같은 모양의 작은 문서
 # (DBSPEC_COMPARE_TABLES, DBSPEC_INTROSPECT_TABLES개 table)로 같은 code path를 실행하고, make
 # bench는 같은 target을 2000 table로 실행한다.
@@ -223,7 +223,7 @@ DBSPEC_COMPARE_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_COMPARE_TABLES).dbs
 DBSPEC_INTROSPECT_TABLES ?= 20
 DBSPEC_INTROSPECT_DOCUMENT = $(RUN_DIR)/stress-$(DBSPEC_INTROSPECT_TABLES).dbs
 # DBSPEC_INTROSPECT_PROFILE은 Rust introspection runner의 cargo profile이다. make check는 test
-# build와 의존성을 함께 쓰는 dev, make bench는 introspection budget을 재는 release다.
+# build와 의존성을 함께 쓰는 dev, make bench는 introspection 시간을 재는 release다.
 DBSPEC_INTROSPECT_PROFILE ?= dev
 DBSPEC_INTROSPECT_DIR = $(if $(filter dev,$(DBSPEC_INTROSPECT_PROFILE)),debug,$(DBSPEC_INTROSPECT_PROFILE))
 .PHONY: dbspec-rust-check
@@ -338,8 +338,8 @@ dbspec-apply-php-check:
 
 # dbspec-introspect-compare-check는 stress 문서(DBSPEC_INTROSPECT_TABLES개 table)를 MySQL,
 # PostgreSQL, SQLite에 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust
-# introspection runner를 실행해 같은 출력, source schema text, 미지원 객체 없음, 각
-# introspection의 budget 준수를 요구한다. dbspec-introspect-compare-bench는 같은 target을 2000
+# introspection runner를 실행해 같은 출력, source schema text, 미지원 객체 없음을 요구하고, 각
+# introspection의 시간을 출력하며 기준값을 넘으면 경고한다. dbspec-introspect-compare-bench는 같은 target을 2000
 # table 문서와 release runner로 실행한다.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
 dbspec-introspect-compare-check: cargo-downloads-check lease-tool
@@ -389,8 +389,8 @@ dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
 
 # dbspec-stress-bench는 2000 table stress 문서를 Go, PHP, TypeScript, Rust에서 두 번씩 parse하고
-# emit해 parse 시간 budget(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
-# emission이 같음을 확인하고(Rust는 release build), PHP introspection을 SQLite에서 잰다.
+# emit해 parse 시간과 기준 작업에 대한 비율을 출력하고(docs/dbspec.md "Verification"), emit(parse(doc)) == doc, 두
+# emission이 같음을 확인하며(Rust는 release build), PHP introspection을 SQLite에서 잰다.
 .PHONY: dbspec-stress-bench
 # 부분들은 top target의 RUN_DIR에 있는 stress 문서를 함께 읽고, 언어마다 독립된 부분이다.
 dbspec-stress-bench/%: RUN_DIR = $(abspath .runtime/run)/dbspec-stress-bench-$$PPID
@@ -875,9 +875,9 @@ example-check: cargo-downloads-check
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 	rm -rf $(RUN_DIR)
 
-# timing-check는 자기 계산에 시간 제한을 두는 Go, Rust, PHP, TypeScript test를 process group이
-# 4분의 1만 CPU를 받도록 멈추며 실행하고, 각 제한이 CPU 시간을 재서 그대로 통과하는지 확인한다.
-# 2000 table stress 문서의 parse budget을 쓰므로 make bench가 실행한다.
+# timing-check는 자기 계산의 시간을 재는 Go, Rust, PHP, TypeScript test를 process group이 CPU를 일부만 받도록
+# 멈추며 실행하고, 각 test가 그대로 통과하며 측정을 출력하는지 확인한다. 성능은 측정할 뿐 test를 실패시키지
+# 않는다(AGENTS.md). 2000 table stress 문서를 쓰므로 make bench가 실행한다.
 TIMING_GO_DBSPEC_TEST = $(RUN_DIR)/dbspec.test
 timing-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)

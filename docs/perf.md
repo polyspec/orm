@@ -29,7 +29,7 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 ## 3. Regression check (`make perf-check`)
 
-The check measures the generated client and an equivalent native result in one process: 100 warm-up pairs, then 1,000 adjacent pairs whose order alternates, and it compares the median of the per-pair client/native ratios with the bound. Load that slows one pair slows both of its sides, so the median ratio does not follow the machine load. Each check also runs beside one busy process per CPU (`TestHotPathGateUnderLoad`, and `ORM_PERF_CPU_LOAD=1` for the PHP check) and must pass there as well. Both sides run the same SQL text: before the gates, `make perf-check` runs `TestNativeStatementsEqualClient`, which compares the Go native statements with the statements the generated client runs, and `TestNativeWorkloadsRead`, which runs every native read workload against the bench database. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. CI fails when a median ratio exceeds its bound.
+The check measures the generated client and an equivalent native result in one process: 100 warm-up pairs, then 1,000 adjacent pairs whose order alternates, and it compares the median of the per-pair client/native ratios with the bound. Load that slows one pair slows both of its sides, so the median ratio does not follow the machine load. Each check also runs beside one busy process per CPU (`TestHotPathGateUnderLoad`, and `ORM_PERF_CPU_LOAD=1` for the PHP check). Both sides run the same SQL text: before the gates, `make perf-check` runs `TestNativeStatementsEqualClient`, which compares the Go native statements with the statements the generated client runs, and `TestNativeWorkloadsRead`, which runs every native read workload against the bench database. The native side of every client scans typed values; the PHP baseline decodes the cells and runs the same typed conversion into row values as the client's assembly, without the client machinery, so the ratio measures that machinery and not the typed conversion itself. Constructing a model object is client work measured at about 0.1µs per row and stays on the client side of the ratio. A median ratio above its bound is reported as a warning (a `WARNING` line, the CI summary and a GitHub warning annotation); performance is measured and reported and never fails a check (AGENTS.md).
 
 | Client | PK bound | 100-row bound | Check |
 |---|---:|---:|---|
@@ -40,7 +40,7 @@ Both checks read the seeded bench database from `ORM_BENCH_MYSQL_DSN`. The Go ch
 
 With the converted baseline, PHP 8.4.25 on the local socket measures a PK ratio of 1.20–1.31 and a 100-row ratio of 1.06–1.12 across runs; the PK ratio is dominated by the fixed request build and plan cost of about 10.5µs per query. PHP 8.5.10 measures 1.14 and 1.02.
 
-The ratio varies by hardware and approaches 1 as round-trip time increases. A bound change requires a measurement and an update to this page.
+The ratio varies by hardware and approaches 1 as round-trip time increases. A bound is the reference value of the warning; a change requires a measurement and an update to this page.
 
 ## 4. Rust MySQL driver comparison
 

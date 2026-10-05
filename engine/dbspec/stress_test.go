@@ -18,12 +18,13 @@ import (
 
 // TestStressDocument parses and emits the shared 2000-table, 60000-column,
 // 10000-foreign-key document that node tests/dbspec/stress.mjs writes, and
-// parses it five times. The median CPU time of the parsing thread fails above
-// parseBudget (docs/dbspec.md, "Verification"); the wall-clock deadline only
-// bounds a hang.
+// parses it five times. It prints the median CPU time of the parsing thread,
+// the median CPU time of the reference work and their ratio, and a warning when
+// the ratio exceeds referenceRatio (docs/dbspec.md, "Verification"); a
+// measurement never fails the test. The wall-clock deadline only bounds a hang.
 const (
-	parseBudget = 100 * time.Millisecond
-	parseRuns   = 5
+	referenceRatio = 63.0
+	parseRuns      = 5
 )
 
 func TestStressDocument(t *testing.T) {
@@ -54,8 +55,8 @@ func TestStressDocument(t *testing.T) {
 		}
 		slices.Sort(parses)
 		parseElapsed := parses[parseRuns/2]
-		// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
-		// 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+		// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 같은 process에서 같은 시계로 재고, parse 시간과의
+		// 비율을 출력한다(docs/dbspec.md, Verification).
 		references := make([]time.Duration, parseRuns)
 		for i := range references {
 			clock := startCaseClock(t)
@@ -66,19 +67,6 @@ func TestStressDocument(t *testing.T) {
 		slices.Sort(references)
 		reference := references[parseRuns/2]
 		t.Logf("stress reference cpu median=%s ratio=%.2f", reference, float64(parseElapsed)/float64(reference))
-		// The allocating reference splits the document into lines and words and counts each word in a map: string
-		// slicing, allocation and hashing, the kind of work a parse does. It is printed and not asserted until the
-		// development machine and CI show whether its ratio holds across machines.
-		allocations := make([]time.Duration, parseRuns)
-		for i := range allocations {
-			clock := startCaseClock(t)
-			referenceWords = allocatingReference(text)
-			allocations[i], _ = clock.elapsed(t)
-			runtime.UnlockOSThread()
-		}
-		slices.Sort(allocations)
-		allocation := allocations[parseRuns/2]
-		t.Logf("stress allocating reference cpu median=%s ratio=%.2f words=%d", allocation, float64(parseElapsed)/float64(allocation), referenceWords)
 		if err := expectDocument(document, diagnostics); err != nil {
 			return err
 		}
@@ -101,8 +89,11 @@ func TestStressDocument(t *testing.T) {
 		if second != first {
 			return fmt.Errorf("two emissions of the stress document differ")
 		}
-		if parseElapsed > parseBudget {
-			return fmt.Errorf("stress median parse used %s of CPU, over the %s budget (docs/dbspec.md, Verification)", parseElapsed, parseBudget)
+		ratio := float64(parseElapsed) / float64(reference)
+		machine := runtime.GOOS + " " + runtime.GOARCH
+		t.Logf("stress parse ratio %.2f to the reference on %s (reference ratio %.0f)", ratio, machine, referenceRatio)
+		if ratio > referenceRatio {
+			testcase.Warn("stress median parse CPU of %s is %.2f times the reference CPU of %s, above the reference ratio %.0f (docs/dbspec.md, Verification); machine %s", parseElapsed, ratio, reference, referenceRatio, machine)
 		}
 		return nil
 	})
@@ -119,19 +110,4 @@ func referenceScan(text string) uint32 {
 		h = h*31 + uint32(text[i])
 	}
 	return h
-}
-
-// referenceWords is the result of the allocating reference, kept in a package variable so the work is not removed.
-var referenceWords int
-
-// allocatingReference splits text into lines and the lines into words, and counts each word in a map; it returns
-// the number of distinct words.
-func allocatingReference(text string) int {
-	counts := map[string]int{}
-	for _, line := range strings.Split(text, "\n") {
-		for _, word := range strings.Fields(line) {
-			counts[word]++
-		}
-	}
-	return len(counts)
 }

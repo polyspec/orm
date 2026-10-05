@@ -5189,8 +5189,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path 성능 기준",
       "status": "partial",
-      "description": "The Go and PHP clients keep hot-path latency within a measured ratio of the raw driver on the seeded MySQL bench database, and make perf-check fails when a workload exceeds its recorded bound. The Rust bench harness measures without an enforced bound, and the TypeScript standard is not built.",
-      "description_ko": "Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율 안에서 유지하며, make perf-check는 작업량이 기록한 상한을 넘으면 실패한다. Rust 벤치 도구는 상한 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
+      "description": "The Go and PHP clients measure hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
+      "description_ko": "Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [

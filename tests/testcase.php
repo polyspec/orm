@@ -60,6 +60,16 @@ function testcase_duration(float $seconds): string
     return ($hours > 0 ? $hours . 'h' : '') . $minutes . 'm' . $trim($rest) . 's';
 }
 
+/**
+ * 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를 실패시키지
+ * 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을 실행 기록과
+ * summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
+ */
+function testcase_warning(string $message): void
+{
+    testcase_emit('WARNING ' . $message);
+}
+
 /** 보고 줄 하나를 바로 stdout에 쓴다. */
 function testcase_emit(string $line): void
 {

@@ -47,6 +47,8 @@ mod tests {
         let (cpu, wall) = (clock.cpu(), clock.wall());
         println!("TIME sleep cpu={cpu:?} wall={wall:?}");
         assert!(wall >= Duration::from_millis(200), "wall {wall:?}");
-        assert!(cpu < Duration::from_millis(50), "cpu {cpu:?}");
+        // The clock's own correctness: the sleep counts in the wall-clock time and not in the CPU time, so the CPU time
+        // is a small part of it. Both are measured together, so the check compares them and holds under any load.
+        assert!(cpu * 4 < wall, "cpu {cpu:?} is not a small part of wall {wall:?}");
     }
 }

@@ -31,6 +31,13 @@ export const GRACE = 5_000;
 
 // duration은 ms를 Go time.Duration의 String 형식(1m0s, 1.5s, 12ms)으로 쓴다. 세 언어의
 // 보고 줄이 같은 형식을 가진다.
+// warning은 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를
+// 실패시키지 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을
+// 실행 기록과 summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
+export function warning(message) {
+  console.log(`WARNING ${message}`);
+}
+
 export function duration(ms) {
   // 반올림한 값으로 단위를 고른다. 999.6ms는 1000ms가 아니라 1s다.
   if (Math.round(ms * 1000) < 1000) return `${Math.round(ms * 1000)}µs`;

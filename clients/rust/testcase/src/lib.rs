@@ -92,6 +92,13 @@ thread_local! {
     static RUNNING: RefCell<Vec<(String, Instant)>> = const { RefCell::new(Vec::new()) };
 }
 
+/// 성능 측정이 문서의 기준값을 넘었다는 줄 `WARNING <message>`를 쓴다. 성능은 측정하고 보고할 뿐 test를 실패시키지
+/// 않는다(AGENTS.md): 경고는 실패가 아니다. message는 측정값, 기준값, 기계를 담는다. check runner는 이 줄을 실행 기록과
+/// summary에 모으고 GitHub Actions의 `::warning::` annotation으로도 쓴다.
+pub fn warning(text: impl Display) {
+    emit(&format!("WARNING {text}; machine {} {}", std::env::consts::OS, std::env::consts::ARCH));
+}
+
 /// 이 thread에서 실행 중인 가장 안쪽 case의 단계 줄을 출력한다. case 값을 받지 않는 helper
 /// 함수가 쓴다. 실행 중인 case가 없으면 이름 없이 출력한다.
 pub fn step(text: impl Display) {

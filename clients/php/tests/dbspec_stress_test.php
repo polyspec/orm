@@ -6,7 +6,7 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 
-// stress case의 CPU 한도는 60 s다. 문서 생성(node process 하나), parse 다섯 번, emit 두 번을 담는다.
+// stress case의 CPU 기준값은 60 s다. 문서 생성(node process 하나), parse 다섯 번, emit 두 번을 담는다. 넘으면 경고한다.
 $clock = cpuCaseBegin('dbspec_stress', 60.0);
 $started = $clock[0];
 testcase_step('memoryLimit=' . ini_get('memory_limit'));
@@ -36,8 +36,8 @@ for ($i = 0; $i < 5; $i++) {
 }
 sort($parses);
 $parseMs = $parses[2];
-// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 네 client가 같은 계산을 같은 시계로 재고, parse
-// 시간과의 비율을 적는다. 비율은 아직 판정에 쓰지 않는다(docs/dbspec.md, Verification).
+// 기준 작업은 같은 문서의 byte마다 checksum을 갱신하는 loop다. 같은 process에서 같은 시계로 재고, parse 시간과의
+// 비율을 출력한다(docs/dbspec.md, Verification).
 $references = [];
 for ($i = 0; $i < 5; $i++) {
     $referenceStarted = caseClockStart();
@@ -77,10 +77,17 @@ if ($second !== $first) {
 }
 testcase_step("emitted emitMs=$emitMs");
 
-// The parse budget is docs/dbspec.md, "Verification": the median CPU time of a parse.
-$parseBudgetMs = 400;
-if ($parseMs > $parseBudgetMs) {
-    throw new RuntimeException("dbspec_stress median parse CPU of $parseMs ms exceeds the $parseBudgetMs ms budget");
+// docs/dbspec.md, "Verification": the ratio of the median parse CPU time to the median CPU time of the reference work
+// is printed, and a ratio above the documented reference value prints a warning. A measurement never fails the test.
+$referenceRatio = 11.0;
+$ratio = $parseMs / $references[2];
+$machine = sprintf('%s %s, PHP %s', PHP_OS_FAMILY, php_uname('m'), PHP_VERSION);
+testcase_step(sprintf('parse ratio %.2f to the reference on %s (reference ratio %.1f)', $ratio, $machine, $referenceRatio));
+if ($ratio > $referenceRatio) {
+    testcase_warning(sprintf(
+        'dbspec_stress median parse CPU of %.3f ms is %.2f times the reference CPU of %.3f ms, above the reference ratio %.1f (docs/dbspec.md, Verification); machine %s',
+        $parseMs, $ratio, $references[2], $referenceRatio, $machine,
+    ));
 }
 testcase_step("parseMs=$parseMs emitMs=$emitMs peakBytes=" . memory_get_peak_usage(true));
 cpuCaseEnd('dbspec_stress', $clock);

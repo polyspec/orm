@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.73: 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. stress test, test case의 CPU 한도, hot-path 측정, introspection 비교는 측정을 출력하고 기준값(stress 비율 11, 34, 63, 185, CI의 가장 높은 비율의 1.5배)을 넘으면 `WARNING` 줄을 출력하며, check runner는 경고를 기록하고 GitHub annotation으로 쓰고, `make repo-check`는 측정한 시간이 한도를 넘었다고 실패하는 test를 거부한다.
+
 - G5.74: Go stress test는 할당 위주의 기준 작업(줄과 낱말의 개수를 map에 더하기)에 대한 parse 비율도 출력하며, 판정하기 전에 CI runner에서 잰다.
 
 - G5.72: Rust catalog test는 mutation의 row lock과 table lock을 그 Locked publisher 안에서 자기 connection으로 확인하므로, 한 번의 poll 안에 답하는 mutation이 더 이상 확인 전에 끝까지 가지 않는다.
