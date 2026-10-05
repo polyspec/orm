@@ -44,6 +44,10 @@ const failing = process.env.STUB_SUITE === 'failing';
 // runner의 콜백 밖에서 처리되지 않는 오류를 던지는 suite다(G5.43-1).
 const lost = process.env.STUB_SUITE === 'lost';
 const throws = process.env.STUB_SUITE === 'throws';
+// STUB_SUITE=drop은 database 지우기가 databases.sh처럼 받은 directory를 통째로 지우는 suite, STUB_SUITE=verbose는 target b가
+// 3 MiB를 출력하는 suite다(G5.43-2).
+const drop = process.env.STUB_SUITE === 'drop';
+const verbose = process.env.STUB_SUITE === 'verbose';
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
@@ -64,6 +68,11 @@ const run = async (program, args, step, spawned = () => {}) => {
       step(line);
     throw new Error('make --no-print-directory -k b exited with 2');
   }
+  if (drop && name === 'sh drop') rmSync(args[3], { recursive: true, force: true });
+  if (verbose && name === 'b') {
+    for (let i = 0; i < 3 * 1024; i++) step(\`line \${i} \${'v'.repeat(1000)}\`);
+    return;
+  }
   if (lost && name === 'b') {
     rmSync(root + '/.runtime/check/' + process.env.STUB_REPORT_RUN + '/report', { recursive: true, force: true });
     step('a line after the report directory is gone');
@@ -72,7 +81,7 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
@@ -98,7 +107,7 @@ function checkout(t, checklist) {
     root,
     git,
     servers,
-    run: (action, mode, kill = '', env = {}) => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill, servers], { encoding: 'utf8', env: { ...process.env, ...env } }),
+    run: (action, mode, kill = '', env = {}) => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill, servers], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, ...env } }),
     ran: () => {
       const names = existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean) : [];
       rmSync(log, { force: true });
@@ -533,6 +542,43 @@ caseTest('an unhandled error of the runner is recorded as the reason of a crashe
     const { runSummary } = await import(resolve(repo, 'scripts/check/summary.mjs'));
     const { text } = runSummary(c.root, '8-1');
     assert.match(text, /The runner did not finish: runner error: Error: boom outside the runner/);
+  } finally {
+    cleanup();
+  }
+});
+
+// 보고서 위치 case(G5.43-2)는 database 지우기가 databases.sh drop처럼 받은 directory를 통째로 지우는 실행이다. 보고서는
+// 그 directory 밖에 있으므로 environment.txt와 모든 단계의 log가 남고, 쓰기 실패는 없다.
+caseTest('removing the run databases leaves the report of the run', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    writeFileSync(join(c.root, 'pass-b'), '');
+    const result = c.run('run', 'check', '', { STUB_SUITE: 'drop', ORM_CHECK_RUN_ID: '9-1' });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const run = join(c.root, '.runtime/check/ci_9_1');
+    assert.equal(existsSync(join(run, 'databases')), false);
+    for (const file of ['environment.txt', 'summary.md', 'targets/servers.log', 'targets/databases-create.log', 'targets/a.log', 'targets/b.log', 'targets/c.log', 'targets/databases-drop.log'])
+      assert.ok(existsSync(join(run, 'report', file)), `report/${file} is missing`);
+    const record = c.record();
+    assert.deepEqual([record.result, record.reportErrors, record.targets.filter(target => target.reportErrors)], ['passed', undefined, []]);
+  } finally {
+    cleanup();
+  }
+});
+
+// log 크기 case(G5.43-2)는 target b가 3 MiB를 출력하는 실행이다. log는 실행 중에도 처음 1 MiB와 마지막 256 KiB만
+// 담고, 머리(명령)와 마지막 줄, 생략한 byte 수를 가진다.
+caseTest('a target log keeps its head and its tail within the size limit', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'verbose', ORM_CHECK_RUN_ID: '10-1' }).status, 0);
+    const log = readFileSync(join(c.root, '.runtime/check/ci_10_1/report/targets/b.log'), 'utf8');
+    assert.match(log, /^target b\ncommand: make --no-print-directory -k /);
+    assert.match(log, /\nline 0 v+\n/);
+    assert.match(log, /\n\[\.\.\. \d+ bytes of output omitted; the last \d+ bytes follow \.\.\.\]\n/);
+    assert.match(log, /\nline 3071 v+\n$/);
+    assert.ok(Buffer.byteLength(log) <= 1024 * 1024 + 256 * 1024 + 2048, `the log has ${Buffer.byteLength(log)} bytes`);
+    assert.equal(c.record().targets.find(target => target.name === 'b').truncated > 0, true);
   } finally {
     cleanup();
   }

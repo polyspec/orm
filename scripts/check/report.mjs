@@ -9,7 +9,8 @@
 //   record.json              .runtime/full-run.json의 그 실행 기록(CI의 summary 단계가 쓴다)
 //   servers/*.log            test server의 log(CI의 summary 단계가 쓴다)
 //
-// LIMIT_BYTES보다 큰 file은 끝의 TAIL_BYTES만 남기고 그 사실을 file 첫 줄과 summary에 적는다. build
+// target log는 처음 LIMIT_BYTES와 마지막 TAIL_BYTES를 남기고(cappedLog), 옮기는 file 가운데 LIMIT_BYTES보다 큰
+// file은 끝의 TAIL_BYTES만 남기며 그 사실을 file 첫 줄과 summary에 적는다. build
 // target(`target` directory), node_modules와 database file은 옮기지 않고 manifest에 크기와 함께 적는다.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs';
@@ -181,14 +182,38 @@ export function keepLogs(source, destination) {
   return kept;
 }
 
-// limitLog는 LIMIT_BYTES보다 큰 target log를 끝만 남긴 file로 바꾸고 그 사실을 돌려준다.
-export function limitLog(path) {
-  if (!existsSync(path)) return null;
-  const { size } = statSync(path);
-  if (size <= LIMIT_BYTES) return null;
-  const end = tail(path, size);
-  writeFileSync(path, Buffer.concat([Buffer.from(`[the last ${TAIL_BYTES} of ${size} bytes of this log]\n`), end]));
-  return size;
+// cappedLog는 단계 하나의 log다. 쓴 크기가 LIMIT_BYTES에 이르면 file에는 더 쓰지 않고 마지막 TAIL_BYTES만 memory에
+// 두었다가 close가 `[... <n> bytes of output omitted; the last <m> bytes follow ...]`와 함께 붙인다. 그래서 log는 실행
+// 중에도 LIMIT_BYTES와 TAIL_BYTES를 넘지 않고, 머리(명령, recipe, 입력, 처음 출력)와 끝을 모두 가진다. 쓰기는
+// writer(reportWriter)가 한다. close는 생략한 byte 수를 돌려준다.
+export function cappedLog(writer, path, header) {
+  let size = 0;
+  let omitted = 0;
+  let tail = [];
+  let tailSize = 0;
+  const write = text => {
+    const bytes = Buffer.byteLength(text);
+    if (size + bytes <= LIMIT_BYTES) {
+      writer.append(path, text);
+      size += bytes;
+      return;
+    }
+    omitted += bytes;
+    tail.push(text);
+    tailSize += bytes;
+    while (tailSize - Buffer.byteLength(tail[0]) >= TAIL_BYTES) tailSize -= Buffer.byteLength(tail.shift());
+  };
+  writer.write(path, header);
+  size = Buffer.byteLength(header);
+  return {
+    line: text => write(`${text}\n`),
+    close() {
+      if (!omitted) return 0;
+      const kept = tail.join('');
+      writer.append(path, `[... ${omitted - Buffer.byteLength(kept)} bytes of output omitted; the last ${Buffer.byteLength(kept)} bytes follow ...]\n${kept}`);
+      return omitted - Buffer.byteLength(kept);
+    },
+  };
 }
 
 const time = step => step.elapsed !== undefined ? `${(step.elapsed / 1000).toFixed(1)} s`
@@ -209,7 +234,7 @@ export function summary(record, { run = record, report, crashed = null } = {}) {
   if (crashed) lines.push(`**The runner did not finish: ${crashed}.** The steps below are as the runner last recorded them; a step marked running stopped with the runner.`, '');
   lines.push(`${count('passed')} passed, ${count('failed')} failed, ${count('not-run')} not run because a setup step failed, ${count('running') + count('pending')} not finished.`, '');
   if (run.reason) lines.push('```', run.reason, '```', '');
-  if (report) lines.push(`Report: \`${report}\` (environment.txt, targets/<target>.log, targets/<target>/run/). A log or kept file larger than ${LIMIT_BYTES} bytes keeps only its last ${TAIL_BYTES} bytes, which its first line states.`, '');
+  if (report) lines.push(`Report: \`${report}\` (environment.txt, targets/<target>.log, targets/<target>/run/). A target log keeps its first ${LIMIT_BYTES} bytes and its last ${TAIL_BYTES} bytes and states the bytes it omits; a kept file larger than ${LIMIT_BYTES} bytes keeps only its last ${TAIL_BYTES} bytes, which its first line states.`, '');
   lines.push('| step | status | time | first failure lines |', '|---|---|---|---|');
   for (const step of steps) {
     const detail = step.status === 'not-run' ? step.reason : [...(step.failures ?? []).slice(0, 3), ...(step.reportErrors ?? [])].join(' / ');
