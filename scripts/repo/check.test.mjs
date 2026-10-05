@@ -11,7 +11,7 @@ import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -463,6 +463,21 @@ caseTest('commands outside the Makefile build into the shared Rust target direct
     unit('x', '"${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a'),
   ]), [build('node tests/run-long.mjs b -- cargo build --locked'),
     'x runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): "${CARGO_TARGET_DIR:?unset; run make}/debug/integration" a']);
+});
+
+// TypeScript 읽기 case는 저장소의 Makefile과 최소 Makefile, file을 검사한다.
+caseTest('a target that runs code using the TypeScript build output holds it', COMPUTE, () => {
+  const files = new Set(trackedFiles('*'));
+  assert.deepEqual(typescriptReaderErrors(text('Makefile'), path => files.has(path) ? text(path) : undefined), []);
+  const sources = {
+    'scripts/reads.mjs': "const run = ['node', ['clients/typescript/tests/db.mjs']];\n",
+    'clients/typescript/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'scripts/quoted.mjs': "const fixture = \"import { Db } from '../dist/index.js';\";\n",
+  };
+  const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld:\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
+  assert.deepEqual(typescriptReaderErrors(makefile, path => sources[path]), [
+    'Makefile reader runs scripts/reads.mjs, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)',
+  ]);
 });
 
 // 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.

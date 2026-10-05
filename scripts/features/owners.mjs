@@ -14,7 +14,7 @@
 // target(예: docs/*.md에 docs-check와 docs-verify-idempotent)을 먼저 실행한다. scope suite인 target은
 // 전체 suite(make check)에서만 실행하고 여기서는 고르지 않는다. scope나 입력 선언이 규칙과 다르면
 // 아무것도 실행하지 않고 실패한다.
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
@@ -380,6 +380,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     for (const { target } of targets) {
       if (!(await runGroup(`owners/make/${target}`, context => make(root, target, context)))) failed++;
+    }
+    // 기능 단계와 helper는 TypeScript client의 build 출력을 쓰고, 그 일부는 그 출력을 build하는 make target을 하위
+    // process로 실행한다(make dbspec-ts-check 같은 검증 명령). 그래서 make target을 모두 실행한 뒤부터 이 process가
+    // 끝날 때까지 그 출력의 exclusive lease를 가진다. 하위 process의 보유는 조상인 이 process의 보유를 그대로 쓴다.
+    if (owners.length > 0 || helpers.length > 0) {
+      const { LEASE: lease, TYPESCRIPT_LEASES: leases } = process.env;
+      if (!lease || !leases) throw new Error('LEASE and TYPESCRIPT_LEASES are unset; run make owner-check');
+      const held = spawnSync(lease, ['hold', leases, 'exclusive', '--wait', '--pid', String(process.pid)], { stdio: 'inherit' });
+      if (held.status !== 0) {
+        console.log('owners: the TypeScript build output could not be held');
+        process.exit(1);
+      }
     }
     for (const { helper } of helpers) {
       if (!(await runGroup(`owners/helper/${helper.id}`, context => execute(root, ['scripts/features/check.mjs', '--run', '--helper', helper.id], context)))) failed++;

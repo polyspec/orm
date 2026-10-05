@@ -399,7 +399,7 @@ export function runtimePathErrors(makefile) {
 // typescript:check, 그것을 하는 scripts/client-db-test.sh) make target 가운데 첫 줄에서 그 build 출력의 보유
 // ($(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
 export function typescriptHolderErrors(makefile) {
-  const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh/;
+  const builds = /\$\(TSC_BUILD\)|typescript:(?:build|test|check)\b|client-db-test\.sh|tests\/conformance\/check run\b/;
   return makeRecipes(makefile)
     .filter(unit => unit.name !== 'Makefile' && unit.commands.some(command => builds.test(command)) && unit.commands[0].trim() !== '$(HOLD_TYPESCRIPT)')
     .map(unit => `${unit.name} builds the TypeScript client without holding its build output; start the recipe with $(HOLD_TYPESCRIPT)`);
@@ -422,5 +422,34 @@ export function unleasedCargoErrors(units) {
         if (/\$\{CARGO_TARGET_DIR[^}]*\}\/|\$CARGO_TARGET_DIR\//.test(segment))
           errors.push(`${name} runs a program of the shared Rust target directory; run a copy made under its lease (scripts/cargo-build-copy.sh): ${segment}`);
       }
+  return errors;
+}
+
+// usesTypescriptOutput는 path의 JavaScript file이 TypeScript client의 build 출력(clients/typescript/dist)을 쓰는지다:
+// 직접 `dist/`를 import하거나, 상대 import나 `clients/typescript/...mjs` 경로로 실행하는 file이 그것을 쓴다.
+export function usesTypescriptOutput(path, read, seen = new Set()) {
+  if (seen.has(path)) return false;
+  seen.add(path);
+  const text = read(path);
+  if (text === undefined) return false;
+  // import 문(정적, 동적, re-export)만 본다. 문자열 안의 import 예시는 쓰는 것이 아니다.
+  if (/^\s*(?:import\s[^'"\n]*from\s*|(?:[^'"\n]*\bawait\s+)?import\(\s*|export\s[^'"\n]*from\s*)['"](?:(?:\.\.\/)+|[\w./-]*clients\/typescript\/)dist\//m.test(text)) return true;
+  // node로 실행하는 clients/typescript의 file(같은 줄에 node가 있는 경로)도 따라간다.
+  const named = text.split('\n').filter(line => /\bnode\b/.test(line))
+    .flatMap(line => [...line.matchAll(/clients\/typescript\/[\w./-]+\.mjs/g)].map(match => match[0]));
+  return [...dependencies(path, text), ...named].some(next => usesTypescriptOutput(next, read, seen));
+}
+
+// typescriptReaderErrors는 TypeScript client의 build 출력을 쓰는 file을 node로 실행하는 make target 가운데 첫 줄에서
+// 그 출력의 보유(읽기는 $(READ_TYPESCRIPT), build하면 $(HOLD_TYPESCRIPT))를 얻지 않는 것마다 오류 하나를 돌려준다.
+export function typescriptReaderErrors(makefile, read) {
+  const errors = [];
+  for (const unit of makeRecipes(makefile)) {
+    if (unit.name === 'Makefile' || /^\$\((?:READ|HOLD)_TYPESCRIPT\)$/.test(unit.commands[0].trim())) continue;
+    const files = unit.commands.flatMap(command => [...command.matchAll(/\bnode\s+(?:--test\s+)?((?:[\w./-]+\.mjs\s*)+)/g)]
+      .flatMap(match => match[1].trim().split(/\s+/)));
+    const reader = files.find(file => usesTypescriptOutput(file, read));
+    if (reader) errors.push(`${unit.name} runs ${reader}, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)`);
+  }
   return errors;
 }

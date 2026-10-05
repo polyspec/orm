@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-7: TypeScript build 출력을 읽기만 하는 target은 shared lease를, `conformance-check`와 `make owner-check`의 기능 단계는 exclusive lease를 가지며, 조상 process가 가진 lease는 하위 process도 가진 것으로 본다.
+
 - G5.33-6: 기능 검증 명령, 기능 coverage checker, script의 Rust build는 target lease를 가지고, 실행하는 program은 복사본이며, 복사본은 file system이 지원하면 copy-on-write clone이다.
 
 - G5.33-5: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test`는 `tests/cargo-test.mjs`로 실행한다. 그것은 target lease 아래에서 build하고, test binary를 실행 directory로 복사해 그 복사본을 실행한다.
