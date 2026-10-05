@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
+
 - G5.30-9: 기능 coverage checker의 build는 단계 로그와 함께 기한 없는 장기 작업으로 실행하고 `COVERAGE_BUILD_DEADLINE`은 없어졌으며, 각 coverage 실행은 자기 기한을 유지한다.
 
 - G5.30-8: `ci.yml`과 `docs-pages.yml`의 어떤 step이나 job에도 `timeout-minutes`가 없고, `make repo-check`는 그것을 가진 workflow를 실패시킨다.
