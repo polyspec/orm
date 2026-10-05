@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -420,7 +420,7 @@ caseTest('test-servers.sh refuses a socket path longer than the platform limit',
     for (const [root, name] of [[deep('mysql.sock'), 'mysql.sock'], [deep('proxysql-admin-pgsql.sock', fits('mysql.sock')), 'proxysql-admin-pgsql.sock']]) {
       mkdirSync(join(root, 'scripts'), { recursive: true });
       copyFileSync(new URL('../test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
-      const result = spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'start', '39171', '39471', '39181', '39481', '39182', '39482'], { encoding: 'utf8' });
+      const result = spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'start'], { encoding: 'utf8' });
       const socket = join(root, '.runtime/servers', name);
       assert.equal(result.status, 1, result.stderr);
       assert.equal(result.stderr, `test-servers: socket path ${socket} is ${Buffer.byteLength(socket)} bytes; ${system} allows at most ${limit}\n`);
@@ -1287,4 +1287,13 @@ caseTest('a failure message for a missing condition names its fix', COMPUTE, () 
     'scripts/c.sh': `: "\${BENCH_DSN:?BENCH_DSN ${required}}"\ncommand -v x >/dev/null || { echo "x ${['is', 'not', 'installed'].join(' ')}; run make install-server-programs" >&2; exit 1; }\n`,
   };
   assert.deepEqual(fixlessMessageErrors(files).map(error => error.split(': a failure')[0]), ['tests/a.mjs:1', 'scripts/c.sh:1']);
+});
+
+caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, () => {
+  const makefile = ['TEST_MYSQL_PORT = 33171', '# TEST_POSTGRES_PORT = 55471', 'test-servers:', '\t./scripts/test-servers.sh start $(TEST_MYSQL_PORT)', '\t./scripts/test-servers.sh start'].join('\n');
+  assert.deepEqual(fixedPortErrors({ Makefile: makefile, 'scripts/a.sh': 'export PGPORT=5432\nport=$(node scripts/free-ports.mjs 1)\n' }).map(error => error.split(' fixes ')[0]), [
+    'Makefile:1', 'Makefile:4', 'scripts/a.sh:1',
+  ]);
+  const tracked = execFileSync('git', ['ls-files', 'Makefile', '*.sh'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  assert.deepEqual(fixedPortErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });

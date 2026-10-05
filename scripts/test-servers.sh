@@ -6,10 +6,14 @@
 # listen on 127.0.0.1 over TCP; the other endpoints are Unix sockets in
 # .runtime/servers, which stop and the ProxySQL admin interface use.
 #
-#   test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> \
-#       <postgres-replica-port> <proxysql-port> <pgbouncer-port>
-#   test-servers.sh tls <mysql-port> <mysql-replica-port>
+#   test-servers.sh start
+#   test-servers.sh tls
 #   test-servers.sh stop
+#
+# start chooses six free ports on 127.0.0.1 (scripts/free-ports.mjs) for the
+# servers of this checkout, so two checkouts never contend for one fixed port;
+# a server owns its port from the moment it listens. The environment file
+# records them, and a later start or tls of running servers reads them from it.
 #
 # start initializes the primaries and replicas, creates the databases
 # orm_test and orm_tools, starts the poolers, and writes the environment file
@@ -56,7 +60,7 @@ PROXYSQL_ADMIN_PGSQL_SOCKET="$DIR/proxysql-admin-pgsql.sock"
 PROXYSQL_PGSQL_SOCKET="$DIR/proxysql-pgsql.sock"
 
 usage() {
-  echo "usage: test-servers.sh start <mysql-port> <postgres-port> <mysql-replica-port> <postgres-replica-port> <proxysql-port> <pgbouncer-port> | tls <mysql-port> <mysql-replica-port> | stop" >&2
+  echo "usage: test-servers.sh start | tls | stop; run it through make test-servers, make test-servers-tls or make test-servers-stop" >&2
   exit 2
 }
 
@@ -76,6 +80,38 @@ check_socket_paths() {
       exit 1
     fi
   done
+}
+
+# env_ports reads the ports of the running servers from their environment file:
+# start chose them when it started the servers, and write_env recorded them.
+# choose_ports gives the servers of a new start six free ports on 127.0.0.1.
+choose_ports() {
+  # shellcheck disable=SC2046
+  set -- $(node "$ROOT/scripts/free-ports.mjs" 6)
+  [ $# -eq 6 ] || { echo "test-servers: scripts/free-ports.mjs chose $# ports, not 6; run node scripts/free-ports.mjs 6 to see why" >&2; exit 1; }
+  for p in "$@"; do
+    port "$p"
+  done
+  MYSQL_PORT=$1
+  POSTGRES_PORT=$2
+  MYSQL_REPLICA_PORT=$3
+  POSTGRES_REPLICA_PORT=$4
+  PROXYSQL_PORT=$5
+  PGBOUNCER_PORT=$6
+}
+
+env_ports() {
+  env_port() {
+    value=$(sed -n "s/^export $1='[^@]*@127\.0\.0\.1:\([0-9][0-9]*\)\/.*/\1/p" "$ENV_FILE" | head -n 1)
+    [ -n "$value" ] || { echo "test-servers: $ENV_FILE records no port in $1; run make test-servers-stop and make test-servers, which rewrite it" >&2; exit 1; }
+    echo "$value"
+  }
+  MYSQL_PORT=$(env_port ORM_TEST_MYSQL_SERVER_DSN)
+  POSTGRES_PORT=$(env_port ORM_TEST_POSTGRES_SERVER_DSN)
+  MYSQL_REPLICA_PORT=$(env_port ORM_TEST_MYSQL_REPLICA_DSN)
+  POSTGRES_REPLICA_PORT=$(env_port ORM_TEST_POSTGRES_REPLICA_DSN)
+  PROXYSQL_PORT=$(env_port ORM_TEST_PROXYSQL_DSN)
+  PGBOUNCER_PORT=$(env_port ORM_TEST_PGBOUNCER_DSN)
 }
 
 port() {
@@ -429,6 +465,7 @@ EOF
 
 start() {
   if [ -f "$ENV_FILE" ]; then
+    env_ports
     if ! all_running; then
       echo "test-servers: $ENV_FILE exists but a server is not running; run make test-servers-stop" >&2
       exit 1
@@ -449,6 +486,7 @@ start() {
   for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer; do
     command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed; run make install-server-programs, or install it with the package manager of the machine" >&2; exit 1; }
   done
+  choose_ports
   hold_exclusive
   mkdir -p "$DIR"
   trap 'status=$?; if [ "$status" -ne 0 ]; then echo "test-servers: start failed; logs are in $DIR" >&2; stop_servers; fi' EXIT
@@ -472,25 +510,14 @@ start() {
 [ $# -ge 1 ] || usage
 case "$1" in
   start)
-    [ $# -eq 7 ] || usage
-    for p in "$2" "$3" "$4" "$5" "$6" "$7"; do
-      port "$p"
-    done
-    MYSQL_PORT=$2
-    POSTGRES_PORT=$3
-    MYSQL_REPLICA_PORT=$4
-    POSTGRES_REPLICA_PORT=$5
-    PROXYSQL_PORT=$6
-    PGBOUNCER_PORT=$7
+    [ $# -eq 1 ] || usage
     start
     ;;
   tls)
-    # tls <mysql-port> <mysql-replica-port> loads the TLS files into running servers.
-    [ $# -eq 3 ] || usage
-    port "$2"
-    port "$3"
-    MYSQL_PORT=$2
-    MYSQL_REPLICA_PORT=$3
+    # tls loads the TLS files into the running servers, on the ports of their environment file.
+    [ $# -eq 1 ] || usage
+    [ -f "$ENV_FILE" ] || { echo "test-servers: $ENV_FILE is missing; run make test-servers, which starts the servers" >&2; exit 1; }
+    env_ports
     tls
     ;;
   mysql-stop)
