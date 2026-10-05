@@ -266,25 +266,55 @@ async fn pool_size_bound() {
     }
 }
 
-/// A slow condition of the test, per dialect. MySQL bounds SELECT statements
-/// with max_execution_time, PostgreSQL bounds every statement, and SQLite has
-/// no session timeout.
-fn slow(driver: &str) -> Option<&'static str> {
-    match driver {
-        "mysql" => Some("SLEEP(5) = 0"),
-        "postgres" => Some("pg_sleep(5) IS NULL"),
-        _ => None,
+/// 다른 연결의 열린 transaction이 table의 모든 행을 갱신해 잡고 있는 lock이다(MySQL,
+/// PostgreSQL). `release`가 그 transaction을 rollback한다.
+enum HeldRows {
+    MySql(sqlx::Transaction<'static, sqlx::MySql>),
+    Postgres(sqlx::Transaction<'static, sqlx::Postgres>),
+}
+
+impl HeldRows {
+    /// `db`와 다른 연결에서 `table`의 모든 행을 잡는다.
+    async fn hold(holder: &Db, table: &str) -> HeldRows {
+        match holder.pool() {
+            Pool::MySql(pool) => {
+                let mut tx = pool.begin().await.expect("begin the holder");
+                sqlx::raw_sql(sqlx::AssertSqlSafe(format!("UPDATE `{table}` SET `seq` = `seq`"))).execute(&mut *tx).await.expect("hold the rows");
+                HeldRows::MySql(tx)
+            }
+            Pool::Postgres(pool) => {
+                let mut tx = pool.begin().await.expect("begin the holder");
+                sqlx::raw_sql(sqlx::AssertSqlSafe(format!("UPDATE \"{table}\" SET \"seq\" = \"seq\""))).execute(&mut *tx).await.expect("hold the rows");
+                HeldRows::Postgres(tx)
+            }
+            Pool::Sqlite(_) => panic!("SQLite has no row lock of another connection"),
+        }
+    }
+
+    async fn release(self) {
+        match self {
+            HeldRows::MySql(tx) => tx.rollback().await.expect("release the rows"),
+            HeldRows::Postgres(tx) => tx.rollback().await.expect("release the rows"),
+        }
     }
 }
 
-fn slow_count(db: &Db, condition: &str) -> Core {
-    let mut core = Core::new(&ENTITY);
-    core.connect(db);
-    core.raw("", condition, Vec::new());
-    core
+/// `db`의 transaction에서 `entity`의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다.
+async fn locked_read(db: &Db, entity: &'static Entity) -> orm::Result<()> {
+    db.transaction(async || {
+        let mut core = Core::new(entity);
+        core.connect(db);
+        core.lock("update");
+        orm::model::get(&ZoneEvent::from_core(core)).await.map(drop)
+    })
+    .retry(0)
+    .await
 }
 
-/// A statement past the connection timeout returns CANCELED.
+/// A statement past the connection timeout returns CANCELED. MySQL bounds
+/// SELECT statements with max_execution_time, PostgreSQL bounds every
+/// statement, and SQLite has no session timeout. The bounded statement is a
+/// locking read of a row that another connection holds.
 #[tokio::test]
 async fn statement_timeout() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
@@ -293,12 +323,15 @@ async fn statement_timeout() {
         let cfg = orm::Config { statement_timeout_ms: 200, ..orm::Config::default() };
         let db = Db::connect(database.dsn(), 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
-        // The condition is evaluated per row, so the table holds one row.
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
-        let err = orm::model::get_count(&slow_count(&db, slow(driver).unwrap())).await.expect_err("a statement past the timeout");
+        let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let held = HeldRows::hold(&holder, "zone_event").await;
+        let err = locked_read(&db, &ENTITY).await.expect_err("a statement past the timeout");
         assert_eq!(err.code(), orm::codes::CANCELED, "{driver}: {err}");
+        held.release().await;
+        holder.close().await;
         db.close().await;
         database.drop().await;
     }
@@ -331,7 +364,6 @@ async fn statement_timeout_through_a_pooler() {
     }));
     let setup = Db::connect(&base, 1, orm::Config::default()).await.unwrap();
     setup.utils().schema().install(schema).await.unwrap();
-    // Three rows sleep 0.1 s each, so the statement runs past 200 ms.
     for _ in 0..3 {
         let mut core = Core::new(entity);
         core.connect(&setup);
@@ -339,21 +371,28 @@ async fn statement_timeout_through_a_pooler() {
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         orm::model::create(&mut row).await.unwrap();
     }
-    let slow_count = |db: &Db| {
-        let mut core = Core::new(entity);
-        core.connect(db);
-        core.raw("", "pg_sleep(0.1) IS NOT NULL", Vec::new());
-        core
-    };
+    // A direct connection holds the rows, so a locking read through the pooler
+    // waits for the lock.
+    let held = HeldRows::hold(&setup, table.name()).await;
     let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
     let bounded = Db::connect_schema(&single, schema, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
-    let err = orm::model::get_count(&slow_count(&bounded)).await.expect_err("the bounded connection through the pooler");
+    let err = locked_read(&bounded, entity).await.expect_err("the bounded connection through the pooler");
     assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
     let plain = Db::connect_schema(&single, schema, 1, orm::Config::default()).await.unwrap();
-    let count = orm::model::get_count(&slow_count(&plain)).await;
-    assert_eq!(count.map_err(|e| e.to_string()), Ok(3), "a connection without a timeout after the bounded one");
-    let err = orm::model::get_count(&slow_count(&bounded)).await.expect_err("the bounded connection after the plain one");
+    // The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
+    // the other connection, so the plain read waits that long and then succeeds.
+    let release = async {
+        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        held.release().await;
+    };
+    let started = std::time::Instant::now();
+    let (read, ()) = tokio::join!(locked_read(&plain, entity), release);
+    assert_eq!(read.map_err(|e| e.to_string()), Ok(()), "a connection without a timeout after the bounded one");
+    assert!(started.elapsed() >= std::time::Duration::from_millis(200), "the plain read waited {:?}, not past the bound", started.elapsed());
+    let held = HeldRows::hold(&setup, table.name()).await;
+    let err = locked_read(&bounded, entity).await.expect_err("the bounded connection after the plain one");
     assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
+    held.release().await;
     bounded.close().await;
     plain.close().await;
     setup.close().await;
@@ -379,7 +418,8 @@ async fn postgres_float_round_trip() {
 }
 
 /// Dropping the future of a statement cancels the statement, and the
-/// connection it ran on stays usable.
+/// connection it ran on stays usable. The statement is an update of a row
+/// that another connection holds, so it waits until its future is dropped.
 #[tokio::test]
 async fn dropping_a_query_cancels_it() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
@@ -389,13 +429,17 @@ async fn dropping_a_query_cancels_it() {
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        let mut row = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let held = HeldRows::hold(&holder, "zone_event").await;
 
-        let slow = slow_count(&db, slow(driver).unwrap());
+        row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         let started = std::time::Instant::now();
-        let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), orm::model::get_count(&slow)).await;
-        assert!(dropped.is_err(), "{driver}: the slow statement finished");
+        let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), orm::model::update(&mut row, false)).await;
+        assert!(dropped.is_err(), "{driver}: the blocked statement finished");
         assert!(started.elapsed() < std::time::Duration::from_secs(4), "{driver}: dropping waited for the statement");
+        held.release().await;
+        holder.close().await;
         // The pool holds one connection, so the next statement proves the
         // cancelled one released it.
         let count = tokio::time::timeout(std::time::Duration::from_secs(5), orm::model::get_count(event(&db).core()))
@@ -409,7 +453,8 @@ async fn dropping_a_query_cancels_it() {
 }
 
 /// Dropping a transaction future closes its checked-out connection instead
-/// of waiting for SQLx's five-second close-on-drop path.
+/// of waiting for SQLx's five-second close-on-drop path. On MySQL and
+/// PostgreSQL the transaction waits for a row that another connection holds.
 #[tokio::test]
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
@@ -417,6 +462,18 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        // MySQL과 PostgreSQL에서는 다른 연결이 미리 만든 행을 잡아 transaction의 locking read가 기다린다.
+        let held = if driver == "sqlite" {
+            None
+        } else {
+            let mut row = event(&db);
+            row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
+            orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+            let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            let held = HeldRows::hold(&holder, "zone_event").await;
+            Some((holder, held))
+        };
+        let committed = if held.is_some() { 1 } else { 0 };
         let tx_db = db.clone();
         let dropped = tokio::time::timeout(
             std::time::Duration::from_millis(300),
@@ -427,12 +484,10 @@ async fn dropping_a_transaction_frees_a_single_connection() {
                 if driver == "sqlite" {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 } else {
-                    let condition = match driver {
-                        "mysql" => "SLEEP(1) = 0",
-                        "postgres" => "pg_sleep(1) IS NULL",
-                        _ => unreachable!(),
-                    };
-                    orm::model::get_count(&slow_count(&tx_db, condition)).await?;
+                    let mut core = Core::new(&ENTITY);
+                    core.connect(&tx_db);
+                    core.lock("update");
+                    orm::model::get(&ZoneEvent::from_core(core)).await?;
                 }
                 Ok::<(), orm::Error>(())
             })
@@ -442,7 +497,11 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         assert!(dropped.is_err(), "{driver}: transaction future completed before it was dropped");
         let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), orm::Error>(())).retry(0)).await;
         assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
-        assert_eq!(orm::model::get_count(event(&db).core()).await.unwrap(), 0, "{driver}: dropped transaction committed");
+        if let Some((holder, held)) = held {
+            held.release().await;
+            holder.close().await;
+        }
+        assert_eq!(orm::model::get_count(event(&db).core()).await.unwrap(), committed, "{driver}: dropped transaction committed");
         db.close().await;
         database.drop().await;
     }

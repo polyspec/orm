@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,14 +16,14 @@ import (
 
 // TestWithContextCancels cancels the context of a connection handle while a
 // statement is running: the statement returns CANCELED, and the connection the
-// handle was derived from stays usable.
+// handle was derived from stays usable. The running statement is an update of
+// a row that another connection holds in an open transaction, so it waits for
+// that lock until the context is cancelled once the server reports the
+// statement waiting for the lock. SQLite waits for a lock in its busy handler,
+// which a cancelled context does not interrupt, so on SQLite the context is
+// cancelled before the statement and the statement does not start.
 func TestWithContextCancels(t *testing.T) {
 	testcase.Start(t, testcase.Database)
-	slow := map[string]string{
-		"mysql":    "SLEEP(5) = 0",
-		"postgres": "pg_sleep(5) IS NULL",
-		"sqlite":   "(SELECT count(*) FROM (WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 200000000) SELECT x FROM c)) >= 0",
-	}
 	s := fixtureSchema(t, "zone")
 	manifest := s
 	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
@@ -44,24 +45,43 @@ func TestWithContextCancels(t *testing.T) {
 			if _, err := row.Create(); err != nil {
 				t.Fatal(err)
 			}
+			release := holdRows(t, driver, dsn, "zone_event")
+			defer release()
 
 			ctx, cancel := context.WithCancel(context.Background())
-			handle := db.WithContext(ctx)
-			go func() {
-				time.Sleep(300 * time.Millisecond)
+			defer cancel()
+			waiting := make(chan error, 1)
+			if driver == "sqlite" {
 				cancel()
-			}()
-			c := orm.NewCore(ent)
-			ent.New(c)
-			c.Connect(handle)
-			c.Raw("", slow[driver], nil)
+				waiting <- nil
+			} else {
+				monitor := openNative(t, driver, serverSession(t, driver, dsn))
+				defer monitor.Close()
+				go func() {
+					waiting <- awaitLockWait(ctx, monitor, driver)
+					cancel()
+				}()
+			}
+			blocked := orm.NewCore(ent)
+			ent.New(blocked)
+			blocked.Connect(db)
+			got, err := blocked.Get()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got.Orm_().Connect(db.WithContext(ctx))
+			got.Orm_().Set("start_dt", time.Now())
 			started := time.Now()
-			if _, err := c.GetCount(); orm.ErrorCode(err) != orm.CodeCanceled {
+			if err := got.Orm_().Update(nil); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("cancelled statement: %v (code %q)", err, orm.ErrorCode(err))
 			}
 			if took := time.Since(started); took > 4*time.Second {
 				t.Fatalf("cancellation waited for the statement: %s", took)
 			}
+			if err := <-waiting; err != nil {
+				t.Fatal(err)
+			}
+			release()
 
 			// The connection is usable after the cancelled statement.
 			after := orm.NewCore(ent)
@@ -72,6 +92,39 @@ func TestWithContextCancels(t *testing.T) {
 			}
 		})
 	}
+}
+
+// holdRows는 다른 연결의 열린 transaction에서 table의 모든 행을 갱신해 그 행의 lock(SQLite는
+// database write lock)을 잡는다. 돌려준 함수는 그 transaction을 rollback하고 두 번째 호출은
+// 아무것도 하지 않는다. test가 끝날 때도 부른다.
+func holdRows(t *testing.T, driver, dsn, table string) func() {
+	t.Helper()
+	native := openNative(t, driver, dsn)
+	tx, err := native.Begin()
+	if err != nil {
+		native.Close()
+		t.Fatal(err)
+	}
+	quote := func(name string) string { return `"` + name + `"` }
+	if driver == "mysql" {
+		quote = func(name string) string { return "`" + name + "`" }
+	}
+	if _, err := tx.Exec("UPDATE " + quote(table) + " SET " + quote("seq") + " = " + quote("seq")); err != nil {
+		tx.Rollback()
+		native.Close()
+		t.Fatal(err)
+	}
+	var once sync.Once
+	release := func() {
+		once.Do(func() {
+			if err := tx.Rollback(); err != nil {
+				t.Errorf("release the held rows: %v", err)
+			}
+			native.Close()
+		})
+	}
+	t.Cleanup(release)
+	return release
 }
 
 // TestWithContextCancelsTransaction cancels a transaction started on a context

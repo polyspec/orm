@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-6: 네 클라이언트의 timeout과 취소 test는 raw API로 sleep 함수를 부르는 대신 다른 연결이 잡은 row lock을 statement가 기다리게 한다.
+
 - G5.33-10: 다른 실행이 거부되는 사이에 보유자가 푼 lease를 더는 보유자 없는 lease로 보지 않으므로, 기다리는 실행이 그것 때문에 실패하지 않는다.
 
 - G5.30-14: `make test-servers`의 MySQL migration은 각 단계를 단계 로그와 함께 기한 없이 실행하고, replica를 timeout 없이 기다린다.

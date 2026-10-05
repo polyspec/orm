@@ -132,6 +132,10 @@ func Open(t testing.TB, driver, dsn string) *sql.DB {
 		}
 		sqlDriver, native = "mysql", cfg.FormatDSN()
 	}
+	if driver == "sqlite" {
+		// sqlite:///path의 path다. driver "sqlite"는 SQLite driver package를 import한 test가 등록한다.
+		sqlDriver, native = "sqlite", strings.TrimPrefix(strings.SplitN(dsn, "?", 2)[0], "sqlite://")
+	}
 	raw, err := sql.Open(sqlDriver, native)
 	if err != nil {
 		t.Fatalf("open %s: %v", driver, err)
