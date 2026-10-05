@@ -86,9 +86,32 @@ func (r refusal) Error() string {
 	return "held by:\n" + strings.Join(lines, "\n")
 }
 
+// current는 h의 file이 아직 같은 보유자를 담는지다. 보유자는 file을 지운 뒤에 끝나고, 같은 이름(exclusive.json)은
+// 다른 보유자가 다시 만들 수 있으므로, file이 있는지와 그 pid가 같은지를 함께 본다.
+func current(h holder) bool {
+	text, err := os.ReadFile(h.file)
+	if err != nil {
+		return false
+	}
+	var now holder
+	return json.Unmarshal(text, &now) == nil && now.PID == h.PID && now.Started == h.Started
+}
+
+// dead는 막는 보유 가운데 보유자 process가 없는데 그 보유가 아직 남은 것이 있는지다. process를 본 뒤에 보유가
+// 남았는지 다시 본다: 정상으로 끝난 보유자는 그 사이에 자기 file을 지운다.
 func (r refusal) dead() bool {
 	for _, h := range r.blocking {
-		if !procevent.Alive(h.PID) {
+		if !procevent.Alive(h.PID) && current(h) {
+			return true
+		}
+	}
+	return false
+}
+
+// released는 막는 보유 가운데 이미 풀린 것이 있는지다. 그러면 기다리지 않고 다시 시도한다.
+func (r refusal) released() bool {
+	for _, h := range r.blocking {
+		if !current(h) {
 			return true
 		}
 	}
@@ -227,6 +250,11 @@ func acquireWaiting(dir, kind string, pid int, command string, wait bool) (strin
 		}
 		file, err := acquire(dir, kind, pid, command)
 		var refused refusal
+		if errors.As(err, &refused) && refused.released() {
+			// 거부를 만든 보유가 그 사이에 풀렸다. 그 변경 알림은 감시 등록 뒤에 왔으므로 기다리지 않고 다시 시도한다.
+			closeWatch()
+			continue
+		}
 		if err == nil || !wait || !errors.As(err, &refused) || refused.dead() {
 			closeWatch()
 			return file, err
