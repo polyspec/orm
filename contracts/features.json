@@ -693,7 +693,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
+          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 -tags decimalphysical ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
           "inputs": [
             "clients/go/decimalmodel/decimal_physical_test.go"
           ]
@@ -1128,7 +1128,7 @@
         },
         {
           "id": "decimal-go-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
+          "command": ". \"$DECIMAL_ENV\" && node tests/go-test.mjs -v -timeout 0 -tags decimalphysical ./clients/go/decimalmodel -run '^TestDecimalPhysical(MySQL|Postgres|SQLite)$' -count=1",
           "inputs": [
             "clients/go/decimalmodel/decimal_physical_test.go"
           ]

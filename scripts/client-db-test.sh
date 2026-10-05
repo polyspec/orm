@@ -94,6 +94,15 @@ selected=
 for lang in go php typescript rust; do
   case "$LANGS" in *,$lang,*) selected="$selected $lang" ;; esac
 done
+# ORM_CLIENT_DB_LANGS의 이름은 모두 lane이어야 하고, 하나 이상을 골라야 한다. 잘못 쓴 이름은 그 lane을 실행하지 않고도
+# 성공으로 끝나게 하므로 거부한다.
+for name in $(printf '%s' "$LANGS" | tr ',' ' '); do
+  case " go php typescript rust " in *" $name "*) ;; *) echo "client-db-test: ORM_CLIENT_DB_LANGS names $name, which is no lane; the lanes are go, php, typescript and rust" >&2; exit 2 ;; esac
+done
+if [ -z "$selected" ]; then
+  echo "client-db-test: ORM_CLIENT_DB_LANGS=${ORM_CLIENT_DB_LANGS:-} selects no lane; the lanes are go, php, typescript and rust" >&2
+  exit 2
+fi
 
 if [ "${ORM_CLIENT_DB_LANES:-}" != parallel ]; then
   # lane마다 자기 subshell에서 실행하므로 lane의 finish(실패하면 exit 1)는 그 lane만 끝내고 다음 lane이 실행된다.

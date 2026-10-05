@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.54: test를 하나도 고르지 않은 test 실행은 실패한다. `tests/go-test.mjs`는 `go test -json`을 실행해 `-run` 선택의 test2json `run` event를 확인하고, `tests/cargo-test.mjs`는 실행 전에 `--list`가 고르는 test 수를 확인하며, `client-db-test.sh`는 모르는 lane 이름과 빈 선택을 거부한다. build tag 없이 한 번도 실행되지 않던 Go decimal physical test가 이제 실행된다.
+
 - G5.53: `client-db-test.sh`의 차례 lane, performance 검사, package 검사, 실행 database의 drop은 실패한 부분 뒤에도 독립된 부분을 모두 실행하고 실패를 적는다. 독립된 검사를 차례로 실행하던 recipe 일곱 개와 검증 명령 여섯 개는 부분과 따로 된 명령으로 나누었고, repository 규칙이 그런 recipe와 이어 쓴 명령을 거부한다.
 
 - G5.52: 모든 CI setup step과 `make check`는 앞의 setup step이 실패해도 실행된다. runner는 step 결과(`ORM_CI_SETUP`)를 읽고, 실패한 step이 설치하는 것이 필요한 target을 그 step과 함께 not-run으로 기록한다. docs workflow는 필요한 것을 가진 검사를 모두 실행하고, 어떤 workflow도 `continue-on-error`를 쓰지 않으며, repository 규칙이 이것을 강제한다.
