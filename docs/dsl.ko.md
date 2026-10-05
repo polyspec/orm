@@ -41,13 +41,11 @@
 | `and(fn)`, `or(fn)` | `AND` 또는 `OR`로 연결한 괄호 묶음 |
 | `not(fn)`, `andNot(fn)`, `orNot(fn)` | 첫 조건이거나 `AND` 또는 `OR`로 연결한 부정 묶음 `NOT (…)` |
 | `and(model)`, `or(model)` | 조인한 모델에 설정한 조건의 괄호 묶음 |
-| `raw(sql, binds)`, `andRaw(sql, binds)`, `orRaw(sql, binds)` | 첫 조건 또는 이후 조건인 원시 조건 |
 
 - 모델이나 묶음의 시작 위치에 있는 연결자는 연결할 대상이 없으므로 무시한다. `and(fn)`, `or(fn)`, `and()`, `or()`, `and<Chain>(…)`, `or<Chain>(…)`은 모두 첫 조건으로 읽고, 문장은 그 조건이나 묶음으로 시작한다.
 - 두 조건 사이의 연결자 누락과 뒤따르는 조건이 없는 연결자는 `CONFIG`를 반환한다.
 - 묶음 콜백은 같은 타입의 빈 모델을 받는다. 콜백은 조건 메서드만 허용하며 콜백 안의 종단 작업·쓰기·`connect`는 `CONFIG`를 반환한다.
 - 괄호는 묶음으로만 작성한다.
-- 원시 SQL은 호출한 모델의 컬럼을 `{column}`으로 참조하며 ORM이 모델 별칭을 붙여 출력한다. 값 위치 표시는 `?`만 사용하고 개수가 바인드 개수와 다르면 `IR_INVALID`를 반환한다. 원시 텍스트는 코드가 소유한 SQL에만 사용하며 요청 값은 바인드로 전달한다.
 
 - `not(fn)`은 묶음 전체를 부정하며 부정 묶음은 항상 괄호를 가진다. Rust는 연결한 두 형태를 `and_not`, `or_not`이라 부른다. 조건을 하나도 더하지 않은 콜백은 `CONFIG`를 반환한다.
 
@@ -59,7 +57,7 @@
 - 모든 database가 `BETWEEN`으로 렌더링하는 `Between` 연산자의 `between`;
 - column 함수 `year`, `month`, `dayOfWeek`, `date`와 값 함수 `now`, `today`, `<unit>Ago`, `<unit>Later`(10절). 각각 database마다 렌더링이 하나다.
 
-기존 `Lk`, `Lb`, `Fulltext`, `FulltextBoolean`, tuple 연산자와 column 비교는 그 규칙을 유지한다. 산술은 문법에 없다: 정수 overflow와 나눗셈이 세 database에서 다르다.
+기존 `Lk`, `Lb`, `Fulltext`, `FulltextBoolean`, tuple 연산자와 column 비교는 그 규칙을 유지한다. 산술은 문법에 없다: 정수 overflow와 나눗셈이 세 database에서 다르다. DSL에는 SQL text 형식이 없다. 조건, 컬럼, 정렬, 그룹, 할당은 이 문서의 메서드로만 쓰므로 모든 값은 type 있는 bind로 database에 간다.
 
 ### 2.2 체인
 
@@ -154,9 +152,8 @@ Key   = [Operator] Column
 | 메서드 | 동작 |
 |---|---|
 | `addColumn<Col>()` | 컬럼 하나 추가 |
-| `addColumn<Col>Alias<Name>(format)` | 출력 명칭을 지정한 서식 컬럼 추가 |
+| `addColumn<Col>Alias<Name>(fn)` | 출력 명칭을 지정한 컬럼 함수(10절) 컬럼 추가 |
 | `addColumn<Name>(fn)` | 스칼라 서브쿼리 컬럼 추가. 콜백은 호출한 모델을 받아 실행하지 않은 모델을 반환한다 |
-| `addRawColumn<Alias>(sql, binds)` | 출력 명칭을 지정한 원시 컬럼 추가 |
 | `removeColumn<Col>()` | 컬럼 하나 제외 |
 | `removeAllColumns()` | 기본 키와 외래 키만 유지 |
 | `addAllColumns()` | 모든 컬럼 선택 |
@@ -248,14 +245,13 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. 정렬과 범위
 
-`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 그룹을 정한다. `orderByRaw(sql)`와 `groupByRaw(sql)`는 2.1절 규칙에 따른 원시 식을 사용한다. `limit(offset, count)`은 범위를 정한다.
+`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 그룹을 정한다. `limit(offset, count)`은 범위를 정한다.
 
 ## 7. 쓰기
 
 | 메서드 | 동작 |
 |---|---|
 | `set<Col>(value)` | 저장 컬럼 값. 컬럼이 존재해야 한다 |
-| `setRaw<Col>(sql, binds)` | 스키마 검사를 거친 SQL 식으로 만든 저장 컬럼 값 |
 | `new<Name>(value)` | 컬럼이 아닌 명칭으로 값을 행에 추가. 아래 규칙 참고 |
 | `plus<Col>(n)`, `minus<Col>(n)` | 바인드한 증가·감소. `minus`는 음수를 저장하지 않는다 |
 | `create()` | 삽입 후 생성 키를 포함한 행 반환 |
@@ -351,9 +347,9 @@ await master.transaction(async () => { … }, { isolation: 'serializable', readO
 
 ## 9. 예약 명칭
 
-생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `raw`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
+생성기는 메서드 명칭이 예약 메서드(`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`)와 같거나 예약 접두어(`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, 연산자)로 시작하는 컬럼을 거부한다. `orderByRandom()`이 예약되어 있으므로 `random` 컬럼도 거부한다.
 
-행에 추가되는 명칭은 하나의 명칭 공간을 사용한다. 대상은 실제 컬럼, `addColumn<Name>(fn)`이나 `addRawColumn<Alias>`로 추가한 컬럼, 관계 결과 명칭, `new<Name>` 명칭이다. 이 공간에서 명칭이 겹치면 거부한다. Go와 Rust는 생성 단계에서 거부하고 PHP와 TypeScript는 `CONFIG`를 반환한다. 따라서 같은 테이블에 대한 관계 두 개는 서로 다른 별칭이 필요하며, 서브쿼리 컬럼은 실제 컬럼이 아닌 명칭을 사용해야 한다.
+행에 추가되는 명칭은 하나의 명칭 공간을 사용한다. 대상은 실제 컬럼, `addColumn<Name>(fn)`이나 `addColumn<Col>Alias<Name>(fn)`으로 추가한 컬럼, 관계 결과 명칭, `new<Name>` 명칭이다. 이 공간에서 명칭이 겹치면 거부한다. Go와 Rust는 생성 단계에서 거부하고 PHP와 TypeScript는 `CONFIG`를 반환한다. 따라서 같은 테이블에 대한 관계 두 개는 서로 다른 별칭이 필요하며, 서브쿼리 컬럼은 실제 컬럼이 아닌 명칭을 사용해야 한다.
 
 메서드 명칭이 모델의 다른 생성 메서드와 같은 컬럼도 거부한다. 예를 들어 `amount` 옆의 `sum_amount`는 `sumAmount()`와 겹친다.
 

@@ -126,15 +126,6 @@ func (x *TaskModel) connector(conn string, args []any) *TaskModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *TaskModel) Raw(sql string, binds ...any) *TaskModel { x.m.Raw("", sql, binds); return x }
-
-// AndRaw adds a raw condition joined with AND.
-func (x *TaskModel) AndRaw(sql string, binds ...any) *TaskModel { x.m.Raw("and", sql, binds); return x }
-
-// OrRaw adds a raw condition joined with OR.
-func (x *TaskModel) OrRaw(sql string, binds ...any) *TaskModel { x.m.Raw("or", sql, binds); return x }
-
 // On sets the join ON conditions.
 func (x *TaskModel) On(fn func(*TaskModel)) *TaskModel {
 	g := taskEntity.New(x.m.Group()).(*TaskModel)
@@ -233,12 +224,6 @@ func (x *TaskModel) Limit(offset, count int) *TaskModel { x.m.Limit(offset, coun
 // OrderByRandom orders rows randomly.
 func (x *TaskModel) OrderByRandom() *TaskModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *TaskModel) OrderByRaw(sql string) *TaskModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *TaskModel) GroupByRaw(sql string) *TaskModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *TaskModel) RemoveAllColumns() *TaskModel { x.m.RemoveAllColumns(); return x }
 
@@ -284,10 +269,6 @@ func (x *TaskModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *TaskModel) SetSeq(v int64) *TaskModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *TaskModel) SetRawSeq(sql string, binds ...any) *TaskModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *TaskModel) AddColumnSeq() *TaskModel                 { x.m.AddColumn("seq"); return x }
 func (x *TaskModel) RemoveColumnSeq() *TaskModel              { x.m.RemoveColumn("seq"); return x }
 func (x *TaskModel) GroupBySeq() *TaskModel                   { x.m.GroupBy("seq"); return x }
@@ -305,10 +286,6 @@ func (x *TaskModel) GetTitle() string { return x.fTitle }
 // SetTitle sets title.
 func (x *TaskModel) SetTitle(v string) *TaskModel { x.fTitle = v; x.m.Set("title", v); return x }
 
-func (x *TaskModel) SetRawTitle(sql string, binds ...any) *TaskModel {
-	x.m.SetRaw("title", sql, binds)
-	return x
-}
 func (x *TaskModel) AddColumnTitle() *TaskModel    { x.m.AddColumn("title"); return x }
 func (x *TaskModel) RemoveColumnTitle() *TaskModel { x.m.RemoveColumn("title"); return x }
 func (x *TaskModel) GroupByTitle() *TaskModel      { x.m.GroupBy("title"); return x }
@@ -328,10 +305,6 @@ func (x *TaskModel) GetState() string { return x.fState }
 // SetState sets state.
 func (x *TaskModel) SetState(v string) *TaskModel { x.fState = v; x.m.Set("state", v); return x }
 
-func (x *TaskModel) SetRawState(sql string, binds ...any) *TaskModel {
-	x.m.SetRaw("state", sql, binds)
-	return x
-}
 func (x *TaskModel) AddColumnState() *TaskModel    { x.m.AddColumn("state"); return x }
 func (x *TaskModel) RemoveColumnState() *TaskModel { x.m.RemoveColumn("state"); return x }
 func (x *TaskModel) GroupByState() *TaskModel      { x.m.GroupBy("state"); return x }

@@ -907,7 +907,6 @@
         "fields": [
           "sets",
           "plus_minus",
-          "raw_sets",
           "duplication"
         ]
       },

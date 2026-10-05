@@ -16,7 +16,6 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
   "relations": [Relation],
   "order": [Order],
   "group_by": ["user_seq"],
-  "group_by_expr": [{"expr": "DATE({created_ts})", "as": "group_1"}],
   "limit": {"offset": 0, "count": 20},
   "force_index": "ix_service",
   "lock": "update | share | update_nowait | share_nowait",
@@ -41,7 +40,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 | `optimistic` | `update` matches only when the column still equals the parameter; no match returns `OPTIMISTIC_LOCK` |
 | `lock` | root row selection only; the client allows it only inside a transaction |
 
-`Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `group_by_expr`, `limit`, `force_index`, `lock`, and the relation options.
+`Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, and the relation options.
 
 ### 1.1 Columns
 
@@ -50,14 +49,13 @@ Columns = {
   "mode": "" | "all" | "none",
   "add": ["name"],
   "remove": ["description"],
-  "expr": {"doubled": {"sql": "({read_count} * ?)", "ps": [0]}},
   "fn": {"created_date": {"column": "created_ts", "fn": Func}},
   "sub": {"read_total": Sub}
 }
 ```
 
 - `mode` `""` selects the default select set, every column except those of `select explicit` ([runtime model](dbspec.md#runtime-model)); `all` selects every column, and `none` keeps primary and foreign keys.
-- `expr`, `fn`, and `sub` add named outputs. An output name must not be a column of the entity.
+- `fn` and `sub` add named outputs. An output name must not be a column of the entity.
 - The primary key and the keys that relations bind are always selected.
 
 ### 1.2 Joins and relations
@@ -76,7 +74,7 @@ Relation = {"rel": "writer", "kind": "one | many", "keys": [{"left": "user_seq",
 ### 1.3 Groups and predicates
 
 ```json
-Group = {"conn": "and | or", "items": [Item]}
+Group = {"conn": "and | or", "not": true, "items": [Item]}
 Item  = {"pred": Pred} | {"group": Group} | {"joined": {"conn": "and | or", "join": "service_model"}}
 Pred  = {"conn", "column", "op", "p"}                                   // eq not_eq gt gte lt lte contains contains_binary
       | {"conn", "column", "op": "in | not_in | between", "ps": [...]}
@@ -86,7 +84,6 @@ Pred  = {"conn", "column", "op", "p"}                                   // eq no
       | {"conn", "column", "op": "in | not_in", "sub": Sub}
       | {"conn", "column", "op", "p", "fn": Func}
       | {"conn", "column", "op", "value": Func}
-      | {"conn", "expr": "{read_count} > ?", "ps": [0]}
 Func  = {"name": "day_of_week | year | month | date | now | today | days_ago | …", "ps": [0]}
 Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 ```
@@ -94,17 +91,18 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - `conn` joins an item to the previous item of its group; the first item has none.
 - `ref.path` is the join path from the statement root (`""` is the root, `a/b` a nested join) or `^`, the model that owns a subquery.
 - `fn` applies a column function to `column` before the comparison with `p`. `value` compares `column` with a value function. Functions are structure only; each dialect renders them as described in [dialects](dialects.md), and an unknown name returns `FUNCTION_UNKNOWN`.
-- `expr` fragments reference columns of the owning model as `{column}` and bind `?` values in `ps` order; the placeholder count must equal the bind count.
+- `not` negates a nested group, which renders `NOT (…)`; a top-level `where` or `on` group with `not` fails with `IR_INVALID`.
+- The request carries no SQL text: every condition, output, order, grouping and assignment is one of the forms above, and every bind slot of the plan has a dbspec type.
 - `contains` and `contains_binary` bind the value between wildcards; `contains_binary` compares case-sensitively.
 
 ### 1.4 Order and assignments
 
 ```json
-Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true} | {"expr": "{seq} DESC"}
-Assign = {"column", "p"} | {"column", "null": true} | {"column", "expr", "ps"} | {"column", "plus_p"} | {"column", "minus_p"}
+Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true}
+Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"column", "minus_p"}
 ```
 
-A raw order expression carries its own direction. `minus_p` never stores a negative value.
+`minus_p` never stores a negative value.
 
 An `insert` that omits a column with a default leaves it to the database default; the planner adds no value for it. An `insert` that omits a non-null column without a default fails with `IR_INVALID`. The planner assigns the columns the executor owns: the AES key version, the `updated` column on every `update`, and on a table with an `audit` setting the audit column of every `insert`, `update`, soft delete, restore and duplicate update; a request that assigns the AES key version or the audit column fails with `IR_INVALID`.
 

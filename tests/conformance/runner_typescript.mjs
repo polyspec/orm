@@ -195,13 +195,6 @@ async function main() {
     const last = await q.getCount();
     return [first, rows.length, last];
   });
-  await run('raw_forms', async () => {
-    const count = await author().serviceSeq(7).andRaw('{read_count} > ?', 990).getCount();
-    const rows = await author().raw('{seq} IN (?, ?)', 42, 43)
-      .removeAllColumns().addRawColumnDoubled('({read_count} * ?)', 2)
-      .orderByRaw('{seq} DESC').gets();
-    return { count, rows: rows.values().map(r => [r.getSeq(), derivedInteger(r.getDoubled())]) };
-  });
   await run('expression_forms', async () => {
     const count = await author().serviceSeq(7).andNot(q => q.isClose(true).orGtReadCount(500)).getCount();
     const rows = await author().not(q => q.isDisplay(false)).andServiceSeq(7).orderBySeqDesc().limit(0, 3).gets();
@@ -210,9 +203,9 @@ async function main() {
   });
   await run('columns', async () => {
     const none = await new Service().connect(db).removeAllColumns().getBySeq(7);
-    const added = await author().removeAllColumns().addColumnName().addColumnReadCountAliasReadText("CONCAT('r', %s)").getBySeq(42);
+    const added = await author().removeAllColumns().addColumnName().addColumnStartDtAliasStartYear(orm.year()).getBySeq(42);
     const removed = await new Service().connect(db).removeColumnName().getBySeq(7);
-    return [none.toArray(), pick(added, 'seq', 'name', 'read_text'), removed.toArray()];
+    return [none.toArray(), pick(added, 'seq', 'name', 'start_year'), removed.toArray()];
   });
   await run('joins', async () => {
     const service = new Service().on(s => s.gtSeq(0)).name('service-7');

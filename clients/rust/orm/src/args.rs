@@ -254,11 +254,6 @@ macro_rules! set_arg {
 set_arg!(i64 => Param::I64, i32 => |v: i32| Param::I64(v as i64), i16 => |v: i16| Param::I64(v as i64), f64 => Param::F64, bool => Param::Bool,
     String => Param::Str, NaiveDateTime => Param::DateTime, NaiveDate => Param::Date, Vec<u8> => Param::Bytes);
 
-/// Anything a raw fragment binds.
-pub fn bind(v: impl Into<Param>) -> Param {
-    v.into()
-}
-
 /// The argument of `and`/`or`: a group callback, a joined model placed as a
 /// group (generated per model), or `()` for a connector written as its own call.
 pub trait GroupArg<M> {
@@ -277,43 +272,6 @@ impl<M> GroupArg<M> for () {
         core.connector(conn);
     }
 }
-
-/// The binds of a raw fragment: `()`, a tuple, an array, or a vector.
-pub trait Binds {
-    fn into_binds(self) -> Vec<Param>;
-}
-
-impl Binds for () {
-    fn into_binds(self) -> Vec<Param> {
-        Vec::new()
-    }
-}
-
-impl<T: Into<Param>, const N: usize> Binds for [T; N] {
-    fn into_binds(self) -> Vec<Param> {
-        self.into_iter().map(Into::into).collect()
-    }
-}
-
-impl<T: Into<Param>> Binds for Vec<T> {
-    fn into_binds(self) -> Vec<Param> {
-        self.into_iter().map(Into::into).collect()
-    }
-}
-
-macro_rules! tuple_binds {
-    ($(($($t:ident $v:ident),+))*) => {
-        $(
-            impl<$($t: Into<Param>),+> Binds for ($($t,)+) {
-                fn into_binds(self) -> Vec<Param> {
-                    let ($($v,)+) = self;
-                    vec![$($v.into()),+]
-                }
-            }
-        )*
-    };
-}
-tuple_binds!((A a) (A a, B b) (A a, B b, C c) (A a, B b, C c, D d) (A a, B b, C c, D d, E e) (A a, B b, C c, D d, E e, F f));
 
 /// A value stored in a nullable column: the value, an `Option`, or [`Null`].
 pub trait IntoNullable<T> {
@@ -339,43 +297,3 @@ macro_rules! nullable_values {
 }
 nullable_values!(i16 => i16, i16 => i32, i16 => i64, i32 => i32, i32 => i64, i64 => i64, f64 => f64, f32 => f64, i32 => f64, bool => bool, String => String,
     &str => String, NaiveDateTime => NaiveDateTime, NaiveDate => NaiveDate, Vec<u8> => Vec<u8>, &[u8] => Vec<u8>);
-
-/// The output of `add_column_<col>_alias_<name>`: a format with `%s` for the
-/// column, or a column function.
-pub enum ColumnFormat {
-    Text(String),
-    Func(Func),
-}
-
-/// A value accepted as a column format.
-pub trait IntoColumnFormat {
-    fn into_column_format(self) -> ColumnFormat;
-}
-
-impl IntoColumnFormat for &str {
-    fn into_column_format(self) -> ColumnFormat {
-        ColumnFormat::Text(self.to_owned())
-    }
-}
-
-impl IntoColumnFormat for String {
-    fn into_column_format(self) -> ColumnFormat {
-        ColumnFormat::Text(self)
-    }
-}
-
-impl IntoColumnFormat for Func {
-    fn into_column_format(self) -> ColumnFormat {
-        ColumnFormat::Func(self)
-    }
-}
-
-impl Core {
-    /// Adds a formatted or function column under an output name.
-    pub fn add_column_as(&mut self, column: &str, name: &str, format: impl IntoColumnFormat) {
-        match format.into_column_format() {
-            ColumnFormat::Text(f) => self.add_column_format(column, name, &f),
-            ColumnFormat::Func(f) => self.add_column_func(column, name, f),
-        }
-    }
-}

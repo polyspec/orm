@@ -55,7 +55,7 @@ pub struct BindSlot {
     /// PostgreSQL/SQLite), applied to the bound value in write order. Empty on MySQL.
     pub host_styles: Vec<String>,
     /// placeholder가 받는 값의 dbspec type이다(engine/plan/plan.go의 BindSlot.ColType). parent
-    /// slot은 대신 `key_types`를 싣고, raw fragment의 placeholder만 type이 없다(G5.32-3이 없앤다).
+    /// slot은 대신 `key_types`를 싣는다. type이 없는 slot은 없다.
     pub col_type: String,
     /// parent slot이 펼치는 key 값의 dbspec type이며 key column 순서다.
     pub key_types: Vec<String>,

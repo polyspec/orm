@@ -366,18 +366,6 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let last = q.get_count().await?;
         Ok::<Value, orm::Error>(json!([first, rows.len(), last]))
     });
-    run!("raw_forms", async {
-        let count = author().service_seq(7).and_raw("{read_count} > ?", [990]).get_count().await?;
-        let rows = author()
-            .raw("{seq} IN (?, ?)", [42, 43])
-            .remove_all_columns()
-            .add_raw_column_doubled("({read_count} * ?)", [2])
-            .order_by_raw("{seq} DESC")
-            .gets()
-            .await?;
-        let rows: Vec<Value> = rows.models().map(|r| json!([r.get_seq().unwrap(), int(r.get_doubled().expect("doubled"))])).collect();
-        Ok::<Value, orm::Error>(json!({"count": count, "rows": rows}))
-    });
     run!("expression_forms", async {
         let count = author().service_seq(7).and_not(|q: Author| q.is_close(true).or_gt_read_count(500)).get_count().await?;
         let rows = author().not(|q: Author| q.is_display(false)).and_service_seq(7).order_by_seq_desc().limit(0, 3).gets().await?;
@@ -386,9 +374,9 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     });
     run!("columns", async {
         let none = Service::new().connect(db).remove_all_columns().get_by_seq(7).await?;
-        let added = author().remove_all_columns().add_column_name().add_column_read_count_alias_read_text("CONCAT('r', %s)").get_by_seq(42).await?;
+        let added = author().remove_all_columns().add_column_name().add_column_start_dt_alias_start_year(orm::year()).get_by_seq(42).await?;
         let removed = Service::new().connect(db).remove_column_name().get_by_seq(7).await?;
-        Ok::<Value, orm::Error>(json!([none.to_array()?, pick(Some(&added), &["seq", "name", "read_text"]), removed.to_array()?]))
+        Ok::<Value, orm::Error>(json!([none.to_array()?, pick(Some(&added), &["seq", "name", "start_year"]), removed.to_array()?]))
     });
     run!("joins", async {
         let service = Service::new().on(|s: Service| s.gt_seq(0)).name("service-7");

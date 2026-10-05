@@ -198,7 +198,7 @@ $tests['conditions'] = function (Db $db, string $dsn): void {
     check(code(static fn() => (new Author)($db)->getByName('missing')) === 'NO_ROWS', 'get without a row');
     $q = (new Author)($db)->serviceSeq($svc);
     check($q->getCountByIsClose(true) === 2 && $q->getCount() === 4, 'terminal changed the model');
-    check((new Author)($db)->raw('{read_count} >= ?', [20])->getCount() === 2, 'raw');
+    check((new Author)($db)->geReadCount(20)->getCount() === 2, 'ge');
     check(code(fn() => (new Author)($db)->name('a')->isClose(true)->gets()) === Code::CONFIG, 'missing connector');
     check(code(fn() => (new Author)($db)->name('a')->and()->gets()) === Code::CONFIG, 'dangling connector');
     check(code(fn() => (new Author)($db)->seq([])->gets()) === Code::EMPTY_IN, 'empty list');
@@ -248,13 +248,11 @@ $tests['columns and subqueries'] = function (Db $db, string $dsn): void {
     $f = seed($db);
     $users = (new User)($db)
         ->addColumnReadTotal(fn(User $u) => (new Author)->sumReadCount()->userSeqEqSeq($u))
-        ->addRawColumnDoubled('({seq} * ?)', [2])
-        ->addColumnNameAliasUpperName('UPPER(%s)')
         ->seq((new Author)->addColumnUserSeq()->isClose(false))
         ->orderBySeqAsc()->gets();
     check(count($users) === 1, 'subquery IN');
     $u = $users->first();
-    check((int) $u->getReadTotal() === 20 && (int) $u->getDoubled() === 2 * $u->getSeq() && $u->getUpperName() === 'KIM', 'added columns');
+    check((int) $u->getReadTotal() === 20, 'added column');
     $svc = $f['service']->getSeq();
     check((new Author)($db)->serviceSeq($svc)->sumReadCount()->getSum() === 60.0, 'sum');
     check((new Author)($db)->serviceSeq($svc)->avgReadCount()->getAvg() === 15.0, 'avg');

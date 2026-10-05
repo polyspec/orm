@@ -1,9 +1,6 @@
 package ir
 
-import (
-	"maps"
-	"slices"
-)
+import "slices"
 
 // CloneQuery copies every mutable part of a query tree before it is attached
 // to another request. Parameter values live outside this tree.
@@ -12,7 +9,6 @@ func CloneQuery(q Query) Query {
 	if q.Columns != nil {
 		c := *q.Columns
 		c.Add, c.Remove = slices.Clone(c.Add), slices.Clone(c.Remove)
-		c.Expr = maps.Clone(c.Expr)
 		out.Columns = &c
 	}
 	out.On, out.Where = cloneGroup(q.On), cloneGroup(q.Where)
@@ -42,7 +38,6 @@ func CloneQuery(q Query) Query {
 	}
 	out.Order = slices.Clone(q.Order)
 	out.GroupBy = slices.Clone(q.GroupBy)
-	out.GroupByExpr = slices.Clone(q.GroupByExpr)
 	out.Limit, out.IfParent = clonePtr(q.Limit), clonePtr(q.IfParent)
 	return out
 }

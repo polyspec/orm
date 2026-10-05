@@ -3,10 +3,6 @@
 
 use orm_schema::dbspec::Type;
 
-/// Replaced in code-owned expression fragments with the dialect's advancing
-/// wall-clock expression.
-pub const CURRENT_TIME_TOKEN: &str = "$CURRENT_TIME";
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dialect {
     MySql,
@@ -113,13 +109,6 @@ impl Dialect {
             format!("CURRENT_TIMESTAMP({precision})")
         } else {
             "CURRENT_TIMESTAMP".into()
-        }
-    }
-
-    pub fn current_time(self) -> &'static str {
-        match self {
-            Dialect::Postgres => "clock_timestamp()",
-            _ => "CURRENT_TIMESTAMP",
         }
     }
 

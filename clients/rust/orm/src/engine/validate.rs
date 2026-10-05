@@ -82,7 +82,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{} on {}.{} ({})", r.kind, q.entity, r.agg, c.ty.render())));
         }
     }
-    if r.kind == "group_count" && q.group_by.is_empty() && q.group_by_expr.is_empty() {
+    if r.kind == "group_count" && q.group_by.is_empty() {
         return Err(err(codes::IR_INVALID, "group_count needs group_by"));
     }
     if r.kind == "insert" || r.kind == "update" || r.kind == "restore" {
@@ -149,9 +149,9 @@ impl<'m> Validator<'m> {
 
     fn assign(&self, ent: &Entity, a: &ir::Assign) -> Result<()> {
         let c = ent.field(&a.column).ok_or_else(|| unknown_column(&ent.name, &a.column))?;
-        let n = [a.p.is_some(), a.null, !a.expr.is_empty(), a.plus_p.is_some(), a.minus_p.is_some()].iter().filter(|x| **x).count();
+        let n = [a.p.is_some(), a.null, a.plus_p.is_some(), a.minus_p.is_some()].iter().filter(|x| **x).count();
         if n != 1 {
-            return Err(err(codes::IR_INVALID, format!("set {}: exactly one of p/null/expr/plus_p/minus_p", a.column)));
+            return Err(err(codes::IR_INVALID, format!("set {}: exactly one of p/null/plus_p/minus_p", a.column)));
         }
         if a.null && !c.nullable {
             return Err(err(codes::IR_INVALID, format!("set {}.{} to null but column is NOT NULL", ent.name, a.column)));
@@ -160,8 +160,7 @@ impl<'m> Validator<'m> {
             return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("plus/minus on {}.{} ({})", ent.name, a.column, c.ty.render())));
         }
         let singles: Vec<usize> = [a.p, a.plus_p, a.minus_p].into_iter().flatten().collect();
-        self.params(&singles)?;
-        self.params(&a.ps)
+        self.params(&singles)
     }
 
     fn query(&self, q: &ir::Query, is_join: bool, is_relation: bool) -> Result<()> {
@@ -183,14 +182,6 @@ impl<'m> Validator<'m> {
                 Ok(())
             };
             let mut names = Vec::new();
-            for (name, e) in &c.expr {
-                output(name, &mut names)?;
-                let n = e.sql.matches('?').count();
-                if n != e.ps.len() {
-                    return Err(err(codes::IR_INVALID, format!("{}.{name} expr has {n} placeholders but {} binds", q.entity, e.ps.len())));
-                }
-                self.params(&e.ps)?;
-            }
             for (name, f) in &c.r#fn {
                 output(name, &mut names)?;
                 let col = ent.field(&f.column).ok_or_else(|| unknown_column(&q.entity, &f.column))?;
@@ -294,9 +285,9 @@ impl<'m> Validator<'m> {
             return Err(err(codes::IR_INVALID, format!("relation-only options on {}", q.entity)));
         }
         for o in &q.order {
-            let kinds = [!o.column.is_empty(), !o.expr.is_empty(), o.random].iter().filter(|x| **x).count();
+            let kinds = [!o.column.is_empty(), o.random].iter().filter(|x| **x).count();
             if kinds != 1 {
-                return Err(err(codes::IR_INVALID, "order needs exactly one of column, expr, random"));
+                return Err(err(codes::IR_INVALID, "order needs exactly one of column, random"));
             }
             if !o.column.is_empty() {
                 let col = ent.field(&o.column).ok_or_else(|| unknown_column(&q.entity, &o.column))?;
@@ -312,19 +303,6 @@ impl<'m> Validator<'m> {
                 return Err(unknown_column(&q.entity, g));
             }
         }
-        let mut groups: Vec<&str> = q.group_by.iter().map(String::as_str).collect();
-        for g in &q.group_by_expr {
-            if g.expr.trim().is_empty() || g.as_.trim().is_empty() {
-                return Err(err(codes::IR_INVALID, "group_by_expr needs expr and as"));
-            }
-            if g.expr.contains('?') {
-                return Err(err(codes::IR_INVALID, "group_by_expr does not accept parameters"));
-            }
-            if groups.contains(&g.as_.as_str()) {
-                return Err(err(codes::IR_INVALID, format!("duplicate group output {}", g.as_)));
-            }
-            groups.push(&g.as_);
-        }
         if let Some(l) = &q.limit {
             if l.count == 0 {
                 return Err(err(codes::IR_INVALID, "limit offset>=0, count>0"));
@@ -334,7 +312,7 @@ impl<'m> Validator<'m> {
             if !matches!(q.lock.as_str(), "update" | "share" | "update_nowait" | "share_nowait") {
                 return Err(err(codes::IR_INVALID, format!("lock {:?}: want update, share, update_nowait or share_nowait", q.lock)));
             }
-            if is_join || is_relation || !q.group_by.is_empty() || !q.group_by_expr.is_empty() || q.limit_per_parent > 0 {
+            if is_join || is_relation || !q.group_by.is_empty() || q.limit_per_parent > 0 {
                 return Err(err(codes::IR_INVALID, "row lock is only valid on a root row select"));
             }
         }
@@ -383,12 +361,6 @@ impl<'m> Validator<'m> {
         self.params(&p.ps)?;
         if let Some(i) = p.p {
             self.params(&[i])?;
-        }
-        if !p.expr.is_empty() {
-            if !p.column.is_empty() || !p.op.is_empty() {
-                return Err(err(codes::IR_INVALID, "expr pred may not carry column/op"));
-            }
-            return Ok(());
         }
         if p.op == "tuple_in" || p.op == "tuple_not_in" {
             if p.cols.len() < 2 {

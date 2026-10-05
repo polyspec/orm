@@ -47,24 +47,6 @@ impl T {
         self
     }
 
-    /// Adds a raw first condition.
-    pub fn raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
-        self.__orm.raw("", sql, binds.into_binds());
-        self
-    }
-
-    /// Adds a raw condition joined with AND.
-    pub fn and_raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
-        self.__orm.raw("and", sql, binds.into_binds());
-        self
-    }
-
-    /// Adds a raw condition joined with OR.
-    pub fn or_raw(mut self, sql: &str, binds: impl orm::Binds) -> Self {
-        self.__orm.raw("or", sql, binds.into_binds());
-        self
-    }
-
     /// Sets the join ON conditions.
     pub fn on(mut self, f: impl FnOnce(Self) -> Self) -> Self {
         let g = f(<Self as orm::Model>::from_core(self.__orm.group()));
@@ -169,18 +151,6 @@ impl T {
     /// Orders rows randomly.
     pub fn order_by_random(mut self) -> Self {
         self.__orm.order_by_random();
-        self
-    }
-
-    /// Appends a raw order expression.
-    pub fn order_by_raw(mut self, sql: &str) -> Self {
-        self.__orm.order_by_raw(sql);
-        self
-    }
-
-    /// Appends a raw grouping expression.
-    pub fn group_by_raw(mut self, sql: &str) -> Self {
-        self.__orm.group_by_raw(sql);
         self
     }
 

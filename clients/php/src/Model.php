@@ -34,8 +34,6 @@ abstract class Model implements \JsonSerializable
     private array $order = [];
     /** @var list<string> */
     private array $groupBy = [];
-    /** @var list<string> */
-    private array $groupRaw = [];
     private ?array $limit = null;
     private string $index = '';
     private string $lock = '';
@@ -221,25 +219,6 @@ abstract class Model implements \JsonSerializable
         return $this;
     }
 
-    /** A raw first condition; `{column}` references columns of the model. */
-    public function raw(string $sql, array $binds = []): static
-    {
-        $this->addItem('', ['raw' => [$sql, array_values($binds)]]);
-        return $this;
-    }
-
-    public function andRaw(string $sql, array $binds = []): static
-    {
-        $this->addItem('and', ['raw' => [$sql, array_values($binds)]]);
-        return $this;
-    }
-
-    public function orRaw(string $sql, array $binds = []): static
-    {
-        $this->addItem('or', ['raw' => [$sql, array_values($binds)]]);
-        return $this;
-    }
-
     /** Sets the join ON conditions with a callback that receives the join child. */
     public function on(\Closure $fn): static
     {
@@ -299,19 +278,6 @@ abstract class Model implements \JsonSerializable
     public function orderByRandom(): static
     {
         $this->order[] = ['random' => true];
-        return $this;
-    }
-
-    /** A raw order expression, written with its direction. */
-    public function orderByRaw(string $sql): static
-    {
-        $this->order[] = ['expr' => $sql];
-        return $this;
-    }
-
-    public function groupByRaw(string $sql): static
-    {
-        $this->groupRaw[] = $sql;
         return $this;
     }
 
@@ -574,20 +540,10 @@ abstract class Model implements \JsonSerializable
             $this->news[Chain::snake($attr)] = $args[0];
             return $this;
         }
-        if (self::prefixed($name, 'addRawColumn')) {
-            $key = $this->outputName(substr($name, 12));
-            $sql = $args[0] ?? null;
-            $binds = $args[1] ?? [];
-            if (!is_string($sql) || !is_array($binds) || count($args) > 2) {
-                throw new OrmException(Code::CONFIG, "$name takes the SQL text and a bind list");
-            }
-            $this->outputs[$key] = ['raw' => [$sql, array_values($binds)]];
-            return $this;
-        }
         if (self::prefixed($name, 'addColumn')) {
             return $this->addColumnCall($name, substr($name, 9), $args);
         }
-        foreach (['removeColumn', 'groupBy', 'keyName', 'setRaw', 'plus', 'minus', 'sum', 'avg'] as $prefix) {
+        foreach (['removeColumn', 'groupBy', 'keyName', 'plus', 'minus', 'sum', 'avg'] as $prefix) {
             if (!self::prefixed($name, $prefix)) {
                 continue;
             }
@@ -613,12 +569,6 @@ abstract class Model implements \JsonSerializable
                 case 'keyName':
                     self::arity($name, $args, 0);
                     $this->keyName = $column;
-                    return $this;
-                case 'setRaw':
-                    if (!is_string($args[0] ?? null) || !is_array($args[1] ?? []) || count($args) > 2) {
-                        throw new OrmException(Code::CONFIG, "$name takes the SQL text and a bind list");
-                    }
-                    $this->putSet($column, ['raw' => [$args[0], array_values($args[1] ?? [])]]);
                     return $this;
                 case 'plus':
                 case 'minus':
@@ -707,16 +657,10 @@ abstract class Model implements \JsonSerializable
                 self::arity($name, $args, 1);
                 $key = $this->outputName(substr($rest, $at + 5));
                 $arg = $args[0];
-                if ($arg instanceof Func) {
-                    if (!$arg->column) {
-                        throw new OrmException(Code::CONFIG, "$name requires a column function");
-                    }
-                    $this->outputs[$key] = ['fn' => [$column, $arg]];
-                } elseif (is_string($arg) && substr_count($arg, '%s') === 1) {
-                    $this->outputs[$key] = ['format' => [$column, $arg]];
-                } else {
-                    throw new OrmException(Code::CONFIG, "$name takes a format with one %s or a column function");
+                if (!$arg instanceof Func || !$arg->column) {
+                    throw new OrmException(Code::CONFIG, "$name takes a column function");
                 }
+                $this->outputs[$key] = ['fn' => [$column, $arg]];
                 return $this;
             }
         }
@@ -939,8 +883,6 @@ abstract class Model implements \JsonSerializable
         foreach ($this->order as $o) {
             if (isset($o['random'])) {
                 $q['order'][] = ['random' => true];
-            } elseif (isset($o['expr'])) {
-                $q['order'][] = ['expr' => $o['expr']];
             } else {
                 $item = ['column' => $o['column']];
                 if ($o['desc']) {
@@ -954,9 +896,6 @@ abstract class Model implements \JsonSerializable
         }
         if ($this->groupBy !== []) {
             $q['group_by'] = $this->groupBy;
-        }
-        foreach ($this->groupRaw as $i => $sql) {
-            $q['group_by_expr'][] = ['expr' => $sql, 'as' => 'group_' . ($i + 1)];
         }
         if ($this->limit !== null) {
             $q['limit'] = $this->limit;
@@ -1007,15 +946,9 @@ abstract class Model implements \JsonSerializable
             $out['remove'] = $this->removeColumns;
         }
         foreach ($this->outputs as $name => $spec) {
-            if (isset($spec['format'])) {
-                [$column, $format] = $spec['format'];
-                $out['expr'][$name] = ['sql' => str_replace('%s', '{' . $column . '}', $format)];
-            } elseif (isset($spec['fn'])) {
+            if (isset($spec['fn'])) {
                 [$column, $fn] = $spec['fn'];
                 $out['fn'][$name] = ['column' => $column, 'fn' => $fn->ir($r->param(...))];
-            } elseif (isset($spec['raw'])) {
-                $pred = $r->raw(...$spec['raw']);
-                $out['expr'][$name] = ['sql' => $pred['expr']] + (isset($pred['ps']) ? ['ps' => $pred['ps']] : []);
             } else {
                 $model = ($spec['sub'])($this);
                 if (!$model instanceof Model) {
@@ -1054,12 +987,6 @@ abstract class Model implements \JsonSerializable
             $conn = $node['conn'];
             if (isset($node['pred'])) {
                 $pred = $this->predIr($node['pred'], $r, $f);
-                if ($conn !== '') {
-                    $pred['conn'] = $conn;
-                }
-                $out['items'][] = ['pred' => $pred];
-            } elseif (isset($node['raw'])) {
-                $pred = $r->raw(...$node['raw']);
                 if ($conn !== '') {
                     $pred['conn'] = $conn;
                 }
@@ -1706,12 +1633,6 @@ abstract class Model implements \JsonSerializable
         $a = ['column' => $column];
         if (isset($spec['null'])) {
             $a['null'] = true;
-        } elseif (isset($spec['raw'])) {
-            $pred = $r->raw(...$spec['raw']);
-            $a['expr'] = $pred['expr'];
-            if (isset($pred['ps'])) {
-                $a['ps'] = $pred['ps'];
-            }
         } elseif (array_key_exists('plus', $spec)) {
             $a['plus_p'] = $r->param($spec['plus']);
         } elseif (array_key_exists('minus', $spec)) {
@@ -2290,19 +2211,6 @@ final class Request
     {
         $this->params[] = $v;
         return count($this->params) - 1;
-    }
-
-    /** @return array{expr: string, ps?: list<int>} */
-    public function raw(string $sql, array $binds): array
-    {
-        if (substr_count($sql, '?') !== count($binds)) {
-            throw new OrmException(Code::IR_INVALID, 'raw SQL has ' . substr_count($sql, '?') . ' placeholders and ' . count($binds) . ' binds');
-        }
-        $out = ['expr' => $sql];
-        foreach ($binds as $b) {
-            $out['ps'][] = $this->param($b);
-        }
-        return $out;
     }
 
     /** Rounds a list up to a power of two by repeating its last value. */

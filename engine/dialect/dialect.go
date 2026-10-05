@@ -4,10 +4,6 @@ package dialect
 
 import "strings"
 
-// CurrentTimeToken is replaced in trusted ORM expression fragments with the
-// dialect's advancing wall-clock expression.
-const CurrentTimeToken = "$CURRENT_TIME"
-
 type Dialect interface {
 	Name() string
 	// Quote an identifier.
@@ -33,8 +29,6 @@ type Dialect interface {
 	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
 	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
 	Now(precision int) string
-	// CurrentTime renders a wall-clock expression that advances during a transaction.
-	CurrentTime() string
 	// HandlesStyle은 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
 	// (MySQL: hex, ip). 나머지 stage는 executor가 적용한다.
 	HandlesStyle(style string) bool

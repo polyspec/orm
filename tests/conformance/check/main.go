@@ -67,6 +67,13 @@ type file struct {
 
 // driver selects the database: "mysql" (default) or postgres/sqlite. Every
 // runner takes it as a driver flag, and the expectations file follows it.
+// selected는 -vector가 고른 vector 이름이다. 비어 있으면 모든 vector다. run은 runner에게 그
+// 이름만 실행하게 하고, compare와 record는 그 vector만 비교하고 기록한다.
+var selected listFlag
+
+// chosen은 이름이 고른 vector인지다.
+func chosen(name string) bool { return len(selected) == 0 || slices.Contains(selected, name) }
+
 var (
 	driver string
 	dsn    string
@@ -99,6 +106,7 @@ func main() {
 	var drivers, dsns listFlag
 	fs.Var(&drivers, "driver", "mysql|postgres|sqlite (default mysql); run takes one -driver per -dsn")
 	fs.Var(&dsns, "dsn", "bench database DSN URI for every runner (required by run and state)")
+	fs.Var(&selected, "vector", "a vector name, repeatable: run, compare and record only the named vectors (the runners' own selection)")
 	fs.Parse(os.Args[2:])
 	if len(drivers) == 0 {
 		drivers = listFlag{"mysql"}
@@ -319,12 +327,17 @@ func buildRunners(c *testcase.Case, root, directory string) error {
 
 func runOne(c *testcase.Case, root, output, language string) error {
 	flags := []string{"--dsn", dsn}
+	goFlags := []string{"-dsn", dsn}
+	for _, name := range selected {
+		flags = append(flags, "--vector", name)
+		goFlags = append(goFlags, "-vector", name)
+	}
 	switch language {
 	case "go":
 		if goRunner == "" {
 			return fmt.Errorf("go runner is not built")
 		}
-		return runCommand(c, root, output, runnerDeadline, goRunner, "-dsn", dsn)
+		return runCommand(c, root, output, runnerDeadline, goRunner, goFlags...)
 	case "php":
 		return runCommand(c, root, output, runnerDeadline, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
 	case "typescript":
@@ -666,8 +679,13 @@ func compare(root string, outputs []string) int {
 	}
 	failed := 0
 	declared := map[string]bool{}
+	compared := 0
 	for _, v := range f.Vectors {
 		declared[v.Name] = true
+		if !chosen(v.Name) {
+			continue
+		}
+		compared++
 		if len(v.Expect) == 0 || string(v.Expect) == "null" {
 			fmt.Printf("%-22s (no expectation recorded)\n", v.Name)
 			failed++
@@ -708,7 +726,7 @@ func compare(root string, outputs []string) int {
 		}
 	}
 	if failed == 0 {
-		fmt.Printf("conformance: %d vectors × %d languages identical\n", len(f.Vectors), len(langs))
+		fmt.Printf("conformance: %d vectors × %d languages identical\n", compared, len(langs))
 		return 0
 	}
 	fmt.Printf("conformance: %d mismatches\n", failed)
@@ -743,6 +761,9 @@ func recordVerified(root string, outputs []string) error {
 	for i := range f.Vectors {
 		name := f.Vectors[i].Name
 		declared[name] = true
+		if !chosen(name) {
+			continue
+		}
 		r, ok := goResults[name]
 		if !ok {
 			return fmt.Errorf("vector %s missing from go output", name)

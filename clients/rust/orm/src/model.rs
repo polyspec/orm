@@ -239,7 +239,7 @@ fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
         || Error::Engine { code: codes::IR_INVALID.into(), msg: format!("the statement needs {binds} bind parameters but {driver} permits {limit}") };
     let q = &req.ir.query;
     let Some(where_) = &q.where_ else { return Err(too_large()) };
-    if q.limit.is_some() || !q.order.is_empty() || !q.group_by.is_empty() || !q.group_by_expr.is_empty() {
+    if q.limit.is_some() || !q.order.is_empty() || !q.group_by.is_empty() {
         return Err(too_large());
     }
     let conn_of = |item: &ir::Item| match item {
@@ -841,10 +841,6 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
             Param::Null => a.null = true,
             p => a.p = Some(r.p(p)),
         },
-        SetValue::Raw(raw) => {
-            a.expr = raw.sql.clone();
-            a.ps = raw.binds.iter().map(|b| r.p(b.clone())).collect();
-        }
         SetValue::Plus(n) => a.plus_p = Some(r.p(n.clone())),
         SetValue::Minus(n) => a.minus_p = Some(r.p(n.clone())),
     }

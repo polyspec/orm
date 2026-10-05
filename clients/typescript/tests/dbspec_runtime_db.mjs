@@ -112,7 +112,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
       const row = new Probe().connect(db);
       row[CORE].setValue('small', small);
       const seq = (await row.create())[CORE].column('seq');
-      const read = await new Probe().connect(db).raw('{seq} = ?', seq).get();
+      const read = await new Probe().connect(db).seq(seq).get();
       assert.equal(read[CORE].column('small'), small);
     }
     for (const invalid of [32768, -32769, 1.5]) {
@@ -124,7 +124,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 1);
     const seq = (await row.create())[CORE].column('seq');
-    const read = await new Probe().connect(db).raw('{seq} = ?', seq).get();
+    const read = await new Probe().connect(db).seq(seq).get();
     assert.equal(read[CORE].column('label'), 'none');
     const missing = new Probe().connect(db);
     missing[CORE].setValue('label', 'x');
@@ -137,10 +137,10 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     row[CORE].setValue('note', 'long text');
     row[CORE].setValue('hidden', 'h');
     const seq = (await row.create())[CORE].column('seq');
-    const read = await new Probe().connect(db).raw('{seq} = ?', seq).get();
+    const read = await new Probe().connect(db).seq(seq).get();
     assert.equal(read[CORE].column('note'), 'long text');
     assert.equal(await code(Promise.resolve().then(() => read[CORE].column('hidden'))), 'COLUMN_UNSELECTED');
-    const all = await new Probe().connect(db).addAllColumns().raw('{seq} = ?', seq).get();
+    const all = await new Probe().connect(db).addAllColumns().seq(seq).get();
     assert.equal(all[CORE].column('hidden'), 'h');
   });
 
@@ -154,7 +154,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     row[CORE].setValue('clock', '12:34:56.789');
     row[CORE].setValue('stamp', '2026-01-02 03:04:05.678');
     const seq = (await row.create())[CORE].column('seq');
-    const read = await new Probe().connect(db).raw('{seq} = ?', seq).get();
+    const read = await new Probe().connect(db).seq(seq).get();
     assert.equal(read[CORE].column('secret'), 'person@example.com');
     const payload = read[CORE].column('payload');
     assert.ok(payload instanceof StyledValue && payload.kind === 'value' && payload.payload() instanceof JsonValue);

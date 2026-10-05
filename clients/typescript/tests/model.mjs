@@ -241,7 +241,7 @@ async function conditions(db) {
   const first = await q.getCountByIsClose(true);
   const second = await q.getCount();
   check(first === 2 && second === 4, `terminal changed the model: ${first} ${second}`);
-  check(await new Author().connect(db).raw('{read_count} >= ?', 20).getCount() === 2, 'raw');
+  check(await new Author().connect(db).geReadCount(20).getCount() === 2, 'ge');
   check(await code(new Author().connect(db).name('a').isClose(true).gets()) === 'CONFIG', 'missing connector');
   check(await code(new Author().connect(db).name('a').and().gets()) === 'CONFIG', 'dangling connector');
   check(await code(new Author().connect(db).seq([]).gets()) === 'EMPTY_IN', 'empty list');
@@ -294,13 +294,11 @@ async function columnsAndSubqueries(db) {
   const f = await seed(db);
   const users = await new User().connect(db)
     .addColumnReadTotal(u => new Author().sumReadCount().userSeqEqSeq(u))
-    .addRawColumnDoubled('({seq} * ?)', 2)
-    .addColumnNameAliasUpperName('UPPER(%s)')
     .seq(new Author().addColumnUserSeq().isClose(false))
     .orderBySeqAsc().gets();
   check(users.length === 1, `subquery IN: ${users.length}`);
   const u = users.first();
-  check(Number(u.getReadTotal()) === 20 && Number(u.getDoubled()) === 2 * u.getSeq() && u.getUpperName() === 'KIM', `added columns: ${u.getReadTotal()} ${u.getDoubled()} ${u.getUpperName()}`);
+  check(Number(u.getReadTotal()) === 20, `added column: ${u.getReadTotal()}`);
   const sum = await new Author().connect(db).serviceSeq(f.service.getSeq()).sumReadCount().getSum();
   const avg = await new Author().connect(db).serviceSeq(f.service.getSeq()).avgReadCount().getAvg();
   check(sum === 60 && avg === 15, `aggregates: ${sum} ${avg}`);

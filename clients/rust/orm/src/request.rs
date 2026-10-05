@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RawSpec, RelSpec};
+use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec};
 use crate::ir;
 use crate::schema::Schema;
 use crate::value::Param;
@@ -211,17 +211,12 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>) 
     for o in &c.order {
         if o.random {
             q.order.push(ir::Order { random: true, ..Default::default() });
-        } else if let Some(raw) = &o.raw {
-            q.order.push(ir::Order { expr: raw.clone(), ..Default::default() });
         } else {
             let func = o.func.as_ref().map(|func| func_ir(r, func));
             q.order.push(ir::Order { column: o.column.clone(), desc: o.desc, r#fn: func, ..Default::default() });
         }
     }
     q.group_by = c.group_by.clone();
-    for (i, g) in c.group_raw.iter().enumerate() {
-        q.group_by_expr.push(ir::GroupExpr { expr: g.clone(), as_: format!("group_{}", i + 1) });
-    }
     Some(q)
 }
 
@@ -255,34 +250,14 @@ fn func_ir(r: &mut Req, f: &crate::args::Func) -> ir::Func {
     ir::Func { name: f.name.to_owned(), ps }
 }
 
-fn raw_expr(r: &mut Req, raw: &RawSpec) -> ir::Expr {
-    let n = raw.sql.matches('?').count();
-    if n != raw.binds.len() {
-        r.fail(Error::Engine { code: codes::IR_INVALID.into(), msg: format!("raw SQL has {n} placeholders and {} binds", raw.binds.len()) });
-    }
-    let ps = raw.binds.iter().map(|b| r.p(b.clone())).collect();
-    ir::Expr { sql: raw.sql.clone(), ps }
-}
-
 fn columns(r: &mut Req, c: &Core) -> Option<Option<ir::Columns>> {
     let spec = &c.columns;
     let mut out = ir::Columns { mode: spec.mode.to_owned(), add: spec.add.clone(), remove: spec.remove.clone(), ..Default::default() };
     for (name, added) in &spec.added {
         match added {
-            Added::Format(column, format) => {
-                if format.matches("%s").count() != 1 {
-                    r.fail(config(format!("column format for {name} must contain one %s")));
-                    return None;
-                }
-                out.expr.insert(name.clone(), ir::Expr { sql: format.replacen("%s", &format!("{{{column}}}"), 1), ps: Vec::new() });
-            }
             Added::Func(column, f) => {
                 let func = func_ir(r, f);
                 out.r#fn.insert(name.clone(), ir::ColFunc { column: column.clone(), r#fn: func });
-            }
-            Added::Raw(raw) => {
-                let e = raw_expr(r, raw);
-                out.expr.insert(name.clone(), e);
             }
             Added::Sub(func) => {
                 let core = func(c);
@@ -291,7 +266,7 @@ fn columns(r: &mut Req, c: &Core) -> Option<Option<ir::Columns>> {
             }
         }
     }
-    if out.mode.is_empty() && out.add.is_empty() && out.remove.is_empty() && out.expr.is_empty() && out.r#fn.is_empty() && out.sub.is_empty() {
+    if out.mode.is_empty() && out.add.is_empty() && out.remove.is_empty() && out.r#fn.is_empty() && out.sub.is_empty() {
         return Some(None);
     }
     Some(Some(out))
@@ -305,10 +280,6 @@ fn group(r: &mut Req, items: &[CondNode], owner: &Core, f: &mut Frame<'_>) -> Op
                 let mut pred = pred(r, p, owner, f)?;
                 pred.conn = node.conn.to_owned();
                 ir::Item::Pred { pred: Box::new(pred) }
-            }
-            CondKind::Raw(raw) => {
-                let e = raw_expr(r, raw);
-                ir::Item::Pred { pred: Box::new(ir::Pred { conn: node.conn.to_owned(), expr: e.sql, ps: e.ps, ..Default::default() }) }
             }
             CondKind::Group(items, not) => {
                 let mut g = group(r, items, owner, f)?;

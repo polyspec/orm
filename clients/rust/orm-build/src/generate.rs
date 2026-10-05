@@ -40,9 +40,6 @@ const FIXED: &[&str] = &[
     "not",
     "and_not",
     "or_not",
-    "raw",
-    "and_raw",
-    "or_raw",
     "on",
     "relation",
     "relations",
@@ -63,8 +60,6 @@ const FIXED: &[&str] = &[
     "duplication",
     "limit",
     "order_by_random",
-    "order_by_raw",
-    "group_by_raw",
     "remove_all_columns",
     "add_all_columns",
     "parent_node",
@@ -277,7 +272,7 @@ impl<'m> Model<'m> {
     fn new(e: &'m Entity) -> Model<'m> {
         let mut fixed: BTreeSet<String> = FIXED.iter().map(|s| s.to_string()).collect();
         for c in &e.fields {
-            for p in ["get_", "set_", "set_raw_", "add_column_", "remove_column_", "group_by_", "key_name_"] {
+            for p in ["get_", "set_", "add_column_", "remove_column_", "group_by_", "key_name_"] {
                 fixed.insert(format!("{p}{}", c.name));
             }
             fixed.insert(format!("order_by_{}_asc", c.name));
@@ -605,16 +600,6 @@ impl<'m> Gen<'m> {
             self.add_method(gi, r, name, argc, code);
             return self.value_getter(gi, r, attr, format!("the value attached with {name}"));
         }
-        if let Some(attr) = name.strip_prefix("add_raw_column_") {
-            if !want(self, 2) || !self.output_name(gi, r, attr) {
-                return;
-            }
-            let code = format!(
-                "    /// Adds the raw column {attr}.\n    pub fn {name}(mut self, sql: &str, binds: impl orm::Binds) -> Self {{\n        self.__orm.add_raw_column({attr:?}, sql, binds.into_binds());\n        self\n    }}\n"
-            );
-            self.add_method(gi, r, name, argc, code);
-            return self.value_getter(gi, r, attr, format!("the column added with {name}"));
-        }
         if let Some(rest) = name.strip_prefix("add_column_") {
             if !want(self, 1) {
                 return;
@@ -632,7 +617,7 @@ impl<'m> Gen<'m> {
                     return;
                 }
                 let code = format!(
-                    "    /// Adds {col} as {attr}, formatted or wrapped in a column function.\n    pub fn {name}(mut self, format: impl orm::args::IntoColumnFormat) -> Self {{\n        self.__orm.add_column_as({col:?}, {attr:?}, format);\n        self\n    }}\n"
+                    "    /// Adds {col} as {attr} wrapped in a column function.\n    pub fn {name}(mut self, f: orm::Func) -> Self {{\n        self.__orm.add_column_func({col:?}, {attr:?}, f);\n        self\n    }}\n"
                 );
                 self.add_method(gi, r, name, argc, code);
                 return self.value_getter(gi, r, attr, format!("the column added with {name}"));
@@ -990,10 +975,6 @@ fn model_source(gm: &Model<'_>) -> String {
                 "    /// Sets {col}.\n    pub fn set_{col}(mut self, v: impl Into<{bt}>) -> Self {{\n        let v: {bt} = v.into();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         }
-        let _ = write!(
-            b,
-            "    /// Sets {col} from a SQL expression.\n    pub fn set_raw_{col}(mut self, sql: &str, binds: impl orm::Binds) -> Self {{\n        self.__orm.set_raw({col:?}, sql, binds.into_binds());\n        self\n    }}\n\n"
-        );
         let _ = write!(b, "    /// Adds the column {col}.\n    pub fn add_column_{col}(mut self) -> Self {{\n        self.__orm.add_column({col:?});\n        self\n    }}\n\n");
         let _ = write!(b, "    /// Removes the column {col}.\n    pub fn remove_column_{col}(mut self) -> Self {{\n        self.__orm.remove_column({col:?});\n        self\n    }}\n\n");
         let _ = write!(

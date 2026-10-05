@@ -29,7 +29,6 @@ export class DecimalCase extends Model {
   public static readonly entity: EntityDef = { model, entity: model.entities.get('decimal_case')!, create: core => new DecimalCase(core) };
   public getSeq(): number { return this[CORE].column('seq') as number; }
   public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
-  public setRawSeq(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'seq', raw: { sql, binds } }); return this; }
   public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
   public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
   public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
@@ -42,7 +41,6 @@ export class DecimalCase extends Model {
   public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
   public getAmount(): string { return this[CORE].column('amount') as string; }
   public setAmount(value: string): this { this[CORE].setValue('amount', value); return this; }
-  public setRawAmount(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'amount', raw: { sql, binds } }); return this; }
   public addColumnAmount(): this { this[CORE].addColumn('amount'); return this; }
   public removeColumnAmount(): this { this[CORE].removeColumn('amount'); return this; }
   public groupByAmount(): this { this[CORE].groupBy.push('amount'); return this; }
@@ -55,7 +53,6 @@ export class DecimalCase extends Model {
   public avgAmount(): this { this[CORE].aggregate('avg', 'amount'); return this; }
   public getLargeValue(): string | null { return this[CORE].column('large_value') as string | null; }
   public setLargeValue(value: string | null): this { this[CORE].setValue('large_value', value); return this; }
-  public setRawLargeValue(sql: string, ...binds: unknown[]): this { this[CORE].putSet({ column: 'large_value', raw: { sql, binds } }); return this; }
   public addColumnLargeValue(): this { this[CORE].addColumn('large_value'); return this; }
   public removeColumnLargeValue(): this { this[CORE].removeColumn('large_value'); return this; }
   public groupByLargeValue(): this { this[CORE].groupBy.push('large_value'); return this; }

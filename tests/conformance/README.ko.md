@@ -42,7 +42,7 @@ go run ./tests/conformance/check run -driver sqlite -dsn "$BENCH_SQLITE_DSN"
 비어 있는 SQLite `AUTOINCREMENT` 테이블에는 아직 `sqlite_sequence` 항목이 없을 수 있다. counter 테스트는 테이블 정의를 확인하고 첫 삽입으로 생긴 counter를 관찰한 뒤 원래의 항목 부재 상태로 복원한다.
 
 
-각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript는 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. 각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
+각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript는 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `-vector NAME`을 받는다: `run`은 그것을 네 실행기에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다. 각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
 
 `check compare`는 저장된 파일을 비교하며 실행기가 현재 실행됐다는 증거가 아니다. 네 클라이언트의 출력이 정확히 하나씩 필요하다. `check run`은 시작할 때 이전 생성 출력을 제거하고 반복 실행, 상태 검사, 기대값 비교가 모두 통과한 뒤에만 네 출력 파일을 게시한다. 실패하면 현재 진단 파일을 `.run-*` 디렉터리에 남기되 검증된 출력으로 다루지 않는다. `check record -driver <db>`는 네 출력에 선언된 벡터만 있고 결과가 모두 같을 때만 기대값을 갱신한다. 거부된 출력은 기대값 파일을 변경하지 않는다.
 

@@ -33,10 +33,10 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:a95335962fe3712b60df733abac50483e80ad4bae117166529a5838277d6896c",
-    "php": "sha256:0acf93b471d82cca83f01004df0457121b0fd6d4fc1fdfca06dec0b4b755d343",
-    "rust": "sha256:2a3e189c649a349fcea04795972dab683f466cd060cbb6b89420ffba87d47785",
-    "typescript": "sha256:d5692cf813e651c33fefccde9478ee5a32b9a98946ac7f29e1f18cc7130d5568"
+    "go": "sha256:433cdfa22f095759ff19967526d67c12e2bb247e337d036e40538e57ca1b87ad",
+    "php": "sha256:ab54ed0d9151cea5c3b61d9c613c51c2cc8dbd87ccda4169d91cb28e1d02caea",
+    "rust": "sha256:44ecd6235f469654f630a7f09a62e124a2c07e4be7cd731e2ee96f1cc3460235",
+    "typescript": "sha256:915a0574cf4ca5d88473210d389be734eb98122d971f153bf5eb8e1053ba1b8f"
   },
   "prohibited_symbols": [
     "multi_statement",
@@ -60,7 +60,6 @@
         "connect",
         "and",
         "or",
-        "raw",
         "relation",
         "relations",
         "limit",
@@ -464,34 +463,6 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.or",
           "signature": "public or(arg?: ((q: this) => unknown) | Model): this"
-        }
-      }
-    },
-    {
-      "id": "Model.raw",
-      "for": "entity",
-      "inputs": [
-        "RawSql"
-      ],
-      "output": "Chain",
-      "errors": [],
-      "state": "Adds a raw first condition with its binds",
-      "native": {
-        "go": {
-          "symbol": "clients/go/model/{entity}.go::{Entity}Model.Raw",
-          "signature": "receiver=*{Entity}Model func(sql string, binds ...any) *{Entity}Model"
-        },
-        "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::raw",
-          "signature": "public function raw(string $sql, array $binds = []): static"
-        },
-        "rust": {
-          "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::raw",
-          "signature": "pub fn raw(mut self, sql: &str, binds: impl orm::Binds) -> Self"
-        },
-        "typescript": {
-          "symbol": "clients/typescript/src/model.ts::Model.raw",
-          "signature": "public raw(sql: string, ...binds: unknown[]): this"
         }
       }
     },
@@ -1951,7 +1922,6 @@
         "relations": "list<IRRelation>",
         "order": "list<IROrder>",
         "group_by": "list<text>",
-        "group_by_expr": "list<IRGroupExpr>",
         "limit": "IRLimit",
         "force_index": "text",
         "lock": "text",
@@ -1969,7 +1939,6 @@
         "relations",
         "order",
         "group_by",
-        "group_by_expr",
         "limit",
         "force_index",
         "lock",
@@ -1992,13 +1961,11 @@
         "mode": "text",
         "add": "list<text>",
         "remove": "list<text>",
-        "expr": "map<IRExpr>",
         "fn": "map<IRColFunc>",
         "sub": "map<IRSub>"
       },
       "optional": [
         "add",
-        "expr",
         "fn",
         "mode",
         "remove",
@@ -2109,7 +2076,6 @@
         "p": "integer",
         "ps": "list<integer>",
         "ref": "IRColRef",
-        "expr": "text",
         "fn": "IRFunc",
         "value": "IRFunc",
         "cols": "list<text>",
@@ -2119,7 +2085,6 @@
         "cols",
         "column",
         "conn",
-        "expr",
         "fn",
         "op",
         "p",
@@ -2143,22 +2108,6 @@
       },
       "optional": [
         "path"
-      ]
-    },
-    {
-      "id": "IRExpr",
-      "native": {
-        "go": "engine/ir/ir.go::Expr",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Expr",
-        "rust": "clients/rust/orm/src/ir.rs::Expr",
-        "typescript": "clients/typescript/src/ir.ts::Expression"
-      },
-      "fields": {
-        "sql": "text",
-        "ps": "list<integer>"
-      },
-      "optional": [
-        "ps"
       ]
     },
     {
@@ -2234,7 +2183,6 @@
       },
       "fields": {
         "column": "text",
-        "expr": "text",
         "desc": "bool",
         "random": "bool",
         "fn": "IRFunc"
@@ -2242,24 +2190,9 @@
       "optional": [
         "column",
         "desc",
-        "expr",
         "fn",
         "random"
       ]
-    },
-    {
-      "id": "IRGroupExpr",
-      "native": {
-        "go": "engine/ir/ir.go::GroupExpr",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::GroupExpr",
-        "rust": "clients/rust/orm/src/ir.rs::GroupExpr",
-        "typescript": "clients/typescript/src/ir.ts::GroupExpression"
-      },
-      "fields": {
-        "expr": "text",
-        "as": "text"
-      },
-      "optional": []
     },
     {
       "id": "IRLimit",
@@ -2301,16 +2234,12 @@
         "column": "text",
         "p": "integer",
         "null": "bool",
-        "expr": "text",
-        "ps": "list<integer>",
         "plus_p": "integer",
         "minus_p": "integer"
       },
       "optional": [
         "p",
         "null",
-        "expr",
-        "ps",
         "plus_p",
         "minus_p"
       ]

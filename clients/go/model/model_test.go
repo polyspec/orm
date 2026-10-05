@@ -164,9 +164,9 @@ func TestConditions(t *testing.T) {
 		if first != 2 || second != 4 {
 			t.Fatalf("terminal changed the model: %d %d", first, second)
 		}
-		raw := must(model.Author().Connect(db).Raw("{read_count} >= ?", 20).GetCount())
-		if raw != 2 {
-			t.Fatalf("raw: %d", raw)
+		atLeast := must(model.Author().Connect(db).GeReadCount(20).GetCount())
+		if atLeast != 2 {
+			t.Fatalf("ge: %d", atLeast)
 		}
 		_, err := model.Author().Connect(db).Name("a").IsClose(true).Gets()
 		if orm.ErrorCode(err) != orm.CodeConfig {
@@ -300,8 +300,6 @@ func TestColumnsAndSubqueries(t *testing.T) {
 			AddColumnReadTotal(func(u *model.UserModel) orm.Model {
 				return model.Author().SumReadCount().UserSeqEqSeq(u)
 			}).
-			AddRawColumnDoubled("({seq} * ?)", 2).
-			AddColumnNameAliasUpperName("UPPER(%s)").
 			Seq(model.Author().AddColumnUserSeq().IsClose(false)).
 			OrderBySeqAsc().
 			Gets())
@@ -309,8 +307,8 @@ func TestColumnsAndSubqueries(t *testing.T) {
 			t.Fatalf("subquery IN: %d", users.Len())
 		}
 		u := users.First()
-		if must(orm.AsInt64(u.GetReadTotal())) != 20 || must(orm.AsInt64(u.GetDoubled())) != 2*u.GetSeq() || u.GetUpperName() != "KIM" {
-			t.Fatalf("added columns: %v %v %v", u.GetReadTotal(), u.GetDoubled(), u.GetUpperName())
+		if must(orm.AsInt64(u.GetReadTotal())) != 20 {
+			t.Fatalf("added column: %v", u.GetReadTotal())
 		}
 		sum := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).SumReadCount().GetSum())
 		avg := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).AvgReadCount().GetAvg())

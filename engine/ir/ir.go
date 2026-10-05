@@ -39,18 +39,17 @@ type Request struct {
 
 // Query is the shape shared by the root, join children and relation children.
 type Query struct {
-	Entity      string      `json:"entity"`
-	Columns     *Columns    `json:"columns,omitempty"`
-	On          *Group      `json:"on,omitempty"` // join children only
-	Where       *Group      `json:"where,omitempty"`
-	Joins       []*Join     `json:"joins,omitempty"`
-	Relations   []*Relation `json:"relations,omitempty"`
-	Order       []Order     `json:"order,omitempty"`
-	GroupBy     []string    `json:"group_by,omitempty"`
-	GroupByExpr []GroupExpr `json:"group_by_expr,omitempty"`
-	Limit       *Limit      `json:"limit,omitempty"`
-	ForceIdx    string      `json:"force_index,omitempty"`
-	Lock        string      `json:"lock,omitempty"` // update, share, update_nowait or share_nowait; root row-select only
+	Entity    string      `json:"entity"`
+	Columns   *Columns    `json:"columns,omitempty"`
+	On        *Group      `json:"on,omitempty"` // join children only
+	Where     *Group      `json:"where,omitempty"`
+	Joins     []*Join     `json:"joins,omitempty"`
+	Relations []*Relation `json:"relations,omitempty"`
+	Order     []Order     `json:"order,omitempty"`
+	GroupBy   []string    `json:"group_by,omitempty"`
+	Limit     *Limit      `json:"limit,omitempty"`
+	ForceIdx  string      `json:"force_index,omitempty"`
+	Lock      string      `json:"lock,omitempty"` // update, share, update_nowait or share_nowait; root row-select only
 
 	// Relation-child options.
 	KeyBy           string    `json:"key_by,omitempty"`
@@ -64,16 +63,8 @@ type Columns struct {
 	Mode   string             `json:"mode,omitempty"` // "" (default) | all | none
 	Add    []string           `json:"add,omitempty"`
 	Remove []string           `json:"remove,omitempty"`
-	Expr   map[string]Expr    `json:"expr,omitempty"` // out name -> fragment
-	Fn     map[string]ColFunc `json:"fn,omitempty"`   // out name -> column function
-	Sub    map[string]*Sub    `json:"sub,omitempty"`  // out name -> scalar subquery
-}
-
-// Expr is a raw fragment with `{column}` references and `?` placeholders
-// bound to the parameters in Ps.
-type Expr struct {
-	SQL string `json:"sql"`
-	Ps  []int  `json:"ps,omitempty"`
+	Fn     map[string]ColFunc `json:"fn,omitempty"`  // out name -> column function
+	Sub    map[string]*Sub    `json:"sub,omitempty"` // out name -> scalar subquery
 }
 
 // Func names an ORM function and its bound arguments.
@@ -153,9 +144,8 @@ type Pred struct {
 	Column string   `json:"column,omitempty"`
 	Op     string   `json:"op,omitempty"`
 	P      *int     `json:"p,omitempty"`     // single value
-	Ps     []int    `json:"ps,omitempty"`    // in, not_in, between, expr binds
+	Ps     []int    `json:"ps,omitempty"`    // in, not_in, between, tuple rows
 	Ref    *ColRef  `json:"ref,omitempty"`   // *_col operators
-	Expr   string   `json:"expr,omitempty"`  // schema-checked fragment
 	Fn     *Func    `json:"fn,omitempty"`    // column function applied to Column
 	Value  *Func    `json:"value,omitempty"` // value function compared with Column
 	Cols   []string `json:"cols,omitempty"`  // tuple_in, tuple_not_in columns; Ps holds the rows in order
@@ -171,18 +161,9 @@ type ColRef struct {
 
 type Order struct {
 	Column string `json:"column,omitempty"`
-	Expr   string `json:"expr,omitempty"`
 	Desc   bool   `json:"desc,omitempty"`
 	Random bool   `json:"random,omitempty"`
 	Fn     *Func  `json:"fn,omitempty"` // column function applied to Column
-}
-
-// GroupExpr is a trusted SQL expression used as a grouping key. As is the
-// output name exposed on the grouped row; backtick column names in Expr are
-// checked and qualified by the planner.
-type GroupExpr struct {
-	Expr string `json:"expr"`
-	As   string `json:"as"`
 }
 
 type Limit struct {
@@ -195,13 +176,11 @@ type IfParent struct {
 	P      int    `json:"p"`
 }
 
-// Assign sets one column: exactly one of P (value), Expr(+Ps binds), PlusP, MinusP, Null.
+// Assign sets one column: exactly one of P (value), PlusP, MinusP, Null.
 type Assign struct {
 	Column string `json:"column"`
 	P      *int   `json:"p,omitempty"`
 	Null   bool   `json:"null,omitempty"`
-	Expr   string `json:"expr,omitempty"`
-	Ps     []int  `json:"ps,omitempty"`
 	PlusP  *int   `json:"plus_p,omitempty"`
 	MinusP *int   `json:"minus_p,omitempty"`
 }
@@ -263,13 +242,13 @@ func (v *validator) assign(ent *runtimemodel.Entity, r *Request, a *Assign) erro
 		return errf("COLUMN_UNKNOWN", "%s.%s", r.Entity, a.Column)
 	}
 	n := 0
-	for _, has := range []bool{a.P != nil, a.Null, a.Expr != "", a.PlusP != nil, a.MinusP != nil} {
+	for _, has := range []bool{a.P != nil, a.Null, a.PlusP != nil, a.MinusP != nil} {
 		if has {
 			n++
 		}
 	}
 	if n != 1 {
-		return errf("IR_INVALID", "set %s: exactly one of p/null/expr/plus_p/minus_p", a.Column)
+		return errf("IR_INVALID", "set %s: exactly one of p/null/plus_p/minus_p", a.Column)
 	}
 	if a.Null && !c.Null {
 		return errf("IR_INVALID", "set %s.%s to null but column is NOT NULL", r.Entity, a.Column)
@@ -282,12 +261,12 @@ func (v *validator) assign(ent *runtimemodel.Entity, r *Request, a *Assign) erro
 			return errf("IR_INVALID", "param index %d out of range (n_params %d)", *idx, r.NParams)
 		}
 	}
-	return v.params(a.Ps)
+	return nil
 }
 
 // OpAllowed는 op가 field의 type과 codec에 허용되는지 알린다.
 func OpAllowed(c *runtimemodel.Field, op string) bool {
-	if colOps[op] || op == "expr" {
+	if colOps[op] {
 		return true
 	}
 	// codec field는 ip면 address 비교, aes로 시작하면 blind index equality, 그 밖에는 null 검사만 받는다.
@@ -445,21 +424,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			}
 		}
 		// an output name is the row's key: two projections cannot claim the same one
-		for out, e := range q.Columns.Expr {
-			if ent.Field(out) != nil {
-				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s already a column", q.Entity, out)
-			}
-			if strings.Count(e.SQL, "?") != len(e.Ps) {
-				return errf("IR_INVALID", "%s.%s expr has %d placeholders but %d binds", q.Entity, out, strings.Count(e.SQL, "?"), len(e.Ps))
-			}
-			if err := v.params(e.Ps); err != nil {
-				return err
-			}
-		}
 		outputs := map[string]bool{}
-		for out := range q.Columns.Expr {
-			outputs[out] = true
-		}
 		for out, cf := range q.Columns.Fn {
 			if ent.Field(out) != nil || outputs[out] {
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
@@ -595,13 +560,13 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 	}
 	for _, o := range q.Order {
 		kinds := 0
-		for _, has := range []bool{o.Column != "", o.Expr != "", o.Random} {
+		for _, has := range []bool{o.Column != "", o.Random} {
 			if has {
 				kinds++
 			}
 		}
 		if kinds != 1 {
-			return errf("IR_INVALID", "order needs exactly one of column, expr, random")
+			return errf("IR_INVALID", "order needs exactly one of column, random")
 		}
 		if o.Column != "" {
 			col := ent.Field(o.Column)
@@ -622,29 +587,13 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, g)
 		}
 	}
-	seenGroups := make(map[string]bool, len(q.GroupBy)+len(q.GroupByExpr))
-	for _, g := range q.GroupBy {
-		seenGroups[g] = true
-	}
-	for _, g := range q.GroupByExpr {
-		if strings.TrimSpace(g.Expr) == "" || strings.TrimSpace(g.As) == "" {
-			return errf("IR_INVALID", "group_by_expr needs expr and as")
-		}
-		if strings.Contains(g.Expr, "?") {
-			return errf("IR_INVALID", "group_by_expr does not accept parameters")
-		}
-		if seenGroups[g.As] {
-			return errf("IR_INVALID", "duplicate group output %s", g.As)
-		}
-		seenGroups[g.As] = true
-	}
 	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {
 		return errf("IR_INVALID", "limit offset>=0, count>0")
 	}
 	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" && q.Lock != "update_nowait" && q.Lock != "share_nowait" {
 		return errf("IR_INVALID", "lock %q: want update, share, update_nowait or share_nowait", q.Lock)
 	}
-	if q.Lock != "" && (isJoin || isRelation || q.GroupBy != nil || q.GroupByExpr != nil || q.LimitPerParent > 0) {
+	if q.Lock != "" && (isJoin || isRelation || q.GroupBy != nil || q.LimitPerParent > 0) {
 		return errf("IR_INVALID", "row lock is only valid on a root row select")
 	}
 	if q.ForceIdx != "" {
@@ -656,7 +605,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 }
 
 func hasGroupBy(q *Query) bool {
-	return len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0
+	return len(q.GroupBy) > 0
 }
 
 func joinPath(path, rel string) string {
@@ -728,12 +677,6 @@ func (v *validator) pred(ent *runtimemodel.Entity, p *Pred) error {
 		if err := v.params([]int{*p.P}); err != nil {
 			return err
 		}
-	}
-	if p.Expr != "" {
-		if p.Column != "" || p.Op != "" {
-			return errf("IR_INVALID", "expr pred may not carry column/op")
-		}
-		return nil // fragment column names are checked by the dialect renderer
 	}
 	if p.Op == "tuple_in" || p.Op == "tuple_not_in" {
 		if len(p.Cols) < 2 {

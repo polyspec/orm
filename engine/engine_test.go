@@ -98,31 +98,6 @@ func TestSelectAll(t *testing.T) {
 	}
 }
 
-func TestCurrentTimeExpressionUsesDialectWallClock(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	m := benchModel(t)
-	for _, tc := range []struct {
-		dialect string
-		want    string
-	}{
-		{"postgres", "clock_timestamp()"},
-		{"sqlite", "CURRENT_TIMESTAMP"},
-	} {
-		e, err := New(m, tc.dialect)
-		if err != nil {
-			t.Fatal(err)
-		}
-		body := `{"kind":"one","entity":"author","columns":{"mode":"none","expr":{"database_now":{"sql":"$CURRENT_TIME"}}}}`
-		out, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + m.ManifestHash + `",` + body[1:]))
-		if err != nil {
-			t.Fatalf("%s: %v", tc.dialect, err)
-		}
-		if !strings.Contains(string(out), tc.want) {
-			t.Fatalf("%s: expected %q in %s", tc.dialect, tc.want, out)
-		}
-	}
-}
-
 func TestRowLock(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
@@ -261,7 +236,6 @@ func TestAggregates(t *testing.T) {
 	e := testEngine(t)
 	cases := map[string]string{
 		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`:                                                                                           "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
-		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(` + "`like_count`" + `)","as":"bucket"}]`:                                                    "SELECT ROUND(`a`.`like_count`) AS `a__bucket`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY ROUND(`a`.`like_count`)",
 		`"kind":"all","entity":"author","columns":{"mode":"none"},"group_by":["service_seq"],"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
 	}
 	for irs, want := range cases {
@@ -270,22 +244,13 @@ func TestAggregates(t *testing.T) {
 			t.Errorf("%s\n got  %s\n want %s", irs, p.Steps[0].SQL, want)
 		}
 	}
-	grouped := compile(t, e, `"kind":"group_count","entity":"author","group_by":["service_seq"],"group_by_expr":[{"expr":"ROUND(`+"`like_count`"+`)","as":"bucket"}]`)
-	if got := grouped.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "service_seq" || got[0].Index != 0 || got[1].Column != "bucket" || got[1].Index != 1 {
+	grouped := compile(t, e, `"kind":"group_count","entity":"author","group_by":["service_seq","user_seq"]`)
+	if got := grouped.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "service_seq" || got[0].Index != 0 || got[1].Column != "user_seq" || got[1].Index != 1 {
 		t.Fatalf("group_count collection key = %#v", got)
 	}
 	rows := compile(t, e, `"kind":"all","entity":"composite_account"`)
 	if got := rows.Steps[0].Assemble.Key; len(got) != 2 || got[0].Column != "tenant_id" || got[1].Column != "account_id" {
 		t.Fatalf("composite row collection key = %#v", got)
-	}
-	for irs, code := range map[string]string{
-		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(` + "`nope`" + `)","as":"bucket"}]`: "COLUMN_UNKNOWN",
-		`"kind":"group_count","entity":"author","group_by_expr":[{"expr":"ROUND(like_count)","as":""}]`:             "IR_INVALID",
-	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
-		if err == nil || !strings.HasPrefix(err.Error(), code) {
-			t.Errorf("%s\n got %v\n want %s", irs, err, code)
-		}
 	}
 }
 
@@ -359,30 +324,23 @@ func TestPostgresAndSQLite(t *testing.T) {
 func TestJoinAliasNamespaces(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
-	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","expr":{"author_name":{"sql":"{name}"}}},"n_params":1,
+	p := compile(t, e, `"kind":"one","entity":"author","columns":{"mode":"none","add":["name"]},"n_params":1,
 	 "where":{"items":[{"pred":{"column":"seq","op":"eq","p":0}}]},
 	 "joins":[{"rel":"service_member","kind":"inner","left":"service_member_seq","right":"seq","query":{"entity":"service_member","columns":{"mode":"none"},
-	     "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","expr":{"service_name":{"sql":"{name}"}}}}},
-	              {"rel":"user","kind":"inner","left":"user_seq","right":"seq","query":{"entity":"user","columns":{"mode":"none","expr":{"user_name":{"sql":"{name}"}}}}}]}},
-	          {"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","expr":{"root_service_name":{"sql":"{name}"}}}}}]`)
+	     "joins":[{"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","add":["name"]}}},
+	              {"rel":"user","kind":"inner","left":"user_seq","right":"seq","query":{"entity":"user","columns":{"mode":"none","add":["name"]}}}]}},
+	          {"rel":"service","kind":"inner","left":"service_seq","right":"seq","query":{"entity":"service","columns":{"mode":"none","add":["name"]}}}]`)
 	sql := p.Steps[0].SQL
 	for _, want := range []string{
-		"`service_member`.`name` AS `service_member__author_name`", // not present: author's alias belongs to the root
 		"INNER JOIN `service` AS `service_member__service` ON `service_member`.`service_seq` = `service_member__service`.`seq`",
 		"INNER JOIN `user` AS `service_member__user` ON `service_member`.`user_seq` = `service_member__user`.`seq`",
 		"INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq`",
-		"`service_member__service`.`name` AS `service_member__service__service_name`",
-		"`service`.`name` AS `service__root_service_name`",
-		"`a`.`name` AS `a__author_name`",
+		"`service_member__service`.`name` AS `service_member__service__name`",
+		"`service_member__user`.`name` AS `service_member__user__name`",
+		"`service`.`name` AS `service__name`",
+		"`a`.`name` AS `a__name`",
 	} {
-		has := strings.Contains(sql, want)
-		if want[0] == '`' && strings.HasPrefix(want, "`service_member`.`name`") {
-			if has {
-				t.Errorf("alias leaked across entities: %s", want)
-			}
-			continue
-		}
-		if !has {
+		if !strings.Contains(sql, want) {
 			t.Errorf("missing %q in\n%s", want, sql)
 		}
 	}
@@ -405,14 +363,6 @@ func TestJoinAliasNamespaces(t *testing.T) {
 	if len(aliases) != 5 {
 		t.Errorf("aliases: %v", aliases)
 	}
-	for irs, code := range map[string]string{
-		`"kind":"all","entity":"author","columns":{"expr":{"seq":{"sql":"1"}}}`: "COLUMN_ALIAS_CONFLICT",
-	} {
-		_, err := e.Compile([]byte(`{"ir_version":1,"manifest_hash":"` + e.M.ManifestHash + `",` + irs + `}`))
-		if err == nil || !strings.HasPrefix(err.Error(), code) {
-			t.Errorf("%s\n got %v\n want %s", irs, err, code)
-		}
-	}
 }
 
 func TestCompileErrors(t *testing.T) {
@@ -434,7 +384,7 @@ func TestCompileErrors(t *testing.T) {
 		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","joins":[{"rel":"nope","kind":"inner","query":{"entity":"service"}}]}`:                                                                                   "IR_INVALID: join nope: left, right and query are required",
 		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"update","entity":"author","n_params":1,"set":[{"column":"name","p":0}]}`:                                                                                                        "IR_INVALID: update without where",
 		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","force_index":"nope"}`:                                                                                                                                   "INDEX_UNKNOWN",
-		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","order":[{"expr":"DATE(` + "`nope`" + `)"}]}`:                                                                                                            "COLUMN_UNKNOWN",
+		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","order":[{"column":"nope"}]}`:                                                                                                                            "COLUMN_UNKNOWN",
 		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","relations":[{"rel":"service","kind":"one","keys":[{"left":"service_seq","right":"seq"}],"query":{"entity":"service","limit":{"offset":0,"count":1}}}]}`: "LIMIT_IN_RELATION",
 		`{"ir_version":1,"manifest_hash":"` + h + `","kind":"all","entity":"author","multi_statement":true}`:                                                                                                                                 "IR_INVALID",
 	}

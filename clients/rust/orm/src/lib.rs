@@ -27,7 +27,7 @@ pub mod value;
 
 pub use args::{
     date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
-    seconds_later, today, year, Binds, Func, GroupArg, IntoNullable, Null,
+    seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
 };
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};

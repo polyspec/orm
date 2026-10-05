@@ -143,24 +143,6 @@ func (x *CompositeMembershipModel) connector(conn string, args []any) *Composite
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *CompositeMembershipModel) Raw(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *CompositeMembershipModel) AndRaw(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *CompositeMembershipModel) OrRaw(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *CompositeMembershipModel) On(fn func(*CompositeMembershipModel)) *CompositeMembershipModel {
 	g := compositeMembershipEntity.New(x.m.Group()).(*CompositeMembershipModel)
@@ -280,18 +262,6 @@ func (x *CompositeMembershipModel) OrderByRandom() *CompositeMembershipModel {
 	return x
 }
 
-// OrderByRaw appends a raw order expression.
-func (x *CompositeMembershipModel) OrderByRaw(sql string) *CompositeMembershipModel {
-	x.m.OrderByRaw(sql)
-	return x
-}
-
-// GroupByRaw appends a raw grouping expression.
-func (x *CompositeMembershipModel) GroupByRaw(sql string) *CompositeMembershipModel {
-	x.m.GroupByRaw(sql)
-	return x
-}
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *CompositeMembershipModel) RemoveAllColumns() *CompositeMembershipModel {
 	x.m.RemoveAllColumns()
@@ -359,10 +329,6 @@ func (x *CompositeMembershipModel) SetTenantId(v int64) *CompositeMembershipMode
 	return x
 }
 
-func (x *CompositeMembershipModel) SetRawTenantId(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.SetRaw("tenant_id", sql, binds)
-	return x
-}
 func (x *CompositeMembershipModel) AddColumnTenantId() *CompositeMembershipModel {
 	x.m.AddColumn("tenant_id")
 	return x
@@ -414,10 +380,6 @@ func (x *CompositeMembershipModel) SetAccountId(v int64) *CompositeMembershipMod
 	return x
 }
 
-func (x *CompositeMembershipModel) SetRawAccountId(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.SetRaw("account_id", sql, binds)
-	return x
-}
 func (x *CompositeMembershipModel) AddColumnAccountId() *CompositeMembershipModel {
 	x.m.AddColumn("account_id")
 	return x
@@ -469,10 +431,6 @@ func (x *CompositeMembershipModel) SetRole(v string) *CompositeMembershipModel {
 	return x
 }
 
-func (x *CompositeMembershipModel) SetRawRole(sql string, binds ...any) *CompositeMembershipModel {
-	x.m.SetRaw("role", sql, binds)
-	return x
-}
 func (x *CompositeMembershipModel) AddColumnRole() *CompositeMembershipModel {
 	x.m.AddColumn("role")
 	return x

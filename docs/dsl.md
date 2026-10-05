@@ -41,13 +41,11 @@ The first condition has no prefix; a prefix written on it is dropped. Each follo
 | `and(fn)`, `or(fn)` | parenthesized group joined with `AND` or `OR` |
 | `not(fn)`, `andNot(fn)`, `orNot(fn)` | negated group `NOT (…)` as the first condition or joined with `AND` or `OR` |
 | `and(model)`, `or(model)` | parenthesized group of the conditions set on a joined model |
-| `raw(sql, binds)`, `andRaw(sql, binds)`, `orRaw(sql, binds)` | raw condition as the first or a following condition |
 
 - A connector at the start of a model or a group has nothing to join, so it is dropped: `and(fn)`, `or(fn)`, `and()`, `or()`, `and<Chain>(…)`, and `or<Chain>(…)` all read as the first condition, and the statement starts with that condition or group.
 - A missing connector between two conditions and a connector without a following condition return `CONFIG`.
 - A group callback receives an empty model of the same type. The callback accepts condition methods only; a terminal, write, or `connect` inside the callback returns `CONFIG`.
 - A group is the only way to write parentheses.
-- Raw SQL references columns of the calling model as `{column}`, which the ORM renders with the model alias. `?` is the only value placeholder, and the placeholder count must equal the bind count; otherwise `IR_INVALID` is returned. Raw text is for code-owned SQL, and request values are passed as binds.
 
 - `not(fn)` negates its group as a whole; a negated group always has parentheses. Rust names the two joined forms `and_not` and `or_not`. A callback that adds no condition returns `CONFIG`.
 
@@ -59,7 +57,7 @@ A condition is one expression of a neutral grammar: it renders and means the sam
 - `between` through the `Between` operator, which every database renders as `BETWEEN`;
 - the column functions `year`, `month`, `dayOfWeek` and `date` and the value functions `now`, `today`, `<unit>Ago` and `<unit>Later` (section 10), each with one rendering per database.
 
-The existing `Lk`, `Lb`, `Fulltext`, `FulltextBoolean` and tuple operators and column comparisons keep their rules. Arithmetic is not part of the grammar: integer overflow and division differ between the three databases.
+The existing `Lk`, `Lb`, `Fulltext`, `FulltextBoolean` and tuple operators and column comparisons keep their rules. Arithmetic is not part of the grammar: integer overflow and division differ between the three databases. The DSL has no SQL text form: a condition, column, order, grouping or assignment is written only with the methods of this document, so every value reaches the database as a typed bind.
 
 ### 2.2 Chains
 
@@ -154,9 +152,8 @@ Key   = [Operator] Column
 | Method | Effect |
 |---|---|
 | `addColumn<Col>()` | add one column |
-| `addColumn<Col>Alias<Name>(format)` | add a formatted column with an output name |
+| `addColumn<Col>Alias<Name>(fn)` | add a column function of the column (section 10) with an output name |
 | `addColumn<Name>(fn)` | add a scalar subquery column; the callback receives the calling model and returns an unexecuted model |
-| `addRawColumn<Alias>(sql, binds)` | add a raw column with an output name |
 | `removeColumn<Col>()` | remove one column |
 | `removeAllColumns()` | keep only primary and foreign keys |
 | `addAllColumns()` | select every column |
@@ -248,14 +245,13 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. Order and range
 
-`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping. `orderByRaw(sql)` and `groupByRaw(sql)` use raw expressions with the rules in section 2.1. `limit(offset, count)` sets the range.
+`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping. `limit(offset, count)` sets the range.
 
 ## 7. Writes
 
 | Method | Effect |
 |---|---|
 | `set<Col>(value)` | stored column value; the column must exist |
-| `setRaw<Col>(sql, binds)` | stored column value from a schema-checked SQL expression |
 | `new<Name>(value)` | attach a value under a name that is not a column; see the rules below |
 | `plus<Col>(n)`, `minus<Col>(n)` | bound increment and decrement; `minus` never stores a negative value |
 | `create()` | insert and return the row with its generated key |
@@ -351,9 +347,9 @@ A transaction of the same connection inside an active one accepts only `retry`, 
 
 ## 9. Reserved names
 
-The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `raw`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
+The generator rejects a column whose method name matches a reserved method (`and`, `or`, `get`, `gets`, `getsPage`, `getQuery`, `limit`, `alias`, `connect`, `create`, `creates`, `update`, `delete`, `restore`, `save`, `on`) or starts with a reserved prefix (`and`, `or`, `get`, `set`, `new`, `plus`, `minus`, `orderBy`, `groupBy`, `tuple`, or an operator). A column named `random` is rejected because `orderByRandom()` is reserved.
 
-The names attached to a row form one name space: real columns, columns added with `addColumn<Name>(fn)` or `addRawColumn<Alias>`, relation result names, and `new<Name>` names. A duplicate name in this space is rejected. Go and Rust reject it during generation; PHP and TypeScript return `CONFIG`. Two relations to the same table therefore need different aliases, and a subquery column needs a name that is not a real column.
+The names attached to a row form one name space: real columns, columns added with `addColumn<Name>(fn)` or `addColumn<Col>Alias<Name>(fn)`, relation result names, and `new<Name>` names. A duplicate name in this space is rejected. Go and Rust reject it during generation; PHP and TypeScript return `CONFIG`. Two relations to the same table therefore need different aliases, and a subquery column needs a name that is not a real column.
 
 A column whose method name equals another generated method of the model, such as `sum_amount` next to `amount` (`sumAmount()`), is rejected.
 

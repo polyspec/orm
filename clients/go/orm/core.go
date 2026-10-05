@@ -47,7 +47,6 @@ type condNode struct {
 	pred   *predSpec
 	group  *condGroup
 	joined *Core
-	raw    *rawSpec
 }
 
 type condGroup struct {
@@ -72,11 +71,6 @@ type predSpec struct {
 	tuple   bool
 }
 
-type rawSpec struct {
-	sql   string
-	binds []any
-}
-
 type joinSpec struct {
 	kind  string
 	left  string
@@ -90,19 +84,16 @@ type relSpec struct {
 }
 
 type columnSpec struct {
-	mode    string
-	add     []string
-	remove  []string
-	formats map[string]formatSpec
-	funcs   map[string]formatSpec
-	subs    map[string]func(Model) Model
-	raws    map[string]rawSpec
-	order   []string
+	mode   string
+	add    []string
+	remove []string
+	funcs  map[string]funcSpec
+	subs   map[string]func(Model) Model
+	order  []string
 }
 
-type formatSpec struct {
+type funcSpec struct {
 	column string
-	format string
 	fn     *Func
 }
 
@@ -111,14 +102,12 @@ type orderSpec struct {
 	desc   bool
 	fn     *Func
 	random bool
-	raw    *rawSpec
 }
 
 type setSpec struct {
 	column string
 	value  any
 	null   bool
-	raw    *rawSpec
 	plus   bool
 	minus  bool
 }
@@ -171,7 +160,6 @@ type statement struct {
 	columns   columnSpec
 	order     []orderSpec
 	groupBy   []string
-	groupRaw  []rawSpec
 	limit     *ir.Limit
 	index     string
 	lock      string
@@ -341,12 +329,6 @@ func (c *Core) On(g *Core) {
 		return
 	}
 	c.on = &condGroup{items: g.where.items}
-}
-
-// Raw appends a raw condition. conn is empty for the first condition.
-func (c *Core) Raw(conn, sql string, binds []any) {
-	c.ensureStatement()
-	c.group().add(c, conn, condNode{raw: &rawSpec{sql: sql, binds: binds}})
 }
 
 // Where appends the conditions of a chain. conn is the connector of the
@@ -604,18 +586,6 @@ func (c *Core) AddColumn(column string) {
 	}
 }
 
-// AddColumnFormat adds a formatted column; format contains %s for the column.
-func (c *Core) AddColumnFormat(column, name, format string) {
-	c.ensureStatement()
-	if !c.addName(name) {
-		return
-	}
-	if c.columns.formats == nil {
-		c.columns.formats = map[string]formatSpec{}
-	}
-	c.columns.formats[name] = formatSpec{column: column, format: format}
-}
-
 // AddColumnFunc adds a column function output.
 func (c *Core) AddColumnFunc(column, name string, fn Func) {
 	c.ensureStatement()
@@ -627,9 +597,9 @@ func (c *Core) AddColumnFunc(column, name string, fn Func) {
 		return
 	}
 	if c.columns.funcs == nil {
-		c.columns.funcs = map[string]formatSpec{}
+		c.columns.funcs = map[string]funcSpec{}
 	}
-	c.columns.funcs[name] = formatSpec{column: column, fn: &fn}
+	c.columns.funcs[name] = funcSpec{column: column, fn: &fn}
 }
 
 // AddColumnSub adds a scalar subquery column.
@@ -642,18 +612,6 @@ func (c *Core) AddColumnSub(name string, fn func(Model) Model) {
 		c.columns.subs = map[string]func(Model) Model{}
 	}
 	c.columns.subs[name] = fn
-}
-
-// AddRawColumn adds a raw column.
-func (c *Core) AddRawColumn(name, sql string, binds []any) {
-	c.ensureStatement()
-	if !c.addName(name) {
-		return
-	}
-	if c.columns.raws == nil {
-		c.columns.raws = map[string]rawSpec{}
-	}
-	c.columns.raws[name] = rawSpec{sql: sql, binds: binds}
 }
 
 // RemoveColumn removes one column.
@@ -696,20 +654,8 @@ func (c *Core) OrderBy(column string, desc bool, fn []Func) {
 // OrderByRandom orders rows randomly.
 func (c *Core) OrderByRandom() { c.order = append(c.order, orderSpec{random: true}) }
 
-// OrderByRaw appends a raw order expression.
-func (c *Core) OrderByRaw(sql string) {
-	c.ensureStatement()
-	c.order = append(c.order, orderSpec{raw: &rawSpec{sql: sql}})
-}
-
 // GroupBy appends a grouping column.
 func (c *Core) GroupBy(column string) { c.groupBy = append(c.groupBy, column) }
-
-// GroupByRaw appends a raw grouping expression.
-func (c *Core) GroupByRaw(sql string) {
-	c.ensureStatement()
-	c.groupRaw = append(c.groupRaw, rawSpec{sql: sql})
-}
 
 // Limit sets the row range.
 func (c *Core) Limit(offset, count int) {
@@ -736,7 +682,7 @@ func (c *Core) Set(column string, value any) {
 func (c *Core) Selected(column string) bool {
 	for _, s := range c.sets {
 		if s.column == column {
-			return s.raw == nil && !s.null && !s.plus && !s.minus
+			return !s.null && !s.plus && !s.minus
 		}
 	}
 	return c.row != nil && !c.row.hidden[column] && slices.Contains(c.row.names, column)
@@ -744,11 +690,6 @@ func (c *Core) Selected(column string) bool {
 
 // SetNull records a null column value.
 func (c *Core) SetNull(column string) { c.putSet(setSpec{column: column, null: true}) }
-
-// SetRaw records a column value from a raw SQL expression.
-func (c *Core) SetRaw(column, sql string, binds []any) {
-	c.putSet(setSpec{column: column, raw: &rawSpec{sql: sql, binds: binds}})
-}
 
 // Plus records a bound increment.
 func (c *Core) Plus(column string, n any) { c.putSet(setSpec{column: column, value: n, plus: true}) }
@@ -829,17 +770,14 @@ func (c *Core) clone() *Core {
 	out.matches = slices.Clone(c.matches)
 	out.order = slices.Clone(c.order)
 	out.groupBy = slices.Clone(c.groupBy)
-	out.groupRaw = slices.Clone(c.groupRaw)
 	out.sets = slices.Clone(c.sets)
 	out.news = slices.Clone(c.news)
 	out.newValues = maps.Clone(c.newValues)
 	out.columns.add = slices.Clone(c.columns.add)
 	out.columns.remove = slices.Clone(c.columns.remove)
 	out.columns.order = slices.Clone(c.columns.order)
-	out.columns.formats = maps.Clone(c.columns.formats)
 	out.columns.funcs = maps.Clone(c.columns.funcs)
 	out.columns.subs = maps.Clone(c.columns.subs)
-	out.columns.raws = maps.Clone(c.columns.raws)
 	return &out
 }
 

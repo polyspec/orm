@@ -4,7 +4,6 @@ package model
 
 import (
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -552,21 +551,6 @@ func (x *AuthorModel) connector(conn string, args []any) *AuthorModel {
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *AuthorModel) Raw(sql string, binds ...any) *AuthorModel { x.m.Raw("", sql, binds); return x }
-
-// AndRaw adds a raw condition joined with AND.
-func (x *AuthorModel) AndRaw(sql string, binds ...any) *AuthorModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *AuthorModel) OrRaw(sql string, binds ...any) *AuthorModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *AuthorModel) On(fn func(*AuthorModel)) *AuthorModel {
 	g := authorEntity.New(x.m.Group()).(*AuthorModel)
@@ -667,12 +651,6 @@ func (x *AuthorModel) Limit(offset, count int) *AuthorModel { x.m.Limit(offset, 
 // OrderByRandom orders rows randomly.
 func (x *AuthorModel) OrderByRandom() *AuthorModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *AuthorModel) OrderByRaw(sql string) *AuthorModel { x.m.OrderByRaw(sql); return x }
-
-// GroupByRaw appends a raw grouping expression.
-func (x *AuthorModel) GroupByRaw(sql string) *AuthorModel { x.m.GroupByRaw(sql); return x }
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *AuthorModel) RemoveAllColumns() *AuthorModel { x.m.RemoveAllColumns(); return x }
 
@@ -718,10 +696,6 @@ func (x *AuthorModel) GetSeq() int64 { return x.fSeq }
 // SetSeq sets seq.
 func (x *AuthorModel) SetSeq(v int64) *AuthorModel { x.fSeq = v; x.m.Set("seq", v); return x }
 
-func (x *AuthorModel) SetRawSeq(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnSeq() *AuthorModel    { x.m.AddColumn("seq"); return x }
 func (x *AuthorModel) RemoveColumnSeq() *AuthorModel { x.m.RemoveColumn("seq"); return x }
 func (x *AuthorModel) GroupBySeq() *AuthorModel      { x.m.GroupBy("seq"); return x }
@@ -745,10 +719,6 @@ func (x *AuthorModel) GetName() string { return x.fName }
 // SetName sets name.
 func (x *AuthorModel) SetName(v string) *AuthorModel { x.fName = v; x.m.Set("name", v); return x }
 
-func (x *AuthorModel) SetRawName(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("name", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnName() *AuthorModel    { x.m.AddColumn("name"); return x }
 func (x *AuthorModel) RemoveColumnName() *AuthorModel { x.m.RemoveColumn("name"); return x }
 func (x *AuthorModel) GroupByName() *AuthorModel      { x.m.GroupBy("name"); return x }
@@ -776,10 +746,6 @@ func (x *AuthorModel) SetDescription(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawDescription(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("description", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnDescription() *AuthorModel { x.m.AddColumn("description"); return x }
 func (x *AuthorModel) RemoveColumnDescription() *AuthorModel {
 	x.m.RemoveColumn("description")
@@ -806,10 +772,6 @@ func (x *AuthorModel) SetCreatedTs(v time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawCreatedTs(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("created_ts", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnCreatedTs() *AuthorModel    { x.m.AddColumn("created_ts"); return x }
 func (x *AuthorModel) RemoveColumnCreatedTs() *AuthorModel { x.m.RemoveColumn("created_ts"); return x }
 func (x *AuthorModel) GroupByCreatedTs() *AuthorModel      { x.m.GroupBy("created_ts"); return x }
@@ -833,10 +795,6 @@ func (x *AuthorModel) SetUpdatedTs(v time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawUpdatedTs(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("updated_ts", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnUpdatedTs() *AuthorModel    { x.m.AddColumn("updated_ts"); return x }
 func (x *AuthorModel) RemoveColumnUpdatedTs() *AuthorModel { x.m.RemoveColumn("updated_ts"); return x }
 func (x *AuthorModel) GroupByUpdatedTs() *AuthorModel      { x.m.GroupBy("updated_ts"); return x }
@@ -860,10 +818,6 @@ func (x *AuthorModel) SetIsClose(v bool) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawIsClose(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("is_close", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnIsClose() *AuthorModel    { x.m.AddColumn("is_close"); return x }
 func (x *AuthorModel) RemoveColumnIsClose() *AuthorModel { x.m.RemoveColumn("is_close"); return x }
 func (x *AuthorModel) GroupByIsClose() *AuthorModel      { x.m.GroupBy("is_close"); return x }
@@ -887,10 +841,6 @@ func (x *AuthorModel) SetIsDisplay(v bool) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawIsDisplay(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("is_display", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnIsDisplay() *AuthorModel    { x.m.AddColumn("is_display"); return x }
 func (x *AuthorModel) RemoveColumnIsDisplay() *AuthorModel { x.m.RemoveColumn("is_display"); return x }
 func (x *AuthorModel) GroupByIsDisplay() *AuthorModel      { x.m.GroupBy("is_display"); return x }
@@ -918,10 +868,6 @@ func (x *AuthorModel) SetDisplayStartDt(v *time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawDisplayStartDt(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("display_start_dt", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnDisplayStartDt() *AuthorModel {
 	x.m.AddColumn("display_start_dt")
 	return x
@@ -955,10 +901,6 @@ func (x *AuthorModel) SetDisplayEndDt(v *time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawDisplayEndDt(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("display_end_dt", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnDisplayEndDt() *AuthorModel { x.m.AddColumn("display_end_dt"); return x }
 func (x *AuthorModel) RemoveColumnDisplayEndDt() *AuthorModel {
 	x.m.RemoveColumn("display_end_dt")
@@ -985,10 +927,6 @@ func (x *AuthorModel) SetIsAllday(v bool) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawIsAllday(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("is_allday", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnIsAllday() *AuthorModel    { x.m.AddColumn("is_allday"); return x }
 func (x *AuthorModel) RemoveColumnIsAllday() *AuthorModel { x.m.RemoveColumn("is_allday"); return x }
 func (x *AuthorModel) GroupByIsAllday() *AuthorModel      { x.m.GroupBy("is_allday"); return x }
@@ -1012,10 +950,6 @@ func (x *AuthorModel) SetTargetClubReaderCount(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawTargetClubReaderCount(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("target_club_reader_count", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnTargetClubReaderCount() *AuthorModel {
 	x.m.AddColumn("target_club_reader_count")
 	return x
@@ -1067,10 +1001,6 @@ func (x *AuthorModel) SetSuccessCount(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawSuccessCount(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("success_count", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnSuccessCount() *AuthorModel { x.m.AddColumn("success_count"); return x }
 func (x *AuthorModel) RemoveColumnSuccessCount() *AuthorModel {
 	x.m.RemoveColumn("success_count")
@@ -1104,10 +1034,6 @@ func (x *AuthorModel) SetReaderCount(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawReaderCount(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("reader_count", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnReaderCount() *AuthorModel { x.m.AddColumn("reader_count"); return x }
 func (x *AuthorModel) RemoveColumnReaderCount() *AuthorModel {
 	x.m.RemoveColumn("reader_count")
@@ -1138,10 +1064,6 @@ func (x *AuthorModel) SetReadCount(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawReadCount(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("read_count", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnReadCount() *AuthorModel    { x.m.AddColumn("read_count"); return x }
 func (x *AuthorModel) RemoveColumnReadCount() *AuthorModel { x.m.RemoveColumn("read_count"); return x }
 func (x *AuthorModel) GroupByReadCount() *AuthorModel      { x.m.GroupBy("read_count"); return x }
@@ -1173,10 +1095,6 @@ func (x *AuthorModel) SetPhotoUrl(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawPhotoUrl(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("photo_url", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnPhotoUrl() *AuthorModel    { x.m.AddColumn("photo_url"); return x }
 func (x *AuthorModel) RemoveColumnPhotoUrl() *AuthorModel { x.m.RemoveColumn("photo_url"); return x }
 func (x *AuthorModel) GroupByPhotoUrl() *AuthorModel      { x.m.GroupBy("photo_url"); return x }
@@ -1200,10 +1118,6 @@ func (x *AuthorModel) SetUserSeq(v int64) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawUserSeq(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("user_seq", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnUserSeq() *AuthorModel    { x.m.AddColumn("user_seq"); return x }
 func (x *AuthorModel) RemoveColumnUserSeq() *AuthorModel { x.m.RemoveColumn("user_seq"); return x }
 func (x *AuthorModel) GroupByUserSeq() *AuthorModel      { x.m.GroupBy("user_seq"); return x }
@@ -1231,10 +1145,6 @@ func (x *AuthorModel) SetServiceSeq(v int64) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawServiceSeq(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("service_seq", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnServiceSeq() *AuthorModel { x.m.AddColumn("service_seq"); return x }
 func (x *AuthorModel) RemoveColumnServiceSeq() *AuthorModel {
 	x.m.RemoveColumn("service_seq")
@@ -1265,10 +1175,6 @@ func (x *AuthorModel) SetServiceRegionSeq(v int64) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawServiceRegionSeq(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("service_region_seq", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnServiceRegionSeq() *AuthorModel {
 	x.m.AddColumn("service_region_seq")
 	return x
@@ -1320,10 +1226,6 @@ func (x *AuthorModel) SetServiceMemberSeq(v int64) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawServiceMemberSeq(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("service_member_seq", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnServiceMemberSeq() *AuthorModel {
 	x.m.AddColumn("service_member_seq")
 	return x
@@ -1375,10 +1277,6 @@ func (x *AuthorModel) SetStartDt(v time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawStartDt(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("start_dt", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnStartDt() *AuthorModel    { x.m.AddColumn("start_dt"); return x }
 func (x *AuthorModel) RemoveColumnStartDt() *AuthorModel { x.m.RemoveColumn("start_dt"); return x }
 func (x *AuthorModel) GroupByStartDt() *AuthorModel      { x.m.GroupBy("start_dt"); return x }
@@ -1402,10 +1300,6 @@ func (x *AuthorModel) SetEndDt(v time.Time) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawEndDt(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("end_dt", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnEndDt() *AuthorModel    { x.m.AddColumn("end_dt"); return x }
 func (x *AuthorModel) RemoveColumnEndDt() *AuthorModel { x.m.RemoveColumn("end_dt"); return x }
 func (x *AuthorModel) GroupByEndDt() *AuthorModel      { x.m.GroupBy("end_dt"); return x }
@@ -1433,10 +1327,6 @@ func (x *AuthorModel) SetUuid(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawUuid(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("uuid", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnUuid() *AuthorModel    { x.m.AddColumn("uuid"); return x }
 func (x *AuthorModel) RemoveColumnUuid() *AuthorModel { x.m.RemoveColumn("uuid"); return x }
 func (x *AuthorModel) GroupByUuid() *AuthorModel      { x.m.GroupBy("uuid"); return x }
@@ -1460,10 +1350,6 @@ func (x *AuthorModel) SetIsSingleWork(v bool) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawIsSingleWork(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("is_single_work", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnIsSingleWork() *AuthorModel { x.m.AddColumn("is_single_work"); return x }
 func (x *AuthorModel) RemoveColumnIsSingleWork() *AuthorModel {
 	x.m.RemoveColumn("is_single_work")
@@ -1490,10 +1376,6 @@ func (x *AuthorModel) SetLikeCount(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawLikeCount(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("like_count", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnLikeCount() *AuthorModel    { x.m.AddColumn("like_count"); return x }
 func (x *AuthorModel) RemoveColumnLikeCount() *AuthorModel { x.m.RemoveColumn("like_count"); return x }
 func (x *AuthorModel) GroupByLikeCount() *AuthorModel      { x.m.GroupBy("like_count"); return x }
@@ -1521,10 +1403,6 @@ func (x *AuthorModel) SetAesKeyVersion(v int32) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawAesKeyVersion(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("aes_key_version", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnAesKeyVersion() *AuthorModel {
 	x.m.AddColumn("aes_key_version")
 	return x
@@ -1574,10 +1452,6 @@ func (x *AuthorModel) SetAesHexEmail(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawAesHexEmail(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("aes_hex_email", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnAesHexEmail() *AuthorModel { x.m.AddColumn("aes_hex_email"); return x }
 func (x *AuthorModel) RemoveColumnAesHexEmail() *AuthorModel {
 	x.m.RemoveColumn("aes_hex_email")
@@ -1608,10 +1482,6 @@ func (x *AuthorModel) SetEmailBlindIndex(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawEmailBlindIndex(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("email_blind_index", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnEmailBlindIndex() *AuthorModel {
 	x.m.AddColumn("email_blind_index")
 	return x
@@ -1651,10 +1521,6 @@ func (x *AuthorModel) SetAesHexPhone(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawAesHexPhone(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("aes_hex_phone", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnAesHexPhone() *AuthorModel { x.m.AddColumn("aes_hex_phone"); return x }
 func (x *AuthorModel) RemoveColumnAesHexPhone() *AuthorModel {
 	x.m.RemoveColumn("aes_hex_phone")
@@ -1685,10 +1551,6 @@ func (x *AuthorModel) SetPhoneBlindIndex(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawPhoneBlindIndex(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("phone_blind_index", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnPhoneBlindIndex() *AuthorModel {
 	x.m.AddColumn("phone_blind_index")
 	return x
@@ -1733,10 +1595,6 @@ func (x *AuthorModel) SetPrice(v *string) (*AuthorModel, error) {
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawPrice(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("price", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnPrice() *AuthorModel    { x.m.AddColumn("price"); return x }
 func (x *AuthorModel) RemoveColumnPrice() *AuthorModel { x.m.RemoveColumn("price"); return x }
 func (x *AuthorModel) GroupByPrice() *AuthorModel      { x.m.GroupBy("price"); return x }
@@ -1768,10 +1626,6 @@ func (x *AuthorModel) SetIp(v *string) *AuthorModel {
 	return x
 }
 
-func (x *AuthorModel) SetRawIp(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("ip", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnIp() *AuthorModel    { x.m.AddColumn("ip"); return x }
 func (x *AuthorModel) RemoveColumnIp() *AuthorModel { x.m.RemoveColumn("ip"); return x }
 func (x *AuthorModel) GroupByIp() *AuthorModel      { x.m.GroupBy("ip"); return x }
@@ -1804,10 +1658,6 @@ func (x *AuthorModel) SetGzExtend(v orm.StyledValue) (*AuthorModel, error) {
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawGzExtend(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("gz_extend", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnGzExtend() *AuthorModel    { x.m.AddColumn("gz_extend"); return x }
 func (x *AuthorModel) RemoveColumnGzExtend() *AuthorModel { x.m.RemoveColumn("gz_extend"); return x }
 func (x *AuthorModel) GroupByGzExtend() *AuthorModel      { x.m.GroupBy("gz_extend"); return x }
@@ -1840,10 +1690,6 @@ func (x *AuthorModel) SetJsonSetting(v orm.StyledValue) (*AuthorModel, error) {
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawJsonSetting(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("json_setting", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnJsonSetting() *AuthorModel { x.m.AddColumn("json_setting"); return x }
 func (x *AuthorModel) RemoveColumnJsonSetting() *AuthorModel {
 	x.m.RemoveColumn("json_setting")
@@ -1879,10 +1725,6 @@ func (x *AuthorModel) SetJsonsTags(v orm.StyledValue) (*AuthorModel, error) {
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawJsonsTags(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("jsons_tags", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnJsonsTags() *AuthorModel    { x.m.AddColumn("jsons_tags"); return x }
 func (x *AuthorModel) RemoveColumnJsonsTags() *AuthorModel { x.m.RemoveColumn("jsons_tags"); return x }
 func (x *AuthorModel) GroupByJsonsTags() *AuthorModel      { x.m.GroupBy("jsons_tags"); return x }
@@ -1915,10 +1757,6 @@ func (x *AuthorModel) SetBase64Extra(v orm.StyledValue) (*AuthorModel, error) {
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawBase64Extra(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("base64_extra", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnBase64Extra() *AuthorModel { x.m.AddColumn("base64_extra"); return x }
 func (x *AuthorModel) RemoveColumnBase64Extra() *AuthorModel {
 	x.m.RemoveColumn("base64_extra")
@@ -1954,10 +1792,6 @@ func (x *AuthorModel) SetSerializeData(v orm.StyledValue) (*AuthorModel, error) 
 	return x, nil
 }
 
-func (x *AuthorModel) SetRawSerializeData(sql string, binds ...any) *AuthorModel {
-	x.m.SetRaw("serialize_data", sql, binds)
-	return x
-}
 func (x *AuthorModel) AddColumnSerializeData() *AuthorModel {
 	x.m.AddColumn("serialize_data")
 	return x
@@ -1993,28 +1827,13 @@ func (x *AuthorModel) ForceIndexIxPhoneBlindIndex() *AuthorModel {
 func (x *AuthorModel) ForceIndexIxService() *AuthorModel { x.m.ForceIndex("ix_service"); return x }
 func (x *AuthorModel) ForceIndexIxUser() *AuthorModel    { x.m.ForceIndex("ix_user"); return x }
 
-func (x *AuthorModel) AddColumnReadCountAliasReadText[F ~string | orm.Func](format F) *AuthorModel {
-	switch f := any(format).(type) {
-	case orm.Func:
-		x.m.AddColumnFunc("read_count", "read_text", f)
-	default:
-		x.m.AddColumnFormat("read_count", "read_text", reflect.ValueOf(f).String())
-	}
+func (x *AuthorModel) AddColumnStartDtAliasStartMonth(fn orm.Func) *AuthorModel {
+	x.m.AddColumnFunc("start_dt", "start_month", fn)
 	return x
 }
 
-func (x *AuthorModel) AddColumnStartDtAliasStartMonth[F ~string | orm.Func](format F) *AuthorModel {
-	switch f := any(format).(type) {
-	case orm.Func:
-		x.m.AddColumnFunc("start_dt", "start_month", f)
-	default:
-		x.m.AddColumnFormat("start_dt", "start_month", reflect.ValueOf(f).String())
-	}
-	return x
-}
-
-func (x *AuthorModel) AddRawColumnDoubled(sql string, binds ...any) *AuthorModel {
-	x.m.AddRawColumn("doubled", sql, binds)
+func (x *AuthorModel) AddColumnStartDtAliasStartYear(fn orm.Func) *AuthorModel {
+	x.m.AddColumnFunc("start_dt", "start_year", fn)
 	return x
 }
 
@@ -2375,9 +2194,6 @@ var chainAuthorUserSeq = []orm.ChainKey{{Column: "user_seq"}}
 
 var chainAuthorUserSeqEqSeq = []orm.ChainKey{{Column: "user_seq", Compare: "seq"}}
 
-// GetDoubled returns the column added with AddRawColumnDoubled.
-func (x *AuthorModel) GetDoubled() any { return x.m.NewValue("doubled") }
-
 // GetLabel returns the value attached with NewLabel.
 func (x *AuthorModel) GetLabel() any { return x.m.NewValue("label") }
 
@@ -2398,9 +2214,6 @@ func (x *AuthorModel) GetOwner() (*UserModel, error) { return orm.RelatedAs[*Use
 func (x *AuthorModel) GetOwnerService() (*ServiceModel, error) {
 	return orm.RelatedAs[*ServiceModel](x.m, "owner_service")
 }
-
-// GetReadText returns the column added with AddColumnReadCountAliasReadText.
-func (x *AuthorModel) GetReadText() any { return x.m.NewValue("read_text") }
 
 // GetServiceMemberModel returns the service_member relation result.
 func (x *AuthorModel) GetServiceMemberModel() (*ServiceMemberModel, error) {
@@ -2424,6 +2237,9 @@ func (x *AuthorModel) GetServiceRegionModel() (*ServiceRegionModel, error) {
 
 // GetStartMonth returns the column added with AddColumnStartDtAliasStartMonth.
 func (x *AuthorModel) GetStartMonth() any { return x.m.NewValue("start_month") }
+
+// GetStartYear returns the column added with AddColumnStartDtAliasStartYear.
+func (x *AuthorModel) GetStartYear() any { return x.m.NewValue("start_year") }
 
 // GetUserModel returns the user relation result.
 func (x *AuthorModel) GetUserModel() (*UserModel, error) {

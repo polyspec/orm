@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.32-8: 네 client에서 raw SQL API를 없앤다: `raw`, `andRaw`, `orRaw`, `orderByRaw`, `groupByRaw`, `setRaw<Col>`, `addRawColumn<Alias>`와 `addColumn<Col>Alias<Name>`의 서식 문자열(이제 column 함수만 받는다). IR은 SQL text를 싣지 않고 모든 bind slot은 dbspec type을 가지며, Rust client는 MySQL `YEAR` cell을 읽는다.
+
 - G5.32-7-1: Go plan cache key가 조건 묶음의 `not`을 포함하므로, 부정 묶음이 `not`이 없는 같은 묶음의 plan을 다시 쓰지 않는다.
 
 - G5.34: `make check`와 새 `make rerun-failed`는 전체 묶음의 guard(`scripts/check/full-run.mjs`)로 시작한다. guard는 어떤 단계보다 먼저 체크리스트 항목이 `[~]`인 동안(각 ID와 제목을 나열한다), 추적하는 file에 commit하지 않은 변경이 있는 동안, checkout의 다른 실행이 진행 중인 동안, 그리고 `make check`이면 `.runtime/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부한다. runner는 첫 단계 전과 각 단계마다 기록을 쓰므로 강제 종료된 실행은 `incomplete`로 남고, `make rerun-failed`는 현재 tree의 기록에서 통과하지 못한 target만 실행한다.

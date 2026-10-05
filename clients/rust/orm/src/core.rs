@@ -57,7 +57,6 @@ pub(crate) enum CondKind {
     /// A group of conditions; the flag negates the group as a whole: NOT (…).
     Group(Vec<CondNode>, bool),
     Joined(u64),
-    Raw(RawSpec),
 }
 
 #[derive(Clone, Default)]
@@ -87,12 +86,6 @@ pub(crate) enum PredValue {
 }
 
 #[derive(Clone)]
-pub(crate) struct RawSpec {
-    pub sql: String,
-    pub binds: Vec<Param>,
-}
-
-#[derive(Clone)]
 pub(crate) struct JoinSpec {
     pub kind: &'static str,
     pub left: String,
@@ -112,10 +105,8 @@ pub type ValueFn = Arc<dyn Fn(&dyn AnyModel) -> serde_json::Value + Send + Sync>
 
 #[derive(Clone)]
 pub(crate) enum Added {
-    Format(String, String),
     Func(String, Func),
     Sub(SubFn),
-    Raw(RawSpec),
 }
 
 #[derive(Clone, Default)]
@@ -132,7 +123,6 @@ pub(crate) struct OrderSpec {
     pub desc: bool,
     pub func: Option<Func>,
     pub random: bool,
-    pub raw: Option<String>,
 }
 
 #[derive(Clone)]
@@ -141,7 +131,6 @@ pub(crate) enum SetValue {
     Json(serde_json::Value),
     Ordered(ordered_json::Value),
     Null,
-    Raw(RawSpec),
     Plus(Param),
     Minus(Param),
 }
@@ -170,7 +159,6 @@ pub struct Core {
     pub(crate) columns: Columns,
     pub(crate) order: Vec<OrderSpec>,
     pub(crate) group_by: Vec<String>,
-    pub(crate) group_raw: Vec<String>,
     pub(crate) limit: Option<(u32, u32)>,
     pub(crate) index: String,
     pub(crate) lock: &'static str,
@@ -218,7 +206,6 @@ impl Core {
             columns: Columns::default(),
             order: Vec::new(),
             group_by: Vec::new(),
-            group_raw: Vec::new(),
             limit: None,
             index: String::new(),
             lock: "",
@@ -401,11 +388,6 @@ impl Core {
         self.on = Some(g.where_.items);
     }
 
-    /// Appends a raw condition; conn is empty for the first condition.
-    pub fn raw(&mut self, conn: &'static str, sql: &str, binds: Vec<Param>) {
-        self.add(conn, CondKind::Raw(RawSpec { sql: sql.to_owned(), binds }));
-    }
-
     /// Appends the conditions of a chain. Each key receives one argument.
     pub fn chain(&mut self, conn: &'static str, keys: &[ChainKey], args: Vec<Arg>) {
         if keys.len() != args.len() {
@@ -516,10 +498,6 @@ impl Core {
         }
     }
 
-    pub fn add_column_format(&mut self, column: &str, name: &str, format: &str) {
-        self.add_name(name, Added::Format(column.into(), format.into()));
-    }
-
     pub fn add_column_func(&mut self, column: &str, name: &str, f: Func) {
         if !f.column {
             self.fail(format!("add_column {name} requires a column function"));
@@ -530,10 +508,6 @@ impl Core {
 
     pub fn add_column_sub(&mut self, name: &str, f: SubFn) {
         self.add_name(name, Added::Sub(f));
-    }
-
-    pub fn add_raw_column(&mut self, name: &str, sql: &str, binds: Vec<Param>) {
-        self.add_name(name, Added::Raw(RawSpec { sql: sql.into(), binds }));
     }
 
     pub fn remove_column(&mut self, column: &str) {
@@ -561,23 +535,15 @@ impl Core {
                 return;
             }
         }
-        self.order.push(OrderSpec { column: column.into(), desc, func, random: false, raw: None });
+        self.order.push(OrderSpec { column: column.into(), desc, func, random: false });
     }
 
     pub fn order_by_random(&mut self) {
-        self.order.push(OrderSpec { column: String::new(), desc: false, func: None, random: true, raw: None });
-    }
-
-    pub fn order_by_raw(&mut self, sql: &str) {
-        self.order.push(OrderSpec { column: String::new(), desc: false, func: None, random: false, raw: Some(sql.into()) });
+        self.order.push(OrderSpec { column: String::new(), desc: false, func: None, random: true });
     }
 
     pub fn group_by(&mut self, column: &str) {
         self.group_by.push(column.into());
-    }
-
-    pub fn group_by_raw(&mut self, sql: &str) {
-        self.group_raw.push(sql.into());
     }
 
     pub fn limit(&mut self, offset: u32, count: u32) {
@@ -627,10 +593,6 @@ impl Core {
     /// stage, including a JSON literal null.
     pub fn set_ordered(&mut self, column: &str, value: ordered_json::Value) {
         self.put_set(column, SetValue::Ordered(value));
-    }
-
-    pub fn set_raw(&mut self, column: &str, sql: &str, binds: Vec<Param>) {
-        self.put_set(column, SetValue::Raw(RawSpec { sql: sql.into(), binds }));
     }
 
     pub fn plus(&mut self, column: &str, n: Param) {

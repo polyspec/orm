@@ -134,24 +134,6 @@ func (x *ServiceMemberModel) connector(conn string, args []any) *ServiceMemberMo
 	return x
 }
 
-// Raw adds a raw first condition.
-func (x *ServiceMemberModel) Raw(sql string, binds ...any) *ServiceMemberModel {
-	x.m.Raw("", sql, binds)
-	return x
-}
-
-// AndRaw adds a raw condition joined with AND.
-func (x *ServiceMemberModel) AndRaw(sql string, binds ...any) *ServiceMemberModel {
-	x.m.Raw("and", sql, binds)
-	return x
-}
-
-// OrRaw adds a raw condition joined with OR.
-func (x *ServiceMemberModel) OrRaw(sql string, binds ...any) *ServiceMemberModel {
-	x.m.Raw("or", sql, binds)
-	return x
-}
-
 // On sets the join ON conditions.
 func (x *ServiceMemberModel) On(fn func(*ServiceMemberModel)) *ServiceMemberModel {
 	g := serviceMemberEntity.New(x.m.Group()).(*ServiceMemberModel)
@@ -266,18 +248,6 @@ func (x *ServiceMemberModel) Limit(offset, count int) *ServiceMemberModel {
 // OrderByRandom orders rows randomly.
 func (x *ServiceMemberModel) OrderByRandom() *ServiceMemberModel { x.m.OrderByRandom(); return x }
 
-// OrderByRaw appends a raw order expression.
-func (x *ServiceMemberModel) OrderByRaw(sql string) *ServiceMemberModel {
-	x.m.OrderByRaw(sql)
-	return x
-}
-
-// GroupByRaw appends a raw grouping expression.
-func (x *ServiceMemberModel) GroupByRaw(sql string) *ServiceMemberModel {
-	x.m.GroupByRaw(sql)
-	return x
-}
-
 // RemoveAllColumns keeps only primary and foreign keys.
 func (x *ServiceMemberModel) RemoveAllColumns() *ServiceMemberModel { x.m.RemoveAllColumns(); return x }
 
@@ -330,10 +300,6 @@ func (x *ServiceMemberModel) SetSeq(v int64) *ServiceMemberModel {
 	return x
 }
 
-func (x *ServiceMemberModel) SetRawSeq(sql string, binds ...any) *ServiceMemberModel {
-	x.m.SetRaw("seq", sql, binds)
-	return x
-}
 func (x *ServiceMemberModel) AddColumnSeq() *ServiceMemberModel    { x.m.AddColumn("seq"); return x }
 func (x *ServiceMemberModel) RemoveColumnSeq() *ServiceMemberModel { x.m.RemoveColumn("seq"); return x }
 func (x *ServiceMemberModel) GroupBySeq() *ServiceMemberModel      { x.m.GroupBy("seq"); return x }
@@ -361,10 +327,6 @@ func (x *ServiceMemberModel) SetServiceSeq(v int64) *ServiceMemberModel {
 	return x
 }
 
-func (x *ServiceMemberModel) SetRawServiceSeq(sql string, binds ...any) *ServiceMemberModel {
-	x.m.SetRaw("service_seq", sql, binds)
-	return x
-}
 func (x *ServiceMemberModel) AddColumnServiceSeq() *ServiceMemberModel {
 	x.m.AddColumn("service_seq")
 	return x
@@ -416,10 +378,6 @@ func (x *ServiceMemberModel) SetUserSeq(v int64) *ServiceMemberModel {
 	return x
 }
 
-func (x *ServiceMemberModel) SetRawUserSeq(sql string, binds ...any) *ServiceMemberModel {
-	x.m.SetRaw("user_seq", sql, binds)
-	return x
-}
 func (x *ServiceMemberModel) AddColumnUserSeq() *ServiceMemberModel {
 	x.m.AddColumn("user_seq")
 	return x

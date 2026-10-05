@@ -43,7 +43,7 @@ function fail(code: string, message: string): never { throw new OrmError(code, m
  * stages only by equality, and any other codec only by NULL.
  */
 export function opAllowed(c: Column, op: string): boolean {
-  if (columnOps.has(op) || op === 'expr') return true;
+  if (columnOps.has(op)) return true;
   if (c.stages.length > 0) {
     if (c.stages.every(s => hostStages.has(s))) return equality.includes(op);
     return op === 'is_null' || op === 'is_not_null';
@@ -66,15 +66,14 @@ class Validator {
 
   public assign(ent: Entity, r: Request, a: Assignment): void {
     const c = columnOf(ent, a.column) ?? fail('COLUMN_UNKNOWN', `${r.entity}.${a.column}`);
-    const n = [a.p !== undefined, a.null === true, (a.expr ?? '') !== '', a.plus_p !== undefined, a.minus_p !== undefined].filter(Boolean).length;
-    if (n !== 1) fail('IR_INVALID', `set ${a.column}: exactly one of p/null/expr/plus_p/minus_p`);
+    const n = [a.p !== undefined, a.null === true, a.plus_p !== undefined, a.minus_p !== undefined].filter(Boolean).length;
+    if (n !== 1) fail('IR_INVALID', `set ${a.column}: exactly one of p/null/plus_p/minus_p`);
     if (a.null && !c.nullable) fail('IR_INVALID', `set ${r.entity}.${a.column} to null but column is NOT NULL`);
     if (a.column === ent.auditColumn) fail('IR_INVALID', `${r.entity}.${a.column} is written by the executor from the audit of the transaction`);
     if ((a.plus_p !== undefined || a.minus_p !== undefined) && !numericTypes.has(c.type)) {
       fail('OPERATOR_NOT_ALLOWED', `plus/minus on ${r.entity}.${a.column} (${c.type})`);
     }
     for (const idx of [a.p, a.plus_p, a.minus_p]) if (idx !== undefined) this.params([idx]);
-    this.params(a.ps);
   }
 
   public query(q: RequestQuery, isJoin: boolean, isRelation: boolean): void {
@@ -84,13 +83,6 @@ class Validator {
       if (cols.mode !== undefined && cols.mode !== '' && cols.mode !== 'all' && cols.mode !== 'none') fail('IR_INVALID', `columns.mode "${cols.mode}"`);
       for (const c of [...cols.add ?? [], ...cols.remove ?? []]) if (!columnOf(ent, c)) fail('COLUMN_UNKNOWN', `${q.entity}.${c}`);
       const outputs = new Set<string>();
-      for (const [out, e] of Object.entries(cols.expr ?? {})) {
-        if (columnOf(ent, out)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${out} already a column`);
-        const count = e.sql.split('?').length - 1;
-        if (count !== (e.ps ?? []).length) fail('IR_INVALID', `${q.entity}.${out} expr has ${count} placeholders but ${(e.ps ?? []).length} binds`);
-        this.params(e.ps);
-        outputs.add(out);
-      }
       for (const [out, cf] of Object.entries(cols.fn ?? {})) {
         if (columnOf(ent, out) || outputs.has(out)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${out} is already a row name`);
         outputs.add(out);
@@ -153,21 +145,14 @@ class Validator {
       fail('IR_INVALID', `relation-only options on ${q.entity}`);
     }
     for (const o of q.order ?? []) {
-      const kinds = [(o.column ?? '') !== '', (o.expr ?? '') !== '', o.random === true].filter(Boolean).length;
-      if (kinds !== 1) fail('IR_INVALID', 'order needs exactly one of column, expr, random');
+      const kinds = [(o.column ?? '') !== '', o.random === true].filter(Boolean).length;
+      if (kinds !== 1) fail('IR_INVALID', 'order needs exactly one of column, random');
       if ((o.column ?? '') !== '') {
         const col = columnOf(ent, o.column!) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${o.column}`);
         if (o.fn) this.columnFunction(ent, col, o.fn);
       } else if (o.fn) fail('IR_INVALID', 'order function needs a column');
     }
     for (const g of q.group_by ?? []) if (!columnOf(ent, g)) fail('COLUMN_UNKNOWN', `${q.entity}.${g}`);
-    const groups = new Set(q.group_by ?? []);
-    for (const g of q.group_by_expr ?? []) {
-      if (g.expr.trim() === '' || g.as.trim() === '') fail('IR_INVALID', 'group_by_expr needs expr and as');
-      if (g.expr.includes('?')) fail('IR_INVALID', 'group_by_expr does not accept parameters');
-      if (groups.has(g.as)) fail('IR_INVALID', `duplicate group output ${g.as}`);
-      groups.add(g.as);
-    }
     if (q.limit && (!Number.isSafeInteger(q.limit.offset) || !Number.isSafeInteger(q.limit.count) || q.limit.offset < 0 || q.limit.count <= 0)) {
       fail('IR_INVALID', 'limit offset>=0, count>0');
     }
@@ -175,7 +160,7 @@ class Validator {
     if (lock !== '' && !['update', 'share', 'update_nowait', 'share_nowait'].includes(lock)) {
       fail('IR_INVALID', `lock "${lock}": want update, share, update_nowait or share_nowait`);
     }
-    if (lock !== '' && (isJoin || isRelation || q.group_by !== undefined || q.group_by_expr !== undefined || (q.limit_per_parent ?? 0) > 0)) {
+    if (lock !== '' && (isJoin || isRelation || q.group_by !== undefined || (q.limit_per_parent ?? 0) > 0)) {
       fail('IR_INVALID', 'row lock is only valid on a root row select');
     }
     if ((q.force_index ?? '') !== '' && !ent.indexes.includes(q.force_index!)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
@@ -204,10 +189,6 @@ class Validator {
     this.params(p.ps);
     if (p.p !== undefined) this.params([p.p]);
     const ps = p.ps ?? [];
-    if ((p.expr ?? '') !== '') {
-      if ((p.column ?? '') !== '' || (p.op ?? '') !== '') fail('IR_INVALID', 'expr pred may not carry column/op');
-      return;
-    }
     if (p.op === 'tuple_in' || p.op === 'tuple_not_in') {
       const cols = p.cols ?? [];
       if (cols.length < 2) fail('IR_INVALID', `${p.op} needs at least two columns`);
@@ -327,7 +308,7 @@ function joinedRefs(g: Group, seen: Set<string>): void {
 const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore']);
 
 function hasGroupBy(q: RequestQuery): boolean {
-  return (q.group_by ?? []).length > 0 || (q.group_by_expr ?? []).length > 0;
+  return (q.group_by ?? []).length > 0;
 }
 
 /** Checks a request against the manifest. */

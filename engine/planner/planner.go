@@ -108,14 +108,6 @@ func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) str
 	return b.slot(s)
 }
 
-// rawParam은 raw fragment의 `?`가 받는 값이다. planner는 사용자 SQL이 그 값을
-// 어디에 쓰는지 모르므로 type이 없다. raw fragment는 G5.32-3에서 사라진다.
-func (b *builder) rawParam(i int) string {
-	b.binds = append(b.binds, plan.BindSlot{From: "param", Param: i})
-	b.n++
-	return b.p.D.Placeholder(b.n)
-}
-
 // secret은 executor 설정의 key다. key는 text다.
 func (b *builder) secret(name string) string {
 	return b.slot(plan.BindSlot{From: "secret", Name: name, ColType: "text"})
@@ -137,25 +129,6 @@ func (b *builder) now(precision int) string {
 // audit column의 type이다.
 func (b *builder) audit(ent *runtimemodel.Entity) string {
 	return b.slot(plan.BindSlot{From: "audit", Name: ent.Audit.Record, ColType: ent.Field(ent.Audit.Column).Type})
-}
-
-// fillPlaceholders replaces each `?` of a user fragment with the dialect's
-// placeholder for the next bind (PostgreSQL needs $n); the count must match.
-func (p *Planner) fillPlaceholders(b *builder, frag string, ps []int) (string, error) {
-	if n := strings.Count(frag, "?"); n != len(ps) {
-		return "", &ir.Error{Code: "IR_INVALID", Msg: fmt.Sprintf("fragment has %d placeholders but %d binds", n, len(ps))}
-	}
-	var sb strings.Builder
-	k := 0
-	for i := 0; i < len(frag); i++ {
-		if frag[i] == '?' {
-			sb.WriteString(b.rawParam(ps[k]))
-			k++
-			continue
-		}
-		sb.WriteByte(frag[i])
-	}
-	return sb.String(), nil
 }
 
 // parentList is the one placeholder an executor expands to the parent values.
@@ -239,7 +212,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	asm := &plan.Assemble{Entity: root.ent.Name, Alias: root.alias}
 	var outNames []string
 	idx := 0
-	groupCount := kind == "count" && (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) // number of groups: wrap the grouped statement
+	groupCount := kind == "count" && len(q.GroupBy) > 0 // number of groups: wrap the grouped statement
 	groupRows := kind == "group_count"
 	switch kind {
 	case "count":
@@ -256,11 +229,7 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		if err := p.selectGroupCountList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
 		}
-		groupKeys := append([]string(nil), q.GroupBy...)
-		for _, group := range q.GroupByExpr {
-			groupKeys = append(groupKeys, group.As)
-		}
-		asm.Key = keyRefs(asm, groupKeys)
+		asm.Key = keyRefs(asm, append([]string(nil), q.GroupBy...))
 	default:
 		if err := p.selectList(b, &sb, root, asm, &idx, &outNames); err != nil {
 			return nil, err
@@ -324,13 +293,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
 	// GROUP BY applies to row selects and to the group count; scalar aggregates ignore it.
-	if (len(q.GroupBy) > 0 || len(q.GroupByExpr) > 0) && (kind == "one" || kind == "all" || groupCount || groupRows) {
-		sb.WriteString(" GROUP BY ")
-		group, err := p.renderGroupBy(root, q)
-		if err != nil {
-			return nil, err
-		}
-		sb.WriteString(group)
+	if len(q.GroupBy) > 0 && (kind == "one" || kind == "all" || groupCount || groupRows) {
+		sb.WriteString(" GROUP BY " + p.renderGroupBy(root, q))
 	}
 	if groupCount {
 		wrapped := "SELECT COUNT(*) FROM (" + sb.String() + ") AS " + p.D.Quote("orm_g")
@@ -490,14 +454,6 @@ func (p *Planner) renderOrder(b *builder, root *scope, q *ir.Query) (string, err
 		case o.Random:
 			sb.WriteString(p.D.Random())
 			continue
-		case o.Expr != "":
-			// A raw order expression carries its own direction.
-			s, err := p.renderExpr(root, o.Expr)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(s)
-			continue
 		case o.Fn != nil:
 			s, err := p.columnFunction(b, root, o.Column, o.Fn)
 			if err != nil {
@@ -516,19 +472,12 @@ func (p *Planner) renderOrder(b *builder, root *scope, q *ir.Query) (string, err
 	return sb.String(), nil
 }
 
-func (p *Planner) renderGroupBy(root *scope, q *ir.Query) (string, error) {
-	parts := make([]string, 0, len(q.GroupBy)+len(q.GroupByExpr))
+func (p *Planner) renderGroupBy(root *scope, q *ir.Query) string {
+	parts := make([]string, 0, len(q.GroupBy))
 	for _, name := range q.GroupBy {
 		parts = append(parts, p.qcol(root, name))
 	}
-	for _, g := range q.GroupByExpr {
-		expr, err := p.renderExpr(root, g.Expr)
-		if err != nil {
-			return "", err
-		}
-		parts = append(parts, expr)
-	}
-	return strings.Join(parts, ", "), nil
+	return strings.Join(parts, ", ")
 }
 
 // selectGroupCountList writes the grouped columns and row_count projection for
@@ -548,24 +497,6 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
 		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: name, Column: name, Type: col.Type, Styles: p.clientStyles(col.Codec)})
-		*idx++
-	}
-	for _, g := range s.q.GroupByExpr {
-		if *idx > 0 {
-			sb.WriteString(", ")
-		}
-		expr, err := p.renderExpr(s, g.Expr)
-		if err != nil {
-			return err
-		}
-		out := s.alias + "__" + g.As
-		sb.WriteString(expr + " AS " + p.D.Quote(out))
-		*outNames = append(*outNames, out)
-		typ := "text"
-		if col := s.ent.Field(g.As); col != nil {
-			typ = col.Type
-		}
-		asm.Columns = append(asm.Columns, plan.OutCol{Index: *idx, Name: g.As, Type: typ})
 		*idx++
 	}
 	if *idx > 0 {
@@ -614,14 +545,6 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			}
 			expr = "(" + e + ")"
 			typ = p.subType(c.sub)
-		case c.expr != nil:
-			e, err := p.renderExpr(s, c.expr.SQL)
-			if err != nil {
-				return err
-			}
-			if expr, err = p.fillPlaceholders(b, e, c.expr.Ps); err != nil {
-				return err
-			}
 		default:
 			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.sqlStyles(col.Codec), func() string { return b.secret("aes") })
 			expr = e
@@ -673,12 +596,11 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 
 type outCol struct {
 	name, column string
-	expr         *ir.Expr
 	fn           *ir.Func
 	sub          *ir.Sub
 }
 
-// projection resolves columns mode/add/remove/as/expr into an ordered list.
+// projection resolves columns mode/add/remove/fn/sub into an ordered list.
 func (p *Planner) projection(s *scope) ([]outCol, error) {
 	c := s.q.Columns
 	var base []string
@@ -744,10 +666,6 @@ func (p *Planner) projection(s *scope) ([]outCol, error) {
 		out = append(out, outCol{name: x, column: x})
 	}
 	if c != nil {
-		for _, name := range sortedKeys(c.Expr) {
-			e := c.Expr[name]
-			out = append(out, outCol{name: name, expr: &e})
-		}
 		fnNames := make([]string, 0, len(c.Fn))
 		for name := range c.Fn {
 			fnNames = append(fnNames, name)
@@ -854,17 +772,6 @@ func (p *Planner) renderGroup(b *builder, s *scope, g *ir.Group, top bool) (stri
 }
 
 func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) {
-	if pr.Expr != "" {
-		e, err := p.renderExpr(s, pr.Expr)
-		if err != nil {
-			return "", err
-		}
-		e, err = p.fillPlaceholders(b, e, pr.Ps)
-		if err != nil {
-			return "", err
-		}
-		return "(" + e + ")", nil
-	}
 	if pr.Op == "tuple_in" || pr.Op == "tuple_not_in" {
 		cols := p.qualified(s, pr.Cols)
 		var rows [][]string
@@ -1100,45 +1007,6 @@ func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
 		cur = next
 	}
 	return cur, nil
-}
-
-// renderExpr checks backtick-quoted column names in a fragment against the
-// scope's entity and rewrites them as alias-qualified identifiers.
-func (p *Planner) renderExpr(s *scope, frag string) (string, error) {
-	frag = strings.ReplaceAll(frag, dialect.CurrentTimeToken, p.D.CurrentTime())
-	var out strings.Builder
-	i := 0
-	for i < len(frag) {
-		if frag[i] == '{' {
-			j := strings.IndexByte(frag[i+1:], '}')
-			if j < 0 {
-				return "", &ir.Error{Code: "IR_INVALID", Msg: "unterminated { in expr"}
-			}
-			name := frag[i+1 : i+1+j]
-			if s.ent.Field(name) == nil {
-				return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name + " in expr"}
-			}
-			out.WriteString(p.qcol(s, name))
-			i += j + 2
-			continue
-		}
-		if frag[i] != '`' {
-			out.WriteByte(frag[i])
-			i++
-			continue
-		}
-		j := strings.IndexByte(frag[i+1:], '`')
-		if j < 0 {
-			return "", &ir.Error{Code: "IR_INVALID", Msg: "unterminated ` in expr"}
-		}
-		name := frag[i+1 : i+1+j]
-		if s.ent.Field(name) == nil {
-			return "", &ir.Error{Code: "COLUMN_UNKNOWN", Msg: s.ent.Name + "." + name + " in expr"}
-		}
-		out.WriteString(p.qcol(s, name))
-		i += j + 2
-	}
-	return out.String(), nil
 }
 
 func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
@@ -1379,7 +1247,7 @@ func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) []string {
 
 func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error) {
 	if source := blindIndexSource(ent, col.Name); source != nil {
-		if a.Expr != "" || a.PlusP != nil || a.MinusP != nil {
+		if a.PlusP != nil || a.MinusP != nil {
 			return "", &ir.Error{Code: "IR_INVALID", Msg: "blind index assignment must use its AES source value"}
 		}
 		if a.Null {
@@ -1388,12 +1256,6 @@ func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtim
 		return p.renderBlindIndexValue(b, col, *a.P)
 	}
 	switch {
-	case a.Expr != "":
-		e, err := p.renderExpr(&scope{ent: ent, alias: ent.Table}, a.Expr)
-		if err != nil {
-			return "", err
-		}
-		return p.fillPlaceholders(b, e, a.Ps)
 	case a.PlusP != nil:
 		// the reference is table-qualified: inside ON CONFLICT DO UPDATE a bare name is ambiguous
 		return p.D.Quote(ent.Table) + "." + p.D.Quote(col.Name) + " + " + b.colParam(*a.PlusP, col, ""), nil
@@ -1560,7 +1422,7 @@ func restoreKey(ent *runtimemodel.Entity, where *ir.Group) error {
 	var columns []string
 	for i, item := range where.Items {
 		pr := item.Pred
-		if pr == nil || pr.Op != "eq" || pr.P == nil || pr.Fn != nil || pr.Value != nil || pr.Ref != nil || pr.Sub != nil || pr.Expr != "" || (i > 0 && pr.Conn != "and") || slices.Contains(columns, pr.Column) {
+		if pr == nil || pr.Op != "eq" || pr.P == nil || pr.Fn != nil || pr.Value != nil || pr.Ref != nil || pr.Sub != nil || (i > 0 && pr.Conn != "and") || slices.Contains(columns, pr.Column) {
 			return invalid
 		}
 		columns = append(columns, pr.Column)
@@ -1706,11 +1568,7 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
 	if len(sub.Query.GroupBy) > 0 {
-		group, err := p.renderGroupBy(root, sub.Query)
-		if err != nil {
-			return "", err
-		}
-		sb.WriteString(" GROUP BY " + group)
+		sb.WriteString(" GROUP BY " + p.renderGroupBy(root, sub.Query))
 	}
 	return sb.String(), nil
 }

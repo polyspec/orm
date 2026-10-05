@@ -90,7 +90,6 @@ const RESERVED_COLUMNS: &[&str] = &[
     "delete",
     "restore",
     "save",
-    "raw",
     "on",
     "random",
 ];

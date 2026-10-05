@@ -42,8 +42,6 @@ pub struct Query {
     pub order: Vec<Order>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub group_by: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub group_by_expr: Vec<GroupExpr>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<Limit>,
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -76,19 +74,9 @@ pub struct Columns {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub remove: Vec<String>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
-    pub expr: std::collections::BTreeMap<String, Expr>,
-    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub r#fn: std::collections::BTreeMap<String, ColFunc>,
     #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub sub: std::collections::BTreeMap<String, Sub>,
-}
-
-/// A raw fragment with `{column}` references and `?` placeholders.
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct Expr {
-    pub sql: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub ps: Vec<usize>,
 }
 
 /// An ORM function and the indices of its bound arguments.
@@ -185,8 +173,6 @@ pub struct Pred {
     pub ps: Vec<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#ref: Option<ColRef>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub expr: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#fn: Option<Func>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -207,21 +193,12 @@ pub struct ColRef {
 pub struct Order {
     #[serde(skip_serializing_if = "String::is_empty")]
     pub column: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub expr: String,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub desc: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub random: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub r#fn: Option<Func>,
-}
-
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct GroupExpr {
-    pub expr: String,
-    #[serde(rename = "as")]
-    pub as_: String,
 }
 
 #[derive(Serialize, Debug, Clone, Default)]
@@ -243,10 +220,6 @@ pub struct Assign {
     pub p: Option<usize>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub null: bool,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub expr: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub ps: Vec<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plus_p: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]

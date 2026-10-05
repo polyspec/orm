@@ -216,7 +216,7 @@ pub(crate) fn child_keys(plan: &Plan, id: u32) -> Vec<crate::plan::KeyRef> {
 }
 
 /// step이 보내는 bind 값마다의 dbspec type이다. parent slot은 펼친 parent 값 `n_parent`개에 key
-/// type을 key 순서로 되풀이한다. raw fragment의 placeholder는 type이 없어 빈 문자열이다.
+/// type을 key 순서로 되풀이한다.
 pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
     let mut out = Vec::with_capacity(st.bind_slots.len() + n_parent);
     for b in &st.bind_slots {
@@ -227,21 +227,6 @@ pub(crate) fn arg_types(st: &Step, n_parent: usize) -> Vec<&str> {
         }
     }
     out
-}
-
-/// type을 선언하지 않은 NULL이다. PostgreSQL은 parameter type을 추론하고 NULL에는 값 byte가 없다.
-struct UntypedNull;
-
-impl sqlx::Type<Postgres> for UntypedNull {
-    fn type_info() -> PgTypeInfo {
-        PgTypeInfo::with_oid(sqlx::postgres::types::Oid(0))
-    }
-}
-
-impl sqlx::Encode<'_, Postgres> for UntypedNull {
-    fn encode_by_ref(&self, _: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-        Ok(sqlx::encode::IsNull::Yes)
-    }
 }
 
 /// PostgreSQL `uuid` 값이다. binary 형식은 16 byte다.
@@ -272,20 +257,6 @@ impl sqlx::Encode<'_, Postgres> for PgUuid {
     fn encode_by_ref(&self, buf: &mut sqlx::postgres::PgArgumentBuffer) -> std::result::Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
         buf.extend_from_slice(&self.0);
         Ok(sqlx::encode::IsNull::No)
-    }
-}
-
-/// raw fragment의 placeholder는 plan에 type이 없으므로 그 값의 type으로 bind한다(G5.32-3까지).
-fn value_type(p: &Param) -> &'static str {
-    match p {
-        Param::Null => "",
-        Param::Bool(_) => "bool",
-        Param::I64(_) => "i64",
-        Param::F64(_) => "f64",
-        Param::Str(_) => "text",
-        Param::Bytes(_) => "bytes",
-        Param::DateTime(_) => "datetime",
-        Param::Date(_) => "date",
     }
 }
 
@@ -326,16 +297,10 @@ pub(crate) fn parse_datetime(s: &str) -> Option<NaiveDateTime> {
         .or_else(|| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok().map(|d| d.and_hms_opt(0, 0, 0).unwrap()))
 }
 
-/// Binds one PostgreSQL parameter as the type the server inferred for its placeholder
-/// (`ty`), converting the executor value the way pgx would; a value that cannot become
-/// that type is CONFIG (the statement text and the value are named).
 /// 값 `p`를 plan이 선언한 dbspec type `ty`로 bind한다. sqlx는 그 Rust type의 PostgreSQL type을
-/// parameter type으로 선언하므로 server에 type을 묻지 않는다.
+/// parameter type으로 선언하므로 server에 type을 묻지 않는다. 그 type이 될 수 없는 값은 CONFIG다.
 pub(crate) fn bind_pg<'q>(q: PgQuery<'q>, p: &'q Param, ty: &str, i: usize) -> Result<PgQuery<'q>> {
-    let name = if ty.is_empty() { value_type(p) } else { ty };
-    if name.is_empty() {
-        return Ok(q.bind(UntypedNull));
-    }
+    let name = ty;
     let bad = || Error::Config(format!("postgres parameter ${} is {name}: cannot bind {p:?}", i + 1));
     macro_rules! int {
         ($t:ty) => {
