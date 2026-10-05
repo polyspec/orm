@@ -23,7 +23,7 @@
 
 **F3 — 실행기는 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않는다.** 실패한 `try_get`은 셀마다 오류 문자열을 만든다. 정수 컬럼을 `i64`로 읽고 unsigned 컬럼을 `u64`로 다시 읽는 방식은 100행 읽기를 p50 378µs에서 615µs, p90 1.6ms로 늘렸다. 실행기는 컬럼 타입 명칭에 따라 분기해 signed와 unsigned 값을 한 번에 읽는다.
 
-**F4 — PHP는 `PDO::ATTR_EMULATE_PREPARES = true`로 고정한다.** 웹 요청은 보통 문장 형태를 한 번 실행하므로 cold path가 기준이다. cold path p50(off → on): PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs. warm path p50: PK 33→49µs, 100행 435→400µs. 타입(IP 문자열, JSON, 실수, 불리언)과 conformance 출력은 두 모드에서 같다.
+**F4 — PHP는 문장마다 round trip 하나를 쓴다.** PHP 연결은 요청 하나 동안만 살고 요청은 보통 문장 형태를 한 번 실행하므로 cold path가 기준이다. MySQL에서는 `PDO::ATTR_EMULATE_PREPARES = true`로 고정한다. cold path p50(off → on): PK 72→48µs, IN(8) 107→75µs, 100행 460→382µs. warm path p50: PK 33→49µs, 100행 435→400µs. 타입(IP 문자열, JSON, 실수, 불리언)과 conformance 출력은 두 모드에서 같다. PostgreSQL에서는 `Pdo\Pgsql::ATTR_DISABLE_PREPARES = true`를 둔다: 문장과 bind는 unnamed statement 하나로 server에 가고, parameter와 type 추론은 named prepare와 같으며, 요청의 문장 text마다 따로 드는 prepare round trip과 그 implicit transaction이 없다. 문장당 server transaction은 `tests/events/vectors.json`의 `server_transactions`가 검사한다.
 
 **F5 — PHP는 `PDO::FETCH_NUM` 배열을 행 저장소로 유지한다.** 행을 하나씩 가져오는 방식은 100행에 약 511µs, `fetchAll`은 약 425µs가 걸렸다.
 
@@ -64,6 +64,6 @@
 | F1 | 모든 실행기의 prepared statement 캐시 | §2 |
 | F2 | sqlx PK 지연은 드라이버 고유 비용 | §1, §2 |
 | F3 | 실패한 sqlx `try_get`을 흐름 제어에 사용하지 않음 | §2 |
-| F4 | PHP `ATTR_EMULATE_PREPARES = true` | §2 |
+| F4 | PHP: 문장마다 round trip 하나(MySQL emulated prepare, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |
 | F5 | PHP 행은 `FETCH_NUM` 배열 유지 | §2 |
 | D1 | Rust는 sqlx 유지 | §4 |

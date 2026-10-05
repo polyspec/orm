@@ -287,3 +287,60 @@ async fn coverage_statement_events() {
     };
     run_cases(driver).await;
 }
+
+/// vector의 server_transactions를 PostgreSQL case database에서 실행한다. probe가 돌려주는
+/// backend의 local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. pool size
+/// 1이므로 모든 statement가 한 backend에서 실행된다. probe는 같은 pool에서 sqlx로 보내므로 event가
+/// 없다. sqlx는 처음 보내는 statement text마다 parameter type을 묻는 prepare를 따로 보내므로, rust가
+/// first_run_clients에 없으면 첫 실행은 보고만 한다.
+#[tokio::test]
+async fn statement_events_server_transactions() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
+    let spec = &vector["server_transactions"];
+    let compare_first = spec["first_run_clients"].as_array().expect("first_run_clients").iter().any(|c| c == "rust");
+    let page = vector["cases"].as_array().expect("vector cases").iter().find(|c| c["id"] == spec["page"]).expect("server_transactions page is a case");
+    let probe_sql = spec["probe"].as_str().expect("probe").to_owned();
+    let driver = "postgres";
+    assert_eq!(spec["database"], driver, "server_transactions database");
+    let database = CaseDatabase::create(driver).await;
+    let run = async {
+        let setup = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, orm::Config::default()).await.expect("connect");
+        setup.utils().schema().install(&EVENTS_SCHEMA).await.expect("install");
+        setup.close().await;
+        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, orm::Config::default()).await.expect("connect");
+        let orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
+        let (setting, source): (String, String) =
+            sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
+        assert_eq!(json!({"setting": setting, "source": source}), spec["time_zone"], "TimeZone setting and source");
+        let probe = || async { sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(probe_sql.clone())).fetch_one(pool).await.expect("probe") };
+        let first = probe().await;
+        let cost = probe().await - first;
+        let recorded = Arc::new(Mutex::new(Recorded::default()));
+        let sink = recorded.clone();
+        let recording = db.subscribe(move |e: &StatementEvent<'_>| {
+            record(&sink, e);
+            Ok(())
+        });
+        let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
+        let mut before = probe().await;
+        let mut failures = Vec::new();
+        for name in ["first", "second"] {
+            for s in page["steps"].as_array().expect("page steps") {
+                let _ = r.checked(s).await;
+            }
+            let events = std::mem::take(&mut r.recorded.lock().unwrap().records).len() as i64;
+            let after = probe().await;
+            let transactions = after - before - cost;
+            before = after;
+            println!("server_transactions {name} run: {events} events, {transactions} transactions");
+            if (name == "second" || compare_first) && transactions != events {
+                failures.push(format!("{name} run spent {transactions} server transactions for {events} statement events, want one per event"));
+            }
+        }
+        db.close().await;
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    };
+    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("server_transactions: timeout after {CASE_DEADLINE:?}"));
+    database.drop().await;
+}

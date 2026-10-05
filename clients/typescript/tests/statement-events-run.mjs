@@ -153,3 +153,36 @@ export async function runEventCase(c, dialect, dsn, check) {
     check(have === want, `${dialect} events\n got ${have}\nwant ${want}`);
   } finally { await db.close(); }
 }
+
+/**
+ * vector의 server_transactions를 PostgreSQL case database dsn에서 실행한다. probe가 돌려주는 backend의
+ * local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. pool size 1이므로 모든
+ * statement가 한 backend에서 실행된다.
+ */
+export async function runServerTransactions(spec, dsn, check) {
+  const setup = await Db.connectSchema(dsn, schema);
+  try { await setup.utils().schema().install(schema); } finally { await setup.close(); }
+  const db = await Db.connectSchema(dsn, schema, { poolSize: 1 });
+  try {
+    const u = db.utils();
+    const zone = await u.read('utility', [], "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+    check(JSON.stringify(zone) === JSON.stringify([[spec.time_zone.setting, spec.time_zone.source]]), `TimeZone setting and source = ${JSON.stringify(zone)}, want ${JSON.stringify(spec.time_zone)}`);
+    const probe = async () => Number((await u.read('utility', [], spec.probe))[0][0]);
+    const first = await probe();
+    const cost = await probe() - first;
+    const run = new EventRun(db, check);
+    const page = vectors.cases.find(c => c.id === spec.page);
+    const compareFirst = spec.first_run_clients.includes('typescript');
+    let before = await probe();
+    for (const name of ['first', 'second']) {
+      run.records = [];
+      for (const s of page.steps) await run.checked(s);
+      const events = run.records.filter(r => r.sql !== spec.probe).length;
+      const after = await probe();
+      const transactions = after - before - cost;
+      before = after;
+      console.log(`server_transactions ${name} run: ${events} events, ${transactions} transactions`);
+      if (name === 'second' || compareFirst) check(transactions === events, `${name} run spent ${transactions} server transactions for ${events} statement events, want one per event`);
+    }
+  } finally { await db.close(); }
+}

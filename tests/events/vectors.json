@@ -1317,5 +1317,19 @@
   ],
   "fixture": "contracts/fixtures/statement_events.dbs",
   "note": "Statement events (docs/usage.md \"Statement events\"). Each case runs on a new case database with the fixture installed (unless install is false), opens a new connection, registers one recording subscriber, runs the steps in order and compares the recorded events of every dialect: sql, binds, kind, tables, transaction (renumbered from 1 in the order of appearance within the case, null outside a transaction) and error (the error code of the statement, or null). With compare \"tables\" only the events that name a table are compared. elapsed is checked to be non-negative. Step ops: create (insert a row with label), get (read the row with label), count (count the rows; result is the expected count), update (read the row with label, then change its label to `to`), delete (read the row with label, then delete it), transaction (run steps in a transaction; fail makes the callback fail after its steps with an error of its own, reported as error \"callback\"), install (install the fixture), fail_subscriber (register a second subscriber that fails on the first event of kind), stop_failing (remove it), unsubscribe (remove the recording subscriber). A step with error expects the operation to fail with that code; \"callback\" is the error of the callback itself.",
+  "server_transactions": {
+    "database": "postgres",
+    "first_run_clients": [
+      "php",
+      "typescript"
+    ],
+    "note": "Server transactions per statement on PostgreSQL. The case runs on a new case database with the fixture installed and opens a new connection (pool size 1 where the client pools). The connection's TimeZone must be UTC from a startup parameter (pg_settings source client), not from a SET statement. probe returns the local transaction number of the backend, which grows by one for every server transaction, including the implicit transaction of a Parse that a driver sends with its own Sync. The case runs the probe twice; the difference is the cost of one probe. It then runs the probe once more and the steps of the case named by page twice, each run followed by the probe, and counts the recording subscriber's events of each run without the probe's. The transactions of a run are the probe difference minus the cost of one probe. The second run, whose statements the connection has sent before, must spend one transaction per event in every client. The first run must spend one transaction per event in the clients of first_run_clients, which send a statement with its binds in one round trip: PHP, whose connection lives for one request, and TypeScript. Go (pgx) and Rust (sqlx) first prepare each new statement text in a round trip of its own to learn its parameter types for their binary binds, and sqlx also reads the origin of new result columns from the catalog; the pool keeps the connection and its prepared statements for later pages, so their first run is reported and not compared.",
+    "page": "model_statements",
+    "probe": "SELECT split_part(virtualtransaction, '/', 2)::bigint FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'virtualxid'",
+    "time_zone": {
+      "setting": "UTC",
+      "source": "client"
+    }
+  },
   "version": 1
 }

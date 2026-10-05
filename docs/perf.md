@@ -23,7 +23,7 @@ Prepared statements are reused on one connection. The values measure the drivers
 
 **F3 — An executor does not use a failed sqlx `try_get` for flow control.** A failed `try_get` formats an error for every cell. Reading integer columns as `i64` and retrying unsigned columns as `u64` raised a 100-row read from 378µs to 615µs p50 and 1.6ms p90. The executor branches on the column type name and reads signed and unsigned values once.
 
-**F4 — PHP fixes `PDO::ATTR_EMULATE_PREPARES = true`.** A web request usually executes a statement shape once, so the cold path decides. Cold path p50 (off → on): PK 72→48µs, IN(8) 107→75µs, 100 rows 460→382µs. Warm path p50: PK 33→49µs, 100 rows 435→400µs. Types (IP strings, JSON, floats, booleans) and conformance output are identical in both modes.
+**F4 — PHP sends each statement in one round trip.** A PHP connection lives for one request, which usually executes a statement shape once, so the cold path decides. On MySQL the client fixes `PDO::ATTR_EMULATE_PREPARES = true`. Cold path p50 (off → on): PK 72→48µs, IN(8) 107→75µs, 100 rows 460→382µs. Warm path p50: PK 33→49µs, 100 rows 435→400µs. Types (IP strings, JSON, floats, booleans) and conformance output are identical in both modes. On PostgreSQL the client sets `Pdo\Pgsql::ATTR_DISABLE_PREPARES = true`: the statement and its binds go to the server as one unnamed statement, with the same parameters and type inference as a named prepare, and without the separate prepare round trip and its implicit transaction for every statement text of the request. The server transactions per statement are checked by `server_transactions` of `tests/events/vectors.json`.
 
 **F5 — PHP keeps the `PDO::FETCH_NUM` array as row storage.** Fetching rows one by one measured about 511µs for 100 rows against about 425µs for `fetchAll`.
 
@@ -64,6 +64,6 @@ On 2026-09-27, `make perf-check` passed with the seeded MySQL bench database. Th
 | F1 | Prepared statement cache in every executor | §2 |
 | F2 | sqlx PK latency is intrinsic driver cost | §1, §2 |
 | F3 | No failed sqlx `try_get` for flow control | §2 |
-| F4 | PHP `ATTR_EMULATE_PREPARES = true` | §2 |
+| F4 | PHP: one round trip per statement (MySQL emulated prepares, PostgreSQL `ATTR_DISABLE_PREPARES`) | §2 |
 | F5 | PHP rows stay `FETCH_NUM` arrays | §2 |
 | D1 | Rust keeps sqlx | §4 |

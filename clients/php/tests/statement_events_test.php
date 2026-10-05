@@ -1,8 +1,9 @@
 <?php
 // Statement events on SQLite, MySQL and PostgreSQL: every case of the shared
 // vector tests/events/vectors.json in a case database of its own
-// (statement_events_run.php). The test fails when ORM_TEST_MYSQL_DSN or
-// ORM_TEST_POSTGRES_DSN is unset.
+// (statement_events_run.php), and the vector's server_transactions on
+// PostgreSQL (case id server_transactions). The test fails when
+// ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 // Usage: php clients/php/tests/statement_events_test.php [case ...]
 declare(strict_types=1);
 
@@ -12,8 +13,23 @@ $cases = [];
 foreach ($vector['cases'] as $case) {
     $cases[$case['id']] = $case;
 }
-$selected = array_slice($argv, 1) ?: array_keys($cases);
+$selected = array_slice($argv, 1) ?: [...array_keys($cases), 'server_transactions'];
 foreach ($selected as $id) {
+    if ($id === 'server_transactions') {
+        $spec = $vector['server_transactions'];
+        $before = $failures;
+        $current = "$id/{$spec['database']}";
+        $passed = testcase_run("statement_events/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($spec, $cases, $before): void {
+            with_case_database($spec['database'], $step, static fn(string $dsn) => runServerTransactions($spec, $cases, $dsn));
+            if ($GLOBALS['failures'] > $before) {
+                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+            }
+        });
+        if (!$passed && $failures === $before) {
+            $failures++;
+        }
+        continue;
+    }
     if (!isset($cases[$id])) {
         throw new RuntimeException("unknown case $id");
     }

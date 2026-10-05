@@ -49,11 +49,11 @@ final class Orm
         if ($config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
             throw new OrmException(Code::CONFIG, 'poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client has none');
         }
-        if ($driver === 'postgres' && $config->statementTimeoutMs > 0) {
-            // A startup parameter belongs to the client session, so a pooler
-            // in transaction mode sets it on every server connection it
-            // assigns to this connection and on no other.
-            $pdoDsn .= ";options='-c statement_timeout=" . $config->statementTimeoutMs . "'";
+        if ($driver === 'postgres') {
+            // startup parameter는 client session에 속하므로 transaction mode의 pooler는
+            // 이 연결에 배정하는 모든 server connection에 그것을 두고 다른 연결에는 두지
+            // 않는다. time zone도 startup parameter이므로 연결은 SET statement를 보내지 않는다.
+            $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
         }
         try {
             $options = $driver === 'mysql' ? [\Pdo\Mysql::ATTR_FOUND_ROWS => true] : [];
@@ -69,7 +69,7 @@ final class Orm
                     }
                     break;
                 case 'postgres':
-                    $pdo->exec("SET TIME ZONE 'UTC'");
+                    // time zone과 statement timeout은 DSN의 startup parameter다.
                     break;
                 default:
                     $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();

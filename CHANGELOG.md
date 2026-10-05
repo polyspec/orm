@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.31: the PHP client sends every PostgreSQL statement with its binds in one round trip (`Pdo\Pgsql::ATTR_DISABLE_PREPARES`) instead of a separate prepare round trip and transaction per statement text, and sets the session time zone as the startup parameter `TimeZone=UTC` instead of `SET TIME ZONE`; `server_transactions` of `tests/events/vectors.json` counts the server transactions per statement in the four clients.
+
 - G5.29: every check reports each case with its own deadline, CI steps that run suites have no deadline of their own, each test runs once per push, and `make owner-check` runs only what a changed file is an input of (G5.29-1 to G5.29-13).
 
 - G5.29-13: every `go test` of the Makefile, the feature verification commands and the scripts first builds its test binaries as the case `go-build/<packages>` with a deadline through `tests/go-test.mjs`, `fuzz-check` runs under run-case, and `make repo-check` fails a `go test` outside them.
