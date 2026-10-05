@@ -6,8 +6,9 @@ import { COMPUTE, sections } from '../../tests/testcase.mjs';
 const states = new Set([' ', '~', 'o', '!']);
 const files = { en: 'docs/checklist.md', ko: 'docs/checklist.ko.md' };
 // 상태 표시는 항목과 하위 항목의 맨 앞 상태로만 쓴다. 기계가 file의 모든 표시를 상태로 믿을 수 있도록, 범례,
-// 제목, 항목의 글, 이어지는 글, inline code의 표시는 모두 오류다. 예외와 허용 목록은 없다.
-const marker = /\[[ ~o!]\]/g;
+// 제목, 항목의 글, 이어지는 글, inline code의 표시는 모두 오류다. 예외와 허용 목록은 없다. 네 상태 말고 GitHub task
+// list가 상태로 읽는 x와 X도 표시로 센다.
+const marker = /\[[ ~o!xX]\]/g;
 const leadingState = /^ *- (?=\[)/;
 
 function markerErrors(line, index, language, errors) {

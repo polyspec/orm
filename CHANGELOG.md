@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.41-1: `make checklist-check` also rejects the GitHub task list markers x and X outside an item state.
+
 - G5.42: every browser wait of the docs check goes through one helper and, on failure, names what it waited for, the matching elements with visibility, state and the element on top, or the accessibility tree, and the requests, errors, event loop delay and host load.
 
 - G5.40: `make repo-check` counts a test as a reader of the TypeScript build output only when it imports it, also across lines, or runs a TypeScript test with node (an argument array or an exec or spawn shell string), not when it only names the path; `full-run-check` no longer holds the build output.
