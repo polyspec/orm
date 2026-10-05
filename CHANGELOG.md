@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.43-2: the databases of a `make check` run live in `.runtime/check/<run id>/databases`, which their drop removes, apart from the report beside it, and each target log keeps its first 1 MiB and last 256 KiB while it is written.
+
 - G5.43-1: the runner of `make check` records a report or record write that fails (`report write failed: ...`) in the step and the summary and exits 1 instead of crashing, and records an unhandled error as `runner error: <stack>` of a `crashed` run.
 
 - G5.41-1: `make checklist-check` also rejects the GitHub task list markers x and X outside an item state.

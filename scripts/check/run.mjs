@@ -30,7 +30,7 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup, stepLines } from '../../tests/testcase.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
-import { failures, keepRunDirectory, limitLog, publish, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
+import { cappedLog, failures, keepRunDirectory, publish, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 실행하고 출력 줄을 단계로 내보낸다. make의 MAKEFLAGS는 넘기지 않는다:
 // 하위 make는 이 runner가 주는 TEST_ENV와 DECIMAL_ENV만 받는다. spawned는 시작한 process의 id를 받는다.
@@ -110,7 +110,9 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     }
     ({ targets, recorder, record: recorded, run: current } = claimed);
   }
-  const directory = resolve(root, '.runtime/check', runId);
+  // directory는 이 실행의 database 파일(env, decimal-env, SQLite)이고 databases.sh drop이 통째로 지운다. 보고서는 그
+  // 옆의 report다: drop이 보고서를 지우지 않는다.
+  const directory = resolve(root, '.runtime/check', runId, 'databases');
   const report = reportDirectory(root, runId);
   // writer는 보고서의 모든 쓰기를 맡고 실패를 던지지 않고 모은다(reportWriter).
   const writer = reportWriter();
@@ -133,14 +135,13 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       ? [`target ${label}`, `command: make --no-print-directory -k TEST_ENV=${testEnv} DECIMAL_ENV=${decimalEnv} ${label}`, 'recipe (Makefile):', recipeText(root, label), `inputs: ${targetInputs(root, label).join(' ')}`, '']
       : [`setup step ${label}`, ''];
     const written = writer.failed.length;
-    writer.write(log, `${header.join('\n')}\n`);
+    const output = cappedLog(writer, log, `${header.join('\n')}\n`);
     const passed = await runGroup(`check/${label}`, ({ step: report }) => body({
-      step: text => { writer.append(log, `${text}\n`); found.line(text); report(text); },
+      step: text => { output.line(text); found.line(text); report(text); },
       spawned: child => { pid = child; },
-    }).catch(error => { writer.append(log, `${error.message}\n`); found.exit(error.message); throw error; }));
+    }).catch(error => { output.line(error.message); found.exit(error.message); throw error; }));
     const elapsed = performance.now() - started;
-    let truncated = null;
-    writer.run(log, () => { truncated = limitLog(log); });
+    const truncated = output.close() || null;
     const details = { log: relative(root, log), elapsed: Math.round(elapsed), ...(passed ? {} : { failures: found.lines() }), ...(truncated ? { truncated } : {}) };
     // 실패한 target이 남긴 실행 directory(.runtime/run/<target>-<make pid>)를 보고서로 옮긴다.
     if (!passed && pid) {

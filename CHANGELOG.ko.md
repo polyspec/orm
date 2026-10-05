@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.43-2: `make check` 실행의 database는 drop이 지우는 `.runtime/check/<run id>/databases`에 있어 그 옆의 보고서와 떨어져 있고, 각 target log는 쓰는 동안 처음 1 MiB와 마지막 256 KiB를 남긴다.
+
 - G5.43-1: `make check`의 runner는 실패한 보고서나 기록의 쓰기(`report write failed: ...`)를 crash하는 대신 단계와 summary에 기록하고 1로 끝나며, 처리하지 못한 오류는 `crashed` 실행의 `runner error: <stack>`으로 기록한다.
 
 - G5.41-1: `make checklist-check`는 GitHub task list의 x와 X 표시도 항목 상태 밖에서 거부한다.
