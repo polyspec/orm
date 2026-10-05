@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-11: the environment file of each run names its own send-savepoint SQLite file, so the Rust client database tests of `client-db-check` run their SQLite case again.
+
 - G5.32-8: the raw SQL API is removed from the four clients: `raw`, `andRaw`, `orRaw`, `orderByRaw`, `groupByRaw`, `setRaw<Col>`, `addRawColumn<Alias>` and the format string of `addColumn<Col>Alias<Name>`, which takes a column function only; the IR carries no SQL text, every bind slot has a dbspec type, and the Rust client reads a MySQL `YEAR` cell.
 
 - G5.32-7-1: the Go plan cache key includes the `not` of a condition group, so a negated group no longer reuses the plan of the same group without `not`.

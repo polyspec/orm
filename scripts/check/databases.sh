@@ -10,7 +10,8 @@
 # create는 <servers env>(make test-servers가 쓴 file)의 server에 MySQL과 PostgreSQL database
 # <name>_bench와 <name>_decimal, <directory>의 SQLite file을 만들어 scripts/bench-db.sh와
 # scripts/decimal-db-setup.php로 설치하고, <directory>/env(<servers env>에 이 database의 BENCH_*,
-# ORM_BENCH_MYSQL_DSN을 더한 것)와 <directory>/decimal-env를 쓴다.
+# ORM_BENCH_MYSQL_DSN, 이 directory의 send-savepoint SQLite file인 ORM_SEND_SQLITE_DSN을 더한 것)와
+# <directory>/decimal-env를 쓴다.
 # drop은 그 database들을 지운다. <name>은 소문자, 숫자와 밑줄로 된 이름이다.
 set -eu
 
@@ -52,6 +53,8 @@ create)
     printf "export BENCH_MYSQL_DSN='%s'\n" "$mysql_bench"
     printf "export BENCH_POSTGRES_DSN='%s'\n" "$postgres_bench"
     printf "export BENCH_SQLITE_DSN='%s'\n" "$sqlite_bench"
+    # rust-send-savepoint와 client-db-check의 Rust test(tx::send_tests)가 쓰는 SQLite file도 이 실행의 것이다.
+    printf "export ORM_SEND_SQLITE_DSN='sqlite://%s/send-savepoint.sqlite'\n" "$dir"
   } > "$dir/env.tmp"
   mv "$dir/env.tmp" "$dir/env"
   echo "databases: ${name}_bench and ${name}_decimal created and seeded"
