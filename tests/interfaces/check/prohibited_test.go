@@ -120,8 +120,9 @@ func withoutCheckTarget(makefile, target string) string {
 	return strings.Join(lines, "\n")
 }
 
-// interfaceCommand는 make interface-check의 명령이며 feature-check가 검증 명령으로 실행한다.
-const interfaceCommand = "go run ./tests/interfaces/check --self-test"
+// interfaceCommand는 make interface-check의 명령이며 feature-check가 검증 명령으로 실행한다. go run 대신
+// tests/go-run.mjs가 checker를 build해 실행한다.
+const interfaceCommand = "node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test"
 
 func validateGeneratedCI(workflow, makefile, features string) error {
 	runsCheck := false
