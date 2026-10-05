@@ -459,7 +459,7 @@ caseTest('the summary step reports a runner that did not finish, with the partia
 const PARTS = {
   'checklist-check': ['unit', 'run'], 'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'], 'git-check': ['unit', 'run'],
   'testcase-check': ['go', 'node', 'runners', 'php', 'rust'], 'ts-check': ['hold', 'types', 'test'],
-  'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
+  'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces', 'php-extension'],
   'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners'],
   'feature-check': ['build', 'coverage', 'verification'],
   'client-unit-check': ['dsn', 'relation-keys', 'hostcodec', 'engine', 'runtime-model', 'orm-gen', 'perf-extensions'],
