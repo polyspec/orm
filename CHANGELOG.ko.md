@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.62: `make test-servers`는 각 server와 그 log reader를 새 session(`tests/new-session`)에서 시작하므로, 그것을 시작한 명령의 process group을 끝내도 함께 쓰는 server는 멈추지 않는다.
+
 - G5.68: TypeScript 취소 case와 start_logged case는 wall-clock 상한 대신 동작을 확인한다(취소된 statement는 signal로 끝나고, start_logged는 준비 줄 뒤, server가 끝나기 전에 돌아온다).
 
 - G5.67: 문서 workflow는 `make docs-ci`로 검사를 `make check`의 runner로 test server 없이 실행하고, 검사마다의 log와 summary를 `!cancelled()` 아래에서 보고서로 올린다.
