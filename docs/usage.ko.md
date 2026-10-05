@@ -156,7 +156,7 @@ await master.utils().schema().install(SCHEMA);
 
 `orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
-각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다([schema.md](schema.md#_5-adding-tables-and-columns)). 둘 다 설치나 upgrade 때 실행해 그때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](schema.md#_6-schema-registration)).
+각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하고 빠진 index를 만들며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다. 빠진 unique key도 있는 row에서 실패할 수 있어 plan에서 다루므로 `SCHEMA_DIFFERS`다([schema.md](schema.md#_5-adding-tables-and-columns)). 둘 다 실행할 때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](schema.md#_6-schema-registration)).
 
 ---
 
@@ -402,7 +402,7 @@ $b->getJsonSetting()['a'];
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
-| 설치한 set에 빠진 테이블과 컬럼 추가 | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
+| 설치한 set에 빠진 테이블, 컬럼, index 추가 | `connection.utils().schema().addTablesAndColumns(...)` ([schema.md](schema.md#_5-adding-tables-and-columns)) |
 
 ---
 

@@ -59,7 +59,7 @@ pub const ROLLBACK: &str = "ROLLBACK";
 pub const FAULT: &str = "FAULT";
 /// executor: a statement event subscriber of the connection failed; the operation fails with its error as the cause
 pub const SUBSCRIBER: &str = "SUBSCRIBER";
-/// executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table or a missing column that is null or has a default
+/// executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is one, because it can fail on the existing rows
 pub const SCHEMA_DIFFERS: &str = "SCHEMA_DIFFERS";
 /// executor
 pub const INTERNAL: &str = "INTERNAL";

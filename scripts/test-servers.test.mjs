@@ -5,7 +5,8 @@ import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, COMPUTE } from '../tests/testcase.mjs';
+import { createServer } from 'node:net';
+import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mjs';
 
 // stop_pid case는 test-servers.sh의 stop_pid를 그대로 꺼내 가짜 서버를 멈춘다. 서버 정지는 장기 작업이므로
 // 기한이 없고, 끝났는지는 polling이 아니라 운영체제의 종료 사건으로 안다. TERM을 받고 1.5초 뒤에야 끝나는
@@ -133,4 +134,57 @@ caseTest('the server environment names no bench or decimal database that runs sh
   const makefile = readFileSync(new URL('../Makefile', import.meta.url), 'utf8');
   assert.match(makefile, /^DECIMAL_ENV =$/m, 'the Makefile names a shared decimal environment');
   assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
+});
+
+// binary log 보존 case는 test-servers.sh가 mysqld에 주는 MYSQLD_BINLOG의 보존 option을 작은 값으로 바꿔 임시
+// data directory와 빈 port의 fixture 서버에 주고, 공유 서버는 건드리지 않는다. server는 만료된 binary log를
+// 시작할 때와 log를 회전할 때만 지우므로 보존에는 만료 시간과 회전하는 크기가 함께 필요하다. 쓰기 묶음 하나를 쓰고
+// 만료 시간보다 오래 기다린 뒤 다시 쓰면 첫 file은 server가 지워야 한다. 남으면 그 file과 남은 이유를 적고 실패한다.
+caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {
+  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
+  const declared = /^MYSQLD_BINLOG="([^"]*)"$/m.exec(script)?.[1] ?? '';
+  const flags = declared.split(/\s+/).filter(Boolean);
+  const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
+  const sizeFlag = flags.find(f => f.startsWith('--max-binlog-size='));
+  // fixture 값: 만료 2초, 크기는 mysqld가 받는 가장 작은 4096 byte다. 선언에 없는 option은 주지 않는다.
+  const EXPIRE_SECONDS = 2;
+  const fixtureFlags = [`--binlog-expire-logs-seconds=${EXPIRE_SECONDS}`, ...(sizeFlag ? ['--max-binlog-size=4096'] : [])];
+  const root = mkdtempSync(join(tmpdir(), 'orm-binlog-'));
+  // unix socket 경로는 104 byte를 넘을 수 없으므로 짧은 directory에 둔다.
+  const socketDir = mkdtempSync('/tmp/orm-binlog-');
+  const port = await new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', () => { const { port: p } = server.address(); server.close(() => resolve(p)); });
+  });
+  const mysql = sql => execFileSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', '-e', sql], { encoding: 'utf8' });
+  const data = join(root, 'data');
+  try {
+    execFileSync('mysqld', ['--no-defaults', '--initialize-insecure', `--datadir=${data}`, `--log-error=${join(root, 'init.log')}`]);
+    // --daemonize는 server가 연결을 받거나 실패한 뒤 돌아온다.
+    execFileSync('mysqld', ['--no-defaults', '--daemonize', `--datadir=${data}`, `--pid-file=${join(root, 'mysqld.pid')}`, `--log-error=${join(root, 'mysqld.log')}`,
+      '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(socketDir, 's')}`, '--mysqlx=OFF', '--server-id=1', ...fixtureFlags]);
+    mysql('CREATE DATABASE b; CREATE TABLE b.t (v VARCHAR(1024))');
+    const burst = () => { for (let i = 0; i < 10; i++) mysql("INSERT INTO b.t VALUES (REPEAT('x', 1000))"); };
+    burst();
+    const first = mysql('SHOW BINARY LOGS').trim().split('\n')[0].split('\t');
+    // 만료는 file의 마지막 쓰기 시각부터 센다. 그보다 1초 더 기다린다.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, (EXPIRE_SECONDS + 1) * 1000);
+    burst();
+    const logs = mysql('SHOW BINARY LOGS').trim().split('\n').map(l => l.split('\t')[0]);
+    const size = mysql('SELECT @@max_binlog_size').trim();
+    assert.ok(!logs.includes(first[0]),
+      `${first[0]} (${first[1]} bytes, last written more than ${EXPIRE_SECONDS + 1} s ago) is kept past binlog_expire_logs_seconds=${EXPIRE_SECONDS}: ` +
+      `the server removes expired logs only when it rotates the log, and max_binlog_size=${size} was never reached` +
+      (expireFlag ? '' : '; scripts/test-servers.sh sets no --binlog-expire-logs-seconds') + (sizeFlag ? '' : '; scripts/test-servers.sh sets no --max-binlog-size'));
+    // 공유 서버의 두 mysqld가 같은 보존 option을 받는다.
+    for (const command of ['--server-id=1', '--server-id=2']) {
+      const line = script.split('\n').findIndex(l => l.includes(command));
+      assert.ok(line >= 0 && /\$MYSQLD_BINLOG\b/.test(script.split('\n').slice(line - 2, line + 1).join('\n')), `the mysqld with ${command} in scripts/test-servers.sh does not take $MYSQLD_BINLOG`);
+    }
+  } finally {
+    spawnSync('mysqladmin', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', 'shutdown']);
+    rmSync(root, { recursive: true, force: true });
+    rmSync(socketDir, { recursive: true, force: true });
+  }
 });

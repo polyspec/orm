@@ -3,7 +3,8 @@
 //! row와 함께 가진다. version 2로 add_tables_and_columns를 부르면 있는 table에 빠진 null이거나
 //! default가 있는 column을 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을
 //! 기록하고, 없는 table을 index, foreign key, check, audit trigger와 함께 만들며, 다른 set의
-//! table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도
+//! table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고,
+//! 빠진 unique key는 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도
 //! 바꾸기 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각
 //! case는 자기 case database(orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나
 //! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
@@ -28,7 +29,10 @@ const ADDED: [&str; 11] = [
     "addcol_item_history.status",
     "addcol_tag.color",
 ];
-const DIFFERS: [&str; 8] = ["required", "removed", "changed", "nullable", "default", "index", "unique", "reorder"];
+const DIFFERS: [&str; 7] = ["required", "removed", "changed", "nullable", "default", "unique", "reorder"];
+/// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+const ADDED_INDEX: [&str; 3] = ["addcol_item.note", "addcol_item.ix_addcol_item_label", "addcol_item_history.note"];
+const MISSING_UNIQUE: &str = "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan";
 
 /// contracts/fixtures/add_tables_and_columns/<name>.dbs의 schema 값. generated code처럼 manifest text와
 /// 그 manifestHash를 가진다.
@@ -147,6 +151,32 @@ async fn add_tables_and_columns_differs() {
             assert_eq!(code(result), orm::codes::SCHEMA_DIFFERS, "{driver}: {name}");
         }
         assert_eq!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await), ADDED, "{driver}: add_tables_and_columns after the differences");
+        db.close().await;
+        database.drop().await;
+    }
+}
+
+/// 있는 table에 빠진 index는 더하고 다시 부르면 아무것도 하지 않는다. 빠진 unique key는 있는 행에서
+/// 실패할 수 있다는 이유를 적은 SCHEMA_DIFFERS다.
+#[tokio::test]
+async fn add_tables_and_columns_index() {
+    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    for driver in ["sqlite", "mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = installed(&database).await;
+        let unique = db.utils().schema().add_tables_and_columns(fixture("unique")).await.expect_err("a missing unique key");
+        assert!(unique.code() == orm::codes::SCHEMA_DIFFERS && unique.to_string().contains(MISSING_UNIQUE), "{driver}: a missing unique key: {unique}");
+        assert_eq!(
+            added(db.utils().schema().add_tables_and_columns(fixture("index")).await),
+            ADDED_INDEX,
+            "{driver}: add_tables_and_columns with a missing index"
+        );
+        assert!(
+            added(db.utils().schema().add_tables_and_columns(fixture("index")).await).is_empty(),
+            "{driver}: repeated add_tables_and_columns with the index"
+        );
+        // install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+        db.utils().schema().install(fixture("index")).await.unwrap_or_else(|e| panic!("{driver}: install of the set with the index: {e}"));
         db.close().await;
         database.drop().await;
     }

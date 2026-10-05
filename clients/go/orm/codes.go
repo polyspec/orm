@@ -33,7 +33,7 @@ const (
 	CodeRollback              = "ROLLBACK"               // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 	CodeFault                 = "FAULT"                  // executor: a test fault armed through the test entry point of the client reported the rollback of a transaction as failed after the rollback ran
 	CodeSubscriber            = "SUBSCRIBER"             // executor: a statement event subscriber of the connection failed; the operation fails with its error as the cause
-	CodeSchemaDiffers         = "SCHEMA_DIFFERS"         // executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table or a missing column that is null or has a default
+	CodeSchemaDiffers         = "SCHEMA_DIFFERS"         // executor: addTablesAndColumns found a difference between the existing tables of a document set and the set other than a missing table, a missing column that is null or has a default or a missing index; a missing unique key is one, because it can fail on the existing rows
 	CodeInternal              = "INTERNAL"               // executor
 	CodeLockNotAvailable      = "LOCK_NOT_AVAILABLE"     // driver: a NOWAIT lock could not be acquired immediately
 	CodeDeadlock              = "DEADLOCK"               // driver: MySQL 1213 / SQLSTATE 40001 / PostgreSQL 40P01 / SQLite LOCKED; retries require TransactionOptions

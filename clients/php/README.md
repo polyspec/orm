@@ -131,11 +131,13 @@ transaction's win; every audited write in the transaction refers to that row (do
   database with the set and fails with `CONFIG` naming each difference. MySQL commits each DDL statement itself, so there
   the statements run outside a transaction and `install` inside one is a `CONFIG` error.
 - `utils()->schema()->addTablesAndColumns($schema)` upgrades the installed set of a generated
-  schema value: it creates the tables the database lacks and adds the missing columns of the
-  existing tables that are null or have a default, with the plan steps of the dialect
+  schema value: it creates the tables the database lacks, adds the missing columns of the
+  existing tables that are null or have a default and creates their missing indexes, with the
+  plan steps of the dialect
   (`Dbspec::addTablesAndColumnsSteps`), which create each table with its indexes, foreign keys,
   checks and triggers and replace the audit triggers of each changed table, and returns the
-  created tables as `table` and the added columns as `table.column`; every other difference is a
+  created tables as `table`, the added columns as `table.column` and the created indexes as
+  `table.index`; every other difference, a missing unique key included, is a
   `SCHEMA_DIFFERS` error before any change (docs/schema.md "Adding tables and columns"). MySQL and
   SQLite add them outside a transaction.
 

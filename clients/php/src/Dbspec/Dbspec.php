@@ -439,11 +439,13 @@ final class Dbspec
      * columns"). `$live`는 연결의 database를 introspect한 문서, `$unsupported`는
      * introspection이 읽지 못한 객체, `$target`은 document set의 schema text 문서다. set에
      * 없는 database의 table은 비교하지도 바꾸지도 않는다. database에 있는 set의 table과
-     * set의 차이가 database에 없는 table의 create_table과 null이거나 default가 있는
-     * column의 add_column뿐이면, database에 있는 set의 table에서 set까지의 plan
-     * step(docs/plans.md "Steps")과, table 이름 순으로 만드는 table은 "table", 더하는
-     * column은 column 순서로 "table.column"인 목록을 돌려준다. 다른 차이는 step 없이
-     * "<kind> <table>[.<name>]"로 돌려준다.
+     * set의 차이가 database에 없는 table의 create_table, null이거나 default가 있는
+     * column의 add_column, unique가 아닌 index의 add_index뿐이면, database에 있는 set의
+     * table에서 set까지의 plan step(docs/plans.md "Steps")과, table 이름 순으로 만드는
+     * table은 "table", 더하는 column은 column 순서로 "table.column", 그 뒤 더하는 index는
+     * index 순서로 "table.index"인 목록을 돌려준다. 다른 차이는 step 없이
+     * "<kind> <table>[.<name>]"로 돌려주며, 빠진 unique key는 있는 행에서 실패할 수 있으므로
+     * 그 이유와 함께 돌려준다.
      *
      * @param list<Unsupported> $unsupported
      * @return array{0: list<string>, 1: list<PlanStep>, 2: list<string>} 만드는 table과 더하는 column, step, 차이
@@ -475,12 +477,23 @@ final class Dbspec
                 $adding[$qualified($d->table, $d->name)] = true;
                 continue;
             }
+            if ($d->kind === 'add_index') {
+                // index는 행을 거부하지 않으므로 있는 table에도 더한다.
+                $adding[$qualified($d->table, $d->name)] = true;
+                continue;
+            }
+            if ($d->kind === 'add_unique') {
+                // unique key는 있는 행이 겹치면 실패하므로 plan과 apply가 다룬다.
+                $differences[] = 'add_unique ' . $qualified($d->table, $d->name) . ': a missing unique key can fail on the existing rows; add it with a plan';
+                continue;
+            }
             $differences[] = "{$d->kind} " . $qualified($d->table, $d->name);
         }
         if ($differences !== [] || $adding === []) {
             return [[], [], $differences];
         }
-        // 만드는 table과 더하는 column은 table 이름 순, table 안에서는 column 순서다.
+        // 만드는 table과 더하는 column과 index는 table 이름 순, table 안에서는 column 순서 뒤
+        // index 순서다.
         $added = [];
         foreach ($target->tables as $table) {
             if (isset($adding[$table->name])) {
@@ -490,6 +503,11 @@ final class Dbspec
             foreach ($table->columns as $c) {
                 if (isset($adding[$qualified($table->name, $c->name)])) {
                     $added[] = $qualified($table->name, $c->name);
+                }
+            }
+            foreach ($table->indexes as $i) {
+                if (isset($adding[$qualified($table->name, $i->name)])) {
+                    $added[] = $qualified($table->name, $i->name);
                 }
             }
         }

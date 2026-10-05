@@ -18,7 +18,8 @@ import (
 // AddTablesAndColumns를 부르면 있는 table에 빠진 null이거나 default가 있는 column을
 // 더하고, row를 지키며, 바뀐 audit table의 trigger가 새 column을 기록하고, 없는 table을
 // index, foreign key, check, audit trigger와 함께 만들며, 다른 set의 table은 그대로
-// 둔다. 다시 부르면 아무것도 더하지 않는다. 다른 차이가 있는 set은 아무것도 바꾸기
+// 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고, 빠진
+// unique key는 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도 바꾸기
 // 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다.
 
 var (
@@ -28,7 +29,10 @@ var (
 		"addcol_item_history.note", "addcol_item_history.priority", "addcol_item_history.archived", "addcol_item_history.status",
 		"addcol_tag.color",
 	}
-	addTablesAndColumnsDiffers = []string{"required", "removed", "changed", "nullable", "default", "index", "unique", "reorder"}
+	addTablesAndColumnsDiffers = []string{"required", "removed", "changed", "nullable", "default", "unique", "reorder"}
+	// index.dbs가 version 1에 더하는 column과 index다. column 뒤에 index가 온다.
+	addTablesAndColumnsIndexAdded    = []string{"addcol_item.note", "addcol_item.ix_addcol_item_label", "addcol_item_history.note"}
+	addTablesAndColumnsMissingUnique = "add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan"
 )
 
 func addTablesAndColumnsSchema(t *testing.T, name string) *orm.Schema {
@@ -220,6 +224,26 @@ func addTablesAndColumnsDiffersCase(t *testing.T, driver string) {
 	}
 }
 
+// addTablesAndColumnsIndexCase는 있는 table에 빠진 index를 더하고 다시 부르면 아무것도 하지
+// 않는지, 빠진 unique key는 있는 행에서 실패할 수 있다는 이유를 적은 SCHEMA_DIFFERS인지 본다.
+func addTablesAndColumnsIndexCase(t *testing.T, driver string) {
+	db, _ := addTablesAndColumnsInstalled(t, driver)
+	if _, err := db.Utils().Schema().AddTablesAndColumns(addTablesAndColumnsSchema(t, "unique")); orm.ErrorCode(err) != orm.CodeSchemaDiffers || !strings.Contains(err.Error(), addTablesAndColumnsMissingUnique) {
+		t.Errorf("a missing unique key = %v; want SCHEMA_DIFFERS with %q", err, addTablesAndColumnsMissingUnique)
+	}
+	index := addTablesAndColumnsSchema(t, "index")
+	if added, err := db.Utils().Schema().AddTablesAndColumns(index); err != nil || !slices.Equal(added, addTablesAndColumnsIndexAdded) {
+		t.Fatalf("AddTablesAndColumns with a missing index = %v, %v", added, err)
+	}
+	if again, err := db.Utils().Schema().AddTablesAndColumns(index); err != nil || len(again) != 0 {
+		t.Fatalf("repeated AddTablesAndColumns with the index = %v, %v", again, err)
+	}
+	// install은 database가 set과 같을 때만 아무것도 바꾸지 않는다: index가 선언대로 있다.
+	if err := db.Utils().Schema().Install(index); err != nil {
+		t.Fatalf("install of the set with the index = %v", err)
+	}
+}
+
 func addTablesAndColumnsTransactionCase(t *testing.T, driver string) {
 	db, _ := addTablesAndColumnsInstalled(t, driver)
 	v2 := addTablesAndColumnsSchema(t, "v2")
@@ -291,6 +315,21 @@ func TestAddTablesAndColumnsDiffersMySQL(t *testing.T) {
 func TestAddTablesAndColumnsDiffersPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	addTablesAndColumnsDiffersCase(t, "postgres")
+}
+
+func TestAddTablesAndColumnsIndexSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	addTablesAndColumnsIndexCase(t, "sqlite")
+}
+
+func TestAddTablesAndColumnsIndexMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	addTablesAndColumnsIndexCase(t, "mysql")
+}
+
+func TestAddTablesAndColumnsIndexPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	addTablesAndColumnsIndexCase(t, "postgres")
 }
 
 func TestAddTablesAndColumnsTransactionSQLite(t *testing.T) {
