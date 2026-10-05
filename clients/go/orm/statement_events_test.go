@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/clients/go/orm"
@@ -298,4 +299,102 @@ func TestStatementEventsPostgres(t *testing.T) {
 func TestStatementEventsSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runEventCases(t, "sqlite", true)
+}
+
+// serverTransactions는 vector의 server_transactions다.
+type serverTransactions struct {
+	Database        string   `json:"database"`
+	FirstRunClients []string `json:"first_run_clients"`
+	Page            string   `json:"page"`
+	Probe           string   `json:"probe"`
+	TimeZone        struct {
+		Setting string `json:"setting"`
+		Source  string `json:"source"`
+	} `json:"time_zone"`
+}
+
+// TestStatementEventsServerTransactions는 vector의 server_transactions를 PostgreSQL case
+// database에서 실행한다. probe가 돌려주는 backend의 local transaction 번호 차이로 page 실행 한
+// 번의 server transaction을 센다. pool size 1이므로 모든 statement가 한 backend에서 실행된다.
+// pgx는 처음 보내는 statement text마다 parameter type을 묻는 prepare를 따로 보내므로, go가
+// first_run_clients에 없으면 첫 실행은 보고만 한다.
+func TestStatementEventsServerTransactions(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	raw, err := os.ReadFile(eventsVector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Cases              []eventCase        `json:"cases"`
+		ServerTransactions serverTransactions `json:"server_transactions"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	spec := doc.ServerTransactions
+	var page *eventCase
+	for i := range doc.Cases {
+		if doc.Cases[i].ID == spec.Page {
+			page = &doc.Cases[i]
+		}
+	}
+	if page == nil {
+		t.Fatalf("server_transactions page %q is no case", spec.Page)
+	}
+	compareFirst := slices.Contains(spec.FirstRunClients, "go")
+	s := fixtureSchema(t, "statement_events")
+	dsn := newDatabase(t, spec.Database)
+	setup, err := orm.ConnectSchema(dsn, s, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := setup.Utils().Schema().Install(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := setup.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var setting, source string
+	if err := orm.ReadForTest(db, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'", &setting, &source); err != nil {
+		t.Fatal(err)
+	}
+	if setting != spec.TimeZone.Setting || source != spec.TimeZone.Source {
+		t.Errorf("TimeZone setting and source = %s, %s, want %s, %s", setting, source, spec.TimeZone.Setting, spec.TimeZone.Source)
+	}
+	probe := func() int64 {
+		var n int64
+		if err := orm.ReadForTest(db, spec.Probe, &n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	first := probe()
+	cost := probe() - first
+	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
+	r.stopRec = db.Subscribe(r.record)
+	before := probe()
+	for _, name := range []string{"first", "second"} {
+		r.records = nil
+		for _, st := range page.Steps {
+			r.checked(st)
+		}
+		events := int64(0)
+		for _, rec := range r.records {
+			if rec.SQL != spec.Probe {
+				events++
+			}
+		}
+		after := probe()
+		transactions := after - before - cost
+		before = after
+		t.Logf("server_transactions %s run: %d events, %d transactions", name, events, transactions)
+		if (name == "second" || compareFirst) && transactions != events {
+			t.Errorf("%s run spent %d server transactions for %d statement events, want one per event", name, transactions, events)
+		}
+	}
 }

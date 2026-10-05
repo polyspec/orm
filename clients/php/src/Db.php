@@ -47,6 +47,13 @@ final class Db
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
+        if ($driver === 'postgres') {
+            // PostgreSQL은 statement와 bind를 unnamed statement 하나로 한 round trip에 보낸다.
+            // 연결은 요청 하나 동안만 살므로 named statement를 따로 prepare하는 round trip과
+            // 그 implicit transaction은 요청마다 statement text마다 든다. bind는 prepare할 때와
+            // 같은 server-side parameter이고 type 추론도 같다.
+            $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
+        }
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
     }
 

@@ -1653,6 +1653,7 @@
       ],
       "tests": [
         "clients/go/orm/statement_events_test.go",
+        "clients/go/orm/statement_events_export_test.go",
         "clients/typescript/tests/statement-events.mjs",
         "clients/php/tests/statement_events_test.php",
         "clients/rust/orm/tests/statement_events.rs",
@@ -1670,6 +1671,7 @@
           "id": "statement-events-go",
           "command": "node tests/go-test.mjs -v -timeout 0 ./clients/go/orm -run '^TestStatementEvents' -count=1",
           "inputs": [
+            "clients/go/orm/statement_events_export_test.go",
             "clients/go/orm/statement_events_test.go",
             "tests/events/vectors.json"
           ]

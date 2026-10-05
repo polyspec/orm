@@ -225,3 +225,51 @@ function runCase(array $case, string $driver, string $dsn): void
         $db->close();
     }
 }
+
+/**
+ * vector의 server_transactions를 PostgreSQL case database에서 실행한다. probe가 돌려주는 backend의
+ * local transaction 번호 차이로 page 실행 한 번의 server transaction을 센다. PHP 연결은 요청 하나
+ * 동안만 살므로 요청마다 첫 실행이고, first_run_clients의 PHP는 첫 실행도 event마다 transaction
+ * 하나여야 한다.
+ *
+ * @param array<string, mixed> $spec
+ * @param array<string, array<string, mixed>> $cases
+ */
+function runServerTransactions(array $spec, array $cases, string $dsn): void
+{
+    $setup = Orm::connectSchema($dsn, \StatementEventsCase\Orm\schema(), new Config());
+    try {
+        $setup->utils()->schema()->install(\StatementEventsCase\Orm\schema());
+    } finally {
+        $setup->close();
+    }
+    $db = Orm::connectSchema($dsn, \StatementEventsCase\Orm\schema(), new Config());
+    try {
+        $u = $db->utils();
+        $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");
+        check($zone === [[$spec['time_zone']['setting'], $spec['time_zone']['source']]], 'TimeZone setting and source = ' . json_encode($zone) . ', want ' . json_encode($spec['time_zone']));
+        $probe = static fn(): int => (int) $u->read('utility', [], $spec['probe'], []);
+        $first = $probe();
+        $cost = $probe() - $first;
+        $run = new EventRun($db);
+        $run->stopRecording = $db->subscribe($run->record(...));
+        $compareFirst = in_array('php', $spec['first_run_clients'], true);
+        $before = $probe();
+        foreach (['first', 'second'] as $page) {
+            $run->records = [];
+            foreach ($cases[$spec['page']]['steps'] as $step) {
+                $run->checked($step);
+            }
+            $events = count(array_filter($run->records, static fn(array $r): bool => $r['sql'] !== $spec['probe']));
+            $after = $probe();
+            $transactions = $after - $before - $cost;
+            $before = $after;
+            fwrite(STDOUT, "server_transactions $page run: $events events, $transactions transactions\n");
+            if ($page === 'second' || $compareFirst) {
+                check($transactions === $events, "$page run spent $transactions server transactions for $events statement events, want one per event");
+            }
+        }
+    } finally {
+        $db->close();
+    }
+}
