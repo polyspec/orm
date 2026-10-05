@@ -433,11 +433,22 @@ export function usesTypescriptOutput(path, read, seen = new Set()) {
   const text = read(path);
   if (text === undefined) return false;
   // import 문(정적, 동적, re-export)만 본다. 문자열 안의 import 예시는 쓰는 것이 아니다.
-  if (/^\s*(?:import\s[^'"\n]*from\s*|(?:[^'"\n]*\bawait\s+)?import\(\s*|export\s[^'"\n]*from\s*)['"](?:(?:\.\.\/)+|[\w./-]*clients\/typescript\/)dist\//m.test(text)) return true;
-  // node로 실행하는 clients/typescript의 file(같은 줄에 node가 있는 경로)도 따라간다.
-  const named = text.split('\n').filter(line => /\bnode\b/.test(line))
-    .flatMap(line => [...line.matchAll(/clients\/typescript\/[\w./-]+\.mjs/g)].map(match => match[0]));
-  return [...dependencies(path, text), ...named].some(next => usesTypescriptOutput(next, read, seen));
+  // 정적 import와 re-export는 여러 줄에 걸칠 수 있다(`import {\n  a,\n} from '../dist/index.js'`).
+  // 줄을 넘는 것은 `{ ... }` 안의 이름 목록뿐이다: 이름, `as`, 쉼표와 공백만 담는다.
+  if (/^\s*(?:(?:import|export)\s+(?:type\s+)?(?:[\w$*]+(?:\s+as\s+[\w$]+)?\s*,?\s*)?(?:\{[\w$\s,]*\}\s*)?from\s*|(?:[^'"\n]*\bawait\s+)?import\(\s*)['"](?:(?:\.\.\/)+|[\w./-]*clients\/typescript\/)dist\//m.test(text)) return true;
+  return [...dependencies(path, text), ...nodeRuns(text)].some(next => usesTypescriptOutput(next, read, seen));
+}
+
+// nodeRuns는 JavaScript text가 node로 실행하는 clients/typescript의 file이다. 실행은 두 형태다: program과 인자 배열
+// (`'node', ['<file>', ...]`이나 `process.execPath, ['<file>', ...]`), 그리고 exec나 spawn 호출의 shell 문자열
+// (`execSync('node [option...] <file>')`). 경로를 문자열로만 적는 곳(기대 출력, stub, 정규식, 주석)은 실행이 아니다.
+export function nodeRuns(text) {
+  const file = '(clients\\/typescript\\/[\\w./-]+\\.mjs)';
+  const forms = [
+    new RegExp(`(?:['"]node['"]|process\\.execPath)\\s*,\\s*\\[\\s*['"]${file}['"]`, 'g'),
+    new RegExp(`\\b(?:exec|execSync|spawn|spawnSync|execFile|execFileSync)\\(\\s*['"\`]node\\s+(?:--\\S+\\s+)*${file}`, 'g'),
+  ];
+  return forms.flatMap(form => [...text.matchAll(form)].map(match => match[1]));
 }
 
 // typescriptReaderErrors는 TypeScript client의 build 출력을 쓰는 file을 node로 실행하는 make target 가운데 첫 줄에서

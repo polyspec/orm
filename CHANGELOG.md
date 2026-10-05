@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.40: `make repo-check` counts a test as a reader of the TypeScript build output only when it imports it, also across lines, or runs a TypeScript test with node (an argument array or an exec or spawn shell string), not when it only names the path; `full-run-check` no longer holds the build output.
+
 - G5.38-5: AGENTS.md and AGENTS.ko.md state that the full suite runs on GitHub CI after a push and that one CI run collects enough information to fix every failure before the next one; a local `make check` is no required step before a push, and `make repo-check` keeps the rule.
 
 - G5.38: the full suite runs on GitHub CI after a push, never stops at a failure, records each failure with its command, inputs, output and environment, and publishes a summary and the report of its run id.

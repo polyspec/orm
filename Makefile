@@ -183,8 +183,7 @@ checklist-check/run:
 
 # full-run-check는 전체 suite의 guard와 runner(scripts/check/full-run.mjs, scripts/check/run.mjs)를 임시 git
 # checkout과 stub 단계로 검사한다. 실제 target과 database는 실행하지 않는다.
-full-run-check: lease-tool
-	$(READ_TYPESCRIPT)
+full-run-check:
 	node --test scripts/check/full-run.test.mjs scripts/check/continue.test.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
