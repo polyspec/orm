@@ -86,6 +86,11 @@ CARGO_COPY = $(CARGO_LEASED) sh $(abspath scripts/cargo-build-copy.sh) $(RUN_TAR
 # 다른 실행의 build가 쓰는 도중의 출력을 바꾸지 않는다. 다른 실행이 가지면 directory 변경 알림을 기다린다.
 TYPESCRIPT_LEASES = $(abspath .runtime/typescript.leases)
 HOLD_TYPESCRIPT = $(LEASE) hold $(TYPESCRIPT_LEASES) exclusive --wait --pid $$PPID
+# READ_TYPESCRIPT은 build 출력을 쓰기만 하는 target이 make process 동안 shared lease로 가진다. 읽는 target끼리는
+# 함께 실행되고, build하는 target(HOLD_TYPESCRIPT)은 읽는 target이 끝날 때까지 기다린다. 조상 process(하위 make를
+# 실행한 make, make owner-check의 기능 단계)가 exclusive를 가지면 그 보유를 그대로 쓴다.
+READ_TYPESCRIPT = $(LEASE) hold $(TYPESCRIPT_LEASES) shared --wait --pid $$PPID
+export TYPESCRIPT_LEASES
 # SEND_SQLITE_DSN은 rust-send-savepoint-check의 SQLite file이다. 실행 하나의 RUN_DIR에 둔다.
 SEND_SQLITE_DSN = sqlite://$(RUN_DIR)/send-savepoint.sqlite
 
@@ -527,13 +532,15 @@ case-database-check: lease-tool
 	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
 	rm -rf $(RUN_DIR)
 
-conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check
+conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 
 decimal-bench-sqlite:
 	./scripts/decimal-bench-sqlite.sh
 
-decimal-physical-check: rust-fetch
+decimal-physical-check: rust-fetch lease-tool
+	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 

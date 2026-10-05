@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-7: targets that only read the TypeScript build output hold a shared lease, `conformance-check` and the feature steps of `make owner-check` hold the exclusive one, and a lease held by an ancestor process counts as held by its children.
+
 - G5.33-6: the Rust builds of the feature verification commands, the feature coverage checker and the scripts hold the target lease, the programs they run are copies, and the copies are copy-on-write clones where the file system supports them.
 
 - G5.33-5: every `cargo test` of the Makefile, the feature verification commands and `scripts/client-db-test.sh` runs through `tests/cargo-test.mjs`, which builds under the target lease, copies the test binaries into a run directory and runs the copies.

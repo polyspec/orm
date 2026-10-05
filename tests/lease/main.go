@@ -18,8 +18,8 @@
 // Usage:
 //
 //	lease hold <dir> shared|exclusive [--wait] --pid <pid>
-//	                                                  pid의 process가 끝날 때까지 보유한다. 같은 pid가 이미
-//	                                                  exclusive를 가지면 그 보유를 그대로 쓴다
+//	                                                  pid의 process가 끝날 때까지 보유한다. pid나 그 조상 process가
+//	                                                  이미 exclusive를 가지면 그 보유를 그대로 쓴다
 //	lease run <dir> shared|exclusive [--wait] -- <command> [args...]
 //	                                                  command를 실행하는 동안 보유한다
 //	lease list <dir>                                  보유자를 적는다
@@ -47,7 +47,7 @@ import (
 
 const exclusiveName = "exclusive.json"
 
-// errHeld는 그 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
+// errHeld는 그 process나 조상 process가 이미 exclusive를 가지고 있다는 뜻이다. hold는 그 보유를 그대로 쓴다.
 var errHeld = errors.New("the process already holds the exclusive lease")
 
 // holder는 보유 file의 내용이다.
@@ -165,6 +165,10 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 		for _, h := range all {
 			if h.Kind == "exclusive" {
 				os.Remove(file)
+				// 조상 process가 exclusive를 가지면 이 process는 이미 그 보유 안에 있다.
+				if ancestorOrSelf(h.PID, pid) {
+					return "", errHeld
+				}
 				return "", refusal{blocking: []holder{h}}
 			}
 		}
@@ -180,8 +184,8 @@ func acquire(dir, kind string, pid int, command string) (string, error) {
 			var blocking []holder
 			for _, h := range all {
 				if h.Kind == "exclusive" {
-					// 같은 process가 이미 가진 exclusive는 그 process의 것이다.
-					if h.PID == pid {
+					// 같은 process나 그 조상 process(예: 하위 make를 실행한 make)가 이미 가진 exclusive는 그 process의 것이다.
+					if ancestorOrSelf(h.PID, pid) {
 						return "", errHeld
 					}
 					blocking = append(blocking, h)
@@ -387,6 +391,25 @@ func main() {
 	default:
 		usage()
 	}
+}
+
+// ancestorOrSelf는 holder가 pid 자신이거나 그 조상 process인지다. 조상은 ps로 parent process id를 따라 찾는다.
+func ancestorOrSelf(holder, pid int) bool {
+	for current := pid; current > 1; {
+		if current == holder {
+			return true
+		}
+		output, err := exec.Command("ps", "-o", "ppid=", "-p", strconv.Itoa(current)).Output()
+		if err != nil {
+			return false
+		}
+		parent, err := strconv.Atoi(strings.TrimSpace(string(output)))
+		if err != nil || parent == current {
+			return false
+		}
+		current = parent
+	}
+	return false
 }
 
 // parentCommand는 보유자 process의 명령을 적는다. 읽을 수 없으면 pid만 적는다.

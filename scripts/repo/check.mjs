@@ -7,7 +7,7 @@ import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -102,6 +102,7 @@ failures.push(...sharedTargetErrors(makefile));
 // 실행 하나의 file은 그 실행의 RUN_DIR에 두고, TypeScript client를 build하는 target은 그 출력을 가진다.
 failures.push(...runtimePathErrors(makefile));
 failures.push(...typescriptHolderErrors(makefile));
+failures.push(...typescriptReaderErrors(makefile, readTracked));
 // make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.
 const checkTargetSet = new Set(checkTargets(makefile));
 failures.push(...repeatedGenerateErrors([...recipeUnits.filter(unit => checkTargetSet.has(unit.name.replace(/^Makefile /, ''))), ...featureUnits]));
