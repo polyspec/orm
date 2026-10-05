@@ -24,16 +24,18 @@
 
 `make test-servers` starts these servers under `.runtime/servers` with the installed `mysqld`, `initdb`, `pg_ctl`, `pg_basebackup`, `proxysql` and `pgbouncer`:
 
-| Server | Port variable (default) |
-|---|---|
-| MySQL 8.4 primary | `TEST_MYSQL_PORT` (33171) |
-| PostgreSQL 17 primary | `TEST_POSTGRES_PORT` (55471) |
-| MySQL replica of the primary, read-only | `TEST_MYSQL_REPLICA_PORT` (33181) |
-| PostgreSQL standby of the primary | `TEST_POSTGRES_REPLICA_PORT` (55481) |
-| ProxySQL in front of the MySQL primary | `TEST_PROXYSQL_PORT` (33182) |
-| PgBouncer in transaction mode in front of the PostgreSQL primary | `TEST_PGBOUNCER_PORT` (55482) |
+| Server |
+|---|
+| MySQL 8.4 primary |
+| PostgreSQL 17 primary |
+| MySQL replica of the primary, read-only |
+| PostgreSQL standby of the primary |
+| ProxySQL in front of the MySQL primary |
+| PgBouncer in transaction mode in front of the PostgreSQL primary |
 
-The tests connect over TCP on 127.0.0.1; the Unix sockets in `.runtime/servers` serve only to stop the servers and for the ProxySQL admin interface. `make test-servers TEST_MYSQL_PORT=33172 TEST_POSTGRES_PORT=55472` selects other ports, and the other port variables are set in the same way. ProxySQL publishes packages for Linux; on macOS it is built from its source release. The target:
+Each server listens on a free port that `make test-servers` chooses on 127.0.0.1 when it starts the servers of this checkout (`scripts/free-ports.mjs`), so the servers of two checkouts never contend for one port; the environment file `.runtime/servers/env` records the ports in its DSNs, and `make test-servers-tls` and a later `make test-servers` read them from it.
+
+The tests connect over TCP on 127.0.0.1; the Unix sockets in `.runtime/servers` serve only to stop the servers and for the ProxySQL admin interface. ProxySQL publishes packages for Linux; on macOS it is built from its source release. The target:
 
 1. initializes the primaries and their replicas and returns after each server reports that it accepts connections;
 2. loads the MySQL time zone tables;

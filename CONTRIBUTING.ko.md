@@ -21,16 +21,18 @@
 
 `make test-servers`는 설치된 `mysqld`, `initdb`, `pg_ctl`, `pg_basebackup`, `proxysql`, `pgbouncer`로 `.runtime/servers` 아래에서 다음 서버를 시작한다.
 
-| 서버 | 포트 변수(기본값) |
-|---|---|
-| MySQL 8.4 primary | `TEST_MYSQL_PORT`(33171) |
-| PostgreSQL 17 primary | `TEST_POSTGRES_PORT`(55471) |
-| primary의 읽기 전용 MySQL replica | `TEST_MYSQL_REPLICA_PORT`(33181) |
-| primary의 PostgreSQL standby | `TEST_POSTGRES_REPLICA_PORT`(55481) |
-| MySQL primary 앞의 ProxySQL | `TEST_PROXYSQL_PORT`(33182) |
-| PostgreSQL primary 앞의 transaction 모드 PgBouncer | `TEST_PGBOUNCER_PORT`(55482) |
+| 서버 |
+|---|
+| MySQL 8.4 primary |
+| PostgreSQL 17 primary |
+| primary의 읽기 전용 MySQL replica |
+| primary의 PostgreSQL standby |
+| MySQL primary 앞의 ProxySQL |
+| PostgreSQL primary 앞의 transaction 모드 PgBouncer |
 
-테스트는 127.0.0.1의 TCP로 연결한다. `.runtime/servers`의 Unix 소켓은 서버 중지와 ProxySQL 관리 인터페이스에만 쓴다. `make test-servers TEST_MYSQL_PORT=33172 TEST_POSTGRES_PORT=55472`는 다른 포트를 선택하고, 나머지 포트 변수도 같은 방식으로 지정한다. ProxySQL은 Linux용 패키지를 배포하며, macOS에서는 소스 릴리스에서 빌드한다. 이 target은 다음을 수행한다.
+각 서버는 `make test-servers`가 이 checkout의 서버를 시작할 때 127.0.0.1에서 고른 빈 port에서 listen한다(`scripts/free-ports.mjs`). 그래서 두 checkout의 서버가 한 port를 두고 다투지 않는다. 환경 파일 `.runtime/servers/env`가 DSN에 그 port를 기록하고, `make test-servers-tls`와 이후의 `make test-servers`는 그것을 거기서 읽는다.
+
+테스트는 127.0.0.1의 TCP로 연결한다. `.runtime/servers`의 Unix 소켓은 서버 중지와 ProxySQL 관리 인터페이스에만 쓴다. ProxySQL은 Linux용 패키지를 배포하며, macOS에서는 소스 릴리스에서 빌드한다. 이 target은 다음을 수행한다.
 
 1. primary와 replica를 초기화하고 각 서버가 연결을 받는다고 보고한 뒤 다음 단계로 진행한다.
 2. MySQL 시간대 테이블을 불러온다.

@@ -395,6 +395,21 @@ export function runtimePathErrors(makefile) {
   return errors;
 }
 
+// fixedPortErrors는 고정 TCP port를 정하는 줄마다 오류 하나를 돌려준다(files는 Makefile과 shell script의 {path: text}):
+// `<NAME>PORT = <number>` 같은 할당과 port를 인자로 주는 `test-servers.sh start`다. 두 checkout의 server가 같은 고정
+// port를 다투므로, make test-servers는 빈 port를 고르고(scripts/free-ports.mjs) 환경 file에 기록한다. 주석 줄은 보지 않는다.
+export function fixedPortErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    text.split('\n').forEach((line, index) => {
+      if (/^\s*#/.test(line)) return;
+      if (/^\s*(?:export\s+)?\w*PORT\s*[:?]?=\s*\d+\b/.test(line) || /test-servers\.sh start\s+(?:\$|\d)/.test(line))
+        errors.push(`${path}:${index + 1} fixes a TCP port that the servers of another checkout can hold; let make test-servers choose free ports (scripts/free-ports.mjs) and read them from its environment file: ${line.trim()}`);
+    });
+  }
+  return errors;
+}
+
 // unpublishedOutputErrors는 build 출력을 그 자리에 바로 쓰는 Makefile 줄마다 오류 하나를 돌려준다: `go build -o`나
 // `go test -c -o`의 출력이 @OUT@이 아닌 줄, 표준 출력을 file로 redirect하는 줄(`> file`), tsc를 직접 실행하는 줄.
 // 그런 출력은 끊긴 build가 반쪽 file을 남기고, 다른 실행이나 뒤의 단계가 쓰는 도중의 file을 읽는다. 출력은

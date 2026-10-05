@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.82: `make test-servers` chooses free ports for the servers of each checkout and records them in the server environment, so two checkouts no longer contend for fixed ports, and `make repo-check` refuses a fixed port.
+
 - G5.81: failure messages of a missing environment variable, argument or tool in the checks and tests name the fix after the cause, and `make repo-check` refuses one without it.
 
 - G5.80: build outputs that other runs read (the `.runtime/bin` programs, stress documents, test binaries, clients/typescript/dist, run copies and the lowest Node) are built into a temporary path and renamed into place, and `make repo-check` refuses a Makefile line that writes one in place.

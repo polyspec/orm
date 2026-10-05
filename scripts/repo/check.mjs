@@ -10,7 +10,7 @@ import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -128,6 +128,8 @@ failures.push(...sharedTargetErrors(makefile));
 failures.push(...runtimePathErrors(makefile));
 // build 출력은 임시 file에 쓰고 rename으로 publish한다(scripts/publish-output.sh).
 failures.push(...unpublishedOutputErrors(makefile));
+// test server는 고정 port 대신 make test-servers가 고른 빈 port를 쓴다.
+failures.push(...fixedPortErrors(Object.fromEntries(tracked.filter(path => path === 'Makefile' || path.endsWith('.sh')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...typescriptHolderErrors(makefile));
 failures.push(...typescriptReaderErrors(makefile, readTracked));
 // make check는 같은 directory의 생성(go generate와 git diff)을 한 번만 실행한다.

@@ -11,15 +11,9 @@ $(shell git -C $(CURDIR) config core.hooksPath .githooks)
 endif
 
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
-# and the ProxySQL and PgBouncer poolers of the database checks on these ports
+# and the ProxySQL and PgBouncer poolers of the database checks on free ports that it chooses
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
 # missing.
-TEST_MYSQL_PORT = 33171
-TEST_POSTGRES_PORT = 55471
-TEST_MYSQL_REPLICA_PORT = 33181
-TEST_POSTGRES_REPLICA_PORT = 55481
-TEST_PROXYSQL_PORT = 33182
-TEST_PGBOUNCER_PORT = 55482
 TEST_ENV = .runtime/servers/env
 # DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
 # 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
@@ -537,13 +531,13 @@ test-servers:
 	$(BUILD_STOP_PROCESS)
 	$(BUILD_NEW_SESSION)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) NEW_SESSION=$(NEW_SESSION) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) NEW_SESSION=$(NEW_SESSION) ./scripts/test-servers.sh start
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the
 # start.
 test-servers-tls:
-	./scripts/test-servers.sh tls $(TEST_MYSQL_PORT) $(TEST_MYSQL_REPLICA_PORT)
+	./scripts/test-servers.sh tls
 
 test-servers-stop:
 	$(BUILD_STOP_PROCESS)

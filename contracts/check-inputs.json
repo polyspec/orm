@@ -72,6 +72,7 @@
     "internal/testdb/testdb.go": {"scope": "suite", "reason": "every Go database test opens its database through it, so it changes the setup of every Go database target"},
     "clients/rust/case-clock/src/lib.rs": {"scope": "suite", "reason": "every Rust test that checks the database clock takes its case clock from it"},
     "clients/rust/case-database/src/lib.rs": {"scope": "suite", "reason": "every Rust database test creates and drops its case database through it"},
+    "scripts/free-ports.mjs": {"scope": "suite", "reason": "make test-servers chooses the ports of the database servers of this checkout through it, so it changes the servers of every database target"},
     "scripts/publish-output.sh": {"scope": "suite", "reason": "every make target that builds the lease program, the process tools, a stress document or a test binary publishes it through it (PUBLISH)"},
     "scripts/typescript/build.mjs": {"scope": "suite", "reason": "every make target and npm script that builds the TypeScript client publishes clients/typescript/dist through it"},
     "scripts/cargo-build-copy.sh": {"scope": "suite", "reason": "every make target that runs a Rust program builds and copies that program through it (CARGO_COPY)"}
