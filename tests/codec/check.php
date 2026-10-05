@@ -87,18 +87,22 @@ if ($canon(Codec::decode(['yaml'], "1: value\n")->payload()) !== '{"1":"value"}'
 testcase_end($fail > $vectorFailures ? ($fail - $vectorFailures) . " check(s) failed; each line above names one" : null);
 $beforeOutputs = $fail;
 testcase_begin('codec/other-language-outputs', TESTCASE_COMPUTE);
-// Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs)가 쓰는 출력은 모두 있어야 한다.
-// make check는 그 test를 실행하는 target(ts-check, client-db-check) 뒤에 codec-check를 실행한다. 없는
-// 출력을 건너뛰면 비교하지 않은 언어가 통과로 보인다.
-foreach (['go', 'rust', 'typescript'] as $required) {
-    if (!is_file("$root/out/$required.json")) {
-        $fail++;
-        fwrite(STDERR, "missing tests/codec/out/$required.json; its codec test did not run before this check\n");
-    }
+// Go(TestCodecVectors), Rust(codec test), TypeScript(codec-vector.mjs)의 출력은 make codec-check가 이 실행에서
+// 그 test를 실행해 ORM_CODEC_OUT directory에 쓴 것만 읽는다. 다른 target이나 앞선 실행이 쓴 출력을 읽으면 이
+// 실행의 code를 비교하지 않는다. 없는 출력을 건너뛰면 비교하지 않은 언어가 통과로 보인다.
+$out = (string) getenv('ORM_CODEC_OUT');
+if ($out === '') {
+    fwrite(STDERR, "ORM_CODEC_OUT is unset; run make codec-check, which runs the Go, Rust and TypeScript codec tests into its run directory\n");
+    exit(1);
 }
 $langs = 0;
-foreach (glob("$root/out/*.json") as $file) {
-    $lang = basename($file, '.json');
+foreach (['go', 'rust', 'typescript'] as $lang) {
+    $file = "$out/$lang.json";
+    if (!is_file($file)) {
+        $fail++;
+        fwrite(STDERR, "missing $file; the $lang codec test of this run did not write it\n");
+        continue;
+    }
     $langs++;
     $outs = json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR);
     foreach ($vectors as $v) {

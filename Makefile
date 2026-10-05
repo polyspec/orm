@@ -703,12 +703,28 @@ go-fmt-check:
 go-vet-check:
 	$(RUN_LONG) go-vet -- go vet ./...
 
-# codec-check는 PHP codec으로 tests/codec/vectors.json을 decode하고 encode한 뒤 Go, Rust, TypeScript
-# codec test가 tests/codec/out에 쓴 출력을 decode한다(tests/codec/README.md). 그 출력은 ts-check와
-# client-db-check가 쓰므로 CHECK_TARGETS에서 그 뒤에 온다.
-.PHONY: codec-check
-codec-check:
-	php tests/codec/check.php
+# codec-check는 PHP codec으로 tests/codec/vectors.json을 decode하고 encode한 뒤, 이 target이 실행한 Go, Rust,
+# TypeScript codec test가 이 make 실행의 directory(CODEC_OUT, ORM_CODEC_OUT)에 쓴 출력을 decode한다
+# (tests/codec/README.md). 다른 target이나 앞선 실행이 쓴 출력은 읽지 않으므로, 그 출력은 언제나 이 checkout의
+# 지금 code의 것이다. 세 writer는 서로 독립된 부분이므로 하나가 실패해도 나머지가 실행되고(make -k), 비교는 세
+# 출력을 모두 읽으므로 그 뒤에 온다. 실패한 실행의 directory는 runner가 보고서로 옮긴다.
+CODEC_OUT = $(abspath .runtime/run)/codec-check-$$PPID
+.PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/compare
+codec-check: codec-check/compare
+codec-check/go:
+	mkdir -p $(CODEC_OUT)
+	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./clients/go/orm -run '^TestCodecVectors$$' -count=1
+codec-check/rust: rust-fetch
+	mkdir -p $(CODEC_OUT)
+	cd clients/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib codec::tests::vectors -- --exact
+codec-check/typescript: lease-tool
+	$(HOLD_TYPESCRIPT)
+	mkdir -p $(CODEC_OUT)
+	$(TSC_BUILD)
+	ORM_CODEC_OUT=$(CODEC_OUT) node clients/typescript/tests/codec-vector.mjs
+codec-check/compare: codec-check/go codec-check/rust codec-check/typescript
+	ORM_CODEC_OUT=$(CODEC_OUT) php tests/codec/check.php
+	rm -rf $(CODEC_OUT)
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
 # workspace (clients/rust/rustfmt.toml).

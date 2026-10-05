@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.50: `make codec-check`는 Go, Rust, TypeScript codec test를 독립된 부분으로 직접 실행해 자기 실행의 directory에 출력을 쓰게 하고, PHP checker는 그 출력만 비교한다. writer는 `ORM_CODEC_OUT`이 정해졌을 때만 임시 file에 쓴 뒤 이름을 바꾼다.
+
 - G5.49: make가 `core.hooksPath`로 설치하는 추적 `commit-msg` hook은 `git.subject-format`을 어긴 커밋 제목을 거부한다. process를 끝낸 case는 그 오류를 FAIL 줄에 적는다. PHP의 `first_statement_lost` case는 pooler 뒤에서도 자기 `Db`의 세션을 찾는다.
 
 - G5.46: 각 checkout은 Rust를 자기 `clients/rust/target`에 build한다. `CARGO_TARGET_DIR`이 checkout 밖의 directory를 정하면 make가 멈추고, `make check`와 `make owner-check`는 target에 target directory를 더 이상 넘기지 않는다. cargo가 다른 checkout이 build한 것을 fresh로 다루기 때문이다.
