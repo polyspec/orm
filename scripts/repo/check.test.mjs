@@ -573,9 +573,11 @@ caseTest('start_logged waits for a ready line or an exit, with no deadline', COM
   try {
     // 출력은 file로 받는다: 계속 실행하는 가짜 서버와 reader는 pipe를 열어 두므로, pipe로 받으면
     // spawnSync가 shell이 끝난 뒤에도 서버가 끝날 때까지 기다린다.
+    const newSession = process.env.NEW_SESSION;
+    assert.ok(newSession, 'NEW_SESSION is unset; run make repo-check, which builds it');
     const run = server => {
       const out = join(dir, 'stdout'), err = join(dir, 'stderr');
-      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
+      const status = spawnSync('sh', ['-c', `set -eu\nDIR=${dir}\nNEW_SESSION=${newSession}\n${body}\nstart_logged fake 'accepting connections' sh -c '${server}'\necho returned`],
         { stdio: ['ignore', openSync(out, 'w'), openSync(err, 'w')], timeout: 20_000 }).status;
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
@@ -586,6 +588,10 @@ caseTest('start_logged waits for a ready line or an exit, with no deadline', COM
     assert.equal(ready.stderr, 'test-servers: fake: starting\ntest-servers: fake: now accepting connections\n');
     // start_logged는 서버가 끝나기 전에 돌아왔다: 돌아온 뒤에도 서버가 실행 중이다.
     assert.ok(alive(), 'start_logged returned only after the server ended');
+    // 서버는 시작한 명령의 process group 밖, 자기 session에서 실행된다(G5.62).
+    const groupOf = pid => spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim();
+    const server = readFileSync(join(dir, 'fake.pid'), 'utf8').trim();
+    assert.notEqual(groupOf(server), groupOf(process.pid), 'the server runs in the process group of the command that started it');
     assert.match(readFileSync(join(dir, 'fake.log'), 'utf8'), /^starting\nnow accepting connections\n/);
     spawnSync('sh', ['-c', `kill $(cat ${dir}/fake.pid)`]);
     rmSync(join(dir, 'fake.log'));

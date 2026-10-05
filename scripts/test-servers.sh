@@ -228,19 +228,24 @@ start_logged() {
   mkfifo "$DIR/$name.ready"
   # 읽는 쪽은 sh의 read다: read는 pipe에서 한 줄씩 읽어 그 줄이 쓰인 즉시 본다. awk는 쓰지
   # 않는다. Ubuntu의 awk(mawk)는 pipe 입력을 큰 block으로 읽어 서버가 끝날 때까지 줄을 넘기지 않는다.
-  sh -c 'echo $$ > "$1"; shift; exec "$@"' sh "$DIR/$name.pid" "$@" </dev/null 2>&1 | {
-    reported=
-    while IFS= read -r output || [ -n "$output" ]; do
-      printf '%s\n' "$output" >> "$DIR/$name.log"
-      if [ -z "$reported" ]; then
-        printf 'test-servers: %s: %s\n' "$name" "$output" >&2
-        case $output in
-          *"$line"*) echo ready > "$DIR/$name.ready"; reported=1 ;;
-        esac
-      fi
-    done
-    [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
-  } >/dev/null &
+  # 서버와 reader는 새 session(NEW_SESSION, tests/new-session)에서 실행한다: 서버는 시작한 명령보다 오래 살고
+  # 여러 실행이 함께 쓰므로, 시작한 shell의 process group을 끝내는 일이 서버와 그 log reader에 닿지 않는다.
+  "${NEW_SESSION:?NEW_SESSION is unset; run this through make, which builds it}" sh -c '
+    DIR=$1 name=$2 line=$3
+    shift 3
+    sh -c '"'"'echo $$ > "$1"; shift; exec "$@"'"'"' sh "$DIR/$name.pid" "$@" </dev/null 2>&1 | {
+      reported=
+      while IFS= read -r output || [ -n "$output" ]; do
+        printf "%s\n" "$output" >> "$DIR/$name.log"
+        if [ -z "$reported" ]; then
+          printf "test-servers: %s: %s\n" "$name" "$output" >&2
+          case $output in
+            *"$line"*) echo ready > "$DIR/$name.ready"; reported=1 ;;
+          esac
+        fi
+      done
+      [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
+    }' sh "$DIR" "$name" "$line" "$@" >/dev/null &
   # FIFO는 읽기와 쓰기로 한 번 열어 끝까지 둔다. read는 reader가 끝날 때 오는 SIGCHLD에 끊길 수
   # 있다(EINTR). FIFO를 read마다 열고 닫으면, 끊긴 read가 닫은 뒤에 쓴 보고는 읽는 쪽이 없어
   # 사라진다. 열린 fd가 남아 있으면 보고는 FIFO buffer에 남으므로 다시 읽으면 처음 보고된 한 줄을

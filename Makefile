@@ -482,7 +482,8 @@ version-check/run:
 
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
-	node --test scripts/repo/check.test.mjs
+	$(BUILD_NEW_SESSION)
+	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mjs
 repo-check/run:
 	node scripts/repo/check.mjs
 
@@ -494,6 +495,10 @@ repo-check/run:
 # (tests/stop-process). 그 build는 장기 작업이므로 RUN_LONG으로 기한 없이 실행한다.
 STOP_PROCESS = $(abspath .runtime/bin/stop-process)
 BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- go build -o $(STOP_PROCESS) ./tests/stop-process
+# NEW_SESSION은 test server를 새 session에서 시작하는 program이다(tests/new-session): 시작한 shell의 process group을
+# 끝내는 일이 함께 쓰는 server에 닿지 않는다.
+NEW_SESSION = $(abspath .runtime/bin/new-session)
+BUILD_NEW_SESSION = $(RUN_LONG) go-build/new-session -- go build -o $(NEW_SESSION) ./tests/new-session
 
 test-servers-check:
 	$(BUILD_STOP_PROCESS)
@@ -502,8 +507,9 @@ test-servers-check:
 
 test-servers:
 	$(BUILD_STOP_PROCESS)
+	$(BUILD_NEW_SESSION)
 	$(BUILD_LEASE)
-	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
+	LEASE=$(LEASE) STOP_PROCESS=$(STOP_PROCESS) NEW_SESSION=$(NEW_SESSION) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the

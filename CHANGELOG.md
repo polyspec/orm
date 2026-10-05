@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.62: `make test-servers` starts each server and its log reader in a new session (`tests/new-session`), so ending the process group of the command that started them does not stop the shared servers.
+
 - G5.68: the TypeScript cancellation case and the start_logged case assert their behaviour (a cancelled statement ends by its signal, start_logged returns after the ready line and before the server ends) instead of wall-clock upper bounds.
 
 - G5.67: the documentation workflow runs its checks with `make docs-ci` through the runner of `make check` without test servers, and uploads the log of each check and a summary as a report under `!cancelled()`.
