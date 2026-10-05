@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.72: Rust catalog test는 mutation의 row lock과 table lock을 그 Locked publisher 안에서 자기 connection으로 확인하므로, 한 번의 poll 안에 답하는 mutation이 더 이상 확인 전에 끝까지 가지 않는다.
+
 - G5.71: target의 첫 실패 줄은 통과한 case 안에서 출력된 실패 줄(coverage test가 일부러 실패시키는 sample 등)을 빼므로, 그 뒤의 진짜 실패가 더 이상 가려지지 않는다.
 
 - G5.70: Go 취소 test는 statement를 시작하기 전에 기다리지 않던 session이 lock을 기다릴 때만 취소하므로, 앞의 case가 기다리게 남긴 statement가 더 이상 statement가 실행되기 전에 case를 취소하지 않는다.

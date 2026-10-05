@@ -5723,6 +5723,7 @@
         "clients/rust/orm-build/tests/grid_decimals.rs",
         "clients/rust/orm-build/tests/grid_numbers.rs",
         "clients/rust/orm-build/tests/grid_temporal.rs",
+        "clients/rust/orm-build/tests/lock_probe/mod.rs",
         "clients/rust/orm-build/tests/read_only_query.rs",
         "clients/rust/orm-build/tests/row_commit_permit.rs",
         "clients/rust/orm-build/tests/row_insert_identity.rs",
@@ -5772,6 +5773,7 @@
             "clients/rust/orm-build/tests/row_commit_permit.rs",
             "clients/rust/orm-build/tests/row_insert_identity.rs",
             "clients/rust/orm-build/tests/row_mutation.rs",
+            "clients/rust/orm-build/tests/lock_probe/mod.rs",
             "clients/rust/orm-build/tests/row_snapshot.rs",
             "clients/rust/orm-build/tests/typed_binds.rs",
             "clients/rust/orm-build/tests/generate.rs"
@@ -5795,7 +5797,8 @@
           "id": "row-insert-identity-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs row-insert-identity-rust -- cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test row_insert_identity",
           "inputs": [
-            "clients/rust/orm-build/tests/row_insert_identity/expression.rs"
+            "clients/rust/orm-build/tests/row_insert_identity/expression.rs",
+            "clients/rust/orm-build/tests/lock_probe/mod.rs"
           ]
         }
       ],

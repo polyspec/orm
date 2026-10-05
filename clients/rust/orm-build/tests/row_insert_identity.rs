@@ -9,6 +9,8 @@ use std::sync::{
 
 #[path = "row_insert_identity/expression.rs"]
 mod expression;
+#[path = "lock_probe/mod.rs"]
+mod lock_probe;
 
 #[tokio::test]
 async fn generated_keys_return_the_inserted_row_on_each_database() {
@@ -70,7 +72,7 @@ async fn check() {
         if let Err(error) = lifecycle(&mut catalog, &table).await {
             failures.push(format!("{dialect}: {error}"));
         }
-        if dialect != "sqlite" && !schema_lock(&catalog, &mut seed, &descriptor, &name, dialect).await {
+        if dialect != "sqlite" && !schema_lock(&catalog, &dsn, &descriptor, &name, dialect).await {
             failures.push(format!("{dialect}: generated insert must lock the table before publishing Locked"));
         }
         let default_name = format!("{name}_defaults");
@@ -170,38 +172,21 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     Ok(())
 }
 
-async fn schema_lock(catalog: &CatalogConnection, seed: &mut tool_db::Conn, metadata: &orm_build::catalog::TableMetadata, name: &str, dialect: &str) -> bool {
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    let sender = std::sync::Mutex::new(Some(sender));
+async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &orm_build::catalog::TableMetadata, name: &str, dialect: &str) -> bool {
+    // At its Locked phase the insert stops while another connection probes the table lock (lock_probe), and then
+    // is cancelled, so it rolls back.
+    let held = Arc::new(std::sync::Mutex::new(None));
+    let cancel = Arc::new(AtomicBool::new(false));
+    let (probe_held, probe_cancel, probe_dsn, probe_dialect, probe_table) = (held.clone(), cancel.clone(), dsn.to_owned(), dialect.to_owned(), name.to_owned());
     let observe: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| {
         if phase == MutationPhase::Locked {
-            sender.lock().unwrap().take().unwrap().send(()).unwrap();
+            *probe_held.lock().unwrap() = Some(lock_probe::table_lock_held(&probe_dsn, &probe_dialect, &probe_table));
+            probe_cancel.store(true, Ordering::SeqCst);
         }
     });
     let values = [("n".into(), P::I(99))];
-    let mut pending = Box::pin(catalog.insert_row(metadata, &values, Arc::new(AtomicBool::new(false)), observe, std::sync::Arc::new(|| Ok(()))));
-    tokio::select! {
-        result = &mut pending => panic!("insert finished before lock probe: {}", result.is_ok()),
-        ready = receiver => ready.unwrap(),
-    }
-    let rejected = if dialect == "mysql" {
-        // An explicit server failure deadline, not polling or a retry timer.
-        let original = seed.query("SELECT @@SESSION.lock_wait_timeout", &[]).await.unwrap();
-        let original = original[0][0].int().unwrap();
-        seed.exec("SET SESSION lock_wait_timeout=1", &[]).await.unwrap();
-        let result = seed.exec(&format!("LOCK TABLES {name} WRITE"), &[]).await;
-        if result.is_ok() {
-            seed.exec("UNLOCK TABLES", &[]).await.unwrap();
-        }
-        seed.exec("SET SESSION lock_wait_timeout=?", &[P::I(original)]).await.unwrap();
-        matches!(result,Err(ref error) if error.as_database_error()
-            .and_then(|error| error.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>()).is_some_and(|error| error.number()==1205))
-    } else {
-        seed.exec("BEGIN", &[]).await.unwrap();
-        let rejected = seed.exec(&format!("LOCK TABLE {name} IN ACCESS EXCLUSIVE MODE NOWAIT"), &[]).await.is_err();
-        seed.exec("ROLLBACK", &[]).await.unwrap();
-        rejected
-    };
-    drop(pending);
-    rejected
+    let result = catalog.insert_row(metadata, &values, cancel, observe, std::sync::Arc::new(|| Ok(()))).await;
+    assert!(matches!(result, Err(ref error) if error.starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
+    let held = held.lock().unwrap().unwrap_or(false);
+    held
 }

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.72: the Rust catalog tests probe the row and table locks of a mutation from inside its Locked publisher on a connection of their own, so a mutation that answers within one poll can no longer run to its end before the probe.
+
 - G5.71: the first failure lines of a target leave out the failure lines printed inside a case that passed, such as the samples that a coverage test makes fail on purpose, so a real failure after them is no longer hidden.
 
 - G5.70: the Go cancellation tests cancel only after a session that was not waiting before their statement starts waits for the lock, so a statement left waiting by an earlier case no longer cancels a case before its statement runs.

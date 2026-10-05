@@ -7,6 +7,34 @@ use std::sync::{
     Arc, Mutex,
 };
 
+#[path = "lock_probe/mod.rs"]
+mod lock_probe;
+
+/// A mutation that answers within one poll runs to its end before a test that only stops polling it can probe
+/// anything; a probe that runs inside the Locked publisher sees the mutation at Locked, whatever the scheduling.
+#[test]
+fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
+    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    // 0: before Locked, 1: at Locked, 2: finished.
+    let stage = Arc::new(std::sync::atomic::AtomicU8::new(0));
+    let seen = Arc::new(Mutex::new(None));
+    let (probe_stage, probe_seen) = (stage.clone(), seen.clone());
+    let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| {
+        if phase == MutationPhase::Locked {
+            *probe_seen.lock().unwrap() = Some(probe_stage.load(Ordering::SeqCst));
+        }
+    });
+    // The fake mutation never waits: it publishes Locked and finishes within its first poll.
+    let mutation = async {
+        stage.store(1, Ordering::SeqCst);
+        publish(MutationPhase::Locked);
+        stage.store(2, Ordering::SeqCst);
+    };
+    tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(mutation);
+    assert_eq!(*seen.lock().unwrap(), Some(1), "the probe ran while the mutation was at Locked");
+    assert_eq!(stage.load(Ordering::SeqCst), 2);
+}
+
 #[tokio::test]
 async fn native_updates_lock_compare_verify_and_rollback() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
@@ -122,34 +150,21 @@ async fn check() {
         let unchanged = catalog.table_page(&table, 1, 0).await.unwrap();
         moved.check_current(&unchanged.metadata, &unchanged.result).unwrap();
         catalog.update_row(&moved, &[("n".into(), P::I(12))], Arc::new(AtomicBool::new(false)), publish.clone(), std::sync::Arc::new(|| Ok(()))).await.unwrap();
-        // Drive the owning future to its locked event, then deliberately stop
-        // polling it while a second connection probes the real database lock.
-        let (locked, received) = tokio::sync::oneshot::channel();
-        let locked = Mutex::new(Some(locked));
+        // At its Locked phase the update stops while another connection probes the real database lock
+        // (lock_probe), and then is cancelled, so it rolls back and the row stays as it was.
+        let held = Arc::new(Mutex::new(None));
+        let cancel = Arc::new(AtomicBool::new(false));
+        let (probe_held, probe_cancel, probe_dsn, probe_dialect, probe_table) = (held.clone(), cancel.clone(), dsn.clone(), dialect.to_owned(), name.clone());
         let observe: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| {
             if phase == MutationPhase::Locked {
-                locked.lock().unwrap().take().unwrap().send(()).unwrap();
+                *probe_held.lock().unwrap() = Some(lock_probe::row_lock_held(&probe_dsn, &probe_dialect, &probe_table));
+                probe_cancel.store(true, Ordering::SeqCst);
             }
         });
         let changes = vec![("n".into(), P::I(13))];
-        let mut pending = Box::pin(catalog.update_row(&moved, &changes, Arc::new(AtomicBool::new(false)), observe, std::sync::Arc::new(|| Ok(()))));
-        tokio::select! {
-            result=&mut pending=>panic!("update completed before held-lock probe: {}",result.is_ok()),
-            ready=received=>ready.unwrap(),
-        }
-        if dialect == "sqlite" {
-            seed.exec("PRAGMA busy_timeout=0", &[]).await.unwrap();
-            assert!(seed.exec(&format!("UPDATE {name} SET n=99 WHERE id=0"), &[]).await.is_err(), "owning update must hold the SQLite write lock");
-            seed.exec("PRAGMA busy_timeout=5000", &[]).await.unwrap();
-        } else {
-            seed.exec(if dialect == "mysql" { "START TRANSACTION" } else { "BEGIN" }, &[]).await.unwrap();
-            assert!(
-                seed.exec(&format!("SELECT id FROM {name} WHERE id=0 FOR UPDATE NOWAIT"), &[]).await.is_err(),
-                "owning update must hold the original row lock"
-            );
-            seed.exec("ROLLBACK", &[]).await.unwrap();
-        }
-        drop(pending);
+        let cancelled = catalog.update_row(&moved, &changes, cancel, observe, std::sync::Arc::new(|| Ok(()))).await.unwrap_err();
+        assert!(cancelled.starts_with("JOB_CANCELLED"), "the probed update ends cancelled: {cancelled}");
+        assert_eq!(*held.lock().unwrap(), Some(true), "owning update must hold the original row lock");
         // Acquiring the write lock again is event/driver-driven evidence that
         // the discarded connection released it, not a polling retry.
         seed.exec(&format!("UPDATE {name} SET n=n WHERE id=0"), &[]).await.unwrap();
