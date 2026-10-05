@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-1: AGENTS.md states that a test case has its own timeout and that a long operation (a build, an install, a tool run, a whole suite or a server) gets detailed step logs instead of a timeout, with no deadline.
+
 - G5.31: the PHP client sends every PostgreSQL statement with its binds in one round trip (`Pdo\Pgsql::ATTR_DISABLE_PREPARES`) instead of a separate prepare round trip and transaction per statement text, and sets the session time zone as the startup parameter `TimeZone=UTC` instead of `SET TIME ZONE`; `server_transactions` of `tests/events/vectors.json` counts the server transactions per statement in the four clients.
 
 - G5.29: every check reports each case with its own deadline, CI steps that run suites have no deadline of their own, each test runs once per push, and `make owner-check` runs only what a changed file is an input of (G5.29-1 to G5.29-13).
