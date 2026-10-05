@@ -944,7 +944,7 @@ try {
   // message가 원인과 transaction 끝의 오류를 함께 담은 ROLLBACK인지 확인한다.
   const checkBoth = (what, message, cause, end) => check(message.startsWith('ROLLBACK: transaction failed (') && message.includes(cause) && message.includes(`and rollback failed (`) && message.includes(end), `${what} reports the cause and the failed transaction end: ${message}`);
   // transaction 끝의 MySQL RELEASE_LOCK이 실패하거나 lock을 풀지 못하면 commit과 rollback이 그 오류를
-  // 보고한다. 풀리지 않은 named lock은 connection에 남는다. 실제 server는 RELEASE_LOCK을 거부하지 않으므로
+  // 보고하고, 그 connection은 pool에 돌아가지 않는다(mysql/failedEndDiscards). 실제 server는 RELEASE_LOCK을 거부하지 않으므로
   // transaction connection의 control이 RELEASE_LOCK만 실패시킨다.
   begin('mysql/failedLockRelease');
   try {
@@ -968,6 +968,46 @@ try {
       check(notHeld.includes(`lock ${key('released')} was not held at transaction end`), `a lock released early is reported: ${notHeld}`);
     } finally {
       await db.close();
+    }
+  } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
+  end();
+  // transaction 끝의 정리(RELEASE_LOCK)가 실패한 connection은 pool에 돌아가지 않고 버려진다. 실패한 정리 뒤의
+  // session 상태는 알 수 없으므로 pool에 돌아가는 connection은 깨끗하거나 버려진다. connection이 하나인 pool의
+  // 다음 transaction이 같은 session(CONNECTION_ID)을 받으면 connection이 돌아간 것이고, 풀리지 않은 lock은 그
+  // session에 남는다. 깨끗하게 끝난 transaction은 같은 session을 다시 쓴다.
+  begin('mysql/failedEndDiscards');
+  try {
+    const db = await connectBench(process.env.ORM_TEST_MYSQL_DSN, { poolSize: 1 });
+    const other = await connectBench(process.env.ORM_TEST_MYSQL_DSN);
+    try {
+      const key = name => `orm_test.discard.${name}.${process.pid}`;
+      const session = () => db.transaction(async () => Number((await db.utils().active('lock').session.control('SELECT CONNECTION_ID()', [], () => undefined)).rows[0][0]), { retry: 0 });
+      // free는 다른 connection이 lock을 5초 안에 얻는지다. 끝난 session의 lock은 server가 곧 푼다.
+      const free = async name => other.transaction(async () => {
+        const control = other.utils().active('lock').session.control.bind(other.utils().active('lock').session);
+        const got = Number((await control('SELECT GET_LOCK(?, 5)', [key(name)], () => undefined)).rows[0][0]);
+        if (got === 1) await control('DO RELEASE_LOCK(?)', [key(name)], () => undefined);
+        return got === 1;
+      }, { retry: 0 });
+      const failRelease = () => {
+        const active = db.utils().active('lock').session;
+        const control = active.control.bind(active);
+        active.control = (sql, params, done) => sql.startsWith('SELECT RELEASE_LOCK') ? Promise.reject(new Error('statement rejected by the test driver')) : control(sql, params, done);
+      };
+      const clean = await session();
+      await db.transaction(async () => { await db.utils().lock(key('clean')); }, { retry: 0 });
+      check(await session() === clean, 'a transaction that ended cleanly keeps its session');
+      for (const [name, fail] of [['rollback', true], ['commit', false]]) {
+        const before = await session();
+        const message = await failureMessage(db.transaction(async () => { failRelease(); await db.utils().lock(key(name)); if (fail) throw new Error('callback failed'); }, { retry: 0 }));
+        check(message.includes('statement rejected by the test driver'), `${name} reports the failed release: ${message}`);
+        const after = await session();
+        check(after !== before, `${name}: session ${before} returned to the pool after its transaction end failed`);
+        check(await free(name), `${name}: the lock ${key(name)} is still held after its transaction end failed`);
+      }
+    } finally {
+      await db.close();
+      await other.close();
     }
   } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
   end();
