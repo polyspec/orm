@@ -280,13 +280,30 @@ func runLanguage(c *testcase.Case, stateDB *sql.DB, root, language, first, repea
 	return compareRepeatedEvidence(first, repeated)
 }
 
-// goRunner는 buildRunners가 build한 Go runner binary다.
-var goRunner string
+// goRunner와 rustRunner는 buildRunners가 build한 Go runner와, buildRustRunner가 directory로 복사한 Rust
+// runner다.
+var goRunner, rustRunner string
 
-// buildRunners는 Rust runner, TypeScript client와 Go runner를 한 번 build한다. Go runner는
+// buildRustRunner는 Rust runner를 공유 Rust target directory의 exclusive lease(LEASE, CARGO_LEASES, --wait)
+// 아래에서 build하고, 그 lease 안에서 directory로 복사한다(scripts/cargo-build-copy.sh). 실행은 그 복사본을
+// 쓰므로 다른 checkout의 build가 target directory를 바꿔도 이 실행의 runner는 바뀌지 않는다.
+func buildRustRunner(c *testcase.Case, root, directory string) error {
+	lease, leases := os.Getenv("LEASE"), os.Getenv("CARGO_LEASES")
+	if lease == "" || leases == "" {
+		return fmt.Errorf("LEASE and CARGO_LEASES are unset; run this through make, which exports them")
+	}
+	if err := runCommand(c, root, "", 0, lease, "run", leases, "exclusive", "--wait", "--", "sh", filepath.Join(root, "scripts", "cargo-build-copy.sh"), directory, "debug/conformance", "--",
+		"cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+		return err
+	}
+	rustRunner = filepath.Join(directory, "debug", "conformance")
+	return nil
+}
+
+// buildRunners는 Rust runner, TypeScript client와 Go runner를 한 번 build한다. Go runner와 Rust runner는
 // directory에 binary로 남는다.
 func buildRunners(c *testcase.Case, root, directory string) error {
-	if err := runCommand(c, root, "", 0, "cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "orm-tests", "--bin", "conformance"); err != nil {
+	if err := buildRustRunner(c, root, directory); err != nil {
 		return err
 	}
 	if err := runCommand(c, root, "", 0, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
@@ -313,16 +330,10 @@ func runOne(c *testcase.Case, root, output, language string) error {
 	case "typescript":
 		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
 	case "rust":
-		// cargo는 CARGO_TARGET_DIR에 build한다. Makefile이 그 값을 export하므로 없으면 다른 directory를
-		// 짐작하지 않고 실패한다.
-		target := os.Getenv("CARGO_TARGET_DIR")
-		if target == "" {
-			return fmt.Errorf("CARGO_TARGET_DIR is unset; run this through make, which exports it")
+		if rustRunner == "" {
+			return fmt.Errorf("rust runner is not built")
 		}
-		if !filepath.IsAbs(target) {
-			target = filepath.Join(root, target)
-		}
-		return runCommand(c, root, output, runnerDeadline, filepath.Join(target, "debug", "conformance"), flags...)
+		return runCommand(c, root, output, runnerDeadline, rustRunner, flags...)
 	default:
 		return fmt.Errorf("unsupported language %q", language)
 	}

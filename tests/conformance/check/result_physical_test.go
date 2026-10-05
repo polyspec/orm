@@ -25,13 +25,9 @@ func TestPhysicalResultRunners(t *testing.T) {
 	}
 	// build된 Go runner는 언어 case가 모두 끝날 때까지 남아야 하므로 test 전체의 directory에 둔다.
 	binaries := t.TempDir()
-	if !t.Run("build", func(t *testing.T) {
-		c := testcase.Start(t, rustBuildDeadline+typescriptBuildDeadline+goBuildDeadline)
-		if err := buildRunners(c, root, binaries); err != nil {
-			t.Fatal(err)
-		}
-	}) {
-		return
+	// build는 장기 작업이므로 기한 없이 실행한다(testcase.RunLong).
+	if err := testcase.RunLong("conformance/build", func(c *testcase.Case) error { return buildRunners(c, root, binaries) }); err != nil {
+		t.Fatal(err)
 	}
 	for _, database := range []struct{ name, env string }{
 		{"mysql", "BENCH_MYSQL_DSN"},

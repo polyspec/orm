@@ -62,7 +62,11 @@ if (created) {
     await record(target, async ({ step }) => {
       const disk = await statfs(root);
       step(`free disk ${(disk.bavail * disk.bsize / 2 ** 30).toFixed(1)} GiB`);
-      await command('make', ['--no-print-directory', `TEST_ENV=${testEnv}`, `DECIMAL_ENV=${decimalEnv}`, target], step);
+      // 하위 make는 MAKEFLAGS를 받지 않으므로, 이 runner를 실행한 make의 CARGO_TARGET_DIR(worktree가 main checkout의
+      // target directory를 쓸 때 그 값)도 command line으로 넘긴다. 그렇지 않으면 Makefile이 자기 checkout의
+      // target directory를 정한다.
+      const targetDir = process.env.CARGO_TARGET_DIR ? [`CARGO_TARGET_DIR=${process.env.CARGO_TARGET_DIR}`] : [];
+      await command('make', ['--no-print-directory', `TEST_ENV=${testEnv}`, `DECIMAL_ENV=${decimalEnv}`, ...targetDir, target], step);
     });
   }
 }

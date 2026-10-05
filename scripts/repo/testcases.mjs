@@ -453,3 +453,16 @@ export function typescriptReaderErrors(makefile, read) {
   }
   return errors;
 }
+
+// goCargoErrors는 files({path: text})의 Go file이 cargo build나 cargo test를 실행하면서 공유 Rust target
+// directory의 lease(`lease run <CARGO_LEASES> exclusive --wait`)를 쓰지 않을 때마다 오류 하나를 돌려준다. build한
+// program은 그 lease 안에서 복사한 것을 실행한다(scripts/cargo-build-copy.sh).
+export function goCargoErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!/"cargo",\s*"(?:build|test|check|clippy)"/.test(text)) continue;
+    if (!/"exclusive",\s*"--wait"/.test(text) || !/cargo-build-copy\.sh/.test(text))
+      errors.push(`${path} runs cargo without the lease of the shared Rust target directory and a copy of its program; run it through lease run and scripts/cargo-build-copy.sh`);
+  }
+  return errors;
+}
