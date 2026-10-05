@@ -4,6 +4,19 @@ import { resolve } from 'node:path';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
 const states = new Set([' ', '~', 'o', '!']);
+const files = { en: 'docs/checklist.md', ko: 'docs/checklist.ko.md' };
+// 상태 표시는 항목과 하위 항목의 맨 앞 상태로만 쓴다. 기계가 file의 모든 표시를 상태로 믿을 수 있도록, 범례,
+// 제목, 항목의 글, 이어지는 글, inline code의 표시는 모두 오류다. 예외와 허용 목록은 없다.
+const marker = /\[[ ~o!]\]/g;
+const leadingState = /^ *- (?=\[)/;
+
+function markerErrors(line, index, language, errors) {
+  const leading = leadingState.exec(line)?.[0].length;
+  for (const found of line.matchAll(marker)) {
+    if (found.index === leading) continue;
+    errors.push(`${files[language]}:${index + 1}:${found.index + 1}: state marker ${found[0]} outside the leading state of an item`);
+  }
+}
 
 function parseChecklist(content, language, errors) {
   const items = [];
@@ -11,11 +24,11 @@ function parseChecklist(content, language, errors) {
   let itemContinuation = false;
   for (const [index, line] of content.split('\n').entries()) {
     if (!line.trim()) continue;
+    markerErrors(line, index, language, errors);
     if (line.startsWith('#')) {
       itemContinuation = false;
       continue;
     }
-    if (index === 2 && line.startsWith(language === 'en' ? 'Legend:' : '표기:')) continue;
     // 들여 쓴 `- [state] ID` 줄은 하위 항목이고 최상위 항목처럼 id와 상태를 비교한다. 그 밖의 들여 쓴 줄은
     // 앞 항목의 이어지는 글이다.
     const match = /^(?:  +)?- \[([^\]]*)\] ([A-Za-z][A-Za-z0-9.-]*)\s+(.+)$/.exec(line);

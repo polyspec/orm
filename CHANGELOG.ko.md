@@ -4,6 +4,8 @@
 
 - G5.40: `make repo-check`는 test가 TypeScript build 출력을 import하거나(여러 줄에 걸쳐도) node로 TypeScript test를 실행할 때(인자 배열, exec나 spawn의 shell 문자열)만 그 출력의 reader로 세고, 경로를 적기만 하는 test는 세지 않는다. `full-run-check`는 더 이상 build 출력을 잡지 않는다.
 
+- G5.41: `make checklist-check`는 항목 맨 앞의 상태가 아닌 곳의 상태 표시를 file, 줄, 열과 함께 실패로 보고, 체크리스트에는 항목만 두며 상태는 `AGENTS.md`가 정의한다.
+
 - G5.38-5: AGENTS.md와 AGENTS.ko.md는 전체 suite가 push 뒤 GitHub CI에서 실행되고 CI 실행 한 번이 다음 실행 전에 모든 실패를 고칠 정보를 모은다고 적는다. 로컬 `make check`는 push 전에 필요한 단계가 아니며, `make repo-check`가 규칙을 지킨다.
 
 - G5.38: 전체 suite는 push 뒤 GitHub CI에서 실행되고, 실패에서 멈추지 않으며, 실패마다 명령, 입력, 출력, 환경을 기록하고, summary와 그 실행 id의 보고서를 낸다.
