@@ -85,11 +85,12 @@ postgres_running() {
 
 # stop_pid sends TERM, or the signal $2, to the process whose id is the first
 # line of the pid file $1 and returns when the operating system reports that
-# the process has exited (scripts/stop-process.py: kqueue NOTE_EXIT on macOS, a
-# pidfd on Linux). Stopping is a long operation with no deadline, and the wait
-# is that event, not polling.
+# the process has exited, through the program STOP_PROCESS that the Makefile
+# builds from tests/stop-process (kqueue NOTE_EXIT on macOS, a pidfd on Linux).
+# Stopping is a long operation with no deadline, and the wait is that event,
+# not polling.
 stop_pid() {
-  python3 "$ROOT/scripts/stop-process.py" "${2:-TERM}" "$(head -n 1 "$1")"
+  "${STOP_PROCESS:?STOP_PROCESS is unset; run this through make, which builds it}" "${2:-TERM}" "$(head -n 1 "$1")"
 }
 
 stop_servers() {
@@ -423,7 +424,7 @@ start() {
     exit 1
   fi
   check_socket_paths
-  for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer python3; do
+  for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer; do
     command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed" >&2; exit 1; }
   done
   mkdir -p "$DIR"

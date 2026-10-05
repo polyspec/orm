@@ -19,3 +19,13 @@ export function scriptPathErrors(scripts, tracked) {
   }
   return errors;
 }
+
+// otherLanguages는 repository의 도구 언어(Go, PHP, Rust, TypeScript와 JavaScript, shell) 밖의 program
+// 확장자다. 도구 하나가 다른 언어를 쓰면 그 runtime이 모든 machine과 runner의 의존이 된다.
+const otherLanguages = /\.(?:py|rb|pl|pm|lua|java|kt|cs|swift|scala|r)$/i;
+
+// toolingLanguageErrors는 tracked 가운데 다른 언어의 program file마다 오류 하나를 돌려준다.
+export function toolingLanguageErrors(tracked) {
+  return tracked.filter(path => otherLanguages.test(path))
+    .map(path => `${path} is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them`);
+}

@@ -5,7 +5,7 @@ import { checkTargets, ciCheckTargetErrors, ciDuplicateCommandErrors, ciRerunErr
 import { nodeVersionErrors } from './node.mjs';
 import { manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
-import { scriptPathErrors } from './scripts.mjs';
+import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { goTestCaseErrors, longDeadlineErrors, makeRecipes, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
@@ -35,6 +35,8 @@ failures.push(...ciRerunErrors(ci, makefile));
 // root npm script가 쓰는 path는 tracked file이나 directory다.
 const rootPackage = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 failures.push(...scriptPathErrors(rootPackage.scripts ?? {}, tracked));
+// repository의 도구는 Go, PHP, Rust, TypeScript(와 shell)로 쓴다.
+failures.push(...toolingLanguageErrors(tracked));
 
 // 검사를 실행하는 Node는 .node-version이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
 const nodeVersionPath = join(root, '.node-version');
