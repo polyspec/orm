@@ -33,8 +33,14 @@ const mime = {
 };
 
 // Serves real files only: deep routes must exist as HTML, without an SPA fallback.
+// requests records every request with the times it was received and answered, so a
+// page that does not load can tell a request the server never got from one it answered.
 export async function serve(directory, base = '/') {
+  const requests = [];
   const server = createServer(async (req, res) => {
+    const entry = { url: req.url, received: Date.now(), answered: null, status: null };
+    requests.push(entry);
+    res.on('finish', () => { entry.answered = Date.now(); entry.status = res.statusCode; });
     try {
       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
       if (!pathname.startsWith(base)) throw new Error('outside base');
@@ -53,6 +59,7 @@ export async function serve(directory, base = '/') {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return {
     origin: `http://127.0.0.1:${server.address().port}`,
+    requests,
     close: () => new Promise((resolve, reject) => server.close(err => err ? reject(err) : resolve())),
   };
 }

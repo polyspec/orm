@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.39: load되지 않는 문서 page는 남은 request와 그 나이와 server의 상태, 실패한 request, console과 page error, event loop 지연, host load를 적는다.
+
 - G5.37: `addTablesAndColumns`는 빠진 table, column과 함께 기존 table에 빠진 index를 만들고 각각을 `table.index`로 돌려준다. 빠진 unique key는 여전히 `SCHEMA_DIFFERS`이며 `add_unique <table>.<name>: a missing unique key can fail on the existing rows; add it with a plan`으로 적는다.
 
 - G5.37-1: test MySQL 서버는 다음 `make test-servers`부터 binary log를 64 MiB마다 회전하고 마지막 쓰기 한 시간 뒤 지운다(`scripts/test-servers.sh`의 `MYSQLD_BINLOG`).
