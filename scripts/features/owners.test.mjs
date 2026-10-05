@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../tests/testcase.mjs';
 import * as ownerSelection from './owners.mjs';
 
-const { checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, selectHelpers, selectOwners, selectTargets } = ownerSelection;
+const { checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = JSON.parse(await readFile(new URL('contracts/features.json', `file://${root}`), 'utf8'));
@@ -197,4 +199,40 @@ caseTest('owner-check creates the databases of its run for a target that reads t
   assert.deepEqual(environmentFile("export BENCH_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00'\n\nexport A='b c'\n"),
     { BENCH_MYSQL_DSN: 'mysql://root@127.0.0.1:1/orm_owner_1_ab_bench?timezone=%2B00:00', A: 'b c' });
   assert.throws(() => environmentFile('A=b\n'), /unexpected environment line: A=b/);
+});
+
+// 행동 시험 case(G5.51)는 owner-check가 바뀐 path마다 그 행동을 시험하는 것을 고르는지 본다. inputs가 아니라
+// lints만 맞춘 path(go vet, gofmt, 문서 규칙)는 시험받지 않은 것이고, paths에 scope를 선언한 path는 그 선언으로
+// 통과한다.
+caseTest('a path that only a lint selects is untested unless its scope is declared', 5000, () => {
+  const declared = { lint: { scope: 'owner', needs: [], lints: ['**/*.go'] }, unit: { scope: 'owner', needs: [], inputs: ['a/*_test.go'], lints: ['**/*.go'] } };
+  const targets = selectTargets(declared, ['a/x.go', 'a/x_test.go', 'b/LICENSE']);
+  assert.deepEqual(targets.map(({ target, tested }) => [target, tested]), [['lint', []], ['unit', ['a/x_test.go']]]);
+  const empty = { owners: [], helpers: [], targets, exists: () => true };
+  assert.deepEqual(untestedPaths(['a/x.go', 'a/x_test.go', 'b/LICENSE'], { ...empty, paths: {} }), ['a/x.go', 'b/LICENSE']);
+  assert.deepEqual(untestedPaths(['a/x.go', 'b/LICENSE'], { ...empty, paths: { 'b/LICENSE': { scope: 'lint', reason: 'license text' } } }), ['a/x.go']);
+  assert.deepEqual(untestedPaths(['gone.go'], { ...empty, paths: {}, exists: () => false }), []);
+  assert.deepEqual(pathScopeErrors({ 'a/*.go': { scope: 'suite', reason: 'r' }, 'b/LICENSE': { scope: 'any', reason: '' }, 'c/x': { scope: 'lint', reason: 'r' } }, ['b/LICENSE']), [
+    'contracts/check-inputs.json paths: a/*.go is a pattern; declare each path',
+    'contracts/check-inputs.json paths: b/LICENSE declares scope any; declare lint or suite',
+    'contracts/check-inputs.json paths: b/LICENSE declares no reason',
+    'contracts/check-inputs.json paths: c/x is not a tracked file',
+  ]);
+});
+
+caseTest('a generator source selects the check that regenerates the models', 5000, () => {
+  const { targets: declared } = JSON.parse(readFileSync(new URL('contracts/check-inputs.json', `file://${root}`), 'utf8'));
+  const selected = selectTargets(declared, ['generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
+  assert.deepEqual(selected, ['go-model-check']);
+});
+
+// 전체 tree case는 추적하는 file마다 행동 시험이나 scope 선언이 있는지 본다. 하나라도 없으면 그 file을 적고 실패한다.
+caseTest('every tracked file selects a behaviour test or declares its scope', 30000, async () => {
+  const declarations = JSON.parse(readFileSync(new URL('contracts/check-inputs.json', `file://${root}`), 'utf8'));
+  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const owners = await selectOwners(manifest, root, tracked);
+  const helpers = await selectHelpers(manifest, root, tracked);
+  const targets = selectTargets(declarations.targets, tracked);
+  assert.deepEqual(untestedPaths(tracked, { owners, helpers, targets, paths: declarations.paths, exists: () => true }), []);
+  assert.deepEqual(pathScopeErrors(declarations.paths, tracked), []);
 });

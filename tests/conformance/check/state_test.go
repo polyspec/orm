@@ -126,3 +126,34 @@ func TestRestoreDeclaredSequenceAfterWrite(t *testing.T) {
 		t.Fatal("database state changed after declared sequence cleanup")
 	}
 }
+
+// TestSnapshotIgnoresTheRowLockTable는 SQLite client가 첫 transaction 전에 만드는 orm__row_lock과 그 행이 상태를
+// 바꾸지 않는지 확인한다. 그 table이 생겨도 test가 database에 남긴 것은 없다.
+func TestSnapshotIgnoresTheRowLockTable(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, err := sql.Open("sqlite", t.TempDir()+"/lock.sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec("CREATE TABLE items (id INTEGER PRIMARY KEY, value TEXT)"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := snapshotDatabase(db, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO "orm__row_lock" ("id") VALUES (1)`); err != nil {
+		t.Fatal(err)
+	}
+	after, err := snapshotDatabase(db, "sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before != after {
+		t.Fatal("the row lock table of the client changed the snapshot")
+	}
+}

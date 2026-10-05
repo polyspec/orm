@@ -182,20 +182,52 @@ function globPattern(glob) {
 const scopes = ['owner', 'suite'];
 const scopeError = target => `contracts/check-inputs.json declares no scope of ${target}; declare owner or suite`;
 
-// selectTargets는 declared(contracts/check-inputs.json의 targets)에서 scope owner이고 입력 pattern이
-// changed path를 맞추는 make target과 그 path를 선언 순서로 돌려준다. scope를 선언하지 않은 target이
-// 있으면 던진다.
+// selectTargets는 declared(contracts/check-inputs.json의 targets)에서 scope owner이고 입력 pattern(inputs)이나
+// 형식 검사 pattern(lints)이 changed path를 맞추는 make target과 그 path를 선언 순서로 돌려준다. tested는 그
+// 가운데 inputs가 맞춘 path다: target이 그 path의 행동을 시험한다. lints만 맞춘 path는 형식만 검사받는다(go
+// vet, gofmt, 문서 규칙 같은 것). scope를 선언하지 않은 target이 있으면 던진다.
 export function selectTargets(declared, changed) {
   const out = [];
   for (const [target, declaration] of Object.entries(declared))
     if (!scopes.includes(declaration?.scope)) throw new Error(scopeError(target));
-  for (const [target, { scope, inputs }] of Object.entries(declared)) {
+  for (const [target, { scope, inputs, lints }] of Object.entries(declared)) {
     if (scope !== 'owner') continue;
-    const patterns = (inputs ?? []).map(globPattern);
-    const reasons = changed.filter(path => patterns.some(pattern => pattern.test(path)));
-    if (reasons.length) out.push({ target, reasons });
+    const behaviour = (inputs ?? []).map(globPattern);
+    const format = (lints ?? []).map(globPattern);
+    const tested = changed.filter(path => behaviour.some(pattern => pattern.test(path)));
+    const reasons = changed.filter(path => tested.includes(path) || format.some(pattern => pattern.test(path)));
+    if (reasons.length) out.push({ target, reasons, tested });
   }
   return out;
+}
+
+// pathScopes는 행동 시험이 없는 path의 선언(contracts/check-inputs.json의 paths)이다. 정확한 path마다 scope와
+// 이유를 둔다: lint는 본성상 형식 검사만 있는 file(LICENSE, rustfmt 설정 같은 것), suite는 그 효과가 suite
+// 전체에 미쳐 owner-check가 부분을 고를 수 없는 file(lockfile, toolchain 고정, workflow, 여러 target이 쓰는
+// test 기반)이며 그 시험은 make check가 맡는다.
+const pathScopeKinds = ['lint', 'suite'];
+export function pathScopeErrors(paths, tracked) {
+  const errors = [];
+  for (const [path, declaration] of Object.entries(paths ?? {})) {
+    if (/[*?[]/.test(path)) errors.push(`contracts/check-inputs.json paths: ${path} is a pattern; declare each path`);
+    else if (!tracked.includes(path)) errors.push(`contracts/check-inputs.json paths: ${path} is not a tracked file`);
+    if (!pathScopeKinds.includes(declaration?.scope)) errors.push(`contracts/check-inputs.json paths: ${path} declares scope ${declaration?.scope}; declare lint or suite`);
+    if (typeof declaration?.reason !== 'string' || declaration.reason.trim() === '') errors.push(`contracts/check-inputs.json paths: ${path} declares no reason`);
+  }
+  return errors;
+}
+
+// untestedPaths는 changed 가운데 어떤 기능 검사, coverage 단위, helper도 고르지 않고, 어떤 make target도 그
+// inputs로 고르지 않으며, paths에 scope를 선언하지 않은 path다. owner-check는 이것이 있으면 실패한다: 그 path의
+// 변경은 owner-check로 시험되지 않는다. 지운 path는 시험할 것이 없으므로 들지 않는다.
+export function untestedPaths(changed, { owners, helpers, targets, paths, exists }) {
+  const reasonsOf = item => item.reasons;
+  const tested = new Set([
+    ...owners.flatMap(owner => [...owner.commands, ...owner.parts].flatMap(reasonsOf)),
+    ...helpers.flatMap(reasonsOf),
+  ].map(reason => reason.split(' (')[0]));
+  for (const { tested: paths } of targets) for (const path of paths ?? []) tested.add(path);
+  return changed.filter(path => !tested.has(path) && !Object.hasOwn(paths ?? {}, path) && exists(path));
 }
 
 // checkInputErrors는 declared가 CHECK_TARGETS의 target에 scope(owner나 suite)나 needs(필요한 setup 단계)를
@@ -216,10 +248,12 @@ export function checkInputErrors(declared, targets, tracked) {
     const globs = declaration?.inputs;
     if (declaration?.scope === 'suite' && globs !== undefined)
       errors.push(`contracts/check-inputs.json: suite target ${target} declares inputs, which owner-check never reads`);
-    if (declaration?.scope === 'owner' && (!Array.isArray(globs) || globs.length === 0))
+    if (declaration?.scope === 'owner' && (!Array.isArray(globs) || globs.length === 0) && !(Array.isArray(declaration?.lints) && declaration.lints.length > 0))
       errors.push(`contracts/check-inputs.json declares no inputs of owner target ${target}`);
+    if (declaration?.scope === 'suite' && declaration?.lints !== undefined)
+      errors.push(`contracts/check-inputs.json: suite target ${target} declares lints, which owner-check never reads`);
     if (declaration?.scope !== 'owner') continue;
-    for (const glob of Array.isArray(globs) ? globs : []) {
+    for (const glob of [...(Array.isArray(globs) ? globs : []), ...(Array.isArray(declaration?.lints) ? declaration.lints : [])]) {
       const pattern = globPattern(glob);
       if (!tracked.some(path => pattern.test(path))) errors.push(`contracts/check-inputs.json: ${target} input ${glob} matches no tracked file`);
     }
@@ -333,10 +367,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const change = changed.includes('contracts/features.json') ? manifestChanges(headManifest(root), manifest) : undefined;
   const owners = await selectOwners(manifest, root, changed, change);
   const helpers = await selectHelpers(manifest, root, changed, change);
-  const declared = JSON.parse(await readFile(resolve(root, 'contracts/check-inputs.json'), 'utf8')).targets;
+  const declarations = JSON.parse(await readFile(resolve(root, 'contracts/check-inputs.json'), 'utf8'));
+  const declared = declarations.targets;
   const checkTargets = /^CHECK_TARGETS = (.*)$/m.exec(await readFile(resolve(root, 'Makefile'), 'utf8'))?.[1].trim().split(/\s+/) ?? [];
   const tracked = trackedPaths(root);
-  const declarationErrors = [...checkInputErrors(declared, checkTargets, tracked), ...manifestInputErrors(manifest, tracked)];
+  const declarationErrors = [...checkInputErrors(declared, checkTargets, tracked), ...manifestInputErrors(manifest, tracked), ...pathScopeErrors(declarations.paths, tracked)];
   if (declarationErrors.length) {
     for (const error of declarationErrors) console.error(`owners: ${error}`);
     process.exit(1);
@@ -351,12 +386,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   }
   for (const { helper, reasons } of helpers) console.log(`owners: helper ${helper.id}: ${reasons.join(', ')}`);
   for (const { target, reasons } of targets) console.log(`owners: make ${target}: ${reasons.join(', ')}`);
-  // 기능 검사나 helper를 고르지 않은 path는 그 사실을 보인다. 그 path의 실행은 make check가 맡는다.
-  const reasonsOf = item => item.reasons;
-  const selecting = new Set([...owners.flatMap(owner => [...owner.commands, ...owner.parts].flatMap(reasonsOf)), ...helpers.flatMap(reasonsOf)]
-    .map(reason => reason.split(' (')[0]));
-  for (const path of changed.filter(path => !selecting.has(path))) console.log(`owners: ${path} is an input of no verification command, coverage part or helper; make check runs what reads it`);
+  // 행동 시험을 하나도 고르지 않고 scope도 선언하지 않은 path는 owner-check를 실패시킨다(untestedPaths). scope를
+  // 선언한 path는 그 scope와 이유를 보인다.
+  for (const path of changed.filter(path => Object.hasOwn(declarations.paths ?? {}, path)))
+    console.log(`owners: ${path} is declared ${declarations.paths[path].scope}: ${declarations.paths[path].reason}`);
   if (change?.whole) console.log('owners: contracts/features.json changed outside a feature or helper entry; make check runs every feature');
+  const untested = untestedPaths(changed, { owners, helpers, targets, paths: declarations.paths, exists: path => existsSync(resolve(root, path)) });
+  if (untested.length) {
+    for (const path of untested)
+      console.error(`owners: ${path} selects no behaviour test: declare it as an input of the command that tests it (contracts/features.json, or the inputs of a make target in contracts/check-inputs.json), or declare its scope lint or suite with the reason in the paths of contracts/check-inputs.json`);
+    process.exit(1);
+  }
   if (!list) {
     let failed = 0;
     // 기능, helper, server 환경을 읽는 make target은 이 실행의 자기 bench database와 decimal database를

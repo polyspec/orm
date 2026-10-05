@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.51: 바뀐 path가 행동 시험을 하나도 고르지 않고 scope도 선언하지 않으면 `make owner-check`가 실패한다. `contracts/check-inputs.json`은 target의 `inputs`와 `lints`를 나누고 정확한 path 16개에 이유와 함께 `lint`나 `suite` scope를 선언한다. 추적하는 모든 file은 그것을 읽는 test에 이어졌고(새 검증 명령 40개, helper 12개, owner scope target 27개), helper 하나가 생성된 오류 code를 `docs/errors.yaml`과 비교하며, conformance와 decimal 검사의 database 상태는 ORM의 SQLite row lock table을 뺀다.
+
 - G5.50: `make codec-check`는 Go, Rust, TypeScript codec test를 독립된 부분으로 직접 실행해 자기 실행의 directory에 출력을 쓰게 하고, PHP checker는 그 출력만 비교한다. writer는 `ORM_CODEC_OUT`이 정해졌을 때만 임시 file에 쓴 뒤 이름을 바꾼다.
 
 - G5.49: make가 `core.hooksPath`로 설치하는 추적 `commit-msg` hook은 `git.subject-format`을 어긴 커밋 제목을 거부한다. process를 끝낸 case는 그 오류를 FAIL 줄에 적는다. PHP의 `first_statement_lost` case는 pooler 뒤에서도 자기 `Db`의 세션을 찾는다.

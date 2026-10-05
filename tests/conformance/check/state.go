@@ -88,6 +88,12 @@ func snapshotDatabase(db *sql.DB, driver string) (string, error) {
 			names.Close()
 			return "", err
 		}
+		// orm__row_lock은 SQLite client가 연결의 첫 transaction 전에 transaction 밖에서 만드는 ORM의 row lock
+		// table이다(docs/usage.md). 그 table은 test가 바꾼 database 상태가 아니라 client가 처음 transaction을 연
+		// 흔적이므로 상태에 넣지 않는다.
+		if name == "orm__row_lock" {
+			continue
+		}
 		tables = append(tables, name)
 	}
 	err = names.Err()

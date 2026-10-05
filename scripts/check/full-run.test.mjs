@@ -315,7 +315,7 @@ const RECORD = {
 caseTest('a rerun on a descendant commit adds the owner targets of the changed paths', COMPUTE, () => {
   const allowed = decide('rerun-failed', { items: [], changes: [], tree: 't2', commit: 'c2', record: RECORD, descends: true, changed: ['src/x.mjs', 'README.md'], declared: DECLARED });
   assert.deepEqual([allowed.allowed, allowed.targets], [true, ['b', 'c']], allowed.reasons.join('\n'));
-  assert.deepEqual(allowed.owners, [{ target: 'c', reasons: ['src/x.mjs'] }]);
+  assert.deepEqual(allowed.owners, [{ target: 'c', reasons: ['src/x.mjs'], tested: ['src/x.mjs'] }]);
   const unrelated = decide('rerun-failed', { items: [], changes: [], tree: 't2', commit: 'c2', record: RECORD, descends: true, changed: ['README.md'], declared: DECLARED });
   assert.deepEqual([unrelated.allowed, unrelated.targets], [true, ['b']]);
 });
