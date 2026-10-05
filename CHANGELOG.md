@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.70: the Go cancellation tests cancel only after a session that was not waiting before their statement starts waits for the lock, so a statement left waiting by an earlier case no longer cancels a case before its statement runs.
+
 - G5.69: the documentation checks launch Chromium with a temporary directory of their own and remove it when the browser closes, so the `.org.chromium.Chromium.*` entries it leaves do not fail the step.
 
 - G5.63-1: the PostgreSQL insert lock helper of the Rust catalog is private, so it stays out of the interface inventory, and its unit test is declared as an input of the catalog verification.

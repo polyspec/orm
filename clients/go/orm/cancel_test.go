@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -57,8 +58,12 @@ func TestWithContextCancels(t *testing.T) {
 			} else {
 				monitor := openNative(t, driver, serverSession(t, driver, dsn))
 				defer monitor.Close()
+				before, err := waiters(monitor, driver)
+				if err != nil {
+					t.Fatal(err)
+				}
 				go func() {
-					waiting <- awaitLockWait(ctx, monitor, driver)
+					waiting <- awaitLockWait(ctx, monitor, driver, before)
 					cancel()
 				}()
 			}
@@ -237,8 +242,14 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 					// waiting for the lock; a timer could fire before the statement
 					// starts, and then no statement is cancelled.
 					waiting := make(chan error, 1)
+					// Sessions that wait already, such as the cancelled statement of the case before, are not this
+					// case's statement.
+					before, waitersErr := waiters(monitor, driver)
+					if waitersErr != nil {
+						t.Fatal(waitersErr)
+					}
 					go func() {
-						waiting <- awaitLockWait(ctx, monitor, driver)
+						waiting <- awaitLockWait(ctx, monitor, driver, before)
 						cancel()
 					}()
 					start := time.Now()
@@ -313,23 +324,52 @@ func TestRootIdentifiesTheConnection(t *testing.T) {
 	}
 }
 
-// lockWaits counts the sessions of the case database that wait for a lock.
-var lockWaits = map[string]string{
-	"mysql":    "SELECT count(*) FROM performance_schema.data_locks WHERE OBJECT_SCHEMA = DATABASE() AND LOCK_STATUS = 'WAITING'",
-	"postgres": "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+// lockWaiters lists the sessions of the case database that wait for a lock.
+var lockWaiters = map[string]string{
+	"mysql":    "SELECT DISTINCT THREAD_ID FROM performance_schema.data_locks WHERE OBJECT_SCHEMA = DATABASE() AND LOCK_STATUS = 'WAITING'",
+	"postgres": "SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
 }
 
-// awaitLockWait returns when a session of the case database waits for a lock.
-// It returns an error when ctx ends first or no session waits within 10
-// seconds.
-func awaitLockWait(ctx context.Context, monitor *sql.DB, driver string) error {
+// waiters reads the sessions of the case database that wait for a lock now.
+func waiters(monitor *sql.DB, driver string) ([]int64, error) {
+	rows, err := monitor.Query(lockWaiters[driver])
+	if err != nil {
+		return nil, fmt.Errorf("lock wait query: %w", err)
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// newWaiter reports whether a session waits now that did not wait before. A statement that an earlier case
+// cancelled can still wait on the server after its connection closed, until the lock is released; counting
+// it as the statement of this case cancels this case's context before its statement starts.
+func newWaiter(before, now []int64) bool {
+	for _, id := range now {
+		if !slices.Contains(before, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// awaitLockWait returns when a session of the case database that did not wait at before (from waiters) waits
+// for a lock. It returns an error when ctx ends first or no such session waits within 10 seconds.
+func awaitLockWait(ctx context.Context, monitor *sql.DB, driver string, before []int64) error {
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		var n int
-		if err := monitor.QueryRow(lockWaits[driver]).Scan(&n); err != nil {
-			return fmt.Errorf("lock wait query: %w", err)
+		now, err := waiters(monitor, driver)
+		if err != nil {
+			return err
 		}
-		if n > 0 {
+		if newWaiter(before, now) {
 			return nil
 		}
 		if ctx.Err() != nil {
@@ -339,5 +379,20 @@ func awaitLockWait(ctx context.Context, monitor *sql.DB, driver string) error {
 			return errors.New("no statement waited for the lock within 10s")
 		}
 		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+// TestNewWaiterIgnoresSessionsThatAlreadyWaited pins the race that cancelled the context of a case before its
+// statement ran: a session left waiting by an earlier case is not the statement of this case.
+func TestNewWaiterIgnoresSessionsThatAlreadyWaited(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	if newWaiter([]int64{7}, []int64{7}) {
+		t.Fatal("a session that waited before counts as the statement of this case")
+	}
+	if newWaiter(nil, nil) {
+		t.Fatal("no session waits, yet a waiter was found")
+	}
+	if !newWaiter([]int64{7}, []int64{7, 9}) || !newWaiter(nil, []int64{3}) {
+		t.Fatal("a session that started to wait was not found")
 	}
 }
