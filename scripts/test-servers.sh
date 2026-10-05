@@ -83,11 +83,12 @@ postgres_running() {
   [ -f "$1/postmaster.pid" ] && pg_ctl -D "$1" status >/dev/null 2>&1
 }
 
-# stop_pid sends TERM to the process of a pid file and returns after the
-# process has exited.
+# stop_pid sends TERM, or the signal $2, to the process whose id is the first
+# line of the pid file $1 and returns after the process has exited. Stopping
+# is a long operation with no deadline.
 stop_pid() {
-  pid=$(cat "$1")
-  kill "$pid"
+  pid=$(head -n 1 "$1")
+  kill -"${2:-TERM}" "$pid"
   while kill -0 "$pid" 2>/dev/null; do
     sleep 0.1
   done
@@ -112,12 +113,14 @@ stop_servers() {
     mysqladmin --no-defaults --socket="$MYSQL_SOCKET" -u root shutdown
     echo "test-servers: stopped MySQL"
   fi
+  # INT is the fast shutdown of PostgreSQL. `pg_ctl stop -w` would wait at most
+  # 60 s (PGCTLTIMEOUT) and has no setting without a limit.
   if postgres_running "$POSTGRES_REPLICA_DATA"; then
-    pg_ctl -D "$POSTGRES_REPLICA_DATA" -m fast -w stop >/dev/null
+    stop_pid "$POSTGRES_REPLICA_DATA/postmaster.pid" INT
     echo "test-servers: stopped the PostgreSQL replica"
   fi
   if postgres_running "$POSTGRES_DATA"; then
-    pg_ctl -D "$POSTGRES_DATA" -m fast -w stop >/dev/null
+    stop_pid "$POSTGRES_DATA/postmaster.pid" INT
     echo "test-servers: stopped PostgreSQL"
   fi
 }
@@ -176,33 +179,36 @@ mysql_timezones() {
 
 start_postgres() {
   initdb -D "$POSTGRES_DATA" -U orm --auth=trust --encoding=UTF8 --locale=C >"$DIR/postgres-init.log"
-  # -w returns after the server reports that it accepts connections.
-  pg_ctl -D "$POSTGRES_DATA" -l "$DIR/postgres.log" -w \
-    -o "-p $POSTGRES_PORT -c listen_addresses=127.0.0.1 -c unix_socket_directories='' -c synchronous_standby_names=orm_replica -c synchronous_commit=local" start >/dev/null
+  # The server runs through start_logged, which returns when it logs that it
+  # accepts connections. `pg_ctl start -w` would wait at most 60 s.
+  start_logged postgres 'database system is ready to accept connections' \
+    postgres -D "$POSTGRES_DATA" -p "$POSTGRES_PORT" -c listen_addresses=127.0.0.1 -c unix_socket_directories='' \
+    -c synchronous_standby_names=orm_replica -c synchronous_commit=local
   echo "test-servers: PostgreSQL on 127.0.0.1:$POSTGRES_PORT"
 
   # -R writes the standby configuration with the application_name that
   # synchronous_standby_names of the primary lists.
   pg_basebackup -D "$POSTGRES_REPLICA_DATA" -R -X stream \
     -d "host=127.0.0.1 port=$POSTGRES_PORT user=orm application_name=orm_replica"
-  pg_ctl -D "$POSTGRES_REPLICA_DATA" -l "$DIR/postgres-replica.log" -w \
-    -o "-p $POSTGRES_REPLICA_PORT -c listen_addresses=127.0.0.1 -c unix_socket_directories=''" start >/dev/null
+  # A standby logs that it accepts read-only connections.
+  start_logged postgres-replica 'database system is ready to accept read-only connections' \
+    postgres -D "$POSTGRES_REPLICA_DATA" -p "$POSTGRES_REPLICA_PORT" -c listen_addresses=127.0.0.1 -c unix_socket_directories=''
   echo "test-servers: PostgreSQL replica on 127.0.0.1:$POSTGRES_REPLICA_PORT"
 }
 
-# start_logged <name> <deadline> <line> <command> [<argument>...] runs a server in
-# the foreground and writes its process id to $DIR/<name>.pid. A shell reader
-# copies each line of the output of the server to $DIR/<name>.log as it
-# arrives, until the server exits. The reader reports through the FIFO
-# $DIR/<name>.ready when the server logs a line that contains <line>, or when
-# the server exits first; a timer reports when <deadline> seconds pass first.
-# The start fails in the last two cases, naming the server, the deadline and
-# the last lines of its log.
+# start_logged <name> <line> <command> [<argument>...] runs a server in the
+# foreground and writes its process id to $DIR/<name>.pid. Starting a server is
+# a long operation: it has no deadline, and its result is an observed event. A
+# shell reader copies each line of the output of the server to $DIR/<name>.log
+# as it arrives, until the server exits, and shows each line before the ready
+# line on stderr as "test-servers: <name>: <line>". The reader reports through
+# the FIFO $DIR/<name>.ready when the server logs a line that contains <line>,
+# or when the server exits first; the start fails in the second case, naming
+# the server and the last lines of its log.
 start_logged() {
   name=$1
-  deadline=$2
-  line=$3
-  shift 3
+  line=$2
+  shift 2
   mkfifo "$DIR/$name.ready"
   # 읽는 쪽은 sh의 read다: read는 pipe에서 한 줄씩 읽어 그 줄이 쓰인 즉시 본다. awk는 쓰지
   # 않는다. Ubuntu의 awk(mawk)는 pipe 입력을 큰 block으로 읽어 서버가 끝날 때까지 줄을 넘기지 않는다.
@@ -211,23 +217,18 @@ start_logged() {
     while IFS= read -r output || [ -n "$output" ]; do
       printf '%s\n' "$output" >> "$DIR/$name.log"
       if [ -z "$reported" ]; then
+        printf 'test-servers: %s: %s\n' "$name" "$output" >&2
         case $output in
-          *"$line"*) [ -p "$DIR/$name.ready" ] && echo ready > "$DIR/$name.ready"; reported=1 ;;
+          *"$line"*) echo ready > "$DIR/$name.ready"; reported=1 ;;
         esac
       fi
     done
-    # 기한이 먼저 지나 FIFO가 지워졌으면 reader는 서버가 끝날 때까지 log만 복사하고 알리지 않는다.
-    [ -n "$reported" ] || { [ -p "$DIR/$name.ready" ] && echo exited > "$DIR/$name.ready"; } || true
+    [ -n "$reported" ] || echo exited > "$DIR/$name.ready"
   } >/dev/null &
-  # 선언한 기한은 timer가 지킨다: 기한이 먼저 지나면 timer가 FIFO에 timeout을 쓴다.
-  # 기한 전에 끝나면 timer의 sleep만 멈춘다: sleep이 실패하면 timer는 FIFO에 쓰지 않고 스스로
-  # 끝나므로, shell이 signal로 멈춘 job을 보고하지 않는다. timer의 stderr는 버린다.
-  ( exec 2>/dev/null; sleep "$deadline" && [ -p "$DIR/$name.ready" ] && echo timeout > "$DIR/$name.ready" ) &
-  timer=$!
   # FIFO는 읽기와 쓰기로 한 번 열어 끝까지 둔다. read는 reader가 끝날 때 오는 SIGCHLD에 끊길 수
   # 있다(EINTR). FIFO를 read마다 열고 닫으면, 끊긴 read가 닫은 뒤에 쓴 보고는 읽는 쪽이 없어
-  # 사라지고 기한의 timeout이 대신 읽혔다. 열린 fd가 남아 있으면 보고는 FIFO buffer에 남으므로 다시
-  # 읽으면 처음 보고된 한 줄을 받는다. timer가 기한에 반드시 쓰므로 반복은 끝난다.
+  # 사라진다. 열린 fd가 남아 있으면 보고는 FIFO buffer에 남으므로 다시 읽으면 처음 보고된 한 줄을
+  # 받는다. reader는 준비 줄을 보거나 서버가 끝나면 반드시 쓰므로 반복은 그 사건으로 끝난다.
   exec 3<>"$DIR/$name.ready"
   state=
   while [ -z "$state" ]; do
@@ -235,17 +236,10 @@ start_logged() {
   done
   rm "$DIR/$name.ready"
   exec 3<&-
-  # 끝난 쪽이 아닌 보고자를 멈춘다: timer의 sleep이다. reader는 서버가 끝나면 스스로 끝나며, 실패한
-  # start의 stop_servers가 서버를 멈춘다.
-  pkill -P "$timer" sleep 2>/dev/null || true
   case $state in
     ready) ;;
-    exited)
-      echo "test-servers: $name exited before it logged '$line'; last lines of $DIR/$name.log:" >&2
-      tail -n 20 "$DIR/$name.log" >&2
-      exit 1 ;;
     *)
-      echo "test-servers: $name logged no line with '$line' within its deadline of $deadline s; last lines of $DIR/$name.log:" >&2
+      echo "test-servers: $name exited before it logged '$line'; last lines of $DIR/$name.log:" >&2
       tail -n 20 "$DIR/$name.log" >&2
       exit 1 ;;
   esac
@@ -376,7 +370,7 @@ mysql_users=
 )
 EOF
   # ProxySQL logs the consulting notice after its listeners are bound.
-  start_logged proxysql 60 'For consultancy visit' \
+  start_logged proxysql 'For consultancy visit' \
     proxysql --foreground --initial --no-version-check -c "$DIR/proxysql.cnf" -D "$PROXYSQL_DATA"
   echo "test-servers: ProxySQL on 127.0.0.1:$PROXYSQL_PORT"
 }
@@ -408,7 +402,7 @@ max_prepared_statements = 200
 track_extra_parameters = statement_timeout
 EOF
   # PgBouncer logs "process up" after it listens on its sockets.
-  start_logged pgbouncer 60 'process up' pgbouncer "$DIR/pgbouncer.ini"
+  start_logged pgbouncer 'process up' pgbouncer "$DIR/pgbouncer.ini"
   echo "test-servers: PgBouncer on 127.0.0.1:$PGBOUNCER_PORT"
 }
 
@@ -431,7 +425,7 @@ start() {
     exit 1
   fi
   check_socket_paths
-  for tool in mysqld initdb pg_ctl pg_basebackup proxysql pgbouncer; do
+  for tool in mysqld initdb postgres pg_ctl pg_basebackup proxysql pgbouncer; do
     command -v "$tool" >/dev/null || { echo "test-servers: $tool is not installed" >&2; exit 1; }
   done
   mkdir -p "$DIR"

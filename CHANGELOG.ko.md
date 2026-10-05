@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-11: `make test-servers`는 ProxySQL, PgBouncer, 두 PostgreSQL server를 기한 없이 시작하고, 준비 줄까지의 log 줄을 보이며, 그 줄에서 돌아오고 server가 먼저 끝나면 log와 함께 실패한다. PostgreSQL은 `pg_ctl -w`의 60 s 제한 없이 fast shutdown으로 멈춘다.
+
 - G5.32-1: PostgreSQL에서 Go client는 모든 statement를 pgx query mode `exec`로 prepare하지 않고 text bind와 함께 round trip 하나로 전송한다. 연결마다 statement text마다 따로 드는 prepare round trip과 transaction이 없다.
 
 - G5.30: 모든 build, 설치, 도구 실행, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-10).
