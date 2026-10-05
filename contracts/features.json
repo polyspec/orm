@@ -116,7 +116,7 @@
         },
         {
           "id": "dsn-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/dsn-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/dsn-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test zone --test sqlite_file_name",
           "inputs": [
             "clients/rust/orm/tests/zone.rs",
             "clients/rust/orm/tests/sqlite_file_name.rs"
@@ -154,7 +154,7 @@
         },
         {
           "id": "dsn-mysql-tls-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/dsn-mysql-tls-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/dsn-mysql-tls-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test mysql_tls",
           "inputs": [
             "clients/rust/orm/tests/mysql_tls.rs"
           ]
@@ -592,7 +592,7 @@
         },
         {
           "id": "queries-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/queries-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/queries-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test model_output",
           "inputs": [
             "clients/rust/orm/tests/model_output.rs"
           ]
@@ -673,7 +673,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/run-case.mjs rust-build/decimal-rust-physical 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
+          "command": ". \"$DECIMAL_ENV\" && node tests/run-long.mjs rust-build/decimal-rust-physical -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "inputs": [
             "clients/rust/tests/src/decimal_physical.rs"
           ]
@@ -1047,7 +1047,7 @@
         },
         {
           "id": "decimal-rust-physical",
-          "command": ". \"$DECIMAL_ENV\" && node tests/run-case.mjs rust-build/decimal-rust-physical 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
+          "command": ". \"$DECIMAL_ENV\" && node tests/run-long.mjs rust-build/decimal-rust-physical -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical && cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "inputs": [
             "clients/rust/tests/src/decimal_physical.rs"
           ]
@@ -1700,7 +1700,7 @@
         },
         {
           "id": "statement-events-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/statement-events-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/statement-events-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_events",
           "inputs": [
             "clients/rust/orm/tests/statement_events.rs",
             "contracts/fixtures/statement_events.dbs",
@@ -2014,7 +2014,7 @@
         },
         {
           "id": "generation-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/generation-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/generation-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate:: && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/generation-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/generation-rust-2 -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate:: && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib generate::",
           "inputs": [
             "clients/rust/orm-build/tests/generate.rs"
           ]
@@ -2578,7 +2578,7 @@
         },
         {
           "id": "install-add-tables-and-columns-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/install-add-tables-and-columns-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/install-add-tables-and-columns-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test add_tables_and_columns",
           "inputs": [
             "clients/rust/orm/tests/add_tables_and_columns.rs"
           ]
@@ -2614,7 +2614,7 @@
         },
         {
           "id": "install-register-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/install-register-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/install-register-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test register --test install --test external_documents",
           "inputs": [
             "clients/rust/orm/tests/register.rs",
             "clients/rust/orm/tests/install.rs",
@@ -3475,7 +3475,7 @@
         },
         {
           "id": "encryption-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/encryption-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/encryption-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/encryption-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/encryption-rust-2 -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test aes_keys",
           "inputs": [
             "clients/rust/orm/tests/aes_keys.rs"
           ]
@@ -5237,7 +5237,7 @@
       "verification": [
         {
           "id": "catalog-rust",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/catalog-rust 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/catalog-rust-2 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/catalog-rust -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate && PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/catalog-rust-2 -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib && PATH=\"$HOME/.cargo/bin:$PATH\" cargo test --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib -- catalog:: tool_db:: generate::",
           "inputs": [
             "clients/rust/orm-build/tests/catalog.rs",
             "clients/rust/orm-build/tests/tool_cells.rs",
@@ -5377,7 +5377,7 @@
         "clients/rust/orm/tests/common/*.rs"
       ],
       "tests": [],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-case.mjs rust-build/test-helpers 8m -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/test-helpers -- cargo test --no-run --manifest-path clients/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\""
     }
   ]
 }

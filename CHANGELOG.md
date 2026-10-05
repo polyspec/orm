@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-4: the `cargo test --no-run` build before every `cargo test` run of the Makefile, the feature verification commands and `scripts/client-db-test.sh` runs under `tests/run-long.mjs` with step logs and no deadline.
+
 - G5.30-3: the tsc, go vet and cargo build steps of the feature verification commands run under `tests/run-long.mjs` with step logs and no deadline.
 
 - G5.30-2: `tests/run-long.mjs` (`RUN_LONG` in the Makefile) and `runLong` of `tests/testcase.mjs` run a long operation with step logs, its exit code and result, and no deadline.
