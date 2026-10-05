@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.77: cargo-test copies its test binaries to disk instead of the tmpfs `/tmp`, group signals refuse the runner's own group and groups of 0 or 1, and the check runner prints memory, disk, the largest processes and the group signals to the job log every 30 s.
+
 - G5.76: the Rust symbol inventory records the PostgreSQL insert lock helper of the catalog, and the introspection comparison test is gofmt-formatted.
 
 - G5.75: the CI and documentation workflows cancel the run of the previous push on the same ref, and `make repo-check` requires that concurrency on every workflow that runs on push.

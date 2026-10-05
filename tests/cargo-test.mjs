@@ -19,8 +19,7 @@
 //             scripts/features/coverage.mjs도 쓴다.)
 import { spawn, spawnSync } from 'node:child_process';
 import { constants, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { runLong, stepLines } from './testcase.mjs';
 
 // valued는 값을 따로 받는 cargo test option이다. 그 다음 인자는 test 이름 filter가 아니다.
@@ -131,9 +130,12 @@ async function main() {
   const { cargo, options, filters, binaryArgs } = split(args.slice(2));
   const { LEASE: lease, CARGO_LEASES: leases } = process.env;
   if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
-  // 실행 directory는 임시 directory 아래에 둔다. check runner와 owner-check의 단계에서는 그 단계의 임시
-  // directory이므로, 이 process가 signal로 끝나 finally를 실행하지 못해도 단계가 끝날 때 지워진다.
-  const runDir = mkdtempSync(join(tmpdir(), 'orm-cargo-test-'));
+  // 실행 directory는 checkout의 .runtime/run에 둔다: test binary의 복사본은 크고, CI의 /tmp는 memory를 쓰는
+  // tmpfs다. 이름은 단계(ORM_STEP, check runner와 owner-check가 준다)를 담으므로, 이 process가 signal로 끝나 finally를
+  // 실행하지 못해도 runner가 단계가 끝날 때 그것을 찾아 지운다.
+  const runs = resolve(new URL('..', import.meta.url).pathname, '.runtime/run');
+  mkdirSync(runs, { recursive: true });
+  const runDir = mkdtempSync(join(runs, `cargo-test-${process.env.ORM_STEP ?? 'direct'}-${process.pid}-`));
   try {
     let built = false;
     const passed = await runLong(`rust-build/${name}`, async ({ step }) => {

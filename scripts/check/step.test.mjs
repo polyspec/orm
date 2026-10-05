@@ -2,13 +2,13 @@
 // process group에서 실행된다. 통과한 단계가 임시 entry나 process를 남기면 그 단계는 실패하고, 실패한 단계가 남긴
 // 임시 entry는 보고서로 복사된다. 어느 쪽이든 단계 뒤에는 남은 것이 없다. 각 case는 실제 sh로 단계를 실행한다.
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, PROCESS } from '../../tests/testcase.mjs';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { command } from './run.mjs';
-import { endGroup } from './step.mjs';
+import { endGroup, runStep } from './step.mjs';
 import { spawn } from 'node:child_process';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -110,4 +110,57 @@ caseTest('endGroup names and ends what a process of its own group left behind', 
   } finally {
     if (alive(pid)) process.kill(pid, 'SIGKILL');
   }
+});
+
+// fake runner case(G5.77)는 runner 자리의 node process를 자기 group으로 시작하고, 그 안에서 단계의 group signal을
+// 보낸다. 자기 group, group 0과 1, 음수에 보내는 signal은 거부되어 runner가 살아남고, 그 group에 그대로 보낸 signal은
+// runner를 끝낸다(대조군). 단계가 남긴 process를 끝내는 runStep도 runner를 끝내지 않는다.
+caseTest('a group signal never reaches the process group of the runner', PROCESS, async () => {
+  const stepModule = new URL('./step.mjs', import.meta.url).pathname;
+  const fake = (body) => new Promise(resolve => {
+    const child = spawn(process.execPath, ['--input-type=module', '-e', `
+      import { signalGroup, processGroupOf, runStep } from ${JSON.stringify(stepModule)};
+      const own = processGroupOf(process.pid);
+      ${body}
+      console.log('alive');
+    `], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    child.stdout.on('data', chunk => { out += chunk; });
+    child.stderr.on('data', chunk => { out += chunk; });
+    child.on('close', (code, signal) => resolve({ code, signal, out }));
+  });
+  const guarded = await fake(`
+    for (const group of [own, 0, 1, -5, process.pid]) signalGroup(group, 'SIGTERM');
+    await runStep('sh', ['-c', 'sleep 41 >/dev/null 2>&1 & exit 0'], { cwd: process.cwd(), env: process.env, step: () => {}, label: 'fake' }).catch(() => {});
+  `);
+  assert.equal(guarded.signal, null, guarded.out);
+  assert.match(guarded.out, /alive\n$/);
+  assert.equal((guarded.out.match(/refused to send SIGTERM/g) ?? []).length, 5, guarded.out);
+  const unguarded = await fake(`process.kill(-own, 'SIGTERM'); await new Promise(resolve => setTimeout(resolve, 1000));`);
+  assert.equal(unguarded.signal, 'SIGTERM', 'a raw signal to the own group ends the runner');
+});
+
+// 단계 이름 case(G5.77)는 단계의 process가 .runtime/run에 단계 이름(ORM_STEP)을 담아 만든 directory를 runner가 단계의
+// 잔여물로 찾아 지우는지 본다. tests/cargo-test.mjs의 test binary 복사본이 그 directory에 있다(CI의 /tmp는 memory를
+// 쓰는 tmpfs이므로 복사본은 disk에 둔다).
+caseTest('a run directory named after the step is a leftover of the step', PROCESS, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-step-test-'));
+  try {
+    const { step } = collect();
+    await assert.rejects(runStep('sh', ['-c', 'mkdir -p ".runtime/run/cargo-test-$ORM_STEP-1-x"'], { cwd: root, env: process.env, step, label: 'named' }),
+      /check: named left \.runtime\/run\/cargo-test-orm-step-\w+-1-x/);
+    assert.deepEqual(readdirSync(join(root, '.runtime/run')), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('the resource lines list the processes with the largest resident memory', COMPUTE, async () => {
+  const { topProcesses, resourceLines } = await import('./resources.mjs');
+  assert.deepEqual(topProcesses(' 10  10  2048 mysqld\n 11  10 1024000 postgres\n 12 12 512 sh\n', 2), [
+    { pid: 11, pgid: 10, rssMiB: 1000, command: 'postgres' }, { pid: 10, pgid: 10, rssMiB: 2, command: 'mysqld' }]);
+  const lines = resourceLines(new Date(0));
+  assert.equal(lines.length, 4);
+  assert.match(lines[0], /^RESOURCES 1970-01-01T00:00:00\.000Z memory /);
+  assert.match(lines[3], /^RESOURCES group signals /);
 });

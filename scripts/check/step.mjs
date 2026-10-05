@@ -13,9 +13,9 @@
 // 실패한 단계가 남긴 entry는 keep으로 보고서에 복사한다. 어느 쪽이든 임시 directory는 지운다. runner가
 // signal로 끝나도 진행 중인 단계의 group을 끝낸다.
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { stepLines } from '../../tests/testcase.mjs';
 
 // active는 진행 중인 단계의 process group id다. runner가 끝날 때 남은 group을 끝낸다.
@@ -34,11 +34,34 @@ function install() {
     });
 }
 
-function signalGroup(group, signal) {
+// ownGroup은 이 process의 process group이다. 단계의 group을 끝내는 signal이 이 process의 group(그리고 GitHub Actions
+// runner와 함께 쓰는 group)에 닿지 않도록 signalGroup이 비교한다.
+let ownGroup;
+export function processGroupOf(pid) {
+  const listed = spawnSync('ps', ['-o', 'pgid=', '-p', String(pid)], { encoding: 'utf8' });
+  const group = Number(listed.stdout.trim());
+  return Number.isInteger(group) && group > 0 ? group : null;
+}
+
+// signals는 보낸 group signal의 기록이다(resources.mjs가 30초마다 출력한다).
+export const signals = [];
+
+// signalGroup은 단계의 process group에 signal을 보낸다. 1 이하의 group(모든 process나 자기 group을 뜻한다)과
+// 이 process 자신의 group에는 보내지 않고 그 사실을 적는다: 그 signal은 runner와 그것을 실행한 job까지 끝낸다.
+export function signalGroup(group, signal) {
+  ownGroup ??= processGroupOf(process.pid);
+  if (!Number.isInteger(group) || group <= 1 || group === ownGroup || group === process.pid) {
+    signals.push(`refused ${signal} to group ${group} (own group ${ownGroup})`);
+    console.log(`check: refused to send ${signal} to process group ${group}, which is not a step's own group (this process is in group ${ownGroup})`);
+    return false;
+  }
+  signals.push(`${signal} -${group}`);
   try {
     process.kill(-group, signal);
+    return true;
   } catch {
     // group에 process가 없다.
+    return false;
   }
 }
 
@@ -91,7 +114,7 @@ export function runStep(program, args, { cwd, env, step, label = `${program} ${a
       // npm은 Node의 compile cache를 켜고, 그 cache는 따로 정하지 않으면 TMPDIR 아래의 node-compile-cache다. 그것은
       // test가 남긴 것이 아니라 실행끼리 함께 쓰는 npm의 cache이므로, 단계 전과 같은 시스템 임시 directory에 둔다.
       const compileCache = env.NODE_COMPILE_CACHE ?? join(tmpdir(), 'node-compile-cache');
-      child = spawn(program, args, { cwd, env: { ...env, TMPDIR: temporary, NODE_COMPILE_CACHE: compileCache }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+      child = spawn(program, args, { cwd, env: { ...env, TMPDIR: temporary, NODE_COMPILE_CACHE: compileCache, ORM_STEP: basename(temporary) }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     } catch (error) {
       rmSync(temporary, { recursive: true, force: true });
       fail(error);
@@ -140,6 +163,13 @@ export function runStep(program, args, { cwd, env, step, label = `${program} ${a
           }
         }
         for (const path of leftovers()) problems.push(`check: ${label} left ${path}`);
+        // 단계의 process가 .runtime/run에 단계 이름(ORM_STEP)을 담아 만든 실행 directory(tests/cargo-test.mjs)도 단계가
+        // 남긴 것이다. signal로 끝난 process는 그것을 지우지 못한다.
+        const runs = join(cwd ?? '.', '.runtime/run');
+        for (const entry of existsSync(runs) ? readdirSync(runs).filter(name => name.includes(`-${basename(temporary)}-`)) : []) {
+          problems.push(`check: ${label} left .runtime/run/${entry}`);
+          rmSync(join(runs, entry), { recursive: true, force: true });
+        }
       } catch (error) {
         problems.push(`check: ${label}: its leftovers could not be checked: ${error.message}`);
       } finally {
