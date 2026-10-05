@@ -42,8 +42,9 @@
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
-- 로컬 `make check`는 할 수 있지만 push 전에 필요한 단계가 아니다. 항목을 진행하는 동안에는 그 Red/Green
-  테스트와 `make owner-check`만 실행한다(아래). push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을
+- 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
+  server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
+  CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을
   때만 한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
 - `make check`는 어떤 단계보다 먼저, 체크리스트 항목(하위 항목 포함)이 `[~]`인 동안, 추적하는 file에 commit하지
   않은 변경이 있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부한다.
@@ -57,7 +58,8 @@
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
   추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
   커밋을 거부한다. push된 커밋은 바꿀 수 없고 그 뒤로 `git-check`가 그것에서 실패하기 때문이다.
-- 소유 검사: 커밋하기 전에 `make owner-check`(또는 `make owner-check PATHS="<paths>"`)를 실행한다.
+- 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
+  도구다. CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
   `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
   적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.
@@ -70,13 +72,12 @@
   `CHECK_TARGETS`의 모든 target은 scope를 선언하고, 선언하지 않은 target이 있으면 `make owner-check`와
   `make repo-check`가 실패한다. 소유 검사를 직접 고르지 않는다. 어떤 입력도 아닌 바뀐 file은 아무것도 고르지 않고
   `make owner-check`가 그 사실을 출력한다. 그 file을 실행하는 명령의 입력에 선언하고, 새 make target의
-  scope도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것을 실행한다.
+  scope도 선언한다. 커밋 전에는 바뀐 모든 file의 이름을 test와 script에서 찾아 그 file을 읽는 것 가운데 unit test를 실행한다.
   항목의 증거에 명령과 통과 수를 적는다.
 - `contracts/features.json`이 `environment: linux-runner`로 선언한 검증(예:
   `make php-without-mysql-check`)은 `.github/runner`의 Linux runner에서 실행한다. 다른 machine의
-  `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. push 전에
-   CI가 그 runner에서 실행한다.
-- 항목을 진행하는 동안에는 바뀐 것의 Red/Green 테스트와 `make owner-check`만 실행하고, 수정할
+  `make check`는 그것을 RUNNER 줄로 출력하고 통과로 세지 않는다. CI가 그것을 실행한다.
+- 항목을 진행하는 동안에는 바뀐 것의 Red/Green unit test만 실행하고, 수정할
   때마다 테스트를 기계적으로 다시 실행하지 않는다. 짧은 검증 단위인 모든 테스트 case는 자신의
   실행·완료·성공·실패와 경과 시간을 출력하고 자기 타임아웃을 가지며, 전체 일괄 타임아웃은 쓰지
   않는다. 장기 작업(build, 설치, `tsc`, `go build`, `go generate`, `go vet`, `cargo build`,
