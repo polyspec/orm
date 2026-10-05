@@ -50,6 +50,11 @@ const drop = process.env.STUB_SUITE === 'drop';
 const verbose = process.env.STUB_SUITE === 'verbose';
 // STUB_SUITE=space는 target b가 /tmp의 quota 초과로 실패하는 suite다(G5.43-4).
 const space = process.env.STUB_SUITE === 'space';
+// STUB_SUITE=diskio-full와 diskio-free는 target b가 SQLite의 disk I/O error로 실패하는 suite다. full은 그 순간 /tmp의
+// 남은 공간이 0이고 지웠지만 열린 큰 file이 있는 기록, free는 공간이 남은 기록이다. STUB_SUITE=npm은 target b가 npm처럼
+// 보고서 밖의 debug log(STUB_NPM_LOG)만 가리키고 실패하는 suite다(G5.44).
+const diskio = process.env.STUB_SUITE?.startsWith('diskio-');
+const npm = process.env.STUB_SUITE === 'npm';
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
@@ -75,6 +80,15 @@ const run = async (program, args, step, spawned = () => {}) => {
     step('STEP fuzz/engine-ir elapsed=33ms: write /tmp/go-build3971832083/b001/_testmain.go: disk quota exceeded');
     throw new Error('make --no-print-directory -k b exited with 2');
   }
+  if (diskio && name === 'b') {
+    step('[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error');
+    throw new Error('make --no-print-directory -k b exited with 2');
+  }
+  if (npm && name === 'b') {
+    writeFileSync(process.env.STUB_NPM_LOG, '0 verbose cli /usr/bin/node /usr/bin/npm\\n12 error code E404\\n13 error 404 Not Found - GET https://registry.npmjs.org/x - Not found\\n14 verbose exit 1\\n');
+    step('STEP package elapsed=679ms: npm error A complete log of this run can be found in: ' + process.env.STUB_NPM_LOG);
+    throw new Error('make --no-print-directory -k b exited with 2');
+  }
   if (verbose && name === 'b') {
     for (let i = 0; i < 3 * 1024; i++) step(\`line \${i} \${'v'.repeat(1000)}\`);
     return;
@@ -87,12 +101,15 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = { a: ['databases'], b: [], c: ['databases'], d: [] };
 // 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
-const snapshot = space ? undefined : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
+const removed = '## files under /tmp that were removed but are still open (lsof +L1)\\nCOMMAND PID USER FD TYPE DEVICE SIZE/OFF NLINK NODE NAME\\nmysqld 10079 runner 2w REG 0,38 6493765632 0 3807 /tmp/orm-binlog-AHN00Q/mysqld.log (deleted)\\n';
+const snapshot = space ? undefined
+  : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
+  : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
 process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot });
 `;
 
@@ -627,6 +644,71 @@ caseTest('a target that runs out of space says so with the free space of / and /
     const disk = join(c.root, '.runtime/check/ci_11_1/report/disk');
     assert.deepEqual(readdirSync(disk), ['00-start.txt', '01-servers.txt', '02-databases-create.txt', '03-a.txt', '04-b.txt', '05-c.txt', '06-databases-drop.txt']);
     assert.match(readFileSync(join(disk, '04-b.txt'), 'utf8'), /^## df -k \/ \/tmp[^\n]*\n[^]*## the largest entries of \/tmp \(KiB\)\n[^]*## files under \/tmp that were removed but are still open \(lsof \+L1\)/);
+  } finally {
+    cleanup();
+  }
+});
+
+// case 이름 case(G5.44-2)는 G5.43-4의 CI run이 낸 client-db-check 출력이다. TypeScript lane의 case 이름
+// `driver-error/...`는 오류 낱말을 담지만 그 단계 줄은 database를 만들고 지운 것일 뿐이므로 첫 실패 줄이 아니고, 첫 실패
+// 줄은 Rust lane의 실패다.
+caseTest('a case name that holds an error word does not make its step lines failures', COMPUTE, async () => {
+  const { failures } = await import(resolve(repo, 'scripts/check/report.mjs'));
+  const found = failures();
+  for (const line of [
+    '[typescript] RUN driver-error/trigger_refused/sqlite deadline=30s',
+    '[typescript] STEP driver-error/trigger_refused/sqlite elapsed=5ms: database file /tmp/orm-case-27838-1.sqlite created',
+    '[typescript] STEP driver-error/trigger_refused/sqlite elapsed=42ms: database file /tmp/orm-case-27838-1.sqlite removed',
+    '[typescript] PASS driver-error/trigger_refused/sqlite elapsed=43ms',
+    '[typescript] RUN driver-error/check_refused/mysql deadline=30s',
+    '[typescript] STEP driver-error/check_refused/mysql elapsed=14ms: database orm_case_27838_5 created',
+    '[typescript] STEP driver-error/check_refused/mysql elapsed=106ms: database orm_case_27838_5 dropped',
+    '[typescript] PASS driver-error/check_refused/mysql elapsed=107ms',
+    '[rust] STEP invalid/every-error-in-order elapsed=77µs: cpu=79.824µs wall=80.636µs',
+    '[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error',
+    "[rust] thread 'audit_record_transaction' (29159) panicked at orm/tests/common/audit_rows.rs:87:67:",
+    '[rust] STEP plan elapsed=3ms: write /tmp/go-build1/b001/_testmain.go: disk quota exceeded',
+    'error: could not compile `orm-build` (test "row_mutation")',
+  ]) found.line(line);
+  assert.deepEqual(found.lines(), [
+    '[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error',
+    "[rust] thread 'audit_record_transaction' (29159) panicked at orm/tests/common/audit_rows.rs:87:67:",
+    '[rust] STEP plan elapsed=3ms: write /tmp/go-build1/b001/_testmain.go: disk quota exceeded',
+    'error: could not compile `orm-build` (test "row_mutation")',
+  ]);
+});
+
+// disk I/O error case(G5.44-2)는 SQLite의 disk I/O error로 실패한 target b다. 그 순간 /tmp의 남은 공간이 0이면 첫 실패 줄은
+// 공간 부족과 지웠지만 열린 가장 큰 file이고, 공간이 남아 있으면 그 오류만으로 공간 부족이라 적지 않는다.
+caseTest('a disk I/O error is out of space only while a file system has no free space', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'diskio-full', ORM_CHECK_RUN_ID: '12-1' }).status, 1);
+    const full = c.record().targets.find(target => target.name === 'b');
+    assert.equal(full.failures[0], 'out of space: the target failed with a disk I/O error while /tmp had no free space; / 0.00 GiB free, /tmp 0.00 GiB free; the largest under /tmp: none listed; the largest removed but open file: 6192.9 MiB by lsof SIZE/OFF, /tmp/orm-binlog-AHN00Q/mysqld.log (mysqld 10079)');
+    assert.match(full.failures[1], /disk I\/O error$/);
+    const d = checkout({ after: f => after.push(f) }, DONE);
+    assert.equal(d.run('run', 'check', '', { STUB_SUITE: 'diskio-free', ORM_CHECK_RUN_ID: '12-2' }).status, 1);
+    const free = d.record().targets.find(target => target.name === 'b');
+    assert.equal(free.failures[0], '[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error');
+  } finally {
+    cleanup();
+  }
+});
+
+// npm case(G5.44-3)는 npm처럼 보고서 밖의 debug log만 가리키고 실패한 target b다. 보고서는 그 log를 targets/b/에 옮기고,
+// 첫 실패 줄은 그 log의 오류 줄이다.
+caseTest('a failed npm command keeps its debug log and its error lines in the report', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const debug = join(c.root, '..', '2026-10-05T11_42_43_213Z-debug-0.log');
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'npm', STUB_NPM_LOG: debug, ORM_CHECK_RUN_ID: '13-1' }).status, 1);
+    const b = c.record().targets.find(target => target.name === 'b');
+    assert.deepEqual(b.failures.slice(0, 2), [
+      'npm debug log .runtime/check/ci_13_1/report/targets/b/2026-10-05T11_42_43_213Z-debug-0.log: code E404',
+      'npm debug log .runtime/check/ci_13_1/report/targets/b/2026-10-05T11_42_43_213Z-debug-0.log: 404 Not Found - GET https://registry.npmjs.org/x - Not found',
+    ]);
+    assert.equal(readFileSync(join(c.root, '.runtime/check/ci_13_1/report/targets/b/2026-10-05T11_42_43_213Z-debug-0.log'), 'utf8'), readFileSync(debug, 'utf8'));
   } finally {
     cleanup();
   }
