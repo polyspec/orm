@@ -1,0 +1,25 @@
+[rust] RUN joins_and_relations/sqlite deadline=2m0s
+[rust] STEP joins_and_relations/sqlite elapsed=77µs: database /tmp/orm-case-33354-7.sqlite created
+[rust] STEP joins_and_relations/sqlite elapsed=40ms: database /tmp/orm-case-33354-7.sqlite dropped
+[rust] PASS joins_and_relations/sqlite elapsed=40ms
+[rust] RUN joins_and_relations/mysql deadline=2m0s
+[rust] STEP joins_and_relations/mysql elapsed=47ms: database orm_case_33354_8 created
+[rust] STEP joins_and_relations/mysql elapsed=681ms: database orm_case_33354_8 dropped
+[rust] PASS joins_and_relations/mysql elapsed=681ms
+[rust] RUN joins_and_relations/postgres deadline=2m0s
+[rust] STEP joins_and_relations/postgres elapsed=79ms: database orm_case_33354_9 created
+[rust] STEP joins_and_relations/postgres elapsed=176ms: database orm_case_33354_9 dropped
+[rust] PASS joins_and_relations/postgres elapsed=176ms
+[rust] RUN columns_and_subqueries/sqlite deadline=2m0s
+[rust] STEP columns_and_subqueries/sqlite elapsed=74µs: database /tmp/orm-case-33354-10.sqlite created
+[rust] 
+[rust] thread 'main' (33354) panicked at tests/src/integration.rs:110:80:
+[rust] sqlite: schema().install: DRIVER: disk I/O error
+[rust] note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[rust] STEP columns_and_subqueries/sqlite elapsed=5ms: database /tmp/orm-case-33354-10.sqlite dropped
+[rust] FAIL columns_and_subqueries/sqlite elapsed=5ms: sqlite: schema().install: DRIVER: disk I/O error
+[rust] client-db-test: the rust lane failed:
+[rust]   /home/runner/work/orm/orm/.runtime/run/client-db-rust-20422/debug/integration /home/runner/work/orm/orm/schema/bench.dbs (exit 101)
+./scripts/client-db-test.sh: 107: echo: echo: I/O error
+client-db-test: failed lanes: rust
+make: *** [Makefile:549: client-db-check] Error 1
