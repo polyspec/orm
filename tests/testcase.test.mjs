@@ -110,7 +110,18 @@ throw new Error('uncaught section error');
   assert.notEqual(code, 0, stdout);
   inOrder(stdout, ['RUN fixture/section-pass deadline=1m0s', `STEP fixture/section-pass ${elapsed}: section step`, `PASS fixture/section-pass ${elapsed}`]);
   inOrder(stdout, ['RUN fixture/section-fail deadline=1m0s', `FAIL fixture/section-fail ${elapsed}: 2 check\\(s\\) failed`]);
-  inOrder(stdout, ['RUN fixture/section-crash deadline=1m0s', `FAIL fixture/section-crash ${elapsed}: the process ended inside the case; its error is above`]);
+  inOrder(stdout, ['RUN fixture/section-crash deadline=1m0s', `FAIL fixture/section-crash ${elapsed}: the process ended inside the case: uncaught section error`]);
+  // 오류를 stderr에 적고 process.exit로 끝낸 구역의 FAIL 줄은 그 마지막 오류 줄을 담는다(scripts/git/check.mjs가 그렇게 끝난다).
+  const exited = await runChild(`
+import { sections } from ${JSON.stringify(harness)};
+const log = sections();
+log.begin('fixture/section-exit', 60000);
+console.error('first problem');
+console.error('git.subject-format: subject exceeds 50 characters');
+process.exit(1);
+`);
+  assert.equal(exited.code, 1, exited.stdout);
+  inOrder(exited.stdout, ['RUN fixture/section-exit deadline=1m0s', `FAIL fixture/section-exit ${elapsed}: the process ended inside the case: git.subject-format: subject exceeds 50 characters`]);
   const stuck = await runChild(`
 import { sections } from ${JSON.stringify(harness)};
 const log = sections();

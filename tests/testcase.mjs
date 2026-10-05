@@ -107,12 +107,26 @@ export function cases() {
 // sections는 함수로 나뉘지 않은 test 코드 구역을 case로 보고한다. begin(name, deadline)이
 // RUN 줄을 출력하고, end(reason)이 reason이 없으면 PASS, 있으면 FAIL 줄을 출력한다. 구역은
 // 끊을 수 없는 코드이므로 deadline에 GRACE를 더한 시간이 지나면 FAIL 줄을 출력하고 process를
-// 끝낸다. 구역이 열린 채 process가 끝나면(잡히지 않은 error) FAIL 줄을 출력한다.
+// 끝낸다. 구역이 열린 채 process가 끝나면(잡히지 않은 error, 오류를 적고 부른 process.exit) FAIL 줄을 출력한다.
+// 그 이유는 구역이 열려 있는 동안의 마지막 오류다: 잡히지 않은 error의 message, 없으면 stderr에 쓴 마지막 줄이다.
+// 그래서 FAIL 줄과 그것을 첫 실패 줄로 삼는 보고서가 실제 오류를 담는다.
 export function sections() {
   let open = null;
+  let lastError = '';
   const elapsed = () => duration(performance.now() - open.started);
+  const write = process.stderr.write.bind(process.stderr);
+  process.stderr.write = (chunk, ...rest) => {
+    if (open) {
+      const line = String(chunk).split('\n').map(text => text.trim()).filter(Boolean).at(-1);
+      if (line) lastError = line;
+    }
+    return write(chunk, ...rest);
+  };
+  process.on('uncaughtExceptionMonitor', error => {
+    if (open) lastError = String(error?.message ?? error).split('\n')[0];
+  });
   process.on('exit', () => {
-    if (open) console.log(`FAIL ${open.name} elapsed=${elapsed()}: the process ended inside the case; its error is above`);
+    if (open) console.log(`FAIL ${open.name} elapsed=${elapsed()}: the process ended inside the case: ${lastError || 'no error was written'}`);
   });
   return {
     begin(name, deadline) {

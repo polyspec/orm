@@ -46,6 +46,8 @@
 - 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
+  추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
+  커밋을 거부한다. push된 커밋은 바꿀 수 없고 그 뒤로 `git-check`가 그것에서 실패하기 때문이다.
 - 소유 검사: 커밋하기 전에 `make owner-check`(또는 `make owner-check PATHS="<paths>"`)를 실행한다.
   `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을

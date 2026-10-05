@@ -3,6 +3,13 @@
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
+# git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`)을 실행하고, 그 설정은 clone마다
+# 따로 있다. 그래서 make는 실행마다 parse 때 그 설정을 둔다(값이 다를 때만 쓴다). commit-msg hook은 커밋하려는
+# subject를 git.subject-format(contracts/rules.json)으로 검사하고 어기면 커밋을 거부한다.
+ifneq ($(shell git -C $(CURDIR) config core.hooksPath),.githooks)
+$(shell git -C $(CURDIR) config core.hooksPath .githooks)
+endif
+
 # make test-servers starts the MySQL and PostgreSQL primaries, their replicas,
 # and the ProxySQL and PgBouncer poolers of the database checks on these ports
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
