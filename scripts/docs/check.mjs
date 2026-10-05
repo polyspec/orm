@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { docs, dist, files, serve, siteBase } from './lib.mjs';
 import { browserSteps } from './steps.mjs';
 import { COMPUTE, runCase, runLong } from '../../tests/testcase.mjs';
@@ -58,7 +59,7 @@ try {
     step(`serving ${dist} at ${server.origin}${base}`);
   }))) process.exit(1);
   if (!(await runLong('docs-static/browser', async ({ step }) => {
-    browser = await chromium.launch({ headless: true });
+    browser = await launchBrowser(chromium);
     step(`chromium ${browser.version()} launched headless`);
   }))) process.exit(1);
   const staticContext = await browser.newContext({ javaScriptEnabled: false });

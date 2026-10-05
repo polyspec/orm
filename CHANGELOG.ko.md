@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.69: 문서 검사는 자기 임시 directory로 Chromium을 시작하고 browser를 닫을 때 그것을 지우므로, Chromium이 남기는 `.org.chromium.Chromium.*` entry가 단계를 실패시키지 않는다.
+
 - G5.63-1: Rust catalog의 PostgreSQL insert lock helper는 private이므로 interface 목록 밖에 있고, 그 unit test는 catalog 검증의 입력으로 선언된다.
 
 - G5.62: `make test-servers`는 각 server와 그 log reader를 새 session(`tests/new-session`)에서 시작하므로, 그것을 시작한 명령의 process group을 끝내도 함께 쓰는 server는 멈추지 않는다.

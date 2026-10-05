@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
 import { browserSteps, rawWaits } from './steps.mjs';
 
@@ -27,7 +28,7 @@ async function withPage(body) {
   });
   await new Promise(resolve => http.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${http.address().port}`;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser(chromium);
   try {
     const page = await browser.newPage();
     page.setDefaultTimeout(1000);
