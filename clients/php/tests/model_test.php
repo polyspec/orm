@@ -23,6 +23,7 @@ use Orm\AesKeyring;
 use Orm\Code;
 use Orm\Collection;
 use Orm\Config;
+use Orm\Connection;
 use Orm\Db;
 use Orm\Generator;
 use Orm\Model;
@@ -575,9 +576,11 @@ foreach ($targets as $driver => $dsn) {
         $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 3));
         check($db->utils()->stats()->maxOpenConnections === 3, 'configured pool size');
         check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: -1))) === Code::CONFIG, 'negative pool size');
-        // The PHP client has no pool, so the pool idle size and lifetime are rejected.
-        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size');
-        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
+        // An idle size above the pool size, a negative idle size and a pool lifetime, which PDO
+        // cannot apply to a persistent connection, are rejected.
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolIdleSize: 1))) === Code::CONFIG, 'pool idle size above the pool size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 1, poolIdleSize: -1))) === Code::CONFIG, 'negative pool idle size');
+        check(code(fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(poolSize: 1, poolLifetimeMs: 1000))) === Code::CONFIG, 'pool lifetime');
     } catch (Throwable $e) {
         $failures++;
         fwrite(STDERR, "FAIL $current: $e\n");
@@ -934,7 +937,7 @@ try {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
     $pdo = new FailingPdo($pdoDsn, $user, $password);
     $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SET @`orm.') && str_ends_with($sql, '= NULL');
-    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $failing = new Db(Connection::fromPdo($pdo, 'mysql'), new Config(), new DateTimeZone('UTC'));
     $committed = failureMessage(fn() => $failing->transaction(function () use ($failing): void {
         $failing->utils()->setLocal('ormtest.actor', 'tester');
     }));
@@ -957,7 +960,7 @@ modelBegin($current);
 try {
     [, $pdoDsn, $user, $password] = Orm::parseDsn($targets['mysql']);
     $pdo = new FailingPdo($pdoDsn, $user, $password);
-    $failing = new Db($pdo, 'mysql', new Config(), new DateTimeZone('UTC'));
+    $failing = new Db(Connection::fromPdo($pdo, 'mysql'), new Config(), new DateTimeZone('UTC'));
     $key = static fn(string $name): string => "orm_test.$name." . getmypid();
     $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, 'SELECT RELEASE_LOCK');
     $committed = failureMessage(fn() => $failing->transaction(function () use ($failing, $key): void {
@@ -988,7 +991,7 @@ $current = 'failed rollback/sqlite';
 modelBegin($current);
 try {
     $pdo = new FailingPdo("sqlite:$work/transaction-end.sqlite");
-    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $failing = new Db(Connection::fromPdo($pdo, 'sqlite'), new Config(), new DateTimeZone('UTC'));
     $pdo->rejectRollback = true;
     $rolledBack = failureMessage(fn() => $failing->transaction(function (): void {
         throw new RuntimeException('callback failed');
@@ -1019,7 +1022,7 @@ $current = 'failed savepoint end/sqlite';
 modelBegin($current);
 try {
     $pdo = new FailingPdo("sqlite:$work/savepoint-end.sqlite");
-    $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+    $failing = new Db(Connection::fromPdo($pdo, 'sqlite'), new Config(), new DateTimeZone('UTC'));
     $nested = static fn(Closure $fn): string => failureMessage(fn() => $failing->transaction(fn() => $failing->transaction($fn), retry: 0));
     foreach (['ROLLBACK TO SAVEPOINT', 'RELEASE SAVEPOINT'] as $statement) {
         $pdo->rejects = static fn(string $sql): bool => str_starts_with($sql, $statement);

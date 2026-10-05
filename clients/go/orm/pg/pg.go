@@ -10,6 +10,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -23,14 +24,19 @@ func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
 // mapErr는 docs/errors.yaml이 mapping하는 조건에 이름을 붙이고, executor는
 // 나머지 driver 오류를 DRIVER로 보고한다.
 func mapErr(err error) error {
-	// pgx가 이미 닫은 connection이다. driver.ErrBadConn으로 표시해 transaction의
-	// rollback이 server가 끝낸 session을 실패로 보고하지 않게 한다.
+	// pgx가 이미 닫은 connection이다. 연결을 잃은 오류이며 cause는 driver.ErrBadConn으로
+	// 표시해 transaction의 rollback이 server가 끝낸 session을 실패로 보고하지 않게 한다.
 	if errors.Is(err, pgconn.ErrConnClosed) {
-		return fmt.Errorf("%w: %w", driver.ErrBadConn, err)
+		return &ir.Error{Code: orm.CodeConnectionLost, Msg: err.Error(), Cause: fmt.Errorf("%w: %w", driver.ErrBadConn, err)}
 	}
 	var pe *pgconn.PgError
 	if !errors.As(err, &pe) {
 		return err
+	}
+	// class 08은 connection exception이다. 57P01(admin_shutdown), 57P02(crash_shutdown),
+	// 57P05(idle_session_timeout)는 server가 session을 끝낼 때 보낸다.
+	if strings.HasPrefix(pe.Code, "08") || pe.Code == "57P01" || pe.Code == "57P02" || pe.Code == "57P05" {
+		return &ir.Error{Code: orm.CodeConnectionLost, Msg: pe.Error()}
 	}
 	switch pe.Code {
 	case "55P03": // lock_not_available

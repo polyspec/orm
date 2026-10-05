@@ -102,10 +102,25 @@ export function sqliteBusy(name: DriverName, error: unknown): boolean {
   return name === 'sqlite' && (Number((error as { errcode?: number }).errcode) & 0xff) === 5;
 }
 
+/**
+ * 연결을 잃은 driver 오류인지다: server가 연결을 끝냈거나 연결이 끊겼다. mysql2는 연결을 더 쓸 수
+ * 없게 된 오류에 fatal을 두고, 연결을 열지 못한 fatal 오류(ECONNREFUSED, 인증 실패)는 다른 code를
+ * 가진다. code가 없는 fatal 오류는 이미 닫힌 연결에 보낸 statement다. MySQL 4031은 server가 쉬던 연결을
+ * 끝낸 것이다. PostgreSQL은 class 08(connection exception)과 server가 session을 끝낼 때 보내는
+ * 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)다.
+ */
+function connectionLost(name: DriverName, source: { code?: string; errno?: number; fatal?: boolean }): boolean {
+  if (name === 'mysql') {
+    return source.errno === 4031 || (source.fatal === true && (source.code === undefined || source.code === 'PROTOCOL_CONNECTION_LOST' || source.code === 'ECONNRESET' || source.code === 'EPIPE'));
+  }
+  return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
+}
+
 function driverError(name: DriverName, error: unknown): OrmError {
   if (error instanceof OrmError) return error;
-  const source = error as { code?: string; errcode?: number; message?: string };
+  const source = error as { code?: string; errcode?: number; errno?: number; fatal?: boolean; message?: string };
   const message = source.message ?? String(error);
+  if (connectionLost(name, source)) return new OrmError('CONNECTION_LOST', `${name}: ${message}`, error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
   // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
   // that was stopped before it finished; SQLite BUSY reports a lock that
@@ -282,19 +297,34 @@ const statementCaches = new WeakMap<object, StatementNames>();
  * prepared statement를 실행한다. statement cache가 밀어낸 prepared statement는 statement의 결과를 읽은
  * 뒤 같은 연결에서 DEALLOCATE로 푼다. 그 statement는 statement 다음의 event다.
  */
-async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone): Promise<DriverResult> {
+async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone, failure: () => unknown): Promise<DriverResult> {
   let cache = statementCaches.get(client);
   if (cache === undefined) {
     cache = new StatementNames(cacheSize);
     statementCaches.set(client, cache);
   }
   const { name, evicted } = cache.name(sql);
-  const result = await observed('postgres', sql, done, 'statement', () => client.query({ name, text: sql, values: [...params], rowMode: 'array' }));
+  const result = await observed('postgres', sql, done, 'statement', () => afterFailure(client.query({ name, text: sql, values: [...params], rowMode: 'array' }), failure));
   if (evicted !== undefined) {
     const deallocate = `DEALLOCATE "${evicted}"`;
-    await observed('postgres', deallocate, done, 'deallocate', () => client.query(deallocate));
+    await observed('postgres', deallocate, done, 'deallocate', () => afterFailure(client.query(deallocate), failure));
   }
   return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: (result.rows[0] as unknown[] | undefined)?.[0] as DriverResult['insertId'] ?? null };
+}
+
+/**
+ * 잡아 둔 연결이 'error' event로 연결 오류를 알렸으면 statement의 실패는 연결을 잃은 오류다. pg는 그
+ * 연결의 다음 statement를 code 없는 오류(`Client has encountered a connection error and is not
+ * queryable`)로 거절하므로 연결이 알린 오류로 판단한다. failure는 그 오류이거나 undefined다.
+ */
+async function afterFailure<T>(work: Promise<T>, failure: () => unknown): Promise<T> {
+  try {
+    return await work;
+  } catch (error) {
+    const lost = failure();
+    if (lost === undefined || error instanceof OrmError) throw error;
+    throw new OrmError('CONNECTION_LOST', `postgres: ${(error as Error).message} (${(lost as Error).message})`, error);
+  }
 }
 
 /**
@@ -339,7 +369,8 @@ class PostgresPoolDriver implements DriverPool {
     let client: pg.PoolClient;
     try { client = await this.pool.connect(); } catch (error) { throw driverError(this.name, error); }
     try {
-      const work = pgExecute(client, sql, params, this.cacheSize, done);
+      // pool이 빌려준 연결의 연결 오류는 pool이 받는다. statement의 오류가 그 code를 가진다.
+      const work = pgExecute(client, sql, params, this.cacheSize, done, () => undefined);
       return await (signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, client), work));
     } finally { this.release(client); }
   }
@@ -368,11 +399,11 @@ class PostgresSession implements DriverSession {
     this.done(discard || this.failure !== undefined);
   }
   public execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    const work = pgExecute(this.client, sql, params, this.cacheSize, done);
+    const work = pgExecute(this.client, sql, params, this.cacheSize, done, () => this.failure);
     return signal === undefined ? work : cancellable(this.name, signal, () => pgCancel(this.config, this.client), work);
   }
   public async control(sql: string, params: readonly DriverValue[], done: StatementDone): Promise<DriverResult> {
-    const result = await observed(this.name, sql, done, 'statement', () => this.client.query({ text: sql, values: [...params], rowMode: 'array' }));
+    const result = await observed(this.name, sql, done, 'statement', () => afterFailure(this.client.query({ text: sql, values: [...params], rowMode: 'array' }), () => this.failure));
     return { rows: result.rows as unknown[][], affected: result.rowCount ?? 0, insertId: null };
   }
 }

@@ -354,7 +354,7 @@ function registerSendsNoStatement(string $dsn): void
     }
     [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
     $pdo = new StatementCountingPdo($pdoDsn, $user, $password);
-    $db = new \Orm\Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
+    $db = new \Orm\Db(\Orm\Connection::fromPdo($pdo, $driver), new Config(), new DateTimeZone('UTC'));
     try {
         check(code(fn() => (new User)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read before the register');
         $before = $pdo->sent;

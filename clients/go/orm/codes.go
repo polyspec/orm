@@ -41,5 +41,6 @@ const (
 	CodeForeignKey            = "FOREIGN_KEY"            // driver: MySQL 1451/1452 / PostgreSQL 23503 / SQLite 787, and SQLite 1811 "FOREIGN KEY constraint failed" of a RESTRICT action
 	CodeConstraint            = "CONSTRAINT"             // driver: MySQL 3819/4025 / PostgreSQL 23514 / SQLite 275
 	CodeReadOnly              = "READ_ONLY"              // driver: a write rejected because the server or connection is read-only: MySQL 1290/1792 / PostgreSQL 25006 / SQLite 8 and its extended codes
+	CodeConnectionLost        = "CONNECTION_LOST"        // driver: the server ended the connection or the connection broke (a killed session, a restart, an idle limit): MySQL 2006/2013/4031 / PostgreSQL SQLSTATE class 08 and 57P01/57P02/57P05, or a client library error on a connection that is no longer open; SQLite has no server connection
 	CodeDriver                = "DRIVER"                 // driver: any other driver error, such as a write that a trigger refuses: MySQL 1644 / PostgreSQL P0001 / SQLite 1811 of a trigger RAISE
 )

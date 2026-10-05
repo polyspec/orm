@@ -6,9 +6,6 @@ namespace Orm;
 /** Opens connections and creates ORM function values. */
 final class Orm
 {
-    /** milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms) */
-    private const SQLITE_BUSY_TIMEOUT_MS = 5000;
-
     /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
     private const DSN_PARAMETERS = [
         'mysql' => ['timezone', 'socket', 'ssl-mode', 'ssl-ca'],
@@ -35,7 +32,9 @@ final class Orm
      * DSN URI(mysql://, postgres://, sqlite://)가 고르는 database를 연다. 연결에는
      * 등록된 set이 없으므로 model 요청은 install이 그 set을 등록할 때까지
      * SCHEMA_HASH_MISMATCH다. 모든 connection은 datetime을 UTC로 읽고 쓴다
-     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다.
+     * (docs/dialects.md): MySQL과 PostgreSQL session의 time zone은 UTC다. Config의
+     * poolSize가 0보다 크면 연결은 process의 pool에서 나오고 요청을 넘어 다시 쓰인다
+     * (Connection).
      */
     public static function connect(string $dsn, Config $config): Db
     {
@@ -46,47 +45,37 @@ final class Orm
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
         }
-        if ($config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG, 'poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client has none');
+        if ($config->poolIdleSize < 0 || $config->poolIdleSize > $config->poolSize) {
+            throw new OrmException(Code::CONFIG, "pool idle size must be between 0 and the pool size {$config->poolSize}");
         }
-        if ($driver === 'postgres') {
-            // startup parameter는 client session에 속하므로 transaction mode의 pooler는
-            // 이 연결에 배정하는 모든 server connection에 그것을 두고 다른 연결에는 두지
-            // 않는다. time zone도 startup parameter이므로 연결은 SET statement를 보내지 않는다.
-            $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
+        if ($config->poolLifetimeMs !== 0) {
+            throw new OrmException(Code::CONFIG, 'poolLifetimeMs is not supported by the PHP client: PDO cannot close a persistent connection of the pool');
         }
+        $options = [];
+        switch ($driver) {
+            case 'mysql':
+                // session 설정은 연결이 열릴 때 한 번 실행되는 init command다. pool이 다시 쓰는 연결은
+                // 그 설정을 그대로 가지므로 연결을 얻을 때마다 보내지 않는다.
+                $options = [
+                    \Pdo\Mysql::ATTR_FOUND_ROWS => true,
+                    // MySQL bounds SELECT statements with max_execution_time.
+                    \Pdo\Mysql::ATTR_INIT_COMMAND => "SET time_zone = '+00:00'" . ($config->statementTimeoutMs > 0 ? ', SESSION max_execution_time = ' . $config->statementTimeoutMs : ''),
+                ] + self::mysqlTlsOptions($sslCa);
+                break;
+            case 'postgres':
+                // startup parameter는 client session에 속하므로 transaction mode의 pooler는
+                // 이 연결에 배정하는 모든 server connection에 그것을 두고 다른 연결에는 두지
+                // 않는다. time zone도 startup parameter이므로 연결은 SET statement를 보내지 않는다.
+                $pdoDsn .= ";options='-c TimeZone=UTC" . ($config->statementTimeoutMs > 0 ? ' -c statement_timeout=' . $config->statementTimeoutMs : '') . "'";
+                break;
+        }
+        $connection = Connection::take($driver, $pdoDsn, $user, $password, $options, $pragmas, $config);
         try {
-            $options = $driver === 'mysql' ? [\Pdo\Mysql::ATTR_FOUND_ROWS => true] : [];
-            $options += self::mysqlTlsOptions($sslCa);
-            $pdo = new \PDO($pdoDsn, $user, $password, $options);
-            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-            switch ($driver) {
-                case 'mysql':
-                    $pdo->exec("SET time_zone = '+00:00'");
-                    if ($config->statementTimeoutMs > 0) {
-                        // MySQL bounds SELECT statements with max_execution_time.
-                        $pdo->exec('SET SESSION max_execution_time = ' . $config->statementTimeoutMs);
-                    }
-                    break;
-                case 'postgres':
-                    // time zone과 statement timeout은 DSN의 startup parameter다.
-                    break;
-                default:
-                    // pdo_sqlite가 link한 SQLite library의 version이다. 그것을 묻는 statement를 보내지 않는다.
-                    $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
-                    if (version_compare($version, '3.46', '<')) {
-                        throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
-                    }
-                    $pdo->exec('PRAGMA foreign_keys = ON');
-                    $pdo->exec('PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT_MS);
-                    foreach ($pragmas as [$name, $value]) {
-                        $pdo->exec("PRAGMA $name = $value");
-                    }
-            }
-        } catch (\PDOException $e) {
-            throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
+            return new Db($connection, $config, new \DateTimeZone('UTC'));
+        } catch (\Throwable $e) {
+            $connection->release();
+            throw $e;
         }
-        return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
     /**
@@ -334,13 +323,16 @@ final class Config
         public readonly int $aesVersion = 1,
         /** @var array<int, string> every declared AES key version */
         public readonly array $aesKeys = [],
-        /** maximum connections a process opens for this database; zero uses the driver default */
+        /**
+         * maximum connections a process holds for this database at once, each kept across the
+         * requests of the process; zero opens one connection per Db that ends with it
+         */
         public readonly int $poolSize = 0,
         /** bound of every statement of the connection in milliseconds; zero keeps the server default */
         public readonly int $statementTimeoutMs = 0,
-        /** maximum idle connections of a pool; the PHP client has no pool and accepts only zero */
+        /** maximum idle connections the pool keeps for later requests; zero keeps up to the pool size */
         public readonly int $poolIdleSize = 0,
-        /** lifetime of a pool connection in milliseconds; the PHP client has no pool and accepts only zero */
+        /** lifetime of a pool connection in milliseconds; the PHP client accepts only zero */
         public readonly int $poolLifetimeMs = 0,
         public readonly int $planCacheSize = 256,
         public readonly int $statementCacheSize = 256,
@@ -395,23 +387,23 @@ final class OrmException extends \RuntimeException
     /**
      * Reports a driver error with the code the error catalog names for it,
      * and every other driver error with DRIVER. The exception keeps the driver
-     * message and the driver error as its previous exception.
+     * message and the driver error as its previous exception. $pdo is the
+     * connection the error came from.
      */
-    public static function fromDriver(\PDOException $e, string $driver): self
+    public static function fromDriver(\PDOException $e, string $driver, \PDO $pdo): self
     {
         $state = (string) ($e->errorInfo[0] ?? $e->getCode());
         $num = $e->errorInfo[1] ?? null;
         $message = (string) ($e->errorInfo[2] ?? '');
         $code = match ($driver) {
-            'postgres' => match ($state) {
-                '55P03' => Code::LOCK_NOT_AVAILABLE,
-                '40P01', '40001' => Code::DEADLOCK,
-                '23505' => Code::DUPLICATE_KEY,
-                '23503' => Code::FOREIGN_KEY,
-                '57014' => Code::CANCELED,
-                '25006' => Code::READ_ONLY,
-                '23514' => Code::CONSTRAINT,
-                default => Code::DRIVER,
+            'postgres' => match (true) {
+                // class 08은 connection exception이다. 57P01(admin_shutdown), 57P02(crash_shutdown),
+                // 57P05(idle_session_timeout)는 server가 session을 끝낼 때 보낸다. libpq가 연결을 잃으면
+                // server의 SQLSTATE 없이 HY000으로 오고, libpq는 열려 있지 않은 연결의 backend pid를
+                // 0으로 알린다.
+                str_starts_with($state, '08'), in_array($state, ['57P01', '57P02', '57P05'], true),
+                $state === 'HY000' && $pdo instanceof \Pdo\Pgsql && $pdo->getPid() === 0 => Code::CONNECTION_LOST,
+                default => self::postgresCode($state),
             },
             'sqlite' => match (true) {
                 // SQLITE_BUSY: another connection held the lock when busy_timeout ended.
@@ -433,9 +425,27 @@ final class OrmException extends \RuntimeException
                 $num === 1317 || $num === 3024 => Code::CANCELED,
                 $num === 1290 || $num === 1792 => Code::READ_ONLY,
                 $num === 3819 || $num === 4025 => Code::CONSTRAINT,
+                // 2006(server has gone away)과 2013(lost connection during query)은 client가 연결을 잃은
+                // 것이고 4031은 server가 쉬던 연결을 끝낸 것이다.
+                $num === 2006 || $num === 2013 || $num === 4031 => Code::CONNECTION_LOST,
                 default => Code::DRIVER,
             },
         };
         return new self($code, $e->getMessage(), $e);
+    }
+
+    /** server가 SQLSTATE로 알린 PostgreSQL 오류의 code다. */
+    private static function postgresCode(string $state): string
+    {
+        return match ($state) {
+            '55P03' => Code::LOCK_NOT_AVAILABLE,
+            '40P01', '40001' => Code::DEADLOCK,
+            '23505' => Code::DUPLICATE_KEY,
+            '23503' => Code::FOREIGN_KEY,
+            '57014' => Code::CANCELED,
+            '25006' => Code::READ_ONLY,
+            '23514' => Code::CONSTRAINT,
+            default => Code::DRIVER,
+        };
     }
 }

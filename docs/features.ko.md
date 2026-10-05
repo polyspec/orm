@@ -25,7 +25,7 @@
 
 ## 현재 동작
 
-- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다. PHP client는 PDO driver 확장을 요구하지 않으므로 pdo_mysql이 없는 PHP도 SQLite로 실행한다. MySQL DSN은 ssl-mode=VERIFY_IDENTITY와 절대 경로 ssl-ca로 TLS 연결하며, 이는 server 인증서를 CA와 host 이름에 대조한다. PHP와 TypeScript client는 scheme마다 정한 parameter 밖의 parameter를 거부한다.
+- `dsn_connection`: 하나의 URI DSN으로 데이터베이스를 연다. URI scheme이 driver를 정하고 모든 연결이 datetime을 UTC로 읽고 쓰며, client는 자기 process에서 statement를 계획한다. PHP client는 PDO driver 확장을 요구하지 않으므로 pdo_mysql이 없는 PHP도 SQLite로 실행한다. MySQL DSN은 ssl-mode=VERIFY_IDENTITY와 절대 경로 ssl-ca로 TLS 연결하며, 이는 server 인증서를 CA와 host 이름에 대조한다. PHP와 TypeScript client는 scheme마다 정한 parameter 밖의 parameter를 거부한다. poolSize를 둔 PHP process는 php-fpm worker처럼 database의 연결을 그 수까지 요청을 넘어 유지하고, 끝난 요청이 열어 둔 transaction을 그 lock과 local 값과 함께 종료한다. 모든 client는 server가 끝냈거나 끊긴 연결을 CONNECTION_LOST로 보고하며, PHP client는 Db의 첫 statement가 그렇게 실패하면 새 연결에서 한 번 더 전송한다.
 - `model_queries`: 생성된 모델 메서드로 조건, 조인, 관계, 컬럼, 서브쿼리, 집계, 페이지를 만들고 행을 모델과 컬렉션으로 읽는다.
 - `model_writes`: 생성, 다건 생성, 선택적 낙관적 잠금 갱신, 저장, 선택적 관계 재귀 삭제를 수행하며 upsert의 duplication 할당을 포함한다. primary key나 unique key 하나의 값으로 찾은 soft delete한 행을 다른 컬럼의 새 값과 함께 restore하고 되돌린 행을 반환한다.
 - `transactions`: 현재 실행 흐름이 공유하는 트랜잭션에서 콜백을 실행한다. 중첩 호출은 savepoint를 쓰고, 교착 재시도, 격리 수준, 읽기 전용, timeoutMs, 행 잠금, 이름 잠금, 트랜잭션 지역 값을 제공한다. SQLite 쓰기 트랜잭션은 시작할 때 쓰기 잠금을 얻고 busy_timeout까지 잠금을 기다린다. 각 클라이언트의 test entry point는 rollback fault를 설정한다. callback이 실패한 다음 트랜잭션의 rollback은 실행된 뒤 FAULT로 보고되어 트랜잭션이 ROLLBACK을 반환한다.

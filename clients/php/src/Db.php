@@ -17,6 +17,16 @@ final class Db
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
+    /** 요청이 끝날 때 남은 transaction을 정리하는 함수를 이 요청에 등록했는지다. */
+    private static bool $endRegistered = false;
+
+    /** 연결의 PDO handle이다. close한 연결은 null이다. */
+    private ?\PDO $pdo;
+    /**
+     * 이 Db가 지금 연결에 statement를 보냈는지다. 보내기 전에 정한다. 첫 statement가 연결을 잃은
+     * 오류로 실패하면 연결을 다시 열고 그 statement를 한 번 다시 보낸다(send).
+     */
+    private bool $sent = false;
 
     /** @var array<string, \PDOStatement> */
     private array $stmts = [];
@@ -37,30 +47,28 @@ final class Db
     private int $transactions = 0;
     /** SQLite row lock table을 이 연결에서 만들었는지다. 연결의 첫 transaction 전에 한 번 만든다. */
     private bool $rowLockReady = false;
+    private readonly string $driver;
+
     /** @internal Orm::connect creates connections. */
     public function __construct(
-        private readonly \PDO $pdo,
-        private readonly string $driver,
+        private readonly Connection $connection,
         private readonly Config $config,
         private readonly \DateTimeZone $zone,
     ) {
-        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        // MySQL uses emulated prepares: a request runs most statement shapes once.
-        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
-        if ($driver === 'postgres') {
-            // PostgreSQL은 statement와 bind를 unnamed statement 하나로 한 round trip에 보낸다.
-            // 연결은 요청 하나 동안만 살므로 named statement를 따로 prepare하는 round trip과
-            // 그 implicit transaction은 요청마다 statement text마다 든다. bind는 prepare할 때와
-            // 같은 server-side parameter이고 type 추론도 같다.
-            $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
-        }
-        $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
+        $this->driver = $connection->driver;
+        $this->pdo = $connection->open();
+    }
+
+    /** Db가 끝나면 연결의 slot을 pool에 돌려준다. persistent slot의 연결은 다음 Db가 다시 쓴다. */
+    public function __destruct()
+    {
+        $this->pdo = null;
+        $this->connection->release();
     }
 
     /**
-     * The configured maximum of connections a process opens for this
-     * database. PDO has no pool: a Db holds one connection, so the value is
-     * the bound a caller keeps when it creates connections.
+     * The configured maximum of connections a process holds for this
+     * database at once (Config poolSize); zero when the Db has no pool.
      */
     public function poolSize(): int
     {
@@ -96,13 +104,33 @@ final class Db
         return $this->config;
     }
 
-    /** @internal */
+    /**
+     * @internal the PDO handle for statements that the caller sends itself; the
+     * connection counts them as sent, so a lost connection is not reopened
+     * for a later statement of the Db
+     */
     public function pdo(): \PDO
+    {
+        $this->sent = true;
+        return $this->handle();
+    }
+
+    /** 연결의 PDO handle이다. close한 연결은 CONFIG다. */
+    private function handle(): \PDO
     {
         if ($this->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
+        if ($this->pdo === null) {
+            throw new OrmException(Code::CONNECTION_LOST, 'the connection was lost and opening it again failed');
+        }
         return $this->pdo;
+    }
+
+    /** @internal 이 연결의 driver 오류를 error catalog의 code로 보고한다. */
+    public function driverError(\PDOException $e): OrmException
+    {
+        return OrmException::fromDriver($e, $this->driver, $this->handle());
     }
 
     /** The operations outside the query syntax. */
@@ -111,22 +139,28 @@ final class Db
         return new Utils($this);
     }
 
-    /** Releases cached statements; the connection cannot be used afterwards. */
+    /**
+     * Releases cached statements and the connection; the Db cannot be used
+     * afterwards. A pooled connection returns to the pool of the process.
+     */
     public function close(): void
     {
         if ($this->closed) {
             return;
         }
-        $this->closed = true;
         try {
             foreach ($this->stmts as $st) {
                 $st->closeCursor();
             }
         } catch (\PDOException $e) {
-            throw OrmException::fromDriver($e, $this->driver);
+            throw $this->driverError($e);
+        } finally {
+            $this->closed = true;
+            $this->stmts = [];
+            $this->stmtOrder = [];
+            $this->pdo = null;
+            $this->connection->release();
         }
-        $this->stmts = [];
-        $this->stmtOrder = [];
     }
 
     // ---- statement events ----
@@ -206,19 +240,57 @@ final class Db
      */
     public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
     {
-        if ($this->closed) {
-            throw new OrmException(Code::CONFIG, 'database is closed');
-        }
-        $start = hrtime(true);
-        try {
-            $result = $send();
-        } catch (\PDOException $e) {
-            $error = OrmException::fromDriver($e, $this->driver);
+        $this->handle();
+        return $this->send($send, function (int $start, ?OrmException $error) use ($kind, $tables, $transaction, $sql, $binds): void {
             $this->publish($kind, $tables, $transaction, $sql, $binds, $start, $error);
-            throw $error;
+        });
+    }
+
+    /**
+     * statement 하나를 보내고 그 event를 publish한다. $send는 statement를 보내 결과를 돌려주고,
+     * $done은 statement를 보내기 전의 hrtime과 오류로 event를 publish한다. 이 Db의 첫 statement가
+     * 연결을 잃은 오류(CONNECTION_LOST)로 실패하면 그 연결에서 이 Db의 statement가 실행된 적이
+     * 없으므로 연결을 다시 열고 statement를 한 번 다시 보낸다. 다른 오류와 그 뒤의 오류는 그대로
+     * 던진다. 실패한 시도도 event다.
+     *
+     * @template T
+     * @param \Closure(): T $send
+     * @param \Closure(int, ?OrmException): void $done
+     * @return T
+     */
+    private function send(\Closure $send, \Closure $done): mixed
+    {
+        $resend = !$this->sent;
+        while (true) {
+            $this->sent = true;
+            $start = hrtime(true);
+            try {
+                $result = $send();
+            } catch (\PDOException $e) {
+                $error = $this->driverError($e);
+                $done($start, $error);
+                if (!$resend || $error->code_ !== Code::CONNECTION_LOST) {
+                    throw $error;
+                }
+                $resend = false;
+                $this->reconnect();
+                continue;
+            }
+            $done($start, null);
+            return $result;
         }
-        $this->publish($kind, $tables, $transaction, $sql, $binds, $start, null);
-        return $result;
+    }
+
+    /**
+     * 잃은 연결을 버리고 같은 slot의 연결을 새로 연다. 옛 handle의 statement를 먼저 버린다. PDO는
+     * persistent slot의 끊긴 연결을 확인하고 새로 연다.
+     */
+    private function reconnect(): void
+    {
+        $this->stmts = [];
+        $this->stmtOrder = [];
+        $this->pdo = null;
+        $this->pdo = $this->connection->open();
     }
 
     /**
@@ -229,7 +301,7 @@ final class Db
      */
     public function run(string $kind, array $tables, ?int $transaction, string $sql): void
     {
-        $this->observed($kind, $tables, $transaction, $sql, [], fn() => $this->pdo->exec($sql));
+        $this->observed($kind, $tables, $transaction, $sql, [], fn() => $this->handle()->exec($sql));
     }
 
     /**
@@ -254,7 +326,7 @@ final class Db
                     return '?';
                 }, $sql);
             }
-            $st = $this->pdo->prepare($text);
+            $st = $this->handle()->prepare($text);
             $st->execute($bound);
             $rows = $st->columnCount() > 0 ? $st->fetchAll(\PDO::FETCH_NUM) : [];
             $st->closeCursor();
@@ -269,14 +341,12 @@ final class Db
 
     private function stmt(string $sql): \PDOStatement
     {
-        if ($this->closed) {
-            throw new OrmException(Code::CONFIG, 'database is closed');
-        }
+        $pdo = $this->handle();
         if (isset($this->stmts[$sql])) {
             return $this->stmts[$sql];
         }
         // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
-        $st = $this->pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
+        $st = $pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
         $this->stmts[$sql] = $st;
         $this->stmtOrder[] = $sql;
         while (count($this->stmtOrder) > $this->config->statementCacheSize) {
@@ -486,7 +556,7 @@ final class Db
             $v = $fn();
         } catch (\Throwable $e) {
             array_pop(self::$frames);
-            $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+            $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
@@ -516,6 +586,10 @@ final class Db
         if ($this->driver === 'sqlite') {
             // SQLite의 row lock table은 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다.
             $this->ensureRowLockTable();
+        }
+        if (!self::$endRegistered) {
+            register_shutdown_function(self::endRequest(...));
+            self::$endRegistered = true;
         }
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
         // transaction을 여는 statement다(docs/usage.md "Statement events"). driver의 transaction
@@ -551,7 +625,7 @@ final class Db
             } catch (OrmException $failure) {
                 // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다. BEGIN이 실행된 뒤
                 // subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로 판단한다.
-                if (!$this->pdo->inTransaction()) {
+                if (!$this->handle()->inTransaction()) {
                     throw $failure;
                 }
                 try {
@@ -563,6 +637,34 @@ final class Db
             }
         }
         return $frame;
+    }
+
+    /**
+     * 요청이 transaction 안에서 끝나면(exit, fatal error) 끝나지 않은 transaction을 안쪽부터 끝낸다:
+     * MySQL named lock과 local 값, SQLite mode를 되돌리고 rollback한다. pool의 연결은 다음 요청이
+     * 다시 쓰므로 요청이 연결에 남긴 상태를 넘기지 않는다. 요청이 끝날 때 한 번 실행되며, 실패를 모두
+     * 모아 던진다.
+     */
+    private static function endRequest(): void
+    {
+        $errors = [];
+        $ended = [];
+        while (($frame = array_pop(self::$frames)) !== null) {
+            $id = spl_object_id($frame);
+            if ($frame->finished || isset($ended[$id]) || $frame->db->closed) {
+                continue;
+            }
+            $ended[$id] = true;
+            try {
+                $frame->db->finish($frame, false);
+            } catch (\Throwable $e) {
+                $errors[] = $e;
+            }
+        }
+        $failure = self::joined($errors);
+        if ($failure !== null) {
+            throw $failure;
+        }
     }
 
     /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
@@ -598,7 +700,7 @@ final class Db
             // 실패한 COMMIT은 server가 transaction을 끝냈을 수 있으므로 남은 transaction만
             // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
             // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
-            if (!$commit || $this->pdo->inTransaction()) {
+            if (!$commit || $this->handle()->inTransaction()) {
                 $this->run(StatementEvent::ROLLBACK, [], $frame->number, 'ROLLBACK');
             }
         } catch (OrmException $e) {
@@ -672,7 +774,7 @@ final class Db
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $failure = $e instanceof \PDOException ? OrmException::fromDriver($e, $this->driver) : $e;
+                $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
                 // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
                 $ended = self::joined(array_values(array_filter([
                     $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, "ROLLBACK TO SAVEPOINT $name"),
@@ -804,27 +906,21 @@ final class Db
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params, [], $frame);
         $insert = $r->ir['kind'] === 'insert';
-        $start = hrtime(true);
-        $st = null;
-        try {
+        [$id, $affected] = $this->send(function () use ($step, $args, $insert, $r): array {
             $st = $this->stmt($step['sql']);
-            $this->exec($st, $args);
-            if ($insert && str_contains($step['sql'], ' RETURNING ')) {
-                $id = $st->fetchColumn();
-                $st->closeCursor();
-                $affected = 1;
-            } else {
-                $affected = $st->rowCount();
+            try {
+                $this->exec($st, $args);
+                if ($insert && str_contains($step['sql'], ' RETURNING ')) {
+                    $id = $st->fetchColumn();
+                    $st->closeCursor();
+                    return [$id, 1];
+                }
                 $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
-                $id = $insert && !isset($r->ir['rows']) && $entity['identity'] !== ''
-                    ? $this->pdo->lastInsertId() : null;
+                return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== '' ? $this->handle()->lastInsertId() : null, $st->rowCount()];
+            } catch (\PDOException $e) {
+                throw self::failed($st, $e);
             }
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->modelDone($step, $step['sql'], $args, $start, $e);
-            throw $e;
-        }
-        $this->modelDone($step, $step['sql'], $args, $start, null);
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
         if (isset($r->ir['optimistic']) && $affected === 0) {
             throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
         }
@@ -1018,14 +1114,15 @@ final class Db
         $st->execute();
     }
 
-    private function failed(?\PDOStatement $st, \PDOException $e): OrmException
+    /** 실패한 statement의 cursor를 닫고 그 driver 오류를 돌려준다. */
+    private static function failed(\PDOStatement $st, \PDOException $e): \PDOException
     {
         try {
-            $st?->closeCursor();
+            $st->closeCursor();
         } catch (\PDOException) {
             // the reset reports the failed step again on some drivers
         }
-        return OrmException::fromDriver($e, $this->driver);
+        return $e;
     }
 
     /**
@@ -1085,19 +1182,17 @@ final class Db
     {
         $sql ??= $step['sql'];
         $args = $this->args($step, $params, $parentVals);
-        $start = hrtime(true);
-        $st = null;
-        try {
+        $rows = $this->send(function () use ($sql, $args): array {
             $st = $this->stmt($sql);
-            $this->exec($st, $args);
-            $rows = $st->fetchAll(\PDO::FETCH_NUM);
-            $st->closeCursor();
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->modelDone($step, $sql, $args, $start, $e);
-            throw $e;
-        }
-        $this->modelDone($step, $sql, $args, $start, null);
+            try {
+                $this->exec($st, $args);
+                $rows = $st->fetchAll(\PDO::FETCH_NUM);
+                $st->closeCursor();
+                return $rows;
+            } catch (\PDOException $e) {
+                throw self::failed($st, $e);
+            }
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
         // 읽은 행을 풀지 못한 오류는 statement의 오류가 아니므로 event 뒤에 던진다.
         if ($step['decode'] !== []) {
             Codec::decodeRows($rows, $step['decode'], $this->config);
@@ -1108,19 +1203,17 @@ final class Db
     private function scalar(array $step, array $params): mixed
     {
         $args = $this->args($step, $params);
-        $start = hrtime(true);
-        $st = null;
-        try {
+        $v = $this->send(function () use ($step, $args): mixed {
             $st = $this->stmt($step['sql']);
-            $this->exec($st, $args);
-            $v = $st->fetchColumn();
-            $st->closeCursor();
-        } catch (\PDOException $e) {
-            $e = $this->failed($st, $e);
-            $this->modelDone($step, $step['sql'], $args, $start, $e);
-            throw $e;
-        }
-        $this->modelDone($step, $step['sql'], $args, $start, null);
+            try {
+                $this->exec($st, $args);
+                $v = $st->fetchColumn();
+                $st->closeCursor();
+                return $v;
+            } catch (\PDOException $e) {
+                throw self::failed($st, $e);
+            }
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
         return $v === false ? null : $v;
     }
 
