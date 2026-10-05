@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.69: the documentation checks launch Chromium with a temporary directory of their own and remove it when the browser closes, so the `.org.chromium.Chromium.*` entries it leaves do not fail the step.
+
 - G5.63-1: the PostgreSQL insert lock helper of the Rust catalog is private, so it stays out of the interface inventory, and its unit test is declared as an input of the catalog verification.
 
 - G5.62: `make test-servers` starts each server and its log reader in a new session (`tests/new-session`), so ending the process group of the command that started them does not stop the shared servers.

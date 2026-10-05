@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
 import { loading, trackLoad } from './load.mjs';
 
@@ -27,7 +28,7 @@ caseTest('a page that does not load names its pending and failed requests and it
   });
   await new Promise(resolve => http.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${http.address().port}`;
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser(chromium);
   try {
     const page = await browser.newPage();
     const tracker = trackLoad(page, { requests });

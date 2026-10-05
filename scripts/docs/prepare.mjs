@@ -2,6 +2,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import MarkdownIt from 'markdown-it';
 import { chromium } from 'playwright';
+import { launchBrowser } from './browser.mjs';
 import { root, docs, files, hash, serve, siteBase } from './lib.mjs';
 
 const parser = new MarkdownIt();
@@ -22,7 +23,7 @@ await mkdir(generated, { recursive: true });
 const server = await serve(root);
 let browser;
 try {
-  browser = await chromium.launch({ headless: true });
+  browser = await launchBrowser(chromium);
   const page = await browser.newPage({ reducedMotion: 'reduce' });
   await page.goto(`${server.origin}/README.md`);
   await page.evaluate(async origin => {
