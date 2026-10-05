@@ -58,7 +58,9 @@
   characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
   near 72 characters explaining what changed and why; an optional footer for references. The
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
-  subject git writes.
+  subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
+  through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
+  commit cannot be changed and `git-check` would fail on it from then on.
 - Owner checks: before each commit run `make owner-check` (or `make owner-check PATHS="<paths>"`),
   Every verification command of `contracts/features.json` declares `inputs`, and every coverage
   part (an owner client or a dependent part) declares its `tests` and optional `inputs`. The command runs

@@ -7,7 +7,7 @@
     "testcase-check": {"scope": "owner", "needs": [], "inputs": ["internal/testcase/**", "tests/testcase.mjs", "tests/testcase.test.mjs", "tests/go-test.mjs", "tests/go-test.test.mjs", "tests/cargo-test.mjs", "tests/cargo-test.test.mjs", "tests/run-long.mjs", "tests/testcase.php", "tests/testcase_test.php", "clients/rust/testcase/**"]},
     "repo-check": {"scope": "owner", "needs": [], "inputs": ["**"]},
     "test-servers-check": {"scope": "owner", "needs": [], "inputs": ["scripts/test-servers.sh", "scripts/test-servers.test.mjs", "scripts/test-servers-mysql.mjs", "scripts/test-servers-mysql.test.mjs", "tests/stop-process/**", "tests/lease/**", "internal/procevent/**", "tests/testcase.mjs"]},
-    "git-check": {"scope": "owner", "needs": [], "inputs": ["scripts/git/**", "contracts/rules.json"]},
+    "git-check": {"scope": "owner", "needs": [], "inputs": ["scripts/git/**", "contracts/rules.json", ".githooks/**", "Makefile"]},
     "docs-rules-check": {"scope": "owner", "needs": [], "inputs": ["**/*.md", "contracts/rules.json", "scripts/docs/**"]},
     "docs-check": {"scope": "owner", "needs": [], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": [], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},

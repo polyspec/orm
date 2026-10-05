@@ -234,8 +234,10 @@ function rollbackFault(string $dsn): void
  * statement fails with CONNECTION_LOST and is sent once: the client opens no
  * other connection and does not send it again. The Db connects through the
  * server DSN, as endSession does, so the ended session is the session of the
- * Db and not a session behind a pooler; it is the only other session in the
- * case database.
+ * Db and not a session behind a pooler. A pooler in front of the case
+ * database (client-pooler-check) keeps its own server sessions there after
+ * the fixture is installed through it, so the session of the Db is the one
+ * session of the case database that appears when the Db connects.
  */
 function firstStatementLost(string $dsn): void
 {
@@ -247,21 +249,23 @@ function firstStatementLost(string $dsn): void
         throw new RuntimeException("$env is required; database tests never skip");
     }
     $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
+    [, $pdo] = native($direct);
+    $sessions = static fn (): array => array_map('intval', $pdo->query($driver === 'postgres'
+        ? 'SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()'
+        : 'SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()')->fetchAll(PDO::FETCH_COLUMN));
+    $before = $sessions();
     $db = Orm::connect($direct, new Config());
     $db->utils()->schema()->register(\RollbackCase\Orm\schema());
     $events = [];
     $db->subscribe(function ($event) use (&$events): void {
         $events[] = $event->error?->code_;
     });
-    [, $pdo] = native($direct);
+    $opened = array_values(array_diff($sessions(), $before));
+    check(count($opened) === 1, 'the Db opened one session in the case database: ' . json_encode(['before' => $before, 'opened' => $opened]));
     if ($driver === 'postgres') {
-        $pids = $pdo->query('SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()')->fetchAll(PDO::FETCH_COLUMN);
-        check(count($pids) === 1, 'the Db holds the only other session of the case database: ' . json_encode($pids));
-        $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([(int) $pids[0]]);
+        $pdo->prepare('SELECT pg_terminate_backend(?, 5000)')->execute([$opened[0] ?? 0]);
     } else {
-        $ids = $pdo->query('SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()')->fetchAll(PDO::FETCH_COLUMN);
-        check(count($ids) === 1, 'the Db holds the only other session of the case database: ' . json_encode($ids));
-        $pdo->exec('KILL ' . (int) $ids[0]);
+        $pdo->exec('KILL ' . ($opened[0] ?? 0));
     }
     $e = raised(fn() => (new RollbackProbe)($db)->getCount());
     check($e instanceof OrmException && $e->code_ === Code::CONNECTION_LOST, 'the first statement fails with CONNECTION_LOST: ' . ($e === null ? 'no error' : $e->getMessage()));
