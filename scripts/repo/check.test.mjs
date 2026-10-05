@@ -12,7 +12,7 @@ import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { deferredExitErrors } from './gosource.mjs';
+import { deferredExitErrors, detachedGroupErrors } from './gosource.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
@@ -1157,4 +1157,15 @@ func fail(err error) {
   ]);
   const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
   assert.deepEqual(deferredExitErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
+});
+
+caseTest('a script that starts a process group of its own checks that group after it ends', COMPUTE, () => {
+  assert.deepEqual(detachedGroupErrors({
+    'a.mjs': "const child = spawn('go', ['test'], { detached: true });",
+    'b.mjs': "const child = spawn('go', ['test'], { detached: true });\nchild.on('exit', () => endGroup(child.pid));",
+    'c.mjs': "const child = spawn('go', ['test']);",
+  }), ['a.mjs starts a process in a group of its own (detached: true) and never checks that group after it ends; check it with endGroup of scripts/check/step.mjs and fail on what it left']);
+  const root = new URL('../..', import.meta.url).pathname;
+  const tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs'], { cwd: root }).toString().split('\n').filter(Boolean);
+  assert.deepEqual(detachedGroupErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(join(root, path), 'utf8')]))), []);
 });

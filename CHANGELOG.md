@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.61: a script that starts a command in a process group of its own checks that group when the command exits and fails on any process left in it (`endGroup`), and `make repo-check` refuses a `detached: true` spawn without that check.
+
 - G5.60: `make repo-check` also refuses an `os.Exit` reached through a helper of the same package after a `defer`, and the five programs that did so (the bench installer, two examples, the Go conformance runner and the Go introspection tool) end with `os.Exit(run())`, so their deferred close runs.
 
 - G5.59: a run first drops the bench and decimal databases that a killed run (`orm_owner_<pid>_…`, `orm_check_<pid>_…` whose process no longer runs) left on the test servers.

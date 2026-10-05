@@ -53,3 +53,20 @@ export function deferredExitErrors(files) {
   }
   return errors;
 }
+
+// detachedGroupErrors는 자기 process group으로 process를 시작하고(spawn의 `detached: true`) 그 group이 끝난 뒤
+// 남은 process를 확인하지 않는 JavaScript file마다 오류 하나를 돌려준다. 그런 group은 check runner 단계의 group을
+// 떠나므로 단계의 검사가 보지 못한다: 남은 process는 scripts/check/step.mjs의 endGroup으로 확인하고 끝낸다.
+// files는 {path: text}다.
+export function detachedGroupErrors(files) {
+  const errors = [];
+  // 주석 줄과 문자열 literal 안의 `detached: true`는 spawn option이 아니다.
+  const code = text => text.split('\n').filter(line => !line.trim().startsWith('//'))
+    .map(line => line.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, "''")).join('\n');
+  for (const [path, text] of Object.entries(files)) {
+    if (!/detached:\s*true/.test(code(text))) continue;
+    if (/\bendGroup\(|\bgroupProcesses\(/.test(text)) continue;
+    errors.push(`${path} starts a process in a group of its own (detached: true) and never checks that group after it ends; check it with endGroup of scripts/check/step.mjs and fail on what it left`);
+  }
+  return errors;
+}

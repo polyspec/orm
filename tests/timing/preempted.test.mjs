@@ -9,6 +9,7 @@
 import { caseTest, stepLines } from '../testcase.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { endGroup } from '../../scripts/check/step.mjs';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -55,6 +56,9 @@ async function runPreempted(step, command, args, cwd) {
   }
   const { code, signal } = await done;
   lines.flush();
+  // command는 자기 group의 leader였다. 끝난 뒤 그 group에 남은 process는 실패다(endGroup).
+  const left = await endGroup(child.pid);
+  assert.deepEqual(left, [], `${command} left processes in its group`);
   step(`end ${command} code=${code} signal=${signal} stops=${stops}`);
   return { code, signal, output, stops };
 }

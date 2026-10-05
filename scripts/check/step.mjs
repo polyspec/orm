@@ -64,6 +64,16 @@ async function stopGroup(group) {
   signalGroup(group, 'SIGKILL');
 }
 
+// endGroup은 자기 process group으로 시작한 process(spawn의 detached)가 끝난 뒤 그 group에 남은 process를 적고
+// 끝낸다. 남은 것이 없으면 빈 목록이다. 그런 group은 단계의 group을 떠나므로 단계의 검사가 보지 못한다. 그래서 group을
+// 만든 code가 직접 확인하고, 남긴 것은 실패로 다룬다(`make repo-check`가 그것을 요구한다).
+export async function endGroup(group) {
+  if (!group) return [];
+  const processes = groupProcesses(group);
+  if (processes.length) await stopGroup(group);
+  return processes.map(({ pid, command }) => `${pid} ${command}`);
+}
+
 // runStep은 program을 실행하고 출력 줄을 step으로 내보낸다. label은 실패 줄의 이름, spawned는 시작한 process의
 // id를 받고, keep(directory)은 실패한 단계의 임시 entry를 복사하는 함수다. leftovers()는 단계 밖에 남은 것을
 // 더 찾는다(runner의 실행 directory). 통과하면 resolve하고, 실패하거나 남긴 것이 있으면 그 이유로 reject한다.

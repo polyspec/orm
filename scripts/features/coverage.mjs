@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { endGroup } from '../check/step.mjs';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
@@ -189,8 +190,12 @@ function run(program, args, cwd, timeoutMs, env = process.env, step = undefined,
     child.stdout.on('data', chunk => { stdout += chunk; append(chunk); });
     child.stderr.on('data', chunk => { append(chunk); progress?.write(String(chunk)); });
     child.on('error', error => done(error.message));
-    child.on('close', code => {
+    // child는 자기 group의 leader다. 끝난 뒤 그 group에 남은 process는 실패로 다룬다(endGroup).
+    const ended = new Promise(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, error => resolve([`its group could not be checked: ${error.message}`]))));
+    child.on('close', async code => {
       progress?.flush();
+      const left = await ended;
+      if (left.length) return done(`${program} left ${left.length} processes: ${left.join(', ')}`);
       if (output.length > limit) return done(`test output exceeds ${limit} characters`);
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
       done(null, output);
