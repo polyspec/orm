@@ -11,7 +11,7 @@ import { connectProbeErrors } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { generateRuns, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -288,7 +288,7 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
 caseTest('the CI workflow does not run a verification command of feature-check again', COMPUTE, () => {
   const commands = featureCommands(JSON.parse(text('contracts/features.json')));
-  for (const command of ['./scripts/perf-test.sh', 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test'])
+  for (const command of ['./scripts/perf-test.sh', 'PATH="$HOME/.cargo/bin:$PATH" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test'])
     assert.ok(commands.includes(command), `${command} is not a verification command of contracts/features.json`);
   assert.deepEqual(ciDuplicateCommandErrors(workflow, text('Makefile'), commands), []);
 });
@@ -477,6 +477,18 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
   const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld:\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
   assert.deepEqual(typescriptReaderErrors(makefile, path => sources[path]), [
     'Makefile reader runs scripts/reads.mjs, which uses the TypeScript build output, without holding it; start the recipe with $(READ_TYPESCRIPT)',
+  ]);
+});
+
+// go run case는 최소 단위를 검사한다. 저장소 전체는 repository check가 본다.
+caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
+  assert.deepEqual(goRunErrors([
+    { name: 'raw', commands: ['go run ./tests/interfaces/check --self-test'] },
+    { name: 'env', commands: ['PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x'] },
+    { name: 'wrapped', commands: ['node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test'] },
+  ]), [
+    'raw runs go run, whose build has no step log; run it through tests/go-run.mjs: go run ./tests/interfaces/check --self-test',
+    'env runs go run, whose build has no step log; run it through tests/go-run.mjs: PATH="$HOME/.cargo/bin:$PATH" go run ./bench/install -dsn x',
   ]);
 });
 

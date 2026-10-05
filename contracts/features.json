@@ -4635,7 +4635,7 @@
       "verification": [
         {
           "id": "interface-self-test",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" go run ./tests/interfaces/check --self-test",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test",
           "inputs": [
             "tests/interfaces/**",
             "contracts/interfaces.json",

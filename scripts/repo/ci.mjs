@@ -260,6 +260,8 @@ export function runnerIdentity(segment) {
   // tests/run-long.mjs는 `--` 뒤의 명령을, tests/go-test.mjs는 go test를 실행한다.
   const wrapped = /^node\s+tests\/run-long\.mjs\s.*?\s--\s+(.*)$/.exec(command);
   if (wrapped) return runnerIdentity(wrapped[1]);
+  // tests/go-run.mjs는 Go program(checker)을 build해 실행한다. test runner가 아니다.
+  if (/^node\s+tests\/go-run\.mjs\b/.test(command)) return undefined;
   if (/^(?:go\s+test|node\s+tests\/go-test\.mjs)\b/.test(command)) return /\s-fuzz[\s=]/.test(command) ? undefined : 'go test';
   if (/^go\s+vet\b/.test(command)) return 'go vet';
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';

@@ -466,3 +466,16 @@ export function goCargoErrors(files) {
   }
   return errors;
 }
+
+// goRunErrors는 units에서 `go run`을 실행하는 segment마다 오류 하나를 돌려준다. go run은 program을 실행하기 전에
+// 출력 없이 compile하므로 그 build는 단계 로그가 없는 장기 작업이다. tests/go-run.mjs는 build를 기한 없는
+// 장기 작업으로 단계 로그와 함께 실행한 뒤 program을 실행한다.
+export function goRunErrors(units) {
+  const errors = [];
+  for (const { name, commands } of units)
+    for (const command of commands)
+      for (const segment of segments(command))
+        if (/(?:^|[\s=;&|(])go\s+run\b/.test(segment))
+          errors.push(`${name} runs go run, whose build has no step log; run it through tests/go-run.mjs: ${segment}`);
+  return errors;
+}

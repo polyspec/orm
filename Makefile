@@ -535,7 +535,7 @@ case-database-check: lease-tool
 
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check lease-tool
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) go run ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) node tests/go-run.mjs conformance-check ./tests/conformance/check run -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 
 decimal-bench-sqlite:
 	./scripts/decimal-bench-sqlite.sh
@@ -546,7 +546,7 @@ decimal-physical-check: rust-fetch lease-tool
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
 interface-check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" go run ./tests/interfaces/check --self-test
+	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
 
 go-model-check:
 	$(RUN_LONG) go-model -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'

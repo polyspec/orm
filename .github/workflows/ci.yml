@@ -124,6 +124,6 @@ jobs:
       - name: common state and execution contracts
         if: ${{ !cancelled() }}
         run: |
-          go run ./tests/interfaces/check --results tests/conformance/out
-          go run ./tests/interfaces/check --results tests/conformance/out/postgres
-          go run ./tests/interfaces/check --results tests/conformance/out/sqlite
+          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out
+          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/postgres
+          node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results tests/conformance/out/sqlite
