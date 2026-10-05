@@ -81,6 +81,45 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   }
 });
 
+// 겹친 lease case는 exclusive를 가진 process 아래에서 동시에 실행되는 하위 process들(make feature-check의
+// 기능 단계들처럼)이 그 보유를 함께 쓰지 않고 그 안에서 다시 나누어 가지는지 확인한다. 바깥 shell이 exclusive를
+// 가진 채 하위 shell A가 exclusive를 얻고 FIFO를 읽으며 기다리는 동안, 다른 하위 shell의 exclusive와 shared는
+// A를 보유자로 적으며 거부된다. A가 끝나면 --wait인 하위 shell이 얻고, 같은 process가 다시 얻는 일은 그 보유를
+// 그대로 쓴다. 그 뒤 바깥 shell 아래의 하위 shell 두 개는 shared를 함께 가진다. 하위 shell의 보유는 그
+// process가 끝난 뒤 releaser가 지우므로, 앞선 보유 뒤의 첫 hold는 --wait로 그 해제를 기다린다.
+caseTest('children of an exclusive holder share its lease one exclusive holder at a time', COMPUTE, () => {
+  const { LEASE: lease } = process.env;
+  assert.ok(lease, 'LEASE is unset; run make test-servers-check, which builds it');
+  const root = mkdtempSync(join(tmpdir(), 'orm-lease-nested-'));
+  const leases = join(root, 'leases');
+  try {
+    const script = `set -u
+L=${lease}; D=${leases}; R=${root}
+mkfifo "$R/held" "$R/release"
+"$L" hold "$D" exclusive --pid $$ || exit 9
+sh -c '"$1" hold "$2" exclusive --pid $$ && echo held > "$3/held" && read line < "$3/release"' a "$L" "$D" "$R" &
+read state < "$R/held"
+sh -c '"$1" hold "$2" exclusive --pid $$' b "$L" "$D" 2> "$R/exclusive.err"; echo "exclusive=$?"
+sh -c '"$1" hold "$2" shared --pid $$' c "$L" "$D" 2> "$R/shared.err"; echo "shared=$?"
+echo done > "$R/release"; wait
+sh -c '"$1" hold "$2" exclusive --wait --pid $$ && "$1" hold "$2" exclusive --pid $$' d "$L" "$D"; echo "after=$?"
+sh -c '"$1" hold "$2" shared --wait --pid $$ && echo held > "$3/held" && read line < "$3/release"' e "$L" "$D" "$R" &
+read state < "$R/held"
+sh -c '"$1" hold "$2" shared --pid $$' f "$L" "$D"; echo "readers=$?"
+echo done > "$R/release"; wait
+`;
+    const run = spawnSync('sh', ['-c', script], { encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stdout + run.stderr);
+    assert.equal(run.stdout, 'exclusive=3\nshared=3\nafter=0\nreaders=0\n', run.stderr);
+    for (const kind of ['exclusive', 'shared']) {
+      assert.match(readFileSync(join(root, `${kind}.err`), 'utf8'),
+        new RegExp(`^lease: refused the ${kind} lease of ${leases.replace(/[.]/g, '\\.')}; held by:\n  exclusive lease of pid \\d+ \\(running\\) from \\S+ since \\S+: sh -c `));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // 공유 database case는 server 환경 file이 bench database를 정하지 않고, Makefile이 함께 쓰는 decimal
 // database를 두지 않는지 확인한다. 그 database는 실행마다 scripts/check/databases.sh가 만든다.
 caseTest('the server environment names no bench or decimal database that runs share', COMPUTE, () => {
