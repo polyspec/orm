@@ -117,10 +117,12 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   ]);
 });
 
-caseTest('a selected make target runs with the environments and the Rust target directory of owner-check', 5000, async () => {
+// selected target은 owner-check의 서버와 decimal 환경을 받고, Rust target directory는 받지 않는다: 각 checkout은 자기
+// target directory에 build한다(AGENTS.md).
+caseTest('a selected make target runs with the environments of owner-check and the target directory of its checkout', 5000, async () => {
   assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', '-k', 'docs-check']);
-  assert.deepEqual(makeArguments('client-db-check', { ORM_OWNER_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', ORM_OWNER_CARGO_TARGET_DIR: '/main/cargo-target' }),
-    ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'CARGO_TARGET_DIR=/main/cargo-target', 'client-db-check']);
+  assert.deepEqual(makeArguments('client-db-check', { ORM_OWNER_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', CARGO_TARGET_DIR: '/main/cargo-target' }),
+    ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'client-db-check']);
 });
 
 // T42은 네 client에 걸친 변경이었다. 그 모양의 변경은 바뀐 기능의 검사와 file 단위의 owner target만

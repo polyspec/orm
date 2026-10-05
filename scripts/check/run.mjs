@@ -230,11 +230,9 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
       continue;
     }
     await record(target, 'target', async ({ step, spawned }) => {
-      // 하위 make는 MAKEFLAGS를 받지 않으므로, 이 runner를 실행한 make의 CARGO_TARGET_DIR(worktree가 main checkout의
-      // target directory를 쓸 때 그 값)도 command line으로 넘긴다. 그렇지 않으면 Makefile이 자기 checkout의
-      // target directory를 정한다. -k는 recipe의 하위 target 하나가 실패해도 그와 무관한 하위 target을 실행한다.
-      const targetDir = process.env.CARGO_TARGET_DIR ? [`CARGO_TARGET_DIR=${process.env.CARGO_TARGET_DIR}`] : [];
-      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers}`, `DECIMAL_ENV=${decimalEnv}`, ...targetDir, target], step, spawned);
+      // 하위 make는 Makefile이 정하는 이 checkout의 Rust target directory를 쓴다(AGENTS.md).
+      // -k는 recipe의 하위 target 하나가 실패해도 그와 무관한 하위 target을 실행한다.
+      await run('make', ['--no-print-directory', '-k', `TEST_ENV=${created ? testEnv : servers}`, `DECIMAL_ENV=${decimalEnv}`, target], step, spawned);
     });
   }
   // database는 만들기가 중간에 실패해도 만든 만큼 지운다.

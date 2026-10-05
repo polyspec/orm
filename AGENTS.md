@@ -12,6 +12,15 @@
   excluded by `.gitignore` that exist only in that worktree and are still needed. Then remove the
   worktree and local branch immediately.
   Preserve unintegrated or active work.
+- Each checkout builds Rust into its own target directory, `clients/rust/target` of that checkout,
+  and no checkout points `CARGO_TARGET_DIR` at the target directory of another; `make` stops when a
+  command line names one outside the checkout. Cargo decides that an artifact is fresh from the
+  paths of its sources relative to the package and their modification times, and records no
+  checkout that built it, so a checkout whose sources are older than another checkout's build
+  would test that other checkout's code. Not sharing removes that cause instead of detecting it.
+  The leases of the target directory still order the builds of the runs of one checkout. A
+  worktree's target directory goes with the worktree when it is removed; check free disk before a
+  worktree build.
 - Before committing the related feature, cherry-pick useful commits from a test-only branch that
   cannot be integrated into `main`, discard the remaining test-only changes, and remove its worktree
   and branch. If removal is impossible, first add a numbered sub-item to the owning checklist with

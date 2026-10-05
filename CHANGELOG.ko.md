@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.46: 각 checkout은 Rust를 자기 `clients/rust/target`에 build한다. `CARGO_TARGET_DIR`이 checkout 밖의 directory를 정하면 make가 멈추고, `make check`와 `make owner-check`는 target에 target directory를 더 이상 넘기지 않는다. cargo가 다른 checkout이 build한 것을 fresh로 다루기 때문이다.
+
 - G5.45-1: `make owner-check`는 Go의 transaction 끝 test(`transaction-end-go`)와 Rust의 `tx::` test(`transaction-end-rust`)를 그 file이 바뀌면 실행한다.
 
 - G5.45: Go, TypeScript, Rust client는 transaction 끝의 한 단계(named lock 해제, local 값 reset, SQLite mode 복원, COMMIT이나 ROLLBACK)가 실패하면 connection을 pool에 돌려주지 않고 닫는다. 그러므로 pool의 connection은 깨끗하거나 버려지고, 뒤의 사용자가 잡힌 lock을 물려받지 않는다.

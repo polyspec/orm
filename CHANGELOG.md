@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.46: each checkout builds Rust into its own `clients/rust/target`; make stops when `CARGO_TARGET_DIR` names a directory outside the checkout, and `make check` and `make owner-check` no longer pass a target directory to their targets, because cargo would treat what another checkout built as fresh.
+
 - G5.45-1: `make owner-check` runs the transaction end tests of Go (`transaction-end-go`) and of the Rust `tx::` tests (`transaction-end-rust`) when their files change.
 
 - G5.45: the Go, TypeScript and Rust clients close a connection instead of returning it to the pool when a step of its transaction end (a named lock release, a local value reset, a SQLite mode reset, COMMIT or ROLLBACK) failed, so a pooled connection is clean or discarded and no later user inherits a held lock.
