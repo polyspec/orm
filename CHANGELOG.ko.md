@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-13-1: test server는 Makefile이 장기 작업으로 build하는 Go 명령 `tests/stop-process`(macOS는 kqueue, Linux는 pidfd)로 멈춘다. Python helper는 없어졌고, `make repo-check`는 Go, PHP, Rust, TypeScript 밖의 언어로 쓴 도구를 실패시킨다.
+
 - G5.30-13: `make test-servers-stop`은 각 server process의 종료를 polling 대신 운영체제의 알림(`scripts/stop-process.py`: macOS는 kqueue, Linux는 pidfd)으로 기한 없이 기다린다.
 
 - G5.30-12: 문서 smoke test는 server와 browser를 기한 없는 장기 작업으로 시작하고 page마다, link, 검색, mobile 탐색을 저마다의 case로 검사한다. package 선언 test는 pack, 설치, tsc를 장기 작업으로 실행하고 결과를 case로 검사하며 case가 실패하면 1로 끝난다.

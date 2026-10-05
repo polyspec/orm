@@ -345,11 +345,18 @@ repo-check:
 # root의 서버로 검사한다: 다른 설정은 같은 수로 옮기고, 같은 설정은 아무것도 하지 않으며, 겹칠 이름은
 # 바꾸기 전에 거부한다.
 .PHONY: test-servers-check
+# STOP_PROCESS는 test server를 멈출 때 process 종료를 운영체제의 알림으로 기다리는 program이다
+# (tests/stop-process). 그 build는 장기 작업이므로 RUN_LONG으로 기한 없이 실행한다.
+STOP_PROCESS = $(abspath .runtime/bin/stop-process)
+BUILD_STOP_PROCESS = $(RUN_LONG) go-build/stop-process -- go build -o $(STOP_PROCESS) ./tests/stop-process
+
 test-servers-check:
-	node --test scripts/test-servers-mysql.test.mjs
+	$(BUILD_STOP_PROCESS)
+	STOP_PROCESS=$(STOP_PROCESS) node --test scripts/test-servers.test.mjs scripts/test-servers-mysql.test.mjs
 
 test-servers:
-	./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
+	$(BUILD_STOP_PROCESS)
+	STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh start $(TEST_MYSQL_PORT) $(TEST_POSTGRES_PORT) $(TEST_MYSQL_REPLICA_PORT) $(TEST_POSTGRES_REPLICA_PORT) $(TEST_PROXYSQL_PORT) $(TEST_PGBOUNCER_PORT)
 
 # make test-servers-tls loads the TLS files of the MySQL TLS cases into running
 # servers and writes their DSNs into TEST_ENV; make test-servers does it at the
@@ -358,7 +365,8 @@ test-servers-tls:
 	./scripts/test-servers.sh tls $(TEST_MYSQL_PORT) $(TEST_MYSQL_REPLICA_PORT)
 
 test-servers-stop:
-	./scripts/test-servers.sh stop
+	$(BUILD_STOP_PROCESS)
+	STOP_PROCESS=$(STOP_PROCESS) ./scripts/test-servers.sh stop
 
 # feature-unit-check는 feature 문서가 manifest와 같은지와 coverage, owner 선택의 unit test를 실행한다.
 # feature-check는 TypeScript client를 한 번 build한 뒤 모든 기능의 coverage(native test binary를 한 번

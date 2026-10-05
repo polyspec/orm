@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-13-1: the test servers stop through the Go command `tests/stop-process` (kqueue on macOS, pidfd on Linux), which the Makefile builds as a long operation; the Python helper is removed, and `make repo-check` fails a tool in a language outside Go, PHP, Rust and TypeScript.
+
 - G5.30-13: `make test-servers-stop` waits for each server process to exit through an operating system event (`scripts/stop-process.py`: kqueue on macOS, pidfd on Linux) instead of polling, with no deadline.
 
 - G5.30-12: the documentation smoke test starts its server and browser as long operations with no deadline and checks each page, the links, search and mobile navigation as cases of their own; the package declaration test packs, installs and runs tsc as long operations, checks the result as a case and exits 1 when a case fails.
