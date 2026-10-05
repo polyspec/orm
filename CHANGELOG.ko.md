@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30: 모든 build, 설치, 도구 실행, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-10).
+
 - G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
 
 - G5.30-9: 기능 coverage checker의 build는 단계 로그와 함께 기한 없는 장기 작업으로 실행하고 `COVERAGE_BUILD_DEADLINE`은 없어졌으며, 각 coverage 실행은 자기 기한을 유지한다.
