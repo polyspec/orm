@@ -31,6 +31,7 @@ import { duration, runGroup } from '../../tests/testcase.mjs';
 import { failedCiSetup } from './ci-setup.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
 import { runStep } from './step.mjs';
+import { monitor } from './resources.mjs';
 import { missingDownloads } from './downloads.mjs';
 
 // setupLabel은 runner의 setup 단계(downloads, servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
@@ -335,6 +336,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
   handleCrashes();
+  // 30초마다 memory, disk, RSS가 큰 process, 보낸 group signal을 stdout에 쓴다(scripts/check/resources.mjs).
+  const stopMonitor = monitor();
   // servers `-`는 server 없는 실행이다.
   process.exitCode = await runChecks({ root, mode, servers: serversArgument === '-' ? null : resolve(serversArgument), targets, run: command(root) });
+  stopMonitor();
 }

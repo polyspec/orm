@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.77: cargo-test는 test binary를 tmpfs인 `/tmp` 대신 disk에 복사하고, group signal은 runner 자신의 group과 0이나 1의 group을 거부하며, check runner는 30초마다 memory, disk, 가장 큰 process, group signal을 job log에 출력한다.
+
 - G5.76: Rust symbol 목록은 catalog의 PostgreSQL insert lock helper를 기록하고, introspection 비교 test는 gofmt로 format된다.
 
 - G5.75: CI와 문서 workflow는 같은 ref의 앞 push 실행을 취소하고, `make repo-check`는 push로 실행하는 모든 workflow에 그 concurrency를 요구한다.
