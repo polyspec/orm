@@ -48,32 +48,49 @@ export function reportWriter() {
   };
 }
 
+// failureLine은 줄이 실패나 오류 수준의 출력인지다. 줄 앞의 lane 접두사(`[rust] `, client-db-test의 병렬 lane)와 GitHub의
+// annotation(`##[error]`)은 떼고 본다. 통과나 시작을 알리는 줄(PASS, RUN)은 오류 낱말을 담아도 실패가 아니다.
+const LANE = /^(?:##\[\w+\])?(?:\[[\w-]+\] )?/;
+const FAILURE = [
+  /^(?:FAIL|TIMEOUT)\b/, /^--- FAIL/, /^not ok\b/, /panicked at|^panic:/,
+  /\b(?:error|Error|ERROR)\b/, /\bfailed:|\bfailed lanes\b|\(exit [1-9]\d*\)|exited with [1-9]/,
+  /disk quota exceeded|No space left on device|errno:? (?:28|122)\b|ENOSPC|EDQUOT/i,
+];
+export function failureLine(text) {
+  const line = text.replace(LANE, '');
+  if (/^(?:PASS|RUN) /.test(line)) return false;
+  return FAILURE.some(pattern => pattern.test(line));
+}
+
 // failures는 target 출력 줄을 받아 실패를 모은다. case runner(tests/testcase.mjs, internal/testcase, PHP와 Rust의
 // testcase)는 case마다 `RUN <case>`, `STEP <case> ...`, `PASS <case>`나 `FAIL <case> ...: <이유>`를 쓴다. 끝나지
 // 않은 case(기한 초과로 멈춘 process, 죽은 process)는 RUN 뒤에 결과가 없으므로 그 case와 마지막 단계를 적는다.
+// lane 접두사가 붙은 줄도 같은 case 줄로 읽는다.
 export function failures() {
   const failed = [];
   const open = new Map();
   const tail = [];
   let exit = null;
   return {
-    // exit는 명령이 끝난 방식이다(종료 코드나 signal). case가 실패를 보고하지 않은 실패는 출력의 끝과 이것을 적는다.
+    // exit는 명령이 끝난 방식이다(종료 코드나 signal). 실패 줄이 없는 실패는 출력의 끝과 이것을 적는다.
     exit(text) {
       exit = text;
     },
     line(text) {
       tail.push(text);
       if (tail.length > FAILURE_LINES) tail.shift();
-      const run = /^RUN (\S+)/.exec(text);
-      if (run) open.set(run[1], null);
-      const step = /^STEP (\S+) /.exec(text);
-      if (step && open.has(step[1])) open.set(step[1], text);
-      const done = /^(PASS|FAIL|TIMEOUT) (\S+)/.exec(text);
-      if (done) open.delete(done[2]);
-      if (/^(FAIL|TIMEOUT)\b|^--- FAIL|^not ok\b|^panic:|^thread '.*' panicked/.test(text) && failed.length < FAILURE_LINES) failed.push(text);
+      const line = text.replace(LANE, '');
+      const lane = text.slice(0, text.length - line.length);
+      const run = /^RUN (\S+)/.exec(line);
+      if (run) open.set(lane + run[1], null);
+      const step = /^STEP (\S+) /.exec(line);
+      if (step && open.has(lane + step[1])) open.set(lane + step[1], text);
+      const done = /^(PASS|FAIL|TIMEOUT) (\S+)/.exec(line);
+      if (done) open.delete(lane + done[2]);
+      if (failed.length < FAILURE_LINES && failureLine(text)) failed.push(text);
     },
-    // lines는 실패한 target의 첫 실패 줄이다: FAIL 줄, 끝나지 않은 case, 둘 다 없으면 출력의 마지막 줄들, 그리고
-    // 명령이 끝난 방식.
+    // lines는 실패한 target의 첫 실패 줄이다: 나온 순서대로의 실패와 오류 수준의 줄, 끝나지 않은 case, 둘 다 없으면
+    // 출력의 마지막 줄들, 그리고 명령이 끝난 방식.
     lines() {
       const pending = [...open].map(([name, last]) => `case ${name} did not finish; its last step: ${last ?? 'none (it reported no step)'}`);
       const lines = [...failed, ...pending].slice(0, FAILURE_LINES);

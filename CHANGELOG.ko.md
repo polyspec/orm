@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.43-3: `make check` target의 첫 실패 줄은 `client-db-test.sh`의 lane 접두사 뒤에서도 나온 순서대로의 실패와 오류 수준의 줄이며, 더 이상 출력의 마지막 줄이 아니다.
+
 - G5.43-2: `make check` 실행의 database는 drop이 지우는 `.runtime/check/<run id>/databases`에 있어 그 옆의 보고서와 떨어져 있고, 각 target log는 쓰는 동안 처음 1 MiB와 마지막 256 KiB를 남긴다.
 
 - G5.43-1: `make check`의 runner는 실패한 보고서나 기록의 쓰기(`report write failed: ...`)를 crash하는 대신 단계와 summary에 기록하고 1로 끝나며, 처리하지 못한 오류는 `crashed` 실행의 `runner error: <stack>`으로 기록한다.

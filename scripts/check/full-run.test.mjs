@@ -583,3 +583,24 @@ caseTest('a target log keeps its head and its tail within the size limit', PROCE
     cleanup();
   }
 });
+
+// 첫 실패 줄 case(G5.43-3)는 G5.41-1의 CI run이 낸 client-db-check 출력 끝(scripts/check/fixtures/client-db-check-lanes.txt,
+// job log에서 runner의 STEP 접두사를 뗀 그대로)을 읽는다. lane 접두사가 붙은 실패와 오류 줄이 나온 순서대로 첫 실패 줄이
+// 되고, PASS와 STEP 줄은 들어가지 않는다.
+caseTest('the first failure lines of a target are its failure and error lines', COMPUTE, async () => {
+  const { failures } = await import(resolve(repo, 'scripts/check/report.mjs'));
+  const found = failures();
+  for (const line of readFileSync(resolve(repo, 'scripts/check/fixtures/client-db-check-lanes.txt'), 'utf8').split('\n').filter(Boolean)) found.line(line);
+  found.exit('make --no-print-directory -k client-db-check exited with 2');
+  assert.deepEqual(found.lines(), [
+    "[rust] thread 'main' (33354) panicked at tests/src/integration.rs:110:80:",
+    '[rust] sqlite: schema().install: DRIVER: disk I/O error',
+    '[rust] FAIL columns_and_subqueries/sqlite elapsed=5ms: sqlite: schema().install: DRIVER: disk I/O error',
+    '[rust] client-db-test: the rust lane failed:',
+    '[rust]   /home/runner/work/orm/orm/.runtime/run/client-db-rust-20422/debug/integration /home/runner/work/orm/orm/schema/bench.dbs (exit 101)',
+    './scripts/client-db-test.sh: 107: echo: echo: I/O error',
+    'client-db-test: failed lanes: rust',
+    'make: *** [Makefile:549: client-db-check] Error 1',
+    'make --no-print-directory -k client-db-check exited with 2',
+  ]);
+});
