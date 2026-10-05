@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.33-2: no bench or decimal database is shared: `make check`, `make owner-check` and the new `make run-databases` create the databases of their run, and the environment of `make test-servers` names only the server DSNs those runs build theirs from.
+
 - G5.33-1: runs that use the test servers hold a shared lease (`tests/lease`), and `make test-servers-stop`, a fresh start and the MySQL migration hold the exclusive lease and are refused while a lease is held, naming the holders; `make test-servers-leases` and `make test-servers-leases-clear` list the leases and remove dead ones.
 
 - G5.32-3: on PostgreSQL the Rust client binds every value as the type its plan slot declares and no longer describes statements or reads column origins from the catalog; the first run of `server_transactions` spends 13 server transactions for 8 statements instead of 15.

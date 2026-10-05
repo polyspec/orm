@@ -15,12 +15,14 @@
 // 전체 suite(make check)에서만 실행하고 여기서는 고르지 않는다. scope나 입력 선언이 규칙과 다르면
 // 아무것도 실행하지 않고 실패한다.
 import { spawn, execFileSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { runGroup, stepLines } from '../../tests/testcase.mjs';
+import { makeRecipes } from '../repo/testcases.mjs';
 
 // fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
 const pathPattern = /(?:contracts|tests|schema|clients|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
@@ -283,6 +285,39 @@ function execute(root, args, { step }) {
   });
 }
 
+// usesTestEnv는 Makefile의 target 하나가 server 환경(WITH_TEST_ENV)을 읽는지다.
+export function usesTestEnv(makefile, target) {
+  return makeRecipes(makefile).some(unit => unit.name === `Makefile ${target}` && unit.commands.some(command => command.includes('$(WITH_TEST_ENV)')));
+}
+
+// environmentFile은 scripts/check/databases.sh가 쓴 환경 file(`export NAME='value'` 줄)의 변수다. 다른 형식의
+// 줄은 오류다.
+export function environmentFile(text) {
+  const out = {};
+  for (const line of text.split('\n').filter(line => line.trim() !== '')) {
+    const match = /^export ([A-Z_][A-Z0-9_]*)='([^']*)'$/.exec(line);
+    if (!match) throw new Error(`unexpected environment line: ${line}`);
+    out[match[1]] = match[2];
+  }
+  return out;
+}
+
+// shell은 sh로 script를 실행하고 출력 줄을 step으로 내보낸다.
+function shell(root, args, { step }) {
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn('sh', args, { cwd: root, env: process.env });
+    const lines = stepLines(step);
+    child.stdout.on('data', chunk => lines.write(String(chunk)));
+    child.stderr.on('data', chunk => lines.write(String(chunk)));
+    child.on('error', rejectRun);
+    child.on('close', code => {
+      lines.flush();
+      if (code === 0) resolveRun();
+      else rejectRun(new Error(`sh ${args.join(' ')} exited with ${code}`));
+    });
+  });
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const args = process.argv.slice(2);
@@ -319,6 +354,30 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   if (change?.whole) console.log('owners: contracts/features.json changed outside a feature or helper entry; make check runs every feature');
   if (!list) {
     let failed = 0;
+    // 기능, helper, server 환경을 읽는 make target은 이 실행의 자기 bench database와 decimal database를
+    // 쓴다(scripts/check/databases.sh, make check와 같은 것). 함께 쓰는 bench나 decimal database는 없다.
+    // 만든 database는 끝에 지운다.
+    const makefile = readFileSync(resolve(root, 'Makefile'), 'utf8');
+    const needsDatabases = owners.length > 0 || helpers.length > 0 || targets.some(({ target }) => usesTestEnv(makefile, target));
+    let databases;
+    if (needsDatabases) {
+      const servers = process.env.ORM_OWNER_TEST_ENV;
+      if (!servers) throw new Error('ORM_OWNER_TEST_ENV is unset; run make owner-check');
+      const name = `orm_owner_${process.pid}_${randomBytes(4).toString('hex')}`;
+      databases = { servers, name, directory: resolve(root, '.runtime/check', name) };
+      const created = await runGroup('owners/databases/create', context =>
+        shell(root, ['scripts/check/databases.sh', 'create', servers, databases.directory, name], context));
+      if (!created) {
+        failed++;
+        await runGroup('owners/databases/drop', context => shell(root, ['scripts/check/databases.sh', 'drop', servers, databases.directory, name], context));
+        console.log('owners: the databases of this run could not be created');
+        process.exit(1);
+      }
+      Object.assign(process.env, environmentFile(readFileSync(resolve(databases.directory, 'env'), 'utf8')), {
+        ORM_OWNER_TEST_ENV: resolve(databases.directory, 'env'),
+        DECIMAL_ENV: resolve(databases.directory, 'decimal-env'),
+      });
+    }
     for (const { target } of targets) {
       if (!(await runGroup(`owners/make/${target}`, context => make(root, target, context)))) failed++;
     }
@@ -333,6 +392,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         if (!(await runGroup(`owners/${feature.id}/${kind}`, context => execute(root, command, context)))) failed++;
       }
     }
+    if (databases && !(await runGroup('owners/databases/drop', context =>
+      shell(root, ['scripts/check/databases.sh', 'drop', databases.servers, databases.directory, databases.name], context)))) failed++;
     if (failed) {
       console.log(`owners: ${failed} step(s) failed`);
       process.exitCode = 1;

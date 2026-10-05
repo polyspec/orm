@@ -335,10 +335,9 @@ export ORM_TEST_PGBOUNCER_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test
 export ORM_TEST_PGBOUNCER_SINGLE_DSN='postgres://orm@127.0.0.1:$PGBOUNCER_PORT/orm_test_single?sslmode=disable'
 export ORM_TOOLS_MYSQL_DSN='$mysql/orm_tools'
 export ORM_TOOLS_POSTGRES_DSN='$postgres/orm_tools?sslmode=disable'
-export ORM_BENCH_MYSQL_DSN='$mysql/orm_bench'
-export BENCH_MYSQL_DSN='$mysql/orm_bench?timezone=%2B00:00'
-export BENCH_POSTGRES_DSN='$postgres/orm_bench?sslmode=disable&timezone=%2B00:00'
-export BENCH_SQLITE_DSN='sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00'
+export ORM_RUN_MYSQL_DSN='$mysql/orm_run?timezone=%2B00:00'
+export ORM_RUN_POSTGRES_DSN='$postgres/orm_run?sslmode=disable&timezone=%2B00:00'
+export ORM_RUN_SQLITE_QUERY='_pragma=busy_timeout(5000)&timezone=%2B00:00'
 export ORM_TEST_SERVERS_LEASES='$LEASES'
 EOF
   tls_env >> "$ENV_FILE.tmp"
@@ -452,11 +451,6 @@ start() {
   mysql_timezones
   mysql_cli -e 'CREATE DATABASE orm_test; CREATE DATABASE orm_tools'
   psql_cli postgres -c 'CREATE DATABASE orm_test' -c 'CREATE DATABASE orm_tools'
-
-  BENCH_MYSQL_DSN="mysql://root@127.0.0.1:$MYSQL_PORT/orm_bench?timezone=%2B00:00" \
-    BENCH_POSTGRES_DSN="postgres://orm@127.0.0.1:$POSTGRES_PORT/orm_bench?sslmode=disable&timezone=%2B00:00" \
-    BENCH_SQLITE_DSN="sqlite://$DIR/orm_bench.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00" \
-    "$ROOT/scripts/bench-db.sh"
 
   start_proxysql
   start_pgbouncer

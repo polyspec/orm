@@ -38,7 +38,8 @@ make test-servers
 make conformance-check
 ```
 `make conformance-check` reads `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN` and
-`BENCH_SQLITE_DSN` from the environment file of `make test-servers` and runs
+`BENCH_SQLITE_DSN`, the bench databases of its run (`make check` or
+`make run-databases`), and runs
 
 ```sh
 go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"

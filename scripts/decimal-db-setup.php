@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 // DECIMAL_ENV는 이 script가 DSN을 쓰는 file이고, 그 directory에 SQLite file과 소유 표시를 둔다.
-// ORM_DECIMAL_DATABASE는 MySQL과 PostgreSQL에 만드는 database 이름이다. make decimal-db-setup은
-// .runtime/decimal-env와 orm_decimal_case를, make check는 실행마다 자기 file과 이름을 준다.
+// ORM_DECIMAL_DATABASE는 MySQL과 PostgreSQL에 만드는 database 이름이다. scripts/check/databases.sh가
+// 실행마다 자기 file과 이름을 준다.
 $root = dirname(__DIR__);
 require "$root/clients/php/tests/autoload.php";
 $envFile = getenv('DECIMAL_ENV');

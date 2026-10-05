@@ -30,7 +30,7 @@ make test-servers
 make conformance-check
 ```
 
-`make conformance-check`는 `make test-servers`의 환경 파일에서 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
+`make conformance-check`는 자기 실행(`make check`나 `make run-databases`)의 bench database인 `BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`을 읽고 다음을 실행한다.
 
 ```sh
 go run ./tests/conformance/check run -driver mysql -dsn "$BENCH_MYSQL_DSN"
