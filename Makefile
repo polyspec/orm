@@ -48,7 +48,7 @@ export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
 WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && export ORM_SEND_SQLITE_DSN="$(SEND_SQLITE_DSN)" &&
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
-# tag의 build를 기한을 가진 case `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
+# tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
 # case가 internal/testcase로 내는 RUN, STEP, PASS, FAIL 줄을 실행 중에 보이고, 각 case가 자기 기한을
 # 가지므로 -timeout 0이 test binary 전체의 기한(기본 10분)을 끈다.
 GO_TEST = node tests/go-test.mjs -v -timeout 0
@@ -396,11 +396,11 @@ feature-docs:
 package-check:
 	$(RUN_CASE) package $(BUILD_DEADLINE) -- ./scripts/package-check.sh
 
-# fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing을 함께 하므로 각 명령을 RUN_CASE의
-# BUILD_DEADLINE 아래에서 실행한다.
+# fuzz-check는 fuzzing용으로 instrument한 build와 1초의 fuzzing(-fuzztime)을 함께 하는 장기 작업이므로
+# 각 명령을 RUN_LONG으로 기한 없이 실행한다. fuzzing의 길이는 -fuzztime이 정한다.
 fuzz-check:
-	$(RUN_CASE) fuzz/engine-ir $(BUILD_DEADLINE) -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
-	$(RUN_CASE) fuzz/clients-go-orm $(BUILD_DEADLINE) -- go test -v -timeout 0 ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
+	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
+	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./clients/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
@@ -593,7 +593,7 @@ TIMING_GO_DBSPEC_TEST = .runtime/timing/dbspec.test
 timing-check: rust-fetch
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	node tests/dbspec/stress.mjs > $(DBSPEC_STRESS_DOCUMENT)
-	$(RUN_CASE) go-build/dbspec-test $(BUILD_DEADLINE) -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
+	$(RUN_LONG) go-build/dbspec-test -- go test -c -tags bench -o $(TIMING_GO_DBSPEC_TEST) ./engine/dbspec
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_CASE) rust-build/dbspec_stress $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --release --locked --offline -p orm-schema --example dbspec_stress
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd clients/rust -- cargo test --locked --offline -p orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build

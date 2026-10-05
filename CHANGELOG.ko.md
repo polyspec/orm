@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-6: `tests/go-test.mjs`는 모든 `go test`의 test binary를 장기 작업 `go-build/<packages>`로 단계 로그와 함께 기한 없이 build하고, `fuzz-check`와 `timing-check`의 Go build는 `tests/run-long.mjs` 아래에서 실행한다.
+
 - G5.30-5: Makefile, `npm run typescript:test`, `scripts/typescript/sqlite-test.sh`의 모든 TypeScript build와 type check는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
 
 - G5.30-4: Makefile, 기능 검증 명령, `scripts/client-db-test.sh`의 모든 `cargo test` 실행 앞의 `cargo test --no-run` build는 `tests/run-long.mjs` 아래에서 단계 로그와 함께 기한 없이 실행한다.
