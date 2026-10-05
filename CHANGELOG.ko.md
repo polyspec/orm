@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.43-4: `make check` 실행의 보고서는 시작할 때와 단계마다 끝난 뒤 `/`, `/tmp`, `TMPDIR`, 실행의 df, `/tmp`의 mount, `/tmp`와 실행 directory의 가장 큰 항목, `/tmp`의 지웠지만 열린 file을 기록하고, ENOSPC나 EDQUOT로 실패한 target은 그 수치를 담은 `out of space` 첫 실패 줄을 가진다.
+
+- G5.43: `make check`의 runner는 실패한 쓰기와 실행 database의 삭제를 견디고, 보고서를 완전히 남기며, 실제 실패 줄과 단계마다의 공간을 적는다.
+
 - G5.43-3: `make check` target의 첫 실패 줄은 `client-db-test.sh`의 lane 접두사 뒤에서도 나온 순서대로의 실패와 오류 수준의 줄이며, 더 이상 출력의 마지막 줄이 아니다.
 
 - G5.43-2: `make check` 실행의 database는 drop이 지우는 `.runtime/check/<run id>/databases`에 있어 그 옆의 보고서와 떨어져 있고, 각 target log는 쓰는 동안 처음 1 MiB와 마지막 256 KiB를 남긴다.

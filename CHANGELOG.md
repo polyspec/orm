@@ -2,6 +2,10 @@
 
 ## 0.0.2
 
+- G5.43-4: the report of a `make check` run records df of `/`, `/tmp`, `TMPDIR` and the run, the `/tmp` mount, the largest entries of `/tmp` and the run directories, and the removed but open files under `/tmp`, at the start and after every step, and a target that fails with ENOSPC or EDQUOT gets an `out of space` first failure line with those numbers.
+
+- G5.43: the runner of `make check` survives failed writes and the removal of the run databases, keeps a complete report, and names the actual failure lines and the space of each step.
+
 - G5.43-3: the first failure lines of a `make check` target are its failure and error-level lines in order, also behind the lane prefixes of `client-db-test.sh`, and no longer the last lines of its output.
 
 - G5.43-2: the databases of a `make check` run live in `.runtime/check/<run id>/databases`, which their drop removes, apart from the report beside it, and each target log keeps its first 1 MiB and last 256 KiB while it is written.

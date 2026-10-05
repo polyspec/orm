@@ -14,6 +14,7 @@
 // target(`target` directory), node_modules와 database file은 옮기지 않고 manifest에 크기와 함께 적는다.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative, resolve } from 'node:path';
 
 export const LIMIT_BYTES = 1024 * 1024;
@@ -123,6 +124,50 @@ export function writeEnvironment(root, report, extra = {}) {
     ...Object.entries(extra).map(([key, value]) => `${key} ${value}`),
   ];
   writeFileSync(join(report, 'environment.txt'), `${lines.join('\n')}\n`);
+}
+
+// SPACE는 공간이 없어 실패한 줄이다: ENOSPC(errno 28)와 EDQUOT(errno 122).
+export const SPACE = /disk quota exceeded|No space left on device|errno:? (?:28|122)\b|ENOSPC|EDQUOT/i;
+
+// output은 명령 하나의 출력이다. 명령이 없거나 실패하면 그 사실을 출력으로 돌려준다.
+function output(program, args) {
+  const result = spawnSync(program, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+  if (result.error) return `${program}: ${result.error.code ?? result.error.message}\n`;
+  return `${result.stdout}${result.stderr}${result.status ? `${program} exited with ${result.status}\n` : ''}`;
+}
+
+// diskSnapshot은 실행의 공간을 적는다: `/`, `/tmp`, process의 임시 directory(TMPDIR)와 보고서의 file system마다 df,
+// /tmp의 mount option(findmnt: tmpfs의 size와 quota), /tmp와 실행 directory(.runtime/run, .runtime/check/<run id>)의
+// 큰 항목, 그리고 지웠지만 process가 열어 둔 /tmp의 file(lsof +L1). places는 그 줄마다 남은 공간(KiB)이다. 어느
+// 명령이 없으면 그 사실이 출력이다.
+export function diskSnapshot(root, run) {
+  const temporary = [...new Set(['/tmp', tmpdir()])];
+  const filesystems = [...new Set(['/', ...temporary, run])];
+  // df는 path마다 따로 읽는다. 없는 path는 places에 들지 않고 그 오류가 출력에 남는다.
+  const places = {};
+  const df = filesystems.map(path => {
+    const text = output('df', ['-k', path]);
+    const row = text.trim().split('\n').find(line => /^\S+\s+\d+\s+\d+\s+\d+\s/.test(line));
+    if (row) places[path] = Number(row.trim().split(/\s+/)[3]);
+    return text;
+  }).join('');
+  const largest = directory => output('sh', ['-c', `du -sxk ${JSON.stringify(directory)}/* ${JSON.stringify(directory)}/.[!.]* 2>/dev/null | sort -rn | head -20`]);
+  const text = [
+    `## df -k ${filesystems.join(' ')}`, df,
+    '## findmnt /tmp', output('findmnt', ['-no', 'SOURCE,FSTYPE,SIZE,USED,AVAIL,OPTIONS', '/tmp']),
+    ...temporary.flatMap(directory => [`## the largest entries of ${directory} (KiB)`, largest(directory)]),
+    '## the largest entries of .runtime/run (KiB)', largest(resolve(root, '.runtime/run')),
+    `## the largest entries of ${run} (KiB)`, largest(run),
+    '## files under /tmp that were removed but are still open (lsof +L1)', output('sh', ['-c', 'lsof +L1 2>/dev/null | awk \'NR == 1 || /\\/tmp\\//\' | head -40']),
+  ].join('\n');
+  return { text, places };
+}
+
+// spaceLine은 공간이 없어 실패한 target의 첫 실패 줄이다: 그 사실과 그 순간의 남은 공간, /tmp의 가장 큰 항목이다.
+export function spaceLine(snapshot) {
+  const free = Object.entries(snapshot.places).map(([place, kib]) => `${place} ${(kib / 1024 ** 2).toFixed(2)} GiB free`).join(', ');
+  const tmp = /## the largest entries of \/tmp \(KiB\)\n([^#]*)/.exec(snapshot.text)?.[1].trim().split('\n').slice(0, 3).map(line => line.trim().replace(/\s+/, ' KiB ')).join('; ');
+  return `out of space: the target failed with ENOSPC or EDQUOT; ${free}; the largest under /tmp: ${tmp || 'none listed'}`;
 }
 
 // tail은 file의 마지막 TAIL_BYTES를 읽는다.
