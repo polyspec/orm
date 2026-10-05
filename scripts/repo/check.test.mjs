@@ -8,7 +8,7 @@ import { chainedCommandErrors, concurrencyErrors, ciMakeErrors, checkTargets, ci
 import { nodeVersionErrors } from './node.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
-import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
+import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
@@ -1231,4 +1231,28 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
   assert.deepEqual(concurrencyErrors(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')]))), []);
+});
+
+const goWorkflow = '    steps:\n      - uses: actions/setup-go@v6\n        with: { go-version-file: .go-version }\n      - run: make check\n';
+caseTest('the checks and every workflow run the Go of .go-version', COMPUTE, () => {
+  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.27\n', { 'ci.yml': goWorkflow }, '1.27.0'), []);
+  assert.deepEqual(goVersionErrors('1.27\n', 'module m\n\ngo 1.27\n', { 'ci.yml': goWorkflow.replace('go-version-file: .go-version', 'go-version: "1.27"') }, '1.27.1'), [
+    '.go-version must hold one exact Go release x.y.z and a newline, found "1.27\\n"; write the release that CI and the local checks run',
+    'ci.yml declares go-version itself; read go-version-file: .go-version in actions/setup-go',
+    'ci.yml does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version',
+  ]);
+  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.26\n', { 'ci.yml': '    steps:\n      - run: make check\n' }, '1.27.1'), [
+    'go.mod declares go 1.26, but .go-version declares 1.27.0; write go 1.27 in go.mod',
+    'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version',
+    'Go 1.27.1 runs the checks; .go-version declares 1.27.0; install Go 1.27.0 or change .go-version together with the CI evidence of the new release',
+  ]);
+});
+
+caseTest('every setup-php step installs the Composer of .composer-version', COMPUTE, () => {
+  const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
+  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, '2.10.3'), []);
+  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.10.4'), [
+    'ci.yml sets up PHP without tools: composer:2.10.3; setup-php installs the newest Composer otherwise, so add tools: composer:2.10.3',
+    'Composer 2.10.4 runs the checks; .composer-version declares 2.10.3; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release',
+  ]);
 });

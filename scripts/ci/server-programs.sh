@@ -20,4 +20,9 @@ fi
 test "$(command -v mysqld)" = /usr/sbin/mysqld
 mysqld --version | grep -E ' Ver 8\.4\.11[- ]'
 proxysql --version | grep -F 'ProxySQL version 3.0.9-'
+# The PostgreSQL apt repository keeps only the newest minor release of PostgreSQL 17 and of PgBouncer, so the major
+# release is what can be pinned; the versions are printed for the record of the run.
+/usr/lib/postgresql/17/bin/postgres --version | grep -E '^postgres \(PostgreSQL\) 17\.'
+pgbouncer --version | head -n 1
+sqlite3 --version
 if [ -n "${GITHUB_PATH:-}" ]; then echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"; fi
