@@ -122,3 +122,51 @@ func TestComponentDiagramsUseRequestedLanguage(t *testing.T) {
 		t.Fatal("localized diagrams contain different structures")
 	}
 }
+
+// TestExtensionContractRejectsDrift는 extension(PHP 확장 php-extension)의 adapter가 공통 입력과 결과의
+// extension 열과 다르거나, extension이 적은 rule과 adapter를 가진 rule이 다르면 manifest를 거부하는지 확인한다.
+func TestExtensionContractRejectsDrift(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	find := func(d *document, id string) *rule {
+		for i := range d.Rules {
+			if d.Rules[i].ID == id {
+				return &d.Rules[i]
+			}
+		}
+		t.Fatalf("rule %s is missing", id)
+		return nil
+	}
+	for name, mutate := range map[string]func(*document){
+		"return type": func(d *document) {
+			r := find(d, "Dbspec.parse")
+			n := r.Native["php-extension"]
+			n.Signature = strings.Replace(n.Signature, "Orm\\Dbspec\\Native\\ParseResult", "Orm\\Dbspec\\ParseResult", 1)
+			r.Native["php-extension"] = n
+		},
+		"argument": func(d *document) {
+			r := find(d, "Dbspec.emit")
+			n := r.Native["php-extension"]
+			n.Signature = strings.Replace(n.Signature, "Orm\\Dbspec\\Native\\Document", "Orm\\Dbspec\\Document", 1)
+			r.Native["php-extension"] = n
+		},
+		"missing adapter": func(d *document) { delete(find(d, "Dbspec.render").Native, "php-extension") },
+		"unlisted adapter": func(d *document) {
+			r := find(d, "Model.gets")
+			r.Native["php-extension"] = r.Native["php"]
+		},
+		"unknown rule": func(d *document) {
+			e := d.Extensions["php-extension"]
+			e.Rules = append(append([]string{}, e.Rules...), "Dbspec.missing")
+			d.Extensions["php-extension"] = e
+		},
+	} {
+		var d document
+		if err := json.Unmarshal(source, &d); err != nil {
+			t.Fatal(err)
+		}
+		mutate(&d)
+		if validateRules(d) == nil {
+			t.Errorf("%s: an extension adapter that differs from the contract was accepted", name)
+		}
+	}
+}

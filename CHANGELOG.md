@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.3: contracts/interfaces.json declares the PHP extension under `extensions` with the `Dbspec` rules and owners it implements, and the interface check compares its stub with those rules, its own symbol snapshot and hash.
+
 - T9.2: `make dbspec-compare-check` runs the PHP extension as a fifth runner on the shared cases, the stress document, the files, hashes and statement vectors, and fails unless its output equals the first Go output up to the first plan case.
 
 - T9.1: the PHP extension orm_dbspec (clients/php-extension, built with ext-php-rs over the Rust dbspec) registers `Orm\Dbspec\Native\Dbspec` with readFile, readBytes, parse, emit, manifest and render and readonly result classes like those of the PHP client; `make dbspec-php-extension-check` checks its declarations against its stub and its results against the shared vectors and the PHP client, and CI installs the libclang of its build.

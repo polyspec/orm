@@ -5084,7 +5084,8 @@
           "inputs": [
             "tests/interfaces/**",
             "contracts/interfaces.json",
-            "contracts/symbols/*.json"
+            "contracts/symbols/*.json",
+            "clients/php-extension/stubs/orm_dbspec.stub.php"
           ]
         },
         {

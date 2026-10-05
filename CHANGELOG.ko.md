@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.3: contracts/interfaces.json은 PHP 확장을 그것이 구현하는 `Dbspec` rule, owner와 함께 `extensions`에 선언하고, interface 검사는 그 stub을 그 rule, 자기 symbol snapshot과 hash와 비교한다.
+
 - T9.2: `make dbspec-compare-check`는 PHP 확장을 다섯 번째 runner로 공유 case, stress 문서, files, hashes, statement vector에 실행하고, 그 출력이 첫 plan case 앞까지 첫 Go 출력과 같지 않으면 실패한다.
 
 - T9.1: PHP 확장 orm_dbspec(clients/php-extension, Rust dbspec 위에 ext-php-rs로 build한다)은 readFile, readBytes, parse, emit, manifest, render를 가진 `Orm\Dbspec\Native\Dbspec`과 PHP client와 같은 readonly 결과 class를 등록한다. `make dbspec-php-extension-check`는 그 선언을 stub과, 그 결과를 공유 vector와 PHP client와 비교하고, CI는 그 build의 libclang을 설치한다.
