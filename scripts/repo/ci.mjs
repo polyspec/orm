@@ -338,19 +338,55 @@ export function ciLeaseErrors(workflows, tracked, read) {
   return errors;
 }
 
-// ciAfterCheckErrors는 make check를 실행하는 workflow에서 그 step 뒤에 명령을 실행하는 step마다 오류 하나를
-// 돌려준다. make check가 모든 검사를 실행하므로 로컬 실행 한 번이 CI가 실행하는 것을 모두 다룬다: CI는 준비
-// (checkout, 설치, server 시작) 뒤에 make check 하나만 실행하고, make check에 없는 검사는 CHECK_TARGETS의
-// target에 둔다.
+// AFTER_CHECK은 make check 뒤에 오는 step이다. 전체 suite는 push 뒤 CI에서 실행되고 실패에서 멈추지 않으므로, 그
+// 뒤에는 검사가 아니라 그 실행의 정보를 남기는 두 step만 온다: runner가 끝나지 않았어도 summary를 job summary와
+// 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: always()`다.
+export const AFTER_CHECK = [
+  ['- name: summary', 'if: always()', 'env:', 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', 'run: node scripts/check/summary.mjs'],
+  ['- name: report', 'if: always()', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
+    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found: error'],
+];
+
+// stepText는 workflow의 step마다 주석과 빈 줄을 뺀 줄을 앞뒤 공백 없이 돌려준다.
+function stepTexts(workflow) {
+  const out = [];
+  let inSteps = false;
+  let indent = null;
+  for (const line of workflow.split('\n')) {
+    if (/^\s*steps:\s*$/.test(line)) { inSteps = true; indent = null; continue; }
+    if (!inSteps || line.trim() === '' || line.trim().startsWith('#')) continue;
+    const item = line.match(/^(\s*)- /);
+    if (item && (indent === null || item[1].length === indent)) {
+      indent = item[1].length;
+      out.push([line.trim()]);
+    } else if (out.length && line.match(/^\s*/)[0].length > indent) out.at(-1).push(line.trim());
+  }
+  return out;
+}
+
+// ciAfterCheckErrors는 make check를 실행하는 workflow마다 make check step이 ORM_CHECK_RUN_ID를 주지 않거나, 그 뒤의
+// step이 AFTER_CHECK의 summary와 report와 정확히 같지 않은 곳마다 오류 하나를 돌려준다. 검사는 모두 make check의
+// target에 있고(CHECK_TARGETS), 그 뒤의 step은 그 실행의 summary와 보고서만 남긴다.
 export function ciAfterCheckErrors(workflows) {
   const errors = [];
   for (const [path, workflow] of Object.entries(workflows)) {
     const steps = workflowSteps(workflow);
     const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
     if (check === -1) continue;
-    for (const step of steps.slice(check + 1))
-      if (step.run.trim())
-        errors.push(`${path} step "${step.name}" runs ${step.run.split('\n')[0]} after make check; make check runs every check, so one local run covers CI, and a check it lacks belongs in a target of CHECK_TARGETS`);
+    const texts = stepTexts(workflow);
+    if (!texts[check].includes('ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}'))
+      errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}, which names the report of the run`);
+    const after = texts.slice(check + 1);
+    for (const [index, step] of after.entries()) {
+      const want = AFTER_CHECK[index];
+      if (want && step.join('\n') === want.join('\n')) continue;
+      const name = steps[check + 1 + index].name;
+      errors.push(want
+        ? `${path} step "${name}" after make check is not the declared ${want[0].slice('- name: '.length)} step: ${step.join(' | ')} instead of ${want.join(' | ')}`
+        : `${path} step "${name}" runs ${steps[check + 1 + index].run.split('\n')[0] || step[0]} after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
+    }
+    for (const want of AFTER_CHECK.slice(after.length))
+      errors.push(`${path} has no ${want[0].slice('- name: '.length)} step after make check: ${want.join(' | ')}`);
   }
   return errors;
 }
