@@ -9,6 +9,7 @@ The checker verifies these requirements:
 - Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
 - Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, and TypeScript. PHP record declarations come from `Validator::RECORDS`.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
+- An extension of `extensions` in the manifest implements part of the contract outside the four clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`clients/php-extension/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
 - Sequence rules compare the results and statement counts of conformance vectors.
 - Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
@@ -20,6 +21,7 @@ Run the structure checks without a database:
 go test ./contracts ./tests/interfaces/check
 go run ./tests/interfaces/check --self-test
 go run ./tests/interfaces/check --language php --self-test
+go run ./tests/interfaces/check --language php-extension
 ```
 
 Check the conformance results against the common state contracts (`sequences` of `contracts/interfaces.json`): `make conformance-check` runs the conformance runners into a directory of its own run and then

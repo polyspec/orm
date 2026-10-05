@@ -35,11 +35,25 @@ type component struct {
 	OwnershipKO string            `json:"ownership_ko"`
 }
 type document struct {
-	Version    int               `json:"version"`
-	Rules      []rule            `json:"rules"`
-	Components []component       `json:"components"`
-	Edges      []edge            `json:"edges"`
-	Records    []json.RawMessage `json:"records"`
+	Version    int                  `json:"version"`
+	Rules      []rule               `json:"rules"`
+	Components []component          `json:"components"`
+	Edges      []edge               `json:"edges"`
+	Records    []json.RawMessage    `json:"records"`
+	Extensions map[string]extension `json:"extensions"`
+}
+
+// extension은 네 client 언어 밖에서 contract의 일부를 구현하는 것이다(PHP 확장 orm_dbspec). syntax는 그 선언을 읽는
+// 언어의 문법이고, rules와 owners는 그것이 구현하는 rule과 owner다. 그 rule의 native adapter는 extension 이름을 key로
+// 가진다.
+type extension struct {
+	Description string   `json:"description"`
+	Syntax      string   `json:"syntax"`
+	Roots       []string `json:"roots"`
+	Symbols     string   `json:"symbols"`
+	SymbolHash  string   `json:"symbol_hash"`
+	Rules       []string `json:"rules"`
+	Owners      []string `json:"owners"`
 }
 type edge struct {
 	From   string `json:"from"`

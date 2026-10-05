@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -17,9 +18,10 @@ func compact(s string) string {
 
 var languages = []string{"go", "php", "rust", "typescript"}
 
-// outputs maps a common result to the native return type of each language.
-// A native signature can change only together with this table, so a recorded
-// symbol snapshot cannot silently change the common API.
+// outputs maps a common result to the native return type of each language and
+// of each extension (an implementation of part of the contract, declared under
+// extensions). A native signature can change only together with this table, so
+// a recorded symbol snapshot cannot silently change the common API.
 var outputs = map[string]map[string]string{
 	"Chain":             {"go": "*{Entity}Model", "php": "static", "rust": "Self", "typescript": "this"},
 	"Model":             {"go": "(*{Entity}Model,error)", "php": "static", "rust": "orm::Result<Self>", "typescript": "Promise<this>"},
@@ -46,12 +48,12 @@ var outputs = map[string]map[string]string{
 	"AesRotationStatus": {"go": "(AESRotationStatus,error)", "php": "Orm\\AesRotationStatus", "rust": "Result<AesRotationStatus>", "typescript": "Promise<AesRotationStatus>"},
 	"RotatedRows":       {"go": "(int,error)", "php": "int", "rust": "Result<u64>", "typescript": "Promise<number>"},
 	// dbspec parse returns the document or every diagnostic, never both.
-	"DbspecReadResult":      {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult"},
-	"DbspecBytesResult":     {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult"},
-	"DbspecParseResult":     {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult"},
-	"DbspecText":            {"go": "string", "php": "string", "rust": "String", "typescript": "string"},
-	"DbspecRenderResult":    {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult"},
-	"DbspecManifestResult":  {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult"},
+	"DbspecReadResult":      {"go": "(string,[]Diagnostic,error)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,ReadError>", "typescript": "DbspecReadResult", "php-extension": "Orm\\Dbspec\\Native\\ReadResult"},
+	"DbspecBytesResult":     {"go": "(string,[]Diagnostic)", "php": "Orm\\Dbspec\\ReadResult", "rust": "Result<String,Vec<Diagnostic>>", "typescript": "DbspecReadResult", "php-extension": "Orm\\Dbspec\\Native\\ReadResult"},
+	"DbspecParseResult":     {"go": "(*Document,[]Diagnostic)", "php": "Orm\\Dbspec\\ParseResult", "rust": "Result<Document,Vec<Diagnostic>>", "typescript": "DbspecParseResult", "php-extension": "Orm\\Dbspec\\Native\\ParseResult"},
+	"DbspecText":            {"go": "string", "php": "string", "rust": "String", "typescript": "string", "php-extension": "string"},
+	"DbspecRenderResult":    {"go": "([]string,[]Diagnostic)", "php": "Orm\\Dbspec\\RenderResult", "rust": "Result<Vec<String>,Vec<Diagnostic>>", "typescript": "DbspecRenderResult", "php-extension": "Orm\\Dbspec\\Native\\RenderResult"},
+	"DbspecManifestResult":  {"go": "(*Manifest,[]Diagnostic)", "php": "Orm\\Dbspec\\ManifestResult", "rust": "Result<Manifest,Vec<Diagnostic>>", "typescript": "DbspecManifestResult", "php-extension": "Orm\\Dbspec\\Native\\ManifestResult"},
 	"AddedTablesAndColumns": {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>"},
 	// 구독 해제는 database를 읽거나 쓰지 않는 동기 호출이다.
 	"Unsubscribe": {"go": "(unsubscribefunc())", "php": "Closure", "rust": "Subscription", "typescript": "()=>void"},
@@ -76,12 +78,12 @@ var inputs = map[string]map[string]string{
 	"LockKey":             {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string"},
 	"GeneratedSchema":     {"go": "schema*Schema", "php": "Orm\\Schema$schema", "rust": "schema:&Schema", "typescript": "schema:Schema"},
 	"ModelKeyring":        {"go": "mModel,keyringAESKeyring", "php": "Orm\\Model$model,Orm\\AesKeyring$keyring", "rust": "m:&M,keyring:&AesKeyring", "typescript": "model:unknown,keyring:AesKeyring"},
-	"DbspecFilePath":      {"go": "pathstring", "php": "string$path", "rust": "path:&Path", "typescript": "path:string"},
-	"DbspecFileBytes":     {"go": "namestring,b[]byte", "php": "string$name,string$bytes", "rust": "name:&str,bytes:Vec<u8>", "typescript": "name:string,bytes:Uint8Array"},
-	"DbspecSource":        {"go": "textstring,documentsmap[string]string", "php": "string$text,array$documents", "rust": "text:&str,documents:&BTreeMap<String,String>", "typescript": "text:string,documents:Readonly<Record<string,string>>"},
-	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument"},
-	"DbspecRenderSource":  {"go": "documents[]*Document,dialectDialect", "php": "array$documents,string$dialect", "rust": "documents:&[&Document],dialect:Dialect", "typescript": "documents:readonlyDbspecDocument[],dialect:DbspecDialect"},
-	"DbspecDocumentSet":   {"go": "documents[]*Document", "php": "array$documents", "rust": "documents:&[&Document]", "typescript": "documents:readonlyDbspecDocument[]"},
+	"DbspecFilePath":      {"go": "pathstring", "php": "string$path", "rust": "path:&Path", "typescript": "path:string", "php-extension": "string$path"},
+	"DbspecFileBytes":     {"go": "namestring,b[]byte", "php": "string$name,string$bytes", "rust": "name:&str,bytes:Vec<u8>", "typescript": "name:string,bytes:Uint8Array", "php-extension": "string$name,string$bytes"},
+	"DbspecSource":        {"go": "textstring,documentsmap[string]string", "php": "string$text,array$documents", "rust": "text:&str,documents:&BTreeMap<String,String>", "typescript": "text:string,documents:Readonly<Record<string,string>>", "php-extension": "string$text,array$documents"},
+	"DbspecDocument":      {"go": "document*Document", "php": "Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument", "php-extension": "Orm\\Dbspec\\Native\\Document$document"},
+	"DbspecRenderSource":  {"go": "documents[]*Document,dialectDialect", "php": "array$documents,string$dialect", "rust": "documents:&[&Document],dialect:Dialect", "typescript": "documents:readonlyDbspecDocument[],dialect:DbspecDialect", "php-extension": "array$documents,string$dialect"},
+	"DbspecDocumentSet":   {"go": "documents[]*Document", "php": "array$documents", "rust": "documents:&[&Document]", "typescript": "documents:readonlyDbspecDocument[]", "php-extension": "array$documents"},
 	"StatementSubscriber": {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void"},
 }
 
@@ -145,6 +147,51 @@ func validateRules(d document) error {
 			if got != args[lang] {
 				return fmt.Errorf("%s/%s arguments %s do not implement %v", r.ID, lang, got, r.Inputs)
 			}
+		}
+		if err := validateExtensionRule(d, r, want, args); err != nil {
+			return err
+		}
+	}
+	for name, e := range d.Extensions {
+		for _, id := range e.Rules {
+			if !seen[id] {
+				return fmt.Errorf("extension %s implements the unknown rule %s", name, id)
+			}
+		}
+	}
+	return nil
+}
+
+// validateExtensionRule은 extension(contracts/interfaces.json의 extensions)마다 r의 native adapter를 확인한다:
+// extension이 구현한다고 적은 rule만 그 extension의 adapter를 가지며, 그 signature는 extension의 문법(syntax)으로
+// 읽어 같은 공통 입력과 결과의 extension 열과 같아야 한다.
+func validateExtensionRule(d document, r rule, want, args map[string]string) error {
+	for name, e := range d.Extensions {
+		n, has := r.Native[name]
+		if implements := slices.Contains(e.Rules, r.ID); implements != has {
+			if has {
+				return fmt.Errorf("%s has a %s adapter, but extension %s does not list it in its rules", r.ID, name, name)
+			}
+			return fmt.Errorf("%s missing %s", r.ID, name)
+		}
+		if !has {
+			continue
+		}
+		if e.Syntax != "php" {
+			return fmt.Errorf("extension %s: unsupported syntax %q", name, e.Syntax)
+		}
+		sig := compact(n.Signature)
+		begin := parameterStart(sig)
+		end := matchingParen(sig, begin)
+		if begin < 0 || end < begin {
+			return fmt.Errorf("%s/%s invalid signature", r.ID, name)
+		}
+		got, ret := sig[begin+1:end], strings.TrimPrefix(sig[end+1:], ":")
+		if wantReturn, ok := want[name]; !ok || ret != wantReturn {
+			return fmt.Errorf("%s/%s return %s does not implement %s", r.ID, name, ret, r.Output)
+		}
+		if wantArgs, ok := args[name]; !ok || got != wantArgs {
+			return fmt.Errorf("%s/%s arguments %s do not implement %v", r.ID, name, got, r.Inputs)
 		}
 	}
 	return nil

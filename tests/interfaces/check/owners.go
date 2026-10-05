@@ -18,6 +18,12 @@ type Owner struct {
 // private controller/cache/connection field without an explicit contract edit.
 // owner는 한 symbol을 가리키며(`once`), 그 field 목록은 contract에 적힌 그대로다.
 func checkOwners(lang string, symbols Symbols, owners []Owner) []string {
+	return checkOwnersAs(lang, lang, symbols, owners)
+}
+
+// checkOwnersAs는 checkOwners를 syntax 언어의 field 표기로 한다. extension(PHP 확장)은 자기 이름으로 mapping을
+// 찾고 PHP 문법으로 field를 읽는다.
+func checkOwnersAs(lang, syntax string, symbols Symbols, owners []Owner) []string {
 	var failures []string
 	for _, o := range owners {
 		if o.For != "once" {
@@ -34,7 +40,7 @@ func checkOwners(lang string, symbols Symbols, owners []Owner) []string {
 			continue
 		}
 		prefix := n.Symbol + "#field."
-		if lang == "php" {
+		if syntax == "php" {
 			prefix = n.Symbol + "::$"
 		}
 		expected, actual := Symbols{}, Symbols{}

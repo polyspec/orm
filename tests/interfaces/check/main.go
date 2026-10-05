@@ -16,6 +16,7 @@ import (
 	"go/printer"
 	"go/token"
 	"io/fs"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,18 +51,32 @@ type Rule struct {
 	State  string            `json:"state"`
 	Native map[string]Native `json:"native"`
 }
+
+// Extension은 네 client 언어 밖에서 contract의 일부를 구현하는 것이다(contracts/interfaces.json의 extensions,
+// PHP 확장 orm_dbspec). 그 선언은 syntax 언어의 추출기로 roots에서 읽고, rules와 owners만 확인하며, symbol
+// snapshot과 그 hash를 따로 가진다.
+type Extension struct {
+	Description string   `json:"description"`
+	Syntax      string   `json:"syntax"`
+	Roots       []string `json:"roots"`
+	Symbols     string   `json:"symbols"`
+	SymbolHash  string   `json:"symbol_hash"`
+	Rules       []string `json:"rules"`
+	Owners      []string `json:"owners"`
+}
 type Manifest struct {
-	Version           int                 `json:"version"`
-	Schema            string              `json:"schema"`
-	Languages         map[string]Language `json:"languages"`
-	SymbolHashes      map[string]string   `json:"symbol_hashes"`
-	ProhibitedSymbols []string            `json:"prohibited_symbols"`
-	Rules             []Rule              `json:"rules"`
-	Components        []json.RawMessage   `json:"components"`
-	Sequences         []Sequence          `json:"sequences"`
-	Records           []Record            `json:"records"`
-	Storage           []Rule              `json:"storage"`
-	Owners            []Owner             `json:"owners"`
+	Version           int                  `json:"version"`
+	Schema            string               `json:"schema"`
+	Languages         map[string]Language  `json:"languages"`
+	SymbolHashes      map[string]string    `json:"symbol_hashes"`
+	Extensions        map[string]Extension `json:"extensions"`
+	ProhibitedSymbols []string             `json:"prohibited_symbols"`
+	Rules             []Rule               `json:"rules"`
+	Components        []json.RawMessage    `json:"components"`
+	Sequences         []Sequence           `json:"sequences"`
+	Records           []Record             `json:"records"`
+	Storage           []Rule               `json:"storage"`
+	Owners            []Owner              `json:"owners"`
 }
 
 // Sequence는 공통 state contract 하나다. Statements는 그 sequence가 보내는 statement의 kind를 순서대로 적는다:
@@ -218,15 +233,23 @@ func run() (code int) {
 	generate := flag.Bool("generate", false, "regenerate the component diagram from the manifest")
 	var results resultDirectories
 	flag.Var(&results, "results", "also check the state traces of a conformance output directory of this run, repeatable")
-	language := flag.String("language", "", "check one language; empty checks all four")
+	language := flag.String("language", "", "check one language or extension; empty checks all four languages and every extension")
 	flag.Parse()
 	languages := []string{"go", "php", "rust", "typescript"}
+	// extensions가 nil이면 manifest의 모든 extension을 확인한다.
+	var extensions []string
 	if *language != "" {
-		if !slices.Contains(languages, *language) {
+		switch {
+		case slices.Contains(languages, *language):
+			languages = []string{*language}
+			extensions = []string{}
+		case *language == "php-extension":
+			languages = []string{}
+			extensions = []string{*language}
+		default:
 			fatal("unsupported language " + *language)
 		}
-		languages = []string{*language}
-		fmt.Printf("diagnostic scope: %s only; the full interface check requires all four languages\n", *language)
+		fmt.Printf("diagnostic scope: %s only; the full interface check requires all four languages and every extension\n", *language)
 	}
 	abs, err := filepath.Abs(*root)
 	must(err)
@@ -311,6 +334,22 @@ func run() (code int) {
 			failed = true
 		}
 	}
+	if extensions == nil {
+		extensions = slices.Sorted(maps.Keys(m.Extensions))
+	}
+	for _, name := range extensions {
+		e, ok := m.Extensions[name]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "contracts/interfaces.json declares no extension %s\n", name)
+			failed = true
+			continue
+		}
+		if err := testcase.Run("interfaces/"+name, languageDeadline, func(c *testcase.Case) error {
+			return checkExtension(c, abs, name, e, m, s, *record)
+		}); err != nil {
+			failed = true
+		}
+	}
 	if len(results) > 0 {
 		if err := testcase.Run("interfaces/results", resultsDeadline, func(*testcase.Case) error {
 			var problems []string
@@ -380,6 +419,79 @@ func checkLanguage(c *testcase.Case, abs, lang, rust string, m Manifest, s *runt
 		}
 	}
 	fmt.Printf("%s: %d native symbols inspected; shared signatures and records checked\n", lang, len(actual))
+	return nil
+}
+
+// checkExtension은 extension 하나의 선언을 그 syntax의 추출기로 roots에서 읽어, extension이 구현하는 rule과 owner,
+// 금지된 symbol, 기록된 symbol snapshot과 그 hash에 비교한다. extension이 적지 않은 rule이나 owner가 그 이름의
+// adapter를 가지면 실패한다.
+func checkExtension(c *testcase.Case, abs, name string, e Extension, m Manifest, s *runtimemodel.Model, record bool) error {
+	var problems []string
+	pick := func(rules []Rule) []Rule {
+		var picked []Rule
+		for _, r := range rules {
+			_, has := r.Native[name]
+			if slices.Contains(e.Rules, r.ID) {
+				picked = append(picked, r)
+			} else if has {
+				problems = append(problems, fmt.Sprintf("%s: %s has a %s adapter that the extension does not list", name, r.ID, name))
+			}
+		}
+		return picked
+	}
+	rules := pick(append(append([]Rule{}, m.Rules...), m.Storage...))
+	if len(rules) != len(e.Rules) {
+		problems = append(problems, fmt.Sprintf("%s lists %d rules, %d of them in the manifest", name, len(e.Rules), len(rules)))
+	}
+	var owners []Owner
+	for _, o := range m.Owners {
+		_, has := o.Native[name]
+		if slices.Contains(e.Owners, o.ID) {
+			owners = append(owners, o)
+		} else if has {
+			problems = append(problems, fmt.Sprintf("%s: owner %s has a %s mapping that the extension does not list", name, o.ID, name))
+		}
+	}
+	if len(owners) != len(e.Owners) {
+		problems = append(problems, fmt.Sprintf("%s lists %d owners, %d of them in the manifest", name, len(e.Owners), len(owners)))
+	}
+	callFailures, err := checkCallsInRoots(abs, e.Syntax, e.Roots)
+	if err != nil {
+		return err
+	}
+	c.Step("extracting %s declarations with the %s parser", name, e.Syntax)
+	actual, err := extract(c.Context(), abs, e.Syntax, e.Roots, "", abs)
+	if err != nil {
+		return err
+	}
+	problems = append(problems, checkRules(name, actual, rules, s)...)
+	problems = append(problems, checkOwnersAs(name, e.Syntax, actual, owners)...)
+	problems = append(problems, checkProhibitedSymbols(name, actual, m.ProhibitedSymbols)...)
+	problems = append(problems, callFailures...)
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "\n"))
+	}
+	path := filepath.Join(abs, e.Symbols)
+	if record {
+		writeJSON(path, actual)
+	} else {
+		var expected Symbols
+		readJSON(path, &expected)
+		for _, d := range differences(expected, actual) {
+			problems = append(problems, fmt.Sprintf("%s: %s", name, d))
+		}
+	}
+	gotHash, err := fileSHA256(path)
+	if err != nil {
+		return err
+	}
+	if e.SymbolHash != gotHash {
+		problems = append(problems, fmt.Sprintf("%s: symbol snapshot hash differs from contracts/interfaces.json\n  want %s\n  got  %s", name, e.SymbolHash, gotHash))
+	}
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "\n"))
+	}
+	fmt.Printf("%s: %d native symbols inspected; %d rules and %d owners checked\n", name, len(actual), len(rules), len(owners))
 	return nil
 }
 
