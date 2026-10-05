@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.63-1: Rust catalog의 PostgreSQL insert lock helper는 private이므로 interface 목록 밖에 있고, 그 unit test는 catalog 검증의 입력으로 선언된다.
+
 - G5.62: `make test-servers`는 각 server와 그 log reader를 새 session(`tests/new-session`)에서 시작하므로, 그것을 시작한 명령의 process group을 끝내도 함께 쓰는 server는 멈추지 않는다.
 
 - G5.68: TypeScript 취소 case와 start_logged case는 wall-clock 상한 대신 동작을 확인한다(취소된 statement는 signal로 끝나고, start_logged는 준비 줄 뒤, server가 끝나기 전에 돌아온다).
