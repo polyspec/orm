@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.64-1: `make repo-check`는 G5.64의 문구로 전체 suite 규칙을 확인한다.
+
 - G5.64: 개발하는 동안에는 unit test만 실행한다. end-to-end 실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
 
 - G5.61: 명령을 자기 process group으로 시작한 script는 명령이 끝날 때 그 group을 확인하고 남은 process가 있으면 실패한다(`endGroup`). `make repo-check`는 그 확인이 없는 `detached: true` spawn을 거부한다.

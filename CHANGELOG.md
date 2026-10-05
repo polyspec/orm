@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.64-1: `make repo-check` checks the full-suite rule by the wording of G5.64.
+
 - G5.64: development runs unit tests only; end-to-end runs, `make owner-check` and the full suite run in CI after the push, and no local check is required before a push.
 
 - G5.61: a script that starts a command in a process group of its own checks that group when the command exits and fails on any process left in it (`endGroup`), and `make repo-check` refuses a `detached: true` spawn without that check.

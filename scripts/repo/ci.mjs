@@ -392,15 +392,14 @@ export function ciAfterCheckErrors(workflows) {
 }
 
 // FULL_SUITE_RULE은 AGENTS.md와 AGENTS.ko.md가 적어야 하는 전체 suite의 규칙이다: 전체 suite는 push 뒤 CI에서
-// 실행되고, CI 실행 한 번은 다음 실행 전에 모든 실패를 고칠 정보를 모으며, 로컬 make check는 push 전에 필요한
-// 단계가 아니다. 이전 규칙(활성 항목이 모두 완료되었을 때 로컬에서 한 번 실행한다)은 남지 않는다.
+// 실행되고, CI 실행 한 번은 다음 실행 전에 모든 실패를 고칠 정보를 모으며, push 전에 필요한 로컬 검사는 없다. 이전 규칙(활성 항목이 모두 완료되었을 때 로컬에서 한 번 실행한다)은 남지 않는다.
 export const FULL_SUITE_RULE = {
   'AGENTS.md': {
-    required: ['runs on GitHub CI after a push', 'collect enough information to fix every failure it found before the next CI run', 'is no required step before a push', 'do not push again to react to it'],
+    required: ['runs on GitHub CI after a push', 'collect enough information to fix every failure it found before the next CI run', 'no local check is required', 'do not push again to react to it'],
     removed: ['runs exactly once, when every active checklist\n  item is complete', 'then run `make check` once'],
   },
   'AGENTS.ko.md': {
-    required: ['push 뒤 GitHub CI에서 실행한다', '모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다', 'push 전에 필요한 단계가 아니다', '다시 push하지 않는다'],
+    required: ['push 뒤 GitHub CI에서 실행한다', '모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다', 'push 전에 필요한 로컬 검사는 없다', '다시 push하지 않는다'],
     removed: ['완료되었을 때 정확히 한 번\n  실행한다', '`make check`를 한 번 실행한다'],
   },
 };
