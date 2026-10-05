@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.71: the first failure lines of a target leave out the failure lines printed inside a case that passed, such as the samples that a coverage test makes fail on purpose, so a real failure after them is no longer hidden.
+
 - G5.70: the Go cancellation tests cancel only after a session that was not waiting before their statement starts waits for the lock, so a statement left waiting by an earlier case no longer cancels a case before its statement runs.
 
 - G5.69: the documentation checks launch Chromium with a temporary directory of their own and remove it when the browser closes, so the `.org.chromium.Chromium.*` entries it leaves do not fail the step.
