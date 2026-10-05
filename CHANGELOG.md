@@ -8,7 +8,7 @@
 
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
 
-- G5.30: every build, install, tool run, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-10).
+- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-12).
 
 - G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
 

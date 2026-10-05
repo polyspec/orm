@@ -8,7 +8,7 @@
 
 - G5.32-1: PostgreSQL에서 Go client는 모든 statement를 pgx query mode `exec`로 prepare하지 않고 text bind와 함께 round trip 하나로 전송한다. 연결마다 statement text마다 따로 드는 prepare round trip과 transaction이 없다.
 
-- G5.30: 모든 build, 설치, 도구 실행, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-10).
+- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-12).
 
 - G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
 
