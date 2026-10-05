@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-16: every `go run` of the checks builds through `tests/go-run.mjs` as a long operation with step logs and no deadline, and `make repo-check` fails a raw `go run`.
+
 - G5.35: `make rust-fmt-check` checks `bench/rust` and `tests/interfaces/rust` as well as `clients/rust`, and both are formatted.
 
 - G5.32-7: negated condition groups `not(fn)`, `andNot(fn)` and `orNot(fn)` render `NOT (…)` in the four clients, and docs/dsl.md states the query expression grammar and its relation to the dbspec `check` grammar.
@@ -54,7 +56,7 @@
 
 - G5.32-1: on PostgreSQL the Go client sends every statement unprepared in the pgx query mode `exec`, with its text binds in one round trip, instead of a separate prepare round trip and transaction per statement text on each connection.
 
-- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-15).
+- G5.30: every build, install, tool run, server start, whole suite and CI step runs with detailed step logs and no deadline, only test cases keep their own deadlines, and `make repo-check` fails a deadline on a long operation (G5.30-1 to G5.30-16).
 
 - G5.30-10: `make docs-build` and `make docs-verify-idempotent` build the documentation as long operations with step logs and no deadline.
 

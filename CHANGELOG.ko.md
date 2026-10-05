@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.30-16: check의 모든 `go run`은 `tests/go-run.mjs`로 단계 로그와 함께 기한 없는 장기 작업으로 build하고, `make repo-check`는 그냥 쓴 `go run`을 실패시킨다.
+
 - G5.35: `make rust-fmt-check`는 `clients/rust`와 함께 `bench/rust`, `tests/interfaces/rust`도 검사하고, 둘은 형식이 정리되었다.
 
 - G5.32-7: 부정 조건 묶음 `not(fn)`, `andNot(fn)`, `orNot(fn)`은 네 client에서 `NOT (…)`로 렌더링되고, docs/dsl.md가 쿼리 식 문법과 dbspec `check` 문법과의 관계를 적는다.
@@ -54,7 +56,7 @@
 
 - G5.32-1: PostgreSQL에서 Go client는 모든 statement를 pgx query mode `exec`로 prepare하지 않고 text bind와 함께 round trip 하나로 전송한다. 연결마다 statement text마다 따로 드는 prepare round trip과 transaction이 없다.
 
-- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-15).
+- G5.30: 모든 build, 설치, 도구 실행, server 시작, 전체 suite, CI step은 상세 단계 로그와 함께 기한 없이 실행하고, test case만 자기 기한을 유지하며, `make repo-check`는 장기 작업의 기한을 실패시킨다(G5.30-1에서 G5.30-16).
 
 - G5.30-10: `make docs-build`와 `make docs-verify-idempotent`는 문서를 단계 로그와 함께 기한 없는 장기 작업으로 build한다.
 
