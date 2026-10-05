@@ -549,3 +549,20 @@ export function ciMakeErrors(workflows) {
   }
   return errors;
 }
+
+// CONCURRENCY는 push로 실행하는 workflow가 선언하는 concurrency다. 같은 ref의 새 push는 앞 push의 실행을 끝낸다:
+// runner는 적고, 의미 있는 것은 가장 새 head의 실행이다.
+const CONCURRENCY = ['concurrency:', '  group: ${{ github.workflow }}-${{ github.ref }}', '  cancel-in-progress: true'];
+
+// concurrencyErrors는 push로 실행하면서 그 concurrency를 workflow 수준에서 선언하지 않는 workflow마다 오류 하나를
+// 돌려준다. workflows는 {path: text}다.
+export function concurrencyErrors(workflows) {
+  const errors = [];
+  for (const [path, workflow] of Object.entries(workflows)) {
+    const on = /^on:\s*\n((?:[ \t].*\n|\s*\n)*)/m.exec(workflow)?.[1] ?? /^on:\s*(.*)$/m.exec(workflow)?.[1] ?? '';
+    if (!/\bpush\b/.test(on)) continue;
+    if (!workflow.split('\n').join('\n').includes(CONCURRENCY.join('\n')))
+      errors.push(`${path} runs on push without the workflow-level concurrency group \${{ github.workflow }}-\${{ github.ref }} with cancel-in-progress: true, so a superseded run keeps a runner`);
+  }
+  return errors;
+}
