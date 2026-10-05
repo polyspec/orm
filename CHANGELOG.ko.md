@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.61: 명령을 자기 process group으로 시작한 script는 명령이 끝날 때 그 group을 확인하고 남은 process가 있으면 실패한다(`endGroup`). `make repo-check`는 그 확인이 없는 `detached: true` spawn을 거부한다.
+
 - G5.60: `make repo-check`는 `defer` 뒤에 같은 package의 helper를 거쳐 닿는 `os.Exit`도 거부하고, 그렇게 하던 다섯 program(bench installer, example 둘, Go conformance runner, Go introspection 도구)은 `os.Exit(run())`으로 끝나므로 defer된 close가 실행된다.
 
 - G5.59: 실행은 먼저 kill된 실행(process가 더 이상 실행되지 않는 `orm_owner_<pid>_…`, `orm_check_<pid>_…`)이 test server에 남긴 bench와 decimal database를 지운다.

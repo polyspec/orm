@@ -8,6 +8,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, PROCESS } from '../../tests/testcase.mjs';
 import { command } from './run.mjs';
+import { endGroup } from './step.mjs';
+import { spawn } from 'node:child_process';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const run = command(repo);
@@ -93,4 +95,19 @@ caseTest("npm's compile cache stays in the system temporary directory and is not
   // runner 안에서 실행하면 바깥 단계가 이미 정한 cache를 그대로 쓴다.
   const expected = process.env.NODE_COMPILE_CACHE ?? join(tmpdir(), 'node-compile-cache');
   assert.ok(lines.includes(`cache=${expected}`), lines.join(' | '));
+});
+
+caseTest('endGroup names and ends what a process of its own group left behind', PROCESS, async () => {
+  const child = spawn('sh', ['-c', 'sleep 39 >/dev/null 2>&1 & echo $!'], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  let out = '';
+  child.stdout.on('data', chunk => { out += chunk; });
+  await new Promise(resolve => child.on('close', resolve));
+  const pid = Number(out.trim());
+  try {
+    assert.deepEqual(await endGroup(child.pid), [`${pid} sleep 39`]);
+    assert.equal(alive(pid), false, `process ${pid} is ended`);
+    assert.deepEqual(await endGroup(child.pid), []);
+  } finally {
+    if (alive(pid)) process.kill(pid, 'SIGKILL');
+  }
 });

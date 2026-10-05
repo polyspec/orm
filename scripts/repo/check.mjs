@@ -8,7 +8,7 @@ import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './ta
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
-import { deferredExitErrors } from './gosource.mjs';
+import { deferredExitErrors, detachedGroupErrors } from './gosource.mjs';
 import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, runtimePathErrors, sharedTargetErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
@@ -107,6 +107,8 @@ const goFiles = Object.fromEntries(tracked.filter(path => path.endsWith('.go')).
 failures.push(...goCargoErrors(goFiles));
 // Go 함수는 defer 뒤에 os.Exit를 부르지 않는다: 그 defer가 지울 임시 file과 풀 lock이 남는다.
 failures.push(...deferredExitErrors(goFiles));
+// 자기 process group으로 process를 시작한 JavaScript는 그 group이 끝난 뒤 남은 process를 확인한다.
+failures.push(...detachedGroupErrors(Object.fromEntries(tracked.filter(path => /\.m?js$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 // Makefile은 공유 Rust target directory의 program을 실행하거나 그곳에 file을 쓰지 않고, 그곳의 build는 lease
 // 아래에서 한다.
 failures.push(...sharedTargetErrors(makefile));

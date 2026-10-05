@@ -1,5 +1,6 @@
 // Verify selected and unselected PHP generated fields twice on every database.
 import { spawn } from 'node:child_process';
+import { endGroup } from './check/step.mjs';
 import { runCase } from '../tests/testcase.mjs';
 
 // timeoutMs는 process 하나(owner test나 state reader)의 기한이다.
@@ -31,7 +32,10 @@ function run(program, args, env = process.env) {
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
     child.on('error', finish);
-    child.on('close', code => finish(code === 0 ? null : new Error(`${program} exit ${code}: ${stderr || stdout}`)));
+    // child는 자기 group의 leader다. 끝난 뒤 그 group에 남은 process는 실패로 다룬다(endGroup).
+    const ended = new Promise(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, error => resolve([`its group could not be checked: ${error.message}`]))));
+    child.on('close', code => ended.then(left => finish(left.length ? new Error(`${program} left ${left.length} processes: ${left.join(', ')}`)
+      : code === 0 ? null : new Error(`${program} exit ${code}: ${stderr || stdout}`))));
   });
 }
 
