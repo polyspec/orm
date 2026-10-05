@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.47: the PHP client opens one connection per `Db` again and keeps none across requests; PgBouncer or ProxySQL pool PHP connections. `new Config(poolSize: n)`, `poolIdleSize` and `poolLifetimeMs` other than zero return `CONFIG`, `Db::poolSize()` is removed, `stats()` reports `maxOpenConnections` 1, and a statement that fails with `CONNECTION_LOST` is no longer sent again.
+
 - G5.43-4: the report of a `make check` run records df of `/`, `/tmp`, `TMPDIR` and the run, the `/tmp` mount, the largest entries of `/tmp` and the run directories, and the removed but open files under `/tmp`, at the start and after every step, and a target that fails with ENOSPC or EDQUOT gets an `out of space` first failure line with those numbers.
 
 - G5.43: the runner of `make check` survives failed writes and the removal of the run databases, keeps a complete report, and names the actual failure lines and the space of each step.

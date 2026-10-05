@@ -424,7 +424,7 @@ $b->getJsonSetting()['a'];
 - `tables`는 정렬하고 중복을 뺀 목록이다. model statement는 plan step의 `tables`를 가진다([protocol](protocol.md#_2-plan)). table을 만들거나 바꾸는 schema statement는 그 table을 가진다. table에 대한 utility statement는 그 table을 가진다(SQLite row lock의 `orm__row_lock`, 권한의 table, AES 상태와 회전의 table). transaction 제어, catalog 읽기, 그 밖의 statement는 table이 없다.
 - `elapsed`는 statement를 보낸 때부터 client가 그 결과를 다 읽을 때까지다.
 - `transaction`은 연결에서의 transaction 번호다: 바깥 begin마다(deadlock 뒤의 재시도와 foreign key를 끈 채 table을 다시 만드는 SQLite transaction 포함) 1부터 다음 번호를 받고, begin부터 commit이나 rollback까지의 모든 statement가 그 번호를 가진다. transaction 밖의 statement는 번호가 없다.
-- `error`는 statement가 끝난 오류이며 operation이 보고하는 code를 가진다. 성공하면 없다. 돌려받은 행을 decode하지 못한 것은 statement의 오류가 아니다. `CONNECTION_LOST` 뒤에 클라이언트가 새 연결에서 한 번 더 보내는 PHP statement는 시도마다 event를 가진다([연결 끊김](config.ko.md#lost-connections)).
+- `error`는 statement가 끝난 오류이며 operation이 보고하는 code를 가진다. 성공하면 없다. 돌려받은 행을 decode하지 못한 것은 statement의 오류가 아니다.
 
 client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를 등록 순서대로 동기 호출한다. 연결의 모든 handle(Go `WithContext`, TypeScript `withSignal`, Rust clone)이 subscriber를 공유한다. subscriber가 없으면 client는 목록이 빈 것만 확인한다. subscriber는 실패하면 안 된다: subscriber가 오류를 돌려주거나(Go, Rust) 예외를 던지면(PHP, TypeScript) 남은 subscriber는 실행되지 않고 operation은 그 오류를 cause로 가진 `SUBSCRIBER`로 실패한다. statement의 효과는 남으며, transaction 안에서는 callback이 그 오류를 받는다.
 
@@ -457,7 +457,7 @@ client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를
 | `READ_ONLY` | 쓰기가 읽기 전용 서버나 연결에 도달했다. replica, 읽기 전용 트랜잭션, 읽기 전용으로 열린 SQLite 데이터베이스가 해당한다. 쓰기는 primary 연결에서 실행한다 |
 | `CONSTRAINT` | CHECK 제약이 행을 거부했다. 오류는 드라이버 메시지와 드라이버 오류를 유지한다 |
 | `DRIVER` | `audit`이나 `immutable` trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류. 오류는 드라이버 메시지와 원인인 드라이버 오류를 유지한다 |
-| `CONNECTION_LOST` | 서버가 연결을 끝냈거나(세션 종료, 재시작, 유휴 한도) 연결이 끊겼다. PHP 클라이언트는 `Db`의 첫 statement를 새 연결에서 한 번 더 보내고, 그 밖의 statement는 이 오류를 반환한다([연결 끊김](config.ko.md#lost-connections)) |
+| `CONNECTION_LOST` | 서버가 연결을 끝냈거나(세션 종료, 재시작, 유휴 한도) 연결이 끊겼다. statement는 이 오류를 반환하고 다시 전송되지 않는다([연결 끊김](config.ko.md#lost-connections)) |
 | `ROLLBACK` | 서버가 session을 종료한 경우처럼 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패했다. 오류는 두 오류를 유지하며 재시도하지 않는다 |
 | `FAULT` | 클라이언트의 test entry point로 설정한 test fault가 rollback을 실행한 뒤 트랜잭션의 rollback을 실패로 보고했다. `ROLLBACK` 오류의 rollback 오류다([protocol §3.1](protocol.md#_3-1-test-faults)) |
 | `CODEC_DECODE` | 저장 바이트가 선언된 컬럼 스타일과 다르다 |

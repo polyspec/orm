@@ -130,7 +130,7 @@ final class Utils
     public function stats(): Stats
     {
         $busy = Db::activeFor($this->db) !== null ? 1 : 0;
-        return new Stats($this->db->poolSize(), 1, $busy, 1 - $busy);
+        return new Stats(1, 1, $busy, 1 - $busy);
     }
 }
 

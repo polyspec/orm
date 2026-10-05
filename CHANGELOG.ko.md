@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.47: PHP client는 다시 `Db`마다 연결 하나를 열고 요청을 넘어 유지하지 않는다. PHP 연결의 pool은 PgBouncer나 ProxySQL이 맡는다. 0이 아닌 `new Config(poolSize: n)`, `poolIdleSize`, `poolLifetimeMs`는 `CONFIG`를 반환하고, `Db::poolSize()`는 없어지며, `stats()`는 `maxOpenConnections` 1을 보고하고, `CONNECTION_LOST`로 실패한 statement는 더 이상 다시 전송하지 않는다.
+
 - G5.43-4: `make check` 실행의 보고서는 시작할 때와 단계마다 끝난 뒤 `/`, `/tmp`, `TMPDIR`, 실행의 df, `/tmp`의 mount, `/tmp`와 실행 directory의 가장 큰 항목, `/tmp`의 지웠지만 열린 file을 기록하고, ENOSPC나 EDQUOT로 실패한 target은 그 수치를 담은 `out of space` 첫 실패 줄을 가진다.
 
 - G5.43: `make check`의 runner는 실패한 쓰기와 실행 database의 삭제를 견디고, 보고서를 완전히 남기며, 실제 실패 줄과 단계마다의 공간을 적는다.
