@@ -187,6 +187,22 @@ classDiagram
         emit()
         manifest()
         render()
+        introspect()
+        externalDifferences()
+        parsePlan()
+        emitPlan()
+        chain()
+        diff()
+        compareSchemas()
+        installedDifferences()
+        addTablesAndColumnsSteps()
+        planSteps()
+        apply()
+        recover()
+        rollback()
+        finalize()
+        exportMermaid()
+        importMermaid()
     }
     class DbspecDocument {
     }
@@ -236,7 +252,7 @@ classDiagram
 | AESRotationStatus | Row counts per key version. |
 | Generator | One per language. Reads the dbspec document set and emits models; Go and Rust emit only the chain methods the sources call. |
 | Error | A stable code from docs/errors.yaml. |
-| Dbspec | Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, and renders a document set as dialect statements (docs/dbspec.md, docs/dialects.md). |
+| Dbspec | Reads a dbspec document file, or checks the bytes of one that the caller read, after checking its signature and encoding, parses a dbspec document against its declared document set, emits a parsed document in canonical form, gives the manifest text, schema text and hashes of a document set, renders a document set as dialect statements, introspects a database into a document, compares databases with external documents and with a set, reads, emits, chains, diffs and writes the steps of plans, compares schema texts, applies, recovers, rolls back and finalizes plans on a connection, and exports and imports Mermaid erDiagrams (docs/dbspec.md, docs/dialects.md, docs/plans.md, docs/mermaid.md). |
 | DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |
 
 | From | To | Relation |
