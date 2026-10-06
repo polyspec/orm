@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 59a0ecd80f25444979b75dacaca4e28c1a10a6eb */
+ * Stub hash: 73ff83b47a21b77a2ff691d572655cce9004b850 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -383,6 +383,50 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_ma
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_externalDifferences, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_parsePlan, 0, 1, Orm\\Dbspec\\\116ative\\PlanParseResult, 0)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_emitPlan, 0, 1, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, plan, Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Orm_Dbspec_Native_Dbspec_chain arginfo_class_Orm_Dbspec_Native_ChainResult_valid
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_diff, 0, 2, Orm\\Dbspec\\\116ative\\DiffResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Orm\\Dbspec\\\116ative\\Document, 1)
+	ZEND_ARG_OBJ_INFO(0, plan, Orm\\Dbspec\\\116ative\\Plan, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_compareSchemas, 0, 2, Orm\\Dbspec\\\116ative\\ComparisonResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_installedDifferences, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, unsupported, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, 0, 4, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, live, Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, unsupported, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, target, Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_planSteps, 0, 3, Orm\\Dbspec\\\116ative\\PlanStepsResult, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Orm\\Dbspec\\\116ative\\Document, 1)
+	ZEND_ARG_OBJ_INFO(0, plan, Orm\\Dbspec\\\116ative\\Plan, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Orm_Dbspec_Native_Diagnostic, __construct);
 ZEND_METHOD(Orm_Dbspec_Native_Document, __construct);
 ZEND_METHOD(Orm_Dbspec_Native_UseLine, __construct);
@@ -459,6 +503,15 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, readBytes);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, emit);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, render);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, manifest);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, externalDifferences);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, parsePlan);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, emitPlan);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, chain);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, diff);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, compareSchemas);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, installedDifferences);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, planSteps);
 
 static const zend_function_entry class_Orm_Dbspec_Native_Diagnostic_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Diagnostic, __construct, arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -705,6 +758,15 @@ static const zend_function_entry class_Orm_Dbspec_Native_Dbspec_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, emit, arginfo_class_Orm_Dbspec_Native_Dbspec_emit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, render, arginfo_class_Orm_Dbspec_Native_Dbspec_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, manifest, arginfo_class_Orm_Dbspec_Native_Dbspec_manifest, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, externalDifferences, arginfo_class_Orm_Dbspec_Native_Dbspec_externalDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, parsePlan, arginfo_class_Orm_Dbspec_Native_Dbspec_parsePlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, emitPlan, arginfo_class_Orm_Dbspec_Native_Dbspec_emitPlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, chain, arginfo_class_Orm_Dbspec_Native_Dbspec_chain, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, diff, arginfo_class_Orm_Dbspec_Native_Dbspec_diff, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, compareSchemas, arginfo_class_Orm_Dbspec_Native_Dbspec_compareSchemas, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, installedDifferences, arginfo_class_Orm_Dbspec_Native_Dbspec_installedDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, planSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_planSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 

@@ -543,8 +543,33 @@ final class Dbspec
      */
     public static function render(array $documents, string $dialect): RenderResult {}
 
-    /**
-     * The manifest of the document set, whose documents are taken in document name order, or its diagnostics.
-     */
+    /** The manifest of the document set, whose documents are taken in document name order, or its diagnostics. */
     public static function manifest(array $documents): ManifestResult {}
+
+    /** The differences between the tables that the set uses from external documents and the introspected database. */
+    public static function externalDifferences(Document $live, array $documents): array {}
+
+    /** Reads a plan document: a plan and no diagnostics, or one diagnostic located in the plan. */
+    public static function parsePlan(string $text): PlanParseResult {}
+
+    /** Writes a plan in its canonical text: `emitPlan(parsePlan(s)) === s` for canonical input. */
+    public static function emitPlan(Plan $plan): string {}
+
+    /** The plans in chain order from the empty database, or the `chain` diagnostics that name the plans. */
+    public static function chain(array $plans): ChainResult {}
+
+    /** The changes from the source schema, null for the empty database, to the plan's target, or the `plan` diagnostics. */
+    public static function diff(?Document $source, Plan $plan): DiffResult {}
+
+    /** Every difference from the source schema text to the target schema text, or the `compare` diagnostics. */
+    public static function compareSchemas(Document $source, Document $target): ComparisonResult {}
+
+    /** The differences between the database and the schema text of a document set; none means it is installed. */
+    public static function installedDifferences(Document $live, array $unsupported, Document $target): array {}
+
+    /** The added tables and columns, the plan steps that add them and the differences that prevent them. */
+    public static function addTablesAndColumnsSteps(Document $live, array $unsupported, Document $target, string $dialect): array {}
+
+    /** The steps of the plan from the source schema in `mysql`, `postgres` or `sqlite`, or the diff's diagnostics. */
+    public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult {}
 }

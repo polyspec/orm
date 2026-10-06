@@ -396,6 +396,98 @@ str r_check_text(renderer *r, const table *t, const check *k);
 str r_index_columns(renderer *r, const xindex *x);
 strs r_triggers(renderer *r, const table *t);
 
+/* ------------------------------------------------------------------- plans */
+
+typedef struct {
+    str old, new_;
+} trename;
+
+typedef struct {
+    str table, old, new_;
+} crename;
+
+typedef struct {
+    str table, name;
+} cname;
+
+typedef VEC(trename) trenamev;
+typedef VEC(crename) crenamev;
+typedef VEC(cname) cnamev;
+
+typedef struct {
+    str name;
+    bool has_from;
+    str from;
+    trenamev rename_tables;
+    crenamev rename_columns;
+    strs drop_tables;
+    cnamev drop_columns;
+    document *schema;
+    str to;
+    zend_object *src;   /* PHP Plan 객체에서 바꾼 plan의 원본 */
+} plan;
+
+typedef VEC(plan *) planv;
+
+typedef struct {
+    str kind, table, name;
+    bool present;
+} effect;
+
+typedef struct {
+    str table, column;
+    bool has_default;
+    str def;
+} nullcheck;
+
+typedef VEC(nullcheck) nullcheckv;
+
+typedef struct {
+    str statement, rollback, irreversible;
+    effect effect;
+    str restore, rollback_restore;
+    bool has_restore_if;
+    effect restore_if;
+    nullcheckv null_checks;
+    bool finalize;
+} planstep;
+
+typedef VEC(planstep) planstepv;
+
+/* kind, table, name: diff의 Change와 비교의 Difference */
+typedef struct {
+    str kind, table, name;
+} change;
+
+typedef VEC(change) changev;
+
+/* introspection과 Mermaid가 옮기지 못한 객체 */
+typedef struct {
+    str kind, table, name, reason;
+} unsupported;
+
+typedef VEC(unsupported) unsupportedv;
+
+str effect_text(const effect *e);
+
+/* plan text. 실패면 plan 없이 diagnostic이다. */
+plan *plan_parse(str text, diags *out);
+plan *plan_to(str name, bool has_from, str from, trenamev rt, crenamev rc, strs dt, cnamev dc, document *schema, str schema_text, diags *out);
+str plan_emit(const plan *p);
+/* chain 순서의 plan, 또는 chain diagnostic */
+bool plan_chain(const planv *plans, planv *out, diags *d);
+/* source(NULL이면 빈 database)에서 plan target까지의 change, 또는 plan diagnostic */
+bool plan_diff(const document *source, const plan *p, changev *out, diags *d);
+/* 실패(알 수 없는 dialect 등)는 예외다. */
+bool plan_steps(const document *source, const plan *p, dialect d, planstepv *out, diags *diag);
+bool schema_compare(const document *source, const document *target, changev *out, diags *d);
+bool is_schema_text(const document *d);
+strs external_differences(const document *live, const documentv *documents);
+strs installed_differences(const document *live, const unsupportedv *skipped, const document *target);
+/* 만드는 table과 column, step, 차이 */
+void add_tables_and_columns_steps(const document *live, const unsupportedv *skipped, const document *target, str dialect_name,
+    strs *added, planstepv *steps, strs *differences);
+
 /* -------------------------------------------------------------- PHP objects */
 
 #define DBS_CLASSES(X) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
@@ -433,6 +525,13 @@ bool in_document(zval *v, document **out);
 bool in_documents(zval *v, documentv *out, const char *what);
 /* C 문서를 PHP Document 객체로 바꾼다. */
 void out_document(const document *d, zval *out);
+bool in_plan(zval *v, plan **out);
+bool in_plans(zval *v, planv *out, const char *what);
+void out_plan(const plan *p, zval *out);
+void out_steps(const planstepv *steps, zval *out);
+void out_changes(const changev *changes, zend_class_entry *ce, zval *out);
+bool in_unsupported(zval *v, unsupportedv *out, const char *what);
+void out_unsupported(const unsupportedv *list, zval *out);
 
 /* ------------------------------------------------------------- exceptions */
 

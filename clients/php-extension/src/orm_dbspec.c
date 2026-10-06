@@ -1277,6 +1277,226 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, manifest)
     LEAVE();
 }
 
+/* --------------------------------------------------------------- plans */
+
+static void diags_result(zval *return_value, zend_class_entry *ce, const char *first, zval *value, const diags *d)
+{
+    zv_result(return_value, ce, first, value, d);
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, externalDifferences)
+{
+    zval *live, *documents;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OF_CLASS(live, dbs_ce_Document)
+        Z_PARAM_ARRAY(documents)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *l;
+    documentv set;
+    if (in_document(live, &l) && in_documents(documents, &set, "the document set")) {
+        strs out = external_differences(l, &set);
+        zv_strs(return_value, &out);
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, parsePlan)
+{
+    zend_string *text;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(text)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    diags d = {0};
+    plan *p = plan_parse(zs(text), &d);
+    if (p != NULL) {
+        zval pz;
+        out_plan(p, &pz);
+        diags_result(return_value, dbs_ce_PlanParseResult, "plan", &pz, &d);
+    } else {
+        diags_result(return_value, dbs_ce_PlanParseResult, "plan", NULL, &d);
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, emitPlan)
+{
+    zval *zplan;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(zplan, dbs_ce_Plan)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    plan *p;
+    if (in_plan(zplan, &p)) {
+        RETVAL_STR(str_zend(plan_emit(p)));
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, chain)
+{
+    zval *plans;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(plans)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    planv in;
+    if (in_plans(plans, &in, "the plans")) {
+        planv out;
+        diags d = {0};
+        if (plan_chain(&in, &out, &d)) {
+            zval list;
+            if (out.n == 0) {
+                ZVAL_EMPTY_ARRAY(&list);
+            } else {
+                array_init_size(&list, (uint32_t)out.n);
+                for (size_t i = 0; i < out.n; i++) {
+                    zval pz;
+                    out_plan(out.v[i], &pz);
+                    add_next_index_zval(&list, &pz);
+                }
+            }
+            diags_result(return_value, dbs_ce_ChainResult, "plans", &list, &d);
+        } else {
+            diags_result(return_value, dbs_ce_ChainResult, "plans", NULL, &d);
+        }
+    }
+    LEAVE();
+}
+
+/* null이거나 Document인 source다. */
+static bool in_source(zval *source, document **out)
+{
+    *out = NULL;
+    return source == NULL || in_document(source, out);
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, diff)
+{
+    zval *source, *zplan;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(source, dbs_ce_Document)
+        Z_PARAM_OBJECT_OF_CLASS(zplan, dbs_ce_Plan)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *src;
+    plan *p;
+    if (in_source(source, &src) && in_plan(zplan, &p)) {
+        changev changes;
+        diags d = {0};
+        if (plan_diff(src, p, &changes, &d)) {
+            zval list;
+            out_changes(&changes, dbs_ce_Change, &list);
+            diags_result(return_value, dbs_ce_DiffResult, "changes", &list, &d);
+        } else {
+            diags_result(return_value, dbs_ce_DiffResult, "changes", NULL, &d);
+        }
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, compareSchemas)
+{
+    zval *source, *target;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OF_CLASS(source, dbs_ce_Document)
+        Z_PARAM_OBJECT_OF_CLASS(target, dbs_ce_Document)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *s, *t;
+    if (in_document(source, &s) && in_document(target, &t)) {
+        changev differences;
+        diags d = {0};
+        if (schema_compare(s, t, &differences, &d)) {
+            zval list;
+            out_changes(&differences, dbs_ce_Difference, &list);
+            diags_result(return_value, dbs_ce_ComparisonResult, "differences", &list, &d);
+        } else {
+            diags_result(return_value, dbs_ce_ComparisonResult, "differences", NULL, &d);
+        }
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, installedDifferences)
+{
+    zval *live, *unsupported_list, *target;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_OBJECT_OF_CLASS(live, dbs_ce_Document)
+        Z_PARAM_ARRAY(unsupported_list)
+        Z_PARAM_OBJECT_OF_CLASS(target, dbs_ce_Document)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *l, *t;
+    unsupportedv u;
+    if (in_document(live, &l) && in_unsupported(unsupported_list, &u, "the unsupported objects") && in_document(target, &t)) {
+        strs out = installed_differences(l, &u, t);
+        zv_strs(return_value, &out);
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps)
+{
+    zval *live, *unsupported_list, *target;
+    zend_string *dialect_name;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_OBJECT_OF_CLASS(live, dbs_ce_Document)
+        Z_PARAM_ARRAY(unsupported_list)
+        Z_PARAM_OBJECT_OF_CLASS(target, dbs_ce_Document)
+        Z_PARAM_STR(dialect_name)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *l, *t;
+    unsupportedv u;
+    if (in_document(live, &l) && in_unsupported(unsupported_list, &u, "the unsupported objects") && in_document(target, &t)) {
+        strs added, differences;
+        planstepv steps;
+        add_tables_and_columns_steps(l, &u, t, zs(dialect_name), &added, &steps, &differences);
+        if (!dbs_failed()) {
+            zval a, s, d;
+            zv_strs(&a, &added);
+            out_steps(&steps, &s);
+            zv_strs(&d, &differences);
+            array_init_size(return_value, 3);
+            add_next_index_zval(return_value, &a);
+            add_next_index_zval(return_value, &s);
+            add_next_index_zval(return_value, &d);
+        }
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, planSteps)
+{
+    zval *source, *zplan;
+    zend_string *dialect_name;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(source, dbs_ce_Document)
+        Z_PARAM_OBJECT_OF_CLASS(zplan, dbs_ce_Plan)
+        Z_PARAM_STR(dialect_name)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    dialect dl;
+    document *src;
+    plan *p;
+    if (dbs_dialect(zs(dialect_name), &dl) && in_source(source, &src) && in_plan(zplan, &p)) {
+        planstepv steps;
+        diags d = {0};
+        if (plan_steps(src, p, dl, &steps, &d)) {
+            if (!dbs_failed()) {
+                zval list;
+                out_steps(&steps, &list);
+                diags_result(return_value, dbs_ce_PlanStepsResult, "steps", &list, &d);
+            }
+        } else {
+            diags_result(return_value, dbs_ce_PlanStepsResult, "steps", NULL, &d);
+        }
+    }
+    LEAVE();
+}
+
 /* ------------------------------------------------------------------ module */
 
 /* gen_stub이 쓰지 못하는 배열 상수를 영속 불변 배열로 선언한다. */

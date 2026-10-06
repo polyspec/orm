@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.9: the PHP extension implements externalDifferences, parsePlan, emitPlan, chain, diff, compareSchemas, installedDifferences, addTablesAndColumnsSteps and planSteps with the PHP client's results, runs the PHP client's plan test and compares its plan output with the other runners.
+
 - T9.8: the PHP extension orm_dbspec is C built with phpize instead of Rust: `Orm\Dbspec\Native` has the classes of the PHP client's dbspec surface with their mutable document graph, and parse, emit, readFile, readBytes, manifest and render give the PHP client's results, messages and exceptions; gen_stub.php writes its arginfo from the stub, and the extension build no longer needs Rust or libclang.
 
 - T9.7: the PHP parser reports a use cycle through a document whose header names another document instead of recursing until memory runs out, and accepts digit-only column names of an audited table without a TypeError; tests/dbspec/cases.json holds both cases for every client.

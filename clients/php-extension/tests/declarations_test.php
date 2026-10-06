@@ -64,4 +64,24 @@ $packaged = testcase_run('php-extension/package', TESTCASE_PROCESS, static funct
     }
     $step("$name builds from {$package['php-ext']['build-path']}");
 });
-exit($passed && $packaged ? 0 : 1);
+// 확장의 test 가운데 PHP client test와 같은 case를 따르는 것은 그 test와 본문이 같다: 그 file의 header(설명, require와
+// use) 뒤 `const CASE_DEADLINE_MS`부터 끝까지가 PHP client test의 같은 부분과 같다.
+$mirrored = testcase_run('php-extension/mirrors', TESTCASE_PROCESS, static function (callable $step): void {
+    $root = dirname(__DIR__, 3);
+    $mirrors = ['dbspec_plan_test.php'];
+    foreach ($mirrors as $file) {
+        $body = static function (string $path): string {
+            $text = file_get_contents($path);
+            $at = strpos($text, "\nconst CASE_DEADLINE_MS");
+            if ($at === false) {
+                throw new RuntimeException("$path has no const CASE_DEADLINE_MS, where the shared body starts");
+            }
+            return substr($text, $at);
+        };
+        if ($body("$root/clients/php-extension/tests/$file") !== $body("$root/clients/php/tests/$file")) {
+            throw new RuntimeException("clients/php-extension/tests/$file differs from clients/php/tests/$file after its header; change both tests together");
+        }
+    }
+    $step(count($mirrors) . ' tests follow the PHP client tests');
+});
+exit($passed && $packaged && $mirrored ? 0 : 1);

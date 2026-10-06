@@ -474,14 +474,15 @@ dbspec-php-check/apply-cleanup:
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, PHP client의 dbspec 표면을 C로 구현한
 # Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
 # phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec
-# vector, statement vector와 순수 PHP client에 대해 같은 결과를 내는지 각각 두 번 확인한다. build는 PATH의 phpize와
+# vector, statement vector, plan vector(PHP client의 plan test와 같은 case)와 순수 PHP client에 대해 같은 결과를 내는지
+# 각각 두 번 확인한다. build는 PATH의 phpize와
 # php-config를 쓰고, gen_stub.php는 make install-php-extension-tools가 둔 것을 쓴다. php-extension-arginfo는 stub에서
 # header를 다시 쓴다.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -493,6 +494,9 @@ dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
 dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_plan_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_plan_test.php
 php-extension-arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) write
 
