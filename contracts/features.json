@@ -2595,10 +2595,9 @@
           "id": "schema-php-extension",
           "command": "make dbspec-php-extension-check",
           "inputs": [
-            "clients/php-extension/Cargo.toml",
-            "clients/php-extension/Cargo.lock",
-            "clients/php-extension/build.rs",
             "clients/php-extension/src/**",
+            "clients/php-extension/scripts/**",
+            "clients/php-extension/composer.json",
             "clients/php-extension/stubs/orm_dbspec.stub.php",
             "clients/php-extension/tests/declarations.php",
             "clients/php-extension/tests/declarations_test.php",
@@ -2637,10 +2636,8 @@
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs",
-            "clients/php-extension/Cargo.toml",
-            "clients/php-extension/Cargo.lock",
-            "clients/php-extension/build.rs",
-            "clients/php-extension/src/**"
+            "clients/php-extension/src/**",
+            "clients/php-extension/scripts/build.sh"
           ]
         }
       ],

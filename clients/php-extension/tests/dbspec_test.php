@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-// 확장 orm_dbspec의 dbspec 인터페이스(Orm\Dbspec\Native\Dbspec)를 공유 vector와 순수 PHP client로 확인한다.
-// - tests/dbspec/cases.json의 canonical, normalize, invalid case: vector가 정한 emission이나 diagnostic
-//   (rule, line, column), 같은 입력에 대한 순수 PHP client Orm\Dbspec\Dbspec의 결과와 같다. message는 client마다
-//   다르므로(docs/dbspec.md "Verification") 비교하지 않는다.
+// 확장 orm_dbspec의 dbspec 인터페이스(Orm\Dbspec\Native\Dbspec)를 공유 vector와 순수 PHP client로 확인한다. PHP
+// client가 사양이므로, 같은 입력의 결과는 diagnostic의 message, 예외의 class와 message까지 같아야 한다.
+// - tests/dbspec/cases.json의 canonical, normalize, invalid case: vector가 정한 emission이나 diagnostic(rule, line,
+//   column)이고, 모든 문서에서 PHP client와 같은 diagnostic과 emission이다.
 // - files case: readFile과 readBytes의 diagnostic과 message, 또는 text.
-// - hashes case: manifest의 다섯 값이 순수 PHP client와 같다.
-// - tests/dbspec/ddl.json: 세 dialect의 render statement가 순수 PHP client와 같다.
-// - PHP 문자열이 byte이므로 생기는 경우(UTF-8이 아닌 text), 인자 오류와 결과 객체의 규칙.
+// - hashes case와 tests/dbspec/ddl.json: manifest의 다섯 값과 세 dialect의 statement가 PHP client와 같다.
+// - Document는 PHP client처럼 고칠 수 있는 객체 graph다: 같게 고친 두 문서의 emission, manifest, statement가 같다.
+// - 인자 오류와 결과 객체의 규칙이 PHP client와 같다.
 //
 // Usage: php -d extension=<orm_dbspec library> clients/php-extension/tests/dbspec_test.php
 
@@ -25,12 +25,6 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-/** @return list<string> diagnostic마다 "rule line column" */
-function located(array $diagnostics): array
-{
-    return array_map(static fn(object $d): string => "{$d->rule} {$d->line} {$d->column}", $diagnostics);
-}
-
 /** @return list<string> diagnostic마다 "rule line column message" */
 function described(array $diagnostics): array
 {
@@ -44,16 +38,20 @@ function same(string $what, mixed $want, mixed $got): void
     }
 }
 
-/** $body가 $class 예외를 $message로 던지는지 확인한다. */
-function throws(string $what, string $class, string $message, callable $body): void
+/** $body의 결과나 예외를 [class, message]로 돌려준다. 예외 class는 namespace 없이 비교한다. */
+function outcome(callable $body): array
 {
     try {
-        $body();
+        return ['returned', json_encode($body(), JSON_UNESCAPED_SLASHES)];
     } catch (Throwable $error) {
-        same("$what exception", [$class, $message], [get_class($error), $error->getMessage()]);
-        return;
+        return [get_class($error), $error->getMessage()];
     }
-    throw new RuntimeException("$what threw nothing; expected $class: $message");
+}
+
+/** 두 namespace의 같은 연산이 같은 결과나 같은 예외를 낸다. 확장의 class 이름은 PHP client의 이름으로 읽는다. */
+function same_outcome(string $what, callable $php, callable $native): void
+{
+    same($what, outcome($php), array_map(static fn(string $s): string => str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', $s), outcome($native)));
 }
 
 /** 문서 집합의 각 문서를 다른 문서를 집합으로 parse한다. 하나라도 diagnostic이 있으면 null이다. */
@@ -89,11 +87,17 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
         foreach ($cases[$kind] as $case) {
             $id = "$kind/{$case['id']}";
             $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
+            foreach ($texts as $name => $text) {
+                $native = NativeDbspec::parse($text, $texts);
+                $php = Dbspec::parse($text, $texts);
+                same("$id/$name diagnostics against the PHP client", described($php->diagnostics), described($native->diagnostics));
+                same("$id/$name emission against the PHP client", $php->document === null ? null : Dbspec::emit($php->document),
+                    $native->document === null ? null : NativeDbspec::emit($native->document));
+            }
             $native = NativeDbspec::parse($texts[$case['main']], $texts);
-            $php = Dbspec::parse($texts[$case['main']], $texts);
-            same("$id diagnostics against the PHP client", located($php->diagnostics), located($native->diagnostics));
             if ($kind === 'invalid') {
-                same("$id diagnostics", array_map(static fn(array $e): string => "{$e['rule']} {$e['line']} {$e['column']}", $case['errors']), located($native->diagnostics));
+                same("$id diagnostics", array_map(static fn(array $e): string => "{$e['rule']} {$e['line']} {$e['column']}", $case['errors']),
+                    array_map(static fn(object $d): string => "{$d->rule} {$d->line} {$d->column}", $native->diagnostics));
                 same("$id document", null, $native->document);
                 continue;
             }
@@ -107,18 +111,16 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
 }
 
 $run('php-extension/files', static function (callable $step) use ($cases, $root): void {
-    $messages = ['signature' => ' is not a dbspec document', 'encoding' => ' is not valid UTF-8'];
     foreach ($cases['files'] as $case) {
         $path = "$root/tests/dbspec/{$case['path']}";
-        $reads = [
-            'file' => [$path, NativeDbspec::readFile($path)],
-            'bytes' => [$case['path'], NativeDbspec::readBytes($case['path'], (string) file_get_contents($path))],
-        ];
-        foreach ($reads as $kind => [$name, $read]) {
+        foreach (['file' => [$path], 'bytes' => [$case['path'], (string) file_get_contents($path)]] as $kind => $arguments) {
             $id = "files/{$case['id']}/$kind";
-            $want = array_map(static fn(array $e): string => "{$e['rule']} {$e['line']} {$e['column']} $name{$messages[$e['rule']]}", $case['errors']);
-            same("$id diagnostics", $want, described($read->diagnostics));
-            same("$id text", $case['errors'] === [] ? file_get_contents($path) : null, $read->text);
+            $native = $kind === 'file' ? NativeDbspec::readFile(...$arguments) : NativeDbspec::readBytes(...$arguments);
+            $php = $kind === 'file' ? Dbspec::readFile(...$arguments) : Dbspec::readBytes(...$arguments);
+            same("$id diagnostics", described($php->diagnostics), described($native->diagnostics));
+            same("$id text", $php->text, $native->text);
+            same("$id vector", array_map(static fn(array $e): string => "{$e['rule']} {$e['line']} {$e['column']}", $case['errors']),
+                array_map(static fn(object $d): string => "{$d->rule} {$d->line} {$d->column}", $native->diagnostics));
         }
     }
     $step(count($cases['files']) . ' files read twice');
@@ -150,7 +152,7 @@ $run('php-extension/render', static function (callable $step) use ($ddl): void {
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
             $nativeResult = NativeDbspec::render($native, $dialect);
             $phpResult = Dbspec::render($php, $dialect);
-            same("render/{$case['id']}/$dialect diagnostics", located($phpResult->diagnostics), located($nativeResult->diagnostics));
+            same("render/{$case['id']}/$dialect diagnostics", described($phpResult->diagnostics), described($nativeResult->diagnostics));
             same("render/{$case['id']}/$dialect statements", $phpResult->statements, $nativeResult->statements);
             $count++;
         }
@@ -165,10 +167,10 @@ $run('php-extension/manifest-set-diagnostics', static function (callable $step):
     $phpSet = [Dbspec::parse($text, [])->document, Dbspec::parse($text, [])->document];
     $manifest = NativeDbspec::manifest($set);
     same('manifest', null, $manifest->manifest);
-    same('manifest diagnostics', located(Dbspec::manifest($phpSet)->diagnostics), located($manifest->diagnostics));
+    same('manifest diagnostics', described(Dbspec::manifest($phpSet)->diagnostics), described($manifest->diagnostics));
     $render = NativeDbspec::render($set, 'sqlite');
     same('render statements', null, $render->statements);
-    same('render diagnostics', located(Dbspec::render($phpSet, 'sqlite')->diagnostics), located($render->diagnostics));
+    same('render diagnostics', described(Dbspec::render($phpSet, 'sqlite')->diagnostics), described($render->diagnostics));
     $step('name.duplicate');
 });
 
@@ -180,43 +182,35 @@ $run('php-extension/bytes', static function (callable $step): void {
         'byte order mark and an invalid byte' => "\xEF\xBB\xBFdbspec 1 shop\n\xC3\n",
         'invalid byte in the header' => "dbspec 1 sh\xE9p\n",
         'truncated sequence at the end' => "dbspec 1 shop\n# caf\xC3",
+        'a NUL in a comment' => "dbspec 1 shop\n\n# a\0b\ntable t {\n  id i64\n  primary key (id)\n}\n",
     ];
     foreach ($texts as $what => $text) {
         $native = NativeDbspec::parse($text, []);
-        same("$what document", null, $native->document);
-        same("$what diagnostics", described(Dbspec::parse($text, [])->diagnostics), described($native->diagnostics));
+        $php = Dbspec::parse($text, []);
+        same("$what diagnostics", described($php->diagnostics), described($native->diagnostics));
+        same("$what emission", $php->document === null ? null : Dbspec::emit($php->document), $native->document === null ? null : NativeDbspec::emit($native->document));
     }
-    $step(count($texts) . ' texts');
+    // 집합의 UTF-8이 아닌 문서는 그 문서를 쓰는 use 줄의 diagnostic이다.
+    $text = "dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n";
+    $set = ['core' => "dbspec 1 core\xFF"];
+    same('a used document that is not UTF-8', described(Dbspec::parse($text, $set)->diagnostics), described(NativeDbspec::parse($text, $set)->diagnostics));
+    $step(count($texts) + 1 . ' texts');
 });
 
 $run('php-extension/arguments', static function (callable $step) use ($root): void {
     $text = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
-    $document = NativeDbspec::parse($text, [])->document;
-    $set = 'The declared document set maps document names to texts';
-    throws('an integer document name', InvalidArgumentException::class, $set, static fn() => NativeDbspec::parse($text, [1 => $text]));
-    throws('an integer document name in the PHP client', InvalidArgumentException::class, $set, static fn() => Dbspec::parse($text, [1 => $text]));
-    throws('a document text that is not a string', InvalidArgumentException::class, $set, static fn() => NativeDbspec::parse($text, ['core' => 1]));
-    throws('a used document that is not UTF-8', InvalidArgumentException::class, 'The text of the declared document `core` is not valid UTF-8',
-        static fn() => NativeDbspec::parse($text, ['core' => "dbspec 1 core\xFF"]));
-    $dialect = 'Unknown dialect `oracle`; the dialects are mysql, postgres and sqlite';
-    throws('an unknown dialect', InvalidArgumentException::class, $dialect, static fn() => NativeDbspec::render([$document], 'oracle'));
-    throws('an unknown dialect in the PHP client', InvalidArgumentException::class, $dialect, static fn() => Dbspec::render([Dbspec::parse($text, [])->document], 'oracle'));
-    $documents = 'The document set lists Orm\\Dbspec\\Native\\Document objects';
-    throws('a manifest of a text', InvalidArgumentException::class, $documents, static fn() => NativeDbspec::manifest([$text]));
-    throws('a rendering of a PHP client document', InvalidArgumentException::class, $documents, static fn() => NativeDbspec::render([Dbspec::parse($text, [])->document], 'mysql'));
+    same_outcome('an integer document name', static fn() => Dbspec::parse($text, [1 => $text]), static fn() => NativeDbspec::parse($text, [1 => $text]));
+    same_outcome('a document text that is not a string', static fn() => Dbspec::parse($text, ['core' => 1]), static fn() => NativeDbspec::parse($text, ['core' => 1]));
+    same_outcome('an unknown dialect', static fn() => Dbspec::render([Dbspec::parse($text, [])->document], 'oracle'),
+        static fn() => NativeDbspec::render([NativeDbspec::parse($text, [])->document], 'oracle'));
     $missing = "$root/tests/dbspec/files/missing.dbs";
-    throws('a missing file', RuntimeException::class, "cannot read $missing: No such file or directory (os error 2)", static fn() => NativeDbspec::readFile($missing));
-    $directory = "$root/tests/dbspec/files";
-    $read = null;
-    try {
-        $read = NativeDbspec::readFile($directory);
-    } catch (RuntimeException $error) {
-        if (!str_starts_with($error->getMessage(), "cannot read $directory: ")) {
-            throw $error;
-        }
-    }
-    same('a directory read', null, $read);
-    throws('a path that is not UTF-8', InvalidArgumentException::class, 'The path is not valid UTF-8', static fn() => NativeDbspec::readFile("$root/\xFF.dbs"));
+    same_outcome('a missing file', static fn() => Dbspec::readFile($missing), static fn() => NativeDbspec::readFile($missing));
+    same_outcome('a directory', static fn() => Dbspec::readFile("$root/tests/dbspec/files"), static fn() => NativeDbspec::readFile("$root/tests/dbspec/files"));
+    // 확장의 문서 집합은 확장의 Document만 담는다.
+    $documents = 'the document set holds string, not Orm\\Dbspec\\Native\\Document';
+    same('a manifest of a text', [TypeError::class, $documents], outcome(static fn() => NativeDbspec::manifest([$text])));
+    same('a rendering of a PHP client document', [TypeError::class, 'the document set holds Orm\\Dbspec\\Document, not Orm\\Dbspec\\Native\\Document'],
+        outcome(static fn() => NativeDbspec::render([Dbspec::parse($text, [])->document], 'mysql')));
     $step('arguments rejected');
 });
 
@@ -225,17 +219,66 @@ $run('php-extension/objects', static function (callable $step): void {
     same('the same document object', true, $result->document === $result->document);
     same('the signature', Dbspec::SIGNATURE, NativeDbspec::SIGNATURE);
     $diagnostic = NativeDbspec::parse('x', [])->diagnostics[0];
-    // 결과 객체는 순수 PHP client처럼 readonly이고 동적 property를 갖지 않으며 확장만 만든다.
-    throws('a write', Error::class, 'Cannot modify readonly property Orm\\Dbspec\\Native\\Diagnostic::$line', static function () use ($diagnostic): void {
+    // 결과 객체는 순수 PHP client처럼 readonly이고 동적 property를 갖지 않는다.
+    same('a write', [Error::class, 'Cannot modify readonly property Orm\\Dbspec\\Native\\Diagnostic::$line'], outcome(static function () use ($diagnostic): void {
         $diagnostic->line = 2;
-    });
-    throws('a dynamic property', Error::class, 'Cannot create dynamic property Orm\\Dbspec\\Native\\Diagnostic::$extra', static function () use ($diagnostic): void {
+    }));
+    same('a dynamic property', [Error::class, 'Cannot create dynamic property Orm\\Dbspec\\Native\\Diagnostic::$extra'], outcome(static function () use ($diagnostic): void {
         $diagnostic->extra = 1;
-    });
-    throws('a new diagnostic', Error::class, 'Call to private Orm\\Dbspec\\Native\\Diagnostic::__construct() from global scope', static fn() => new Orm\Dbspec\Native\Diagnostic());
-    throws('a new document', Exception::class, 'You cannot instantiate this class from PHP.', static fn() => new Orm\Dbspec\Native\Document());
+    }));
     same('the properties in declaration order', ['rule', 'line', 'column', 'message'], array_keys(get_object_vars($diagnostic)));
+    same('the document properties in declaration order', array_keys(get_object_vars(new Orm\Dbspec\Document('d'))), array_keys(get_object_vars(new Orm\Dbspec\Native\Document('d'))));
+    same_outcome('an invalid result without a diagnostic', static fn() => Orm\Dbspec\ParseResult::invalid([]), static fn() => Orm\Dbspec\Native\ParseResult::invalid([]));
+    same_outcome('a repeated readonly construction', static function () {
+        $d = new Orm\Dbspec\Diagnostic('syntax', 1, 2, 'm');
+        $d->__construct('syntax', 1, 2, 'm');
+    }, static function () {
+        $d = new Orm\Dbspec\Native\Diagnostic('syntax', 1, 2, 'm');
+        $d->__construct('syntax', 1, 2, 'm');
+    });
     $step('readonly results');
+});
+
+$run('php-extension/documents', static function (callable $step): void {
+    // 같게 고친 두 문서는 같은 text와 statement를 낸다: 확장의 Document는 PHP client의 Document처럼 고칠 수 있다.
+    $text = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n  unique users_name (name)\n}\n";
+    $change = static function (string $ns, object $document): object {
+        $table = $document->tables[0];
+        $table->columns[] = new ("$ns\\Column")('email', new ("$ns\\ColumnType")('varchar', [120]), true, false, "'a@b'", ['# the address']);
+        $table->indexes[] = new ("$ns\\Index")('users_email', [new ("$ns\\IndexColumn")('email', true)]);
+        $table->checks[] = new ("$ns\\Check")('users_email_set', "email <> ''");
+        $table->settings = new ("$ns\\Settings")(['# settings']);
+        $table->settings->settings[] = new ("$ns\\Setting")('immutable', []);
+        $orders = new ("$ns\\Table")('orders', ['# orders']);
+        $orders->columns[] = new ("$ns\\Column")('id', new ("$ns\\ColumnType")('i64'), false, true, null);
+        $orders->columns[] = new ("$ns\\Column")('user_id', new ("$ns\\ColumnType")('i64'), false, false, null);
+        $orders->primaryKey = new ("$ns\\PrimaryKey")(['id']);
+        $orders->indexes[] = new ("$ns\\Index")('orders_user', [new ("$ns\\IndexColumn")('user_id', false)]);
+        $orders->foreignKeys[] = new ("$ns\\ForeignKey")('orders_user_fk', ['user_id'], 'users', ['id'], 'cascade', 'restrict');
+        $document->tables[] = $orders;
+        $document->diagrams[] = new ("$ns\\Diagram")('main');
+        $document->diagrams[0]->placements[] = new ("$ns\\Placement")('users', -5, 10, ['# here']);
+        $document->trailingComments = ['# end'];
+        return $document;
+    };
+    $php = $change('Orm\\Dbspec', Dbspec::parse($text, [])->document);
+    $native = $change('Orm\\Dbspec\\Native', NativeDbspec::parse($text, [])->document);
+    same('emission', Dbspec::emit($php), NativeDbspec::emit($native));
+    same('manifest', json_encode(Dbspec::manifest([$php])->manifest), json_encode(NativeDbspec::manifest([$native])->manifest));
+    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+        same("$dialect statements", Dbspec::render([$php], $dialect)->statements, NativeDbspec::render([$native], $dialect)->statements);
+    }
+    same('a built document parses back', described(Dbspec::parse(Dbspec::emit($php), [])->diagnostics), described(NativeDbspec::parse(NativeDbspec::emit($native), [])->diagnostics));
+    // 값 메서드는 PHP client의 것과 같다.
+    $setting = new Orm\Dbspec\Native\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
+    $phpSetting = new Orm\Dbspec\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
+    same('records', [$phpSetting->records('name'), $phpSetting->records('audit_seq'), $phpSetting->records('id')], [$setting->records('name'), $setting->records('audit_seq'), $setting->records('id')]);
+    same('excluded', $phpSetting->excluded($php->tables[0]), $setting->excluded($native->tables[0]));
+    same('auditLine', $phpSetting->auditLine('exclude', ['name']), $setting->auditLine('exclude', ['name']));
+    same('type text', [(new Orm\Dbspec\ColumnType('decimal', [5, 2]))->text(), (new Orm\Dbspec\ColumnType('i32'))->isInteger()],
+        [(new Orm\Dbspec\Native\ColumnType('decimal', [5, 2]))->text(), (new Orm\Dbspec\Native\ColumnType('i32'))->isInteger()]);
+    same('changes child rows', $php->tables[1]->foreignKeys[0]->changesChildRows(), $native->tables[1]->foreignKeys[0]->changesChildRows());
+    $step('changed documents');
 });
 
 exit($failed === 0 ? 0 : 1);

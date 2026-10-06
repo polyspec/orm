@@ -130,13 +130,13 @@ jobs:
         id: composer
         if: ${{ !cancelled() }}
         run: make install-php
-      - name: libclang of the PHP extension build
+      - name: tools of the PHP extension build
         id: php-extension-tools
         if: ${{ !cancelled() }}
         # make dbspec-php-extension-check and make dbspec-compare-check build
-        # the PHP extension orm_dbspec, whose bindgen reads the PHP headers of
-        # php-config through libclang; scripts/ci/php-extension-tools.sh
-        # installs it and checks php-config.
+        # the PHP extension orm_dbspec with phpize and check its arginfo with
+        # gen_stub.php; scripts/ci/php-extension-tools.sh checks phpize and
+        # php-config and installs gen_stub.php with its PHP-Parser.
         run: make install-php-extension-tools
       - name: programs of the database servers
         id: server-programs

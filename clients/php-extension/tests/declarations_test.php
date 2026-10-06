@@ -51,4 +51,17 @@ $passed = testcase_run('php-extension/declarations', TESTCASE_PROCESS, static fu
     }
     $step(count($native) . ' declarations equal');
 });
-exit($passed ? 0 : 1);
+// PIE는 composer.json의 php-ext로 확장을 build한다: 그 이름은 load한 확장의 이름이고 build-path에 config.m4가 있다.
+$packaged = testcase_run('php-extension/package', TESTCASE_PROCESS, static function (callable $step): void {
+    $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
+    $name = $package['php-ext']['extension-name'] ?? null;
+    if ($package['type'] !== 'php-ext' || $name !== 'orm_dbspec') {
+        throw new RuntimeException("clients/php-extension/composer.json declares the extension " . json_encode($name) . " of type " . json_encode($package['type']) . ", not orm_dbspec of type php-ext");
+    }
+    $config = dirname(__DIR__) . '/' . ($package['php-ext']['build-path'] ?? '') . '/config.m4';
+    if (!is_file($config) || !str_contains(file_get_contents($config), "PHP_NEW_EXTENSION([$name]")) {
+        throw new RuntimeException("the build-path of clients/php-extension/composer.json has no config.m4 that builds $name");
+    }
+    $step("$name builds from {$package['php-ext']['build-path']}");
+});
+exit($passed && $packaged ? 0 : 1);

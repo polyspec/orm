@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.8: the PHP extension orm_dbspec is C built with phpize instead of Rust: `Orm\Dbspec\Native` has the classes of the PHP client's dbspec surface with their mutable document graph, and parse, emit, readFile, readBytes, manifest and render give the PHP client's results, messages and exceptions; gen_stub.php writes its arginfo from the stub, and the extension build no longer needs Rust or libclang.
+
 - T9.7: the PHP parser reports a use cycle through a document whose header names another document instead of recursing until memory runs out, and accepts digit-only column names of an audited table without a TypeError; tests/dbspec/cases.json holds both cases for every client.
 
 - T9.6: contracts/interfaces.json declares the plan, Mermaid, apply and introspect methods of `Dbspec` as rules with their Go, PHP, Rust and TypeScript adapters, and their value types as owners, so the interface check compares them across the four languages.

@@ -19,7 +19,7 @@ export const CI_SETUP = {
   php: 'php',
   'php-sqlite': 'php',
   composer: 'composer',
-  'php-extension-tools': 'libclang',
+  'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
 };

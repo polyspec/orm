@@ -4,7 +4,7 @@
 // line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
 // error를 쓰고 nonzero로 끝난다. until이 있는 runner의 출력은 첫 Go 출력에서 그 문자열로 시작하는 첫
 // 줄 앞까지와 같아야 한다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
-// example의 debug build를, PHP 확장 runner는 확장 orm_dbspec의 debug build를 요구한다.
+// example의 debug build를, PHP 확장 runner는 make가 build한 확장 orm_dbspec(ORM_DBSPEC_EXTENSION)을 요구한다.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,8 +15,12 @@ export const root = fileURLToPath(new URL('../../../', import.meta.url));
 // INPUTS는 runRunner가 받는 input의 이름과 순서다.
 export const INPUTS = ['cases', 'stress', 'ddl', 'plans', 'mermaid'];
 
-// PHP_EXTENSION은 CARGO_TARGET_DIR 안의 확장 orm_dbspec의 debug build다(make dbspec-compare-check가 복사한다).
-const PHP_EXTENSION = `debug/liborm_dbspec.${process.platform === 'darwin' ? 'dylib' : 'so'}`;
+// phpExtension은 make dbspec-compare-check가 그 실행의 directory에 build한 확장 orm_dbspec의 경로다.
+function phpExtension() {
+  const path = process.env.ORM_DBSPEC_EXTENSION;
+  if (!path) throw new Error('ORM_DBSPEC_EXTENSION names no build of the PHP extension orm_dbspec; run make dbspec-compare-check, which builds it and sets it');
+  return path;
+}
 
 export const runners = [
   { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'], reads: INPUTS },
@@ -26,7 +30,9 @@ export const runners = [
   {
     name: 'php-extension',
     command: 'php',
-    args: ['-d', `extension=${join(cargoTarget(), PHP_EXTENSION)}`, 'tests/dbspec/compare/php-extension.php'],
+    get args() {
+      return ['-d', `extension=${phpExtension()}`, 'tests/dbspec/compare/php-extension.php'];
+    },
     reads: ['cases', 'stress', 'ddl'],
     until: 'plans/',
   },

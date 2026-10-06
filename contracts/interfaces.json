@@ -40,13 +40,13 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension orm_dbspec (clients/php-extension) implements the Dbspec component over the Rust dbspec as Orm\\Dbspec\\Native\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension orm_dbspec (clients/php-extension) implements the dbspec surface of the PHP client in C as Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:d439960ab3edc60514f4df9aff894d1841272c6400437a535ee3be6bc3ea6dbf",
+      "symbol_hash": "sha256:2642be7af9585d3884500abbfa7534d9a004e8dc22401831116b1613f48e872f",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",

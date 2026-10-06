@@ -4,7 +4,7 @@
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/inputs.test.mjs
 // (after the TypeScript build, the debug builds of the Rust dbspec_compare,
-// dbspec_apply and dbspec_stress examples and the debug build of the PHP extension)
+// dbspec_apply and dbspec_stress examples and the build of the PHP extension)
 import { after } from 'node:test';
 import { caseTest } from '../testcase.mjs';
 import assert from 'node:assert/strict';
