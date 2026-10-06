@@ -425,7 +425,8 @@ export function fullSuiteRuleErrors(documents) {
 // 돌려준다. make check를 실행하는 workflow에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
 // step(RUNNER_STEPS)이거나 scripts/check/ci-setup.mjs의 CI_SETUP이 그 step이 마련하는 것을 적은 step이다. 표의 step은
 // 모두 workflow에 있다. 첫 step 뒤의 step과 make check는 `if: ${{ !cancelled() }}`로 앞의 step이 실패해도 실행되고,
-// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로 받는다. 다른 workflow의 `run:` step도 앞의 step이
+// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로, git-check가 읽는 commit 범위를 pull request와 push의
+// ORM_GIT_RANGE로 받는다. 다른 workflow의 `run:` step도 앞의 step이
 // 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
 // 없다.
 export function ciSetupErrors(workflows, { setup, runner }) {
@@ -450,6 +451,7 @@ export function ciSetupErrors(workflows, { setup, runner }) {
     for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);
     if (!guarded(check)) errors.push(`${path} step "${steps[check].name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
     if (!texts[check].includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
+    if (!texts[check].some(line => /^ORM_GIT_RANGE: \$\{\{ .*github\.event\.pull_request\.base\.sha.*github\.event\.before.* \}\}$/.test(line))) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_GIT_RANGE of the pull request and the push, the commits whose subjects git-check reads`);
   }
   return errors;
 }

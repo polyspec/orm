@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.88: `git-check` reads the subjects of `ORM_GIT_RANGE`, which CI sets to the pull request or the pushed range, and of HEAD without it.
+
 - G5.87: the Rust crates are `polyspec-orm`, `polyspec-orm-build` and `polyspec-orm-schema` and the npm package is `@polyspec/orm`; update dependencies and `polyspec_orm::` paths, and regenerate the TypeScript models.
 
 - G5.86: the PHP packages are `polyspec/orm` and `polyspec/orm-dbspec` in the namespace `Polyspec\Orm`; regenerate PHP models with orm-gen after updating `use` statements.
