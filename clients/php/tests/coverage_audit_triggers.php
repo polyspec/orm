@@ -11,13 +11,13 @@ require __DIR__ . '/coverage_cases.php';
 require __DIR__ . '/restore_case.php';
 require __DIR__ . '/audit_case.php';
 
-use CoverageAudit\Orm\Item;
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Tests\CoverageAudit\Item;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\RuntimeModel;
 
 /** connection의 database에 table이 있는지 catalog에서 읽는다. */
 function auditTable(Db $db, string $table): bool
@@ -93,7 +93,7 @@ function fixtureModels(string $fixture, string $namespace): void
 /** audit document의 model을 CoverageAudit\Orm에 생성한다. */
 function auditModels(): void
 {
-    fixtureModels('audit', 'CoverageAudit\\Orm');
+    fixtureModels('audit', 'Polyspec\\Orm\\Tests\\CoverageAudit');
 }
 
 /** audit fixture가 만드는 table이다. */
@@ -115,7 +115,7 @@ function withAudit(Closure $body): void
             coverageWant(!auditTable($db, $table), "$table exists before the case");
         }
         coverageRestoring(function () use ($db, $dsn, $body): void {
-            $db->utils()->schema()->install(\CoverageAudit\Orm\schema());
+            $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageAudit\schema());
             $body($db, $dsn);
         }, fn() => dropFixture($db, ['item_history', 'item', 'audit'], ['item']));
         foreach (AUDIT_TABLES as $table) {
@@ -129,7 +129,7 @@ function withAudit(Closure $body): void
 runCoverageCases($argv, [
     // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
     'audit_history' => function (): void {
-        withAudit(fn(Db $db, string $dsn) => auditCase($db, $dsn, 'CoverageAudit\\Orm'));
+        withAudit(fn(Db $db, string $dsn) => auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\CoverageAudit'));
     },
     // 모든 transaction 진입점이 audit 값을 받는다: PHP의 진입점은 audit source를 가진 연결의 Db::transaction
     // 하나이며, 두 transaction이 audit 기록을 하나씩 삽입하고 audit 대상 write가 그 key를 쓰고, 중첩
@@ -156,7 +156,7 @@ runCoverageCases($argv, [
     // audit 없는 table이다. 끝나면 설치한 table과 PostgreSQL trigger function을 지운다.
     'soft_delete_restore' => function (): void {
         [, $dsn] = coverageDatabase();
-        fixtureModels('restore', 'CoverageRestore\\Orm');
+        fixtureModels('restore', 'Polyspec\\Orm\\Tests\\CoverageRestore');
         $tables = ['audit', 'label', 'membership', 'membership_history'];
         $db = Orm::connect($dsn, auditConfig('default'));
         try {
@@ -164,8 +164,8 @@ runCoverageCases($argv, [
                 coverageWant(!auditTable($db, $table), "$table exists before the case");
             }
             coverageRestoring(function () use ($db): void {
-                $db->utils()->schema()->install(\CoverageRestore\Orm\schema());
-                restoreCase($db, 'CoverageRestore\\Orm');
+                $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageRestore\schema());
+                restoreCase($db, 'Polyspec\\Orm\\Tests\\CoverageRestore');
             }, fn() => dropFixture($db, ['membership_history', 'membership', 'label', 'audit'], ['membership']));
             foreach ($tables as $table) {
                 coverageWant(!auditTable($db, $table), "$table remains after the case");

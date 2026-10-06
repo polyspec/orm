@@ -9,8 +9,8 @@ require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/coverage_cases.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\OrmException;
 
 /** $fn이 던진 RuntimeException의 message다. 던지지 않으면 실패한다. */
 function thrownMessage(Closure $fn): string

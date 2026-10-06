@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** Dbspec::compareSchemas 의 결과: diagnostic 없는 차이, 또는 차이 없는 diagnostic 이다. */
 final readonly class ComparisonResult

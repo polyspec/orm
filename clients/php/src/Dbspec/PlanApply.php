@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * plan chain 을 connection 하나에 step 하나씩 적용하고, 중단된 plan 을 이어 가거나

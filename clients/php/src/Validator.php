@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /** 요청(docs/protocol.md)을 runtime model에 대해 검증한다. */
 final class Validator

@@ -29,8 +29,8 @@ $fileMessages = ['signature' => ' is not a dbspec document', 'encoding' => ' is 
 foreach ($cases['files'] as $case) {
     $path = "$root/tests/dbspec/" . $case['path'];
     $readers = [
-        'file' => [$path, static fn(): Orm\Dbspec\ReadResult => Orm\Dbspec\Dbspec::readFile($path)],
-        'bytes' => [$case['path'], static fn(): Orm\Dbspec\ReadResult => Orm\Dbspec\Dbspec::readBytes($case['path'], (string) file_get_contents($path))],
+        'file' => [$path, static fn(): Polyspec\Orm\Dbspec\ReadResult => Polyspec\Orm\Dbspec\Dbspec::readFile($path)],
+        'bytes' => [$case['path'], static fn(): Polyspec\Orm\Dbspec\ReadResult => Polyspec\Orm\Dbspec\Dbspec::readBytes($case['path'], (string) file_get_contents($path))],
     ];
     foreach ($readers as $kind => [$name, $reader]) {
         $id = 'files/' . $case['id'] . '/' . $kind;
@@ -41,7 +41,7 @@ foreach ($cases['files'] as $case) {
             if ($read->text !== null) {
                 throw new RuntimeException("$id: text was returned with diagnostics expected");
             }
-            $got = array_map(static fn(Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $read->diagnostics);
+            $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $read->diagnostics);
             if ($got !== $case['errors']) {
                 throw new RuntimeException("$id: diagnostics differ\nwant " . json_encode($case['errors']) . "\ngot  " . json_encode($got));
             }
@@ -54,8 +54,8 @@ foreach ($cases['files'] as $case) {
             if ($read->diagnostics !== [] || $read->text !== file_get_contents($path)) {
                 throw new RuntimeException("$id: the file bytes were not returned");
             }
-            $result = Orm\Dbspec\Dbspec::parse($read->text, []);
-            if ($result->document === null || Orm\Dbspec\Dbspec::emit($result->document) !== $read->text) {
+            $result = Polyspec\Orm\Dbspec\Dbspec::parse($read->text, []);
+            if ($result->document === null || Polyspec\Orm\Dbspec\Dbspec::emit($result->document) !== $read->text) {
                 throw new RuntimeException("$id: the file text does not parse and emit unchanged");
             }
         }

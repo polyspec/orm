@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /**
  * Parses model method names with the chain grammar of docs/dsl.md. A name is

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Applies the plans.json chains through Orm\Dbspec\Native\Dbspec::apply,
+// Applies the plans.json chains through Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 // ::recover, ::rollback and ::finalize of the PHP extension orm_dbspec on
 // MySQL, PostgreSQL and SQLite, the same scenarios as the PHP client's
 // clients/php/tests/dbspec_apply_test.php (docs/plans.md "Apply"). Every run
@@ -17,13 +17,13 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-use Orm\Dbspec\Native\ApplyCleanupError;
-use Orm\Dbspec\Native\ApplyError;
-use Orm\Dbspec\Native\ApplyEvent;
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Dbspec\Native\Diagnostic;
-use Orm\Dbspec\Native\Plan;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Native\ApplyCleanupError;
+use Polyspec\Orm\Dbspec\Native\ApplyError;
+use Polyspec\Orm\Dbspec\Native\ApplyEvent;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Diagnostic;
+use Polyspec\Orm\Dbspec\Native\Plan;
+use Polyspec\Orm\Orm;
 
 // RUN_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 plan chain scenario
 // 하나(apply, 중단, recover, rollback, finalize)를 실행한 뒤 지운다.

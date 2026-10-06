@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * A failure of apply or recover (docs/plans.md "Apply"). The code is locked,

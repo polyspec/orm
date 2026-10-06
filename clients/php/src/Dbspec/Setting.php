@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * One setting line. The kind is one of KINDS, in canonical order; the

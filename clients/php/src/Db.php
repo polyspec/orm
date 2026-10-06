@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /**
  * A database connection: the PDO handle, its engine, the statement cache,
@@ -28,7 +28,7 @@ final class Db
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
-    /** Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
+    /** Polyspec\Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
     private bool $rollbackFault = false;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     private array $sets = [];

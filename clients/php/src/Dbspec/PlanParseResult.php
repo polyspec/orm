@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::parsePlan: a plan and no diagnostics, or the diagnostics and no plan. */
 final readonly class PlanParseResult

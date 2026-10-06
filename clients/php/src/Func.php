@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /**
  * An ORM function value. It carries the function kind and its arguments; the

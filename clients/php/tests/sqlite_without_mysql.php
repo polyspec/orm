@@ -11,9 +11,9 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Service;
-use Orm\Config;
-use Orm\Dbspec\Dbspec;
-use Orm\Orm;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Orm;
 
 function fail(string $message): never
 {

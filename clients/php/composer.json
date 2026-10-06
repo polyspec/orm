@@ -1,5 +1,5 @@
 {
-    "name": "orm/php-client",
+    "name": "polyspec/orm",
     "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
     "type": "library",
     "version": "0.0.2",
@@ -23,11 +23,11 @@
         "ext-pdo_pgsql": "postgres:// DSNs",
         "ext-pdo_sqlite": "sqlite:// DSNs",
         "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
-        "ext-orm_dbspec": "Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (clients/php-extension)"
+        "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (clients/php-extension)"
     },
     "autoload": {
         "psr-4": {
-            "Orm\\": "src/"
+            "Polyspec\\Orm\\": "src/"
         },
         "classmap": [
             "src/"

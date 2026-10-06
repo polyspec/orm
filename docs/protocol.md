@@ -163,7 +163,7 @@ The fault exists only in the test entry point of each client. No DSN, configurat
 | Go | `orm.FailNextRollback(db)` | The file is compiled only with the build tag `ormtest` (`go test -tags ormtest`); without the tag the function does not exist and a call does not compile |
 | Rust | `orm::testing::fail_next_rollback(&db)` | The module is compiled only with the cargo feature `test-faults`, which no default feature enables; it is enabled in `[dev-dependencies]` |
 | TypeScript | `failNextRollback(db)` of `@polyspec/orm-typescript/testing` | The package exports the subpath only under the condition `orm-test`; without `node --conditions=orm-test` the import fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`, and the package entry point does not export the function. A type check of the test resolves the subpath with `customConditions: ["orm-test"]` |
-| PHP | `Orm\Testing\Faults::failNextRollback($db)` | The class is in `testing/Faults.php` of the package, which the package autoloader does not map; a process has it only after it requires that file by its path |
+| PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | The class is in `testing/Faults.php` of the package, which the package autoloader does not map; a process has it only after it requires that file by its path |
 
 ## 4. Planning in the client
 

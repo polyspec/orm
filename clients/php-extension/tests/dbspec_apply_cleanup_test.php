@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Wraps a SQLite PDO to inject failures into Orm\Dbspec\Native apply of the
+// Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec\Native apply of the
 // PHP extension orm_dbspec, the same cases as the PHP client's
 // clients/php/tests/dbspec_apply_cleanup_test.php: a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing
@@ -15,12 +15,12 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-use Orm\Dbspec\Native\ApplyCleanupError;
-use Orm\Dbspec\Native\ApplyError;
-use Orm\Dbspec\Native\ApplyEvent;
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Dbspec\Native\Effect;
-use Orm\Dbspec\Native\PlanApply;
+use Polyspec\Orm\Dbspec\Native\ApplyCleanupError;
+use Polyspec\Orm\Dbspec\Native\ApplyError;
+use Polyspec\Orm\Dbspec\Native\ApplyEvent;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Effect;
+use Polyspec\Orm\Dbspec\Native\PlanApply;
 
 // CASE_DEADLINE_MS는 case 하나의 기한이다. case는 memory SQLite database에 plan 하나를 적용한다.
 const CASE_DEADLINE_MS = 20000;

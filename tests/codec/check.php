@@ -7,10 +7,10 @@ declare(strict_types=1);
 require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 require_once dirname(__DIR__) . '/testcase.php';
 
-use Orm\Codec;
-use Orm\Code;
-use Orm\OrmException;
-use Orm\StyledValue;
+use Polyspec\Orm\Codec;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\StyledValue;
 
 $root = __DIR__;
 $vectors = json_decode(file_get_contents("$root/vectors.json"), true, 512, JSON_THROW_ON_ERROR)['vectors'];

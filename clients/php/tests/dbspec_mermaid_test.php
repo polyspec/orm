@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Runs the export, import, invalid and round trip cases of
-// tests/dbspec/mermaid.json through Orm\Dbspec\Dbspec::exportMermaid and
+// tests/dbspec/mermaid.json through Polyspec\Orm\Dbspec\Dbspec::exportMermaid and
 // ::importMermaid (docs/mermaid.md): the Mermaid text, the emitted document,
 // the dropped [kind, table, name] and the [rule, line, column] diagnostics
 // must equal the case, and a round trip gets back the tables, columns,
@@ -11,10 +11,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Diagnostic;
-use Orm\Dbspec\Document;
-use Orm\Dbspec\Unsupported;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Unsupported;
 
 const CASE_DEADLINE_MS = 5000;
 

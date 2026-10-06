@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * 두 schema 의 차이 하나다(docs/plans.md "Comparison"). name 은 column 이나

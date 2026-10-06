@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
-use Orm\Config;
-use Orm\Db;
-use Orm\Orm;
-use Orm\Registry;
-use Orm\Schema;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\Registry;
+use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
 const MANIFEST_HASH = 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa';

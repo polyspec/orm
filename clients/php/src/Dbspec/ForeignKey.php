@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** A named foreign key; actions are `restrict`, `cascade` or `set_null`. */
 final class ForeignKey

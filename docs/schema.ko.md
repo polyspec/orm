@@ -21,7 +21,7 @@
 
 스키마 작업은 각 클라이언트 라이브러리의 함수다. 함수는 parse한 document와 dialect(`mysql`, `postgres`, `sqlite`)를 받아 statement나 위치가 있는 diagnostic을 돌려준다.
 
-| 작업 | Go `engine/dbspec` | PHP `Orm\Dbspec\Dbspec` | TypeScript | Rust |
+| 작업 | Go `engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
 |---|---|---|---|---|
 | document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
 | 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
@@ -52,7 +52,7 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 | 언어 | 호출 | 입력 |
 |---|---|---|
 | Go | `Utils().Schema().Install(model.Schema)` | 생성된 package의 schema 값(`*orm.Schema`) |
-| PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | 생성된 모델의 schema 값(`Orm\Schema`) |
+| PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | 생성된 모델의 schema 값(`Polyspec\Orm\Schema`) |
 | TypeScript | `utils().schema().install(SCHEMA)` | 생성된 module의 schema 값(`{ manifestText, manifestHash }`) |
 | Rust | `utils().schema().install(&model::SCHEMA).await` | 생성된 모델의 schema 값(`orm::Schema`) |
 

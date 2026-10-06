@@ -34,19 +34,19 @@
   },
   "symbol_hashes": {
     "go": "sha256:46296e2395dd299869886d778b6babc56205afec7f991dd64888cc4fb8082466",
-    "php": "sha256:f761c115276da244d889966163c67b276cbe693022e47b5241fae43a622c0129",
+    "php": "sha256:a860ae520b617eb8ce1447b1984c7ec01c29fd667cdc6c5663464ce8085a2ab5",
     "rust": "sha256:ec48196c5a1a37d3c2fff9f898087a314b5eead1d15c3e47af06beec3b0524ad",
     "typescript": "sha256:3c179bfa86203f8fa94aabb20d329e2e57f61949f9ea8d6da7ca9ff329c05dd6"
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension orm_dbspec (clients/php-extension) implements the dbspec surface of the PHP client in C as Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension orm_dbspec (clients/php-extension) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:8785f2e42e42ae8b7fcbf7e40b8f373c587eda5c7268500ef59341298962c8d4",
+      "symbol_hash": "sha256:cef2d83f4f41bdbbc62af70fa7e6a84c4b49fbc7ca87d43be973da5332442f74",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -462,8 +462,8 @@
           "signature": "receiver=*{Entity}Model func(db *orm.DB) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::connect",
-          "signature": "public function connect(Orm\\Db $db): static"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::connect",
+          "signature": "public function connect(Polyspec\\Orm\\Db $db): static"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::connect",
@@ -490,7 +490,7 @@
           "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::and",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::and",
           "signature": "public function and(mixed ...$args): static"
         },
         "rust": {
@@ -518,7 +518,7 @@
           "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::or",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::or",
           "signature": "public function or(mixed ...$args): static"
         },
         "rust": {
@@ -546,8 +546,8 @@
           "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::relation",
-          "signature": "public function relation(Orm\\Model $child): static"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::relation",
+          "signature": "public function relation(Polyspec\\Orm\\Model $child): static"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relation",
@@ -574,8 +574,8 @@
           "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::relations",
-          "signature": "public function relations(Orm\\Model $child): static"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::relations",
+          "signature": "public function relations(Polyspec\\Orm\\Model $child): static"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relations",
@@ -602,7 +602,7 @@
           "signature": "receiver=*{Entity}Model func(offset, count int) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::limit",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::limit",
           "signature": "public function limit(int $offset, int $count): static"
         },
         "rust": {
@@ -630,8 +630,8 @@
           "signature": "receiver=*{Entity}Model func(m *{Entity}Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::duplication",
-          "signature": "public function duplication(Orm\\Model $model): static"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::duplication",
+          "signature": "public function duplication(Polyspec\\Orm\\Model $model): static"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::duplication",
@@ -661,7 +661,7 @@
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::get",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::get",
           "signature": "public function get(): static"
         },
         "rust": {
@@ -691,8 +691,8 @@
           "signature": "receiver=*{Entity}Model func() (*orm.Collection[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::gets",
-          "signature": "public function gets(): Orm\\Collection"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::gets",
+          "signature": "public function gets(): Polyspec\\Orm\\Collection"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets",
@@ -721,8 +721,8 @@
           "signature": "receiver=*{Entity}Model func() (*orm.GroupRows, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getsCount",
-          "signature": "public function getsCount(): Orm\\GroupRows"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getsCount",
+          "signature": "public function getsCount(): Polyspec\\Orm\\GroupRows"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_count",
@@ -751,7 +751,7 @@
           "signature": "receiver=*{Entity}Model func() (int64, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getCount",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getCount",
           "signature": "public function getCount(): int"
         },
         "rust": {
@@ -781,7 +781,7 @@
           "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getSum",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getSum",
           "signature": "public function getSum(): float"
         },
         "rust": {
@@ -811,7 +811,7 @@
           "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getAvg",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getAvg",
           "signature": "public function getAvg(): float"
         },
         "rust": {
@@ -843,8 +843,8 @@
           "signature": "receiver=*{Entity}Model func(page, perPage int) (*orm.Page[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getsPage",
-          "signature": "public function getsPage(int $page, int $perPage): Orm\\Page"
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getsPage",
+          "signature": "public function getsPage(int $page, int $perPage): Polyspec\\Orm\\Page"
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_page",
@@ -873,7 +873,7 @@
           "signature": "receiver=*{Entity}Model func() (*orm.Statement, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::getQuery",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::getQuery",
           "signature": "public function getQuery(): array"
         },
         "rust": {
@@ -905,7 +905,7 @@
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::create",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::create",
           "signature": "public function create(): static"
         },
         "rust": {
@@ -939,7 +939,7 @@
           "signature": "receiver=*{Entity}Model func(rows []*{Entity}Model) (int64, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::creates",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::creates",
           "signature": "public function creates(array $rows): int"
         },
         "rust": {
@@ -972,7 +972,7 @@
           "signature": "receiver=*{Entity}Model func(optimistic ...bool) (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::update",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::update",
           "signature": "public function update(bool $optimistic = false): static"
         },
         "rust": {
@@ -1004,7 +1004,7 @@
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::save",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::save",
           "signature": "public function save(): static"
         },
         "rust": {
@@ -1037,7 +1037,7 @@
           "signature": "receiver=*{Entity}Model func(recursive ...bool) error"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::delete",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::delete",
           "signature": "public function delete(bool $recursive = false): void"
         },
         "rust": {
@@ -1068,7 +1068,7 @@
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::restore",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::restore",
           "signature": "public function restore(): static"
         },
         "rust": {
@@ -1094,7 +1094,7 @@
           "signature": "receiver=*{Entity}Model func() map[string]any"
         },
         "php": {
-          "symbol": "clients/php/src/Model.php::Orm\\Model::toArray",
+          "symbol": "clients/php/src/Model.php::Polyspec\\Orm\\Model::toArray",
           "signature": "public function toArray(): array"
         },
         "rust": {
@@ -1126,8 +1126,8 @@
           "signature": "func(dsn string, cfg Config) (*DB, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Orm.php::Orm\\Orm::connect",
-          "signature": "public static function connect(string $dsn, Orm\\Config $config): Orm\\Db"
+          "symbol": "clients/php/src/Orm.php::Polyspec\\Orm\\Orm::connect",
+          "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/db.rs::Db::connect",
@@ -1157,8 +1157,8 @@
           "signature": "func(dsn string, s *Schema, cfg Config) (*DB, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Orm.php::Orm\\Orm::connectSchema",
-          "signature": "public static function connectSchema(string $dsn, Orm\\Schema $schema, Orm\\Config $config): Orm\\Db"
+          "symbol": "clients/php/src/Orm.php::Polyspec\\Orm\\Orm::connectSchema",
+          "signature": "public static function connectSchema(string $dsn, Polyspec\\Orm\\Schema $schema, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/db.rs::Db::connect_schema",
@@ -1189,7 +1189,7 @@
           "signature": "receiver=*DB func(fn func() error, options ...TransactionOption) error"
         },
         "php": {
-          "symbol": "clients/php/src/Db.php::Orm\\Db::transaction",
+          "symbol": "clients/php/src/Db.php::Polyspec\\Orm\\Db::transaction",
           "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         },
         "rust": {
@@ -1215,8 +1215,8 @@
           "signature": "receiver=*DB func() *Utils"
         },
         "php": {
-          "symbol": "clients/php/src/Db.php::Orm\\Db::utils",
-          "signature": "public function utils(): Orm\\Utils"
+          "symbol": "clients/php/src/Db.php::Polyspec\\Orm\\Db::utils",
+          "signature": "public function utils(): Polyspec\\Orm\\Utils"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::Db::utils",
@@ -1243,7 +1243,7 @@
           "signature": "receiver=*DB func(fn Subscriber) (unsubscribe func())"
         },
         "php": {
-          "symbol": "clients/php/src/Db.php::Orm\\Db::subscribe",
+          "symbol": "clients/php/src/Db.php::Polyspec\\Orm\\Db::subscribe",
           "signature": "public function subscribe(Closure $subscriber): Closure"
         },
         "rust": {
@@ -1274,7 +1274,7 @@
           "signature": "receiver=*Utils func(key string) error"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\Utils::lock",
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\Utils::lock",
           "signature": "public function lock(string $key): void"
         },
         "rust": {
@@ -1300,8 +1300,8 @@
           "signature": "receiver=*Utils func() *SchemaUtils"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\Utils::schema",
-          "signature": "public function schema(): Orm\\SchemaUtils"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\Utils::schema",
+          "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::Utils < 'a >::schema",
@@ -1331,8 +1331,8 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::register",
-          "signature": "public function register(Orm\\Schema $schema): void"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::register",
+          "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
@@ -1363,8 +1363,8 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::install",
-          "signature": "public function install(Orm\\Schema $schema): void"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::install",
+          "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
@@ -1396,8 +1396,8 @@
           "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\SchemaUtils::addTablesAndColumns",
-          "signature": "public function addTablesAndColumns(Orm\\Schema $schema): array"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
+          "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
@@ -1422,8 +1422,8 @@
           "signature": "receiver=*Utils func() *AESUtils"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\Utils::aes",
-          "signature": "public function aes(): Orm\\AesUtils"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\Utils::aes",
+          "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::Utils < 'a >::aes",
@@ -1453,8 +1453,8 @@
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (AESRotationStatus, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\AesUtils::status",
-          "signature": "public function status(Orm\\Model $model, Orm\\AesKeyring $keyring): Orm\\AesRotationStatus"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\AesUtils::status",
+          "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::AesUtils < '_ >::status",
@@ -1484,8 +1484,8 @@
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (int, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Utils.php::Orm\\AesUtils::rotate",
-          "signature": "public function rotate(Orm\\Model $model, Orm\\AesKeyring $keyring): int"
+          "symbol": "clients/php/src/Utils.php::Polyspec\\Orm\\AesUtils::rotate",
+          "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/utils.rs::AesUtils < '_ >::rotate",
@@ -1512,8 +1512,8 @@
           "signature": "func(path string) (string, []Diagnostic, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readFile",
-          "signature": "public static function readFile(string $path): Orm\\Dbspec\\ReadResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readFile",
+          "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_file",
@@ -1524,8 +1524,8 @@
           "signature": "export function readDbspecFile(path: string): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::readFile",
-          "signature": "public static function readFile(string $path): Orm\\Dbspec\\Native\\ReadResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile",
+          "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
         }
       }
     },
@@ -1544,8 +1544,8 @@
           "signature": "func(name string, b []byte) (string, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::readBytes",
-          "signature": "public static function readBytes(string $name, string $bytes): Orm\\Dbspec\\ReadResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readBytes",
+          "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/file.rs::read_bytes",
@@ -1556,8 +1556,8 @@
           "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::readBytes",
-          "signature": "public static function readBytes(string $name, string $bytes): Orm\\Dbspec\\Native\\ReadResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes",
+          "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
         }
       }
     },
@@ -1576,8 +1576,8 @@
           "signature": "func(text string, documents map[string]string) (*Document, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::parse",
-          "signature": "public static function parse(string $text, array $documents): Orm\\Dbspec\\ParseResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parse",
+          "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\ParseResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::parse",
@@ -1588,8 +1588,8 @@
           "signature": "export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::parse",
-          "signature": "public static function parse(string $text, array $documents): Orm\\Dbspec\\Native\\ParseResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse",
+          "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
         }
       }
     },
@@ -1608,8 +1608,8 @@
           "signature": "func(document *Document) string"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::emit",
-          "signature": "public static function emit(Orm\\Dbspec\\Document $document): string"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emit",
+          "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Document $document): string"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::emit",
@@ -1620,8 +1620,8 @@
           "signature": "export function emitDbspec(document: DbspecDocument): string"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::emit",
-          "signature": "public static function emit(Orm\\Dbspec\\Native\\Document $document): string"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit",
+          "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Native\\Document $document): string"
         }
       }
     },
@@ -1640,8 +1640,8 @@
           "signature": "func(documents []*Document) (*Manifest, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::manifest",
-          "signature": "public static function manifest(array $documents): Orm\\Dbspec\\ManifestResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::manifest",
+          "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\ManifestResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::manifest",
@@ -1652,8 +1652,8 @@
           "signature": "export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::manifest",
-          "signature": "public static function manifest(array $documents): Orm\\Dbspec\\Native\\ManifestResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest",
+          "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
         }
       }
     },
@@ -1672,8 +1672,8 @@
           "signature": "func(documents []*Document, dialect Dialect) ([]string, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::render",
-          "signature": "public static function render(array $documents, string $dialect): Orm\\Dbspec\\RenderResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::render",
+          "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\RenderResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/render.rs::render",
@@ -1684,8 +1684,8 @@
           "signature": "export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::render",
-          "signature": "public static function render(array $documents, string $dialect): Orm\\Dbspec\\Native\\RenderResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render",
+          "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
         }
       }
     },
@@ -1704,8 +1704,8 @@
           "signature": "func(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::introspect",
-          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Orm\\Dbspec\\IntrospectResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "rust": {
           "symbol": "clients/rust/orm/src/dbspec.rs::introspect",
@@ -1716,8 +1716,8 @@
           "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection>"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::introspect",
-          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Orm\\Dbspec\\Native\\IntrospectResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect",
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult"
         }
       }
     },
@@ -1736,8 +1736,8 @@
           "signature": "func(live *Document, documents []*Document) []string"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::externalDifferences",
-          "signature": "public static function externalDifferences(Orm\\Dbspec\\Document $live, array $documents): array"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::externalDifferences",
+          "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $documents): array"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mod.rs::external_differences",
@@ -1748,8 +1748,8 @@
           "signature": "export function externalDifferences(live: DbspecDocument, documents: readonly DbspecDocument[]): string[]"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
-          "signature": "public static function externalDifferences(Orm\\Dbspec\\Native\\Document $live, array $documents): array"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
+          "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $documents): array"
         }
       }
     },
@@ -1768,8 +1768,8 @@
           "signature": "func(text string) (*Plan, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::parsePlan",
-          "signature": "public static function parsePlan(string $text): Orm\\Dbspec\\PlanParseResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parsePlan",
+          "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\PlanParseResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/plan.rs::parse_plan",
@@ -1780,8 +1780,8 @@
           "signature": "export function parsePlan(text: string): DbspecPlanResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::parsePlan",
-          "signature": "public static function parsePlan(string $text): Orm\\Dbspec\\Native\\PlanParseResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan",
+          "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
         }
       }
     },
@@ -1800,8 +1800,8 @@
           "signature": "func(p *Plan) string"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::emitPlan",
-          "signature": "public static function emitPlan(Orm\\Dbspec\\Plan $plan): string"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emitPlan",
+          "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Plan $plan): string"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/plan.rs::emit_plan",
@@ -1812,8 +1812,8 @@
           "signature": "export function emitPlan(plan: DbspecPlan): string"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::emitPlan",
-          "signature": "public static function emitPlan(Orm\\Dbspec\\Native\\Plan $plan): string"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan",
+          "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): string"
         }
       }
     },
@@ -1832,8 +1832,8 @@
           "signature": "func(plans []*Plan) ([]*Plan, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::chain",
-          "signature": "public static function chain(array $plans): Orm\\Dbspec\\ChainResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::chain",
+          "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\ChainResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/plan.rs::chain",
@@ -1844,8 +1844,8 @@
           "signature": "export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::chain",
-          "signature": "public static function chain(array $plans): Orm\\Dbspec\\Native\\ChainResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain",
+          "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
         }
       }
     },
@@ -1864,8 +1864,8 @@
           "signature": "func(source *Document, p *Plan) ([]Change, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::diff",
-          "signature": "public static function diff(?Orm\\Dbspec\\Document $source, Orm\\Dbspec\\Plan $plan): Orm\\Dbspec\\DiffResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::diff",
+          "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan): Polyspec\\Orm\\Dbspec\\DiffResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/plan_diff.rs::diff",
@@ -1876,8 +1876,8 @@
           "signature": "export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::diff",
-          "signature": "public static function diff(?Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Plan $plan): Orm\\Dbspec\\Native\\DiffResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff",
+          "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
         }
       }
     },
@@ -1896,8 +1896,8 @@
           "signature": "func(source, target *Document) ([]Difference, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::compareSchemas",
-          "signature": "public static function compareSchemas(Orm\\Dbspec\\Document $source, Orm\\Dbspec\\Document $target): Orm\\Dbspec\\ComparisonResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::compareSchemas",
+          "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Document $target): Polyspec\\Orm\\Dbspec\\ComparisonResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/compare.rs::compare_schemas",
@@ -1908,8 +1908,8 @@
           "signature": "export function compareSchemas(source: DbspecDocument, target: DbspecDocument): DbspecComparisonResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
-          "signature": "public static function compareSchemas(Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Document $target): Orm\\Dbspec\\Native\\ComparisonResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
+          "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Document $target): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
         }
       }
     },
@@ -1928,8 +1928,8 @@
           "signature": "func(live *Document, unsupported []Unsupported, target *Document) []string"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::installedDifferences",
-          "signature": "public static function installedDifferences(Orm\\Dbspec\\Document $live, array $unsupported, Orm\\Dbspec\\Document $target): array"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::installedDifferences",
+          "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target): array"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/add_tables_and_columns.rs::installed_differences",
@@ -1940,8 +1940,8 @@
           "signature": "export function installedDifferences(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): readonly string[]"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
-          "signature": "public static function installedDifferences(Orm\\Dbspec\\Native\\Document $live, array $unsupported, Orm\\Dbspec\\Native\\Document $target): array"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
+          "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target): array"
         }
       }
     },
@@ -1960,8 +1960,8 @@
           "signature": "func(live *Document, unsupported []Unsupported, target *Document, dialect Dialect) (added []string, steps []PlanStep, differences []string)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::addTablesAndColumnsSteps",
-          "signature": "public static function addTablesAndColumnsSteps(Orm\\Dbspec\\Document $live, array $unsupported, Orm\\Dbspec\\Document $target, string $dialect): array"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::addTablesAndColumnsSteps",
+          "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target, string $dialect): array"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/add_tables_and_columns.rs::add_tables_and_columns_steps",
@@ -1972,8 +1972,8 @@
           "signature": "export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument, dialect: DbspecDialect): DbspecAddTablesAndColumnsSteps"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
-          "signature": "public static function addTablesAndColumnsSteps(Orm\\Dbspec\\Native\\Document $live, array $unsupported, Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
+          "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
         }
       }
     },
@@ -1992,8 +1992,8 @@
           "signature": "func(source *Document, p *Plan, dialect Dialect) ([]PlanStep, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::planSteps",
-          "signature": "public static function planSteps(?Orm\\Dbspec\\Document $source, Orm\\Dbspec\\Plan $plan, string $dialect): Orm\\Dbspec\\PlanStepsResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::planSteps",
+          "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\PlanStepsResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/plan_steps.rs::plan_steps",
@@ -2004,8 +2004,8 @@
           "signature": "export function planSteps(source: DbspecDocument | null, plan: DbspecPlan, dialect: DbspecDialect): DbspecPlanStepsResult"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::planSteps",
-          "signature": "public static function planSteps(?Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Orm\\Dbspec\\Native\\PlanStepsResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps",
+          "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
         }
       }
     },
@@ -2024,7 +2024,7 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::apply",
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
@@ -2036,7 +2036,7 @@
           "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::apply",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
@@ -2056,7 +2056,7 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::recover",
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
@@ -2068,7 +2068,7 @@
           "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::recover",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
@@ -2088,7 +2088,7 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::rollback",
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
@@ -2100,7 +2100,7 @@
           "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::rollback",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
@@ -2120,7 +2120,7 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::finalize",
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
@@ -2132,7 +2132,7 @@
           "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::finalize",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
@@ -2152,8 +2152,8 @@
           "signature": "func(d *Document) (string, []Unsupported)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::exportMermaid",
-          "signature": "public static function exportMermaid(Orm\\Dbspec\\Document $document): Orm\\Dbspec\\MermaidExportResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::exportMermaid",
+          "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Document $document): Polyspec\\Orm\\Dbspec\\MermaidExportResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mermaid.rs::export_mermaid",
@@ -2164,8 +2164,8 @@
           "signature": "export function exportMermaid(document: DbspecDocument): DbspecMermaidExport"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
-          "signature": "public static function exportMermaid(Orm\\Dbspec\\Native\\Document $document): Orm\\Dbspec\\Native\\MermaidExportResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
+          "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Native\\Document $document): Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult"
         }
       }
     },
@@ -2184,8 +2184,8 @@
           "signature": "func(text, name string) (*Document, []Unsupported, []Diagnostic)"
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Dbspec.php::Orm\\Dbspec\\Dbspec::importMermaid",
-          "signature": "public static function importMermaid(string $text, string $name): Orm\\Dbspec\\MermaidImportResult"
+          "symbol": "clients/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::importMermaid",
+          "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\MermaidImportResult"
         },
         "rust": {
           "symbol": "clients/rust/orm-schema/src/dbspec/mermaid.rs::import_mermaid",
@@ -2196,8 +2196,8 @@
           "signature": "export function importMermaid(text: string, name: string): DbspecMermaidImport"
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::importMermaid",
-          "signature": "public static function importMermaid(string $text, string $name): Orm\\Dbspec\\Native\\MermaidImportResult"
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid",
+          "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
         }
       }
     }
@@ -2549,7 +2549,7 @@
       "id": "IRRequest",
       "native": {
         "go": "engine/ir/ir.go::Request",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Request",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
         "rust": "clients/rust/orm/src/ir.rs::Request",
         "typescript": "clients/typescript/src/ir.ts::Request"
       },
@@ -2577,7 +2577,7 @@
       "id": "IRQuery",
       "native": {
         "go": "engine/ir/ir.go::Query",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Query",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
         "rust": "clients/rust/orm/src/ir.rs::Query",
         "typescript": "clients/typescript/src/ir.ts::RequestQuery"
       },
@@ -2621,7 +2621,7 @@
       "id": "IRColumns",
       "native": {
         "go": "engine/ir/ir.go::Columns",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Columns",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
         "rust": "clients/rust/orm/src/ir.rs::Columns",
         "typescript": "clients/typescript/src/ir.ts::Projection"
       },
@@ -2644,7 +2644,7 @@
       "id": "IRJoin",
       "native": {
         "go": "engine/ir/ir.go::Join",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Join",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
         "rust": "clients/rust/orm/src/ir.rs::Join",
         "typescript": "clients/typescript/src/ir.ts::Join"
       },
@@ -2664,7 +2664,7 @@
       "id": "IRRelation",
       "native": {
         "go": "engine/ir/ir.go::Relation",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Relation",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
         "rust": "clients/rust/orm/src/ir.rs::Relation",
         "typescript": "clients/typescript/src/ir.ts::Relation"
       },
@@ -2682,7 +2682,7 @@
       "id": "IRKeyPair",
       "native": {
         "go": "engine/ir/ir.go::KeyPair",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::KeyPair",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
         "rust": "clients/rust/orm/src/ir.rs::KeyPair",
         "typescript": "clients/typescript/src/ir.ts::KeyPair"
       },
@@ -2695,7 +2695,7 @@
       "id": "IRGroup",
       "native": {
         "go": "engine/ir/ir.go::Group",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Group",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
         "rust": "clients/rust/orm/src/ir.rs::Group",
         "typescript": "clients/typescript/src/ir.ts::Group"
       },
@@ -2713,7 +2713,7 @@
       "id": "IRItem",
       "native": {
         "go": "engine/ir/ir.go::Item",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Item",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
         "rust": "clients/rust/orm/src/ir.rs::Item",
         "typescript": "clients/typescript/src/ir.ts::Item"
       },
@@ -2733,7 +2733,7 @@
       "id": "IRPred",
       "native": {
         "go": "engine/ir/ir.go::Pred",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Pred",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
         "rust": "clients/rust/orm/src/ir.rs::Pred",
         "typescript": "clients/typescript/src/ir.ts::Predicate"
       },
@@ -2766,7 +2766,7 @@
       "id": "IRColRef",
       "native": {
         "go": "engine/ir/ir.go::ColRef",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::ColRef",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
         "rust": "clients/rust/orm/src/ir.rs::ColRef",
         "typescript": "clients/typescript/src/ir.ts::ColumnReferenceIR"
       },
@@ -2782,7 +2782,7 @@
       "id": "IRFunc",
       "native": {
         "go": "engine/ir/ir.go::Func",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Func",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
         "rust": "clients/rust/orm/src/ir.rs::Func",
         "typescript": "clients/typescript/src/ir.ts::OrmFunction"
       },
@@ -2798,7 +2798,7 @@
       "id": "IRColFunc",
       "native": {
         "go": "engine/ir/ir.go::ColFunc",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::ColFunc",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
         "rust": "clients/rust/orm/src/ir.rs::ColFunc",
         "typescript": "clients/typescript/src/ir.ts::ColumnFunction"
       },
@@ -2812,7 +2812,7 @@
       "id": "IRSub",
       "native": {
         "go": "engine/ir/ir.go::Sub",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Sub",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
         "rust": "clients/rust/orm/src/ir.rs::Sub",
         "typescript": "clients/typescript/src/ir.ts::Subquery"
       },
@@ -2829,7 +2829,7 @@
       "id": "IRJoinedRef",
       "native": {
         "go": "engine/ir/ir.go::JoinedRef",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::JoinedRef",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
         "rust": "clients/rust/orm/src/ir.rs::JoinedRef",
         "typescript": "clients/typescript/src/ir.ts::JoinedReference"
       },
@@ -2845,7 +2845,7 @@
       "id": "IROrder",
       "native": {
         "go": "engine/ir/ir.go::Order",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Order",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
         "rust": "clients/rust/orm/src/ir.rs::Order",
         "typescript": "clients/typescript/src/ir.ts::Order"
       },
@@ -2866,7 +2866,7 @@
       "id": "IRLimit",
       "native": {
         "go": "engine/ir/ir.go::Limit",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Limit",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
         "rust": "clients/rust/orm/src/ir.rs::Limit",
         "typescript": "clients/typescript/src/ir.ts::Limit"
       },
@@ -2880,7 +2880,7 @@
       "id": "IRIfParent",
       "native": {
         "go": "engine/ir/ir.go::IfParent",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::IfParent",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
         "rust": "clients/rust/orm/src/ir.rs::IfParent",
         "typescript": "clients/typescript/src/ir.ts::IfParent"
       },
@@ -2894,7 +2894,7 @@
       "id": "IRAssign",
       "native": {
         "go": "engine/ir/ir.go::Assign",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Assign",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
         "rust": "clients/rust/orm/src/ir.rs::Assign",
         "typescript": "clients/typescript/src/ir.ts::Assignment"
       },
@@ -2916,7 +2916,7 @@
       "id": "IROptimist",
       "native": {
         "go": "engine/ir/ir.go::Optimist",
-        "php": "clients/php/src/Validator.php::Orm\\Validator::Optimist",
+        "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
         "rust": "clients/rust/orm/src/ir.rs::Optimist",
         "typescript": "clients/typescript/src/ir.ts::Optimistic"
       },
@@ -2944,7 +2944,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Collection.php::Orm\\Page",
+          "symbol": "clients/php/src/Collection.php::Polyspec\\Orm\\Page",
           "fields": [
             "items",
             "totalCount",
@@ -2989,7 +2989,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/AesKeyring.php::Orm\\AesRotationStatus",
+          "symbol": "clients/php/src/AesKeyring.php::Polyspec\\Orm\\AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -3031,7 +3031,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Diagnostic.php::Orm\\Dbspec\\Diagnostic",
+          "symbol": "clients/php/src/Dbspec/Diagnostic.php::Polyspec\\Orm\\Dbspec\\Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -3058,7 +3058,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Diagnostic",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -3083,7 +3083,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Manifest.php::Orm\\Dbspec\\Manifest",
+          "symbol": "clients/php/src/Dbspec/Manifest.php::Polyspec\\Orm\\Dbspec\\Manifest",
           "fields": [
             "manifestText",
             "schemaText",
@@ -3113,7 +3113,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Manifest",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest",
           "fields": [
             "manifestText",
             "schemaText",
@@ -3143,7 +3143,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Plan.php::Orm\\Dbspec\\Plan",
+          "symbol": "clients/php/src/Dbspec/Plan.php::Polyspec\\Orm\\Dbspec\\Plan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -3183,7 +3183,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Plan",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -3216,7 +3216,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/PlanStep.php::Orm\\Dbspec\\PlanStep",
+          "symbol": "clients/php/src/Dbspec/PlanStep.php::Polyspec\\Orm\\Dbspec\\PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -3258,7 +3258,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\PlanStep",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -3287,7 +3287,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Effect.php::Orm\\Dbspec\\Effect",
+          "symbol": "clients/php/src/Dbspec/Effect.php::Polyspec\\Orm\\Dbspec\\Effect",
           "fields": [
             "kind",
             "name",
@@ -3314,7 +3314,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Effect",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect",
           "fields": [
             "kind",
             "name",
@@ -3338,7 +3338,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/NullCheck.php::Orm\\Dbspec\\NullCheck",
+          "symbol": "clients/php/src/Dbspec/NullCheck.php::Polyspec\\Orm\\Dbspec\\NullCheck",
           "fields": [
             "column",
             "default",
@@ -3362,7 +3362,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\NullCheck",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck",
           "fields": [
             "column",
             "default",
@@ -3384,7 +3384,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Change.php::Orm\\Dbspec\\Change",
+          "symbol": "clients/php/src/Dbspec/Change.php::Polyspec\\Orm\\Dbspec\\Change",
           "fields": [
             "kind",
             "name",
@@ -3408,7 +3408,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Change",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change",
           "fields": [
             "kind",
             "name",
@@ -3430,7 +3430,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Difference.php::Orm\\Dbspec\\Difference",
+          "symbol": "clients/php/src/Dbspec/Difference.php::Polyspec\\Orm\\Dbspec\\Difference",
           "fields": [
             "kind",
             "name",
@@ -3454,7 +3454,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Difference",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference",
           "fields": [
             "kind",
             "name",
@@ -3477,7 +3477,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/Unsupported.php::Orm\\Dbspec\\Unsupported",
+          "symbol": "clients/php/src/Dbspec/Unsupported.php::Polyspec\\Orm\\Dbspec\\Unsupported",
           "fields": [
             "kind",
             "name",
@@ -3504,7 +3504,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Unsupported",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported",
           "fields": [
             "kind",
             "name",
@@ -3526,7 +3526,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/TableRename.php::Orm\\Dbspec\\TableRename",
+          "symbol": "clients/php/src/Dbspec/TableRename.php::Polyspec\\Orm\\Dbspec\\TableRename",
           "fields": [
             "new",
             "old"
@@ -3547,7 +3547,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\TableRename",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename",
           "fields": [
             "new",
             "old"
@@ -3568,7 +3568,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/ColumnRename.php::Orm\\Dbspec\\ColumnRename",
+          "symbol": "clients/php/src/Dbspec/ColumnRename.php::Polyspec\\Orm\\Dbspec\\ColumnRename",
           "fields": [
             "new",
             "old",
@@ -3592,7 +3592,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\ColumnRename",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename",
           "fields": [
             "new",
             "old",
@@ -3613,7 +3613,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/ColumnName.php::Orm\\Dbspec\\ColumnName",
+          "symbol": "clients/php/src/Dbspec/ColumnName.php::Polyspec\\Orm\\Dbspec\\ColumnName",
           "fields": [
             "name",
             "table"
@@ -3634,7 +3634,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\ColumnName",
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName",
           "fields": [
             "name",
             "table"
@@ -3657,7 +3657,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/ApplyEvent.php::Orm\\Dbspec\\ApplyEvent",
+          "symbol": "clients/php/src/Dbspec/ApplyEvent.php::Polyspec\\Orm\\Dbspec\\ApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -3703,7 +3703,7 @@
           ]
         },
         "php": {
-          "symbol": "clients/php/src/Dbspec/ApplyError.php::Orm\\Dbspec\\ApplyError",
+          "symbol": "clients/php/src/Dbspec/ApplyError.php::Polyspec\\Orm\\Dbspec\\ApplyError",
           "fields": [
             "code_",
             "detail",

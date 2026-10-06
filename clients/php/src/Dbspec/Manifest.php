@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes").

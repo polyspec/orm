@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// 확장 orm_dbspec의 dbspec 인터페이스(Orm\Dbspec\Native\Dbspec)를 공유 vector와 순수 PHP client로 확인한다. PHP
+// 확장 orm_dbspec의 dbspec 인터페이스(Polyspec\Orm\Dbspec\Native\Dbspec)를 공유 vector와 순수 PHP client로 확인한다. PHP
 // client가 사양이므로, 같은 입력의 결과는 diagnostic의 message, 예외의 class와 message까지 같아야 한다.
 // - tests/dbspec/cases.json의 canonical, normalize, invalid case: vector가 정한 emission이나 diagnostic(rule, line,
 //   column)이고, 모든 문서에서 PHP client와 같은 diagnostic과 emission이다.
@@ -18,8 +18,8 @@ declare(strict_types=1);
 //
 // Usage: php -d extension=<orm_dbspec library> clients/php-extension/tests/dbspec_test.php
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Native\Dbspec as NativeDbspec;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Dbspec as NativeDbspec;
 
 $root = dirname(__DIR__, 3);
 require "$root/clients/php/tests/autoload.php";
@@ -57,7 +57,7 @@ function outcome(callable $body): array
 /** 두 namespace의 같은 연산이 같은 결과나 같은 예외를 낸다. 확장의 class 이름은 PHP client의 이름으로 읽는다. */
 function same_outcome(string $what, callable $php, callable $native): void
 {
-    same($what, outcome($php), array_map(static fn(string $s): string => str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', $s), outcome($native)));
+    same($what, outcome($php), array_map(static fn(string $s): string => str_replace('Polyspec\\Orm\\Dbspec\\Native\\', 'Polyspec\\Orm\\Dbspec\\', $s), outcome($native)));
 }
 
 /** 문서 집합의 각 문서를 다른 문서를 집합으로 parse한다. 하나라도 diagnostic이 있으면 null이다. */
@@ -213,9 +213,9 @@ $run('php-extension/arguments', static function (callable $step) use ($root): vo
     same_outcome('a missing file', static fn() => Dbspec::readFile($missing), static fn() => NativeDbspec::readFile($missing));
     same_outcome('a directory', static fn() => Dbspec::readFile("$root/tests/dbspec/files"), static fn() => NativeDbspec::readFile("$root/tests/dbspec/files"));
     // 확장의 문서 집합은 확장의 Document만 담는다.
-    $documents = 'the document set holds string, not Orm\\Dbspec\\Native\\Document';
+    $documents = 'the document set holds string, not Polyspec\\Orm\\Dbspec\\Native\\Document';
     same('a manifest of a text', [TypeError::class, $documents], outcome(static fn() => NativeDbspec::manifest([$text])));
-    same('a rendering of a PHP client document', [TypeError::class, 'the document set holds Orm\\Dbspec\\Document, not Orm\\Dbspec\\Native\\Document'],
+    same('a rendering of a PHP client document', [TypeError::class, 'the document set holds Polyspec\\Orm\\Dbspec\\Document, not Polyspec\\Orm\\Dbspec\\Native\\Document'],
         outcome(static fn() => NativeDbspec::render([Dbspec::parse($text, [])->document], 'mysql')));
     $step('arguments rejected');
 });
@@ -226,20 +226,20 @@ $run('php-extension/objects', static function (callable $step): void {
     same('the signature', Dbspec::SIGNATURE, NativeDbspec::SIGNATURE);
     $diagnostic = NativeDbspec::parse('x', [])->diagnostics[0];
     // 결과 객체는 순수 PHP client처럼 readonly이고 동적 property를 갖지 않는다.
-    same('a write', [Error::class, 'Cannot modify readonly property Orm\\Dbspec\\Native\\Diagnostic::$line'], outcome(static function () use ($diagnostic): void {
+    same('a write', [Error::class, 'Cannot modify readonly property Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$line'], outcome(static function () use ($diagnostic): void {
         $diagnostic->line = 2;
     }));
-    same('a dynamic property', [Error::class, 'Cannot create dynamic property Orm\\Dbspec\\Native\\Diagnostic::$extra'], outcome(static function () use ($diagnostic): void {
+    same('a dynamic property', [Error::class, 'Cannot create dynamic property Polyspec\\Orm\\Dbspec\\Native\\Diagnostic::$extra'], outcome(static function () use ($diagnostic): void {
         $diagnostic->extra = 1;
     }));
     same('the properties in declaration order', ['rule', 'line', 'column', 'message'], array_keys(get_object_vars($diagnostic)));
-    same('the document properties in declaration order', array_keys(get_object_vars(new Orm\Dbspec\Document('d'))), array_keys(get_object_vars(new Orm\Dbspec\Native\Document('d'))));
-    same_outcome('an invalid result without a diagnostic', static fn() => Orm\Dbspec\ParseResult::invalid([]), static fn() => Orm\Dbspec\Native\ParseResult::invalid([]));
+    same('the document properties in declaration order', array_keys(get_object_vars(new Polyspec\Orm\Dbspec\Document('d'))), array_keys(get_object_vars(new Polyspec\Orm\Dbspec\Native\Document('d'))));
+    same_outcome('an invalid result without a diagnostic', static fn() => Polyspec\Orm\Dbspec\ParseResult::invalid([]), static fn() => Polyspec\Orm\Dbspec\Native\ParseResult::invalid([]));
     same_outcome('a repeated readonly construction', static function () {
-        $d = new Orm\Dbspec\Diagnostic('syntax', 1, 2, 'm');
+        $d = new Polyspec\Orm\Dbspec\Diagnostic('syntax', 1, 2, 'm');
         $d->__construct('syntax', 1, 2, 'm');
     }, static function () {
-        $d = new Orm\Dbspec\Native\Diagnostic('syntax', 1, 2, 'm');
+        $d = new Polyspec\Orm\Dbspec\Native\Diagnostic('syntax', 1, 2, 'm');
         $d->__construct('syntax', 1, 2, 'm');
     });
     $step('readonly results');
@@ -267,8 +267,8 @@ $run('php-extension/documents', static function (callable $step): void {
         $document->trailingComments = ['# end'];
         return $document;
     };
-    $php = $change('Orm\\Dbspec', Dbspec::parse($text, [])->document);
-    $native = $change('Orm\\Dbspec\\Native', NativeDbspec::parse($text, [])->document);
+    $php = $change('Polyspec\\Orm\\Dbspec', Dbspec::parse($text, [])->document);
+    $native = $change('Polyspec\\Orm\\Dbspec\\Native', NativeDbspec::parse($text, [])->document);
     same('emission', Dbspec::emit($php), NativeDbspec::emit($native));
     same('manifest', json_encode(Dbspec::manifest([$php])->manifest), json_encode(NativeDbspec::manifest([$native])->manifest));
     foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
@@ -276,13 +276,13 @@ $run('php-extension/documents', static function (callable $step): void {
     }
     same('a built document parses back', described(Dbspec::parse(Dbspec::emit($php), [])->diagnostics), described(NativeDbspec::parse(NativeDbspec::emit($native), [])->diagnostics));
     // 값 메서드는 PHP client의 것과 같다.
-    $setting = new Orm\Dbspec\Native\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
-    $phpSetting = new Orm\Dbspec\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
+    $setting = new Polyspec\Orm\Dbspec\Native\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
+    $phpSetting = new Polyspec\Orm\Dbspec\Setting('audit', ['history', 'audit_seq', 'audit', 'action', 'previous'], [], ['name']);
     same('records', [$phpSetting->records('name'), $phpSetting->records('audit_seq'), $phpSetting->records('id')], [$setting->records('name'), $setting->records('audit_seq'), $setting->records('id')]);
     same('excluded', $phpSetting->excluded($php->tables[0]), $setting->excluded($native->tables[0]));
     same('auditLine', $phpSetting->auditLine('exclude', ['name']), $setting->auditLine('exclude', ['name']));
-    same('type text', [(new Orm\Dbspec\ColumnType('decimal', [5, 2]))->text(), (new Orm\Dbspec\ColumnType('i32'))->isInteger()],
-        [(new Orm\Dbspec\Native\ColumnType('decimal', [5, 2]))->text(), (new Orm\Dbspec\Native\ColumnType('i32'))->isInteger()]);
+    same('type text', [(new Polyspec\Orm\Dbspec\ColumnType('decimal', [5, 2]))->text(), (new Polyspec\Orm\Dbspec\ColumnType('i32'))->isInteger()],
+        [(new Polyspec\Orm\Dbspec\Native\ColumnType('decimal', [5, 2]))->text(), (new Polyspec\Orm\Dbspec\Native\ColumnType('i32'))->isInteger()]);
     same('changes child rows', $php->tables[1]->foreignKeys[0]->changesChildRows(), $native->tables[1]->foreignKeys[0]->changesChildRows());
     $step('changed documents');
 });
@@ -380,14 +380,14 @@ $run('php-extension/introspect', static function (callable $step) use ($ddl, $ro
     // 내부 함수의 TypeError message에는 사용자 함수의 ", called in <file> on line <n>"이 없다.
     $php = outcome(static fn() => Dbspec::introspect(new stdClass(), 'sqlite', 'x'));
     same('a connection that is not a PDO', [$php[0], preg_replace('/, called in .* on line \d+$/', '', $php[1])],
-        array_map(static fn(string $s): string => str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', $s), outcome(static fn() => NativeDbspec::introspect(new stdClass(), 'sqlite', 'x'))));
+        array_map(static fn(string $s): string => str_replace('Polyspec\\Orm\\Dbspec\\Native\\', 'Polyspec\\Orm\\Dbspec\\', $s), outcome(static fn() => NativeDbspec::introspect(new stdClass(), 'sqlite', 'x'))));
     $step("$sets SQLite databases and the failure cases");
 });
 
 /** 예외를 class(namespace 없이 PHP client 이름), message, ApplyError field, 정리 error, 이전 예외로 적는다. */
 function thrown(Throwable $e): array
 {
-    $out = [str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', get_class($e)), $e->getMessage()];
+    $out = [str_replace('Polyspec\\Orm\\Dbspec\\Native\\', 'Polyspec\\Orm\\Dbspec\\', get_class($e)), $e->getMessage()];
     if (property_exists($e, 'code_')) {
         $out[] = [$e->code_, $e->plan, $e->step, $e->detail];
     }

@@ -6,9 +6,9 @@ declare(strict_types=1);
 // SQLite file을 만들고 case가 끝날 때(실패한 뒤에도) 지운다. ORM_TEST_*_DSN은 database를
 // 만들고 지우는 admin connection으로만 쓰고 그 database에는 아무것도 만들지 않는다.
 // PostgreSQL도 schema가 아닌 database를 받는다: empty()는 public이 아닌 schema를 내용으로 센다.
-// 호출하는 script가 Orm\Orm을 autoload한다.
+// 호출하는 script가 Polyspec\Orm\Orm을 autoload한다.
 
-use Orm\Orm;
+use Polyspec\Orm\Orm;
 
 /** process에서 겹치지 않는 이름 orm_case_<pid>_<counter>다. counter는 1부터 센다. */
 function case_name(): string

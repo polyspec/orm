@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /** The database-specific pieces of SQL for mysql, postgres, and sqlite. */
 final class Dialect

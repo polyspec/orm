@@ -10,7 +10,7 @@ use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\User;
-use Orm\Config;
+use Polyspec\Orm\Config;
 
 $db = \Polyspec\Orm\Tests\Model\connect(
     dsn(),

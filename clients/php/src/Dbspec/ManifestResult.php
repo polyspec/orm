@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::manifest: a manifest and no diagnostics, or the diagnostics and no manifest. */
 final readonly class ManifestResult

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * introspection 의 catalog query 를 보내고 그 값을 읽는다. query 실패와 catalog 가

@@ -8,13 +8,13 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\Schema;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Schema;
 
 const PARTIAL_DOCUMENT = <<<'DBSPEC'
 dbspec 1 partial

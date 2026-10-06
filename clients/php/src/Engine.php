@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /**
  * 한 runtime model과 한 database의 요청을 compile한다: 검증, planning, 요청

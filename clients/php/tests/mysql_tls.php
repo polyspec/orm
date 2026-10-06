@@ -10,10 +10,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Orm;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 
 // 각 case는 실패를 모아 그 case의 끝에 보고한다. parameter case는 memory 안의 parse이고, connection
 // case는 TLS server에 세 번 연결한다.

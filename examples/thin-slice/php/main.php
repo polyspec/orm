@@ -9,10 +9,10 @@ declare(strict_types=1);
 require dirname(__DIR__, 3) . '/clients/php/tests/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Config;
-use Orm\Db;
-use Orm\Orm;
-use Orm\StatementEvent;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\StatementEvent;
 
 const ITERATIONS = 500;
 const AES_KEY = 'bench-salt';

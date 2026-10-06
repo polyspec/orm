@@ -4,8 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Model;
-use Orm\OrmException;
+use Polyspec\Orm\Model;
+use Polyspec\Orm\OrmException;
 
 $path = dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json';
 $fixture = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 // Runs the export, import, invalid and round trip cases of
 // tests/dbspec/mermaid.json through the PHP extension orm_dbspec
-// (Orm\Dbspec\Native\Dbspec::exportMermaid and ::importMermaid), the same
+// (Polyspec\Orm\Dbspec\Native\Dbspec::exportMermaid and ::importMermaid), the same
 // cases as the PHP client's clients/php/tests/dbspec_mermaid_test.php: the
 // Mermaid text, the emitted document, the dropped [kind, table, name] and the
 // [rule, line, column] diagnostics must equal the case, and a round trip gets
@@ -15,10 +15,10 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Dbspec\Native\Diagnostic;
-use Orm\Dbspec\Native\Document;
-use Orm\Dbspec\Native\Unsupported;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Diagnostic;
+use Polyspec\Orm\Dbspec\Native\Document;
+use Polyspec\Orm\Dbspec\Native\Unsupported;
 
 const CASE_DEADLINE_MS = 5000;
 

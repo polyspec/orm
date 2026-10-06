@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::render: the statements and no diagnostics, or the diagnostics and no statements. */
 final readonly class RenderResult

@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Applies the plans.json chains through Orm\Dbspec\Dbspec::apply, ::recover,
+// Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with
 // its history, events and a second apply without events; drift; the lock of
@@ -18,13 +18,13 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Dbspec\ApplyCleanupError;
-use Orm\Dbspec\ApplyError;
-use Orm\Dbspec\ApplyEvent;
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Diagnostic;
-use Orm\Dbspec\Plan;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\ApplyCleanupError;
+use Polyspec\Orm\Dbspec\ApplyError;
+use Polyspec\Orm\Dbspec\ApplyEvent;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\Plan;
+use Polyspec\Orm\Orm;
 
 // RUN_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 plan chain scenario
 // 하나(apply, 중단, recover, rollback, finalize)를 실행한 뒤 지운다.

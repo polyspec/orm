@@ -15,14 +15,14 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use AesJson\Orm\SecretConfig;
-use Orm\AesKeyring;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\RuntimeModel;
-use Orm\StyledValue;
+use Polyspec\Orm\Tests\AesJson\SecretConfig;
+use Polyspec\Orm\AesKeyring;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\StyledValue;
 use OrderedJson\Value;
 
 use function OrderedJson\parse;
@@ -35,10 +35,10 @@ register_shutdown_function(static function () use ($work): void {
 });
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbs')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => $documents[0]])), "$work/gen", 'AesJson\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => $documents[0]])), "$work/gen", 'Polyspec\\Orm\\Tests\\AesJson');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'AesJson\\Orm\\')) {
-        require "$work/gen/" . substr($class, strlen('AesJson\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\AesJson\\')) {
+        require "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\AesJson\\')) . '.php';
     }
 });
 require "$work/gen/bootstrap.php";
@@ -71,7 +71,7 @@ function stored(string $dsn): array
 /** @param array<int, string> $keys */
 function open(string $dsn, array $keys, int $version): Db
 {
-    return Orm::connectSchema($dsn, \AesJson\Orm\schema(), new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
+    return Orm::connectSchema($dsn, \Polyspec\Orm\Tests\AesJson\schema(), new Config(aesKey: $keys[$version], aesVersion: $version, aesKeys: $keys));
 }
 
 /** The ordered-json text of a read styled value; a value of another type fails the test. */
@@ -94,7 +94,7 @@ function jsonEncodeCode(mixed $value): string
 {
     try {
         json_encode($value, JSON_THROW_ON_ERROR);
-    } catch (\Orm\OrmException $e) {
+    } catch (\Polyspec\Orm\OrmException $e) {
         return $e->code_;
     }
     return 'no error';
@@ -109,7 +109,7 @@ function aesJsonColumn(string $dsn): void
     $both = [1 => 'config-key-one', 2 => 'config-key-two'];
 
     $first = open($dsn, $one, 1);
-    $first->utils()->schema()->install(\AesJson\Orm\schema());
+    $first->utils()->schema()->install(\Polyspec\Orm\Tests\AesJson\schema());
     $seq = (new SecretConfig)($first)->setConfig(styled(parse($value)))->create()->getSeq();
     $row = (new SecretConfig)($first)->addAllColumns()->getBySeq($seq);
     check(text($row->getConfig()) === $value, 'read back');

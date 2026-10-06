@@ -15,11 +15,11 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use Orm\Config;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\RuntimeModel;
-use Orm\Schema;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Schema;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case는 database를 만들고 set 세 개를 설치하고 audit
 // write 하나를 한 뒤 database를 지운다.
@@ -42,9 +42,9 @@ function generateMember(string $work): void
 {
     global $root;
     $path = static fn(string $name): string => "$root/contracts/fixtures/external/$name.dbs";
-    Generator::generate(RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])), "$work/member", 'AuditExternalSets\\Member\\Orm');
+    Generator::generate(RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])), "$work/member", 'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member');
     spl_autoload_register(static function (string $class) use ($work): void {
-        $prefix = 'AuditExternalSets\\Member\\Orm\\';
+        $prefix = 'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member\\';
         if (str_starts_with($class, $prefix)) {
             require "$work/member/" . substr($class, strlen($prefix)) . '.php';
         }
@@ -77,9 +77,9 @@ function scenario(string $order, string $dsn, string $work): void
             require "$work/member/bootstrap.php";
         } else {
             require "$work/member/bootstrap.php";
-            $schema->install(\AuditExternalSets\Member\Orm\schema());
+            $schema->install(\Polyspec\Orm\Tests\AuditExternalSets\Member\schema());
         }
-        $db->transaction(fn() => (new \AuditExternalSets\Member\Orm\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+        $db->transaction(fn() => (new \Polyspec\Orm\Tests\AuditExternalSets\Member\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
         $records = $db->pdo()->query('SELECT seq, actor FROM ext_audit ORDER BY seq')->fetchAll(PDO::FETCH_NUM);
         want(count($records) === 1 && $records[0][1] === 'writer', 'ext_audit ' . json_encode($records) . ', want one record of writer');
         $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchAll(PDO::FETCH_COLUMN);

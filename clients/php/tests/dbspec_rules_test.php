@@ -376,8 +376,8 @@ $counts = [
 // Limits: generated documents, each with its own deadline.
 $limit = static function (string $id, string $text, array $want): void {
     $clock = cpuCaseBegin("limit/$id", 20.0);
-    $result = Orm\Dbspec\Dbspec::parse($text, []);
-    $got = array_map(static fn(Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column], $result->diagnostics);
+    $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+    $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column], $result->diagnostics);
     if ($result->document !== null || $got !== [$want]) {
         throw new RuntimeException("limit/$id: want " . json_encode([$want]) . ' got ' . json_encode($got));
     }

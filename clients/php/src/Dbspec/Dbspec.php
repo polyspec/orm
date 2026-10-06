@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** Parses, validates and canonically emits dbspec documents (docs/dbspec.md). */
 final class Dbspec

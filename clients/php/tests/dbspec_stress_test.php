@@ -29,7 +29,7 @@ $parses = [];
 for ($i = 0; $i < 5; $i++) {
     $result = null;
     $parseStarted = caseClockStart();
-    $result = Orm\Dbspec\Dbspec::parse($text, []);
+    $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
     [$parseCpuMs, $parseWallMs] = caseClockElapsed($parseStarted);
     testcase_step("parse cpuMs=$parseCpuMs wallMs=$parseWallMs");
     $parses[] = $parseCpuMs;
@@ -66,9 +66,9 @@ if ($columns !== 60000 || $foreignKeys !== 10000) {
 testcase_step("parsed cpu minMs={$parses[0]} medianMs=$parseMs maxMs={$parses[4]}");
 
 $emitStarted = caseClockStart();
-$first = Orm\Dbspec\Dbspec::emit($document);
+$first = Polyspec\Orm\Dbspec\Dbspec::emit($document);
 $emitMs = caseClockElapsed($emitStarted)[0];
-$second = Orm\Dbspec\Dbspec::emit($document);
+$second = Polyspec\Orm\Dbspec\Dbspec::emit($document);
 if ($first !== $text) {
     throw new RuntimeException('emit(parse(doc)) differs from the stress document');
 }

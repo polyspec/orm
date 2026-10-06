@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** `use <document> { <table>, ... }`: tables of another document available as foreign key targets. */
 final class UseLine

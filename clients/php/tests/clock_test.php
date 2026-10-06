@@ -15,12 +15,12 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use ClockCase\Orm\ClockEvent;
-use ClockMarkCase\Orm\ClockMark;
-use Orm\Config;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Tests\ClockCase\ClockEvent;
+use Polyspec\Orm\Tests\ClockMarkCase\ClockMark;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\RuntimeModel;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 clock_mark 문서를 설치해 row 몇 개를 쓰고 읽은 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
@@ -32,18 +32,18 @@ register_shutdown_function(static function () use ($work): void {
 });
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => $documents[0]])), "$work/models", 'ClockCase\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => $documents[0]])), "$work/models", 'Polyspec\\Orm\\Tests\\ClockCase');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'ClockCase\\Orm\\')) {
-        require "$work/models/" . substr($class, strlen('ClockCase\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockCase\\')) {
+        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockCase\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
 $markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => $markDocuments[0]])), "$work/mark-models", 'ClockMarkCase\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => $markDocuments[0]])), "$work/mark-models", 'Polyspec\\Orm\\Tests\\ClockMarkCase');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'ClockMarkCase\\Orm\\')) {
-        require "$work/mark-models/" . substr($class, strlen('ClockMarkCase\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\ClockMarkCase\\')) {
+        require "$work/mark-models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\ClockMarkCase\\')) . '.php';
     }
 });
 require "$work/mark-models/bootstrap.php";
@@ -70,7 +70,7 @@ function clockMicroseconds(string $dsn): void
     global $documents;
     $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
     try {
-        $db->utils()->schema()->install(\ClockCase\Orm\schema());
+        $db->utils()->schema()->install(\Polyspec\Orm\Tests\ClockCase\schema());
         $before = microtime(true);
         for ($i = 0; $i < 16; $i++) {
             (new ClockEvent)($db)->setLabel("event-$i")->create();
@@ -92,11 +92,11 @@ function clockMicroseconds(string $dsn): void
     }
 }
 
-function markDb(string $dsn): \Orm\Db
+function markDb(string $dsn): \Polyspec\Orm\Db
 {
     global $markDocuments;
     $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
-    $db->utils()->schema()->install(\ClockMarkCase\Orm\schema());
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\ClockMarkCase\schema());
     return $db;
 }
 

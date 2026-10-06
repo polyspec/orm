@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** A dbspec type: `i16`, `decimal(13,2)`, `varchar(64)`, `time(0)` and the others of the type table. */
 final readonly class ColumnType

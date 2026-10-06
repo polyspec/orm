@@ -40,12 +40,12 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
         $clock = cpuCaseBegin($id, $deadlineSeconds);
         $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);
         $text = $texts[$case['main']];
-        $result = Orm\Dbspec\Dbspec::parse($text, $texts);
+        $result = Polyspec\Orm\Dbspec\Dbspec::parse($text, $texts);
         if ($kind === 'invalid') {
             if ($result->document !== null) {
                 throw new RuntimeException("$id: a document was returned with diagnostics expected");
             }
-            $got = array_map(static fn(Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
+            $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
             $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
             if ($got !== $want) {
                 throw new RuntimeException("$id: diagnostics differ\nwant " . json_encode($want) . "\ngot  " . json_encode($got) . "\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
@@ -60,12 +60,12 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
                 throw new RuntimeException("$id: unexpected diagnostics\n" . implode("\n", array_map(static fn($d) => "{$d->line}:{$d->column} {$d->rule} {$d->message}", $result->diagnostics)));
             }
             $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
-            $emitted = Orm\Dbspec\Dbspec::emit($result->document);
+            $emitted = Polyspec\Orm\Dbspec\Dbspec::emit($result->document);
             if ($emitted !== $want) {
                 throw new RuntimeException("$id: emission differs\n--- want\n$want--- got\n$emitted");
             }
-            $again = Orm\Dbspec\Dbspec::parse($emitted, $texts);
-            if ($again->document === null || Orm\Dbspec\Dbspec::emit($again->document) !== $emitted) {
+            $again = Polyspec\Orm\Dbspec\Dbspec::parse($emitted, $texts);
+            if ($again->document === null || Polyspec\Orm\Dbspec\Dbspec::emit($again->document) !== $emitted) {
                 throw new RuntimeException("$id: emission is not idempotent");
             }
         }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
-use Orm\Model;
+use Polyspec\Orm\Model;
 
 /** A service_region model or row. */
 final class ServiceRegion extends Model

@@ -12,13 +12,13 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
-use CoverageAuditColumns\Orm\Card;
-use CoverageAuditColumns\Orm\Tag;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Tests\CoverageAuditColumns\Card;
+use Polyspec\Orm\Tests\CoverageAuditColumns\Tag;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\RuntimeModel;
 
 /** connection의 database에 table이 있는지 catalog에서 읽는다. */
 function auditColumnsTable(Db $db, string $table): bool
@@ -68,17 +68,17 @@ function auditColumnsRows(Db $db, string $sql): array
 /** document의 model을 $work에 생성하고 설치, 쓰기, history 확인, 정리를 실행한다. */
 function auditColumnsCase(string $dsn, string $document, string $work): void
 {
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])), "$work/gen", 'CoverageAuditColumns\\Orm');
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['audit_columns.dbs' => $document])), "$work/gen", 'Polyspec\\Orm\\Tests\\CoverageAuditColumns');
     spl_autoload_register(static function (string $class) use ($work): void {
-        if (str_starts_with($class, 'CoverageAuditColumns\\Orm\\')) {
-            require "$work/gen/" . substr($class, strlen('CoverageAuditColumns\\Orm\\')) . '.php';
+        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) {
+            require "$work/gen/" . substr($class, strlen('Polyspec\\Orm\\Tests\\CoverageAuditColumns\\')) . '.php';
         }
     });
     require "$work/gen/bootstrap.php";
     $db = Orm::connect($dsn, new Config(auditSource: static fn(): array => ['actor' => 'default']));
     try {
         coverageRestoring(function () use ($db): void {
-            $db->utils()->schema()->install(\CoverageAuditColumns\Orm\schema());
+            $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageAuditColumns\schema());
             $adb = $db;
             [$seq, $id] = $adb->transaction(function (): array {
                 $seq = (new Card)->setTitle('first')->setSecret('s1')->create()->getSeq();

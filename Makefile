@@ -251,13 +251,13 @@ dbspec-introspect-ts-check: lease-tool
 	$(WITH_TEST_ENV) node --test clients/typescript/tests/dbspec-introspect.mjs
 
 # dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
-# Orm\Dbspec\Dbspec::introspect로 실행한다.
+# Polyspec\Orm\Dbspec\Dbspec::introspect로 실행한다.
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_introspect_test.php
 
 # dbspec-introspect-php-extension-check는 같은 round trip과 미지원 case를 PHP 확장 orm_dbspec의
-# Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
+# Polyspec\Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check:
 	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
@@ -334,19 +334,19 @@ dbspec-apply-ts-check: lease-tool
 dbspec-plan-rust-check: cargo-downloads-check
 	$(WITH_TEST_ENV) cd clients/rust && $(CARGO_TEST) dbspec-plan-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
-# dbspec-plan-php-check는 같은 case를 PHP client의 Orm\Dbspec\Dbspec::planSteps와
+# dbspec-plan-php-check는 같은 case를 PHP client의 Polyspec\Orm\Dbspec\Dbspec::planSteps와
 # Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_plan_apply_test.php
 
 # dbspec-apply-php-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 PHP client의
-# Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
+# Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php
 
-# dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Orm\Dbspec\Native\Dbspec::apply,
+# dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 # recover, rollback, finalize로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-apply-php-extension-check
 dbspec-apply-php-extension-check:
@@ -492,7 +492,7 @@ dbspec-php-check/apply-cleanup:
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, PHP client의 dbspec 표면을 C로 구현한
-# Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
+# Polyspec\Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
 # phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 PHP client의 public dbspec
 # class와 같은지와, 공유 dbspec vector, statement vector, plan vector, Mermaid vector, apply 정리 error(PHP client의 plan,
 # Mermaid, apply 정리 test와 같은 case), SQLite의 introspection과 apply에서 순수 PHP client에 대해 같은 결과를 내는지

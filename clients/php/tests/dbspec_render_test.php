@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 // The statement vectors of tests/dbspec/ddl.json through
-// Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
+// Polyspec\Orm\Dbspec\Dbspec::render, and the unknown dialect rule.
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 
-use Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Dbspec;
 
 $started = caseClockStart();
 $root = dirname(__DIR__, 3);

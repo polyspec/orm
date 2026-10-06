@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Orm;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 
 if ($argc !== 2 || $argv[1] !== 'dsn_connection') {
     throw new RuntimeException('usage: coverage_dsn.php dsn_connection');

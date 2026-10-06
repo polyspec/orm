@@ -64,8 +64,8 @@ TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 �
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<orm::ordered_json::Value>` | `OrderedJson\Value`를 담은 `Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` |
-| 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 |
+| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<orm::ordered_json::Value>` | `OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` |
+| 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Polyspec\Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 |
 | 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 |
 | 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 |
 

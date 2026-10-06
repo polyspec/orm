@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** `<name> <type> [null] [identity] [default <value>]`; the default is its canonical literal text or `now`. */
 final class Column

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::chain: the plans in chain order and no diagnostics, or the diagnostics and no plans. */
 final readonly class ChainResult

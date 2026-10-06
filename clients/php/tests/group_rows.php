@@ -4,10 +4,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\GroupRow;
-use Orm\GroupRows;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\GroupRow;
+use Polyspec\Orm\GroupRows;
+use Polyspec\Orm\OrmException;
 
 testcase_begin('group_rows/owner', TESTCASE_COMPUTE);
 $row = new GroupRow([['is_close', false], ['row_count', 3]]);

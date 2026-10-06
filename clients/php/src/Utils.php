@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
-use Orm\Dbspec\CatalogRows;
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\DocumentSet;
-use Orm\Dbspec\Renderer;
+use Polyspec\Orm\Dbspec\CatalogRows;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\DocumentSet;
+use Polyspec\Orm\Dbspec\Renderer;
 
 /** Operations outside the query syntax: `$db->utils()`. */
 final class Utils
@@ -311,9 +311,9 @@ final class SchemaUtils
      * 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면
      * CONFIG다(docs/dbspec.md "External documents").
      *
-     * @param list<\Orm\Dbspec\Document> $documents
+     * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
-    private static function introspectSet(\PDO $pdo, string $driver, array $documents): \Orm\Dbspec\IntrospectResult
+    private static function introspectSet(\PDO $pdo, string $driver, array $documents): \Polyspec\Orm\Dbspec\IntrospectResult
     {
         $live = Dbspec::introspect($pdo, $driver, 'schema');
         $differences = Dbspec::externalDifferences($live->document, $documents);
@@ -339,9 +339,9 @@ final class SchemaUtils
      * set의 schema text 문서다. database와 비교하는 대상이다. schema text는 외부 문서를 use
      * 줄로 쓰므로 외부 문서의 text를 집합으로 parse한다.
      *
-     * @param list<\Orm\Dbspec\Document> $documents
+     * @param list<\Polyspec\Orm\Dbspec\Document> $documents
      */
-    private static function target(array $documents): \Orm\Dbspec\Document
+    private static function target(array $documents): \Polyspec\Orm\Dbspec\Document
     {
         $manifest = Dbspec::manifest($documents);
         $externalTexts = [];
@@ -358,7 +358,7 @@ final class SchemaUtils
         return $target->document;
     }
 
-    /** @param list<\Orm\Dbspec\Diagnostic> $diagnostics */
+    /** @param list<\Polyspec\Orm\Dbspec\Diagnostic> $diagnostics */
     private static function invalid(array $diagnostics): OrmException
     {
         $lines = array_map(static fn($d): string => "{$d->line}:{$d->column}: {$d->rule}: {$d->message}", $diagnostics);

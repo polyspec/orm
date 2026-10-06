@@ -6,10 +6,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Bytes;
-use Orm\Code;
-use Orm\Codec;
-use Orm\OrmException;
+use Polyspec\Orm\Bytes;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Codec;
+use Polyspec\Orm\OrmException;
 
 $fail = 0;
 function check(bool $ok, string $what): void { global $fail; if (!$ok) { $fail++; fwrite(STDERR, "FAIL: $what\n"); } }

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // The plan vectors of tests/dbspec/plans.json through the PHP extension
-// orm_dbspec (Orm\Dbspec\Native\Dbspec), the same cases as the PHP client's
+// orm_dbspec (Polyspec\Orm\Dbspec\Native\Dbspec), the same cases as the PHP client's
 // clients/php/tests/dbspec_plan_test.php: every case's canonical emission,
 // changes and steps of three dialects, every invalid case's `plan`
 // diagnostics, every chain case's order or `chain` diagnostics, every parse
@@ -16,13 +16,13 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-use Orm\Dbspec\Native\Change;
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Dbspec\Native\Diagnostic;
-use Orm\Dbspec\Native\Difference;
-use Orm\Dbspec\Native\Document;
-use Orm\Dbspec\Native\Plan;
-use Orm\Dbspec\Native\PlanStep;
+use Polyspec\Orm\Dbspec\Native\Change;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Diagnostic;
+use Polyspec\Orm\Dbspec\Native\Difference;
+use Polyspec\Orm\Dbspec\Native\Document;
+use Polyspec\Orm\Dbspec\Native\Plan;
+use Polyspec\Orm\Dbspec\Native\PlanStep;
 
 const CASE_DEADLINE_MS = 5000;
 

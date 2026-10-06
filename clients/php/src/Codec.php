@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 use OrderedJson\Value;
 use Symfony\Component\Yaml\Yaml;

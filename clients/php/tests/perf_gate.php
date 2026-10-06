@@ -10,10 +10,10 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Codec;
-use Orm\Config;
-use Orm\Db;
-use Orm\PendingTime;
+use Polyspec\Orm\Codec;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\PendingTime;
 
 if ($argc !== 1) {
     fwrite(STDERR, "usage: perf_gate.php\n");
@@ -112,7 +112,7 @@ function native(Db $db, Author $query): Closure
     $binds = array_map(static fn(mixed $v): mixed => $v === Db::SECRET ? 'bench-salt' : (is_bool($v) ? (int) $v : $v), $q['binds']);
     $cells = [];
     $columns = null;
-    foreach ((new ReflectionProperty(\Orm\Engine::class, 'plans'))->getValue(\Orm\Engine::for(Author::meta()['manifest_hash'], $db->driver(), $db->config()->planCacheSize)) as $plan) {
+    foreach ((new ReflectionProperty(\Polyspec\Orm\Engine::class, 'plans'))->getValue(\Polyspec\Orm\Engine::for(Author::meta()['manifest_hash'], $db->driver(), $db->config()->planCacheSize)) as $plan) {
         if ($plan['steps'][0]['sql'] === $q['sql']) {
             $cells = $plan['steps'][0]['decode'];
             $columns = $plan['steps'][0]['assemble']['columns'];
