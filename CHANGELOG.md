@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.89: the Rust and TypeScript clients depend on ordered-json by its repository, like the PHP client; a lock update takes its main.
+
 - G5.88: `git-check` reads the subjects of `ORM_GIT_RANGE`, which CI sets to the pull request or the pushed range, and of HEAD without it.
 
 - G5.87: the Rust crates are `polyspec-orm`, `polyspec-orm-build` and `polyspec-orm-schema` and the npm package is `@polyspec/orm`; update dependencies and `polyspec_orm::` paths, and regenerate the TypeScript models.
