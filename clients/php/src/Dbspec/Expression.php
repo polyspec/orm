@@ -13,6 +13,8 @@ namespace Orm\Dbspec;
  * predicate ends with the matching parenthesis, which ends the line.
  * tree에는 괄호가 없고, emission은 `and` 안의 `or`가 필요로 하는 괄호만
  * 쓴다.
+ *
+ * @internal
  */
 final class Expression
 {

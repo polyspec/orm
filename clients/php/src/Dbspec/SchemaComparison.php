@@ -6,6 +6,8 @@ namespace Orm\Dbspec;
 /**
  * plan 없이 두 schema 의 모든 차이를 나열한다(docs/plans.md "Comparison"). rename 이
  * 없으므로 table 과 column 은 이름으로만 맞춘다.
+ *
+ * @internal
  */
 final class SchemaComparison
 {

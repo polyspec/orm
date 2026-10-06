@@ -580,9 +580,41 @@ final class Dbspec
     /** The steps of the plan from the source schema in `mysql`, `postgres` or `sqlite`, or the diff's diagnostics. */
     public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult {}
 
+    /**
+     * Applies the plans of the chain that the database has not recorded, one statement at a time, each plan up to
+     * its finalize steps, verifying the schema after each plan. A failure is an ApplyError, or an
+     * ApplyCleanupError when restoring the session after it fails too; an unknown dialect, or a connection whose
+     * error mode is not PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException.
+     */
+    public static function apply(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+
+    /** Continues the interrupted plan forward. Failures and arguments are as for apply. */
+    public static function recover(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+
+    /** Undoes the last plan of the history with its rollback statements and deletes its row. Failures and arguments are as for apply. */
+    public static function rollback(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+
+    /** Runs the finalize steps of every applied plan in chain order and records the plans done. Failures and arguments are as for apply. */
+    public static function finalize(\PDO $connection, string $dialect, array $plans, \Closure $now, ?\Closure $events): void {}
+
     /** Writes the document as a standard Mermaid erDiagram and lists what the diagram leaves out. */
     public static function exportMermaid(Document $document): MermaidExportResult {}
 
     /** Reads a standard Mermaid erDiagram into a document named `$name`, or the `mermaid` diagnostic of a line outside the grammar. */
     public static function importMermaid(string $text, string $name): MermaidImportResult {}
+}
+
+/**
+ * The effect queries of apply and a test entry that reads one effect, as in the PHP client's PlanApply.
+ *
+ * @internal
+ */
+final class PlanApply
+{
+    public const array EFFECT_QUERIES = ['mysql' => ['table' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', 'column' => 'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', 'index' => 'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?', 'constraint' => 'SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?', 'trigger' => 'SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?'], 'postgres' => ['table' => 'SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN (\'r\', \'p\') AND relname = ?', 'column' => 'SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND a.attname = ? AND a.attnum > 0 AND NOT a.attisdropped', 'index' => 'SELECT COUNT(*) FROM pg_index x JOIN pg_class i ON i.oid = x.indexrelid JOIN pg_class c ON c.oid = x.indrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND i.relname = ?', 'constraint' => 'SELECT COUNT(*) FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND k.conname = ?', 'trigger' => 'SELECT COUNT(*) FROM pg_trigger g JOIN pg_class c ON c.oid = g.tgrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = ? AND g.tgname = ? AND NOT g.tgisinternal', 'function' => 'SELECT COUNT(*) FROM pg_proc WHERE pronamespace = current_schema()::regnamespace AND proname = ?'], 'sqlite' => ['table' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'table\' AND name = ?', 'column' => 'SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?', 'index' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'index\' AND tbl_name = ? AND name = ?', 'trigger' => 'SELECT COUNT(*) FROM sqlite_master WHERE type = \'trigger\' AND tbl_name = ? AND name = ?', 'sequence' => 'SELECT COUNT(*) FROM sqlite_sequence WHERE name = ?']];
+
+    private function __construct() {}
+
+    /** Reads whether one effect holds in the database of the connection. */
+    public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}
 }

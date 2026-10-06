@@ -551,8 +551,26 @@ zend_object *take_exception(void);
 void throw_with_previous(zend_class_entry *ce, str message, zend_object *previous);
 str exception_message(zend_object *e);
 str debug_type(zval *v);
+/* CatalogRows: query의 모든 row, 값을 읽는 규칙. 실패는 PHP 예외이고 false다. */
+bool catalog_read(zval *pdo, str query, zval *rows);
+bool row_text(zval *row, zend_long i, str query, str *out);
+bool row_nullable_text(zval *row, zend_long i, str query, bool *null, str *out);
+bool row_integer(zval *row, zend_long i, str query, zend_long *out);
+bool value_integer(zval *v, zend_long i, str query, zend_long *out);
+bool value_flag(zval *v, zend_long i, str query, bool *out);
 /* 연결의 database를 문서 하나와 빠진 객체로 읽는다. 실패는 PHP 예외이고 NULL이다. */
 document *dbs_introspect(zval *pdo, dialect d, str name, unsupportedv *out);
+
+/* ------------------------------------------------------------------ apply */
+
+/* PlanApply::EFFECT_QUERIES의 항목. 목록은 dialect가 NULL인 항목으로 끝난다. */
+typedef struct {
+    const char *dialect, *kind, *query;
+} dbs_effect_query;
+extern const dbs_effect_query dbs_effect_queries[];
+/* op은 apply, recover, rollback, finalize다. 실패는 PHP 예외이고 false다. */
+bool dbs_apply(const char *op, zval *c, str dialect_name, zval *plans, zval *now, zval *events);
+bool dbs_effect_on(zval *c, str dialect_name, const effect *e, bool *out);
 
 /* ---------------------------------------------------------------- Mermaid */
 
@@ -567,7 +585,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \
     X(ApplyCleanupError) X(PlanParseResult) X(PlanStepsResult) X(ChainResult) X(DiffResult) X(ComparisonResult) \
-    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec)
+    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec) X(PlanApply)
 
 #define DBS_DECLARE_CE(n) extern zend_class_entry *dbs_ce_##n;
 DBS_CLASSES(DBS_DECLARE_CE)

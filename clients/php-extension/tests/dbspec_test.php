@@ -12,6 +12,9 @@ declare(strict_types=1);
 // - introspect: 메모리 SQLite database에 적용한 tests/dbspec/ddl.json case와 tests/dbspec/introspect.json의 SQLite case를
 //   PHP client와 같게 읽고 vector의 문서와 미지원 객체를 낸다. 실패하는 catalog query(두 error mode), 모양이 다른
 //   catalog 값, PDO 하위 class가 던진 예외, 알 수 없는 dialect는 PHP client와 같은 예외와 이전 예외다.
+// - apply, recover, rollback, finalize: SQLite file에서 tests/dbspec/plans.json의 chain을 적용하고, event마다 멈춘 뒤
+//   recover나 rollback하고, finalize하고, 바꾼 history row로 다시 실행한 event, 예외, history row, schema가 PHP client와
+//   같다. error mode, dialect, clock과 event 인자의 오류도 같다.
 //
 // Usage: php -d extension=<orm_dbspec library> clients/php-extension/tests/dbspec_test.php
 
@@ -379,6 +382,119 @@ $run('php-extension/introspect', static function (callable $step) use ($ddl, $ro
     same('a connection that is not a PDO', [$php[0], preg_replace('/, called in .* on line \d+$/', '', $php[1])],
         array_map(static fn(string $s): string => str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', $s), outcome(static fn() => NativeDbspec::introspect(new stdClass(), 'sqlite', 'x'))));
     $step("$sets SQLite databases and the failure cases");
+});
+
+/** 예외를 class(namespace 없이 PHP client 이름), message, ApplyError field, 정리 error, 이전 예외로 적는다. */
+function thrown(Throwable $e): array
+{
+    $out = [str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', get_class($e)), $e->getMessage()];
+    if (property_exists($e, 'code_')) {
+        $out[] = [$e->code_, $e->plan, $e->step, $e->detail];
+    }
+    if (property_exists($e, 'cleanup')) {
+        $out[] = array_map(thrown(...), $e->cleanup);
+    }
+    if ($e->getPrevious() !== null) {
+        $out[] = thrown($e->getPrevious());
+    }
+    return $out;
+}
+
+/**
+ * dbspec의 apply 명령을 script대로 새 SQLite file에서 실행하고, 명령마다 event, 결과나 예외, history row와 schema를
+ * 적는다. script 항목은 [명령, chain 앞 plan 수, 멈출 event 번호(0이면 멈추지 않고 null이면 event 없음), 먼저 실행할 SQL]이다.
+ */
+function applied(string $dbspec, array $chain, array $script, string $path): array
+{
+    $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T02:00:00.123456789+02:00');
+    $pdo = new PDO("sqlite:$path", null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo->exec('PRAGMA foreign_keys = ON');
+    $log = [];
+    try {
+        foreach ($script as [$command, $count, $stopAt, $sql]) {
+            if ($sql !== null) {
+                $pdo->exec($sql);
+            }
+            $seen = 0;
+            $events = $stopAt === null ? null : static function (object $event) use (&$log, &$seen, $stopAt): void {
+                $log[] = [$event->kind, $event->plan, $event->step, $event->steps, $event->statement];
+                if (++$seen === $stopAt) {
+                    throw new RuntimeException("stop at $seen");
+                }
+            };
+            try {
+                $dbspec::$command($pdo, 'sqlite', array_slice($chain, 0, $count), $now, $events);
+                $log[] = "$command returned";
+            } catch (Throwable $e) {
+                $log[] = thrown($e);
+            }
+            $log[] = $pdo->query('SELECT * FROM "dbspec$plans" ORDER BY name')->fetchAll(PDO::FETCH_NUM);
+            $result = $dbspec::introspect($pdo, 'sqlite', 'x');
+            $log[] = [$dbspec::emit($result->document), array_map(static fn(object $u): array => [$u->kind, $u->table, $u->name], $result->unsupported)];
+        }
+    } finally {
+        $pdo = null;
+        foreach (['', '-journal'] as $suffix) {
+            if (file_exists($path . $suffix)) {
+                unlink($path . $suffix);
+            }
+        }
+    }
+    return $log;
+}
+
+$run('php-extension/apply', static function (callable $step) use ($root): void {
+    $vectors = json_decode(file_get_contents("$root/tests/dbspec/plans.json"), true, 512, JSON_THROW_ON_ERROR);
+    $cases = array_column($vectors['cases'], null, 'id');
+    $chains = static function (string $dbspec) use ($cases): array {
+        $parse = static fn(string $text): object => $dbspec::parsePlan($text)->plan ?? throw new RuntimeException("plan does not parse:\n$text");
+        $out = ['main' => [$parse(implode("\n", $cases['create-from-empty']['plan']) . "\n"), $parse(implode("\n", $cases['rename-table-and-column']['plan']) . "\n")]];
+        foreach (['representative', 'drop-required-column', 'rebuild-keeps-key-counter'] as $id) {
+            $out[$id] = [$parse("dbplan 1 base\nfrom empty\n\n" . implode("\n", $cases[$id]['source']) . "\n"), $parse(implode("\n", $cases[$id]['plan']) . "\n")];
+        }
+        return $out;
+    };
+    $php = $chains(Dbspec::class);
+    $native = $chains(NativeDbspec::class);
+    $scripts = [];
+    foreach (array_keys($php) as $id) {
+        $scripts["$id/apply"] = [['apply', 1, 0, null], ['apply', 2, 0, null], ['apply', 2, 0, null], ['finalize', 2, 0, null], ['rollback', 2, 0, null]];
+        // 둘째 plan의 event마다 멈춘 뒤 apply, recover와 rollback을 실행한다.
+        for ($stop = 1; $stop <= 12; $stop++) {
+            $scripts["$id/stop-$stop/recover"] = [['apply', 1, null, null], ['apply', 2, $stop, null], ['apply', 2, 0, null], ['recover', 2, 0, null], ['finalize', 2, 0, null]];
+            $scripts["$id/stop-$stop/rollback"] = [['apply', 1, null, null], ['apply', 2, $stop, null], ['rollback', 2, $stop + 1, null], ['rollback', 2, 0, null], ['rollback', 2, 0, null]];
+        }
+        $scripts["$id/drift"] = [['apply', 1, null, null], ['apply', 2, 0, 'CREATE TABLE stray (id INTEGER PRIMARY KEY)']];
+        $scripts["$id/history"] = [['apply', 2, null, null], ['rollback', 2, 0, 'UPDATE "dbspec$plans" SET step = 99'], ['recover', 2, 0, 'UPDATE "dbspec$plans" SET state = \'applying\''],
+            ['apply', 2, 0, 'UPDATE "dbspec$plans" SET state = \'weird\''], ['apply', 2, 0, 'UPDATE "dbspec$plans" SET to_hash = \'x\''], ['apply', 1, 0, null]];
+    }
+    $dir = sys_get_temp_dir() . '/orm-dbspec-apply-' . getmypid();
+    if (!mkdir($dir)) {
+        throw new RuntimeException("cannot create $dir");
+    }
+    try {
+        foreach ($scripts as $name => $script) {
+            $id = explode('/', $name)[0];
+            same("apply $name", applied(Dbspec::class, $php[$id], $script, "$dir/php.sqlite"), applied(NativeDbspec::class, $native[$id], $script, "$dir/native.sqlite"));
+        }
+    } finally {
+        rmdir($dir);
+    }
+    // 인자 오류
+    $plans = $php['main'];
+    $nativePlans = $native['main'];
+    $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00Z');
+    foreach ([PDO::ERRMODE_SILENT, PDO::ERRMODE_WARNING] as $mode) {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]);
+        same_outcome("apply in error mode $mode", static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, null), static fn() => NativeDbspec::apply($pdo, 'sqlite', $nativePlans, $now, null));
+    }
+    $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    same_outcome('an unknown dialect', static fn() => Dbspec::finalize($pdo, 'oracle', $plans, $now, null), static fn() => NativeDbspec::finalize($pdo, 'oracle', $nativePlans, $now, null));
+    same_outcome('two plans from empty', static fn() => Dbspec::apply($pdo, 'sqlite', [$plans[0], $plans[0]], $now, null), static fn() => NativeDbspec::apply($pdo, 'sqlite', [$nativePlans[0], $nativePlans[0]], $now, null));
+    $text = static fn() => 'now';
+    same_outcome('a clock that returns text', static fn() => Dbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $plans, $text, null),
+        static fn() => NativeDbspec::apply(new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]), 'sqlite', $nativePlans, $text, null));
+    $step(count($scripts) . ' scripts on SQLite files and the argument errors');
 });
 
 exit($failed === 0 ? 0 : 1);

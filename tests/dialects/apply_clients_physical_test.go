@@ -29,7 +29,7 @@ const runnerDeadline = 2 * time.Minute
 const pairDeadline = 3*runnerDeadline + time.Minute
 
 // applyClients는 tests/dbspec/apply의 runner를 가진 client다.
-var applyClients = []string{"go", "php", "typescript", "rust"}
+var applyClients = []string{"go", "php", "typescript", "rust", "php-extension"}
 
 // TestApplyChainAcrossClients는 한 client가 적용한 chain을 다른 client가 이어
 // 적용하는지 모든 순서쌍에서 확인한다(docs/plans.md "Apply"). 세 database에서
@@ -39,14 +39,14 @@ var applyClients = []string{"go", "php", "typescript", "rust"}
 // apply를 B가 rollback으로 되돌려야 한다.
 func TestApplyChainAcrossClients(t *testing.T) {
 	testcase.Group(t)
-	rustRunner := os.Getenv("DBSPEC_APPLY_RUST")
+	rustRunner, extension := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if rustRunner == "" || mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("DBSPEC_APPLY_RUST, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
+	if rustRunner == "" || extension == "" || mysqlDSN == "" || postgresDSN == "" {
+		t.Fatal("DBSPEC_APPLY_RUST, ORM_DBSPEC_EXTENSION, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-apply-pairs-check")
 	}
-	// make는 CARGO_TARGET_DIR 아래의 절대 경로를 준다.
-	if !filepath.IsAbs(rustRunner) {
-		t.Fatalf("DBSPEC_APPLY_RUST %q must be an absolute path under CARGO_TARGET_DIR", rustRunner)
+	// make는 CARGO_TARGET_DIR 아래의 Rust runner와 실행 directory의 PHP 확장을 절대 경로로 준다.
+	if !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) {
+		t.Fatalf("DBSPEC_APPLY_RUST %q and ORM_DBSPEC_EXTENSION %q must be absolute paths", rustRunner, extension)
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -69,10 +69,11 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		t.Fatalf("build the Go apply runner: %v\n%s", err, out)
 	}
 	runners := map[string][]string{
-		"go":         {goRunner},
-		"php":        {"php", "tests/dbspec/apply/php.php"},
-		"typescript": {"node", "tests/dbspec/apply/typescript.mjs"},
-		"rust":       {rustRunner},
+		"go":            {goRunner},
+		"php":           {"php", "tests/dbspec/apply/php.php"},
+		"typescript":    {"node", "tests/dbspec/apply/typescript.mjs"},
+		"rust":          {rustRunner},
+		"php-extension": {"php", "-d", "extension=" + extension, "tests/dbspec/apply/php-extension.php"},
 	}
 	// 동시에 도는 다른 test run과 겹치지 않도록 database 이름에 pid와 random 값을 넣는다.
 	random := make([]byte, 4)
@@ -163,8 +164,8 @@ func TestApplyChainAcrossClients(t *testing.T) {
 			}
 		}
 	}
-	if runs != 108 {
-		t.Errorf("ran %d pairs, want 12 pairs of chain, recover and rollback on three databases", runs)
+	if runs != 180 {
+		t.Errorf("ran %d pairs, want 20 pairs of chain, recover and rollback on three databases", runs)
 	}
 	t.Logf("pairs: %d", runs)
 }

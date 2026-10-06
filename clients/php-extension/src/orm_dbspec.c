@@ -9,6 +9,7 @@
 #include "ext/spl/spl_exceptions.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
+#include "Zend/zend_closures.h"
 #include "orm_dbspec_arginfo.h"
 
 #define ORM_DBSPEC_VERSION "0.0.2"
@@ -1574,6 +1575,93 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, introspect)
     LEAVE();
 }
 
+#define APPLY_METHOD(op) \
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, op) \
+{ \
+    zval *connection, *plans, *now, *events = NULL; \
+    zend_string *dialect_name; \
+    ZEND_PARSE_PARAMETERS_START(5, 5) \
+        Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce()) \
+        Z_PARAM_STR(dialect_name) \
+        Z_PARAM_ARRAY(plans) \
+        Z_PARAM_OBJECT_OF_CLASS(now, zend_ce_closure) \
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(events, zend_ce_closure) \
+    ZEND_PARSE_PARAMETERS_END(); \
+    ENTER(); \
+    dbs_apply(#op, connection, zs(dialect_name), plans, now, events); \
+    LEAVE(); \
+}
+
+APPLY_METHOD(apply)
+APPLY_METHOD(recover)
+APPLY_METHOD(rollback)
+APPLY_METHOD(finalize)
+
+ZEND_METHOD(Orm_Dbspec_Native_PlanApply, __construct)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_PlanApply, effectOn)
+{
+    zval *connection, *e;
+    zend_string *dialect_name;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce())
+        Z_PARAM_STR(dialect_name)
+        Z_PARAM_OBJECT_OF_CLASS(e, dbs_ce_Effect)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    effect in = {0};
+    zval *kind = obj_get(e, "kind"), *table = obj_get(e, "table"), *name = obj_get(e, "name"), *present = obj_get(e, "present");
+    bool held = false;
+    if (kind != NULL && table != NULL && name != NULL && present != NULL) {
+        in.kind = str_z(Z_STR_P(kind));
+        in.table = str_z(Z_STR_P(table));
+        in.name = str_z(Z_STR_P(name));
+        in.present = Z_TYPE_P(present) == IS_TRUE;
+        if (dbs_effect_on(connection, zs(dialect_name), &in, &held)) {
+            RETVAL_BOOL(held);
+        }
+    }
+    LEAVE();
+}
+
+/* PlanApply::EFFECT_QUERIES: dialect마다 효과 종류의 query인 영속 불변 배열 */
+static void effect_queries_constant(void)
+{
+    HashTable *outer = pemalloc(sizeof(HashTable), 1);
+    zend_hash_init(outer, 3, NULL, NULL, 1);
+    HashTable *inner = NULL;
+    const char *current = NULL;
+    for (const dbs_effect_query *q = dbs_effect_queries; ; q++) {
+        if (q->dialect == NULL || current == NULL || strcmp(q->dialect, current) != 0) {
+            if (inner != NULL) {
+                GC_ADD_FLAGS(inner, IS_ARRAY_IMMUTABLE);
+                zval v;
+                ZVAL_ARR(&v, inner);
+                Z_TYPE_FLAGS(v) = 0;
+                zend_hash_add_new(outer, zend_string_init_interned(current, strlen(current), 1), &v);
+            }
+            if (q->dialect == NULL) {
+                break;
+            }
+            current = q->dialect;
+            inner = pemalloc(sizeof(HashTable), 1);
+            zend_hash_init(inner, 8, NULL, NULL, 1);
+        }
+        zval v;
+        ZVAL_INTERNED_STR(&v, zend_string_init_interned(q->query, strlen(q->query), 1));
+        zend_hash_add_new(inner, zend_string_init_interned(q->kind, strlen(q->kind), 1), &v);
+    }
+    GC_ADD_FLAGS(outer, IS_ARRAY_IMMUTABLE);
+    zval value;
+    ZVAL_ARR(&value, outer);
+    Z_TYPE_FLAGS(value) = 0;
+    zend_string *cname = zend_string_init_interned("EFFECT_QUERIES", sizeof("EFFECT_QUERIES") - 1, 1);
+    zend_declare_typed_class_constant(dbs_ce_PlanApply, cname, &value, ZEND_ACC_PUBLIC, NULL, (zend_type)ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+}
+
 /* ------------------------------------------------------------------ module */
 
 /* gen_stub이 쓰지 못하는 배열 상수를 영속 불변 배열로 선언한다. */
@@ -1646,6 +1734,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_MermaidImportResult = register_class_Orm_Dbspec_Native_MermaidImportResult();
     dbs_ce_IntrospectResult = register_class_Orm_Dbspec_Native_IntrospectResult();
     dbs_ce_Dbspec = register_class_Orm_Dbspec_Native_Dbspec();
+    dbs_ce_PlanApply = register_class_Orm_Dbspec_Native_PlanApply();
 
     /* PHP의 readonly class는 동적 property를 받지 않는다. 내부 class는 그 flag를 따로 둔다. */
 #define DBS_NO_DYNAMIC(n) if (dbs_ce_##n->ce_flags & ZEND_ACC_READONLY_CLASS) dbs_ce_##n->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
@@ -1663,6 +1752,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     array_constant(dbs_ce_ForeignKey, "ACTIONS", actions, NULL, COUNT(actions));
     array_constant(dbs_ce_Setting, "KINDS", kinds, NULL, COUNT(kinds));
     array_constant(dbs_ce_Setting, "CODEC_STAGES", stages, NULL, COUNT(stages));
+    effect_queries_constant();
     return SUCCESS;
 }
 

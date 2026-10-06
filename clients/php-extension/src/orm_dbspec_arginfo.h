@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: e267e3a30ab8dae0ea234acd470b6963f4e33a90 */
+ * Stub hash: 168d98d02408042e56a0c6a57ed608ec559d6429 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -433,6 +433,20 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_pl
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_apply, 0, 5, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, connection, PDO, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, plans, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, now, Closure, 0)
+	ZEND_ARG_OBJ_INFO(0, events, Closure, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Orm_Dbspec_Native_Dbspec_recover arginfo_class_Orm_Dbspec_Native_Dbspec_apply
+
+#define arginfo_class_Orm_Dbspec_Native_Dbspec_rollback arginfo_class_Orm_Dbspec_Native_Dbspec_apply
+
+#define arginfo_class_Orm_Dbspec_Native_Dbspec_finalize arginfo_class_Orm_Dbspec_Native_Dbspec_apply
+
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_exportMermaid, 0, 1, Orm\\Dbspec\\\116ative\\MermaidExportResult, 0)
 	ZEND_ARG_OBJ_INFO(0, document, Orm\\Dbspec\\\116ative\\Document, 0)
 ZEND_END_ARG_INFO()
@@ -440,6 +454,15 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_importMermaid, 0, 2, Orm\\Dbspec\\\116ative\\MermaidImportResult, 0)
 	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Orm_Dbspec_Native_PlanApply___construct, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Orm_Dbspec_Native_PlanApply_effectOn, 0, 3, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, c, PDO, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, e, Orm\\Dbspec\\\116ative\\Effect, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_METHOD(Orm_Dbspec_Native_Diagnostic, __construct);
@@ -528,8 +551,14 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, compareSchemas);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, installedDifferences);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, planSteps);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, apply);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, recover);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, rollback);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, finalize);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, exportMermaid);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, importMermaid);
+ZEND_METHOD(Orm_Dbspec_Native_PlanApply, __construct);
+ZEND_METHOD(Orm_Dbspec_Native_PlanApply, effectOn);
 
 static const zend_function_entry class_Orm_Dbspec_Native_Diagnostic_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Diagnostic, __construct, arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -786,8 +815,18 @@ static const zend_function_entry class_Orm_Dbspec_Native_Dbspec_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, installedDifferences, arginfo_class_Orm_Dbspec_Native_Dbspec_installedDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, planSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_planSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, apply, arginfo_class_Orm_Dbspec_Native_Dbspec_apply, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, recover, arginfo_class_Orm_Dbspec_Native_Dbspec_recover, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, rollback, arginfo_class_Orm_Dbspec_Native_Dbspec_rollback, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, finalize, arginfo_class_Orm_Dbspec_Native_Dbspec_finalize, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, exportMermaid, arginfo_class_Orm_Dbspec_Native_Dbspec_exportMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, importMermaid, arginfo_class_Orm_Dbspec_Native_Dbspec_importMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Orm_Dbspec_Native_PlanApply_methods[] = {
+	ZEND_ME(Orm_Dbspec_Native_PlanApply, __construct, arginfo_class_Orm_Dbspec_Native_PlanApply___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Orm_Dbspec_Native_PlanApply, effectOn, arginfo_class_Orm_Dbspec_Native_PlanApply_effectOn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 
@@ -2081,6 +2120,16 @@ static zend_class_entry *register_class_Orm_Dbspec_Native_Dbspec(void)
 	zend_string *const_SIGNATURE_name = zend_string_init_interned("SIGNATURE", sizeof("SIGNATURE") - 1, 1);
 	zend_declare_typed_class_constant(class_entry, const_SIGNATURE_name, &const_SIGNATURE_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
 	zend_string_release(const_SIGNATURE_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Orm_Dbspec_Native_PlanApply(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Orm\\Dbspec\\Native", "PlanApply", class_Orm_Dbspec_Native_PlanApply_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
 
 	return class_entry;
 }
