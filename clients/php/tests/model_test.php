@@ -319,8 +319,8 @@ $tests['styled value states'] = function (Db $db, string $dsn): void {
         $partial = (new Author)($db)->removeAllColumns()->addColumnName()->getBySeq($seq);
         check(code(fn() => $partial->getJsonSetting()) === Code::COLUMN_UNSELECTED, 'unselected getter');
 
-        $row->setJsonSetting(StyledValue::value(\OrderedJson\parse('null')))
-            ->setJsonsTags(StyledValue::value(\OrderedJson\parse('null')))
+        $row->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('null')))
+            ->setJsonsTags(StyledValue::value(\Polyspec\OrderedJson\parse('null')))
             ->setSerializeData(StyledValue::value(null))
             ->update();
         $loaded = (new Author)($db)->addAllColumns()->getBySeq($seq);
@@ -335,7 +335,7 @@ $tests['styled value states'] = function (Db $db, string $dsn): void {
         $stored = $cell->fetch(\PDO::FETCH_ASSOC);
         check($stored['json_setting'] === 'null' && $stored['jsons_tags'] === 'null' && $stored['serialize_data'] === 'N;', 'encoded null storage');
 
-        $loaded->setJsonSetting(StyledValue::value(\OrderedJson\parse('{"kind":"sql-null"}')))->update();
+        $loaded->setJsonSetting(StyledValue::value(\Polyspec\OrderedJson\parse('{"kind":"sql-null"}')))->update();
         $again = (new Author)($db)->addAllColumns()->getBySeq($seq);
         check(json_decode(Model::jsonText($again->toArray()['json_setting']), true, 512, JSON_THROW_ON_ERROR) === $cases['json_object_with_kind']['output'], 'JSON document does not collide with state tag');
 

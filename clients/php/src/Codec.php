@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-use OrderedJson\Value;
+use Polyspec\OrderedJson\Value;
 use Symfony\Component\Yaml\Yaml;
-use function OrderedJson\parse as orderedJsonParse;
-use function OrderedJson\stringify as orderedJsonStringify;
+use function Polyspec\OrderedJson\parse as orderedJsonParse;
+use function Polyspec\OrderedJson\stringify as orderedJsonStringify;
 
 /**
  * Column-style codecs (docs/codec.md). Styles are in write order; decode applies them in reverse.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.94: the PHP client requires `polyspec/ordered-json` and uses its namespace `Polyspec\OrderedJson`; update `use OrderedJson\…` to `use Polyspec\OrderedJson\…` where code passes ordered-json values to the client.
+
 - G5.93: orm's internal Rust crates are `polyspec-orm-testcase`, `polyspec-orm-case-clock`, `polyspec-orm-case-database`, `polyspec-orm-tests`, `polyspec-orm-bench` and `polyspec-orm-interface-symbols`, and the version check reads the versions of the `polyspec-orm` packages.
 
 - G5.91: every change reaches `main` through a pull request and the merge queue; `.github/ruleset.json` declares the ruleset `main`, which `make github-ruleset` applies and `make github-ruleset-check` compares, and the workflows run on `merge_group`.
