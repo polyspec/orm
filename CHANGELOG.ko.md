@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.89: Rust와 TypeScript client는 PHP client처럼 ordered-json에 그 저장소로 의존하고, lock 갱신은 그 main을 받는다.
+
 - G5.88: `git-check`는 CI가 pull request나 push된 범위로 정하는 `ORM_GIT_RANGE`의 제목을 읽고, 그것이 없으면 HEAD를 읽는다.
 
 - G5.87: Rust crate는 `polyspec-orm`, `polyspec-orm-build`, `polyspec-orm-schema`이고 npm package는 `@polyspec/orm`이다. dependency와 `polyspec_orm::` 경로를 바꾸고 TypeScript model을 다시 생성한다.
