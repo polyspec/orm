@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.11: PHP 확장이 introspect를 PHP client처럼 구현하고, introspection 교차 검사와 PHP client introspection test를 따르는 test가 그것을 MySQL, PostgreSQL, SQLite에서 실행한다.
+
 - T9.10: PHP 확장이 exportMermaid와 importMermaid를 PHP client처럼 구현하고, `make dbspec-compare-check`가 plan과 Mermaid diagram을 포함한 모든 input에서 확장을 비교한다.
 
 - T9.9: PHP 확장이 externalDifferences, parsePlan, emitPlan, chain, diff, compareSchemas, installedDifferences, addTablesAndColumnsSteps, planSteps를 PHP client와 같은 결과로 구현하고, PHP client의 plan test를 실행하며, plan 출력을 다른 runner와 비교한다.

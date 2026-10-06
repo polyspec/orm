@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.11: the PHP extension implements introspect like the PHP client, and the introspection cross check and a mirror of the PHP client's introspection test run it on MySQL, PostgreSQL and SQLite.
+
 - T9.10: the PHP extension implements exportMermaid and importMermaid like the PHP client, and `make dbspec-compare-check` compares it on every input, plans and Mermaid diagrams included.
 
 - T9.9: the PHP extension implements externalDifferences, parsePlan, emitPlan, chain, diff, compareSchemas, installedDifferences, addTablesAndColumnsSteps and planSteps with the PHP client's results, runs the PHP client's plan test and compares its plan output with the other runners.

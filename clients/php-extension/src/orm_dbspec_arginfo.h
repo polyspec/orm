@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 55088343cc795ca68231c704007c30b191e5f1ab */
+ * Stub hash: e267e3a30ab8dae0ea234acd470b6963f4e33a90 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -379,6 +379,12 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_re
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_introspect, 0, 3, Orm\\Dbspec\\\116ative\\IntrospectResult, 0)
+	ZEND_ARG_OBJ_INFO(0, connection, PDO, 0)
+	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_manifest, 0, 1, Orm\\Dbspec\\\116ative\\ManifestResult, 0)
 	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -511,6 +517,7 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, readFile);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, readBytes);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, emit);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, render);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, introspect);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, manifest);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, externalDifferences);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, parsePlan);
@@ -768,6 +775,7 @@ static const zend_function_entry class_Orm_Dbspec_Native_Dbspec_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, readBytes, arginfo_class_Orm_Dbspec_Native_Dbspec_readBytes, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, emit, arginfo_class_Orm_Dbspec_Native_Dbspec_emit, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, render, arginfo_class_Orm_Dbspec_Native_Dbspec_render, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, introspect, arginfo_class_Orm_Dbspec_Native_Dbspec_introspect, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, manifest, arginfo_class_Orm_Dbspec_Native_Dbspec_manifest, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, externalDifferences, arginfo_class_Orm_Dbspec_Native_Dbspec_externalDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, parsePlan, arginfo_class_Orm_Dbspec_Native_Dbspec_parsePlan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)

@@ -543,6 +543,13 @@ final class Dbspec
      */
     public static function render(array $documents, string $dialect): RenderResult {}
 
+    /**
+     * Reads the current database (MySQL), the current schema (PostgreSQL) or the main database (SQLite) of the
+     * connection into one document named `$name` and the objects it leaves out. A failing query, or a catalog
+     * that yields no document, is a RuntimeException; an unknown dialect is an InvalidArgumentException.
+     */
+    public static function introspect(\PDO $connection, string $dialect, string $name): IntrospectResult {}
+
     /** The manifest of the document set, whose documents are taken in document name order, or its diagnostics. */
     public static function manifest(array $documents): ManifestResult {}
 

@@ -542,6 +542,18 @@ void itable_drop_column(itable *t, str name);
 str catalog_action_name(str rule, bool *ok);
 str catalog_unscaled_decimal(str text, zend_long scale);
 
+/* ----------------------------------------------------------- introspection */
+
+/* PDO 객체의 메서드를 Zend API로 부른다. 예외가 남으면 false이고 ret는 UNDEF다. */
+bool pdo_call(zval *obj, const char *name, zval *ret, uint32_t argc, zval *a1, zval *a2);
+bool pending_pdo_exception(void);
+zend_object *take_exception(void);
+void throw_with_previous(zend_class_entry *ce, str message, zend_object *previous);
+str exception_message(zend_object *e);
+str debug_type(zval *v);
+/* 연결의 database를 문서 하나와 빠진 객체로 읽는다. 실패는 PHP 예외이고 NULL이다. */
+document *dbs_introspect(zval *pdo, dialect d, str name, unsupportedv *out);
+
 /* ---------------------------------------------------------------- Mermaid */
 
 str mermaid_export(const document *d, unsupportedv *dropped);
