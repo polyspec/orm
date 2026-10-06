@@ -37,7 +37,7 @@ impl std::error::Error for Stop {}
 
 /// tests/dbspec/plans.json의 create-from-empty.
 fn create_from_empty() -> Vec<Plan> {
-    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
     let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == "create-from-empty").expect("create-from-empty case");
     let text: String = case["plan"].as_array().expect("plan lines").iter().map(|l| format!("{}\n", l.as_str().expect("plan line"))).collect();
@@ -193,7 +193,7 @@ async fn effect_row() -> Result<String, String> {
 
 /// case 하나를 기한 안에서 실행하고 시작, 결과, 걸린 시간을 알린다.
 async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> Result<(), String> {
-    let mut inner = orm_testcase::start(id, CASE_DEADLINE);
+    let mut inner = polyspec_orm_testcase::start(id, CASE_DEADLINE);
     let result = match tokio::time::timeout(CASE_DEADLINE, body).await {
         Ok(result) => result,
         Err(_) => Err(format!("deadline of {CASE_DEADLINE:?} exceeded")),
@@ -208,7 +208,7 @@ async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> 
 
 #[tokio::test]
 async fn apply_reports_cleanup_errors() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let plans = create_from_empty();
     let results = [
         case("apply/cleanup-errors/release", release(plans.clone())).await,

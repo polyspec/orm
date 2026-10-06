@@ -1,13 +1,13 @@
 //! dbspec rules that the shared vectors in tests/dbspec/cases.json do not cover yet.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 // SUITE_DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
-// (orm_testcase::wall_for_cpu).
+// (polyspec_orm_testcase::wall_for_cpu).
 const SUITE_DEADLINE: Duration = Duration::from_secs(10);
 
 enum Expect {
@@ -30,7 +30,7 @@ fn text(lines: &[&str]) -> String {
 
 fn run(case: &Case) {
     let clock = CaseClock::start();
-    let inner = orm_testcase::start(case.id, orm_testcase::wall_for_cpu(CASE_DEADLINE));
+    let inner = polyspec_orm_testcase::start(case.id, polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
     let main = text(case.documents[0]);
     // The main document is part of the declared set too, so that documents may use it.
     let mut set = BTreeMap::new();
@@ -57,7 +57,7 @@ fn run(case: &Case) {
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= CASE_DEADLINE {
-        orm_testcase::warning(format_args!("{}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})", case.id));
+        polyspec_orm_testcase::warning(format_args!("{}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})", case.id));
     }
     inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
@@ -1112,7 +1112,7 @@ const CASES: &[Case] = &[
 
 #[test]
 fn dbspec_rules() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let mut seen = std::collections::BTreeSet::new();
     let mut failures = Vec::new();
@@ -1126,14 +1126,14 @@ fn dbspec_rules() {
     assert!(failures.is_empty(), "failing cases: {failures:?}");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= SUITE_DEADLINE {
-        orm_testcase::warning(format_args!("dbspec rules: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec rules: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec rules {} cases cpu={cpu:?} wall={wall:?}", CASES.len()));
+    polyspec_orm_testcase::step(format_args!("dbspec rules {} cases cpu={cpu:?} wall={wall:?}", CASES.len()));
 }
 
 #[test]
 fn dbspec_comment_attachment() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let core = text(USERS);
     let set = BTreeMap::from([("core".to_owned(), core)]);
@@ -1190,14 +1190,14 @@ fn dbspec_comment_attachment() {
     assert_eq!(dbspec::emit(&again), expected);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= CASE_DEADLINE {
-        orm_testcase::warning(format_args!("dbspec comment attachment: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec comment attachment: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec comment attachment cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec comment attachment cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn dbspec_limits() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let none = BTreeMap::new();
     let rules = |text: &str| -> Vec<(String, usize, usize)> {
@@ -1221,7 +1221,7 @@ fn dbspec_limits() {
     assert_eq!(rules(&size), vec![("limit".to_owned(), 1, 1)]);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= SUITE_DEADLINE {
-        orm_testcase::warning(format_args!("dbspec limits: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec limits: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec limits cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec limits cpu={cpu:?} wall={wall:?}"));
 }

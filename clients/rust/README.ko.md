@@ -7,7 +7,7 @@
 | `polyspec-orm` (`clients/rust/orm`) | 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
 | `polyspec-orm-schema` (`clients/rust/orm-schema`) | 스키마 정의: 런타임과 `polyspec-orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, plan, Mermaid export와 import, runtime model, 그리고 SQL 문장 분리 |
 | `polyspec-orm-build` (`clients/rust/orm-build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `live-db` 기능은 catalog과 tool database 연결을 제공한다. |
-| `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
+| `polyspec-orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
 
 클라이언트에는 이 크레이트만 필요하다. 문장은 프로세스 안에서 계획하며 별도 서비스를 실행하지 않는다.
 
@@ -125,7 +125,7 @@ Rust 도구/카탈로그 조회는 스트리밍 중 검증된 예산으로 행�
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
-cargo build -p orm-tests
+cargo build -p polyspec-orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../schema/bench.dbs
 ./target/debug/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```

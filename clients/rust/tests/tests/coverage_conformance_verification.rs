@@ -13,7 +13,7 @@ const VECTORS: [&str; 2] = ["conditions_values", "relations"];
 const DEADLINE: Duration = Duration::from_secs(300);
 
 fn runner(dsn: &str, vectors: &[&str]) -> Command {
-    let mut command = Command::new(orm_testcase::program("conformance"));
+    let mut command = Command::new(polyspec_orm_testcase::program("conformance"));
     command.arg("--dsn").arg(dsn);
     for vector in vectors {
         command.arg("--vector").arg(vector);
@@ -24,7 +24,7 @@ fn runner(dsn: &str, vectors: &[&str]) -> Command {
 #[test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 fn coverage_conformance_vector() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let driver = common::required("ORM_FEATURE_DATABASE");
     let dsn = common::required("ORM_FEATURE_DSN");
     let file = match driver.as_str() {
@@ -33,7 +33,7 @@ fn coverage_conformance_vector() {
         "sqlite" => "vectors.sqlite.json",
         other => panic!("ORM_FEATURE_DATABASE {other:?} is not mysql, postgres or sqlite"),
     };
-    let path = orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/conformance").join(file);
     let recorded: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let recorded = recorded["vectors"].as_array().unwrap_or_else(|| panic!("{}: no vectors array", path.display()));

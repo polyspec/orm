@@ -6,7 +6,7 @@
 //! exports its document and imports the export with exactly its dropped
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
 use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
@@ -17,7 +17,7 @@ use std::time::Duration;
 const DEADLINE: Duration = Duration::from_secs(5);
 
 fn vectors() -> Value {
-    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/mermaid.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/mermaid.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("mermaid.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/mermaid.json version");
     vectors
@@ -69,7 +69,7 @@ fn skeleton(document: &Document) -> Vec<String> {
 
 /// case 하나를 실행하고 시작, 결과, 경과 시간을 쓴다.
 fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), String>) {
-    let mut inner = orm_testcase::start(format!("mermaid/{id}"), orm_testcase::wall_for_cpu(DEADLINE));
+    let mut inner = polyspec_orm_testcase::start(format!("mermaid/{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let mut result = body();
     let (cpu, wall) = (clock.cpu(), clock.wall());
@@ -87,7 +87,7 @@ fn run(id: &str, failures: &mut Vec<String>, body: impl FnOnce() -> Result<(), S
 
 #[test]
 fn mermaid_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let vectors = vectors();
     let mut failures = Vec::new();
     let mut count = 0;
@@ -143,7 +143,7 @@ fn mermaid_vectors() {
         let id = format!("round_trip/{}", case["id"].as_str().expect("id"));
         count += 1;
         run(&id, &mut failures, || {
-            let path = orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
+            let path = polyspec_orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
             let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let document = dbspec::parse(&source, &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);
@@ -158,10 +158,10 @@ fn mermaid_vectors() {
             if got != want {
                 return Err(format!("tables, columns, primary keys and foreign keys\n--- want\n{}\n--- got\n{}", want.join("\n"), got.join("\n")));
             }
-            orm_testcase::step(format_args!("round_trip exported={} imported={}", dropped.len(), reported.len()));
+            polyspec_orm_testcase::step(format_args!("round_trip exported={} imported={}", dropped.len(), reported.len()));
             Ok(())
         });
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    orm_testcase::step(format_args!("mermaid vectors: {count} cases"));
+    polyspec_orm_testcase::step(format_args!("mermaid vectors: {count} cases"));
 }

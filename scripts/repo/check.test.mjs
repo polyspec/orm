@@ -697,7 +697,7 @@ caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR
 // manifest directory case는 Rust source가 package directory를 compile 시점의 env!로 읽으면 거부한다.
 caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
   assert.deepEqual(manifestDirErrors({
-    'clients/rust/orm/tests/a.rs': 'let dir = orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
+    'clients/rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
     'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
   }), []);
   assert.deepEqual(manifestDirErrors({
@@ -733,10 +733,10 @@ caseTest('a client connects without a probe statement', COMPUTE, () => {
 // program 경로 case는 Rust test가 package program의 경로를 compile 시점의 env!로 읽으면 거부한다.
 caseTest('Rust tests read the paths of package programs when they run', COMPUTE, () => {
   assert.deepEqual(binExeErrors({
-    'bench/rust/tests/a.rs': 'let program = &orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
+    'bench/rust/tests/a.rs': 'let program = &polyspec_orm_testcase::program("native");\n// env!("CARGO_BIN_EXE_native") was the old form\n',
   }), []);
   assert.deepEqual(binExeErrors({ 'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\n' }), [
-    'bench/rust/tests/b.rs:1 reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with orm_testcase::program',
+    'bench/rust/tests/b.rs:1 reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with polyspec_orm_testcase::program',
   ]);
 });
 
@@ -787,7 +787,7 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
   const rust = [
     '#[tokio::test]',
     'async fn started() {',
-    '    let _case = orm_testcase::case!(orm_testcase::DATABASE);',
+    '    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);',
     '}',
     '#[test]',
     'fn bare() {',
@@ -796,7 +796,7 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
     '',
   ].join('\n');
   assert.deepEqual(rustTestCaseErrors({ 'clients/rust/orm/tests/a.rs': rust }), [
-    'clients/rust/orm/tests/a.rs: bare does not start its case with orm_testcase, so it runs without a deadline or RUN line',
+    'clients/rust/orm/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
   ]);
 });
 
@@ -860,7 +860,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
     unit('tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
     unit('generate', 'go test ./generator && cd clients/go/model && go generate ./'),
     unit('vet', 'go vet ./tests/conformance/check'),
-    unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p orm-tests --bin integration && ./integration'),
+    unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
     unit('later', 'node tests/run-long.mjs a -- go vet ./a && go vet ./b'),
     unit('wrapped', 'node tests/run-long.mjs go-generate --cwd clients/go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
@@ -873,7 +873,7 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
     outside('tsc', 'tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
     outside('generate', 'go generate', 'go generate ./'),
     outside('vet', 'go vet', 'go vet ./tests/conformance/check'),
-    outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p orm-tests --bin integration'),
+    outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration'),
     outside('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     outside('later', 'go vet', 'go vet ./b'),
     timed('run-case', 'tsc', 'run-case.mjs', 'node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc --noEmit'),

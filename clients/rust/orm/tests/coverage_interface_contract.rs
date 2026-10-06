@@ -12,9 +12,9 @@ const DEADLINE: Duration = Duration::from_secs(300);
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_interface_symbols() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let started = Instant::now();
-    let root = orm_testcase::manifest_dir().join("../../..");
+    let root = polyspec_orm_testcase::manifest_dir().join("../../..");
     let mut child = Command::new("go")
         .args(["run", "./tests/interfaces/check", "-language", "rust"])
         .current_dir(&root)

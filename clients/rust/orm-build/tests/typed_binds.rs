@@ -1,13 +1,13 @@
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-typed-binds-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
-            orm_testcase::step(format_args!("running {dialect}"));
+            polyspec_orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -34,7 +34,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
             }
             drop(connection);
             database.close().await;
-            orm_testcase::step(format_args!("{dialect} finished"));
+            polyspec_orm_testcase::step(format_args!("{dialect} finished"));
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed bind cases failed: {failures:?}");
@@ -45,13 +45,13 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 
 #[tokio::test]
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-typed-writes-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
-            orm_testcase::step(format_args!("running {dialect}"));
+            polyspec_orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -229,7 +229,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
             connection.exec(&format!("DROP TABLE {table}"), &[]).await.expect("remove owned fixture");
             drop(connection);
             database.close().await;
-            orm_testcase::step(format_args!("{dialect} finished"));
+            polyspec_orm_testcase::step(format_args!("{dialect} finished"));
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed write cases failed: {failures:?}");

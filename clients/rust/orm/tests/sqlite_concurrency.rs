@@ -138,7 +138,7 @@ async fn count(db: &Db) -> i64 {
 
 #[tokio::test]
 async fn dsn_rejects_txlock() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let path = std::env::temp_dir().join(format!("orm-rust-sqlite-txlock-{}.sqlite", std::process::id()));
     for mode in ["immediate", "deferred"] {
         let result = Db::connect(&format!("sqlite://{}?_txlock={mode}", path.display()), 1, polyspec_orm::Config::default()).await;
@@ -149,7 +149,7 @@ async fn dsn_rejects_txlock() {
 
 #[tokio::test]
 async fn writers_on_several_connections() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("connections").await;
     let dsn = file.dsn.clone();
     let dbs = open(&dsn, 8).await;
@@ -160,7 +160,7 @@ async fn writers_on_several_connections() {
 
 #[tokio::test]
 async fn writers_in_several_processes() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     if let Ok(dsn) = std::env::var(WRITER_DSN) {
         let name = std::env::var(WRITER_NAME).unwrap();
         let failures = run_writers(&open(&dsn, 4).await, &format!("{name}-c"), 20).await;
@@ -191,7 +191,7 @@ async fn writers_in_several_processes() {
 
 #[tokio::test]
 async fn reads_during_write() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("reads").await;
     let dsn = file.dsn.clone();
     let dbs = open(&dsn, 2).await;
@@ -214,7 +214,7 @@ async fn reads_during_write() {
 
 #[tokio::test]
 async fn lock_wait_expires() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("expiry").await;
     let dsn = file.dsn.clone();
     let holder = &open(&dsn, 1).await[0];
@@ -237,7 +237,7 @@ async fn lock_wait_expires() {
 
 #[tokio::test]
 async fn statement_timeout_bounds_sqlite_lock_wait() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("config-expiry").await;
     let dsn = file.dsn.clone();
     let holder = open(&dsn, 1).await.remove(0);

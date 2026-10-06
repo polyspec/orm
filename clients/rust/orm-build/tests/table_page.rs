@@ -8,7 +8,7 @@ fn quote(value: &str, dialect: &str) -> String {
 }
 #[tokio::test]
 async fn qualified_table_pages_preserve_columns_key_order_and_bounds() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table page deadline");
 }
 async fn check() {
@@ -16,7 +16,7 @@ async fn check() {
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -40,7 +40,7 @@ async fn check() {
         let namespace = catalog.current_namespace().await.expect("selected namespace");
         let table = TableRef { namespace, name: name.clone() };
         let page = catalog.table_page(&table, 2, 0).await.expect("first page");
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let baseline = RowSnapshot::from_page(&page, 0).expect("owned original row baseline");
         let current = polyspec_orm_build::tool_db::GridQueryResult { columns: page.result.columns.clone(), rows: vec![page.result.rows[0].clone()] };
         baseline.check_current(&page.metadata, &current).expect("unchanged original row");
@@ -87,7 +87,7 @@ async fn check() {
             .await
             .expect("restore only owned composite row");
         assert_eq!(phases.lock().unwrap().last(), Some(&polyspec_orm_build::catalog::MutationPhase::Committed));
-        orm_testcase::step(format_args!("{dialect} finished"));
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
         if page.limit != 2
             || page.offset != 0
             || !page.has_more
@@ -141,7 +141,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {sql_name}"), &[]).await.expect("remove owned fixture");
         drop(seed);
         database.close().await;
-        orm_testcase::step(format_args!("{dialect} finished"));
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "table page cases failed: {failures:?}");

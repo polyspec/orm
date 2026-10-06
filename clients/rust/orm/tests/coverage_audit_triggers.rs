@@ -68,7 +68,7 @@ async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_audit_history() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, with_audit(audit_rows::audit_case)).await.is_err() {
         panic!("audit_history: not finished within {DEADLINE:?}");
     }
@@ -77,7 +77,7 @@ async fn coverage_audit_history() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_audit_transaction_entry_points() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, with_audit(audit_rows::entry_points_case)).await.is_err() {
         panic!("audit_transaction_entry_points: not finished within {DEADLINE:?}");
     }
@@ -264,7 +264,7 @@ async fn columns_of(db: &Db, table: &str) -> Vec<String> {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_audit_selected_columns() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, audit_selected_columns()).await.is_err() {
         panic!("audit_selected_columns: not finished within {DEADLINE:?}");
     }
@@ -309,7 +309,7 @@ async fn soft_delete_restore() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_soft_delete_restore() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     if tokio::time::timeout(DEADLINE, soft_delete_restore()).await.is_err() {
         panic!("soft_delete_restore: not finished within {DEADLINE:?}");
     }

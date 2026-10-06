@@ -14,7 +14,7 @@ mod lock_probe;
 /// anything; a probe that runs inside the Locked publisher sees the mutation at Locked, whatever the scheduling.
 #[test]
 fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // 0: before Locked, 1: at Locked, 2: finished.
     let stage = Arc::new(std::sync::atomic::AtomicU8::new(0));
     let seen = Arc::new(Mutex::new(None));
@@ -37,7 +37,7 @@ fn a_probe_inside_the_locked_publisher_sees_the_mutation_at_locked() {
 
 #[tokio::test]
 async fn native_updates_lock_compare_verify_and_rollback() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");
 }
 async fn check() {
@@ -45,7 +45,7 @@ async fn check() {
     assert!(!path.exists());
     let mut commit_rejection_misclassified = false;
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -393,7 +393,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.unwrap();
         drop(seed);
         db.close().await;
-        orm_testcase::step(format_args!("{dialect} finished"));
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).unwrap();
     assert!(!commit_rejection_misclassified, "explicit PostgreSQL constraint rejection must not be indeterminate");

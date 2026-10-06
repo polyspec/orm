@@ -584,7 +584,7 @@ const SCENARIOS: [(&str, &[&str]); 9] = [
 
 #[tokio::test]
 async fn apply_chain_on_three_databases() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let started = Instant::now();
     let plans = apply_chain();
     let target = dbspec::manifest(&[plans[1].schema()]).expect("target manifest").schema_text;
@@ -644,10 +644,10 @@ async fn apply_chain_on_three_databases() {
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
     let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
     assert_eq!(runs, want, "apply runs");
-    orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
     // 세 database의 apply scenario는 개발 machine에서 1분 안에 끝난다(T27 측정 41 s, build 포함). 5분이 지나면 멈춘 것이다.
     if started.elapsed() >= Duration::from_secs(300) {
-        orm_testcase::warning(format_args!("apply exceeded 300s"));
+        polyspec_orm_testcase::warning(format_args!("apply exceeded 300s"));
     }
 }
 
@@ -669,7 +669,7 @@ async fn pooler_connection(dsn: &str, name: &str) -> sqlx::PgConnection {
 /// connection의 transaction은 다른 task가 열고, 처리기는 그 task를 block_in_place로 기다린다.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn apply_through_a_transaction_pooler() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let server = require_dsn("ORM_TEST_POSTGRES_SERVER_DSN");
     let pooler = require_dsn("ORM_TEST_PGBOUNCER_DSN");
     let plans = apply_chain();
@@ -719,7 +719,7 @@ async fn apply_through_a_transaction_pooler() {
         };
         match &result {
             Err(e) if e.code() == Some("session") && e.to_string().contains("a direct or session-pooled connection") => {
-                orm_testcase::step(format_args!("{scenario}: {e}"));
+                polyspec_orm_testcase::step(format_args!("{scenario}: {e}"));
             }
             other => failures.push(format!("{scenario}: apply through a transaction pooler: {other:?}, want a session error")),
         }

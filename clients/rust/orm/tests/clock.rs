@@ -3,15 +3,15 @@
 //! Each insert of clock_event fills created_ts from the clock, so its stored
 //! fraction holds the microseconds of the wall clock. A clock with
 //! millisecond resolution stores every value as `.mmm000`. Each case runs in
-//! a case database of its own (orm-case-database). The test fails when
+//! a case database of its own (polyspec-orm-case-database). The test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use std::time::Duration;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 
 static CLOCK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
@@ -115,19 +115,19 @@ async fn bounded(driver: &str) {
 
 #[tokio::test]
 async fn clock_microseconds_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite").await;
 }
 
 #[tokio::test]
 async fn clock_microseconds_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql").await;
 }
 
 #[tokio::test]
 async fn clock_microseconds_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres").await;
 }
 
@@ -263,36 +263,36 @@ async fn bounded_mark(driver: &str, case: &str) {
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("sqlite", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("mysql", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_soft_delete_microseconds_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("postgres", "soft_delete").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("sqlite", "now_condition").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("mysql", "now_condition").await;
 }
 
 #[tokio::test]
 async fn clock_now_condition_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded_mark("postgres", "now_condition").await;
 }

@@ -2,14 +2,14 @@ use super::{CatalogConnection, Conn};
 
 #[tokio::test]
 async fn aborted_read_only_connections_are_not_returned_to_the_pool() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only disposal deadline");
 }
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-query-discard-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -55,7 +55,7 @@ async fn check() {
         owner.connection.exec(&format!("DROP TABLE {table}"), &[]).await.unwrap();
         owner.close().await;
         assert!(write.is_ok(), "cancelled scope must not leak into a reused connection");
-        orm_testcase::step(format_args!("{dialect} passed"));
+        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
     }
     std::fs::remove_file(path).unwrap();
 }

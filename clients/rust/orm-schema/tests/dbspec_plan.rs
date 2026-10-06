@@ -7,7 +7,7 @@
 //! diagnostic; every comparison lists its differences or `compare`
 //! diagnostics.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use serde_json::Value;
 
@@ -52,7 +52,7 @@ const DEADLINE: Duration = Duration::from_secs(5);
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
 fn vectors() -> Value {
-    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).expect("plans.json");
     assert_eq!(vectors["version"], 1, "tests/dbspec/plans.json version");
     vectors
@@ -76,7 +76,7 @@ fn source(id: &str, value: &Value) -> Option<Document> {
 
 /// case 하나를 시작, 결과, 경과 시간 줄과 기한으로 감싼다.
 fn run(id: &str, body: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
-    let mut inner = orm_testcase::start(format!("plan/{id}"), orm_testcase::wall_for_cpu(DEADLINE));
+    let mut inner = polyspec_orm_testcase::start(format!("plan/{id}"), polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let result = body();
     let (cpu, wall) = (clock.cpu(), clock.wall());
@@ -91,7 +91,7 @@ fn run(id: &str, body: impl FnOnce() -> Result<(), String>) -> Result<(), String
 
 #[test]
 fn plan_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let started = Instant::now();
     let vectors = vectors();
     let cases = vectors["cases"].as_array().expect("cases");
@@ -150,12 +150,12 @@ fn plan_vectors() {
         failures.extend(result.err());
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    orm_testcase::step(format_args!("plan vectors: {} cases and {} invalid cases in {:?}", cases.len(), invalid.len(), started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("plan vectors: {} cases and {} invalid cases in {:?}", cases.len(), invalid.len(), started.elapsed()));
 }
 
 #[test]
 fn plan_chains() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let started = Instant::now();
     let vectors = vectors();
     let chains = vectors["chains"].as_array().expect("chains");
@@ -189,12 +189,12 @@ fn plan_chains() {
         failures.extend(result.err());
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    orm_testcase::step(format_args!("plan chains: {} cases in {:?}", chains.len(), started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("plan chains: {} cases in {:?}", chains.len(), started.elapsed()));
 }
 
 #[test]
 fn plan_parse_errors() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let started = Instant::now();
     let vectors = vectors();
     let parse = vectors["parse"].as_array().expect("parse");
@@ -222,12 +222,12 @@ fn plan_parse_errors() {
         failures.extend(result.err());
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    orm_testcase::step(format_args!("plan parse errors: {} cases in {:?}", parse.len(), started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("plan parse errors: {} cases in {:?}", parse.len(), started.elapsed()));
 }
 
 #[test]
 fn plan_comparisons() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let started = Instant::now();
     let vectors = vectors();
     let comparisons = vectors["comparisons"].as_array().expect("comparisons");
@@ -257,5 +257,5 @@ fn plan_comparisons() {
         failures.extend(result.err());
     }
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    orm_testcase::step(format_args!("plan comparisons: {} cases in {:?}", comparisons.len(), started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("plan comparisons: {} cases in {:?}", comparisons.len(), started.elapsed()));
 }

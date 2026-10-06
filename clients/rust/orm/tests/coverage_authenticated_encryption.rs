@@ -1,8 +1,8 @@
 //! authenticated_encryption: contracts/fixtures/authenticated_encryption.json의 case를 client의
 //! AES envelope와 blind index 함수로 실행한다. 값은 fixture에서 읽는다.
-use orm_case_clock::CaseClock;
 use polyspec_orm::codec::{aes_decrypt, aes_encrypt, blind_index, hex_decode, hex_upper};
 use polyspec_orm::Param;
+use polyspec_orm_case_clock::CaseClock;
 use serde_json::Value;
 use std::time::Duration;
 
@@ -11,7 +11,7 @@ const CPU_LIMIT: Duration = Duration::from_secs(10);
 
 /// fixture에서 `id` case 하나를 찾아 operation이 `operation`인지 확인하고 input과 expected를 돌려준다.
 fn case(id: &str, operation: &str) -> (Value, Value) {
-    let path = orm_testcase::manifest_dir().join("../../../contracts/fixtures/authenticated_encryption.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/authenticated_encryption.json");
     let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "authenticated_encryption", "{}: feature", path.display());
@@ -28,13 +28,13 @@ fn text<'a>(value: &'a Value, field: &str) -> &'a str {
 /// `body`를 실행하고 시작, 성공, 걸린 시간을 출력하며 CPU 시간 한도를 확인한다.
 fn run(id: &str, body: impl FnOnce()) {
     let clock = CaseClock::start();
-    orm_testcase::step(format_args!("start {id}"));
+    polyspec_orm_testcase::step(format_args!("start {id}"));
     body();
     let cpu = clock.cpu();
     if cpu >= CPU_LIMIT {
-        orm_testcase::warning(format_args!("{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}"));
+        polyspec_orm_testcase::warning(format_args!("{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}"));
     }
-    orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
+    polyspec_orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
 fn decrypt(input: &Value) -> polyspec_orm::Result<Vec<u8>> {
@@ -45,7 +45,7 @@ fn decrypt(input: &Value) -> polyspec_orm::Result<Vec<u8>> {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_envelope_decrypt() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("aes_envelope_decrypt", || {
         let (input, expected) = case("aes_envelope_decrypt", "aes_decrypt");
         let plain = decrypt(&input).unwrap_or_else(|e| panic!("decrypt: {e}"));
@@ -56,7 +56,7 @@ fn coverage_aes_envelope_decrypt() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_round_trip() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("aes_round_trip", || {
         let (input, expected) = case("aes_round_trip", "aes_encrypt_decrypt");
         let key = text(&input, "key");
@@ -71,7 +71,7 @@ fn coverage_aes_round_trip() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_tamper_rejected() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("aes_tamper_rejected", || {
         let (input, expected) = case("aes_tamper_rejected", "aes_decrypt");
         let error = decrypt(&input).expect_err("a tampered envelope must not decrypt");
@@ -82,7 +82,7 @@ fn coverage_aes_tamper_rejected() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_aes_wrong_key_rejected() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("aes_wrong_key_rejected", || {
         let (input, expected) = case("aes_wrong_key_rejected", "aes_decrypt");
         let error = decrypt(&input).expect_err("another key must not decrypt");
@@ -93,7 +93,7 @@ fn coverage_aes_wrong_key_rejected() {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_blind_index_vector() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("blind_index_vector", || {
         let (input, expected) = case("blind_index_vector", "blind_index");
         let index = blind_index(&Param::Str(text(&input, "plain").to_owned()), text(&input, "key")).unwrap_or_else(|e| panic!("blind index: {e}"));

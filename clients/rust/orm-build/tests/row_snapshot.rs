@@ -42,7 +42,7 @@ fn fixture() -> TablePage {
 }
 #[tokio::test]
 async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let page = fixture();
         let original = RowSnapshot::from_page(&page, 0).unwrap();
@@ -72,7 +72,7 @@ async fn row_update_verification_rejects_coercion_and_unrequested_changes() {
 }
 #[tokio::test]
 async fn row_baseline_preserves_immutable_values_and_key_order() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let mut page = fixture();
         let snapshot = RowSnapshot::from_page(&page, 0).unwrap();
@@ -90,7 +90,7 @@ async fn row_baseline_preserves_immutable_values_and_key_order() {
 }
 #[tokio::test]
 async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for change in 0..10 {
             let mut page = fixture();
@@ -131,7 +131,7 @@ async fn row_baseline_rejects_invalid_identity_and_distinguishes_conflicts() {
 }
 #[tokio::test]
 async fn row_baseline_compares_exact_bits_scale_and_binary() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         for (original, changed) in [
             (GridCell::Float64(0), GridCell::Float64(1u64 << 63)),

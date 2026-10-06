@@ -162,7 +162,7 @@ mod tests {
     // 선언한 hash로 hash되지 않는 manifest text는 SCHEMA_HASH_MISMATCH이고, manifest가 아닌 text는 SCHEMA_INVALID다.
     #[test]
     fn manifest_hash_mismatch_is_reported() {
-        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let (text, hash) = rollback_manifest();
         assert_eq!(Manifest::load(&text, &hash).expect("matching manifest").manifest_hash, hash);
         let edited = text.replace("label varchar(32)", "label varchar(64)");

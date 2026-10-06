@@ -14,7 +14,7 @@ mod lock_probe;
 
 #[tokio::test]
 async fn generated_keys_return_the_inserted_row_on_each_database() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("generated identity deadline");
 }
 
@@ -23,7 +23,7 @@ async fn check() {
     assert!(!path.exists(), "fixture path must be unowned before this run");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
@@ -105,7 +105,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove owned table, even after a behavioral Red");
         drop(seed);
         database.close().await;
-        orm_testcase::step(format_args!("{dialect} finished"));
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "generated identity failures: {failures:?}");

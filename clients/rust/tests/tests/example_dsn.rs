@@ -19,16 +19,16 @@ fn assert_dsn_required(program: &str, output: std::process::Output) {
 
 #[test]
 fn examples_fail_when_dsn_is_unset() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in &[orm_testcase::program("complex"), orm_testcase::program("demo")] {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    for program in &[polyspec_orm_testcase::program("complex"), polyspec_orm_testcase::program("demo")] {
         assert_dsn_required(program, run_without_dsn(program, None));
     }
 }
 
 #[test]
 fn examples_fail_when_dsn_is_empty() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    for program in &[orm_testcase::program("complex"), orm_testcase::program("demo")] {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    for program in &[polyspec_orm_testcase::program("complex"), polyspec_orm_testcase::program("demo")] {
         assert_dsn_required(program, run_without_dsn(program, Some("")));
     }
 }

@@ -122,7 +122,7 @@ mod tests {
     // 고정 model method와 같은 이름의 column은 생성한 method와 겹치므로 거부한다.
     #[test]
     fn reserved_method_names_are_not_columns() {
-        let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for name in ["create", "delete", "restore", "random"] {
             let error = check_column_name(name).expect_err(name);
             assert!(error.contains("reserved method name"), "{name}: {error}");

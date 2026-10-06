@@ -5,7 +5,7 @@
 use super::{compile, Dialect};
 use crate::ir;
 use crate::schema::Manifest;
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use serde_json::{json, Map, Value};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -16,7 +16,7 @@ const CPU_LIMIT: Duration = Duration::from_secs(10);
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
 fn repository() -> PathBuf {
-    orm_testcase::manifest_dir().join("../../..")
+    polyspec_orm_testcase::manifest_dir().join("../../..")
 }
 
 fn bench() -> Manifest {
@@ -257,7 +257,7 @@ fn request(input: &Value, manifest_hash: &str) -> ir::Request {
 
 fn run(id: &str) {
     let clock = CaseClock::start();
-    orm_testcase::step(format_args!("start {id}"));
+    polyspec_orm_testcase::step(format_args!("start {id}"));
     let manifest = bench();
     let (input, expected) = case(id);
     let request = request(&input, &manifest.manifest_hash);
@@ -295,91 +295,91 @@ fn run(id: &str) {
     }
     let cpu = clock.cpu();
     if cpu >= CPU_LIMIT {
-        orm_testcase::warning(format_args!("{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}"));
+        polyspec_orm_testcase::warning(format_args!("{id}: used {cpu:?} of CPU time, limit {CPU_LIMIT:?}"));
     }
-    orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
+    polyspec_orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_statement() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_statement");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_count() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_count");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_rejects_unknown_column() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_unknown_column");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_restore() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_restore");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_restore_rejects_non_key() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_restore_rejects_non_key");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_tables() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_tables");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_bind_types_select() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_bind_types_select");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_bind_types_update() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_bind_types_update");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_bind_types_insert() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_bind_types_insert");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_parent_key_types() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_parent_key_types");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_not_group() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_not_group");
 }
 
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_planner_rejects_top_not() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_top_not");
 }

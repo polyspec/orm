@@ -7,7 +7,7 @@
 | `polyspec-orm` (`clients/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
 | `polyspec-orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `polyspec-orm-build` share, and SQL statement splitting |
 | `polyspec-orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
-| `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
+| `polyspec-orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
 
 Adopting the client needs only these crates. Statements are planned in the process; there is no service to run.
 
@@ -164,7 +164,7 @@ types fail rather than being converted. This is not a read-only SQL sandbox.
 cd clients/rust
 cargo clippy --workspace --all-targets -- -D warnings
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ORM_TEST_MYSQL_SERVER_DSN=… ORM_TEST_POSTGRES_SERVER_DSN=… cargo test --workspace
-cargo build -p orm-tests
+cargo build -p polyspec-orm-tests
 ORM_TEST_MYSQL_DSN=… ORM_TEST_POSTGRES_DSN=… ./target/debug/integration ../../schema/bench.dbs
 ./target/debug/conformance --dsn "mysql://…" ../../schema/bench.dbs
 ```

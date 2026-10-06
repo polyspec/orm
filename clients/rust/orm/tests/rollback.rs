@@ -9,7 +9,7 @@
 //! reaches the server through ORM_TEST_MYSQL_SERVER_DSN or
 //! ORM_TEST_POSTGRES_SERVER_DSN (the make targets set them to the server DSNs
 //! of TEST_ENV), not through a pooler. Each case runs in a case database of its
-//! own (orm-case-database). The test fails when one of the four DSNs is unset.
+//! own (polyspec-orm-case-database). The test fails when one of the four DSNs is unset.
 //!
 //! `rollback_fault_*` case는 test entry point `polyspec_orm::testing`의 rollback fault를
 //! 설정하며 feature `test-faults`로 실행한다:
@@ -17,9 +17,9 @@
 
 use std::time::Duration;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 
 static ROLLBACK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
@@ -292,58 +292,58 @@ async fn bounded(driver: &str, case: &str) {
 
 #[tokio::test]
 async fn rollback_failed_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn rollback_failed_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn rollback_failed_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "savepoint_rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "savepoint_rollback_failed").await;
 }
 
 #[tokio::test]
 async fn savepoint_rollback_failed_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "savepoint_rollback_failed").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "rollback_fault").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "rollback_fault").await;
 }
 
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn rollback_fault_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "rollback_fault").await;
 }
 
@@ -351,8 +351,8 @@ async fn rollback_fault_postgres() {
 /// default feature도 그것을 켜지 않는다.
 #[test]
 fn rollback_fault_entry() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let manifest = std::fs::read_to_string(orm_testcase::manifest_dir().join("Cargo.toml")).unwrap();
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let manifest = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");
     let default = features.lines().find(|line| line.trim_start().starts_with("default"));

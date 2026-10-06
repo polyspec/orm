@@ -1,14 +1,14 @@
 //! Encrypted JSON value: a `json aes` column takes an ordered-json value, reads
 //! it back byte-for-byte, rotates to another key version, and takes an update, on SQLite,
-//! MySQL and PostgreSQL, each in a case database of its own (orm-case-database).
+//! MySQL and PostgreSQL, each in a case database of its own (polyspec-orm-case-database).
 //! The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use std::collections::BTreeMap;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::db::Pool;
 use polyspec_orm::utils::AesKeyring;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 use sqlx::Row;
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
@@ -98,7 +98,7 @@ async fn stored(db: &Db) -> (Vec<u8>, i64) {
 
 #[tokio::test]
 async fn aes_json_column() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     // Member order, number text, and {} apart from [] survive the round trip.
     let text = r#"{"token":"s3cret-token","b":1,"a":[],"c":{},"n":1.50,"z":[true,null,"x"]}"#;
     let updated = r#"{"token":"next-token","list":[1,"two",null],"e":{}}"#;

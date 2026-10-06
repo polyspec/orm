@@ -26,7 +26,7 @@ export function targetPathErrors(files) {
 
 // manifest directory 검사. env!("CARGO_MANIFEST_DIR")는 build한 경로를 binary에 넣지만, test binary는
 // tests/cargo-test.mjs가 실행 directory에 복사한 것을 실행하므로 package directory는 실행이 정한다. Rust
-// source는 실행 시점의 CARGO_MANIFEST_DIR(orm_testcase::manifest_dir)을 읽는다.
+// source는 실행 시점의 CARGO_MANIFEST_DIR(polyspec_orm_testcase::manifest_dir)을 읽는다.
 
 // manifestDirErrors는 files({path: text})의 Rust file이 env!("CARGO_MANIFEST_DIR")를 쓰는 줄마다
 // 오류 하나를 돌려준다. 주석 줄(//)은 제외한다.
@@ -45,14 +45,14 @@ export function manifestDirErrors(files) {
 // binExeErrors는 files({path: text})의 Rust file이 env!("CARGO_BIN_EXE_<name>")를 쓰는 줄마다 오류 하나를
 // 돌려준다. 그 macro는 compile 시점에 공유 Rust target directory의 program 경로를 binary에 넣으므로, 다른
 // checkout이 그 program을 다시 build하면 test가 그것을 실행한다. test는 실행될 때
-// orm_testcase::program(name)으로 tests/cargo-test.mjs가 복사한 program을 받는다. 주석은 보지 않는다.
+// polyspec_orm_testcase::program(name)으로 tests/cargo-test.mjs가 복사한 program을 받는다. 주석은 보지 않는다.
 export function binExeErrors(files) {
   const errors = [];
   for (const [path, text] of Object.entries(files))
     text.split('\n').forEach((line, index) => {
       const code = line.replace(/\/\/.*$/, '');
       if (/\benv!\s*\(\s*"CARGO_BIN_EXE_/.test(code))
-        errors.push(`${path}:${index + 1} reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with orm_testcase::program`);
+        errors.push(`${path}:${index + 1} reads the program path at compile time with CARGO_BIN_EXE; read it when the test runs with polyspec_orm_testcase::program`);
     });
   return errors;
 }

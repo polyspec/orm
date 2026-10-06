@@ -2,14 +2,14 @@ use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
 async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("column test deadline");
 }
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-tool-columns-{}.sqlite", std::process::id()));
     assert!(!path.exists());
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -30,7 +30,7 @@ async fn check() {
         catalog.close().await;
         drop(connection);
         database.close().await;
-        orm_testcase::step(format_args!("{dialect} passed"));
+        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
     }
     std::fs::remove_file(path).unwrap();
 }

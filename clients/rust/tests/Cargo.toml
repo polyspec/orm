@@ -1,5 +1,5 @@
 [package]
-name = "orm-tests"
+name = "polyspec-orm-tests"
 version = "0.0.2"
 edition = "2021"
 publish = false
@@ -31,10 +31,10 @@ path = "../../../examples/thin-slice/rust/main.rs"
 
 [dependencies]
 # integration program이 case마다 시작, 결과, 경과 시간과 자기 기한을 보고한다.
-orm-testcase = { path = "../testcase" }
+polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm = { path = "../orm" }
 # integration program의 database case가 자기만의 database를 만들고 끝날 때 지운다.
-orm-case-database = { path = "../case-database" }
+polyspec-orm-case-database = { path = "../case-database" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

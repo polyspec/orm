@@ -6,13 +6,14 @@ import { pathToFileURL } from 'node:url';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
 // orm이 내는 Rust package. Cargo.lock에서 이 package의 version만 orm version이다.
-const RUST_PACKAGES = ['orm', 'orm-schema', 'orm-build', 'orm-case-clock', 'orm-case-database', 'orm-testcase', 'orm-tests', 'orm-bench', 'orm-interface-symbols'];
+const RUST_PACKAGES = ['polyspec-orm', 'polyspec-orm-schema', 'polyspec-orm-build', 'polyspec-orm-case-clock', 'polyspec-orm-case-database', 'polyspec-orm-testcase', 'polyspec-orm-tests', 'polyspec-orm-bench',
+  'polyspec-orm-interface-symbols'];
 
 const first = re => text => [...text.matchAll(re)].slice(0, 1).map(m => m[1]);
 const all = re => text => [...text.matchAll(re)].map(m => m[1]);
 const cargoToml = text => [
   ...first(/^version = "([^"]+)"$/gm)(text),
-  ...all(/^(?:orm|orm-schema) = \{ version = "=([^"]+)"/gm)(text),
+  ...all(/^(?:polyspec-orm|polyspec-orm-schema) = \{ version = "=([^"]+)"/gm)(text),
 ];
 const cargoLock = text => [...text.matchAll(/^name = "([^"]+)"\nversion = "([^"]+)"$/gm)]
   .filter(m => RUST_PACKAGES.includes(m[1])).map(m => m[2]);

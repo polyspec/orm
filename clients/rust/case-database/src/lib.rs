@@ -66,7 +66,7 @@ impl CaseDatabase {
             let path = std::env::temp_dir().join(format!("{}.sqlite", name.replace('_', "-")));
             let name = path.display().to_string();
             assert!(!path.exists(), "case database {name}: the file already exists");
-            orm_testcase::step(format_args!("database {name} created"));
+            polyspec_orm_testcase::step(format_args!("database {name} created"));
             return CaseDatabase { driver, dsn: format!("sqlite://{name}"), name, admin: None, path: Some(path), dropped: false };
         };
         let admin = require_dsn(var);
@@ -76,7 +76,7 @@ impl CaseDatabase {
         let created = execute(&db, &format!("CREATE DATABASE {name}")).await;
         db.close().await;
         created.unwrap_or_else(|e| panic!("case database {name}: create: {e}"));
-        orm_testcase::step(format_args!("database {name} created"));
+        polyspec_orm_testcase::step(format_args!("database {name} created"));
         CaseDatabase { driver, dsn: with_database(&admin, &name), name, admin: Some(admin), path: None, dropped: false }
     }
 
@@ -112,7 +112,7 @@ impl CaseDatabase {
     pub async fn drop(mut self) {
         self.dropped = true;
         remove(self.admin.as_deref(), &self.name, self.path.as_deref()).await.unwrap_or_else(|e| panic!("case database {}: drop: {e}", self.name));
-        orm_testcase::step(format_args!("database {} dropped", self.name));
+        polyspec_orm_testcase::step(format_args!("database {} dropped", self.name));
     }
 }
 
@@ -131,8 +131,8 @@ fn run_blocking<F: std::future::Future<Output = Result<(), String>> + Send + 'st
 /// 실패를 STEP 줄로만 남긴다.
 fn report_drop(what: &str, result: Result<(), String>) {
     match result {
-        Ok(()) => orm_testcase::step(format_args!("{what} dropped")),
-        Err(e) if std::thread::panicking() => orm_testcase::step(format_args!("{what} was not dropped: {e}")),
+        Ok(()) => polyspec_orm_testcase::step(format_args!("{what} dropped")),
+        Err(e) if std::thread::panicking() => polyspec_orm_testcase::step(format_args!("{what} was not dropped: {e}")),
         Err(e) => panic!("case {what}: drop: {e}"),
     }
 }
@@ -164,7 +164,7 @@ impl CaseTable {
     /// `dsn`의 database에 둘 table 이름을 정한다. table은 case가 만든다.
     pub fn reserve(dsn: &str) -> CaseTable {
         let name = case_name();
-        orm_testcase::step(format_args!("table {name} reserved"));
+        polyspec_orm_testcase::step(format_args!("table {name} reserved"));
         CaseTable { dsn: dsn.to_owned(), name, dropped: false }
     }
 
@@ -178,7 +178,7 @@ impl CaseTable {
     pub async fn drop(mut self) {
         self.dropped = true;
         drop_table(&self.dsn, &self.name).await.unwrap_or_else(|e| panic!("case table {}: drop: {e}", self.name));
-        orm_testcase::step(format_args!("table {} dropped", self.name));
+        polyspec_orm_testcase::step(format_args!("table {} dropped", self.name));
     }
 }
 

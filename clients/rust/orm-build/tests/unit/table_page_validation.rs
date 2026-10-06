@@ -5,8 +5,8 @@ use crate::{
 };
 #[test]
 fn page_assembly_rejects_column_or_descriptor_changes() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let clock = orm_case_clock::CaseClock::start();
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let clock = polyspec_orm_case_clock::CaseClock::start();
     let metadata = TableMetadata {
         table: TableRef { namespace: "main".into(), name: "fixture".into() },
         kind: TableKind::Table,
@@ -38,7 +38,7 @@ fn page_assembly_rejects_column_or_descriptor_changes() {
     assert!(assemble(metadata.clone(), result, metadata, 1, 0).is_ok());
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= std::time::Duration::from_secs(5) {
-        orm_testcase::warning(format_args!("table page validation: cpu {cpu:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("table page validation: cpu {cpu:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }

@@ -398,7 +398,7 @@ async function buildNative(plans, directory) {
 // 상관없이 하나씩 차례로 실행한다(--test-threads=1). 같은 entry의 case는 같은 database row를 쓸 수
 // 있으므로 symbol마다 process를 띄우던 때처럼 겹쳐 실행하지 않는다.
 // Rust test binary에는 cargo test처럼 그 crate의 package directory를 CARGO_MANIFEST_DIR로 준다:
-// test는 fixture 경로를 실행 시점의 값(orm_testcase::manifest_dir)에서 얻는다.
+// test는 fixture 경로를 실행 시점의 값(polyspec_orm_testcase::manifest_dir)에서 얻는다.
 function prepared(spec, builds) {
   if (spec.format === 'case') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
   if (spec.format === 'go') {

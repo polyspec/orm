@@ -157,7 +157,7 @@ mod field_type_tests {
 
     #[test]
     fn generated_field_types_follow_the_runtime_model() {
-        let _case = orm_testcase::case!(orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         assert_eq!(base(&field_of(Type::Decimal(13, 3), &[])), "String");
         assert_eq!(base(&field_of(Type::I16, &[])), "i16");
         assert_eq!(base(&field_of(Type::Uuid, &[])), "String");

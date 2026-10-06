@@ -1,14 +1,14 @@
 //! The vectors of tests/dbspec/ddl.json through `dbspec::render`: every case
 //! renders the statements listed for MySQL, PostgreSQL and SQLite.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
-// (orm_testcase::wall_for_cpu).
+// (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -23,9 +23,9 @@ fn strings(value: &Value) -> Vec<String> {
 
 #[test]
 fn render_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
-    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/ddl.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/ddl.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
     let cases = vectors["cases"].as_array().expect("ddl cases");
     assert!(!cases.is_empty(), "tests/dbspec/ddl.json has no cases");
@@ -47,12 +47,12 @@ fn render_vectors() {
             // The documents are rendered in use order, not in the order given.
             refs.reverse();
             assert_eq!(dbspec::render(&refs, dialect), Ok(want.clone()), "{id}: {dialect_name} reversed");
-            orm_testcase::step(format_args!("ddl/{id}/{dialect_name}"));
+            polyspec_orm_testcase::step(format_args!("ddl/{id}/{dialect_name}"));
         }
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("dbspec render vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec render vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec render vectors {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
+    polyspec_orm_testcase::step(format_args!("dbspec render vectors {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
 }

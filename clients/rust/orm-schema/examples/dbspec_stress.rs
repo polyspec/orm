@@ -9,7 +9,7 @@
 //!
 //! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_stress -- <document path>`
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use std::collections::BTreeMap;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -23,7 +23,7 @@ const RUN_DEADLINE: Duration = Duration::from_secs(10);
 fn main() -> ExitCode {
     let run = CaseClock::start();
     // stress case의 wall-clock 기한은 CPU 한도 RUN_DEADLINE의 열 배다(timing-check).
-    let mut case = orm_testcase::start("dbspec stress", orm_testcase::wall_for_cpu(RUN_DEADLINE));
+    let mut case = polyspec_orm_testcase::start("dbspec stress", polyspec_orm_testcase::wall_for_cpu(RUN_DEADLINE));
     let Some(path) = std::env::args().nth(1) else {
         case.fail("missing document path argument");
         return ExitCode::FAILURE;
@@ -90,7 +90,7 @@ fn main() -> ExitCode {
         std::env::consts::ARCH
     ));
     if ratio > REFERENCE_RATIO {
-        orm_testcase::warning(format_args!(
+        polyspec_orm_testcase::warning(format_args!(
             "median parse cpu {:.3} ms is {ratio:.2} times the reference cpu {:.3} ms, above the reference ratio {REFERENCE_RATIO} (docs/dbspec.md, Verification)",
             ms(parse_time),
             ms(reference_time)
@@ -105,7 +105,7 @@ fn main() -> ExitCode {
     }
     let (cpu, wall) = (run.cpu(), run.wall());
     if cpu > RUN_DEADLINE {
-        orm_testcase::warning(format_args!("dbspec stress used cpu {cpu:?} (wall {wall:?}), above its reference of {RUN_DEADLINE:?}"));
+        polyspec_orm_testcase::warning(format_args!("dbspec stress used cpu {cpu:?} (wall {wall:?}), above its reference of {RUN_DEADLINE:?}"));
     }
     if !failures.is_empty() {
         case.fail(failures.join("; "));

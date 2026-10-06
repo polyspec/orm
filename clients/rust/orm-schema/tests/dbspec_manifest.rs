@@ -2,14 +2,14 @@
 //! name rule through `dbspec::manifest`, and the `sets` cases through
 //! `dbspec::manifest` and `dbspec::render`.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
-// (orm_testcase::wall_for_cpu).
+// (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
@@ -46,7 +46,7 @@ fn expect(case: &Value, documents: &[&Document]) {
 }
 
 fn cases() -> Value {
-    let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json");
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json");
     serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
 }
 
@@ -56,7 +56,7 @@ fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {
 
 #[test]
 fn manifest_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let cases = cases();
     let hashes = cases["hashes"].as_array().expect("hashes cases");
@@ -76,18 +76,18 @@ fn manifest_vectors() {
         // The set is ordered by document name, not by the order given.
         refs.reverse();
         expect(case, &refs);
-        orm_testcase::step(format_args!("hashes/{id}"));
+        polyspec_orm_testcase::step(format_args!("hashes/{id}"));
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("dbspec manifest vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec manifest vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len()));
+    polyspec_orm_testcase::step(format_args!("dbspec manifest vectors {} cases cpu={cpu:?} wall={wall:?}", hashes.len()));
 }
 
 #[test]
 fn manifest_rejects_repeated_document_name() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let source = "dbspec 1 shop\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n";
     let first = parsed("first", source, &BTreeMap::new());
@@ -97,14 +97,14 @@ fn manifest_rejects_repeated_document_name() {
     assert_eq!(got, vec![("name.duplicate", 1, 10)]);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec manifest repeated name cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec manifest repeated name cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn set_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let cases = cases();
     let sets = cases["sets"].as_array().expect("sets cases");
@@ -172,11 +172,11 @@ fn set_vectors() {
                 }
             }
         }
-        orm_testcase::step(format_args!("sets/{id}"));
+        polyspec_orm_testcase::step(format_args!("sets/{id}"));
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("dbspec set vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec set vectors exceeded {DEADLINE:?} (cpu {cpu:?}, wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len()));
+    polyspec_orm_testcase::step(format_args!("dbspec set vectors {} cases cpu={cpu:?} wall={wall:?}", sets.len()));
 }

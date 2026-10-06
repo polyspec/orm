@@ -32,11 +32,11 @@ fn quote(name: &str, driver: &str) -> String {
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
     let started = Instant::now();
-    orm_testcase::step(format_args!("start {case}"));
+    polyspec_orm_testcase::step(format_args!("start {case}"));
     if tokio::time::timeout(DEADLINE, body).await.is_err() {
         panic!("{case}: not finished within {DEADLINE:?}");
     }
-    orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
 }
 
 /// `column`의 page 안 위치.
@@ -47,13 +47,13 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_read() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
         let (driver, mut catalog) = connect().await;
         let namespace = catalog.current_namespace().await.expect("current namespace");
         let author = TableRef { namespace, name: "author".into() };
         let metadata = catalog.describe_table(&author).await.expect("author metadata");
-        let text = std::fs::read_to_string(orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).expect("bench schema");
+        let text = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).expect("bench schema");
         let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
         let model = polyspec_orm::dbspec::runtime_model(&[&document]).unwrap_or_else(|errors| panic!("bench model: {errors:?}"));
         let declared = model.entities.iter().find(|e| e.table == "author").expect("declared author table");
@@ -87,7 +87,7 @@ async fn coverage_catalog_read() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_catalog_row_mutation() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_row_mutation", async {
         let (driver, mut catalog) = connect().await;
         let account = quote("composite_account", &driver);

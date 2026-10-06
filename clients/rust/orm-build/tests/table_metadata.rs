@@ -5,12 +5,12 @@ use polyspec_orm_build::{
 
 #[tokio::test]
 async fn qualified_table_metadata_preserves_identity_and_generated_columns() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table metadata deadline");
 }
 #[tokio::test]
 async fn mysql_system_views_are_described_without_row_identity() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(10),async{
         let dsn=std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN");
         let mut catalog=CatalogConnection::connect(&dsn).await.expect("catalog connection");
@@ -26,7 +26,7 @@ async fn check() {
     assert!(!path.exists());
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
-        orm_testcase::step(format_args!("running {dialect}"));
+        polyspec_orm_testcase::step(format_args!("running {dialect}"));
         let dsn = match dialect {
             "sqlite" => format!("sqlite://{}", path.display()),
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
@@ -106,7 +106,7 @@ async fn check() {
         seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove owned fixture table");
         drop(seed);
         database.close().await;
-        orm_testcase::step(format_args!("{dialect} finished"));
+        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "table metadata cases failed: {failures:?}");
