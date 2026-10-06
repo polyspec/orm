@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Testing;
+namespace Polyspec\Orm\Testing;
 
-use Orm\Db;
+use Polyspec\Orm\Db;
 
 /**
  * PHP client의 test entry point다. package autoloader는 이 file을 map하지 않으므로,

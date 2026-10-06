@@ -75,7 +75,7 @@ $matched = testcase_run('php-extension/client', TESTCASE_PROCESS, static functio
     preg_match_all('/@internal\n \*\/\n(?:final |abstract )?(?:readonly )?class (\w+)/', file_get_contents(dirname(__DIR__) . '/stubs/orm_dbspec.stub.php'), $internal);
     foreach (array_keys($native) as $key) {
         $class = explode('::', $key)[0];
-        if (!isset($classes[$class]) && !in_array(substr($class, strlen('Orm\\Dbspec\\Native\\')), $internal[1], true)) {
+        if (!isset($classes[$class]) && !in_array(substr($class, strlen('Polyspec\\Orm\\Dbspec\\Native\\')), $internal[1], true)) {
             $differences[] = "$class is neither a class of the PHP client nor @internal in the stub";
             $classes[$class] = true;
         }

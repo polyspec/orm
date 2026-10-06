@@ -16,14 +16,14 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Dbspec\Dbspec;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\Schema;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Schema;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 database를 만들고 set 두 개를 설치하고
 // column을 몇 번 더한 뒤 지운다.

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /** A JSON object whose keys are written in sorted order, like a Go map. */
 final class GoMap

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::diff: the changes and no diagnostics, or the diagnostics and no changes. */
 final readonly class DiffResult

@@ -22,15 +22,15 @@ require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\User;
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\Schema;
-use SchemaSetDecimal\Orm\DecimalCase;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Schema;
+use Polyspec\Orm\Tests\SchemaSetDecimal\DecimalCase;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 database를 만들고 schema set 몇 개를 설치하고 읽은 뒤 지운다.
 const CASE_DEADLINE_SECONDS = 60;
@@ -54,8 +54,8 @@ function autoload(string $dir, string $namespace): void
 
 $decimalDocuments = [(string) file_get_contents("$root/contracts/fixtures/decimal_schema.dbs")];
 $decimalModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => $decimalDocuments[0]]));
-Generator::generate($decimalModel, "$work/decimal", 'SchemaSetDecimal\\Orm');
-autoload("$work/decimal", 'SchemaSetDecimal\\Orm');
+Generator::generate($decimalModel, "$work/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
+autoload("$work/decimal", 'Polyspec\\Orm\\Tests\\SchemaSetDecimal');
 require "$work/decimal/bootstrap.php";
 
 $failures = 0;
@@ -88,7 +88,7 @@ function severalSchemas(string $dsn): void
 {
     $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
     try {
-        foreach ([\Polyspec\Orm\Tests\Model\schema(), \SchemaSetDecimal\Orm\schema(), \SchemaSetDecimal\Orm\schema()] as $schema) {
+        foreach ([\Polyspec\Orm\Tests\Model\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema(), \Polyspec\Orm\Tests\SchemaSetDecimal\schema()] as $schema) {
             $db->utils()->schema()->install($schema);
         }
         (new User)($db)->setName('core')->create();
@@ -134,9 +134,9 @@ function unregisteredSchema(string $dsn): void
     }
     $core = counted(\Polyspec\Orm\Tests\Model\connect($dsn, new Config()), $runs);
     try {
-        $installer = \SchemaSetDecimal\Orm\connect($dsn, new Config());
+        $installer = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
         try {
-            $installer->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
+            $installer->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
             (new DecimalCase)($installer)->setSeq(1)->setAmount('1.0000')->create();
         } finally {
             $installer->close();
@@ -147,7 +147,7 @@ function unregisteredSchema(string $dsn): void
     } finally {
         $core->close();
     }
-    $decimal = \SchemaSetDecimal\Orm\connect($dsn, new Config());
+    $decimal = \Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config());
     try {
         $rows = (new DecimalCase)($decimal)->getCount();
         check($rows === 1, "decimal rows through the decimal helper $rows");
@@ -169,11 +169,11 @@ function editedManifest(string $dsn): void
     check($edited->manifestText !== $decimalModel->manifestText, 'edited manifest differs');
     check(code(fn() => Orm::connectSchema($dsn, $edited, new Config())) === Code::CONFIG, 'connect with an edited manifest');
     $runs = 0;
-    $db = counted(\SchemaSetDecimal\Orm\connect($dsn, new Config()), $runs);
+    $db = counted(\Polyspec\Orm\Tests\SchemaSetDecimal\connect($dsn, new Config()), $runs);
     try {
         check(code(fn() => $db->utils()->schema()->install($edited)) === Code::CONFIG, 'install of an edited manifest');
         check($runs === 0, "the edited install ran $runs statements");
-        $db->utils()->schema()->install(\SchemaSetDecimal\Orm\schema());
+        $db->utils()->schema()->install(\Polyspec\Orm\Tests\SchemaSetDecimal\schema());
         check((new DecimalCase)($db)->getCount() === 0, 'decimal read');
         // 편집한 text의 generated code가 진짜 decimal set의 hash를 선언한다.
         $editedModel = RuntimeModel::build(RuntimeModel::parse(['decimal_schema.dbs' => str_replace('decimal(13,4)', 'decimal(14,4)', $decimalDocuments[0])]));
@@ -286,7 +286,7 @@ function externalDocuments(string $dsn): void
         }
         Orm::connectSchema($dsn, $member, $config)->close();
 
-        $db->transaction(fn() => (new \ExtMember\Orm\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
+        $db->transaction(fn() => (new \Polyspec\Orm\Tests\ExtMember\ExtPost)($db)->setAccountSeq(1)->setTitle('hello')->create(), audit: []);
         [$audit, $actor] = $db->pdo()->query('SELECT seq, actor FROM ext_audit')->fetch(PDO::FETCH_NUM);
         $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchColumn();
         check($actor === 'writer' && (int) $recorded === (int) $audit, "audit record ($audit, $actor) and history audit $recorded, want the record of writer in the history");
@@ -354,7 +354,7 @@ function registerSendsNoStatement(string $dsn): void
     }
     [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
     $pdo = new StatementCountingPdo($pdoDsn, $user, $password);
-    $db = new \Orm\Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
+    $db = new \Polyspec\Orm\Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
     try {
         check(code(fn() => (new User)($db)->getCount()) === Code::SCHEMA_HASH_MISMATCH, 'bench read before the register');
         $before = $pdo->sent;

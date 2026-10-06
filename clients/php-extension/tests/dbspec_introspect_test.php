@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Orm\Dbspec\Native\Dbspec::introspect of the PHP extension orm_dbspec on
+// Polyspec\Orm\Dbspec\Native\Dbspec::introspect of the PHP extension orm_dbspec on
 // MySQL, PostgreSQL and SQLite, the same cases as the PHP client's
 // clients/php/tests/dbspec_introspect_test.php: the round trip of every case
 // of tests/dbspec/ddl.json and every schema document with the source schema
@@ -18,11 +18,11 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Dbspec\Native\Document;
-use Orm\Dbspec\Native\Table;
-use Orm\Dbspec\Native\Unsupported;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Dbspec\Native\Document;
+use Polyspec\Orm\Dbspec\Native\Table;
+use Polyspec\Orm\Dbspec\Native\Unsupported;
+use Polyspec\Orm\Orm;
 
 /** introspection 이 보낸 catalog query 수를 센다. */
 final class CountingPdo extends PDO
@@ -156,7 +156,7 @@ function expected_schema_text(array $documents): string
  * statement 의 {schema} 는 그 database 또는 schema 의 이름이다.
  *
  * @param list<string> $statements
- * @return array{0: Orm\Dbspec\IntrospectResult, 1: int}
+ * @return array{0: Polyspec\Orm\Dbspec\IntrospectResult, 1: int}
  */
 function introspect_applied(string $dialect, array $statements): array
 {

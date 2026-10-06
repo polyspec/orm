@@ -13,7 +13,7 @@
  * 배열 상수를 쓰지 못하므로 src/orm_dbspec.c가 등록하고, 반환 type에 `self` 대신 class 이름을 쓴다.
  */
 
-namespace Orm\Dbspec\Native;
+namespace Polyspec\Orm\Dbspec\Native;
 
 /** One SCHEMA_INVALID finding: the rule, the 1-based line and column of the offending token, and a message. */
 final readonly class Diagnostic

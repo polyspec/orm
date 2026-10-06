@@ -4,8 +4,8 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Decimal;
-use Orm\OrmException;
+use Polyspec\Orm\Decimal;
+use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
 
 $fixture = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/decimal_model.json'), true, 512, JSON_THROW_ON_ERROR);

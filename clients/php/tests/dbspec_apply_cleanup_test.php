@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Wraps a SQLite PDO to inject failures into Orm\Dbspec apply and checks
+// Wraps a SQLite PDO to inject failures into Polyspec\Orm\Dbspec apply and checks
 // that no error is lost (docs/plans.md "Apply"): a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing
 // BEGIN EXCLUSIVE, a rollback of an applied row whose recorded step lies
@@ -10,12 +10,12 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Dbspec\ApplyCleanupError;
-use Orm\Dbspec\ApplyError;
-use Orm\Dbspec\ApplyEvent;
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Effect;
-use Orm\Dbspec\PlanApply;
+use Polyspec\Orm\Dbspec\ApplyCleanupError;
+use Polyspec\Orm\Dbspec\ApplyError;
+use Polyspec\Orm\Dbspec\ApplyEvent;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Effect;
+use Polyspec\Orm\Dbspec\PlanApply;
 
 // CASE_DEADLINE_MS는 case 하나의 기한이다. case는 memory SQLite database에 plan 하나를 적용한다.
 const CASE_DEADLINE_MS = 20000;

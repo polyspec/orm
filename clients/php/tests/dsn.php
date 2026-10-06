@@ -6,10 +6,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Orm;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 
 function expect(bool $ok, string $message): void
 {

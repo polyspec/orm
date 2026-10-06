@@ -5,7 +5,7 @@ require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testcase.php';
 
-use Orm\Model;
+use Polyspec\Orm\Model;
 
 // result check는 memory 안에서 result 값 몇 개를 쓰고 비교하는 case 하나다.
 testcase_begin('conformance_result_php', TESTCASE_COMPUTE);

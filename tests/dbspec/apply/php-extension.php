@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // plans.json(tests/dbspec/plans.json)의 chain(create-from-empty 와
-// rename-table-and-column)을 PHP 확장 orm_dbspec(Orm\Dbspec\Native)으로 한 database 에 적용한다
+// rename-table-and-column)을 PHP 확장 orm_dbspec(Polyspec\Orm\Dbspec\Native)으로 한 database 에 적용한다
 // (docs/plans.md "Apply"). action 은 apply-first(첫 plan 만), apply(chain 전체),
 // stop(둘째 plan 의 statement 1 이 실행된 뒤 멈춤), recover(중단된 plan 을 이어
 // 끝냄), rollback(history 의 마지막 plan 을 되돌림) 중 하나다. stdout 에는 결과 한 줄을 쓴다: "ok", "stopped" 또는
@@ -16,10 +16,10 @@ declare(strict_types=1);
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 require __DIR__ . '/../input.php';
 
-use Orm\Dbspec\Native\ApplyError;
-use Orm\Dbspec\Native\ApplyEvent;
-use Orm\Dbspec\Native\Dbspec;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Native\ApplyError;
+use Polyspec\Orm\Dbspec\Native\ApplyEvent;
+use Polyspec\Orm\Dbspec\Native\Dbspec;
+use Polyspec\Orm\Orm;
 
 // 모든 client 가 새 connection 에서 실행하는 statement 다(tests/dialects connectionRules).
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];

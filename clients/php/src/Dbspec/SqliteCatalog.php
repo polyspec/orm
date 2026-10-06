@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * SQLite 의 main database 를 중간 model 로 읽는다. sqlite_master 와 table-valued

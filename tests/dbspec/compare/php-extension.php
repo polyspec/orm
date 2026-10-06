@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// PHP 확장 orm_dbspec(Orm\Dbspec\Native\Dbspec)으로 모든 공유 case, stress 문서, statement vector, plan vector,
+// PHP 확장 orm_dbspec(Polyspec\Orm\Dbspec\Native\Dbspec)으로 모든 공유 case, stress 문서, statement vector, plan vector,
 // Mermaid vector의 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. 출력은 PHP client의 runner(php.php)와
 // 같은 함수로 쓴다.
 //
@@ -19,6 +19,6 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
-dbspec_write_interface(Orm\Dbspec\Native\Dbspec::class, $argv[1], $argv[2], $argv[3]);
-dbspec_write_plans(Orm\Dbspec\Native\Dbspec::class, $argv[4]);
-dbspec_write_mermaid(Orm\Dbspec\Native\Dbspec::class, $argv[5]);
+dbspec_write_interface(Polyspec\Orm\Dbspec\Native\Dbspec::class, $argv[1], $argv[2], $argv[3]);
+dbspec_write_plans(Polyspec\Orm\Dbspec\Native\Dbspec::class, $argv[4]);
+dbspec_write_mermaid(Polyspec\Orm\Dbspec\Native\Dbspec::class, $argv[5]);

@@ -100,12 +100,12 @@ func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 		}
 		return got
 	}
-	key := `fixture.php::Orm\Validator::Request#wire`
+	key := `fixture.php::Polyspec\Orm\Validator::Request#wire`
 	before := read("string", "list<int>", false)
 	if before[key] != `{"kind":"text","items":"list<integer>"}` {
 		t.Fatalf("PHP record declaration was not extracted: %q", before[key])
 	}
-	contract := []Record{{ID: "IRRequest", Native: map[string]string{"php": `fixture.php::Orm\Validator::Request`}, Fields: map[string]string{"kind": "text", "items": "list<integer>"}}}
+	contract := []Record{{ID: "IRRequest", Native: map[string]string{"php": `fixture.php::Polyspec\Orm\Validator::Request`}, Fields: map[string]string{"kind": "text", "items": "list<integer>"}}}
 	if failures := checkRecords("php", before, contract); len(failures) != 0 {
 		t.Fatalf("unaltered PHP record failed: %v", failures)
 	}

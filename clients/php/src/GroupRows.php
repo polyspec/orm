@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /** One grouped result with only selected values and a checked row count. */
 final readonly class GroupRow implements \JsonSerializable

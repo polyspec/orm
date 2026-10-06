@@ -1,11 +1,13 @@
 <?php
 declare(strict_types=1);
-// Test autoloader: Orm\ → clients/php/src, Polyspec\Orm\Tests\Model\ → clients/php/gen.
+// Test autoloader: Polyspec\Orm\ → clients/php/src, Polyspec\Orm\Tests\Model\ → clients/php/gen.
 $root = dirname(__DIR__, 3);
 require_once "$root/clients/php/vendor/autoload.php";
 spl_autoload_register(static function (string $class) use ($root): void {
+    // 더 긴 prefix를 먼저 본다: test model의 namespace는 library namespace 아래에 있다.
     $files = [
-        'Orm\\' => [
+        'Polyspec\\Orm\\Tests\\Model\\' => ['dir' => "$root/clients/php/gen/", 'shared' => []],
+        'Polyspec\\Orm\\' => [
             'dir' => "$root/clients/php/src/",
             'shared' => [
                 'Frame' => 'Model', 'Request' => 'Model', 'Assembly' => 'Model', 'PendingTime' => 'Model',
@@ -17,7 +19,6 @@ spl_autoload_register(static function (string $class) use ($root): void {
                 'Assemble' => 'Engine', 'Bytes' => 'Codec', 'AesRotationStatus' => 'AesKeyring',
             ],
         ],
-        'Polyspec\\Orm\\Tests\\Model\\' => ['dir' => "$root/clients/php/gen/", 'shared' => []],
     ];
     foreach ($files as $prefix => $spec) {
         if (!str_starts_with($class, $prefix)) {

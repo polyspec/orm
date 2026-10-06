@@ -5,9 +5,9 @@ declare(strict_types=1);
 // `CASE <id> PASS` 한 줄을 출력한다. 실패한 case는 예외를 던져 process가 그
 // 오류와 함께 0이 아닌 code로 끝난다.
 
-use Orm\Config;
-use Orm\Db;
-use Orm\OrmException;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\OrmException;
 
 /**
  * 인자로 받은 case ID를 선언 순서대로 실행한다. 인자가 없거나 모르는 ID,

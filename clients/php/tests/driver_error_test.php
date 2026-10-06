@@ -14,14 +14,14 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use RefusalCase\Orm\RefusedRow;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Tests\RefusalCase\RefusedRow;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 refusal 문서를 설치해 거부되는 쓰기 몇 개를 실행한 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
@@ -33,10 +33,10 @@ register_shutdown_function(static function () use ($work): void {
 });
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/refusal.dbs')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['refusal.dbs' => $documents[0]])), "$work/models", 'RefusalCase\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['refusal.dbs' => $documents[0]])), "$work/models", 'Polyspec\\Orm\\Tests\\RefusalCase');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'RefusalCase\\Orm\\')) {
-        require "$work/models/" . substr($class, strlen('RefusalCase\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RefusalCase\\')) {
+        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RefusalCase\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
@@ -68,7 +68,7 @@ function connect(string $dsn): Db
 {
     global $documents;
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install(\RefusalCase\Orm\schema());
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\RefusalCase\schema());
     return $db;
 }
 

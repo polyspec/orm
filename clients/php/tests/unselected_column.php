@@ -5,8 +5,8 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Code;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\OrmException;
 
 function expectUnselected(callable $read, string $column): void
 {

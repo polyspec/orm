@@ -9,14 +9,14 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Code;
-use Orm\Config;
-use Orm\Dbspec\Dbspec;
-use Orm\Engine;
-use Orm\Generator;
-use Orm\OrmException;
-use Orm\Registry;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Engine;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Registry;
+use Polyspec\Orm\RuntimeModel;
 
 $root = dirname(__DIR__, 3);
 $failures = 0;
@@ -89,7 +89,7 @@ runCase('generated files are current', function () use ($root, $bench): void {
 runCase('codec value types', function (): void {
     $type = static fn(string $method): string => (string) (new ReflectionMethod(Author::class, $method))->getReturnType();
     foreach (['getJsonSetting', 'getJsonsTags', 'getSerializeData', 'getGzExtend', 'getBase64Extra'] as $m) {
-        want($type($m) === 'Orm\\StyledValue', "$m returns " . $type($m));
+        want($type($m) === 'Polyspec\\Orm\\StyledValue', "$m returns " . $type($m));
     }
     foreach (['getAesHexEmail', 'getIp', 'getPrice', 'getDescription'] as $m) {
         want($type($m) === '?string', "$m returns " . $type($m));
@@ -103,7 +103,7 @@ runCase('i16 field', function () use ($root): void {
     $model = RuntimeModel::build(RuntimeModel::parse(['small.dbs' => $doc]));
     want($model->entities['small_value']['columns']['level']['type'] === 'i16', 'i16 type');
     $out = sys_get_temp_dir() . '/orm-php-runtime-i16-' . getmypid();
-    Generator::generate($model, $out, 'Small\\Orm');
+    Generator::generate($model, $out, 'Polyspec\\Orm\\Tests\\Small');
     $body = (string) file_get_contents("$out/SmallValue.php");
     array_map('unlink', glob("$out/*.php"));
     rmdir($out);

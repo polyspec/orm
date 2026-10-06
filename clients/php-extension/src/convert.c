@@ -1,5 +1,5 @@
 /*
- * PHP 객체 graph(Orm\Dbspec\Native\Document와 그 하위 class)와 C model을 양방향으로 바꾼다. 사용자가 고친
+ * PHP 객체 graph(Polyspec\Orm\Dbspec\Native\Document와 그 하위 class)와 C model을 양방향으로 바꾼다. 사용자가 고친
  * Document를 그대로 받으므로, 배열 property의 원소는 그 자리의 class인지 확인하고 아니면 TypeError다.
  */
 #include "dbspec.h"
@@ -186,7 +186,7 @@ static bool in_ctype(in_ctx *c, zval *v, ctype **out)
     GET(v, name);
     GET(v, parameters);
     str n;
-    if (!in_str(name_, &n, "Orm\\Dbspec\\Native\\ColumnType::$name")) {
+    if (!in_str(name_, &n, "Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$name")) {
         return false;
     }
     VEC(zend_long) params = {0};
@@ -194,7 +194,7 @@ static bool in_ctype(in_ctx *c, zval *v, ctype **out)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(parameters_), e) {
         ZVAL_DEREF(e);
         if (Z_TYPE_P(e) != IS_LONG) {
-            return type_error("Orm\\Dbspec\\Native\\ColumnType::$parameters", e, "an int");
+            return type_error("Polyspec\\Orm\\Dbspec\\Native\\ColumnType::$parameters", e, "an int");
         }
         PUSH(params, Z_LVAL_P(e));
     } ZEND_HASH_FOREACH_END();
@@ -228,7 +228,7 @@ static bool in_column(in_ctx *c, zval *v, column **out)
         col->def = str_z(Z_STR_P(default_));
     }
     col->src = Z_OBJ_P(v);
-    if (!in_comments(v, &col->comments, "Orm\\Dbspec\\Native\\Column::$comments")) {
+    if (!in_comments(v, &col->comments, "Polyspec\\Orm\\Dbspec\\Native\\Column::$comments")) {
         return false;
     }
     *out = col;
@@ -253,19 +253,19 @@ static bool in_setting(zval *v, setting **out)
     GET(v, include);
     setting *s = dbs_alloc(sizeof *s);
     s->kind = str_z(Z_STR_P(kind_));
-    if (!in_strs(arguments_, &s->args, "Orm\\Dbspec\\Native\\Setting::$arguments")
-        || !in_comments(v, &s->comments, "Orm\\Dbspec\\Native\\Setting::$comments")) {
+    if (!in_strs(arguments_, &s->args, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$arguments")
+        || !in_comments(v, &s->comments, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$comments")) {
         return false;
     }
     if (Z_TYPE_P(exclude_) == IS_ARRAY) {
         s->exclude = dbs_alloc(sizeof(strs));
-        if (!in_strs(exclude_, s->exclude, "Orm\\Dbspec\\Native\\Setting::$exclude")) {
+        if (!in_strs(exclude_, s->exclude, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$exclude")) {
             return false;
         }
     }
     if (Z_TYPE_P(include_) == IS_ARRAY) {
         s->include = dbs_alloc(sizeof(strs));
-        if (!in_strs(include_, s->include, "Orm\\Dbspec\\Native\\Setting::$include")) {
+        if (!in_strs(include_, s->include, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$include")) {
             return false;
         }
     }
@@ -285,11 +285,11 @@ static bool in_table(in_ctx *c, zval *v, table **out)
     GET(v, settings);
     GET(v, closingComments);
     table *t = table_new(str_z(Z_STR_P(name_)));
-    if (!in_comments(v, &t->comments, "Orm\\Dbspec\\Native\\Table::$comments")
-        || !in_strs(closingComments_, &t->closing, "Orm\\Dbspec\\Native\\Table::$closingComments")) {
+    if (!in_comments(v, &t->comments, "Polyspec\\Orm\\Dbspec\\Native\\Table::$comments")
+        || !in_strs(closingComments_, &t->closing, "Polyspec\\Orm\\Dbspec\\Native\\Table::$closingComments")) {
         return false;
     }
-    EACH_OBJ(columns_, dbs_ce_Column, "Orm\\Dbspec\\Native\\Table::$columns", {
+    EACH_OBJ(columns_, dbs_ce_Column, "Polyspec\\Orm\\Dbspec\\Native\\Table::$columns", {
         column *col;
         if (!in_column(c, item, &col)) return false;
         PUSH(t->columns, col);
@@ -297,37 +297,37 @@ static bool in_table(in_ctx *c, zval *v, table **out)
     if (Z_TYPE_P(primaryKey_) == IS_OBJECT) {
         GET(primaryKey_, columns);
         t->pk = dbs_alloc(sizeof(pkey));
-        if (!in_strs(columns_, &t->pk->columns, "Orm\\Dbspec\\Native\\PrimaryKey::$columns")
-            || !in_comments(primaryKey_, &t->pk->comments, "Orm\\Dbspec\\Native\\PrimaryKey::$comments")) {
+        if (!in_strs(columns_, &t->pk->columns, "Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$columns")
+            || !in_comments(primaryKey_, &t->pk->comments, "Polyspec\\Orm\\Dbspec\\Native\\PrimaryKey::$comments")) {
             return false;
         }
     }
-    EACH_OBJ(uniqueKeys_, dbs_ce_UniqueKey, "Orm\\Dbspec\\Native\\Table::$uniqueKeys", {
+    EACH_OBJ(uniqueKeys_, dbs_ce_UniqueKey, "Polyspec\\Orm\\Dbspec\\Native\\Table::$uniqueKeys", {
         GET(item, name);
         GET(item, columns);
         ukey *u = dbs_alloc(sizeof *u);
         u->name = str_z(Z_STR_P(name_));
-        if (!in_strs(columns_, &u->columns, "Orm\\Dbspec\\Native\\UniqueKey::$columns")
-            || !in_comments(item, &u->comments, "Orm\\Dbspec\\Native\\UniqueKey::$comments")) return false;
+        if (!in_strs(columns_, &u->columns, "Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$columns")
+            || !in_comments(item, &u->comments, "Polyspec\\Orm\\Dbspec\\Native\\UniqueKey::$comments")) return false;
         PUSH(t->uniques, u);
     });
-    EACH_OBJ(indexes_, dbs_ce_Index, "Orm\\Dbspec\\Native\\Table::$indexes", {
+    EACH_OBJ(indexes_, dbs_ce_Index, "Polyspec\\Orm\\Dbspec\\Native\\Table::$indexes", {
         GET(item, name);
         GET(item, columns);
         xindex *x = dbs_alloc(sizeof *x);
         x->name = str_z(Z_STR_P(name_));
         zval *ic;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns_), ic) {
-            if (!in_obj(ic, dbs_ce_IndexColumn, "Orm\\Dbspec\\Native\\Index::$columns")) return false;
+            if (!in_obj(ic, dbs_ce_IndexColumn, "Polyspec\\Orm\\Dbspec\\Native\\Index::$columns")) return false;
             ZVAL_DEREF(ic);
             zval *icname = obj_get(ic, "name"), *desc = obj_get(ic, "descending");
             if (icname == NULL || desc == NULL) return false;
             PUSH(x->columns, ((icol){str_z(Z_STR_P(icname)), Z_TYPE_P(desc) == IS_TRUE}));
         } ZEND_HASH_FOREACH_END();
-        if (!in_comments(item, &x->comments, "Orm\\Dbspec\\Native\\Index::$comments")) return false;
+        if (!in_comments(item, &x->comments, "Polyspec\\Orm\\Dbspec\\Native\\Index::$comments")) return false;
         PUSH(t->indexes, x);
     });
-    EACH_OBJ(foreignKeys_, dbs_ce_ForeignKey, "Orm\\Dbspec\\Native\\Table::$foreignKeys", {
+    EACH_OBJ(foreignKeys_, dbs_ce_ForeignKey, "Polyspec\\Orm\\Dbspec\\Native\\Table::$foreignKeys", {
         GET(item, name);
         GET(item, columns);
         GET(item, table);
@@ -339,18 +339,18 @@ static bool in_table(in_ctx *c, zval *v, table **out)
         f->table = str_z(Z_STR_P(table_));
         f->on_delete = str_z(Z_STR_P(onDelete_));
         f->on_update = str_z(Z_STR_P(onUpdate_));
-        if (!in_strs(columns_, &f->columns, "Orm\\Dbspec\\Native\\ForeignKey::$columns")
-            || !in_strs(referencedColumns_, &f->refs, "Orm\\Dbspec\\Native\\ForeignKey::$referencedColumns")
-            || !in_comments(item, &f->comments, "Orm\\Dbspec\\Native\\ForeignKey::$comments")) return false;
+        if (!in_strs(columns_, &f->columns, "Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$columns")
+            || !in_strs(referencedColumns_, &f->refs, "Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$referencedColumns")
+            || !in_comments(item, &f->comments, "Polyspec\\Orm\\Dbspec\\Native\\ForeignKey::$comments")) return false;
         PUSH(t->fks, f);
     });
-    EACH_OBJ(checks_, dbs_ce_Check, "Orm\\Dbspec\\Native\\Table::$checks", {
+    EACH_OBJ(checks_, dbs_ce_Check, "Polyspec\\Orm\\Dbspec\\Native\\Table::$checks", {
         GET(item, name);
         GET(item, expression);
         check *k = dbs_alloc(sizeof *k);
         k->name = str_z(Z_STR_P(name_));
         k->expression = str_z(Z_STR_P(expression_));
-        if (!in_comments(item, &k->comments, "Orm\\Dbspec\\Native\\Check::$comments")) return false;
+        if (!in_comments(item, &k->comments, "Polyspec\\Orm\\Dbspec\\Native\\Check::$comments")) return false;
         PUSH(t->checks, k);
     });
     if (Z_TYPE_P(settings_) == IS_OBJECT) {
@@ -360,11 +360,11 @@ static bool in_table(in_ctx *c, zval *v, table **out)
             return false;
         }
         settings *s = dbs_alloc(sizeof *s);
-        if (!in_comments(block, &s->comments, "Orm\\Dbspec\\Native\\Settings::$comments")
-            || !in_strs(closing, &s->closing, "Orm\\Dbspec\\Native\\Settings::$closingComments")) {
+        if (!in_comments(block, &s->comments, "Polyspec\\Orm\\Dbspec\\Native\\Settings::$comments")
+            || !in_strs(closing, &s->closing, "Polyspec\\Orm\\Dbspec\\Native\\Settings::$closingComments")) {
             return false;
         }
-        EACH_OBJ(lines, dbs_ce_Setting, "Orm\\Dbspec\\Native\\Settings::$settings", {
+        EACH_OBJ(lines, dbs_ce_Setting, "Polyspec\\Orm\\Dbspec\\Native\\Settings::$settings", {
             setting *one;
             if (!in_setting(item, &one)) return false;
             PUSH(s->list, one);
@@ -390,34 +390,34 @@ static bool in_document_ctx(in_ctx *c, zval *v, document **out)
     document *d = document_new(str_z(Z_STR_P(name_)));
     d->external = Z_TYPE_P(external_) == IS_TRUE;
     d->src = Z_OBJ_P(v);
-    if (!in_strs(trailingComments_, &d->trailing, "Orm\\Dbspec\\Native\\Document::$trailingComments")) {
+    if (!in_strs(trailingComments_, &d->trailing, "Polyspec\\Orm\\Dbspec\\Native\\Document::$trailingComments")) {
         return false;
     }
-    EACH_OBJ(uses_, dbs_ce_UseLine, "Orm\\Dbspec\\Native\\Document::$uses", {
+    EACH_OBJ(uses_, dbs_ce_UseLine, "Polyspec\\Orm\\Dbspec\\Native\\Document::$uses", {
         GET(item, document);
         GET(item, tables);
         useline *u = dbs_alloc(sizeof *u);
         u->document = str_z(Z_STR_P(document_));
-        if (!in_strs(tables_, &u->tables, "Orm\\Dbspec\\Native\\UseLine::$tables")
-            || !in_comments(item, &u->comments, "Orm\\Dbspec\\Native\\UseLine::$comments")) return false;
+        if (!in_strs(tables_, &u->tables, "Polyspec\\Orm\\Dbspec\\Native\\UseLine::$tables")
+            || !in_comments(item, &u->comments, "Polyspec\\Orm\\Dbspec\\Native\\UseLine::$comments")) return false;
         PUSH(d->uses, u);
     });
-    EACH_OBJ(tables_, dbs_ce_Table, "Orm\\Dbspec\\Native\\Document::$tables", {
+    EACH_OBJ(tables_, dbs_ce_Table, "Polyspec\\Orm\\Dbspec\\Native\\Document::$tables", {
         table *t;
         if (!in_table(c, item, &t)) return false;
         PUSH(d->tables, t);
     });
-    EACH_OBJ(diagrams_, dbs_ce_Diagram, "Orm\\Dbspec\\Native\\Document::$diagrams", {
+    EACH_OBJ(diagrams_, dbs_ce_Diagram, "Polyspec\\Orm\\Dbspec\\Native\\Document::$diagrams", {
         GET(item, name);
         GET(item, placements);
         GET(item, closingComments);
         diagram *g = dbs_alloc(sizeof *g);
         g->name = str_z(Z_STR_P(name_));
-        if (!in_comments(item, &g->comments, "Orm\\Dbspec\\Native\\Diagram::$comments")
-            || !in_strs(closingComments_, &g->closing, "Orm\\Dbspec\\Native\\Diagram::$closingComments")) return false;
+        if (!in_comments(item, &g->comments, "Polyspec\\Orm\\Dbspec\\Native\\Diagram::$comments")
+            || !in_strs(closingComments_, &g->closing, "Polyspec\\Orm\\Dbspec\\Native\\Diagram::$closingComments")) return false;
         zval *pz;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(placements_), pz) {
-            if (!in_obj(pz, dbs_ce_Placement, "Orm\\Dbspec\\Native\\Diagram::$placements")) return false;
+            if (!in_obj(pz, dbs_ce_Placement, "Polyspec\\Orm\\Dbspec\\Native\\Diagram::$placements")) return false;
             ZVAL_DEREF(pz);
             zval *pt = obj_get(pz, "table"), *px = obj_get(pz, "x"), *py = obj_get(pz, "y");
             if (pt == NULL || px == NULL || py == NULL) return false;
@@ -425,7 +425,7 @@ static bool in_document_ctx(in_ctx *c, zval *v, document **out)
             p->table = str_z(Z_STR_P(pt));
             p->x = Z_LVAL_P(px);
             p->y = Z_LVAL_P(py);
-            if (!in_comments(pz, &p->comments, "Orm\\Dbspec\\Native\\Placement::$comments")) return false;
+            if (!in_comments(pz, &p->comments, "Polyspec\\Orm\\Dbspec\\Native\\Placement::$comments")) return false;
             PUSH(g->placements, p);
         } ZEND_HASH_FOREACH_END();
         PUSH(d->diagrams, g);
@@ -709,20 +709,20 @@ bool in_plan(zval *v, plan **out)
     }
     p->to = str_z(Z_STR_P(to_));
     p->src = Z_OBJ_P(v);
-    EACH_OBJ(renameTables_, dbs_ce_TableRename, "Orm\\Dbspec\\Native\\Plan::$renameTables", {
+    EACH_OBJ(renameTables_, dbs_ce_TableRename, "Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameTables", {
         trename r;
         if (!in_str_prop(item, "old", &r.old) || !in_str_prop(item, "new", &r.new_)) return false;
         PUSH(p->rename_tables, r);
     });
-    EACH_OBJ(renameColumns_, dbs_ce_ColumnRename, "Orm\\Dbspec\\Native\\Plan::$renameColumns", {
+    EACH_OBJ(renameColumns_, dbs_ce_ColumnRename, "Polyspec\\Orm\\Dbspec\\Native\\Plan::$renameColumns", {
         crename r;
         if (!in_str_prop(item, "table", &r.table) || !in_str_prop(item, "old", &r.old) || !in_str_prop(item, "new", &r.new_)) return false;
         PUSH(p->rename_columns, r);
     });
-    if (!in_strs(dropTables_, &p->drop_tables, "Orm\\Dbspec\\Native\\Plan::$dropTables")) {
+    if (!in_strs(dropTables_, &p->drop_tables, "Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropTables")) {
         return false;
     }
-    EACH_OBJ(dropColumns_, dbs_ce_ColumnName, "Orm\\Dbspec\\Native\\Plan::$dropColumns", {
+    EACH_OBJ(dropColumns_, dbs_ce_ColumnName, "Polyspec\\Orm\\Dbspec\\Native\\Plan::$dropColumns", {
         cname c;
         if (!in_str_prop(item, "table", &c.table) || !in_str_prop(item, "name", &c.name)) return false;
         PUSH(p->drop_columns, c);

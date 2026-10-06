@@ -52,16 +52,16 @@ function databaseUri(string $uri, string $database): string
 function install(PDO $pdo, string $dialect): void
 {
     $file = dirname(__DIR__) . '/contracts/fixtures/decimal_schema.dbs';
-    $read = Orm\Dbspec\Dbspec::readFile($file);
+    $read = Polyspec\Orm\Dbspec\Dbspec::readFile($file);
     if ($read->text === null) {
         throw new RuntimeException("$file: " . json_encode($read->diagnostics));
     }
     $text = $read->text;
-    $parsed = Orm\Dbspec\Dbspec::parse($text, ['decimal_schema' => $text]);
+    $parsed = Polyspec\Orm\Dbspec\Dbspec::parse($text, ['decimal_schema' => $text]);
     if ($parsed->document === null) {
         throw new RuntimeException("$file: " . json_encode($parsed->diagnostics));
     }
-    $rendered = Orm\Dbspec\Dbspec::render([$parsed->document], $dialect);
+    $rendered = Polyspec\Orm\Dbspec\Dbspec::render([$parsed->document], $dialect);
     if ($rendered->statements === null) {
         throw new RuntimeException("$file ($dialect): " . json_encode($rendered->diagnostics));
     }

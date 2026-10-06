@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 // schema_definition feature coverage: contracts/fixtures/schema_definition.json의
-// 각 case를 PHP dbspec 구현(Orm\Dbspec\Dbspec)으로 실행한다: parse 후 emit의
+// 각 case를 PHP dbspec 구현(Polyspec\Orm\Dbspec\Dbspec)으로 실행한다: parse 후 emit의
 // byte 단위 재현, document set의 manifest hash, dialect별 rendered statement.
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Document;
 
 $root = dirname(__DIR__, 3);
 $fixture = coverageJson("$root/contracts/fixtures/schema_definition.json");

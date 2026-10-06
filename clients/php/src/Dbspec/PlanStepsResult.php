@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /** The outcome of Dbspec::planSteps: the steps and no diagnostics, or the diagnostics and no steps. */
 final readonly class PlanStepsResult

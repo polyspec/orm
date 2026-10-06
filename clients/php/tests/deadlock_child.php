@@ -9,7 +9,7 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Config;
+use Polyspec\Orm\Config;
 
 [, $dsn, $first, $second, $tag] = $argv;
 $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key'));

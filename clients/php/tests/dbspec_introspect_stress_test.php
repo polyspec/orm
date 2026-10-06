@@ -7,7 +7,7 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Dbspec;
 
 // case는 2000 table 문서를 만들어(node process 하나) SQLite file에 적용하고 introspect한다.
 testcase_begin('dbspec_introspect_stress', TESTCASE_PROCESS);

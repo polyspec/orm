@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /** A selected styled column value, including the SQL NULL state. */
 final readonly class StyledValue implements \JsonSerializable

@@ -163,7 +163,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | Go | `orm.FailNextRollback(db)` | build tag `ormtest`가 있을 때만 파일을 compile한다(`go test -tags ormtest`). tag가 없으면 함수가 없어 호출이 compile되지 않는다 |
 | Rust | `orm::testing::fail_next_rollback(&db)` | cargo feature `test-faults`가 있을 때만 module을 compile하며, 어떤 default feature도 이를 켜지 않는다. `[dev-dependencies]`에서 켠다 |
 | TypeScript | `@polyspec/orm-typescript/testing`의 `failNextRollback(db)` | package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다 |
-| PHP | `Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
+| PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
 
 ## 4. 클라이언트 안의 계획
 

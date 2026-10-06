@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * dbspec 문서를 표준 Mermaid erDiagram 으로 쓰고, erDiagram 을 dbspec 문서로

@@ -19,17 +19,17 @@ use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\User;
-use Orm\AesKeyring;
-use Orm\Code;
-use Orm\Collection;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Model;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\StyledValue;
+use Polyspec\Orm\AesKeyring;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Collection;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Model;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
 $documents = [(string) file_get_contents("$root/schema/bench.dbs")];
@@ -419,7 +419,7 @@ $tests['transactions'] = function (Db $db, string $dsn): void {
 $tests['utilities'] = function (Db $db, string $dsn): void {
     $schema = $db->utils()->schema();
     $broken = "dbspec 1 broken\n\ntable t {\n}\n";
-    check(code(fn() => $schema->install(new \Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))) === Code::SCHEMA_INVALID, 'install an invalid document');
+    check(code(fn() => $schema->install(new \Polyspec\Orm\Schema($broken, 'sha256:' . hash('sha256', $broken)))) === Code::SCHEMA_INVALID, 'install an invalid document');
     $user = (new User)($db)->setName('kept')->create();
     $schema->install(\Polyspec\Orm\Tests\Model\schema());
     check((new User)($db)->seq($user->getSeq())->get()?->getName() === 'kept', 'install again keeps rows');
@@ -624,7 +624,7 @@ function holdRowsFor(string $dsn, string $table, int $ms)
 }
 
 /** $db의 transaction에서 $model의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다. */
-function lockedRead(\Orm\Db $db, string $model): void
+function lockedRead(\Polyspec\Orm\Db $db, string $model): void
 {
     $db->transaction(static function () use ($db, $model): void {
         (new $model)($db)->forUpdate()->get();
@@ -676,17 +676,17 @@ try {
     }
     $table = case_name();
     $probe = "dbspec 1 pooler_probe\n\ntable $table {\n  seq i64 identity\n  label varchar(16)\n  primary key (seq)\n}\n";
-    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])), "$work/pooler", 'PoolerProbe\\Orm');
+    Generator::generate(RuntimeModel::build(RuntimeModel::parse(['pooler_probe.dbs' => $probe])), "$work/pooler", 'Polyspec\\Orm\\Tests\\PoolerProbe');
     spl_autoload_register(static function (string $class) use ($work): void {
-        if (str_starts_with($class, 'PoolerProbe\\Orm\\')) {
-            require "$work/pooler/" . substr($class, strlen('PoolerProbe\\Orm\\')) . '.php';
+        if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\PoolerProbe\\')) {
+            require "$work/pooler/" . substr($class, strlen('Polyspec\\Orm\\Tests\\PoolerProbe\\')) . '.php';
         }
     });
     require "$work/pooler/bootstrap.php";
-    $model = 'PoolerProbe\\Orm\\' . str_replace('_', '', ucwords($table, '_'));
-    $probeSetup = \PoolerProbe\Orm\connect($targets['postgres'], new Config());
+    $model = 'Polyspec\\Orm\\Tests\\PoolerProbe\\' . str_replace('_', '', ucwords($table, '_'));
+    $probeSetup = \Polyspec\Orm\Tests\PoolerProbe\connect($targets['postgres'], new Config());
     $probeTable = $table;
-    $probeSetup->utils()->schema()->install(\PoolerProbe\Orm\schema());
+    $probeSetup->utils()->schema()->install(\Polyspec\Orm\Tests\PoolerProbe\schema());
     testcase_step("table $table created");
     for ($i = 0; $i < 4; $i++) {
         (new $model)($probeSetup)->setLabel("probe-$i")->create();
@@ -694,10 +694,10 @@ try {
     // A direct connection holds the rows, so a locking read through the pooler
     // waits for the lock.
     $holder = holdRows('postgres', $targets['postgres'], $table);
-    $bounded = \PoolerProbe\Orm\connect($single, new Config(statementTimeoutMs: 200));
+    $bounded = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config(statementTimeoutMs: 200));
     check(code(fn() => lockedRead($bounded, $model)) === Code::CANCELED, 'the bounded connection through the pooler');
     $holder->rollBack();
-    $plain = \PoolerProbe\Orm\connect($single, new Config());
+    $plain = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config());
     // Another process holds the rows for a declared 400 ms, past the 200 ms
     // bound of the other connection, so the plain read waits that long.
     $process = holdRowsFor($targets['postgres'], $table, 400);

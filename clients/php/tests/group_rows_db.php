@@ -4,11 +4,11 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Code;
-use Orm\Config;
-use Orm\GroupRow;
-use Orm\GroupRows;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\GroupRow;
+use Polyspec\Orm\GroupRows;
+use Polyspec\Orm\OrmException;
 
 $driver = getenv('ORM_GROUP_DATABASE');
 $dsn = getenv('ORM_GROUP_DSN');

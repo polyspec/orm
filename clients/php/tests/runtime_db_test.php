@@ -20,15 +20,15 @@ require_once __DIR__ . '/case_database.php';
 require_once __DIR__ . '/restore_case.php';
 require_once __DIR__ . '/audit_case.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use RuntimeDb\Orm\Item;
-use RuntimeDb\Orm\Sample;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Tests\RuntimeDb\Item;
+use Polyspec\Orm\Tests\RuntimeDb\Sample;
 
 $root = dirname(__DIR__, 3);
 $work = sys_get_temp_dir() . '/orm-php-runtime-db-' . getmypid();
@@ -41,8 +41,8 @@ $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  leve
     . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n  primary key (seq)\n}\n";
 // audit.dbs와 restore.dbs는 둘 다 audit table을 선언하므로 따로 생성하고 case마다 하나만 설치한다.
 $sets = [
-    'RuntimeDb\\Orm' => ['audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"), 'values.dbs' => $values],
-    'RuntimeRestore\\Orm' => ['restore.dbs' => (string) file_get_contents("$root/contracts/fixtures/restore.dbs")],
+    'Polyspec\\Orm\\Tests\\RuntimeDb' => ['audit.dbs' => (string) file_get_contents("$root/contracts/fixtures/audit.dbs"), 'values.dbs' => $values],
+    'Polyspec\\Orm\\Tests\\RuntimeRestore' => ['restore.dbs' => (string) file_get_contents("$root/contracts/fixtures/restore.dbs")],
 ];
 foreach ($sets as $namespace => $texts) {
     $dir = "$work/" . str_replace('\\', '_', $namespace);
@@ -85,7 +85,7 @@ $cases = [];
 $cases['install renders the document set'] = function (Db $db): void {
     $count = static fn(string $table): int => (int) $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
     want($count('item') === 0 && $count('item_history') === 0 && $count('sample') === 0, 'installed tables');
-    $db->utils()->schema()->install(\RuntimeDb\Orm\schema());
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\RuntimeDb\schema());
     want($count('sample') === 0, 'a repeated install');
 };
 
@@ -109,7 +109,7 @@ $cases['i16 values and defaults'] = function (Db $db): void {
 
 // audit transaction은 audit 기록 하나를 삽입하고 audit table의 write가 그 key를 쓴다(audit_case.php).
 $cases['audit record of a transaction'] = function (Db $db, string $dsn): void {
-    auditCase($db, $dsn, 'RuntimeDb\\Orm');
+    auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\RuntimeDb');
     $assigned = errorCode(fn() => $db->transaction(fn() => (new Item)->setTitle('a')->setAuditSeq(1)->create(), audit: [], retry: 0));
     want($assigned === Code::IR_INVALID, "an assigned audit column = $assigned, want IR_INVALID");
     want((new Item)($db)->getCount() === 0, 'soft delete hides the row');
@@ -117,7 +117,7 @@ $cases['audit record of a transaction'] = function (Db $db, string $dsn): void {
 
 // restore는 soft delete한 행을 primary key나 unique key로 되돌린다(restore_case.php).
 $cases['restore of soft-deleted rows'] = function (Db $db): void {
-    restoreCase($db, 'RuntimeRestore\\Orm');
+    restoreCase($db, 'Polyspec\\Orm\\Tests\\RuntimeRestore');
 };
 
 $failures = 0;
@@ -126,7 +126,7 @@ foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
     foreach ($cases as $name => $case) {
         $passed = testcase_run("runtime_db/$name/$driver", TESTCASE_DATABASE, static function (callable $step) use ($driver, $name, $case): void {
             with_case_database($driver, $step, static function (string $dsn) use ($name, $case): void {
-                $db = database($dsn, $name === 'restore of soft-deleted rows' ? 'RuntimeRestore\\Orm' : 'RuntimeDb\\Orm');
+                $db = database($dsn, $name === 'restore of soft-deleted rows' ? 'Polyspec\\Orm\\Tests\\RuntimeRestore' : 'Polyspec\\Orm\\Tests\\RuntimeDb');
                 try {
                     $case($db, $dsn);
                 } finally {

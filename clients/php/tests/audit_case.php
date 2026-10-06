@@ -4,11 +4,11 @@ declare(strict_types=1);
 // 같다). runtime_db_test.php의 owner case와 coverage_audit_triggers.php의 audit_history case가 함께
 // 쓴다. 호출자는 contracts/fixtures/audit.dbs의 model을 $namespace에 생성하고 연결에 설치한다.
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Orm;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 
 /** $fn이 던진 OrmException의 code다. 성공하면 'no error'다. */
 function auditErrorCode(Closure $fn): string

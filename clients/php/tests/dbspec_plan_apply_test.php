@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
-// SQLite through Orm\Dbspec\Dbspec (docs/plans.md "Verification"): a fresh
+// SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the
 // `before` steps, runs the plan steps before finalize (on SQLite with
 // foreign keys off and no foreign_key_check row afterwards) and requires the
@@ -15,10 +15,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Diagnostic;
-use Orm\Dbspec\Unsupported;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\Unsupported;
+use Polyspec\Orm\Orm;
 
 // RUN_DEADLINE_MS는 case 하나의 기한이다. case는 database 하나를 만들고 plan step을 적용,
 // 되돌리기, 다시 적용, finalize하며 매번 introspect한 뒤 지운다.

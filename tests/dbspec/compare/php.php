@@ -15,6 +15,6 @@ if ($argc !== 6) {
     exit(2);
 }
 
-dbspec_write_interface(Orm\Dbspec\Dbspec::class, $argv[1], $argv[2], $argv[3]);
-dbspec_write_plans(Orm\Dbspec\Dbspec::class, $argv[4]);
-dbspec_write_mermaid(Orm\Dbspec\Dbspec::class, $argv[5]);
+dbspec_write_interface(Polyspec\Orm\Dbspec\Dbspec::class, $argv[1], $argv[2], $argv[3]);
+dbspec_write_plans(Polyspec\Orm\Dbspec\Dbspec::class, $argv[4]);
+dbspec_write_mermaid(Polyspec\Orm\Dbspec\Dbspec::class, $argv[5]);

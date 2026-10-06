@@ -24,18 +24,18 @@ require_once __DIR__ . '/case_database.php';
 
 // package autoloader는 test entry point를 load하지 않으므로 이 test는 그 path로
 // require한다.
-$faultsAutoloaded = class_exists(\Orm\Testing\Faults::class);
+$faultsAutoloaded = class_exists(\Polyspec\Orm\Testing\Faults::class);
 require dirname(__DIR__) . '/testing/Faults.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\Testing\Faults;
-use RollbackCase\Orm\RollbackProbe;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Testing\Faults;
+use Polyspec\Orm\Tests\RollbackCase\RollbackProbe;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 database를 지운다.
 const CASE_DEADLINE_SECONDS = 30;
@@ -47,10 +47,10 @@ register_shutdown_function(static function () use ($work): void {
 });
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/rollback.dbs')];
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['rollback.dbs' => $documents[0]])), "$work/models", 'RollbackCase\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['rollback.dbs' => $documents[0]])), "$work/models", 'Polyspec\\Orm\\Tests\\RollbackCase');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'RollbackCase\\Orm\\')) {
-        require "$work/models/" . substr($class, strlen('RollbackCase\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\RollbackCase\\')) {
+        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\RollbackCase\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
@@ -90,7 +90,7 @@ function connect(string $dsn): Db
 {
     global $documents;
     $db = Orm::connect($dsn, new Config());
-    $db->utils()->schema()->install(\RollbackCase\Orm\schema());
+    $db->utils()->schema()->install(\Polyspec\Orm\Tests\RollbackCase\schema());
     [$driver, $pdo] = native($dsn);
     if ($driver === 'sqlite') {
         $pdo->exec("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END");
@@ -204,7 +204,7 @@ function savepointRollbackFailed(string $dsn): void
 function rollbackFault(string $dsn): void
 {
     global $faultsAutoloaded;
-    check($faultsAutoloaded === false, 'the package autoloader loads Orm\\Testing\\Faults');
+    check($faultsAutoloaded === false, 'the package autoloader loads Polyspec\\Orm\\Testing\\Faults');
     $db = connect($dsn);
     Faults::failNextRollback($db);
     $committed = raised(fn() => $db->transaction(function () use ($db): void {
@@ -255,7 +255,7 @@ function firstStatementLost(string $dsn): void
         : 'SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()')->fetchAll(PDO::FETCH_COLUMN));
     $before = $sessions();
     $db = Orm::connect($direct, new Config());
-    $db->utils()->schema()->register(\RollbackCase\Orm\schema());
+    $db->utils()->schema()->register(\Polyspec\Orm\Tests\RollbackCase\schema());
     $events = [];
     $db->subscribe(function ($event) use (&$events): void {
         $events[] = $event->error?->code_;

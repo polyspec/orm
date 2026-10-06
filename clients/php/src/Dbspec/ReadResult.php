@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * Dbspec::readFile의 결과: diagnostic 없는 파일 text, 또는 text 없는 signature

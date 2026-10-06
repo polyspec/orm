@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
-use Orm\Model;
+use Polyspec\Orm\Model;
 
 /** A soft_record model or row. */
 final class SoftRecord extends Model

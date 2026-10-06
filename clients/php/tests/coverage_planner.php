@@ -8,9 +8,9 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
-use Orm\Engine;
-use Orm\OrmException;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Engine;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
 
 $root = dirname(__DIR__, 3);
 $fixture = coverageJson("$root/contracts/fixtures/planner.json");

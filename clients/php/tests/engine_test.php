@@ -7,10 +7,10 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\Engine;
-use Orm\OrmException;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Engine;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
 
 $root = dirname(__DIR__, 3);
 $model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));

@@ -10,7 +10,7 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
 `mysqli` are not loaded, on the Linux runner of `.github/runner`, where they are shared modules.
 
 ## Layout
-- `src/` — the runtime, PSR-4 `Orm\` (`composer.json`): the model syntax (`Model.php`,
+- `src/` — the runtime, PSR-4 `Polyspec\Orm\` (`composer.json`): the model syntax (`Model.php`,
   `Chain.php`), request validation (`Validator.php`), planning (`Planner.php`), the MySQL,
   PostgreSQL, and SQLite SQL forms (`Dialect.php`), and execution (`Db.php`). `RuntimeModel.php`
   builds the runtime model from dbspec documents (`Dbspec/`), and `Generator.php` writes it as the
@@ -40,7 +40,7 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
 
 ## Models
 
-Styled columns (a codec with `ordered_json`, `serialize`, `yaml`, `gz`, or `base64`) use `Orm\StyledValue` in generated setters and getters. `StyledValue::sqlNull()` represents SQL NULL; `StyledValue::value($value)` represents an encoded value, including a literal null. A non-null column rejects SQL NULL with `CODEC_ENCODE` when its setter is called. Requesting a styled column excluded from the selection returns `COLUMN_UNSELECTED`. `toArray()` and `toJson()` emit `{"kind":"sql-null"}` or `{"kind":"value","value":...}` for each selected styled column. `toJson()` preserves ordered JSON values exactly.
+Styled columns (a codec with `ordered_json`, `serialize`, `yaml`, `gz`, or `base64`) use `Polyspec\Orm\StyledValue` in generated setters and getters. `StyledValue::sqlNull()` represents SQL NULL; `StyledValue::value($value)` represents an encoded value, including a literal null. A non-null column rejects SQL NULL with `CODEC_ENCODE` when its setter is called. Requesting a styled column excluded from the selection returns `COLUMN_UNSELECTED`. `toArray()` and `toJson()` emit `{"kind":"sql-null"}` or `{"kind":"value","value":...}` for each selected styled column. `toJson()` preserves ordered JSON values exactly.
 
 ```sh
 vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
@@ -57,7 +57,7 @@ status 1 when it prints a line.
 
 ```php
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Config;
+use Polyspec\Orm\Config;
 
 $db = \Polyspec\Orm\Tests\Model\connect('mysql://orm@db.internal/orm_example', new Config(
     aesKey: getenv('ORM_AES_KEY') ?: '',
@@ -87,7 +87,7 @@ set it uses on it without a statement; `install` and `addTablesAndColumns` verif
 model class, and a request whose set is not registered on its connection fails with
 `SCHEMA_HASH_MISMATCH` before execution, also when another connection installed the set.
 
-`$db->subscribe(function (Orm\StatementEvent $e): void { … })` registers a subscriber for every
+`$db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })` registers a subscriber for every
 statement the connection sends and returns a closure that removes it ([statement
 events](../../docs/usage.md#statement-events)). The event has `sql`, `binds`, `kind`, `tables`,
 `elapsed` in seconds, `transaction` (`?int`) and `error` (`?OrmException`). Secret binds read
@@ -124,7 +124,7 @@ transaction's win; every audited write in the transaction refers to that row (do
 - Host stages (aes, hex, ip) are applied before binding and after fetching; `tests/codec/` checks
   them byte for byte.
 - `utils()->schema()->install($schema)` takes the generated schema value (`schema()`, an
-  `Orm\Schema`), fails with `CONFIG` when its manifest text does not hash to its `manifestHash`,
+  `Polyspec\Orm\Schema`), fails with `CONFIG` when its manifest text does not hash to its `manifestHash`,
   renders the dbspec document set (`Dbspec::render`), applies the statements in one transaction and
   registers the set on the connection. When every table of the set exists it creates nothing;
   when only some exist it is a `CONFIG` error. It then compares the tables of the set in the
@@ -142,7 +142,7 @@ transaction's win; every audited write in the transaction refers to that row (do
   SQLite add them outside a transaction.
 
 ## Errors
-`Orm\OrmException::$code_` is one of `Orm\Code::*`. Driver errors map per driver to `DEADLOCK`
+`Polyspec\Orm\OrmException::$code_` is one of `Polyspec\Orm\Code::*`. Driver errors map per driver to `DEADLOCK`
 (MySQL 1213 / SQLSTATE 40001, PostgreSQL 40P01 / 40001, SQLite locked), `DUPLICATE_KEY`, and
 `CANCELED` (MySQL 1317 / 3024, PostgreSQL 57014, SQLite 9: a statement stopped before it finished,
 such as one past `statementTimeoutMs`; SQLite busy: another connection held the lock when

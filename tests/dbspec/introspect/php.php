@@ -10,8 +10,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Orm;
 
 if ($argc !== 3) {
     fwrite(STDERR, "usage: php tests/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>\n");

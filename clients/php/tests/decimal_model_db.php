@@ -4,12 +4,12 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
 
 if ($argc !== 3 || $argv[1] !== '--dialect' || !in_array($argv[2], ['mysql', 'postgres', 'sqlite'], true)) {
     throw new RuntimeException('usage: decimal_model_db.php --dialect mysql|postgres|sqlite');

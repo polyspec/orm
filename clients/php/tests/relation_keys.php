@@ -7,7 +7,7 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Db;
+use Polyspec\Orm\Db;
 
 function expect(bool $ok, string $message): void
 {

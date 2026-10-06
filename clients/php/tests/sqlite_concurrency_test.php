@@ -10,10 +10,10 @@ require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
 use Polyspec\Orm\Tests\Model\Service;
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\OrmException;
 
 $documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/schema/bench.dbs')];
 

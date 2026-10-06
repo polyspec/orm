@@ -14,10 +14,10 @@ declare(strict_types=1);
 require __DIR__ . '/../../../clients/php/vendor/autoload.php';
 require __DIR__ . '/../input.php';
 
-use Orm\Dbspec\ApplyError;
-use Orm\Dbspec\ApplyEvent;
-use Orm\Dbspec\Dbspec;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\ApplyError;
+use Polyspec\Orm\Dbspec\ApplyEvent;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Orm;
 
 // 모든 client 가 새 connection 에서 실행하는 statement 다(tests/dialects connectionRules).
 const CONNECTION_RULES = ['mysql' => ["SET time_zone = '+00:00'"], 'postgres' => ["SET TimeZone = 'UTC'"], 'sqlite' => ['PRAGMA foreign_keys = ON']];

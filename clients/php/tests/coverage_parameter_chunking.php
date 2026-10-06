@@ -8,7 +8,7 @@ require __DIR__ . '/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Code;
+use Polyspec\Orm\Code;
 
 runCoverageCases($argv, [
     'root_in_chunking' => function (): void {

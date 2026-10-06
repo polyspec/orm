@@ -17,15 +17,15 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 
-use Orm\Code;
-use Orm\Config;
-use Orm\Db;
-use Orm\Generator;
-use Orm\Orm;
-use Orm\OrmException;
-use Orm\RuntimeModel;
-use Orm\StatementEvent;
-use StatementEventsCase\Orm\EventProbe;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
+use Polyspec\Orm\Generator;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\StatementEvent;
+use Polyspec\Orm\Tests\StatementEventsCase\EventProbe;
 
 // CASE_DEADLINE_SECONDS는 case 하나의 기한이다. case 하나는 자기 case database를 만들고
 // fixture를 설치한 뒤 statement 열 개 안팎을 실행하고 database를 지운다.
@@ -39,10 +39,10 @@ register_shutdown_function(static function () use ($work): void {
 });
 
 $fixture = (string) file_get_contents("$root/contracts/fixtures/statement_events.dbs");
-Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'StatementEventsCase\\Orm');
+Generator::generate(RuntimeModel::build(RuntimeModel::parse(['statement_events.dbs' => $fixture])), "$work/models", 'Polyspec\\Orm\\Tests\\StatementEventsCase');
 spl_autoload_register(static function (string $class) use ($work): void {
-    if (str_starts_with($class, 'StatementEventsCase\\Orm\\')) {
-        require "$work/models/" . substr($class, strlen('StatementEventsCase\\Orm\\')) . '.php';
+    if (str_starts_with($class, 'Polyspec\\Orm\\Tests\\StatementEventsCase\\')) {
+        require "$work/models/" . substr($class, strlen('Polyspec\\Orm\\Tests\\StatementEventsCase\\')) . '.php';
     }
 });
 require "$work/models/bootstrap.php";
@@ -137,7 +137,7 @@ final class EventRun
                 }, retry: 0);
                 return;
             case 'install':
-                $this->db->utils()->schema()->install(\StatementEventsCase\Orm\schema());
+                $this->db->utils()->schema()->install(\Polyspec\Orm\Tests\StatementEventsCase\schema());
                 return;
             case 'fail_subscriber':
                 $kind = $s['kind'];
@@ -201,10 +201,10 @@ function ordered(array $records): array
 
 function runCase(array $case, string $driver, string $dsn): void
 {
-    $db = Orm::connectSchema($dsn, \StatementEventsCase\Orm\schema(), new Config());
+    $db = Orm::connectSchema($dsn, \Polyspec\Orm\Tests\StatementEventsCase\schema(), new Config());
     try {
         if ($case['install'] ?? true) {
-            $db->utils()->schema()->install(\StatementEventsCase\Orm\schema());
+            $db->utils()->schema()->install(\Polyspec\Orm\Tests\StatementEventsCase\schema());
         }
         $run = new EventRun($db);
         $run->stopRecording = $db->subscribe($run->record(...));
@@ -237,13 +237,13 @@ function runCase(array $case, string $driver, string $dsn): void
  */
 function runServerTransactions(array $spec, array $cases, string $dsn): void
 {
-    $setup = Orm::connectSchema($dsn, \StatementEventsCase\Orm\schema(), new Config());
+    $setup = Orm::connectSchema($dsn, \Polyspec\Orm\Tests\StatementEventsCase\schema(), new Config());
     try {
-        $setup->utils()->schema()->install(\StatementEventsCase\Orm\schema());
+        $setup->utils()->schema()->install(\Polyspec\Orm\Tests\StatementEventsCase\schema());
     } finally {
         $setup->close();
     }
-    $db = Orm::connectSchema($dsn, \StatementEventsCase\Orm\schema(), new Config());
+    $db = Orm::connectSchema($dsn, \Polyspec\Orm\Tests\StatementEventsCase\schema(), new Config());
     try {
         $u = $db->utils();
         $zone = $db->fetch('utility', [], null, "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'");

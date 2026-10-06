@@ -4,16 +4,16 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Codec;
-use Orm\Model;
-use Orm\OrmException;
-use Orm\StyledValue;
+use Polyspec\Orm\Codec;
+use Polyspec\Orm\Model;
+use Polyspec\Orm\OrmException;
+use Polyspec\Orm\StyledValue;
 
 $root = dirname(__DIR__, 3);
 $fixture = json_decode(file_get_contents("$root/contracts/fixtures/styled_column_states.json"), true, 512, JSON_THROW_ON_ERROR);
 $cases = array_column($fixture['cases'], null, 'id');
 if (!class_exists(StyledValue::class)) {
-    throw new RuntimeException('the PHP client declares no class Orm\\StyledValue');
+    throw new RuntimeException('the PHP client declares no class Polyspec\\Orm\\StyledValue');
 }
 
 $tested = 0;

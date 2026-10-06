@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * PostgreSQL 의 현재 schema 를 중간 model 로 읽는다. 모든 query 는 schema 전체를

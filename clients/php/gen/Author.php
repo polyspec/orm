@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests\Model;
 
-use Orm\Model;
+use Polyspec\Orm\Model;
 
 /** A author model or row. */
 final class Author extends Model
@@ -375,52 +375,52 @@ final class Author extends Model
         return $this->writeColumn('ip', $v);
     }
 
-    public function getGzExtend(): \Orm\StyledValue
+    public function getGzExtend(): \Polyspec\Orm\StyledValue
     {
         return $this->readColumn('gz_extend');
     }
 
-    public function setGzExtend(\Orm\StyledValue $v): static
+    public function setGzExtend(\Polyspec\Orm\StyledValue $v): static
     {
         return $this->writeColumn('gz_extend', $v);
     }
 
-    public function getJsonSetting(): \Orm\StyledValue
+    public function getJsonSetting(): \Polyspec\Orm\StyledValue
     {
         return $this->readColumn('json_setting');
     }
 
-    public function setJsonSetting(\Orm\StyledValue $v): static
+    public function setJsonSetting(\Polyspec\Orm\StyledValue $v): static
     {
         return $this->writeColumn('json_setting', $v);
     }
 
-    public function getJsonsTags(): \Orm\StyledValue
+    public function getJsonsTags(): \Polyspec\Orm\StyledValue
     {
         return $this->readColumn('jsons_tags');
     }
 
-    public function setJsonsTags(\Orm\StyledValue $v): static
+    public function setJsonsTags(\Polyspec\Orm\StyledValue $v): static
     {
         return $this->writeColumn('jsons_tags', $v);
     }
 
-    public function getBase64Extra(): \Orm\StyledValue
+    public function getBase64Extra(): \Polyspec\Orm\StyledValue
     {
         return $this->readColumn('base64_extra');
     }
 
-    public function setBase64Extra(\Orm\StyledValue $v): static
+    public function setBase64Extra(\Polyspec\Orm\StyledValue $v): static
     {
         return $this->writeColumn('base64_extra', $v);
     }
 
-    public function getSerializeData(): \Orm\StyledValue
+    public function getSerializeData(): \Polyspec\Orm\StyledValue
     {
         return $this->readColumn('serialize_data');
     }
 
-    public function setSerializeData(\Orm\StyledValue $v): static
+    public function setSerializeData(\Polyspec\Orm\StyledValue $v): static
     {
         return $this->writeColumn('serialize_data', $v);
     }

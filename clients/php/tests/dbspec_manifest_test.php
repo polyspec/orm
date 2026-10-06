@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 // The hashes cases of tests/dbspec/cases.json and the repeated document name
-// rule through Orm\Dbspec\Dbspec::manifest, and the sets cases through
+// rule through Polyspec\Orm\Dbspec\Dbspec::manifest, and the sets cases through
 // Dbspec::manifest and Dbspec::render in every dialect.
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Document;
 
 $started = caseClockStart();
 $root = dirname(__DIR__, 3);

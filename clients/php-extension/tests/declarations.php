@@ -1,17 +1,17 @@
 <?php
 declare(strict_types=1);
 
-// Orm\Dbspec\Native의 class 선언을 Reflection으로 읽어 JSON으로 출력한다: class와 그 modifier, 부모와
+// Polyspec\Orm\Dbspec\Native의 class 선언을 Reflection으로 읽어 JSON으로 출력한다: class와 그 modifier, 부모와
 // interface, 상수와 값, property의 modifier, type과 기본값, 메서드의 modifier, 인자와 return type.
 //
 // Usage: php -d extension=<orm_dbspec library> declarations.php extension
 //        php declarations.php stub
 //        php declarations.php client
 // extension은 load한 확장 orm_dbspec이 등록한 class를, stub은 stubs/orm_dbspec.stub.php가 선언한
-// class를 읽는다. 두 출력이 같아야 한다(declarations_test.php). client는 PHP client의 Orm\Dbspec에서 @internal이
-// 아닌 class를 Orm\Dbspec\Native의 이름으로 읽는다: 확장은 그 class의 public 선언을 같게 가져야 한다.
+// class를 읽는다. 두 출력이 같아야 한다(declarations_test.php). client는 PHP client의 Polyspec\Orm\Dbspec에서 @internal이
+// 아닌 class를 Polyspec\Orm\Dbspec\Native의 이름으로 읽는다: 확장은 그 class의 public 선언을 같게 가져야 한다.
 
-const NATIVE_NAMESPACE = 'Orm\\Dbspec\\Native\\';
+const NATIVE_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\Native\\';
 
 $mode = $argv[1] ?? '';
 if ($mode === 'extension') {
@@ -36,7 +36,7 @@ if ($mode === 'extension') {
     require dirname(__DIR__, 2) . '/php/vendor/autoload.php';
     $classes = [];
     foreach (glob(dirname(__DIR__, 2) . '/php/src/Dbspec/*.php') as $file) {
-        $client = new ReflectionClass('Orm\\Dbspec\\' . basename($file, '.php'));
+        $client = new ReflectionClass('Polyspec\\Orm\\Dbspec\\' . basename($file, '.php'));
         if (!str_contains((string) $client->getDocComment(), '@internal')) {
             $classes[] = $client->getName();
         }
@@ -46,7 +46,7 @@ if ($mode === 'extension') {
     exit(2);
 }
 // client의 이름과 self는 확장의 이름으로 읽는다.
-$native = static fn(string $text, string $class): string => preg_replace(['/\\bOrm\\\\Dbspec\\\\(?!Native\\\\)/', '/\\bself\\b/'], ['Orm\\Dbspec\\Native\\', $class], $text);
+$native = static fn(string $text, string $class): string => preg_replace(['/\\bPolyspec\\\\Orm\\\\Dbspec\\\\(?!Native\\\\)/', '/\\bself\\b/'], ['Polyspec\\Orm\\Dbspec\\Native\\', $class], $text);
 
 $type = static fn(?ReflectionType $t): string => $t === null ? '' : (string) $t;
 $client = $mode === 'client';

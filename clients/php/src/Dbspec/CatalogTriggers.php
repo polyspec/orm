@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * catalog trigger 를 renderer statement 형식으로 다시 쓴 것에서 immutable 과

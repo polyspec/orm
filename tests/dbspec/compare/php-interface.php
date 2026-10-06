@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // dbspec compare runner(php.php, php-extension.php)가 함께 쓰는 vector 읽기와 출력이다. 출력 함수는 Dbspec class
-// 하나(Orm\Dbspec\Dbspec 또는 확장의 Orm\Dbspec\Native\Dbspec)를 받아 tests/dbspec/compare/check.mjs의 줄 형식으로
+// 하나(Polyspec\Orm\Dbspec\Dbspec 또는 확장의 Polyspec\Orm\Dbspec\Native\Dbspec)를 받아 tests/dbspec/compare/check.mjs의 줄 형식으로
 // 출력한다: dbspec_write_interface는 공유 case, stress 문서, 파일 읽기, manifest와 statement vector를,
 // dbspec_write_plans는 plan vector를, dbspec_write_mermaid는 Mermaid vector를 쓴다. 두 class는 같은 메서드와 결과
 // 모양을 가진다.

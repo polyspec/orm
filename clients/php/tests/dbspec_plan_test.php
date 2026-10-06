@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// The plan vectors of tests/dbspec/plans.json through Orm\Dbspec\Dbspec
+// The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
 // (docs/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain
 // case's order or `chain` diagnostics, every parse case's diagnostics with
@@ -10,13 +10,13 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 
-use Orm\Dbspec\Change;
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Diagnostic;
-use Orm\Dbspec\Difference;
-use Orm\Dbspec\Document;
-use Orm\Dbspec\Plan;
-use Orm\Dbspec\PlanStep;
+use Polyspec\Orm\Dbspec\Change;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Diagnostic;
+use Polyspec\Orm\Dbspec\Difference;
+use Polyspec\Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Plan;
+use Polyspec\Orm\Dbspec\PlanStep;
 
 const CASE_DEADLINE_MS = 5000;
 

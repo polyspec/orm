@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.86: the PHP packages are `polyspec/orm` and `polyspec/orm-dbspec` in the namespace `Polyspec\Orm`; regenerate PHP models with orm-gen after updating `use` statements.
+
 - G5.85: `make feature-unit-check` passes again: the push-gate workflow and the extension's apply cleanup test have their owners, and the feature list is generated from its source.
 
 - G5.48: a push is refused while a checklist item is `[~]`, by the pre-push hook and again by the CI workflow `push-gate`.

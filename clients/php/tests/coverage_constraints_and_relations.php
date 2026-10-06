@@ -9,7 +9,7 @@ require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\User;
-use Orm\Code;
+use Polyspec\Orm\Code;
 
 runCoverageCases($argv, [
     'constraint_errors' => function (): void {

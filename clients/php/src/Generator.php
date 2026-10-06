@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
 /**
  * Writes one model class per entity with typed column accessors and the model
@@ -90,7 +90,7 @@ final class Generator
         }
         $files = [];
         $external = $m->externalText !== '';
-        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Config;\nuse Orm\\Db;\nuse Orm\\Orm;\nuse Orm\\Registry;\nuse Orm\\Schema;\n\n"
+        $boot = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Config;\nuse Polyspec\\Orm\\Db;\nuse Polyspec\\Orm\\Orm;\nuse Polyspec\\Orm\\Registry;\nuse Polyspec\\Orm\\Schema;\n\n"
             . "/** The manifestHash of the document set the models were generated from. */\nconst MANIFEST_HASH = " . self::str($m->manifestHash) . ";\n\n"
             . "/** The manifest text of the document set the models were generated from. */\nconst MANIFEST_TEXT = " . self::str($m->manifestText) . ";\n\n"
             // 외부 문서를 쓰지 않는 set의 bootstrap은 external text를 쓰지 않으므로 그대로다.
@@ -120,13 +120,13 @@ final class Generator
     private static function model(array $e, string $class, string $namespace, string $hash): string
     {
         $name = $e['entity'];
-        $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
+        $b = "<?php\n" . self::MARKER . "\ndeclare(strict_types=1);\n\nnamespace $namespace;\n\nuse Polyspec\\Orm\\Model;\n\n/** A $name model or row. */\nfinal class $class extends Model\n{\n";
         // meta()는 entity와 그 model을 만든 document set의 manifest_hash다.
         $b .= "    public static function meta(): array\n    {\n        return " . self::export($e + ['manifest_hash' => $hash], 2) . ";\n    }\n";
         foreach ($e['columns'] as $c) {
             $p = self::pascal($c['name']);
             $styled = RuntimeModel::styled($c);
-            $t = $styled ? '\\Orm\\StyledValue' : self::type($c);
+            $t = $styled ? '\\Polyspec\\Orm\\StyledValue' : self::type($c);
             $nt = !$styled && $c['nullable'] ? "?$t" : $t;
             $b .= "\n    public function get$p(): $nt\n    {\n        return \$this->readColumn(" . self::str($c['name']) . ");\n    }\n";
             $param = $nt;

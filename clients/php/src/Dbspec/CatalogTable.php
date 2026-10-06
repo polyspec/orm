@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * introspection 의 중립 중간 model 에서 table 하나. type 은 ColumnType 이고,

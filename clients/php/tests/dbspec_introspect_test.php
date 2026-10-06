@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-// Orm\Dbspec\Dbspec::introspect on MySQL, PostgreSQL and SQLite
+// Polyspec\Orm\Dbspec\Dbspec::introspect on MySQL, PostgreSQL and SQLite
 // (docs/dialects.md "Introspection"). The round trip renders every case of
 // tests/dbspec/ddl.json and every schema document, applies it to an empty
 // database of each dialect, introspects it and requires the source schema
@@ -12,11 +12,11 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Document;
-use Orm\Dbspec\Table;
-use Orm\Dbspec\Unsupported;
-use Orm\Orm;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Table;
+use Polyspec\Orm\Dbspec\Unsupported;
+use Polyspec\Orm\Orm;
 
 /** introspection 이 보낸 catalog query 수를 센다. */
 final class CountingPdo extends PDO
@@ -150,7 +150,7 @@ function expected_schema_text(array $documents): string
  * statement 의 {schema} 는 그 database 또는 schema 의 이름이다.
  *
  * @param list<string> $statements
- * @return array{0: Orm\Dbspec\IntrospectResult, 1: int}
+ * @return array{0: Polyspec\Orm\Dbspec\IntrospectResult, 1: int}
  */
 function introspect_applied(string $dialect, array $statements): array
 {

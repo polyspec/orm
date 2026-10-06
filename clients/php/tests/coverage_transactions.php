@@ -8,7 +8,7 @@ require __DIR__ . '/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
-use Orm\Db;
+use Polyspec\Orm\Db;
 
 const TRANSACTION_TENANT = 990003;
 

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * dialect reader 가 채우는 중립 중간 model 이다. document() 가 그것을 dbspec

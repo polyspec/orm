@@ -12,4 +12,4 @@ foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/aut
     }
 }
 
-exit(Orm\OrmGen::main(array_slice($argv, 1)));
+exit(Polyspec\Orm\OrmGen::main(array_slice($argv, 1)));

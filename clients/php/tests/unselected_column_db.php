@@ -4,9 +4,9 @@ declare(strict_types=1);
 require __DIR__ . '/autoload.php';
 
 use Polyspec\Orm\Tests\Model\Author;
-use Orm\Code;
-use Orm\Config;
-use Orm\OrmException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\OrmException;
 
 $driver = getenv('ORM_UNSELECTED_DATABASE');
 $dsn = getenv('ORM_UNSELECTED_DSN');

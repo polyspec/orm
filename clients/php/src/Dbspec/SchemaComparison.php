@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm\Dbspec;
+namespace Polyspec\Orm\Dbspec;
 
 /**
  * plan 없이 두 schema 의 모든 차이를 나열한다(docs/plans.md "Comparison"). rename 이

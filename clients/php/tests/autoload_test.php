@@ -11,14 +11,14 @@ require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 testcase_begin('autoload/classes', TESTCASE_COMPUTE);
 $failures = [];
 // 자기 file의 class, 다른 file에 함께 정의된 class(Frame은 Model.php), 하위 namespace의 class를 찾는다.
-foreach (['Orm\\Model', 'Orm\\Frame', 'Orm\\OrmException', 'Orm\\Dbspec\\Dbspec'] as $class) {
+foreach (['Polyspec\\Orm\\Model', 'Polyspec\\Orm\\Frame', 'Polyspec\\Orm\\OrmException', 'Polyspec\\Orm\\Dbspec\\Dbspec'] as $class) {
     if (!class_exists($class)) {
         $failures[] = "$class is not found";
     }
 }
 // 없는 class는 찾지 못한다.
-if (class_exists('Orm\\NoSuchClass')) {
-    $failures[] = 'Orm\\NoSuchClass is found';
+if (class_exists('Polyspec\\Orm\\NoSuchClass')) {
+    $failures[] = 'Polyspec\\Orm\\NoSuchClass is found';
 }
 testcase_end($failures === [] ? null : implode('; ', $failures));
 exit($failures === [] ? 0 : 1);

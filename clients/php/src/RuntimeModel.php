@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Orm;
+namespace Polyspec\Orm;
 
-use Orm\Dbspec\Dbspec;
-use Orm\Dbspec\Document;
+use Polyspec\Orm\Dbspec\Dbspec;
+use Polyspec\Orm\Dbspec\Document;
 
 /**
  * dbspec document set의 runtime model이다(docs/dbspec.md "Runtime model").
@@ -230,7 +230,7 @@ final class RuntimeModel
         return $column['codec'] === [] && in_array($column['type'], ['i16', 'i32', 'i64', 'f64', 'decimal'], true);
     }
 
-    private static function tableEntity(\Orm\Dbspec\Table $table): array
+    private static function tableEntity(\Polyspec\Orm\Dbspec\Table $table): array
     {
         $settings = [];
         foreach ($table->settings?->settings ?? [] as $s) {

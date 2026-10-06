@@ -28,7 +28,7 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			_ = json.Unmarshal(source, &d)
 			r := find(&d, "Model.gets")
 			n := r.Native[lang]
-			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Orm\\Collection", "rust": "orm::Collection<Self>", "typescript": "Collection<this>"}[lang]
+			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Polyspec\\Orm\\Collection", "rust": "orm::Collection<Self>", "typescript": "Collection<this>"}[lang]
 			n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number"}[lang], 1)
 			r.Native[lang] = n
 			if validateRules(d) == nil {
@@ -75,13 +75,13 @@ func TestGroupedResultCannotBecomeModelCollection(t *testing.T) {
 		r.Output = "Collection<Model>"
 		old := map[string]string{
 			"go":         "(*orm.Collection[*{Entity}Model], error)",
-			"php":        "Orm\\Collection",
+			"php":        "Polyspec\\Orm\\Collection",
 			"rust":       "orm::Result<orm::Collection<Self>>",
 			"typescript": "Promise<Collection<this>>",
 		}
 		current := map[string]string{
 			"go":         "(*orm.GroupRows, error)",
-			"php":        "Orm\\GroupRows",
+			"php":        "Polyspec\\Orm\\GroupRows",
 			"rust":       "orm::Result<orm::GroupRows>",
 			"typescript": "Promise<GroupRows>",
 		}
@@ -140,13 +140,13 @@ func TestExtensionContractRejectsDrift(t *testing.T) {
 		"return type": func(d *document) {
 			r := find(d, "Dbspec.parse")
 			n := r.Native["php-extension"]
-			n.Signature = strings.Replace(n.Signature, "Orm\\Dbspec\\Native\\ParseResult", "Orm\\Dbspec\\ParseResult", 1)
+			n.Signature = strings.Replace(n.Signature, "Polyspec\\Orm\\Dbspec\\Native\\ParseResult", "Polyspec\\Orm\\Dbspec\\ParseResult", 1)
 			r.Native["php-extension"] = n
 		},
 		"argument": func(d *document) {
 			r := find(d, "Dbspec.emit")
 			n := r.Native["php-extension"]
-			n.Signature = strings.Replace(n.Signature, "Orm\\Dbspec\\Native\\Document", "Orm\\Dbspec\\Document", 1)
+			n.Signature = strings.Replace(n.Signature, "Polyspec\\Orm\\Dbspec\\Native\\Document", "Polyspec\\Orm\\Dbspec\\Document", 1)
 			r.Native["php-extension"] = n
 		},
 		"missing adapter": func(d *document) { delete(find(d, "Dbspec.render").Native, "php-extension") },
