@@ -52,7 +52,7 @@ const inputNames = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plan
 const cases = [];
 for (const unreadable of [missing, folder]) {
   const kind = unreadable === missing ? 'missing' : 'directory';
-  // runner는 자기가 읽는 input(runners.mjs의 reads)만 받는다. PHP 확장 runner는 Mermaid vector를 읽지 않는다.
+  // runner는 자기가 읽는 input(runners.mjs의 reads)만 받는다.
   for (const runner of runners) {
     INPUTS.forEach((input, i) => {
       if (!runner.reads.includes(input)) return;

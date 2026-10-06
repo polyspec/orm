@@ -9,9 +9,8 @@
 // 끝난다. Mermaid export case는 Mermaid text와 빠진 객체(이유 없이
 // "= kind<TAB>table<TAB>name") 또는 문서의 diagnostic을, import와 invalid case는 emit한
 // 문서와 빠진 객체 또는 diagnostic을, round trip case는 문서의 export와 그다음
-// "<name>/import"와 그 export의 import를 출력한다. PHP 확장의 runner는 dbspec 인터페이스의 case(공유 case,
-// stress 문서, files, hashes, statement vector)만 출력하고, 그 출력은 첫 Go 출력의 첫 plan case 앞까지와
-// 같아야 한다. 각 runner는 두 번 실행하며 모든 출력이 첫 Go 출력과 같아야 한다.
+// "<name>/import"와 그 export의 import를 출력한다. 각 runner는 두 번 실행하며 모든 출력이 첫 Go 출력과 같아야
+// 한다.
 //
 // Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 // (TypeScript build, Rust example의 debug build와 PHP 확장의 build 뒤)
@@ -41,7 +40,7 @@ for (const runner of runners) {
       const output = await run(runner);
       const count = output.split('\n').filter(line => line !== '' && !/^[|!=] /.test(line)).length;
       step(`${count} cases`);
-      outputs.push({ name: `${runner.name} ${round}`, output, until: runner.until });
+      outputs.push({ name: `${runner.name} ${round}`, output });
     });
     if (!passed) process.exit(1);
   }

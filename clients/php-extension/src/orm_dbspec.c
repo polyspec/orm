@@ -1497,6 +1497,58 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, planSteps)
     LEAVE();
 }
 
+/* --------------------------------------------------------------- Mermaid */
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, exportMermaid)
+{
+    zval *zdoc;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(zdoc, dbs_ce_Document)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    document *d;
+    if (in_document(zdoc, &d)) {
+        unsupportedv dropped;
+        str text = mermaid_export(d, &dropped);
+        zval list;
+        out_unsupported(&dropped, &list);
+        obj_new(return_value, dbs_ce_MermaidExportResult);
+        obj_put_str(return_value, "text", text);
+        obj_put(return_value, "dropped", &list);
+    }
+    LEAVE();
+}
+
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, importMermaid)
+{
+    zend_string *text, *name;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(text)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    unsupportedv dropped = {0};
+    diags d = {0};
+    document *doc = mermaid_import(zs(text), zs(name), &dropped, &d);
+    if (!dbs_failed()) {
+        obj_new(return_value, dbs_ce_MermaidImportResult);
+        zval list, diagnostics;
+        if (doc != NULL) {
+            zval dz;
+            out_document(doc, &dz);
+            obj_put(return_value, "document", &dz);
+            out_unsupported(&dropped, &list);
+        } else {
+            obj_put_null(return_value, "document");
+            ZVAL_EMPTY_ARRAY(&list);
+        }
+        obj_put(return_value, "dropped", &list);
+        zv_diags(&diagnostics, &d);
+        obj_put(return_value, "diagnostics", &diagnostics);
+    }
+    LEAVE();
+}
+
 /* ------------------------------------------------------------------ module */
 
 /* gen_stub이 쓰지 못하는 배열 상수를 영속 불변 배열로 선언한다. */

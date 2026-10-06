@@ -76,8 +76,7 @@ caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   }
 });
 
-// runner는 자기가 읽는 vector file(runners.mjs의 reads)의 잘못된 vector만 거부한다. PHP 확장 runner는
-// Mermaid vector를 읽지 않는다.
+// runner는 자기가 읽는 vector file(runners.mjs의 reads)의 잘못된 vector를 거부한다.
 mutations.forEach((mutation, index) => {
   const { path, location, inputs } = inputsWith(index, mutation);
   for (const runner of runners.filter(runner => runner.reads.includes(mutation.file))) {

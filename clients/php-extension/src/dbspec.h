@@ -488,6 +488,66 @@ strs installed_differences(const document *live, const unsupportedv *skipped, co
 void add_tables_and_columns_steps(const document *live, const unsupportedv *skipped, const document *target, str dialect_name,
     strs *added, planstepv *steps, strs *differences);
 
+/* ---------------------------------------------------------------- catalog */
+
+/* introspection과 Mermaid import의 중립 중간 model(PHP client Catalog, CatalogTable)이다. */
+typedef struct {
+    str name;
+    ctype *type;
+    bool null, identity;
+    str def;    /* 비어 있으면 default가 없다 */
+} icolumn;
+
+typedef struct {
+    str name;
+    strs columns;
+    VEC(bool) desc;
+} ikey;
+
+typedef struct {
+    str name;
+    strs columns;
+    str table;
+    strs refs;
+    str on_delete, on_update;
+} ifkey;
+
+typedef struct {
+    str name, predicate;
+} icheck;
+
+typedef struct {
+    str name;
+    VEC(icolumn) columns;
+    strs primary;
+    VEC(ikey) uniques;
+    VEC(ikey) indexes;
+    VEC(ifkey) fks;
+    VEC(icheck) checks;
+    strs settings;
+} itable;
+
+typedef struct {
+    VEC(itable *) tables;
+    unsupportedv unsupported;
+} catalog;
+
+itable *itable_new(str name);
+itable *catalog_table(catalog *c, str name);
+void catalog_report(catalog *c, str kind, str table, str name, str reason);
+/* 문서와 빠진 객체. parse하지 못하는 줄이 객체의 것이 아니면 RuntimeException이고 NULL이다. */
+document *catalog_document(catalog *c, str name, unsupportedv *out);
+smap itable_types(const itable *t);   /* column 이름 => ctype* */
+void itable_drop_column(itable *t, str name);
+str catalog_action_name(str rule, bool *ok);
+str catalog_unscaled_decimal(str text, zend_long scale);
+
+/* ---------------------------------------------------------------- Mermaid */
+
+str mermaid_export(const document *d, unsupportedv *dropped);
+/* 문서, 또는 diagnostic 하나다. 예외(RuntimeException 밖)는 던진다. */
+document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
+
 /* -------------------------------------------------------------- PHP objects */
 
 #define DBS_CLASSES(X) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
