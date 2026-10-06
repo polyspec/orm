@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.5: dbspec input test는 apply runner와 stress harness를 다시 그 자신의 인자로 실행한다. `reads`가 정한 input을 받는 것은 compare runner뿐이다.
+
 - G5.83: AGENTS.md는 고정한 toolchain, 원자적인 build 출력, 고치는 방법을 적은 실패 message, lease로 갖거나 소유한 port와 database, compile 시점 경로 없이 file을 찾는 규칙을 적는다.
 
 - G5.82: `make test-servers`는 checkout마다 server의 빈 port를 고르고 server 환경에 기록하므로 두 checkout이 고정 port를 다투지 않으며, `make repo-check`는 고정 port를 거부한다.

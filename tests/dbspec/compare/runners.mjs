@@ -32,11 +32,12 @@ export const runners = [
   },
 ];
 
-// runRunner는 runner를 inputs(INPUTS 순서의 경로) 가운데 runner가 읽는 것으로 실행해 exit code 또는
-// signal, stdout, stderr를 돌려주고, process를 시작할 수 없을 때만 reject한다.
+// runRunner는 runner를 실행해 exit code 또는 signal, stdout, stderr를 돌려주고, process를 시작할 수 없을 때만
+// reject한다. reads를 선언한 compare runner에는 inputs(INPUTS 순서의 경로) 가운데 그것이 읽는 것을 주고, reads가 없는
+// runner(tests/dbspec/inputs.test.mjs의 apply runner와 stress harness)에는 inputs를 그대로 준다.
 export function runRunner(runner, inputs, timeout) {
-  if (inputs.length !== INPUTS.length) throw new Error(`runRunner takes the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}`);
-  const args = runner.reads.map(name => inputs[INPUTS.indexOf(name)]);
+  if (runner.reads && inputs.length !== INPUTS.length) throw new Error(`runRunner gives a compare runner the ${INPUTS.length} inputs ${INPUTS.join(', ')}; given ${inputs.length}; pass all five, and the runner takes those its reads names`);
+  const args = runner.reads ? runner.reads.map(name => inputs[INPUTS.indexOf(name)]) : inputs;
   return new Promise((resolve, reject) => {
     const child = spawn(runner.command, [...runner.args, ...args], { cwd: root, timeout });
     const out = [];

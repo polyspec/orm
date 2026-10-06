@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.5: the dbspec input test runs the apply runners and the stress harness with their own arguments again; only the compare runners take the inputs that their `reads` names.
+
 - G5.83: AGENTS.md states the rules of pinned toolchains, atomic build outputs, failure messages with their fix, leased or owned ports and databases, and files found without compile-time paths.
 
 - G5.82: `make test-servers` chooses free ports for the servers of each checkout and records them in the server environment, so two checkouts no longer contend for fixed ports, and `make repo-check` refuses a fixed port.
