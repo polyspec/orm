@@ -10,8 +10,8 @@
 |---|---|
 | Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
 | PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
-| TypeScript | `@polyspec/orm-typescript`의 `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` |
-| Rust | `build.rs`의 `orm_build::Builder::new([<files.dbs>]).scan("src").generate()` |
+| TypeScript | `@polyspec/orm`의 `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` |
+| Rust | `build.rs`의 `polyspec_orm_build::Builder::new([<files.dbs>]).scan("src").generate()` |
 
 각 도구는 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
 
@@ -23,15 +23,15 @@
 
 | 작업 | Go `engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
 |---|---|---|---|---|
-| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
-| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
-| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `orm_schema::dbspec::diff` |
-| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `orm_schema::dbspec::installed_differences` |
-| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `orm_schema::dbspec::plan_steps` |
-| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `orm::dbspec::apply` |
-| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
-| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `orm::dbspec::rollback` |
-| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `orm::dbspec::finalize` |
+| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
+| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |
+| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` |
+| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` |
+| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` |
+| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` |
+| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` |
+| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` |
+| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` |
 
 [mermaid.md](mermaid.md)는 document를 Mermaid `erDiagram`으로 내보내는 방법과 diagram을 document로 가져오는 방법을 정한다.
 
@@ -41,7 +41,7 @@
 
 도구 `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 카탈로그 작업에 전달된다.
 
-`live-db` 기능은 `orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. 카탈로그 연결은 SQLite 외래키 설정을 보존한다. 카탈로그 연결은 테이블 메타데이터와 페이지를 읽고 행을 바꾼다. 데이터베이스의 스키마는 `orm::dbspec::introspect`가 읽는다.
+`live-db` 기능은 `polyspec_orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. 카탈로그 연결은 SQLite 외래키 설정을 보존한다. 카탈로그 연결은 테이블 메타데이터와 페이지를 읽고 행을 바꾼다. 데이터베이스의 스키마는 `polyspec_orm::dbspec::introspect`가 읽는다.
 
 SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 임의 SQL/데이터 접근을 활성화하기 전에 네이티브 디코딩 한계를 소유 코드에서 수정해야 한다.
 
@@ -54,7 +54,7 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 | Go | `Utils().Schema().Install(model.Schema)` | 생성된 package의 schema 값(`*orm.Schema`) |
 | PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | 생성된 모델의 schema 값(`Polyspec\Orm\Schema`) |
 | TypeScript | `utils().schema().install(SCHEMA)` | 생성된 module의 schema 값(`{ manifestText, manifestHash }`) |
-| Rust | `utils().schema().install(&model::SCHEMA).await` | 생성된 모델의 schema 값(`orm::Schema`) |
+| Rust | `utils().schema().install(&model::SCHEMA).await` | 생성된 모델의 schema 값(`polyspec_orm::Schema`) |
 
 ## 5. 테이블과 컬럼 추가
 
@@ -67,7 +67,7 @@ SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자
 | Go | `Utils().Schema().AddTablesAndColumns(model.Schema)` | `dbspec.AddTablesAndColumnsSteps` |
 | PHP | `utils()->schema()->addTablesAndColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addTablesAndColumnsSteps` |
 | TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
-| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_tables_and_columns_steps` |
+| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `polyspec_orm_schema::dbspec::add_tables_and_columns_steps` |
 
 `install`은 set을 통째로만 만들고 일부 테이블만 있는 set에는 `CONFIG`를 반환한다. `addTablesAndColumns`는 그런 set을 새 version으로 올리고, 그 뒤 `install`은 아무것도 바꾸지 않는다.
 

@@ -5,11 +5,11 @@
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
-use orm::dbspec::{self, Document};
-use orm::serde_json::Value;
-use orm::{Config, Db, Schema};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::dbspec::{self, Document};
+use polyspec_orm::serde_json::Value;
+use polyspec_orm::{Config, Db, Schema};
 
 fn root() -> String {
     format!("{}/../../..", orm_testcase::manifest_dir().display())
@@ -49,7 +49,7 @@ async fn install_case(driver: &str, dsn: &str, vector: &Value) {
 async fn install_verifies_the_database() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let path = format!("{}/contracts/fixtures/install/changed_database.json", root());
-    let fixture: Value = orm::serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap();
+    let fixture: Value = polyspec_orm::serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap();
     let cases = fixture["cases"].as_array().unwrap_or_else(|| panic!("{path} has no cases"));
     assert!(!cases.is_empty(), "{path} has no cases");
     for case in cases {

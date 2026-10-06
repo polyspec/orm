@@ -1,4 +1,4 @@
-use orm_build::tool_db;
+use polyspec_orm_build::tool_db;
 
 #[tokio::test]
 async fn physical_tool_cells_reject_loss_without_substituting_values() {

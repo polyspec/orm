@@ -9,7 +9,7 @@ async fn sqlite_file_name_is_the_path() {
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");
     let dsn = format!("sqlite://{}/named.sqlite?_pragma=busy_timeout(5000)&timezone=%2B00:00", directory.display());
-    let db = orm::Db::connect(&dsn, 1, orm::Config::default()).await;
+    let db = polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default()).await;
     let mut names: Vec<String> = Vec::new();
     let opened = match db {
         Ok(db) => {
@@ -47,7 +47,7 @@ async fn sqlite_path_cases() {
         std::fs::create_dir(&directory).expect("temporary directory");
         let dsn = format!("sqlite://{}/{}", directory.display(), case["path"].as_str().expect("path"));
         // 각 case는 자기 기한 안에서 연결한다.
-        let code = match tokio::time::timeout(std::time::Duration::from_secs(10), orm::Db::connect(&dsn, 1, orm::Config::default())).await {
+        let code = match tokio::time::timeout(std::time::Duration::from_secs(10), polyspec_orm::Db::connect(&dsn, 1, polyspec_orm::Config::default())).await {
             Err(_) => Some("TIMEOUT".to_owned()),
             Ok(Ok(db)) => {
                 db.close().await;

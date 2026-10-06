@@ -6,7 +6,7 @@ use crate::codes;
 use crate::ir;
 use crate::schema::Manifest;
 use crate::Result;
-use orm_schema::dbspec::{Entity, Field};
+use polyspec_orm_schema::dbspec::{Entity, Field};
 
 const IR_VERSION: u32 = 1;
 

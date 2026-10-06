@@ -1,7 +1,7 @@
 //! The database-specific pieces of SQL. The planner never writes a quote or a
 //! placeholder itself.
 
-use orm_schema::dbspec::Type;
+use polyspec_orm_schema::dbspec::Type;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Dialect {

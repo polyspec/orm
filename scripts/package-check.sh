@@ -26,7 +26,7 @@ typescript_package() {
   cd "$ROOT/clients/typescript"
   npm pack --dry-run --json > "$PACK_JSON"
 )
-node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm-typescript" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
+node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
 }
 
 php_package() {
@@ -45,18 +45,18 @@ edition = "2021"
 publish = false
 
 [dependencies]
-orm = { path = "$ROOT/clients/rust/orm" }
+polyspec-orm = { path = "$ROOT/clients/rust/orm" }
 
 [workspace]
 EOF
 cat > "$TMP_RUST/src/lib.rs" <<'EOF'
 pub fn config_code() -> &'static str {
-    orm::codes::CONFIG
+    polyspec_orm::codes::CONFIG
 }
 EOF
 # 공유 Rust target directory에 build하므로 그 lease(make가 export하는 LEASE, CARGO_LEASES) 아래에서 실행한다.
 CARGO_TARGET_DIR="${CARGO_TARGET_DIR:?CARGO_TARGET_DIR is unset; run this through make, which exports it}" "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- cargo check --manifest-path "$TMP_RUST/Cargo.toml" --quiet
-echo "rust package: orm builds as an external path dependency"
+echo "rust package: polyspec-orm builds as an external path dependency"
 }
 
 go_package() {

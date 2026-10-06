@@ -35,7 +35,7 @@
   "symbol_hashes": {
     "go": "sha256:46296e2395dd299869886d778b6babc56205afec7f991dd64888cc4fb8082466",
     "php": "sha256:a860ae520b617eb8ce1447b1984c7ec01c29fd667cdc6c5663464ce8085a2ab5",
-    "rust": "sha256:ec48196c5a1a37d3c2fff9f898087a314b5eead1d15c3e47af06beec3b0524ad",
+    "rust": "sha256:a73c93c88bc435bb140f17774e8bf87df3b5b88fc54c008d24e1ac0dfb8af93e",
     "typescript": "sha256:3c179bfa86203f8fa94aabb20d329e2e57f61949f9ea8d6da7ca9ff329c05dd6"
   },
   "extensions": {
@@ -467,7 +467,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::connect",
-          "signature": "pub fn connect(mut self, db: &orm::Db) -> Self"
+          "signature": "pub fn connect(mut self, db: &polyspec_orm::Db) -> Self"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.connect",
@@ -495,7 +495,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::and",
-          "signature": "pub fn and<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self"
+          "signature": "pub fn and<A: polyspec_orm::GroupArg<Self>>(mut self, arg: A) -> Self"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.and",
@@ -523,7 +523,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::or",
-          "signature": "pub fn or<A: orm::GroupArg<Self>>(mut self, arg: A) -> Self"
+          "signature": "pub fn or<A: polyspec_orm::GroupArg<Self>>(mut self, arg: A) -> Self"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.or",
@@ -551,7 +551,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relation",
-          "signature": "pub fn relation(mut self, child: impl orm::Model) -> Self"
+          "signature": "pub fn relation(mut self, child: impl polyspec_orm::Model) -> Self"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.relation",
@@ -579,7 +579,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::relations",
-          "signature": "pub fn relations(mut self, child: impl orm::Model) -> Self"
+          "signature": "pub fn relations(mut self, child: impl polyspec_orm::Model) -> Self"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.relations",
@@ -666,7 +666,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get",
-          "signature": "pub async fn get(&self) -> orm::Result<Self>"
+          "signature": "pub async fn get(&self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.get",
@@ -696,7 +696,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets",
-          "signature": "pub async fn gets(&self) -> orm::Result<orm::Collection<Self>>"
+          "signature": "pub async fn gets(&self) -> polyspec_orm::Result<polyspec_orm::Collection<Self>>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.gets",
@@ -726,7 +726,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_count",
-          "signature": "pub async fn gets_count(&self) -> orm::Result<orm::GroupRows>"
+          "signature": "pub async fn gets_count(&self) -> polyspec_orm::Result<polyspec_orm::GroupRows>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getsCount",
@@ -756,7 +756,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_count",
-          "signature": "pub async fn get_count(&self) -> orm::Result<i64>"
+          "signature": "pub async fn get_count(&self) -> polyspec_orm::Result<i64>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getCount",
@@ -786,7 +786,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_sum",
-          "signature": "pub async fn get_sum(&self) -> orm::Result<f64>"
+          "signature": "pub async fn get_sum(&self) -> polyspec_orm::Result<f64>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getSum",
@@ -816,7 +816,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_avg",
-          "signature": "pub async fn get_avg(&self) -> orm::Result<f64>"
+          "signature": "pub async fn get_avg(&self) -> polyspec_orm::Result<f64>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getAvg",
@@ -848,7 +848,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::gets_page",
-          "signature": "pub async fn gets_page(&self, page: u32, per_page: u32) -> orm::Result<orm::Page<Self>>"
+          "signature": "pub async fn gets_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::Page<Self>>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getsPage",
@@ -878,7 +878,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::get_query",
-          "signature": "pub async fn get_query(&self) -> orm::Result<orm::Statement>"
+          "signature": "pub async fn get_query(&self) -> polyspec_orm::Result<polyspec_orm::Statement>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getQuery",
@@ -910,7 +910,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::create",
-          "signature": "pub async fn create(&mut self) -> orm::Result<Self>"
+          "signature": "pub async fn create(&mut self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.create",
@@ -944,7 +944,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::creates",
-          "signature": "pub async fn creates(&self, rows: Vec<Self>) -> orm::Result<u64>"
+          "signature": "pub async fn creates(&self, rows: Vec<Self>) -> polyspec_orm::Result<u64>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.creates",
@@ -977,7 +977,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::update",
-          "signature": "pub async fn update(&mut self, optimistic: bool) -> orm::Result<()>"
+          "signature": "pub async fn update(&mut self, optimistic: bool) -> polyspec_orm::Result<()>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.update",
@@ -1009,7 +1009,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::save",
-          "signature": "pub async fn save(&mut self) -> orm::Result<Self>"
+          "signature": "pub async fn save(&mut self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.save",
@@ -1042,7 +1042,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::delete",
-          "signature": "pub async fn delete(&self, recursive: bool) -> orm::Result<()>"
+          "signature": "pub async fn delete(&self, recursive: bool) -> polyspec_orm::Result<()>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.delete",
@@ -1073,7 +1073,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::restore",
-          "signature": "pub async fn restore(&self) -> orm::Result<Self>"
+          "signature": "pub async fn restore(&self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.restore",
@@ -1099,7 +1099,7 @@
         },
         "rust": {
           "symbol": "clients/rust/orm-build/src/fixed.rs.txt::T::to_array",
-          "signature": "pub fn to_array(&self) -> orm::Result<orm::serde_json::Value>"
+          "signature": "pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::serde_json::Value>"
         },
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.toArray",

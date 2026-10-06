@@ -1,7 +1,7 @@
 //! Every case of tests/dbspec/plans.json applied to MySQL, PostgreSQL and
 //! SQLite through the Rust client (docs/plans.md, "Verification"): the source
 //! rendered by `dbspec::render`, the `before` steps and the `dbspec::plan_steps`
-//! steps before finalize, after which `orm::dbspec::introspect` reads the
+//! steps before finalize, after which `polyspec_orm::dbspec::introspect` reads the
 //! plan's target schema text with no unsupported object; without an
 //! irreversible step the rollback statements return to the source schema text
 //! and the steps run again; then the `after` steps and the finalize steps
@@ -12,7 +12,7 @@
 mod dbspec_probe;
 
 use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Conn, Servers, DIALECTS};
-use orm_schema::dbspec::{self, parse_plan, plan_steps, Document};
+use polyspec_orm_schema::dbspec::{self, parse_plan, plan_steps, Document};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Row, SqlSafeStr, TypeInfo, ValueRef};
 use std::collections::BTreeMap;

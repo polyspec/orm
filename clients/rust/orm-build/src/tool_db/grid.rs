@@ -58,7 +58,7 @@ pub(super) fn postgres_decimal(row: &sqlx::postgres::PgRow, index: usize) -> Res
     Ok(GridCell::Decimal(decimal.to_plain_string()))
 }
 
-use orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
+use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeDelta};
 
 fn temporal_error(message: &str) -> sqlx::Error {
     sqlx::Error::Decode(format!("Unsupported or invalid grid temporal value: {message}").into())
@@ -66,7 +66,7 @@ fn temporal_error(message: &str) -> sqlx::Error {
 
 /// dbspec date 범위 0001-01-01부터 9999-12-31 안의 `YYYY-MM-DD`.
 fn date_text(date: NaiveDate) -> Result<String, sqlx::Error> {
-    use orm::chrono::Datelike;
+    use polyspec_orm::chrono::Datelike;
     if !(1..=9999).contains(&date.year()) {
         return Err(temporal_error("date outside 0001-01-01 to 9999-12-31"));
     }
@@ -151,14 +151,14 @@ pub(super) fn postgres_temporal(row: &sqlx::postgres::PgRow, index: usize) -> Re
 
 /// dbspec date `YYYY-MM-DD`: 0001-01-01부터 9999-12-31까지의 달력 날짜.
 pub(crate) fn is_date(text: &str) -> bool {
-    use orm::chrono::{Datelike, NaiveDate};
+    use polyspec_orm::chrono::{Datelike, NaiveDate};
     text.len() == 10
         && NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok_and(|date| (1..=9999).contains(&date.year()) && date.format("%Y-%m-%d").to_string() == text)
 }
 
 /// dbspec time `HH:MM:SS`와 0~6자리 소수: 하루 안의 시각.
 pub(crate) fn is_time(text: &str) -> bool {
-    use orm::chrono::NaiveTime;
+    use polyspec_orm::chrono::NaiveTime;
     let (whole, digits) = text.split_once('.').map_or((text, None), |(whole, digits)| (whole, Some(digits)));
     whole.len() == 8
         && NaiveTime::parse_from_str(whole, "%H:%M:%S").is_ok_and(|time| time.format("%H:%M:%S").to_string() == whole)

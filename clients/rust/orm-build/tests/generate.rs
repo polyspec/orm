@@ -23,7 +23,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), source).unwrap();
-    let out = orm_build::Builder::new([schema]).scan(&src).out_dir(dir.join("out")).try_generate();
+    let out = polyspec_orm_build::Builder::new([schema]).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
     text
@@ -37,21 +37,21 @@ fn generates_called_methods() {
         fn main() {
             let q = ZoneEvent::new().gt_start_dt(now).or_seq(vec![1, 2]).order_by_seq_desc_and_start_dt_asc();
             let n = ZoneEvent::new().get_count_by_seq_and_ne_start_dt(1, now);
-            let r = ZoneEvent::new().add_column_start_dt_alias_total(orm::year()).new_label("x");
+            let r = ZoneEvent::new().add_column_start_dt_alias_total(polyspec_orm::year()).new_label("x");
             assert_eq!(r.get_total(), r.get_label());
         }
         "#,
     )
     .unwrap();
     for want in [
-        "pub fn gt_start_dt<V0: orm::args::CmpArg<orm::args::kind::Time>>(mut self, v0: V0) -> Self",
-        "pub fn or_seq<V0: orm::args::EqArg<orm::args::kind::Int>>(mut self, v0: V0) -> Self",
+        "pub fn gt_start_dt<V0: polyspec_orm::args::CmpArg<polyspec_orm::args::kind::Time>>(mut self, v0: V0) -> Self",
+        "pub fn or_seq<V0: polyspec_orm::args::EqArg<polyspec_orm::args::kind::Int>>(mut self, v0: V0) -> Self",
         "pub fn order_by_seq_desc_and_start_dt_asc(mut self) -> Self",
-        "pub async fn get_count_by_seq_and_ne_start_dt<V0: orm::args::EqArg<orm::args::kind::Int>, V1: orm::args::EqArg<orm::args::kind::Time>>(&self, v0: V0, v1: V1) -> orm::Result<i64>",
-        "pub fn add_column_start_dt_alias_total(mut self, f: orm::Func) -> Self",
-        "pub fn get_total(&self) -> orm::Result<Option<orm::serde_json::Value>>",
-        "pub fn get_label(&self) -> orm::Result<Option<orm::serde_json::Value>>",
-        "pub static SCHEMA: orm::Schema = orm::Schema::new(include_str!(",
+        "pub async fn get_count_by_seq_and_ne_start_dt<V0: polyspec_orm::args::EqArg<polyspec_orm::args::kind::Int>, V1: polyspec_orm::args::EqArg<polyspec_orm::args::kind::Time>>(&self, v0: V0, v1: V1) -> polyspec_orm::Result<i64>",
+        "pub fn add_column_start_dt_alias_total(mut self, f: polyspec_orm::Func) -> Self",
+        "pub fn get_total(&self) -> polyspec_orm::Result<Option<polyspec_orm::serde_json::Value>>",
+        "pub fn get_label(&self) -> polyspec_orm::Result<Option<polyspec_orm::serde_json::Value>>",
+        "pub static SCHEMA: polyspec_orm::Schema = polyspec_orm::Schema::new(include_str!(",
         "pub const MANIFEST_HASH: &str = \"sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891\";",
     ] {
         assert!(text.contains(want), "missing {want}");
@@ -64,8 +64,8 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
     assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
-    assert!(text.contains("pub fn get_start_dt(&self) -> orm::Result<orm::chrono::NaiveDateTime>"), "getter must report missing selection");
-    assert!(text.contains("pub async fn gets_count(&self) -> orm::Result<orm::GroupRows>"), "group rows must not be partial models");
+    assert!(text.contains("pub fn get_start_dt(&self) -> polyspec_orm::Result<polyspec_orm::chrono::NaiveDateTime>"), "getter must report missing selection");
+    assert!(text.contains("pub async fn gets_count(&self) -> polyspec_orm::Result<polyspec_orm::GroupRows>"), "group rows must not be partial models");
 }
 
 #[test]
@@ -74,16 +74,19 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
     let root = bench();
     let text = generate_with_schema(
         root,
-        "fn main() { let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let _ = row.get_jsons_tags(); }",
+        "fn main() { let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())); let _ = row.get_jsons_tags(); }",
     )
     .unwrap();
-    assert!(text.contains("jsons_tags: Option<orm::ordered_json::Value>"), "nullable ordered JSON must represent SQL NULL separately");
-    assert!(text.contains("serialize_data: Option<orm::serde_json::Value>"), "nullable styled JSON must represent SQL NULL separately");
+    assert!(text.contains("jsons_tags: Option<polyspec_orm::ordered_json::Value>"), "nullable ordered JSON must represent SQL NULL separately");
+    assert!(text.contains("serialize_data: Option<polyspec_orm::serde_json::Value>"), "nullable styled JSON must represent SQL NULL separately");
     assert!(
-        text.contains("pub fn set_jsons_tags(mut self, v: orm::StyledValue<orm::ordered_json::Value>) -> orm::Result<Self>"),
+        text.contains("pub fn set_jsons_tags(mut self, v: polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>) -> polyspec_orm::Result<Self>"),
         "styled setter requires an explicit state"
     );
-    assert!(text.contains("pub fn get_jsons_tags(&self) -> orm::Result<orm::StyledValue<orm::ordered_json::Value>>"), "styled getter reports a checked state");
+    assert!(
+        text.contains("pub fn get_jsons_tags(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>>"),
+        "styled getter reports a checked state"
+    );
     assert!(text.contains("self.jsons_tags = Some(value);"), "setter retains a stored JSON value");
     assert!(text.contains("self.jsons_tags = if v.is_null() { None }"), "row assignment distinguishes SQL NULL");
     assert!(text.contains("self.__orm.require_field(\"jsons_tags\")?;"), "unselected field access must fail");
@@ -92,8 +95,8 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
 #[test]
 fn column_function_order_takes_the_function() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(orm::year()); }").unwrap();
-    assert!(text.contains("pub fn order_by_start_dt_asc(mut self, f: orm::Func) -> Self"));
+    let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(polyspec_orm::year()); }").unwrap();
+    assert!(text.contains("pub fn order_by_start_dt_asc(mut self, f: polyspec_orm::Func) -> Self"));
     assert!(text.contains("pub fn order_by_seq_asc(mut self) -> Self"));
 }
 
@@ -126,7 +129,7 @@ fn rejects_an_invalid_document() {
     std::fs::create_dir_all(&dir).unwrap();
     let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
     std::fs::write(dir.join("zone.dbs"), text).unwrap();
-    let err = orm_build::Builder::new([dir.join("zone.dbs")]).out_dir(dir.join("out")).try_generate().unwrap_err();
+    let err = polyspec_orm_build::Builder::new([dir.join("zone.dbs")]).out_dir(dir.join("out")).try_generate().unwrap_err();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(err.contains("zone.dbs: SCHEMA_INVALID 5:"), "{err}");
 }
@@ -138,7 +141,7 @@ fn rejects_a_file_without_the_signature() {
     for name in ["dbschema.dbs", "empty.dbs"] {
         let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
         let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
-        let err = orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
+        let err = polyspec_orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
         assert!(!out.exists(), "{name}: generation wrote {}", out.display());
         let display = path.display();
         assert_eq!(err, format!("{display}: SCHEMA_INVALID 1:1 signature: {display} is not a dbspec document"), "{name}");
@@ -153,8 +156,8 @@ fn manifest_text_is_embedded_with_its_hash() {
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
     let audit = orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
-    orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
-    let embedded = std::fs::read_to_string(dir.join("out").join(orm_build::MANIFEST_FILE)).unwrap();
+    polyspec_orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
+    let embedded = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
     let audit = std::fs::read_to_string(audit).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
@@ -169,14 +172,20 @@ fn generated_field_types_follow_the_runtime_model() {
         "fn main() { let row = Author::new(); let _ = row.get_gz_extend(); let _ = row.get_base64_extra(); let _ = row.get_ip(); let _ = row.get_aes_hex_email(); }",
     )
     .unwrap();
-    assert!(text.contains("pub fn get_gz_extend(&self) -> orm::Result<orm::StyledValue<orm::serde_json::Value>>"), "gz is a styled value");
-    assert!(text.contains("pub fn get_base64_extra(&self) -> orm::Result<orm::StyledValue<orm::serde_json::Value>>"), "base64 is a styled value");
     assert!(
-        text.contains("pub fn set_gz_extend(mut self, v: orm::StyledValue<orm::serde_json::Value>) -> orm::Result<Self>"),
+        text.contains("pub fn get_gz_extend(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::serde_json::Value>>"),
+        "gz is a styled value"
+    );
+    assert!(
+        text.contains("pub fn get_base64_extra(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::serde_json::Value>>"),
+        "base64 is a styled value"
+    );
+    assert!(
+        text.contains("pub fn set_gz_extend(mut self, v: polyspec_orm::StyledValue<polyspec_orm::serde_json::Value>) -> polyspec_orm::Result<Self>"),
         "gz setter takes a styled value"
     );
-    assert!(text.contains("pub fn get_ip(&self) -> orm::Result<Option<&str>>"), "ip is the address text");
-    assert!(text.contains("pub fn get_aes_hex_email(&self) -> orm::Result<Option<&str>>"), "aes hex is a string");
+    assert!(text.contains("pub fn get_ip(&self) -> polyspec_orm::Result<Option<&str>>"), "ip is the address text");
+    assert!(text.contains("pub fn get_aes_hex_email(&self) -> polyspec_orm::Result<Option<&str>>"), "aes hex is a string");
     assert!(text.contains("pub fn force_index_uq_author_uuid(mut self) -> Self"), "a unique key takes an index hint");
 }
 
@@ -185,7 +194,7 @@ fn styled_setter_result_handling_preserves_model_calls() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let root = bench();
     for handler in ["expect(\"assigned config\")", "unwrap()"] {
-        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
         let text = generate_with_schema(root.clone(), &source).expect("Result handling must not be a column call");
         assert!(text.contains("pub fn get_jsons_tags"));
         assert!(!text.contains("pub fn expect"));
@@ -199,7 +208,7 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
     let root = bench();
     let error = generate_with_schema(
         root,
-        "fn main() { let _ = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).expect(\"config\").missing_method(); }",
+        "fn main() { let _ = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).expect(\"config\").missing_method(); }",
     )
     .expect_err("unknown model call must fail");
     assert!(error.contains("missing_method"), "{error}");
@@ -210,7 +219,9 @@ fn styled_setter_result_transformations_are_not_column_calls() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).map(Some)"] {
-        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; }}");
+        let source = format!(
+            "fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handling}; }}"
+        );
         let text = generate_with_schema(root.clone(), &source).expect("Result transformations are not columns");
         assert!(!text.contains("pub fn map_err"));
         assert!(!text.contains("pub fn map("));
@@ -222,7 +233,7 @@ fn unknown_model_after_result_error_mapping_still_fails() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).unwrap()"] {
-        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
+        let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
         let error = generate_with_schema(root.clone(), &source).expect_err("unknown model call must fail");
         assert!(error.contains("missing_method"), "{error}");
         assert!(!error.contains("MapErr"), "{error}");
@@ -242,13 +253,13 @@ fn infallible_setter_does_not_accept_result_methods() {
 fn bound_setter_results_preserve_model_calls_after_extraction() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     let root = bench();
-    let source = "fn main() { let result = Author::new().set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
+    let source = "fn main() { let result = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
     let error = generate_with_schema(root, source).expect_err("bound Result must retain its model after extraction");
     assert!(error.contains("missing_method"), "{error}");
     assert!(!error.contains("MapErr"), "{error}");
 }
 
-/// relation getter는 실패한 downcast를 None으로 버리지 않고 `orm::Result`로 보고한다.
+/// relation getter는 실패한 downcast를 None으로 버리지 않고 `polyspec_orm::Result`로 보고한다.
 #[test]
 fn relation_getters_report_a_mismatched_relation_value() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
@@ -258,8 +269,8 @@ fn relation_getters_report_a_mismatched_relation_value() {
     )
     .unwrap();
     for want in [
-        "pub fn get_owner(&self) -> orm::Result<Option<&super::user::User>> {\n        self.__orm.related_one::<super::user::User>(\"owner\")\n    }",
-        "pub fn get_members(&self) -> orm::Result<Option<&orm::Collection<super::service_member::ServiceMember>>> {\n        self.__orm.related_many::<super::service_member::ServiceMember>(\"members\")\n    }",
+        "pub fn get_owner(&self) -> polyspec_orm::Result<Option<&super::user::User>> {\n        self.__orm.related_one::<super::user::User>(\"owner\")\n    }",
+        "pub fn get_members(&self) -> polyspec_orm::Result<Option<&polyspec_orm::Collection<super::service_member::ServiceMember>>> {\n        self.__orm.related_many::<super::service_member::ServiceMember>(\"members\")\n    }",
     ] {
         assert!(text.contains(want), "generated source lacks\n{want}");
     }
@@ -273,14 +284,14 @@ fn generation_leaves_external_tables_out() {
     let fixtures = orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let out = orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();
+    let out = polyspec_orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     let external = std::fs::read_to_string(dir.join("out").join("orm_external.dbs"));
     let _ = std::fs::remove_dir_all(&dir);
     let text = text.unwrap_or_else(|e| panic!("generate: {e}"));
     assert!(text.contains("pub struct ExtPost ") && text.contains("pub struct ExtPostHistory "), "the owned tables have models");
     assert!(!text.contains("pub struct ExtAccount ") && !text.contains("pub struct ExtAudit "), "the external tables have no model");
-    assert!(text.contains("orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
+    assert!(text.contains("polyspec_orm::Schema::with_external("), "the schema value carries the external text:\n{text}");
     let external = external.unwrap_or_else(|e| panic!("orm_external.dbs: {e}"));
     assert!(external.starts_with("dbspec 1 ext_core\n"), "external text: {external}");
     assert!(!external.contains("ext_session"), "the external text carries ext_session, which the set does not use");
@@ -312,7 +323,7 @@ fn scan_path_spelling_keeps_the_generated_source() {
     let mut texts = Vec::new();
     for (name, [src, tests, out]) in &spellings {
         let _ = std::fs::remove_dir_all(dir.join("out"));
-        let text = orm_build::Builder::new([schema()]).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
+        let text = polyspec_orm_build::Builder::new([schema()]).scan(src).scan(tests).out_dir(out).try_generate().map(|p| std::fs::read_to_string(p).unwrap());
         texts.push((*name, text.unwrap_or_else(|e| panic!("generate {name}: {e}"))));
     }
     let _ = std::fs::remove_dir_all(&dir);

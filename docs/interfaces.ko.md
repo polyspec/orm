@@ -49,7 +49,7 @@ flowchart LR
 | `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` |
 | `List<T>` | slice | array | `Vec<T>` | `T[]` |
 | `Result<T>` | `(T, error)` | 반환 또는 예외 | `Result<T>` | `Promise<T>` |
-| `Key` | `orm.Key` | 타입 있는 키 | `orm::Key` | `Key` |
+| `Key` | `orm.Key` | 타입 있는 키 | `polyspec_orm::Key` | `Key` |
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
@@ -103,7 +103,7 @@ classDiagram
 |---|---|---|
 | Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
 | PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
-| Rust | `model::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| Rust | `model::connect(dsn, pool_size, config).await?` | `polyspec_orm::Db` |
 | TypeScript | generated module의 `connect(dsn, options)` | `Promise<Db>` |
 
 ### 5.1 생성과 언어별 표기

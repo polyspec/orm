@@ -1,4 +1,4 @@
-//! The cleanup errors of `orm::dbspec::apply` (docs/plans.md, "Apply"): a
+//! The cleanup errors of `polyspec_orm::dbspec::apply` (docs/plans.md, "Apply"): a
 //! wrapped SQLite connection injects a failing lock release after an event
 //! stops apply and a failing foreign key restore after a failing BEGIN
 //! EXCLUSIVE, a rollback of an applied row whose recorded step lies outside
@@ -8,7 +8,7 @@
 //! cleanup error.
 
 use chrono::{DateTime, TimeZone, Utc};
-use orm::dbspec::{
+use polyspec_orm::dbspec::{
     apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
     Effect, Plan,
 };

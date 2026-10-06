@@ -3,7 +3,7 @@
 //! unambiguous.
 
 use crate::manifest::{function_column, styled};
-use orm_schema::dbspec::{Entity, Field, RuntimeModel};
+use polyspec_orm_schema::dbspec::{Entity, Field, RuntimeModel};
 
 pub fn pascal(s: &str) -> String {
     let mut out = String::with_capacity(s.len());

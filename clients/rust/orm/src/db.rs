@@ -272,7 +272,7 @@ pub(crate) struct DbInner {
     pub(crate) sqlite_lock_ready: AtomicBool,
     /// 연결의 statement event subscriber와 transaction 번호다. 연결의 모든 clone이 공유한다.
     pub(crate) subscribers: Subscribers,
-    /// `orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
+    /// `polyspec_orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
     /// `test-faults`가 있는 build만 설정할 수 있다.
     pub(crate) rollback_fault: AtomicBool,
 }

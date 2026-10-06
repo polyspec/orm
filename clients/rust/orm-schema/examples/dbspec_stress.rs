@@ -7,7 +7,7 @@
 //! emission must reproduce the canonical document, and two emissions must be
 //! identical.
 //!
-//! Usage: `cargo run --release -p orm-schema --example dbspec_stress -- <document path>`
+//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_stress -- <document path>`
 
 use orm_case_clock::CaseClock;
 use std::collections::BTreeMap;
@@ -29,13 +29,13 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
     case.step(format_args!("document {path}"));
-    let text = match orm_schema::dbspec::read_file(std::path::Path::new(&path)) {
+    let text = match polyspec_orm_schema::dbspec::read_file(std::path::Path::new(&path)) {
         Ok(text) => text,
-        Err(orm_schema::dbspec::ReadError::Io(error)) => {
+        Err(polyspec_orm_schema::dbspec::ReadError::Io(error)) => {
             case.fail(format_args!("{path}: {error}"));
             return ExitCode::FAILURE;
         }
-        Err(orm_schema::dbspec::ReadError::Diagnostics(errors)) => {
+        Err(polyspec_orm_schema::dbspec::ReadError::Diagnostics(errors)) => {
             case.fail(&errors[0].message);
             return ExitCode::FAILURE;
         }
@@ -45,7 +45,7 @@ fn main() -> ExitCode {
     let mut parsed = None;
     for _ in 0..PARSES {
         let parse = CaseClock::start();
-        let document = match orm_schema::dbspec::parse(&text, &BTreeMap::new()) {
+        let document = match polyspec_orm_schema::dbspec::parse(&text, &BTreeMap::new()) {
             Ok(document) => document,
             Err(errors) => {
                 for error in errors.iter().take(20) {
@@ -78,10 +78,10 @@ fn main() -> ExitCode {
     let reference_time = references[PARSES / 2];
     case.step(format_args!("reference cpu median {:.3} ms ratio {:.2} sum {sum}", ms(reference_time), parse_time.as_secs_f64() / reference_time.as_secs_f64()));
     let emit = CaseClock::start();
-    let emitted = orm_schema::dbspec::emit(&document);
+    let emitted = polyspec_orm_schema::dbspec::emit(&document);
     let emit_time = emit.cpu();
     case.step(format_args!("emit {:.3} ms", emit_time.as_secs_f64() * 1000.0));
-    let second = orm_schema::dbspec::emit(&document);
+    let second = polyspec_orm_schema::dbspec::emit(&document);
     let mut failures = Vec::new();
     let ratio = parse_time.as_secs_f64() / reference_time.as_secs_f64();
     case.step(format_args!(

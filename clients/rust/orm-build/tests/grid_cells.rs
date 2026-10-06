@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::CatalogConnection,
     tool_db::{GridCell, QueryLimits},
 };
@@ -20,7 +20,7 @@ async fn check() {
             "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL fixture DSN"),
             _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL fixture DSN"),
         };
-        let (database, seed, _) = orm_build::tool_db::open(&dsn).await.expect("fixture connection");
+        let (database, seed, _) = polyspec_orm_build::tool_db::open(&dsn).await.expect("fixture connection");
         drop(seed);
         let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
         let sql = if dialect == "postgres" {
@@ -62,7 +62,7 @@ async fn check() {
             _ => failures.push("empty-metadata"),
         }
         let bind_sql = if dialect == "postgres" { "SELECT CAST($1 AS TEXT)" } else { "SELECT ?" };
-        match catalog.read_only_grid_query(bind_sql, &[orm_build::tool_db::s("text")], QueryLimits::default()).await {
+        match catalog.read_only_grid_query(bind_sql, &[polyspec_orm_build::tool_db::s("text")], QueryLimits::default()).await {
             Ok(result) if result.rows == vec![vec![GridCell::Text("text".into())]] => {}
             _ => failures.push("bound-text"),
         }

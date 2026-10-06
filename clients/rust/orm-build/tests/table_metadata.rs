@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, TableRef},
     tool_db,
 };
@@ -18,7 +18,7 @@ async fn mysql_system_views_are_described_without_row_identity() {
         assert!(native.rows.len()==1&&native.rows[0].len()==1&&native.rows[0][0].bool().unwrap(),"fixture must exercise native system-view classification");
         let result=catalog.describe_table(&TableRef{namespace:"information_schema".into(),name:"TABLES".into()}).await;
         catalog.close().await;
-        assert!(matches!(result,Ok(ref metadata) if metadata.kind==orm_build::catalog::TableKind::View&&!metadata.columns.is_empty()&&metadata.primary_key.is_empty()&&!metadata.reliable_row_identity),"system-view descriptor must remain read-only view metadata");
+        assert!(matches!(result,Ok(ref metadata) if metadata.kind==polyspec_orm_build::catalog::TableKind::View&&!metadata.columns.is_empty()&&metadata.primary_key.is_empty()&&!metadata.reliable_row_identity),"system-view descriptor must remain read-only view metadata");
     }).await.expect("system view deadline");
 }
 async fn check() {
@@ -66,7 +66,8 @@ async fn check() {
         let view = format!("{name}_view");
         seed.exec(&format!("CREATE VIEW {view} AS SELECT a,b FROM {name}"), &[]).await.unwrap();
         match catalog.describe_table(&TableRef { namespace: namespace.clone(), name: view.clone() }).await {
-            Ok(metadata) if metadata.kind == orm_build::catalog::TableKind::View && !metadata.reliable_row_identity && metadata.primary_key.is_empty() => {}
+            Ok(metadata)
+                if metadata.kind == polyspec_orm_build::catalog::TableKind::View && !metadata.reliable_row_identity && metadata.primary_key.is_empty() => {}
             _ => failures.push("view-identity"),
         }
         if dialect == "sqlite" {

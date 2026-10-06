@@ -77,7 +77,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan.
 
 ## Tooling
-`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `orm-build` (Rust),
+`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `polyspec-orm-build` (Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License

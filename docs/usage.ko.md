@@ -82,7 +82,7 @@ npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -90,8 +90,8 @@ fn main() {
 |---|---|---|
 | Go | `//go:generate` 줄의 `orm-gen gen --lang go` | `go build` 전에 `go generate` |
 | PHP | `vendor/bin/orm-gen gen` | 스키마 변경 후 Composer 스크립트 |
-| TypeScript | `@polyspec/orm-typescript`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
-| Rust | `orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `orm::models!()`가 모델을 `model` 모듈로 포함한다 |
+| TypeScript | `@polyspec/orm`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
+| Rust | `orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `polyspec_orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
 - Go, Rust, TypeScript 생성기는 `--scan`(Rust는 `scan`)으로 지정한 소스를 읽어 소스가 호출하는 체인 메서드를 생성한다. 그래서 잘못된 메서드 이름은 빌드를 멈춘다. PHP는 호출 시점에 체인 이름을 해석한다.
 - 생성 모델은 document와 scan한 소스에만 의존하고 path를 쓴 방식에는 의존하지 않는다: scan과 output path를 상대 path나 절대 path로, `./`를 넣어, 또는 끝에 `/`를 붙여 써도, PHP document path를 상대 path, 절대 path, `./`를 넣은 path로 써도 같은 파일이 나온다. Rust `include_str!`은 manifest file의 path를 output directory의 canonical path로 쓴다.
@@ -139,11 +139,11 @@ generated model의 `bootstrap.php`는 `MANIFEST_TEXT`, `MANIFEST_HASH`, schema �
 ### Rust
 
 ```rust
-let master = model::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+let master = model::connect(&master_dsn, pool_size, polyspec_orm::Config { aes_key, ..Default::default() }).await?;
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 table이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
+`polyspec_orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `polyspec_orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 table이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
 
 ### TypeScript
 
@@ -277,7 +277,7 @@ $row->newIsMember(true);                                                        
 - 트랜잭션 옵션은 `isolation`, `readOnly`, `timeoutMs`를 선택한다. 지원하는 격리 수준은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후에, MySQL은 유지한 연결에서 `START TRANSACTION` 전에 설정을 적용한다. SQLite는 `PRAGMA query_only`로 `readOnly`를 적용하고 공통 격리 수준을 트랜잭션 연결에 대응시키며, ORM은 commit이나 rollback 전에 연결 상태를 복원한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`을 적용하고 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](config.md)).
 - 공통 실행 중 취소 메서드는 없다. `timeoutMs`가 PostgreSQL 문장 실행 시간을 제한한다.
-- test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm-typescript/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
+- test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
 
 ```go
 err := master.Transaction(func() error {
@@ -320,7 +320,7 @@ $master->transaction(function (): void {
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-let master = model::connect(&dsn, pool_size, orm::Config {
+let master = model::connect(&dsn, pool_size, polyspec_orm::Config {
     audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
     ..Default::default()
 }).await?;
@@ -415,7 +415,7 @@ $b->getJsonSetting()['a'];
 |---|---|---|
 | Go | `unsubscribe := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`. `Elapsed`는 `time.Duration`, `Transaction`은 transaction 밖에서 0 |
 | PHP | `$unsubscribe = $db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`?int`), `error`(`?OrmException`)를 가진 `Polyspec\Orm\StatementEvent` |
-| Rust | `let subscription = db.subscribe(\|e: &orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`. `elapsed`는 `Duration`, `transaction`은 `Option<u64>`, `error`는 `Option<&orm::Error>` |
+| Rust | `let subscription = db.subscribe(\|e: &polyspec_orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `polyspec_orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`. `elapsed`는 `Duration`, `transaction`은 `Option<u64>`, `error`는 `Option<&polyspec_orm::Error>` |
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`number \| null`), `error`(`OrmError \| null`)를 가진 `StatementEvent` |
 
 - `sql`은 보낸 statement다. relation step은 펼친 `IN` 목록을 담는다.

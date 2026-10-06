@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, P},
 };

@@ -1,5 +1,5 @@
 [package]
-name = "orm-schema"
+name = "polyspec-orm-schema"
 version = "0.0.2"
 edition = "2021"
 publish = false

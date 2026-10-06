@@ -4,12 +4,13 @@
 
 use std::collections::BTreeMap;
 
-use orm::{Core, Db, Entity, Model, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Schema, Val};
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
 static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbs"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
-static SECRET: Entity = Entity { name: "secret_config", schema: &SCHEMA, new: orm::model::new_boxed::<Secret>, collect: orm::model::collect_boxed::<Secret> };
+static SECRET: Entity =
+    Entity { name: "secret_config", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Secret>, collect: polyspec_orm::model::collect_boxed::<Secret> };
 const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
 /// A secret_config row whose values are read and written by column name.
@@ -35,7 +36,7 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -61,12 +62,12 @@ fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
 async fn invalid_aes_configuration_fails_before_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let cases = [
-        ("zero current version", orm::Config { aes_version: 0, ..Default::default() }),
-        ("negative current version", orm::Config { aes_version: -1, ..Default::default() }),
-        ("missing current key", orm::Config { aes_version: 2, aes_keys: keys(&[(1, "old-key")]), ..Default::default() }),
-        ("empty current key", orm::Config { aes_keys: keys(&[(1, "")]), ..Default::default() }),
-        ("invalid historical version", orm::Config { aes_keys: keys(&[(0, "old-key"), (1, "current-key")]), ..Default::default() }),
-        ("empty historical key", orm::Config { aes_keys: keys(&[(1, "current-key"), (2, "")]), ..Default::default() }),
+        ("zero current version", polyspec_orm::Config { aes_version: 0, ..Default::default() }),
+        ("negative current version", polyspec_orm::Config { aes_version: -1, ..Default::default() }),
+        ("missing current key", polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "old-key")]), ..Default::default() }),
+        ("empty current key", polyspec_orm::Config { aes_keys: keys(&[(1, "")]), ..Default::default() }),
+        ("invalid historical version", polyspec_orm::Config { aes_keys: keys(&[(0, "old-key"), (1, "current-key")]), ..Default::default() }),
+        ("empty historical key", polyspec_orm::Config { aes_keys: keys(&[(1, "current-key"), (2, "")]), ..Default::default() }),
     ];
     for (name, cfg) in cases {
         match Db::connect("sqlite:///a-path-that-must-not-be-opened/a.sqlite", 1, cfg).await {
@@ -82,23 +83,24 @@ async fn aes_write_uses_key_of_current_version() {
     let tmp = std::env::temp_dir().join(format!("orm-rust-aes-keys-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("aes-keys.sqlite").display());
-    let config = orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
+    let config = polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(1, "config-key-one"), (2, "config-key-two")]), ..Default::default() };
     let writer = Db::connect(&dsn, 2, config).await.unwrap();
     writer.utils().schema().install(&SCHEMA).await.unwrap();
     let mut row = connected(&writer);
-    row.core_mut().set_ordered("config", orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
-    orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create with aes_keys and aes_version: {e}"));
-    let reader =
-        Db::connect_schema(&dsn, &SCHEMA, 2, orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() }).await.unwrap();
+    row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(r#"{"b":1,"a":[]}"#).unwrap());
+    polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("create with aes_keys and aes_version: {e}"));
+    let reader = Db::connect_schema(&dsn, &SCHEMA, 2, polyspec_orm::Config { aes_version: 2, aes_keys: keys(&[(2, "config-key-two")]), ..Default::default() })
+        .await
+        .unwrap();
     let mut q = connected(&reader);
     q.core_mut().add_all_columns();
-    let rows = orm::model::gets(&q).await.unwrap().into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.unwrap().into_vec();
     match &rows[0].values["config"] {
         Val::Ordered(v) => assert_eq!(v.compact(), r#"{"b":1,"a":[]}"#),
         other => panic!("config is {other:?}"),
     }
     assert_eq!(rows[0].values["aes_key_version"].as_i64().unwrap(), 2, "stored version");
-    let conflict = orm::Config { aes_key: "other-key".into(), aes_version: 1, aes_keys: keys(&[(1, "config-key-one")]), ..Default::default() };
+    let conflict = polyspec_orm::Config { aes_key: "other-key".into(), aes_version: 1, aes_keys: keys(&[(1, "config-key-one")]), ..Default::default() };
     match Db::connect(&dsn, 2, conflict).await {
         Err(e) => assert!(e.code() == "CONFIG" && e.to_string().contains("aes_key"), "error {e}"),
         Ok(_) => panic!("aes_key that differs from aes_keys[aes_version] was accepted"),

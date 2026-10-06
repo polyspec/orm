@@ -1,4 +1,4 @@
-use orm_build::tool_db::{self, QueryLimits, Val};
+use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
 async fn physical_tool_queries_reject_budgets_without_partial_success() {

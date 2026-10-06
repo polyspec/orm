@@ -5,12 +5,13 @@
 
 use std::collections::BTreeMap;
 
-use orm::{Core, Entity, Model, Schema, Val};
+use polyspec_orm::{Core, Entity, Model, Schema, Val};
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
 static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbs"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
-static SECRET: Entity = Entity { name: "secret_config", schema: &SCHEMA, new: orm::model::new_boxed::<Secret>, collect: orm::model::collect_boxed::<Secret> };
+static SECRET: Entity =
+    Entity { name: "secret_config", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Secret>, collect: polyspec_orm::model::collect_boxed::<Secret> };
 const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
 /// A secret_config row whose values are read and written by column name.
@@ -36,7 +37,7 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -51,11 +52,11 @@ impl Model for Secret {
 #[test]
 fn array_output_of_an_unrepresentable_number_is_an_error() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let value = orm::ordered_json::parse(r#"{"n":1e400}"#).unwrap();
+    let value = polyspec_orm::ordered_json::parse(r#"{"n":1e400}"#).unwrap();
     let mut row = Secret::from_core(Core::new(&SECRET));
     row.core_mut().set_ordered("config", value.clone());
     assert!(row.assign("config", Val::Ordered(value.clone())).unwrap());
-    match orm::model::to_array(&row) {
+    match polyspec_orm::model::to_array(&row) {
         Err(e) => assert_eq!(e.code(), "CODEC_ENCODE", "{e}"),
         Ok(v) => panic!("to_array returned {v}"),
     }
@@ -69,10 +70,10 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
 fn json_output_keeps_the_ordered_json_text() {
     let _case = orm_testcase::case!(orm_testcase::COMPUTE);
     for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"n":1e400}"#] {
-        let value = orm::ordered_json::parse(text).unwrap();
+        let value = polyspec_orm::ordered_json::parse(text).unwrap();
         let mut row = Secret::from_core(Core::new(&SECRET));
         row.core_mut().set_ordered("config", value.clone());
         assert!(row.assign("config", Val::Ordered(value)).unwrap());
-        assert_eq!(orm::model::to_json(&row).unwrap(), format!(r#"{{"config":{{"kind":"value","value":{text}}}}}"#),);
+        assert_eq!(polyspec_orm::model::to_json(&row).unwrap(), format!(r#"{{"config":{{"kind":"value","value":{text}}}}}"#),);
     }
 }

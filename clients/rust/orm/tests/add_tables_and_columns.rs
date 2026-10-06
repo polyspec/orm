@@ -11,10 +11,10 @@
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
-use orm::dbspec;
-use orm::{Db, Schema};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::dbspec;
+use polyspec_orm::{Db, Schema};
 
 const ADDED: [&str; 11] = [
     "addcol_extra",
@@ -69,7 +69,7 @@ async fn count(db: &Db, query: &str) -> Result<i64, sqlx::Error> {
     }
 }
 
-fn code<T>(r: orm::Result<T>) -> String {
+fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
@@ -80,7 +80,7 @@ fn code<T>(r: orm::Result<T>) -> String {
 /// item의 tag와 그 tag의 자식 tag를 쓴 연결. pool은 연결 하나라 add_tables_and_columns가 쓴 연결을 다음
 /// statement가 다시 쓴다.
 async fn installed(database: &CaseDatabase) -> Db {
-    let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap();
+    let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap();
     db.utils().schema().install(fixture("log")).await.unwrap();
     db.utils().schema().install(fixture("v1")).await.unwrap();
     for statement in [
@@ -95,7 +95,7 @@ async fn installed(database: &CaseDatabase) -> Db {
     db
 }
 
-fn added(r: orm::Result<Vec<String>>) -> Vec<String> {
+fn added(r: polyspec_orm::Result<Vec<String>>) -> Vec<String> {
     r.unwrap_or_else(|e| panic!("add_tables_and_columns: {e}"))
 }
 
@@ -148,7 +148,7 @@ async fn add_tables_and_columns_differs() {
         let db = installed(&database).await;
         for name in DIFFERS {
             let result = db.utils().schema().add_tables_and_columns(fixture(name)).await;
-            assert_eq!(code(result), orm::codes::SCHEMA_DIFFERS, "{driver}: {name}");
+            assert_eq!(code(result), polyspec_orm::codes::SCHEMA_DIFFERS, "{driver}: {name}");
         }
         assert_eq!(added(db.utils().schema().add_tables_and_columns(fixture("v2")).await), ADDED, "{driver}: add_tables_and_columns after the differences");
         db.close().await;
@@ -165,7 +165,10 @@ async fn add_tables_and_columns_index() {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
         let unique = db.utils().schema().add_tables_and_columns(fixture("unique")).await.expect_err("a missing unique key");
-        assert!(unique.code() == orm::codes::SCHEMA_DIFFERS && unique.to_string().contains(MISSING_UNIQUE), "{driver}: a missing unique key: {unique}");
+        assert!(
+            unique.code() == polyspec_orm::codes::SCHEMA_DIFFERS && unique.to_string().contains(MISSING_UNIQUE),
+            "{driver}: a missing unique key: {unique}"
+        );
         assert_eq!(
             added(db.utils().schema().add_tables_and_columns(fixture("index")).await),
             ADDED_INDEX,
@@ -190,16 +193,16 @@ async fn add_tables_and_columns_transaction() {
         let db = installed(&database).await;
         let v2 = fixture("v2");
         if driver == "postgres" {
-            let result: orm::Result<()> = db
+            let result: polyspec_orm::Result<()> = db
                 .transaction(async || {
                     assert_eq!(added(db.utils().schema().add_tables_and_columns(v2).await), ADDED, "{driver}: add_tables_and_columns in the transaction");
-                    Err(orm::Error::Config("roll back".into()))
+                    Err(polyspec_orm::Error::Config("roll back".into()))
                 })
                 .await;
-            assert!(matches!(&result, Err(orm::Error::Config(m)) if m == "roll back"), "{driver}: the transaction did not roll back: {result:?}");
+            assert!(matches!(&result, Err(polyspec_orm::Error::Config(m)) if m == "roll back"), "{driver}: the transaction did not roll back: {result:?}");
         } else {
             let inside = db.transaction(async || Ok(code(db.utils().schema().add_tables_and_columns(v2).await))).await.unwrap();
-            assert_eq!(inside, orm::codes::CONFIG, "{driver}: add_tables_and_columns in a transaction");
+            assert_eq!(inside, polyspec_orm::codes::CONFIG, "{driver}: add_tables_and_columns in a transaction");
         }
         assert_eq!(added(db.utils().schema().add_tables_and_columns(v2).await), ADDED, "{driver}: add_tables_and_columns after the transaction");
         db.close().await;
@@ -217,7 +220,7 @@ async fn add_tables_and_columns_edited_manifest() {
         let changed = edited(&v2.text().replace(" note ", " memo "), v2.hash());
         assert_eq!(
             code(db.utils().schema().add_tables_and_columns(changed).await),
-            orm::codes::CONFIG,
+            polyspec_orm::codes::CONFIG,
             "{driver}: add_tables_and_columns of an edited manifest"
         );
         assert_eq!(added(db.utils().schema().add_tables_and_columns(v2).await), ADDED, "{driver}: add_tables_and_columns after the edited manifest");

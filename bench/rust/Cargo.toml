@@ -16,7 +16,7 @@ path = "src/driver_compare.rs"
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "chrono"] }
 mysql_async = { version = "0.37.1", default-features = false, features = ["minimal-rust"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-orm = { path = "../../clients/rust/orm" }
+polyspec-orm = { path = "../../clients/rust/orm" }
 
 [profile.release]
 opt-level = 3

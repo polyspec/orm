@@ -1,4 +1,4 @@
-use orm_build::tool_db::{Conn, QueryLimits};
+use polyspec_orm_build::tool_db::{Conn, QueryLimits};
 
 #[tokio::test]
 async fn bounded_query_rejects_ambiguous_multiple_result_sets() {

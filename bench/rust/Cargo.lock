@@ -1102,50 +1102,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "orm"
-version = "0.0.2"
-dependencies = [
- "aes-gcm",
- "base64",
- "chrono",
- "flate2",
- "futures-util",
- "hmac 0.12.1",
- "indexmap",
- "libsqlite3-sys",
- "ordered-json",
- "orm-schema",
- "rand 0.10.2",
- "regex",
- "rust_decimal",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "sha2 0.10.9",
- "sqlx",
- "tokio",
- "url",
- "whoami",
- "yaml-rust2",
-]
-
-[[package]]
 name = "orm-bench"
 version = "0.0.2"
 dependencies = [
  "mysql_async",
- "orm",
  "orm-testcase",
+ "polyspec-orm",
  "sqlx",
  "tokio",
-]
-
-[[package]]
-name = "orm-schema"
-version = "0.0.2"
-dependencies = [
- "regex",
- "sha2 0.10.9",
 ]
 
 [[package]]
@@ -1198,6 +1162,42 @@ name = "pkg-config"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
+
+[[package]]
+name = "polyspec-orm"
+version = "0.0.2"
+dependencies = [
+ "aes-gcm",
+ "base64",
+ "chrono",
+ "flate2",
+ "futures-util",
+ "hmac 0.12.1",
+ "indexmap",
+ "libsqlite3-sys",
+ "ordered-json",
+ "polyspec-orm-schema",
+ "rand 0.10.2",
+ "regex",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "sha2 0.10.9",
+ "sqlx",
+ "tokio",
+ "url",
+ "whoami",
+ "yaml-rust2",
+]
+
+[[package]]
+name = "polyspec-orm-schema"
+version = "0.0.2"
+dependencies = [
+ "regex",
+ "sha2 0.10.9",
+]
 
 [[package]]
 name = "polyval"

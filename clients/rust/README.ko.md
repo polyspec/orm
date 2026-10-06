@@ -4,39 +4,39 @@
 
 | 크레이트 | 내용 |
 |---|---|
-| `orm` (`clients/rust/orm`) | 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
-| `orm-schema` (`clients/rust/orm-schema`) | 스키마 정의: 런타임과 `orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, plan, Mermaid export와 import, runtime model, 그리고 SQL 문장 분리 |
-| `orm-build` (`clients/rust/orm-build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `live-db` 기능은 catalog과 tool database 연결을 제공한다. |
+| `polyspec-orm` (`clients/rust/orm`) | 모델 빌더, 요청 검증, MySQL·PostgreSQL·SQLite SQL 계획기, 계획 캐시, sqlx 실행기, codec, DSN 파서, 트랜잭션, 유틸리티, 오류 코드 |
+| `polyspec-orm-schema` (`clients/rust/orm-schema`) | 스키마 정의: 런타임과 `polyspec-orm-build`가 함께 쓰는 dbspec parser, emitter, manifest, renderer, plan, Mermaid export와 import, runtime model, 그리고 SQL 문장 분리 |
+| `polyspec-orm-build` (`clients/rust/orm-build`) | 빌드 시 생성기: dbspec document set을 읽고 크레이트 소스를 검사해 호출된 모델과 manifest text를 `OUT_DIR`에 쓴다. `live-db` 기능은 catalog과 tool database 연결을 제공한다. |
 | `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, `demo` |
 
 클라이언트에는 이 크레이트만 필요하다. 문장은 프로세스 안에서 계획하며 별도 서비스를 실행하지 않는다.
 
 ## 모델
 
-`build.rs`가 모델을 생성하고 `orm::models!()`가 `model` 모듈로 포함한다.
+`build.rs`가 모델을 생성하고 `polyspec_orm::models!()`가 `model` 모듈로 포함한다.
 
 ```toml
 [dependencies]
-orm = { path = "…/clients/rust/orm" }
+polyspec-orm = { path = "…/clients/rust/orm" }
 
 [build-dependencies]
-orm-build = { path = "…/clients/rust/orm-build" }
+polyspec-orm-build = { path = "…/clients/rust/orm-build" }
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
 ```rust
 // src/main.rs
-orm::models!();
+polyspec_orm::models!();
 
 use model::Author;
 
-let db = model::connect(&dsn, 8, orm::Config::default()).await?;
+let db = model::connect(&dsn, 8, polyspec_orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
@@ -47,7 +47,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 `model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite` 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
 `db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. `db.utils().schema().register(&model::SCHEMA)`는 데이터베이스를 읽지 않고 열린 연결에 set을 등록한다.
-`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
+`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
 
 ## 필수 호출
 
@@ -94,11 +94,11 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## 오류
 
-`orm::codes`는 `docs/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback 오류>) and rollback failed (<rollback 오류>)`이고 두 오류를 모두 담으며 재시도하지 않는다.
+`polyspec_orm::codes`는 `docs/errors.yaml`에서 생성한다(`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). 요청 오류는 `Error::Engine { code, msg }`다. 실행기는 `Error::Config`(`CONFIG`)와 `Error::OptimisticLock`을 발생시킨다. 모든 드라이버 오류는 `Error::Driver { code, msg, source }`가 된다. deadlock, 중복 키, foreign key, CHECK 위반처럼 `docs/errors.yaml`에 있는 조건은 공통 코드를, trigger가 거부한 쓰기 같은 그 밖의 드라이버 오류는 `DRIVER`를 가지며, `source`는 드라이버 오류다. 다른 연결이 SQLite lock을 `busy_timeout` 종료 시점까지 보유하면 `CANCELED`가 된다. `Db::transaction`은 `DEADLOCK`에서 callback을 다시 실행하며 기본 재시도는 세 번이다. callback이 실패하고 트랜잭션이나 savepoint의 rollback도 실패하면 `Error::Rollback { callback, rollback }`(`ROLLBACK`)을 반환한다. 메시지는 `transaction failed (<callback 오류>) and rollback failed (<rollback 오류>)`이고 두 오류를 모두 담으며 재시도하지 않는다.
 
 ## Statement event
 
-`db.subscribe(|e: &orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
+`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
 
 ## 빌드와 테스트
 

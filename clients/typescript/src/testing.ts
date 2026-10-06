@@ -1,5 +1,5 @@
 // TypeScript client의 test entry point다. package.json은 이것을 condition
-// `orm-test`에서만 `@polyspec/orm-typescript/testing`으로 export하므로, process는
+// `orm-test`에서만 `@polyspec/orm/testing`으로 export하므로, process는
 // Node가 `--conditions=orm-test`로 실행될 때만 이것을 resolve한다. package entry
 // point는 이것을 export하지 않는다.
 import { armRollbackFault, type Db } from './database.js';

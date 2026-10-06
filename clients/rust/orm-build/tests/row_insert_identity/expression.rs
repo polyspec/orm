@@ -1,5 +1,5 @@
 //! Owned volatile-default fixtures, conflicts and returned-row checks.
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, TableRef},
     tool_db::{self, Conn, GridCell, P},
 };

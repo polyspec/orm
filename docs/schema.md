@@ -10,8 +10,8 @@ Each language generates its models from the document set with its own tool ([usa
 |---|---|
 | Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
 | PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
-| TypeScript | `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` of `@polyspec/orm-typescript` |
-| Rust | `orm_build::Builder::new([<files.dbs>]).scan("src").generate()` in `build.rs` |
+| TypeScript | `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` of `@polyspec/orm` |
+| Rust | `polyspec_orm_build::Builder::new([<files.dbs>]).scan("src").generate()` in `build.rs` |
 
 Each tool reads every document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
@@ -23,15 +23,15 @@ The schema operations are functions of each client library. They take parsed doc
 
 | Operation | Go `engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust |
 |---|---|---|---|---|
-| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `orm_schema::dbspec::render` |
-| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `orm::dbspec::introspect` |
-| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `orm_schema::dbspec::diff` |
-| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `orm_schema::dbspec::installed_differences` |
-| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `orm_schema::dbspec::plan_steps` |
-| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `orm::dbspec::apply` |
-| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `orm::dbspec::recover` |
-| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `orm::dbspec::rollback` |
-| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `orm::dbspec::finalize` |
+| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` |
+| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` |
+| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` |
+| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` |
+| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` |
+| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` |
+| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` |
+| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` |
+| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` |
 
 [mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 
@@ -41,7 +41,7 @@ Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean 
 
 Tool `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through catalog operations, including transaction cleanup.
 
-The `live-db` feature exposes `orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. Catalog connections preserve SQLite foreign-key settings. A catalog connection reads table metadata and pages and changes rows; `orm::dbspec::introspect` reads the schema of a database.
+The `live-db` feature exposes `polyspec_orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. Catalog connections preserve SQLite foreign-key settings. A catalog connection reads table metadata and pages and changes rows; `polyspec_orm::dbspec::introspect` reads the schema of a database.
 
 SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
 
@@ -54,7 +54,7 @@ SQLite catalog connections require an existing regular database file and disable
 | Go | `Utils().Schema().Install(model.Schema)` | the schema value of the generated package (`*orm.Schema`) |
 | PHP | `utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())` | the schema value of the generated models (`Polyspec\Orm\Schema`) |
 | TypeScript | `utils().schema().install(SCHEMA)` | the schema value of the generated module (`{ manifestText, manifestHash }`) |
-| Rust | `utils().schema().install(&model::SCHEMA).await` | the schema value of the generated models (`orm::Schema`) |
+| Rust | `utils().schema().install(&model::SCHEMA).await` | the schema value of the generated models (`polyspec_orm::Schema`) |
 
 ## 5. Adding tables and columns
 
@@ -67,7 +67,7 @@ Every other difference returns `SCHEMA_DIFFERS`, which names each difference as 
 | Go | `Utils().Schema().AddTablesAndColumns(model.Schema)` | `dbspec.AddTablesAndColumnsSteps` |
 | PHP | `utils()->schema()->addTablesAndColumns(\Polyspec\Orm\Tests\Model\schema())` | `Dbspec::addTablesAndColumnsSteps` |
 | TypeScript | `utils().schema().addTablesAndColumns(SCHEMA)` | `addTablesAndColumnsSteps` |
-| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `orm_schema::dbspec::add_tables_and_columns_steps` |
+| Rust | `utils().schema().add_tables_and_columns(&model::SCHEMA).await` | `polyspec_orm_schema::dbspec::add_tables_and_columns_steps` |
 
 `install` creates a set only whole and returns `CONFIG` for a set of which only some tables exist; `addTablesAndColumns` brings such a set to its new version, after which `install` changes nothing.
 

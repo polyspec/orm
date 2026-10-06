@@ -49,7 +49,7 @@ The planner does not receive database credentials or parameter values. The execu
 | `Optional<T>` | `*T` | `?T` | `Option<T>` | `T \| null` |
 | `List<T>` | slice | array | `Vec<T>` | `T[]` |
 | `Result<T>` | `(T, error)` | return or exception | `Result<T>` | `Promise<T>` |
-| `Key` | `orm.Key` | typed key | `orm::Key` | `Key` |
+| `Key` | `orm.Key` | typed key | `polyspec_orm::Key` | `Key` |
 
 Null, an empty list, a missing field, and a default value are different states. Serialization preserves the logical type and field order required by the codec specification.
 
@@ -103,7 +103,7 @@ Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite:
 |---|---|---|
 | Go | `model.Connect(dsn, config)` | `(*orm.DB, error)` |
 | PHP | `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))` | `Db` |
-| Rust | `model::connect(dsn, pool_size, config).await?` | `orm::Db` |
+| Rust | `model::connect(dsn, pool_size, config).await?` | `polyspec_orm::Db` |
 | TypeScript | `connect(dsn, options)` of the generated module | `Promise<Db>` |
 
 ### 5.1 Creation and language forms

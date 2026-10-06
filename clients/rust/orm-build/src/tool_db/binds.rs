@@ -1,5 +1,5 @@
 use super::{params, ParamType, P};
-use orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use sqlx::{mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments, MySql, Postgres, Sqlite};
 
 pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeInfo>, sqlx::Error> {

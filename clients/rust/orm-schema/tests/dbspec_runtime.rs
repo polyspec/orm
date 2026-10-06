@@ -3,7 +3,7 @@
 //! 다시 읽은 document를 검사한다.
 
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::{self, Document, Type};
+use polyspec_orm_schema::dbspec::{self, Document, Type};
 use std::collections::BTreeMap;
 use std::time::Duration;
 

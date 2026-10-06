@@ -14,10 +14,10 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use orm::db::Pool;
-use orm::dbspec::{self, Document};
-use orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::dbspec::{self, Document};
+use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 
 /// contracts/fixtures/<name>.dbs의 text.
 fn fixture(name: &str) -> String {
@@ -52,7 +52,8 @@ const MEMBER_TEXT: &str = "dbspec 1 ext_member\n\nuse ext_core { ext_account, ex
 static MEMBER: Schema = Schema::with_external(MEMBER_TEXT, MEMBER_EXTERNAL, "sha256:c96bcde55bf0c8034c0b1ca46cc2d1ac097d9de4a54f55b058708eebd2f313b2");
 
 /// member set의 ext_post를 column 이름으로 쓰는 model.
-static POST: Entity = Entity { name: "ext_post", schema: &MEMBER, new: orm::model::new_boxed::<Post>, collect: orm::model::collect_boxed::<Post> };
+static POST: Entity =
+    Entity { name: "ext_post", schema: &MEMBER, new: polyspec_orm::model::new_boxed::<Post>, collect: polyspec_orm::model::collect_boxed::<Post> };
 
 #[derive(Clone)]
 struct Post {
@@ -76,7 +77,7 @@ impl Model for Post {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         self.values.insert(name.to_owned(), v);
         Ok(true)
     }
@@ -113,9 +114,9 @@ async fn text(db: &Db, query: &str) -> String {
 }
 
 /// CONFIG이고 message가 `message`를 담는지 확인한다.
-fn expect_config<T: std::fmt::Debug>(step: &str, result: orm::Result<T>, message: &str) {
+fn expect_config<T: std::fmt::Debug>(step: &str, result: polyspec_orm::Result<T>, message: &str) {
     match result {
-        Err(e) if e.code() == orm::codes::CONFIG && e.to_string().contains(message) => {}
+        Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(message) => {}
         other => panic!("{step}: {other:?}, want CONFIG with {message:?}"),
     }
 }
@@ -127,7 +128,7 @@ async fn external_case(driver: &str, dsn: &str) {
     assert_eq!((built.text(), built.external(), built.hash()), (MEMBER.text(), MEMBER.external(), MEMBER.hash()), "the member schema value");
     let member_v2 = set_schema(&["external/member_v2"], &["external/core"]);
     let drifted = set_schema(&["external/member"], &["external/core_extra"]);
-    let source: orm::AuditSource = Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("writer"))]));
+    let source: polyspec_orm::AuditSource = Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("writer"))]));
     let config = || Config { audit_source: Some(source.clone()), ..Default::default() };
     let missing =
         "the tables that the set uses from external documents differ from the database: table ext_account does not exist; table ext_audit does not exist";
@@ -160,7 +161,7 @@ async fn external_case(driver: &str, dsn: &str) {
         let mut post = Post::from_core(Core::new(&POST));
         post.core_mut().set("account_seq", Param::I64(1));
         post.core_mut().set("title", Param::from("hello"));
-        orm::model::create(&mut post).await.map(|_| ())
+        polyspec_orm::model::create(&mut post).await.map(|_| ())
     })
     .audit(Vec::<(String, Param)>::new())
     .await

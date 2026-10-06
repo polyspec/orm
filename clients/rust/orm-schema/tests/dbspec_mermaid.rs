@@ -1,5 +1,5 @@
 //! The cases of tests/dbspec/mermaid.json through `export_mermaid` and
-//! `import_mermaid` of `orm_schema::dbspec` (docs/mermaid.md): every export
+//! `import_mermaid` of `polyspec_orm_schema::dbspec` (docs/mermaid.md): every export
 //! case writes its Mermaid text and its dropped objects, every import case
 //! reads its document and its dropped objects, every invalid case reports
 //! exactly its `[rule, line, column]` diagnostics, and every round trip case
@@ -7,8 +7,8 @@
 //! objects and gets back its tables, columns, primary keys and foreign keys.
 
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::model::{DefaultValue, Document};
-use orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
+use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
+use polyspec_orm_schema::dbspec::{self, export_mermaid, import_mermaid, Unsupported};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -41,7 +41,7 @@ fn drops(dropped: &[Unsupported]) -> Value {
 /// Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름 순서의
 /// 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
 fn skeleton(document: &Document) -> Vec<String> {
-    let names = |list: &[orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
+    let names = |list: &[polyspec_orm_schema::dbspec::model::Name]| list.iter().map(|n| n.text.as_str()).collect::<Vec<_>>().join(", ");
     let mut tables: Vec<_> = document.tables.iter().collect();
     tables.sort_by(|a, b| a.name.text.cmp(&b.name.text));
     let mut out = Vec::new();

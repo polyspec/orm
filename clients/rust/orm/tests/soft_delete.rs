@@ -6,12 +6,16 @@
 use std::sync::{Arc, Mutex};
 
 use chrono::NaiveDateTime;
-use orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
+use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
 static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
-static ENTITY: Entity =
-    Entity { name: "soft_record", schema: &SCHEMA, new: orm::model::new_boxed::<SoftRecord>, collect: orm::model::collect_boxed::<SoftRecord> };
+static ENTITY: Entity = Entity {
+    name: "soft_record",
+    schema: &SCHEMA,
+    new: polyspec_orm::model::new_boxed::<SoftRecord>,
+    collect: polyspec_orm::model::collect_boxed::<SoftRecord>,
+};
 
 #[derive(Clone)]
 struct SoftRecord {
@@ -37,7 +41,7 @@ impl Model for SoftRecord {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         match name {
             "seq" => self.seq = v.as_i64()?,
             "name" => self.name = v.as_string()?,
@@ -83,16 +87,16 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     });
     let mut keep = record(&db);
     keep.core_mut().set("name", Param::Str("keep".into()));
-    orm::model::create(&mut keep).await.unwrap();
+    polyspec_orm::model::create(&mut keep).await.unwrap();
     let mut gone = record(&db);
     gone.core_mut().set("name", Param::Str("gone".into()));
-    orm::model::create(&mut gone).await.unwrap();
-    assert_eq!(orm::model::get_count(record(&db).core()).await.unwrap(), 2, "rows before the soft delete");
-    let rows = orm::model::gets(&record(&db)).await.unwrap();
+    polyspec_orm::model::create(&mut gone).await.unwrap();
+    assert_eq!(polyspec_orm::model::get_count(record(&db).core()).await.unwrap(), 2, "rows before the soft delete");
+    let rows = polyspec_orm::model::gets(&record(&db)).await.unwrap();
     let gone_row = rows.models().find(|r| r.name == "gone").cloned().expect("the gone row is readable");
-    orm::model::delete(&gone_row, false).await.unwrap();
-    assert_eq!(orm::model::get_count(record(&db).core()).await.unwrap(), 1, "reads exclude soft-deleted rows");
-    let names = orm::model::gets(&record(&db)).await.unwrap().models().map(|r| r.name.clone()).collect::<Vec<_>>().join(",");
+    polyspec_orm::model::delete(&gone_row, false).await.unwrap();
+    assert_eq!(polyspec_orm::model::get_count(record(&db).core()).await.unwrap(), 1, "reads exclude soft-deleted rows");
+    let names = polyspec_orm::model::gets(&record(&db)).await.unwrap().models().map(|r| r.name.clone()).collect::<Vec<_>>().join(",");
     assert_eq!(names, "keep", "a soft-deleted row is not readable");
     let statements = logged.lock().unwrap().clone();
     let update = statements.iter().find(|sql| sql.starts_with("UPDATE \"soft_record\"")).expect("delete rewrites to an update");

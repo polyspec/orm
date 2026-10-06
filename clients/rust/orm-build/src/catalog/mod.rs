@@ -16,8 +16,8 @@ mod temporal;
 use crate::tool_db::Conn;
 pub use metadata::{TableColumnMetadata, TableKind, TableMetadata, TableRef};
 pub use mutation::MutationPhase;
-use orm::db::{ConnectOptions, Pool};
 pub use page::TablePage;
+use polyspec_orm::db::{ConnectOptions, Pool};
 pub use row_snapshot::RowSnapshot;
 
 #[cfg(test)]
@@ -31,7 +31,7 @@ pub struct CatalogConnection {
 }
 impl CatalogConnection {
     pub async fn connect(raw: &str) -> Result<Self, String> {
-        let parsed = orm::db::parse_dsn(raw).map_err(|e| e.to_string())?;
+        let parsed = polyspec_orm::db::parse_dsn(raw).map_err(|e| e.to_string())?;
         let dialect = parsed.driver().to_owned();
         let pool = match parsed.options {
             ConnectOptions::MySql(options) => {

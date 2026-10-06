@@ -8,15 +8,19 @@
 
 use std::time::Duration;
 
-use orm::core::{Arg, ChainKey};
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::core::{Arg, ChainKey};
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static CLOCK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
-static CLOCK_EVENT: Entity =
-    Entity { name: "clock_event", schema: &CLOCK_SCHEMA, new: orm::model::new_boxed::<ClockEvent>, collect: orm::model::collect_boxed::<ClockEvent> };
+static CLOCK_EVENT: Entity = Entity {
+    name: "clock_event",
+    schema: &CLOCK_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<ClockEvent>,
+    collect: polyspec_orm::model::collect_boxed::<ClockEvent>,
+};
 const COLUMNS: [&str; 3] = ["seq", "label", "created_ts"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
@@ -42,7 +46,7 @@ impl Model for ClockEvent {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -65,19 +69,19 @@ fn connected(db: &Db) -> ClockEvent {
 /// millisecond clock cannot give.
 async fn clock_microseconds(driver: &str, dsn: &str) {
     // 모든 connection은 UTC다.
-    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&CLOCK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let before = chrono::Utc::now().naive_utc();
     for i in 0..16 {
         let mut row = connected(&db);
         row.core_mut().set("label", Param::from(format!("event-{i}").as_str()));
-        orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
     }
     let after = chrono::Utc::now().naive_utc();
     let mut q = connected(&db);
     q.core_mut().add_all_columns();
     q.core_mut().order_by("seq", false, None);
-    let rows = orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
     assert_eq!(rows.len(), 16, "{driver}: rows");
     let mut sub = false;
     for row in &rows {
@@ -129,8 +133,12 @@ async fn clock_microseconds_postgres() {
 
 static CLOCK_MARK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/clock_mark.dbs"), "sha256:f695f5f387baf1a92682394f9ca814958e0837e1ec4c429ca2d19feb58767683");
-static CLOCK_MARK: Entity =
-    Entity { name: "clock_mark", schema: &CLOCK_MARK_SCHEMA, new: orm::model::new_boxed::<ClockMark>, collect: orm::model::collect_boxed::<ClockMark> };
+static CLOCK_MARK: Entity = Entity {
+    name: "clock_mark",
+    schema: &CLOCK_MARK_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<ClockMark>,
+    collect: polyspec_orm::model::collect_boxed::<ClockMark>,
+};
 const MARK_COLUMNS: [&str; 4] = ["seq", "label", "created_ts", "deleted_at"];
 
 #[derive(Clone)]
@@ -155,7 +163,7 @@ impl Model for ClockMark {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !MARK_COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -176,7 +184,7 @@ fn mark(db: &Db) -> ClockMark {
 /// Connects (every connection is UTC) and installs the clock_mark document in
 /// the case database.
 async fn mark_db(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&CLOCK_MARK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     db
 }
@@ -184,7 +192,7 @@ async fn mark_db(driver: &str, dsn: &str) -> Db {
 async fn create_mark(db: &Db, driver: &str, i: usize) -> ClockMark {
     let mut row = mark(db);
     row.core_mut().set("label", Param::from(format!("mark-{i}").as_str()));
-    orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"))
+    polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"))
 }
 
 /// Sixteen soft deletions in separate statements store deleted_at with six
@@ -195,7 +203,7 @@ async fn clock_soft_delete_microseconds(driver: &str, dsn: &str) {
     let db = mark_db(driver, dsn).await;
     for i in 0..16 {
         let row = create_mark(&db, driver, i).await;
-        orm::model::delete(&row, false).await.unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
+        polyspec_orm::model::delete(&row, false).await.unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
     }
     let stamps: Vec<Option<String>> = match db.pool() {
         Pool::MySql(p) => sqlx::query_scalar("SELECT DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f') FROM clock_mark ORDER BY seq").fetch_all(p).await,
@@ -231,9 +239,10 @@ async fn clock_now_condition(driver: &str, dsn: &str) {
             Some(Val::I64(seq)) => *seq,
             other => panic!("{driver}: seq {other:?}"),
         };
-        for (name, func) in [("now", orm::args::now()), ("seconds_later(0)", orm::args::seconds_later(0))] {
-            let filter = mark(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(Param::I64(seq))), Arg::Value(orm::args::Value::Func(func))]);
-            let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{driver}: count: {e}"));
+        for (name, func) in [("now", polyspec_orm::args::now()), ("seconds_later(0)", polyspec_orm::args::seconds_later(0))] {
+            let filter =
+                mark(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(Param::I64(seq))), Arg::Value(polyspec_orm::args::Value::Func(func))]);
+            let found = polyspec_orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{driver}: count: {e}"));
             assert_eq!(found, 1, "{driver}: row {seq} with created_ts <= {name}");
         }
     }

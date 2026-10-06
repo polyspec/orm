@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, TableRef},
     tool_db::{self, GridCell, P},
 };
@@ -172,7 +172,7 @@ async fn lifecycle(catalog: &mut CatalogConnection, table: &TableRef) -> Result<
     Ok(())
 }
 
-async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &orm_build::catalog::TableMetadata, name: &str, dialect: &str) -> bool {
+async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec_orm_build::catalog::TableMetadata, name: &str, dialect: &str) -> bool {
     // At its Locked phase the insert stops while another connection probes the table lock (lock_probe), and then
     // is cancelled, so it rolls back.
     let held = Arc::new(std::sync::Mutex::new(None));

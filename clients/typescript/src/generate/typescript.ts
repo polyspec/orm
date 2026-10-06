@@ -230,7 +230,7 @@ function runtimeImport(outDir: string): string {
     const segments = path.slice(nested + marker.length + 1).split('/');
     return '../'.repeat(segments.length + 1) + 'index.js';
   }
-  return '@polyspec/orm-typescript';
+  return '@polyspec/orm';
 }
 
 /** Returns models.ts for a runtime model; scan lists files or directories whose model calls are typed. */

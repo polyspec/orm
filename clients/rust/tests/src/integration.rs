@@ -6,7 +6,7 @@
 //! Usage: integration <bench.dbs> [--case <case>]
 use std::cell::Cell;
 
-orm::models!();
+polyspec_orm::models!();
 
 #[cfg(test)]
 mod result_chains;
@@ -37,13 +37,13 @@ mod nonnull_model {
 #[test]
 fn generated_nonnull_styled_setter_rejects_sql_null() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let err = match nonnull_model::NonnullDocument::new().set_body(orm::StyledValue::SqlNull) {
+    let err = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::SqlNull) {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
     };
-    assert_eq!(err.code(), orm::codes::CODEC_ENCODE);
-    let value = orm::ordered_json::Value::null();
-    let row = match nonnull_model::NonnullDocument::new().set_body(orm::StyledValue::Value(value.clone())) {
+    assert_eq!(err.code(), polyspec_orm::codes::CODEC_ENCODE);
+    let value = polyspec_orm::ordered_json::Value::null();
+    let row = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::Value(value.clone())) {
         Ok(row) => row,
         Err(err) => panic!("JSON null must be an encoded value: {err}"),
     };
@@ -52,15 +52,15 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
         Err(err) => panic!("assigned value must be readable: {err}"),
     };
     match got {
-        orm::StyledValue::Value(got) => assert_eq!(got.compact(), value.compact()),
-        orm::StyledValue::SqlNull => panic!("encoded JSON null became SQL NULL"),
+        polyspec_orm::StyledValue::Value(got) => assert_eq!(got.compact(), value.compact()),
+        polyspec_orm::StyledValue::SqlNull => panic!("encoded JSON null became SQL NULL"),
     }
 }
 
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
-use orm::db::Pool;
-use orm::{AesKeyring, Collection, Db, Isolation, Null};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
 
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
@@ -71,7 +71,7 @@ async fn coverage_generated_model_connection() {
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()));
     assert!(!dsn.is_empty());
-    let db = model::connect(&dsn, 1, orm::Config::default()).await.unwrap();
+    let db = model::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();
     Author::new().connect(&db).get_count().await.unwrap();
     db.close().await;
 }
@@ -83,11 +83,11 @@ struct Target {
     database: CaseDatabase,
 }
 
-fn config() -> orm::Config {
-    orm::Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() }
+fn config() -> polyspec_orm::Config {
+    polyspec_orm::Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() }
 }
 
-fn code<T>(r: orm::Result<T>) -> String {
+fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
@@ -98,7 +98,7 @@ fn code<T>(r: orm::Result<T>) -> String {
 fn generated_fields_require_selection_or_assignment() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let model = Author::new();
-    assert_eq!(model.get_name().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED);
+    assert_eq!(model.get_name().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED);
     assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
     assert_eq!(model.set_name("checked").get_name().unwrap(), "checked");
 }
@@ -248,7 +248,7 @@ async fn joins_and_relations(t: &Target) {
     let got = limited.first().and_then(|u| u.get_author_models().unwrap()).expect("author models");
     assert_eq!(names(got), "gamma", "group_limit");
 
-    let other = model::connect(&t.dsn, 2, orm::Config::default()).await.unwrap();
+    let other = model::connect(&t.dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let external = Author::new().connect(db).relation(User::new().connect(&other).match_user_seq_with_seq().alias_owner()).get_by_name("beta").await.unwrap();
     assert_eq!(external.get_owner().unwrap().map(|u| u.get_name().unwrap()), Some("lee"), "relation on another connection");
     other.close().await;
@@ -296,13 +296,13 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!((sum, avg), (60.0, 15.0), "aggregates");
     let projected = Author::new().connect(db).remove_all_columns().add_column_name().get_by_seq(f.authors[0].get_seq().unwrap()).await.unwrap();
     assert_eq!(projected.get_name().unwrap(), "alpha", "selected field");
-    assert_eq!(projected.get_description().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED, "unselected field");
+    assert_eq!(projected.get_description().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED, "unselected field");
     let grouped = Author::new().connect(db).group_by_is_close().gets_count().await.unwrap();
     assert_eq!(grouped.len(), 2, "gets_count");
     for row in grouped.iter() {
         assert!(row.count() > 0);
-        assert!(matches!(row.value("is_close").unwrap(), orm::Val::Bool(_)));
-        assert_eq!(row.value("name").unwrap_err().code(), orm::codes::COLUMN_UNSELECTED);
+        assert!(matches!(row.value("is_close").unwrap(), polyspec_orm::Val::Bool(_)));
+        assert_eq!(row.value("name").unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED);
     }
     let page = Author::new().connect(db).order_by_seq_asc().gets_page(2, 3).await.unwrap();
     assert_eq!((page.total_count, page.total_pages, page.items.len()), (4, 2, 1), "page");
@@ -382,9 +382,9 @@ async fn writes(t: &Target) {
 
 async fn transactions(t: &Target) {
     let db = &t.db;
-    let boom = || orm::Error::Config("boom".into());
-    let is_boom = |r: &orm::Result<()>| matches!(r, Err(orm::Error::Config(m)) if m == "boom");
-    let r: orm::Result<()> = db
+    let boom = || polyspec_orm::Error::Config("boom".into());
+    let is_boom = |r: &polyspec_orm::Result<()>| matches!(r, Err(polyspec_orm::Error::Config(m)) if m == "boom");
+    let r: polyspec_orm::Result<()> = db
         .transaction(async || {
             User::new().set_name("rolled back").create().await?;
             Err(boom())
@@ -392,10 +392,10 @@ async fn transactions(t: &Target) {
         .await;
     assert!(is_boom(&r), "rollback error: {r:?}");
     assert_eq!(User::new().connect(db).get_count().await.unwrap(), 0, "rollback");
-    let r: orm::Result<()> = db
+    let r: polyspec_orm::Result<()> = db
         .transaction(async || {
             User::new().set_name("outer").create().await?;
-            let inner: orm::Result<()> = db
+            let inner: polyspec_orm::Result<()> = db
                 .transaction(async || {
                     User::new().set_name("inner").create().await?;
                     Err(boom())
@@ -420,17 +420,17 @@ async fn transactions(t: &Target) {
     assert_eq!(code(User::new().connect(db).for_update().gets().await), "CONFIG", "lock outside a transaction");
     assert_eq!(code(db.utils().lock("x").await), "CONFIG", "lock utility outside a transaction");
     let attempts = Cell::new(0);
-    let r: orm::Result<()> = db
+    let r: polyspec_orm::Result<()> = db
         .transaction(async || {
             attempts.set(attempts.get() + 1);
             if attempts.get() < 3 {
-                return Err(orm::transaction_conflict("retry"));
+                return Err(polyspec_orm::transaction_conflict("retry"));
             }
             Ok(())
         })
         .await;
     assert!(r.is_ok() && attempts.get() == 3, "retry: {} {r:?}", attempts.get());
-    let r: orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
+    let r: polyspec_orm::Result<()> = db.transaction(async || Ok(())).read_only().timeout_ms(500).await;
     let want = if t.driver == "postgres" { "ok" } else { "CAPABILITY_UNSUPPORTED" };
     assert_eq!(code(r), want, "{}: transaction timeoutMs", t.driver);
     assert!(!db.utils().schema().empty().await.unwrap(), "schema().empty() on an installed schema");
@@ -487,7 +487,7 @@ async fn primary_and_replica(t: &Target, replica_base: &str) {
     assert_eq!(User::new().connect(&slave1).name(name.as_str()).get_count().await.unwrap(), 1, "the replica reads the row written through the primary");
     assert_eq!(
         code(User::new().connect(&slave1).set_name(format!("{name}-replica")).create().await),
-        orm::codes::READ_ONLY,
+        polyspec_orm::codes::READ_ONLY,
         "a write through the replica connection is rejected"
     );
     assert_eq!(
@@ -499,7 +499,7 @@ async fn primary_and_replica(t: &Target, replica_base: &str) {
     let mut row = User::new().connect(&slave1).name(name.as_str()).get().await.unwrap().connect(master).set_name(format!("{name}-renamed"));
     row.update(false).await.unwrap();
     let tx_name = format!("{name}-tx");
-    let r: orm::Result<()> = master
+    let r: polyspec_orm::Result<()> = master
         .transaction(async || {
             User::new().set_name(tx_name.as_str()).create().await?;
             assert_eq!(User::new().connect(master).name(tx_name.as_str()).get_count().await?, 1, "the primary connection inside its transaction");
@@ -525,7 +525,7 @@ async fn read_only_sqlite(t: &Target) {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o444)).unwrap();
     let db = model::connect(&t.dsn, 2, config()).await.unwrap();
     assert_eq!(User::new().connect(&db).name("read-only").get_count().await.unwrap(), 1, "the read-only database reads the row");
-    assert_eq!(code(User::new().connect(&db).set_name("rejected").create().await), orm::codes::READ_ONLY, "a write to the read-only database");
+    assert_eq!(code(User::new().connect(&db).set_name("rejected").create().await), polyspec_orm::codes::READ_ONLY, "a write to the read-only database");
     db.close().await;
 }
 
@@ -566,7 +566,7 @@ async fn bind_limit_splitting(t: &Target) {
     assert_eq!(Service::new().connect(db).name(names.clone()).get_count().await.unwrap(), N as i64, "count");
     if t.driver == "sqlite" {
         let limited = Service::new().connect(db).name(names).limit(0, 10).gets().await;
-        assert_eq!(code(limited), orm::codes::IR_INVALID, "limited split");
+        assert_eq!(code(limited), polyspec_orm::codes::IR_INVALID, "limited split");
     }
 }
 
@@ -590,23 +590,23 @@ async fn aes_rotation(t: &Target) {
 /// member order, number text, and `{}` apart from `[]`; SQL NULL is distinct
 /// from a JSON literal null.
 async fn json_values(t: &Target) {
-    fn expect_ordered(value: orm::StyledValue<orm::ordered_json::Value>, text: &str) {
+    fn expect_ordered(value: polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>, text: &str) {
         match value {
-            orm::StyledValue::Value(value) => assert_eq!(value.compact(), text),
-            orm::StyledValue::SqlNull => panic!("expected an encoded JSON value"),
+            polyspec_orm::StyledValue::Value(value) => assert_eq!(value.compact(), text),
+            polyspec_orm::StyledValue::SqlNull => panic!("expected an encoded JSON value"),
         }
     }
     let db = &t.db;
-    assert_eq!(Author::new().get_jsons_tags().unwrap_err().code(), orm::codes::COLUMN_UNSELECTED, "unselected JSON column");
+    assert_eq!(Author::new().get_jsons_tags().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED, "unselected JSON column");
     let f = seed(db).await;
     let text = r#"{"b":1,"a":[],"c":{},"n":1.50}"#;
     let tags = r#"["z",{"y":[]},-0.0]"#;
     let seq = f.authors[0].get_seq().unwrap();
     let b = Author::new().connect(db).get_by_seq(seq).await.unwrap();
     let mut b = b
-        .set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse(text).unwrap()))
+        .set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(text).unwrap()))
         .unwrap()
-        .set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::parse(tags).unwrap()))
+        .set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(tags).unwrap()))
         .unwrap();
     b.update(false).await.unwrap();
     let got = Author::new().connect(db).add_all_columns().get_by_seq(seq).await.unwrap();
@@ -632,11 +632,11 @@ async fn json_values(t: &Target) {
         .set_service_member_seq(f.member.get_seq().unwrap())
         .set_start_dt(start())
         .set_end_dt(start());
-    let created = match created.set_json_setting(orm::StyledValue::Value(orm::ordered_json::parse("[]").unwrap())) {
+    let created = match created.set_json_setting(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse("[]").unwrap())) {
         Ok(row) => row,
         Err(error) => panic!("set json_setting: {error}"),
     };
-    let mut created = match created.set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::Value::null())) {
+    let mut created = match created.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())) {
         Ok(row) => row,
         Err(error) => panic!("set jsons_tags: {error}"),
     };
@@ -646,13 +646,13 @@ async fn json_values(t: &Target) {
     expect_ordered(got.get_json_setting().unwrap(), "[]");
     expect_ordered(got.get_jsons_tags().unwrap(), "null");
     assert_eq!(got.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"value","value":null}), "JSON literal null output");
-    let mut got = got.set_jsons_tags(orm::StyledValue::SqlNull).unwrap();
+    let mut got = got.set_jsons_tags(polyspec_orm::StyledValue::SqlNull).unwrap();
     got.update(false).await.unwrap();
     let sql_null = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
-    assert!(matches!(sql_null.get_jsons_tags().unwrap(), orm::StyledValue::SqlNull), "SQL NULL remains explicit");
+    assert!(matches!(sql_null.get_jsons_tags().unwrap(), polyspec_orm::StyledValue::SqlNull), "SQL NULL remains explicit");
     assert_eq!(sql_null.to_array().unwrap()["jsons_tags"], serde_json::json!({"kind":"sql-null"}), "SQL NULL output");
     assert!(sql_null.to_json().unwrap().contains(r#""jsons_tags":{"kind":"sql-null"}"#), "SQL NULL model JSON output");
-    let mut object = sql_null.set_jsons_tags(orm::StyledValue::Value(orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
+    let mut object = sql_null.set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::parse(r#"{"kind":"sql-null"}"#).unwrap())).unwrap();
     object.update(false).await.unwrap();
     let object = Author::new().connect(db).add_all_columns().get_by_seq(created.get_seq().unwrap()).await.unwrap();
     assert_eq!(
@@ -685,9 +685,9 @@ async fn main() {
             std::process::exit(2);
         }
     };
-    let text = orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
-    let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
-    let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let text = polyspec_orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
+    let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
     const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
     if selected.is_none_or(|case| case == "schema_empty") {

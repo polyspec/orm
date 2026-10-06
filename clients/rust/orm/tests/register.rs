@@ -11,9 +11,9 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use orm::dbspec::{self, Document};
-use orm::{Config, Db, Schema};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::dbspec::{self, Document};
+use polyspec_orm::{Config, Db, Schema};
 
 /// sqlx가 database에 보낸 statement의 log record 수다.
 static SENT: AtomicU64 = AtomicU64::new(0);
@@ -70,7 +70,7 @@ async fn register_case(driver: &str, dsn: &str) {
     schema.register(member).unwrap_or_else(|e| panic!("{driver}: register: {e}"));
     schema.register(member).unwrap_or_else(|e| panic!("{driver}: second register: {e}"));
     match schema.register(edited) {
-        Err(e) if e.code() == orm::codes::CONFIG => {}
+        Err(e) if e.code() == polyspec_orm::codes::CONFIG => {}
         other => panic!("{driver}: register of a text that does not hash to its declared hash: {other:?}, want CONFIG"),
     }
     let sent = SENT.load(Ordering::SeqCst) - before;

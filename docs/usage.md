@@ -82,7 +82,7 @@ npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
@@ -90,8 +90,8 @@ fn main() {
 |---|---|---|
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
-| TypeScript | `orm-gen gen` of `@polyspec/orm-typescript` | the `build` script before `tsc` |
-| Rust | the `orm-build` crate | `build.rs` on every `cargo build`; `orm::models!()` includes the models as the module `model` |
+| TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
+| Rust | the `orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.
 - The generated models depend only on the documents and the scanned sources, not on how a path is written: a scan or output path written relative or absolute, with a `./` component or with a trailing `/` gives the same files, and so does a PHP document path written relative, absolute or with `./`. Rust `include_str!` names the manifest file by the canonical path of the output directory.
@@ -139,11 +139,11 @@ $master->utils()->schema()->register(\Module\Orm\schema());
 ### Rust
 
 ```rust
-let master = model::connect(&master_dsn, pool_size, orm::Config { aes_key, ..Default::default() }).await?;
+let master = model::connect(&master_dsn, pool_size, polyspec_orm::Config { aes_key, ..Default::default() }).await?;
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
+`polyspec_orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `polyspec_orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
 
 ### TypeScript
 
@@ -277,7 +277,7 @@ $row->newIsMember(true);                                                        
 - Transaction options select `isolation`, `readOnly`, and `timeoutMs`. The supported isolation names are `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, and `serializable`. PostgreSQL applies transaction settings after `BEGIN`; MySQL applies them before `START TRANSACTION` on the retained connection. SQLite applies `readOnly` through `PRAGMA query_only` and maps portable isolation modes to its transaction connection; the ORM restores connection state before commit or rollback. A positive `timeoutMs` applies PostgreSQL `statement_timeout`; MySQL and SQLite return `CAPABILITY_UNSUPPORTED`.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction. MySQL and PostgreSQL execute the selected row lock; `NoWait` fails immediately when the row is unavailable. SQLite emits no lock suffix and uses an ORM transaction-scoped database lock row for all four modes. A SQLite write transaction takes the database write lock when it begins, so a lock request inside it succeeds without waiting, and the lock wait happens when the transaction begins ([runtime connection](config.md)).
 - There is no common in-flight cancellation method. `timeoutMs` limits PostgreSQL statements.
-- A test makes the rollback of a transaction fail on every database with the test fault of its client, which a production build does not contain or load ([protocol §3.1](protocol.md#_3-1-test-faults)): Go `orm.FailNextRollback(db)` with `-tags ormtest`, Rust `orm::testing::fail_next_rollback(&db)` with the feature `test-faults`, TypeScript `failNextRollback(db)` of `@polyspec/orm-typescript/testing` under `node --conditions=orm-test`, and PHP `Polyspec\Orm\Testing\Faults::failNextRollback($db)` after `require 'vendor/polyspec/orm/testing/Faults.php'`. The next transaction whose callback fails is rolled back and returns `ROLLBACK` with the callback error and a `FAULT` error.
+- A test makes the rollback of a transaction fail on every database with the test fault of its client, which a production build does not contain or load ([protocol §3.1](protocol.md#_3-1-test-faults)): Go `orm.FailNextRollback(db)` with `-tags ormtest`, Rust `polyspec_orm::testing::fail_next_rollback(&db)` with the feature `test-faults`, TypeScript `failNextRollback(db)` of `@polyspec/orm/testing` under `node --conditions=orm-test`, and PHP `Polyspec\Orm\Testing\Faults::failNextRollback($db)` after `require 'vendor/polyspec/orm/testing/Faults.php'`. The next transaction whose callback fails is rolled back and returns `ROLLBACK` with the callback error and a `FAULT` error.
 
 ```go
 err := master.Transaction(func() error {
@@ -320,7 +320,7 @@ $master->transaction(function (): void {
 }, audit: ['action' => 'service.rename', 'reason' => $reason]);
 ```
 ```rust
-let master = model::connect(&dsn, pool_size, orm::Config {
+let master = model::connect(&dsn, pool_size, polyspec_orm::Config {
     audit_source: Some(Arc::new(|| Ok(vec![("account_seq".into(), Param::I64(current_account()?)), ("request_id".into(), Param::from(current_request_id()?))]))),
     ..Default::default()
 }).await?;
@@ -415,7 +415,7 @@ Every client publishes one event for each statement it sends to the database: th
 |---|---|---|
 | Go | `unsubscribe := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`, `Elapsed` a `time.Duration`, `Transaction` 0 outside a transaction |
 | PHP | `$unsubscribe = $db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `Polyspec\Orm\StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`?int`), `error` (`?OrmException`) |
-| Rust | `let subscription = db.subscribe(\|e: &orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`, `elapsed` a `Duration`, `transaction` an `Option<u64>`, `error` an `Option<&orm::Error>` |
+| Rust | `let subscription = db.subscribe(\|e: &polyspec_orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `polyspec_orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`, `elapsed` a `Duration`, `transaction` an `Option<u64>`, `error` an `Option<&polyspec_orm::Error>` |
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`number \| null`), `error` (`OrmError \| null`) |
 
 - `sql` is the statement as sent; a relation step carries its expanded `IN` list.

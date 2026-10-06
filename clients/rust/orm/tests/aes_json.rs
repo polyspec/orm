@@ -5,16 +5,17 @@
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
-use orm::utils::AesKeyring;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::utils::AesKeyring;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use sqlx::Row;
 
 // secret_config { bigint seq PK "auto"; int aes_key_version; longblob config "json aes" }
 static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/secret_config.dbs"), "sha256:c50e5970f7edf30cb5aaa52d291e4ae19ebbdd28040084829ebada1932120f7b");
-static SECRET: Entity = Entity { name: "secret_config", schema: &SCHEMA, new: orm::model::new_boxed::<Secret>, collect: orm::model::collect_boxed::<Secret> };
+static SECRET: Entity =
+    Entity { name: "secret_config", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Secret>, collect: polyspec_orm::model::collect_boxed::<Secret> };
 const COLUMNS: [&str; 3] = ["seq", "aes_key_version", "config"];
 
 /// A secret_config row whose values are read and written by column name.
@@ -40,7 +41,7 @@ impl Model for Secret {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -60,7 +61,7 @@ fn connected(db: &Db) -> Secret {
 
 async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
     let keys: BTreeMap<i32, String> = keys.iter().map(|(v, k)| (*v, (*k).to_owned())).collect();
-    let config = orm::Config { aes_key: keys[&version].clone(), aes_version: version, aes_keys: keys, ..Default::default() };
+    let config = polyspec_orm::Config { aes_key: keys[&version].clone(), aes_version: version, aes_keys: keys, ..Default::default() };
     Db::connect_schema(dsn, &SCHEMA, 2, config).await.unwrap_or_else(|e| panic!("{dsn}: {e}"))
 }
 
@@ -68,7 +69,7 @@ async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
 async fn read(db: &Db) -> String {
     let mut q = connected(db);
     q.core_mut().add_all_columns();
-    let rows = orm::model::gets(&q).await.unwrap().into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.unwrap().into_vec();
     assert_eq!(rows.len(), 1, "rows");
     match &rows[0].values["config"] {
         Val::Ordered(v) => v.compact(),
@@ -109,8 +110,14 @@ async fn aes_json_column() {
         let first = open(dsn, one, 1).await;
         first.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = connected(&first);
-        row.core_mut().set_ordered("config", orm::ordered_json::parse(text).unwrap());
-        let seq = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}")).value("seq").expect("generated seq").as_i64().unwrap();
+        row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(text).unwrap());
+        let seq = polyspec_orm::model::create(&mut row)
+            .await
+            .unwrap_or_else(|e| panic!("{driver}: create: {e}"))
+            .value("seq")
+            .expect("generated seq")
+            .as_i64()
+            .unwrap();
         assert_eq!(read(&first).await, text, "{driver}: read back");
         let (cell, version) = stored(&first).await;
         assert!(cell.starts_with(b"ORM-AES2\0") && !cell.windows(12).any(|w| w == b"s3cret-token") && version == 1, "{driver}: stored version {version}");
@@ -126,8 +133,8 @@ async fn aes_json_column() {
         let again = open(dsn, both, 1).await;
         let mut changed = connected(&again);
         changed.core_mut().set("seq", Param::I64(seq));
-        changed.core_mut().set_ordered("config", orm::ordered_json::parse(updated).unwrap());
-        orm::model::update(&mut changed, false).await.unwrap_or_else(|e| panic!("{driver}: update: {e}"));
+        changed.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(updated).unwrap());
+        polyspec_orm::model::update(&mut changed, false).await.unwrap_or_else(|e| panic!("{driver}: update: {e}"));
         assert_eq!(stored(&again).await.1, 1, "{driver}: updated version");
         assert_eq!(read(&again).await, updated, "{driver}: updated read");
         for db in [first, second, rotated, again] {

@@ -111,7 +111,7 @@ let page = Product::new().connect(&slave1)
     .service_seq(service_seq).and_is_close(0).and_is_display(1)
     .and(|q| q
         .is_allday(1)
-        .or(|q| q.is_allday(0).and_le_display_start_dt(orm::now()).and_ge_display_end_dt(orm::now())))
+        .or(|q| q.is_allday(0).and_le_display_start_dt(polyspec_orm::now()).and_ge_display_end_dt(polyspec_orm::now())))
     .and(|q| q
         .fulltext_boolean_name_with_short_description_with_content(&keyword)
         .or(&brand_lang)

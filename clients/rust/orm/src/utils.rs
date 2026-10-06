@@ -14,7 +14,7 @@ use crate::schema::Schema;
 use crate::tx::{active_for, transaction_conflict, TxShared};
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
-use orm_schema::dbspec::{self, Document};
+use polyspec_orm_schema::dbspec::{self, Document};
 
 /// The utilities of a connection.
 pub struct Utils<'a> {

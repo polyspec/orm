@@ -2,7 +2,7 @@
 //! Usage: ORM_BENCH_MYSQL_DSN=<seeded bench DSN> client_bench <iterations>
 use std::time::Instant;
 
-orm::models!();
+polyspec_orm::models!();
 
 use model::Author;
 
@@ -43,7 +43,7 @@ fn iterations(minimum: usize) -> usize {
 #[tokio::main]
 async fn main() {
     let iters = iterations(1);
-    let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let dsn = bench_dsn().unwrap_or_else(|e| {
         eprintln!("{e}");
         std::process::exit(1)

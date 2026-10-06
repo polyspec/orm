@@ -923,7 +923,7 @@ caseTest('the CI workflow runs no test runner outside make check', COMPUTE, () =
 });
 
 caseTest('a workflow that runs a test runner after make check fails by identity', COMPUTE, () => {
-  assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p orm codec'), 'cargo test');
+  assert.equal(runnerIdentity('PATH="$HOME/.cargo/bin:$PATH" cargo +1.98.1 test --locked -p polyspec-orm codec'), 'cargo test');
   assert.equal(runnerIdentity("go test -v -timeout 0 ./engine/ir -run '^$' -fuzz FuzzDecodeRequest -fuzztime=1s"), undefined);
   assert.equal(runnerIdentity('go run ./tests/interfaces/check --results tests/conformance/out'), undefined);
   assert.equal(runnerIdentity('node tests/go-test.mjs -v -timeout 0 ./engine -count=1'), 'go test');
@@ -942,7 +942,7 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
     'make check',
     '          make fuzz-check vet-again',
     '          go vet ./... && go test -v -timeout 0 ./...',
-    '          (cd clients/rust && cargo test --locked -p orm codec)',
+    '          (cd clients/rust && cargo test --locked -p polyspec-orm codec)',
     '          php tests/codec/check.php',
     '          node --test scripts/x.test.mjs',
     '          go run ./tests/interfaces/check --results tests/conformance/out',
@@ -1090,7 +1090,7 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
     'two:', "\t$(GO_TEST) ./a -count=1", '\tphp clients/php/tests/b_test.php',
     'again:', '\tphp clients/php/tests/b_test.php', '\tphp clients/php/tests/b_test.php',
     'built:', '\tnode tests/dbspec/stress.mjs > out.dbs', '\tgo test -c -o x ./engine', '\tnode clients/typescript/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
-    'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mjs) y -- cargo test -p orm',
+    'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p polyspec-orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mjs) y -- cargo test -p polyspec-orm',
     'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp clients/php/tests/b_test.php',
   ].join('\n');
   assert.deepEqual(independentTestErrors(makefile).map(error => error.split(' runs ')[0]), ['Makefile two', 'Makefile linted']);

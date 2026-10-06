@@ -1,5 +1,5 @@
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::{self, Document};
+use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::PathBuf;

@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, RowSnapshot, TableRef},
     tool_db::{self, GridCell},
 };
@@ -42,7 +42,7 @@ async fn check() {
         let page = catalog.table_page(&table, 2, 0).await.expect("first page");
         orm_testcase::step(format_args!("running {dialect}"));
         let baseline = RowSnapshot::from_page(&page, 0).expect("owned original row baseline");
-        let current = orm_build::tool_db::GridQueryResult { columns: page.result.columns.clone(), rows: vec![page.result.rows[0].clone()] };
+        let current = polyspec_orm_build::tool_db::GridQueryResult { columns: page.result.columns.clone(), rows: vec![page.result.rows[0].clone()] };
         baseline.check_current(&page.metadata, &current).expect("unchanged original row");
         seed.exec(&format!("UPDATE {sql_name} SET {sql_note}='changed' WHERE a=2 AND b=1"), &[]).await.expect("change only owned fixture row");
         let changed = catalog.table_page(&table, 1, 0).await.expect("changed owned row");
@@ -61,7 +61,7 @@ async fn check() {
         baseline.check_current(&restored.metadata, &restored.result).expect("restored original values");
         let phases = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let captured = phases.clone();
-        let publish: std::sync::Arc<dyn Fn(orm_build::catalog::MutationPhase) + Send + Sync> =
+        let publish: std::sync::Arc<dyn Fn(polyspec_orm_build::catalog::MutationPhase) + Send + Sync> =
             std::sync::Arc::new(move |phase| captured.lock().unwrap().push(phase));
         let changed = catalog
             .update_row(
@@ -86,7 +86,7 @@ async fn check() {
             )
             .await
             .expect("restore only owned composite row");
-        assert_eq!(phases.lock().unwrap().last(), Some(&orm_build::catalog::MutationPhase::Committed));
+        assert_eq!(phases.lock().unwrap().last(), Some(&polyspec_orm_build::catalog::MutationPhase::Committed));
         orm_testcase::step(format_args!("{dialect} finished"));
         if page.limit != 2
             || page.offset != 0

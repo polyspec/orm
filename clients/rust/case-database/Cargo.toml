@@ -8,7 +8,7 @@ license = "MIT"
 
 [dependencies]
 # 관리 연결은 test와 같은 DSN 해석을 쓰도록 orm으로 연다.
-orm = { path = "../orm" }
+polyspec-orm = { path = "../orm" }
 # 만든 database와 지운 database를 실행 중인 case의 STEP 줄로 보고한다.
 orm-testcase = { path = "../testcase" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres"] }

@@ -16,7 +16,7 @@
 // fails when one of the four DSNs is unset.
 //
 // rollback_fault case는 condition `orm-test`에서만 resolve되는 test entry point
-// `@polyspec/orm-typescript/testing`의 rollback fault를 설정한다.
+// `@polyspec/orm/testing`의 rollback fault를 설정한다.
 //
 // Usage: node --conditions=orm-test clients/typescript/tests/rollback.mjs [case ...] (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
@@ -26,7 +26,7 @@ import * as packageEntry from '../dist/index.js';
 import { runCase } from '../../../tests/testcase.mjs';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { failNextRollback } from '@polyspec/orm-typescript/testing';
+import { failNextRollback } from '@polyspec/orm/testing';
 
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS는 case 하나의 기한이다. case 하나는 case database를 만들고 rollback 문서를 설치해 실패하는 transaction 몇 개를 실행한 뒤 database를 지운다.
@@ -175,7 +175,7 @@ async function savepointRollbackFailed(driver, dsn) {
  */
 function checkFaultEntry() {
   const packageRoot = new URL('..', import.meta.url).pathname;
-  const load = "await import('@polyspec/orm-typescript/testing')";
+  const load = "await import('@polyspec/orm/testing')";
   const plain = spawnSync(process.execPath, ['--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
   check(plain.status !== 0 && plain.stderr.includes('ERR_PACKAGE_PATH_NOT_EXPORTED'), `the test entry point resolves without the condition orm-test: status ${plain.status} ${plain.stderr}`);
   const tested = spawnSync(process.execPath, ['--conditions=orm-test', '--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
