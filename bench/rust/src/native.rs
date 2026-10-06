@@ -112,7 +112,10 @@ async fn list100(pool: &MySqlPool, service_seq: i64) -> Vec<Author> {
 /// insert workload가 `aes_hex_email`에 쓰는 값: Go baseline의 `HostEncode`처럼
 /// `bench-salt`의 AES envelope를 hex text로 쓴다.
 fn insert_email() -> String {
-    orm::codec::hex_upper(&orm::codec::aes_encrypt(b"ins@example.com", "bench-salt"))
+    polyspec_orm::codec::hex_upper(&polyspec_orm::codec::aes_encrypt(
+        b"ins@example.com",
+        "bench-salt",
+    ))
 }
 
 async fn insert(pool: &MySqlPool, i: usize) -> u64 {
@@ -260,8 +263,8 @@ mod tests {
     fn insert_email_is_an_aes_hex_envelope() {
         let _case = orm_testcase::case!(orm_testcase::DATABASE);
         let text = super::insert_email();
-        let envelope = orm::codec::hex_decode(&text).expect("insert email is hex");
-        let plain = orm::codec::aes_decrypt(&envelope, "bench-salt")
+        let envelope = polyspec_orm::codec::hex_decode(&text).expect("insert email is hex");
+        let plain = polyspec_orm::codec::aes_decrypt(&envelope, "bench-salt")
             .expect("insert email is an AES envelope of bench-salt");
         assert_eq!(plain, b"ins@example.com");
     }

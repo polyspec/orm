@@ -1,5 +1,5 @@
 [package]
-name = "orm-build"
+name = "polyspec-orm-build"
 version = "0.0.2"
 edition = "2021"
 publish = false
@@ -11,7 +11,7 @@ keywords = ["orm", "codegen", "build"]
 categories = ["database", "development-tools::build-utils"]
 
 [dependencies]
-orm-schema = { version = "=0.0.2", path = "../orm-schema" }
+polyspec-orm-schema = { version = "=0.0.2", path = "../orm-schema" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
@@ -21,14 +21,14 @@ regex = "1"
 sqlx = { version = "0.9", optional = true, features = ["runtime-tokio", "mysql", "postgres", "sqlite", "chrono", "bigdecimal"] }
 bigdecimal = { version = "=0.4.11", optional = true }
 tokio = { version = "1", optional = true, features = ["rt-multi-thread", "macros", "sync"] }
-orm = { version = "=0.0.2", path = "../orm", optional = true }
+polyspec-orm = { version = "=0.0.2", path = "../orm", optional = true }
 url = { version = "2", optional = true }
 futures-util = { version = "=0.3.34", optional = true }
 sqlparser = { version = "=0.63.0", features = ["visitor"], optional = true }
 
 [features]
 # catalog과 tool_db의 database connection은 driver가 필요하다.
-live-db = ["dep:orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
+live-db = ["dep:polyspec-orm", "dep:sqlx", "dep:tokio", "dep:url", "dep:futures-util", "dep:sqlparser", "dep:bigdecimal"]
 
 [dev-dependencies]
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.

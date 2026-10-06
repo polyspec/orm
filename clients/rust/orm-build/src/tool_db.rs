@@ -5,7 +5,7 @@ use sqlx::pool::PoolConnection;
 use sqlx::{AssertSqlSafe, Column, Executor, MySql, Postgres, Row, SqlSafeStr, Sqlite, Statement, TypeInfo, ValueRef};
 
 use futures_util::TryStreamExt;
-use orm::db::Pool;
+use polyspec_orm::db::Pool;
 mod binds;
 mod grid;
 mod limits;
@@ -325,7 +325,7 @@ impl Conn {
     pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         self.validate_params(params)?;
         let mut budget = limits::Budget::new(limits)?;
-        if orm_schema::sql::split_sql(sql).len() != 1 {
+        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
         let sql = AssertSqlSafe(sql.to_owned());
@@ -340,7 +340,7 @@ impl Conn {
     pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
         self.validate_params(params)?;
         let mut budget = limits::Budget::new(limits)?;
-        if orm_schema::sql::split_sql(sql).len() != 1 {
+        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
         let sql = AssertSqlSafe(sql.to_owned());
@@ -400,7 +400,7 @@ impl ToolDsn {
 }
 
 /// Opens the database of a DSN URI and reserves a connection.
-pub async fn open(raw: &str) -> Result<(orm::Db, Conn, ToolDsn), String> {
+pub async fn open(raw: &str) -> Result<(polyspec_orm::Db, Conn, ToolDsn), String> {
     let dsn = ToolDsn::parse(raw)?;
     // The tools check SQLite foreign keys with foreign_key_check instead of
     // enforcing them, so a table rebuild does not fire ON DELETE actions.
@@ -410,7 +410,7 @@ pub async fn open(raw: &str) -> Result<(orm::Db, Conn, ToolDsn), String> {
         raw.to_owned()
     };
     let connect_err = |e: &dyn std::fmt::Display| format!("MIGRATION_CONNECT: dsn={}: {e}", dsn.redacted());
-    let db = orm::Db::connect(&target, 4, orm::Config::default()).await.map_err(|e| connect_err(&e))?;
+    let db = polyspec_orm::Db::connect(&target, 4, polyspec_orm::Config::default()).await.map_err(|e| connect_err(&e))?;
     let conn = Conn::acquire(db.pool()).await.map_err(|e| connect_err(&e))?;
     Ok((db, conn, dsn))
 }

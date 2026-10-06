@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use sqlx::Row;
 
 pub static SCHEMA: Schema =
@@ -19,7 +19,7 @@ pub const TABLES: [&str; 4] = ["audit", "label", "membership", "membership_histo
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
         static $entity: Entity =
-            Entity { name: $entity_name, schema: &SCHEMA, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
+            Entity { name: $entity_name, schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<$name>, collect: polyspec_orm::model::collect_boxed::<$name> };
 
         #[derive(Clone)]
         pub struct $name {
@@ -43,7 +43,7 @@ macro_rules! row_model {
             fn into_core(self) -> Core {
                 self.core
             }
-            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+            fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
                 if !$columns.contains(&name) {
                     return Ok(false);
                 }
@@ -70,7 +70,7 @@ fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
     M::from_core(core)
 }
 
-fn code<T>(r: orm::Result<T>) -> String {
+fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
@@ -131,17 +131,19 @@ fn cast_text(driver: &str, column: &str) -> String {
 ///   - key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이며, 지워지지 않은 행에는 쓰지 않는다.
 ///   - key의 값이 없는 restore와 set 값이 없는 restore는 CONFIG다.
 pub async fn restore_case(driver: &str, dsn: &str) {
-    let source: orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
-    let db = Db::connect(dsn, 2, orm::Config { audit_source: Some(source), ..Default::default() }).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let source: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() })
+        .await
+        .unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let i = Param::I64;
     let text = |s: &str| Param::Str(s.to_owned());
     let adb = &db;
     let (seq, id) = adb
         .transaction(async || {
-            let m = orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n1"))])).await?;
+            let m = polyspec_orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n1"))])).await?;
             let seq = m.value("seq").expect("generated seq").as_i64()?;
-            let l = orm::model::create(&mut with::<Label>(&db, &[("name", text("red")), ("color", text("x"))])).await?;
+            let l = polyspec_orm::model::create(&mut with::<Label>(&db, &[("name", text("red")), ("color", text("x"))])).await?;
             Ok((seq, l.value("id").expect("generated id").as_i64()?))
         })
         .audit([("actor", "create")])
@@ -149,8 +151,8 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         .await
         .unwrap_or_else(|e| panic!("{driver}: create: {e}"));
     adb.transaction(async || {
-        orm::model::delete(&with::<Membership>(&db, &[("seq", i(seq))]), false).await?;
-        orm::model::delete(&with::<Label>(&db, &[("id", i(id))]), false).await
+        polyspec_orm::model::delete(&with::<Membership>(&db, &[("seq", i(seq))]), false).await?;
+        polyspec_orm::model::delete(&with::<Label>(&db, &[("id", i(id))]), false).await
     })
     .audit([("actor", "delete")])
     .retry(0)
@@ -158,24 +160,24 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
 
     let duplicate = adb
-        .transaction(async || orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await.map(|_| ()))
+        .transaction(async || polyspec_orm::model::create(&mut with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await.map(|_| ()))
         .audit([("actor", "duplicate")])
         .retry(0)
         .await;
-    assert_eq!(code(duplicate), orm::codes::DUPLICATE_KEY, "{driver}: insert of the key of a soft-deleted row");
+    assert_eq!(code(duplicate), polyspec_orm::codes::DUPLICATE_KEY, "{driver}: insert of the key of a soft-deleted row");
     let mut read: Label = with(&db, &[]);
     read.core_mut().chain(
         "",
-        &[orm::core::ChainKey { column: "name", ..orm::core::ChainKey::EMPTY }],
-        vec![orm::core::Arg::Value(orm::args::Value::One(text("red")))],
+        &[polyspec_orm::core::ChainKey { column: "name", ..polyspec_orm::core::ChainKey::EMPTY }],
+        vec![polyspec_orm::core::Arg::Value(polyspec_orm::args::Value::One(text("red")))],
     );
-    assert_eq!(code(orm::model::get(&read).await), orm::codes::NO_ROWS, "{driver}: default read of a soft-deleted row");
-    let without = orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await;
-    assert_eq!(code(without), orm::codes::CONFIG, "{driver}: restore of an audited row without an audit");
+    assert_eq!(code(polyspec_orm::model::get(&read).await), polyspec_orm::codes::NO_ROWS, "{driver}: default read of a soft-deleted row");
+    let without = polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2))])).await;
+    assert_eq!(code(without), polyspec_orm::codes::CONFIG, "{driver}: restore of an audited row without an audit");
 
     // key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
     let restored = adb
-        .transaction(async || orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n2"))])).await)
+        .transaction(async || polyspec_orm::model::restore(&with::<Membership>(&db, &[("team_id", i(1)), ("member_id", i(2)), ("note", text("n2"))])).await)
         .audit([("actor", "restore")])
         .retry(0)
         .await
@@ -200,14 +202,14 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     .collect();
     assert_eq!(shown(&restored.values), shown(&want), "{driver}: restored membership");
     let again = adb
-        .transaction(async || orm::model::restore(&with::<Membership>(&db, &[("seq", i(seq)), ("note", text("n3"))])).await)
+        .transaction(async || polyspec_orm::model::restore(&with::<Membership>(&db, &[("seq", i(seq)), ("note", text("n3"))])).await)
         .audit([("actor", "again")])
         .retry(0)
         .await
         .unwrap_or_else(|e| panic!("{driver}: restore again: {e}"));
     assert_eq!(shown(&again.values), shown(&restored.values), "{driver}: restore of a row that is not deleted returns the unchanged row");
 
-    let label = orm::model::restore(&with::<Label>(&db, &[("name", text("red")), ("color", text("y"))]))
+    let label = polyspec_orm::model::restore(&with::<Label>(&db, &[("name", text("red")), ("color", text("y"))]))
         .await
         .unwrap_or_else(|e| panic!("{driver}: restore label: {e}"));
     let want: BTreeMap<String, Val> = [("id", Val::I64(id)), ("name", Val::Str("red".into())), ("color", Val::Str("y".into())), ("deleted_at", Val::Null)]
@@ -215,13 +217,17 @@ pub async fn restore_case(driver: &str, dsn: &str) {
         .map(|(k, v)| (k.to_owned(), v))
         .collect();
     assert_eq!(shown(&label.values), shown(&want), "{driver}: restored label");
-    assert_eq!(code(orm::model::restore(&with::<Label>(&db, &[("name", text("blue"))])).await), orm::codes::NO_ROWS, "{driver}: restore of an absent row");
     assert_eq!(
-        code(orm::model::restore(&with::<Label>(&db, &[("color", text("x"))])).await),
-        orm::codes::CONFIG,
+        code(polyspec_orm::model::restore(&with::<Label>(&db, &[("name", text("blue"))])).await),
+        polyspec_orm::codes::NO_ROWS,
+        "{driver}: restore of an absent row"
+    );
+    assert_eq!(
+        code(polyspec_orm::model::restore(&with::<Label>(&db, &[("color", text("x"))])).await),
+        polyspec_orm::codes::CONFIG,
         "{driver}: restore without the values of a key"
     );
-    assert_eq!(code(orm::model::restore(&with::<Label>(&db, &[])).await), orm::codes::CONFIG, "{driver}: restore without key values");
+    assert_eq!(code(polyspec_orm::model::restore(&with::<Label>(&db, &[])).await), polyspec_orm::codes::CONFIG, "{driver}: restore without key values");
 
     let change = if driver == "mysql" { "`change`" } else { "\"change\"" };
     let cast = |column: &str| cast_text(driver, column);

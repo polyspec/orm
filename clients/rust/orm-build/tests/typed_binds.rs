@@ -1,4 +1,4 @@
-use orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
+use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);

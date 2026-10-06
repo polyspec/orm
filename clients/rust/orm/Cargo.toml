@@ -1,5 +1,5 @@
 [package]
-name = "orm"
+name = "polyspec-orm"
 version = "0.0.2"
 edition = "2021"
 publish = false
@@ -11,12 +11,12 @@ keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
 categories = ["database"]
 
 [features]
-# test entry point orm::testing이다. build는 이 feature를 켤 때만 그것을 가지며,
+# test entry point polyspec_orm::testing이다. build는 이 feature를 켤 때만 그것을 가지며,
 # 어떤 default feature도 켜지 않는다.
 test-faults = []
 
 [dependencies]
-orm-schema = { version = "=0.0.2", path = "../orm-schema" }
+polyspec-orm-schema = { version = "=0.0.2", path = "../orm-schema" }
 ordered-json = { version = "=0.0.1", git = "https://github.com/polyspec/ordered-json.git" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
 # sqlx의 bundled SQLite library다. 연결은 그 version을 SQL로 묻지 않고 이 crate에서 읽는다.

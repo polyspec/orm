@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e61fa72880f770cc7fe1a77122f89b0e",
+    "content-hash": "ed863ef380f9f70860c1f0e59004ef8c",
     "packages": [
         {
             "name": "ordered-json/ordered-json",

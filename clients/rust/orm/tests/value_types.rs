@@ -7,8 +7,8 @@
 
 use std::collections::BTreeMap;
 
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 const DOCUMENT: &str = "dbspec 1 value_types
 
@@ -31,8 +31,8 @@ table value_record {
 fn schema() -> &'static Schema {
     static SCHEMA: std::sync::OnceLock<&'static Schema> = std::sync::OnceLock::new();
     SCHEMA.get_or_init(|| {
-        let document = orm::dbspec::parse(DOCUMENT, &BTreeMap::new()).unwrap();
-        let manifest = orm::dbspec::manifest(&[&document]).unwrap();
+        let document = polyspec_orm::dbspec::parse(DOCUMENT, &BTreeMap::new()).unwrap();
+        let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap();
         assert_eq!(manifest.manifest_text, DOCUMENT, "the test document is its own manifest text");
         Box::leak(Box::new(Schema::new(DOCUMENT, Box::leak(manifest.manifest_hash.into_boxed_str()))))
     })
@@ -41,7 +41,12 @@ fn schema() -> &'static Schema {
 static RECORD: std::sync::OnceLock<Entity> = std::sync::OnceLock::new();
 
 fn entity() -> &'static Entity {
-    RECORD.get_or_init(|| Entity { name: "value_record", schema: schema(), new: orm::model::new_boxed::<Record>, collect: orm::model::collect_boxed::<Record> })
+    RECORD.get_or_init(|| Entity {
+        name: "value_record",
+        schema: schema(),
+        new: polyspec_orm::model::new_boxed::<Record>,
+        collect: polyspec_orm::model::collect_boxed::<Record>,
+    })
 }
 
 const COLUMNS: [&str; 7] = ["seq", "small", "rank", "code", "opens", "day", "note"];
@@ -68,7 +73,7 @@ impl Model for Record {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -86,7 +91,7 @@ fn connected(db: &Db) -> Record {
     Record::from_core(core)
 }
 
-fn code<T>(r: orm::Result<T>) -> String {
+fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
@@ -100,7 +105,7 @@ async fn runtime_value_types() {
     let day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(schema()).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
 
         let mut row = connected(&db);
@@ -109,9 +114,9 @@ async fn runtime_value_types() {
         row.core_mut().set("opens", Param::from("08:30:00.250"));
         row.core_mut().set("day", Param::Date(day));
         row.core_mut().set("note", Param::from("hidden"));
-        orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
 
-        let got = orm::model::get(&connected(&db)).await.unwrap_or_else(|e| panic!("{driver}: get: {e}"));
+        let got = polyspec_orm::model::get(&connected(&db)).await.unwrap_or_else(|e| panic!("{driver}: get: {e}"));
         assert_eq!(got.values["small"].as_i16().unwrap(), i16::MIN, "{driver}: i16");
         assert_eq!(got.values["rank"].as_i16().unwrap(), 3, "{driver}: an omitted column takes the database default");
         assert_eq!(got.values["code"].as_string().unwrap(), uuid, "{driver}: uuid text");
@@ -120,7 +125,7 @@ async fn runtime_value_types() {
         assert!(!got.values.contains_key("note"), "{driver}: select explicit leaves the column out of the default select set");
         let mut all = connected(&db);
         all.core_mut().add_column("note");
-        let got = orm::model::get(&all).await.unwrap_or_else(|e| panic!("{driver}: get note: {e}"));
+        let got = polyspec_orm::model::get(&all).await.unwrap_or_else(|e| panic!("{driver}: get note: {e}"));
         assert_eq!(got.values["note"].as_string().unwrap(), "hidden", "{driver}: an added select explicit column");
 
         let mut short = connected(&db);
@@ -128,12 +133,16 @@ async fn runtime_value_types() {
         short.core_mut().set("code", Param::from(uuid));
         short.core_mut().set("opens", Param::from("08:30:00.25"));
         short.core_mut().set("day", Param::Date(day));
-        assert_eq!(code(orm::model::create(&mut short).await), orm::codes::CODEC_ENCODE, "{driver}: time text without p fraction digits");
+        assert_eq!(code(polyspec_orm::model::create(&mut short).await), polyspec_orm::codes::CODEC_ENCODE, "{driver}: time text without p fraction digits");
         let mut missing = connected(&db);
         missing.core_mut().set("code", Param::from(uuid));
         missing.core_mut().set("opens", Param::from("08:30:00.250"));
         missing.core_mut().set("day", Param::Date(day));
-        assert_eq!(code(orm::model::create(&mut missing).await), orm::codes::IR_INVALID, "{driver}: an omitted non-null column without a default");
+        assert_eq!(
+            code(polyspec_orm::model::create(&mut missing).await),
+            polyspec_orm::codes::IR_INVALID,
+            "{driver}: an omitted non-null column without a default"
+        );
 
         db.close().await;
         database.drop().await;

@@ -1,8 +1,8 @@
 use super::Author;
-use orm::StyledValue;
+use polyspec_orm::StyledValue;
 
-fn tags() -> orm::ordered_json::Value {
-    orm::ordered_json::Value::array(&[orm::ordered_json::Value::string("fixture")]).expect("fixture array")
+fn tags() -> polyspec_orm::ordered_json::Value {
+    polyspec_orm::ordered_json::Value::array(&[polyspec_orm::ordered_json::Value::string("fixture")]).expect("fixture array")
 }
 
 fn mapped() -> Result<Author, std::io::Error> {

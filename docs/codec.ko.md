@@ -36,7 +36,7 @@ table service_config {
 }
 ```
 
-키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
+키는 연결 설정에서 받는다. Go `orm.Config`는 `AESKey`, `AESVersion`, `AESKeys`, PHP `Config`와 TypeScript 연결 옵션은 `aesKey`, `aesVersion`, `aesKeys`, Rust `polyspec_orm::Config`는 `aes_key`, `aes_version`, `aes_keys`를 사용한다. 쓰기는 현재 version의 키 `AESKeys[AESVersion]`로 암호화하고 그 version을 `aes_key_version`에 기록한다. `AESKey`는 그 키이며 키 목록에 그 키가 있으면 생략할 수 있고, 그 키와 다른 `AESKey`는 연결을 `CONFIG`로 실패시킨다. 읽기는 저장된 version의 키를 선택한다. `utils().aes().rotate(model, keyring)`는 version이 keyring의 현재 version과 다른 모든 행을 다시 암호화한다. `jsontext` 컬럼은 `json` 또는 `jsons` 단계만 받으므로 암호화한 JSON 값은 항상 blob 컬럼이다. 감사 변경 행은 AES 컬럼을 평문이나 암호문이 아닌 `{"redacted": true, "present": true}`로 기록한다.
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
@@ -64,7 +64,7 @@ TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 �
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
 | | Go | Rust | PHP | TypeScript |
 |---|---|---|---|---|
-| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<orm::ordered_json::Value>` | `OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` |
+| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<polyspec_orm::ordered_json::Value>` | `OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` |
 | 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Polyspec\Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 |
 | 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 |
 | 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 |
@@ -73,7 +73,7 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 
 `yaml`은 YAML 1.2 문서 하나를 저장한다. 출력 값은 공통 값 모델을 사용한다. 매핑 키는 문자열이며 정수 YAML 키는 PHP 배열과의 호환을 위해 십진 문자열로 변환한다. 중복 키, 다중 문서, alias, anchor, 명시적 tag, 유한하지 않은 실수, collection 키, 따옴표 없는 boolean·null·실수 키는 `CODEC_DECODE`를 반환한다. YAML 출력 텍스트는 클라이언트마다 다를 수 있으므로 클라이언트 간 검사는 디코딩 값을 비교한다.
 
-`point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
+`point`는 스타일이 아닌 컬럼 타입이다. 공개 값은 `[x, y]`이며 Go는 `orm.Point`, PHP는 `array{float,float}`, Rust는 `polyspec_orm::Point`, TypeScript는 `Point`를 사용한다. `parsePoint`·`parse_point`·`Codec::point`는 `POINT(x y)`와 PostgreSQL 출력 `(x,y)`를 입력받는다. 쓰기 변환은 `POINT(x y)`를 생성한다. 좌표가 두 개가 아니면 `CODEC_DECODE`, 출력 좌표가 유한하지 않으면 `CODEC_ENCODE`를 반환한다.
 
 ## 사례
 - ordered-json은 빈 객체와 빈 리스트를 구분한다. `{}`는 모든 client에서 파싱·인코딩·반복 왕복 후에도 객체로 유지되고, `[]`는 배열로 유지된다.

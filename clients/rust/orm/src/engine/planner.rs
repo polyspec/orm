@@ -10,7 +10,7 @@ use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
 use crate::schema::Manifest;
 use crate::Result;
-use orm_schema::dbspec::{Entity, Field, FieldDefault, Type};
+use polyspec_orm_schema::dbspec::{Entity, Field, FieldDefault, Type};
 
 pub(crate) struct Planner<'m> {
     pub m: &'m Manifest,

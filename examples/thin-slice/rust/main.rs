@@ -7,11 +7,11 @@
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-orm::models!();
+polyspec_orm::models!();
 
 use model::Author;
-use orm::db::Pool;
-use orm::Param;
+use polyspec_orm::db::Pool;
+use polyspec_orm::Param;
 use serde_json::json;
 
 const ITERATIONS: usize = 500;
@@ -39,22 +39,22 @@ fn p50(mut s: Vec<u128>) -> u128 {
 }
 
 #[tokio::main]
-async fn main() -> orm::Result<()> {
+async fn main() -> polyspec_orm::Result<()> {
     let last: Arc<Mutex<(String, Vec<Param>)>> = Arc::new(Mutex::new((String::new(), Vec::new())));
     let hook = last.clone();
-    let config = orm::Config {
+    let config = polyspec_orm::Config {
         aes_key: AES_KEY.into(),
         blind_index_key: "bench-blind-index".into(),
         ..Default::default()
     };
     let db = model::connect(&dsn(), 1, config).await?;
-    let _last_statement = db.subscribe(move |e: &orm::StatementEvent<'_>| {
+    let _last_statement = db.subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
         // event는 비밀 bind를 가리므로 native 재실행은 실제 key를 쓴다.
         let binds = e
             .binds
             .iter()
             .map(|p| {
-                if *p == Param::Str(orm::db::SECRET_MASK.into()) {
+                if *p == Param::Str(polyspec_orm::db::SECRET_MASK.into()) {
                     Param::Str(AES_KEY.into())
                 } else {
                     p.clone()
@@ -84,7 +84,7 @@ async fn main() -> orm::Result<()> {
     };
 
     let rows = query().gets().await?;
-    let out: Vec<_> = rows.models().map(|r| Ok::<_, orm::Error>(json!({"seq": r.get_seq()?, "name": r.get_name()?, "is_display": r.get_is_display()?, "like_count": r.get_like_count()?}))).collect::<orm::Result<_>>()?;
+    let out: Vec<_> = rows.models().map(|r| Ok::<_, polyspec_orm::Error>(json!({"seq": r.get_seq()?, "name": r.get_name()?, "is_display": r.get_is_display()?, "like_count": r.get_like_count()?}))).collect::<polyspec_orm::Result<_>>()?;
     println!("{}", serde_json::to_string(&out).unwrap());
 
     let mut s = Vec::with_capacity(ITERATIONS);

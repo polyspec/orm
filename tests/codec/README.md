@@ -6,7 +6,7 @@ the reference vectors for each style stack and value, with stored bytes (base64)
 | runner | what it checks | output |
 |---|---|---|
 | `go test ./clients/go/orm -run TestCodecVectors` | decodes every vector to the value; deterministic styles re-encode byte-identically; round trip | `$ORM_CODEC_OUT/go.json` |
-| `cargo test -p orm --lib codec::tests::vectors` (in `clients/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
+| `cargo test -p polyspec-orm --lib codec::tests::vectors` (in `clients/rust`) | same | `$ORM_CODEC_OUT/rust.json` |
 | `node clients/typescript/tests/codec-vector.mjs` | same | `$ORM_CODEC_OUT/typescript.json` |
 | `php tests/codec/check.php` | same for PHP, then decodes the three outputs in `$ORM_CODEC_OUT` — what Go, Rust and TypeScript wrote must read back as the same value | — |
 

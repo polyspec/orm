@@ -7,7 +7,7 @@
 // Each test binary includes this module and uses one of the probes.
 #![allow(dead_code)]
 
-use orm_build::tool_db;
+use polyspec_orm_build::tool_db;
 
 /// Runs `probe` with a connection of its own to `dsn` on a new thread and returns its answer.
 fn on_own_connection(dsn: &str, probe: impl FnOnce(tool_db::Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool>>> + Send + 'static) -> bool {

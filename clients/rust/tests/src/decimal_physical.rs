@@ -1,7 +1,7 @@
 //! Exact decimal generated model cases on isolated databases, and the
 //! generated models of the bench and decimal document sets on one connection.
 
-orm::models!();
+polyspec_orm::models!();
 
 #[cfg(test)]
 #[allow(dead_code, unused_imports, clippy::all)]
@@ -16,18 +16,21 @@ async fn decimal_physical(env: &str) {
     let dsn = std::env::var(env)
         .unwrap_or_else(|_| panic!("{env} is required; run the test through its make target, which reads the environment of make test-servers"));
     assert!(!dsn.is_empty(), "{env} is empty");
-    let db = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
-    let result: orm::Result<()> = db
+    let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
+    let result: polyspec_orm::Result<()> = db
         .transaction(async || {
             let row = DecimalCase::new().set_seq(1).set_amount("48.0450")?.set_large_value(Some("9007199254740993".to_owned()))?.create().await?;
             assert_eq!(row.get_amount()?, "48.0450");
             let loaded = DecimalCase::new().get_by_seq(1).await?;
             assert_eq!(loaded.get_amount()?, "48.0450");
             assert_eq!(loaded.get_large_value()?, Some("9007199254740993"));
-            Err(orm::Error::Config("decimal fixture rollback".into()))
+            Err(polyspec_orm::Error::Config("decimal fixture rollback".into()))
         })
         .await;
-    assert!(matches!(result, Err(orm::Error::Config(ref message)) if message == "decimal fixture rollback"), "transaction rollback result: {result:?}");
+    assert!(
+        matches!(result, Err(polyspec_orm::Error::Config(ref message)) if message == "decimal fixture rollback"),
+        "transaction rollback result: {result:?}"
+    );
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 0);
     db.close().await;
 }
@@ -111,7 +114,7 @@ async fn schema_set(driver: &str) {
     use model::User;
 
     let (dsn, name) = schema_set_database(driver).await;
-    let db = model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let db = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     for schema in [&model::SCHEMA, &decimal_model::SCHEMA, &decimal_model::SCHEMA] {
         db.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     }
@@ -155,9 +158,9 @@ async fn schema_set_sqlite() {
 /// Counts the statements a connection sends in `runs` with a statement event
 /// subscriber.
 #[cfg(test)]
-fn counted(db: &orm::Db, runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> orm::Subscription {
+fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::AtomicUsize>) -> polyspec_orm::Subscription {
     let runs = runs.clone();
-    db.subscribe(move |_: &orm::StatementEvent<'_>| {
+    db.subscribe(move |_: &polyspec_orm::StatementEvent<'_>| {
         runs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     })
@@ -175,14 +178,14 @@ async fn schema_set_unregistered(driver: &str) {
 
     let (dsn, name) = schema_set_database(driver).await;
     let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let raw = orm::Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let raw = polyspec_orm::Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let _raw_counted = counted(&raw, &runs);
     let error = User::new().connect(&raw).get_count().await.expect_err("a bench read on a raw connection");
     assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
     raw.close().await;
-    let core = model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let core = model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let _core_counted = counted(&core, &runs);
-    let installer = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let installer = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     installer.utils().schema().install(&decimal_model::SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     DecimalCase::new().connect(&installer).set_seq(1).set_amount("1.0000").unwrap().create().await.unwrap();
     installer.close().await;
@@ -193,7 +196,7 @@ async fn schema_set_unregistered(driver: &str) {
     assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), 0, "{driver}: statements of unregistered requests");
     core.close().await;
-    let decimal = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let decimal = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     assert_eq!(DecimalCase::new().connect(&decimal).get_count().await.unwrap(), 1, "{driver}: decimal rows through the decimal helper");
     decimal.close().await;
     drop_schema_set_database(driver, &dsn, &name).await;
@@ -212,11 +215,12 @@ async fn schema_set_edited_manifest(driver: &str) {
     let text = decimal_model::SCHEMA.text();
     let edited = text.replace("decimal(13,4)", "decimal(14,4)");
     assert_ne!(edited, text, "edited manifest differs");
-    let schema: &'static orm::Schema = Box::leak(Box::new(orm::Schema::new(Box::leak(edited.into_boxed_str()), decimal_model::MANIFEST_HASH)));
-    let error = orm::Db::connect_schema(&dsn, schema, 2, orm::Config::default()).await.err().expect("a connection with an edited manifest");
+    let schema: &'static polyspec_orm::Schema =
+        Box::leak(Box::new(polyspec_orm::Schema::new(Box::leak(edited.into_boxed_str()), decimal_model::MANIFEST_HASH)));
+    let error = polyspec_orm::Db::connect_schema(&dsn, schema, 2, polyspec_orm::Config::default()).await.err().expect("a connection with an edited manifest");
     assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
     let runs = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let db = decimal_model::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+    let db = decimal_model::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
     let _counted = counted(&db, &runs);
     let error = db.utils().schema().install(schema).await.expect_err("an install of an edited manifest");
     assert_eq!(error.code(), "CONFIG", "{driver}: {error}");
@@ -225,16 +229,16 @@ async fn schema_set_edited_manifest(driver: &str) {
     DecimalCase::new().connect(&db).set_seq(1).set_amount("48.0450").unwrap().create().await.unwrap();
     // 같은 hash의 같은 요청을 먼저 plan해 둔다.
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows");
-    let entity: &'static orm::Entity = Box::leak(Box::new(orm::Entity {
+    let entity: &'static polyspec_orm::Entity = Box::leak(Box::new(polyspec_orm::Entity {
         name: "decimal_case",
         schema,
-        new: orm::model::new_boxed::<DecimalCase>,
-        collect: orm::model::collect_boxed::<DecimalCase>,
+        new: polyspec_orm::model::new_boxed::<DecimalCase>,
+        collect: polyspec_orm::model::collect_boxed::<DecimalCase>,
     }));
     let before = runs.load(std::sync::atomic::Ordering::Relaxed);
-    let mut core = orm::Core::new(entity);
+    let mut core = polyspec_orm::Core::new(entity);
     core.connect(&db);
-    let error = orm::model::get_count(&core).await.expect_err("a request of an edited manifest");
+    let error = polyspec_orm::model::get_count(&core).await.expect_err("a request of an edited manifest");
     assert_eq!(error.code(), "SCHEMA_HASH_MISMATCH", "{driver}: {error}");
     assert_eq!(runs.load(std::sync::atomic::Ordering::Relaxed), before, "{driver}: statements of the edited request");
     assert_eq!(DecimalCase::new().connect(&db).get_count().await.unwrap(), 1, "{driver}: decimal rows after the rejected request");

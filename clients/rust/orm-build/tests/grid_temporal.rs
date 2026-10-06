@@ -1,7 +1,7 @@
 //! date, time, datetime grid cell: MySQL과 PostgreSQL은 dbspec text 형식의 temporal cell로
 //! decode하고, 기술된 table의 read는 column precision p만큼, grid query는 여섯 자리 소수를 쓴다.
 //! SQLite는 기술된 table에서 같은 temporal cell을, grid query에서 저장된 text를 준다. 각 dialect가 만든 table을 끝에 지운다.
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, GridCell, QueryLimits, P},
 };

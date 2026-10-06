@@ -3,12 +3,12 @@
 //! A crate that uses models calls the generator from its `build.rs`. The
 //! generator reads a dbspec document set, scans the crate's source for model
 //! method calls, and writes the models and the manifest text into `OUT_DIR`;
-//! `orm::models!()` includes them as the module `model`.
+//! `polyspec_orm::models!()` includes them as the module `model`.
 //!
 //! ```text
 //! // build.rs
 //! fn main() {
-//!     orm_build::Builder::new(["schema/shop.dbs"]).scan("src").generate();
+//!     polyspec_orm_build::Builder::new(["schema/shop.dbs"]).scan("src").generate();
 //! }
 //! ```
 //!

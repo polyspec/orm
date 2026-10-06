@@ -89,7 +89,7 @@ Key   = [Operator] Column
 - 각 언어는 자기 빌드 도구로 생성한다.
   - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다.
   - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --schema schema/example.dbs --out src/models --scan src`를 실행한다.
-  - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`를 실행하고, `orm::models!()`가 결과를 `model` 모듈로 포함한다.
+  - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`를 실행한다.
 
 ### 2.3 값 형태
@@ -366,7 +366,7 @@ ORM 함수 값은 함수 종류와 인자를 가진다. 함수 값을 받은 모
 | 컬럼으로 쓰는 컬럼 함수 | `addColumn<Col>Alias<Name>(Orm::distance(129.16, 35.16))` |
 | 정렬에 쓰는 컬럼 함수 | `orderBy<Col>Asc(Orm::distance(129.16, 35.16))` |
 
-Go는 `orm.Distance(…)`, Rust는 `orm::distance(…)`, TypeScript는 `orm.distance(…)`를 사용한다.
+Go는 `orm.Distance(…)`, Rust는 `polyspec_orm::distance(…)`, TypeScript는 `orm.distance(…)`를 사용한다.
 
 ### 10.1 값 함수
 

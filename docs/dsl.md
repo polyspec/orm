@@ -89,7 +89,7 @@ Key   = [Operator] Column
 - Each language generates with its own build tool:
   - Go scans the packages named by `--scan` and repeats until the calls type-check: `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...` in a `//go:generate` line. Files that the default build excludes with a `//go:build` constraint are loaded with the tags, GOOS, and GOARCH their constraint needs, so a tagged test is covered without `GOFLAGS=-tags`.
   - TypeScript scans the files named by `--scan` with the TypeScript compiler API and writes exact method signatures: `orm-gen gen --schema schema/example.dbs --out src/models --scan src` in the `build` script before `tsc`.
-  - Rust scans the sources named by `scan` with `syn` in `build.rs`: `orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`, and `orm::models!()` includes the result as the module `model`.
+  - Rust scans the sources named by `scan` with `syn` in `build.rs`: `polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`, and `polyspec_orm::models!()` includes the result as the module `model`.
   - PHP writes the model classes with column metadata and typed getters and setters: `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`.
 
 ### 2.3 Value shapes
@@ -366,7 +366,7 @@ An ORM function value carries a function kind and its arguments. The model metho
 | column function as a column | `addColumn<Col>Alias<Name>(Orm::distance(129.16, 35.16))` |
 | column function in ordering | `orderBy<Col>Asc(Orm::distance(129.16, 35.16))` |
 
-Go uses `orm.Distance(…)`, Rust uses `orm::distance(…)`, and TypeScript uses `orm.distance(…)`.
+Go uses `orm.Distance(…)`, Rust uses `polyspec_orm::distance(…)`, and TypeScript uses `orm.distance(…)`.
 
 ### 10.1 Value functions
 

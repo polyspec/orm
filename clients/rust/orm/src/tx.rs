@@ -52,7 +52,7 @@ fn audit_values<K: Into<String>, V: Into<Param>>(values: impl IntoIterator<Item 
 /// 이름 순서의 값.
 pub(crate) struct AuditInsert {
     pub(crate) schema: &'static Schema,
-    pub(crate) entity: orm_schema::dbspec::Entity,
+    pub(crate) entity: polyspec_orm_schema::dbspec::Entity,
     pub(crate) values: AuditValues,
 }
 
@@ -987,7 +987,7 @@ async fn commit(tx: &TxShared) -> Result<()> {
 }
 
 /// transaction이 rollback된 뒤 설정된 test fault를 소비한다: 그 rollback은
-/// `FAULT`로 실패했다고 보고된다 (`orm::testing::fail_next_rollback`, feature
+/// `FAULT`로 실패했다고 보고된다 (`polyspec_orm::testing::fail_next_rollback`, feature
 /// `test-faults`).
 fn rollback_fault(db: &Db) -> Result<()> {
     if db.inner.rollback_fault.swap(false, Ordering::AcqRel) {

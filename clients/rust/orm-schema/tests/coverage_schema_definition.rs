@@ -1,7 +1,7 @@
 //! schema_definition: contracts/fixtures/schema_definition.json의 case를 dbspec parse, emit,
 //! manifest, render로 실행한다. 값은 fixture에서 읽는다.
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::{self, Dialect, Document};
+use polyspec_orm_schema::dbspec::{self, Dialect, Document};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::time::Duration;

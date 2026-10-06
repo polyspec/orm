@@ -19,7 +19,7 @@ use crate::schema::Schema;
 use crate::tx::resolve;
 use crate::value::{Param, Val};
 use crate::{codes, Error, Result};
-use orm_schema::dbspec;
+use polyspec_orm_schema::dbspec;
 
 /// Implemented by every generated model.
 pub trait Model: Clone + Send + Sync + 'static {

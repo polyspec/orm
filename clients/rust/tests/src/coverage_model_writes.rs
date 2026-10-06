@@ -30,7 +30,7 @@ async fn coverage_model_write_cycle() {
         let rows = account().tenant_id(TENANT).gets().await.unwrap();
         assert_eq!(rows.len(), 4, "rows to delete");
         rows.delete(false).await.unwrap();
-        assert_eq!(code(account().get_by_tenant_id_and_account_id(TENANT, 1).await), orm::codes::NO_ROWS, "deleted row");
+        assert_eq!(code(account().get_by_tenant_id_and_account_id(TENANT, 1).await), polyspec_orm::codes::NO_ROWS, "deleted row");
         assert_eq!(account().tenant_id(TENANT).get_count().await.unwrap(), 0, "rows left");
         db.close().await;
     })

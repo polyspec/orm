@@ -1,8 +1,8 @@
 //! schema_install: 설치된 bench manifest를 다시 설치하면 아무것도 바꾸지 않고, table 일부만
 //! 있는 manifest의 설치는 CONFIG로 실패하며 없는 table을 만들지 않는다.
 use super::coverage_env::{code, connect, run};
-use orm::db::Pool;
-use orm::Db;
+use polyspec_orm::db::Pool;
+use polyspec_orm::Db;
 
 const PARTIAL: &str = "dbspec 1 partial
 
@@ -53,14 +53,14 @@ async fn table_exists(db: &Db, table: &str) -> bool {
 async fn coverage_schema_install_partial() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     run("schema_install_partial", async {
-        let document = orm::dbspec::parse(PARTIAL, &Default::default()).unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
-        let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
+        let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default()).unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
+        let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
         // Schema는 생성된 model처럼 'static text를 받는다.
-        let schema = orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));
+        let schema = polyspec_orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));
         let db = connect().await;
         assert!(table_exists(&db, "user").await, "the bench user table");
         assert!(!table_exists(&db, "coverage_install_missing").await, "coverage_install_missing exists before the install");
-        assert_eq!(code(db.utils().schema().install(&schema).await), orm::codes::CONFIG, "install of a partly installed manifest");
+        assert_eq!(code(db.utils().schema().install(&schema).await), polyspec_orm::codes::CONFIG, "install of a partly installed manifest");
         assert!(!table_exists(&db, "coverage_install_missing").await, "a failed install created coverage_install_missing");
         db.close().await;
     })
@@ -93,14 +93,15 @@ table coverage_external_post {
 ";
 
 /// EXTERNAL_MEMBER가 `external`을 외부 문서로 쓰는 set의 schema 값. generated model처럼 'static text다.
-fn external_schema(external: &str) -> &'static orm::Schema {
+fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
     let set = |name: &str, text: &str| std::collections::BTreeMap::from([(name.to_owned(), text.to_owned())]);
-    let member = orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external)).unwrap_or_else(|errors| panic!("member document: {errors:?}"));
-    let mut user = orm::dbspec::parse(external, &set("coverage_external", EXTERNAL_MEMBER)).unwrap_or_else(|errors| panic!("external document: {errors:?}"));
+    let member = polyspec_orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external)).unwrap_or_else(|errors| panic!("member document: {errors:?}"));
+    let mut user =
+        polyspec_orm::dbspec::parse(external, &set("coverage_external", EXTERNAL_MEMBER)).unwrap_or_else(|errors| panic!("external document: {errors:?}"));
     user.external = true;
-    let manifest = orm::dbspec::manifest(&[&member, &user]).unwrap_or_else(|errors| panic!("manifest: {errors:?}"));
+    let manifest = polyspec_orm::dbspec::manifest(&[&member, &user]).unwrap_or_else(|errors| panic!("manifest: {errors:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
-    Box::leak(Box::new(orm::Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
+    Box::leak(Box::new(polyspec_orm::Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
 }
 
 /// 외부 문서를 쓰는 set의 install이 외부 table을 database에서 확인하는지 본다. 외부 문서의 column이 database에
@@ -113,17 +114,17 @@ async fn coverage_schema_install_external_documents() {
         let dsn =
             std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
         let member = external_schema(EXTERNAL_USER);
-        let connected = orm::Db::connect_schema(&dsn, member, 2, orm::Config::default())
+        let connected = polyspec_orm::Db::connect_schema(&dsn, member, 2, polyspec_orm::Config::default())
             .await
             .unwrap_or_else(|e| panic!("connect of a set whose external table user matches the database: {e}"));
         connected.close().await;
         let drifted = external_schema(&EXTERNAL_USER.replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n"));
         let want = "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist";
-        let config = |r: orm::Result<()>| match r {
-            Err(e) if e.code() == orm::codes::CONFIG && e.to_string().contains(want) => {}
+        let config = |r: polyspec_orm::Result<()>| match r {
+            Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(want) => {}
             other => panic!("{other:?}, want CONFIG with {want:?}"),
         };
-        orm::Db::connect_schema(&dsn, drifted, 2, orm::Config::default())
+        polyspec_orm::Db::connect_schema(&dsn, drifted, 2, polyspec_orm::Config::default())
             .await
             .unwrap_or_else(|e| panic!("connect of a set whose external table differs, which registering does not read: {e}"))
             .close()

@@ -215,7 +215,7 @@ pub(crate) fn sqlite_busy(e: &sqlx::Error) -> bool {
     code.is_some_and(|n| n & 0xff == 5)
 }
 
-/// Includes the models that `orm_build` generated in the build script as the
+/// Includes the models that `polyspec_orm_build` generated in the build script as the
 /// module `model`.
 #[macro_export]
 macro_rules! models {

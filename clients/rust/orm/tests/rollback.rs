@@ -11,23 +11,23 @@
 //! of TEST_ENV), not through a pooler. Each case runs in a case database of its
 //! own (orm-case-database). The test fails when one of the four DSNs is unset.
 //!
-//! `rollback_fault_*` case는 test entry point `orm::testing`의 rollback fault를
+//! `rollback_fault_*` case는 test entry point `polyspec_orm::testing`의 rollback fault를
 //! 설정하며 feature `test-faults`로 실행한다:
-//! `cargo test -p orm --features test-faults --test rollback`.
+//! `cargo test -p polyspec-orm --features test-faults --test rollback`.
 
 use std::time::Duration;
 
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static ROLLBACK_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
 static ROLLBACK_PROBE: Entity = Entity {
     name: "rollback_probe",
     schema: &ROLLBACK_SCHEMA,
-    new: orm::model::new_boxed::<RollbackProbe>,
-    collect: orm::model::collect_boxed::<RollbackProbe>,
+    new: polyspec_orm::model::new_boxed::<RollbackProbe>,
+    collect: polyspec_orm::model::collect_boxed::<RollbackProbe>,
 };
 const COLUMNS: [&str; 2] = ["seq", "label"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
@@ -54,7 +54,7 @@ impl Model for RollbackProbe {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -74,7 +74,7 @@ fn connected(db: &Db) -> RollbackProbe {
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
 async fn installed(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&ROLLBACK_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     if let Pool::Sqlite(p) = db.pool() {
         sqlx::raw_sql("CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END")
@@ -98,7 +98,7 @@ async fn end_session(driver: &str, session: &str) {
     if driver == "sqlite" {
         return;
     }
-    let admin = Db::connect(session, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: session connection: {e}"));
+    let admin = Db::connect(session, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: session connection: {e}"));
     match admin.pool() {
         Pool::Postgres(pool) => {
             let pid: i32 = sqlx::query_scalar(
@@ -135,16 +135,16 @@ fn session_dsn(driver: &str, database: &CaseDatabase) -> String {
     }
 }
 
-async fn create(label: &str) -> orm::Result<()> {
+async fn create(label: &str) -> polyspec_orm::Result<()> {
     let mut row = RollbackProbe::from_core(Core::new(&ROLLBACK_PROBE));
     row.core_mut().set("label", Param::from(label));
-    orm::model::create(&mut row).await.map(|_| ())
+    polyspec_orm::model::create(&mut row).await.map(|_| ())
 }
 
 /// Checks a ROLLBACK error: it keeps the callback error and the rollback
 /// error, and its message names both. Returns the callback error.
-fn check_rollback<'e>(driver: &str, error: &'e orm::Error, subject: &str) -> &'e orm::Error {
-    let orm::Error::Rollback { callback, rollback } = error else { panic!("{driver}: {subject} = {error}, want ROLLBACK") };
+fn check_rollback<'e>(driver: &str, error: &'e polyspec_orm::Error, subject: &str) -> &'e polyspec_orm::Error {
+    let polyspec_orm::Error::Rollback { callback, rollback } = error else { panic!("{driver}: {subject} = {error}, want ROLLBACK") };
     assert_eq!(error.code(), "ROLLBACK", "{driver}: {subject}");
     let text = error.to_string();
     assert!(text.contains(&callback.to_string()) && text.contains(&rollback.to_string()), "{driver}: {subject} message does not name both errors: {text}");
@@ -165,13 +165,13 @@ async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
     let callback = check_rollback(driver, &error, "transaction");
     if driver != "sqlite" {
         // server가 끝낸 session의 다음 statement와 rollback은 연결을 잃은 오류다.
-        let orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
-        assert_eq!(callback.code(), orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
-        assert_eq!(rollback.code(), orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
+        let polyspec_orm::Error::Rollback { rollback, .. } = &error else { unreachable!() };
+        assert_eq!(callback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the callback error is {callback}");
+        assert_eq!(rollback.code(), polyspec_orm::codes::CONNECTION_LOST, "{driver}: the rollback error is {rollback}");
     }
     if driver == "sqlite" {
         assert!(callback.to_string().contains("rollback probe ended the transaction"), "callback error {callback}");
-        assert_eq!(orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
+        assert_eq!(polyspec_orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
     }
     db.close().await;
 }
@@ -195,24 +195,24 @@ async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
     let callback = check_rollback(driver, &error, "transaction");
     check_rollback(driver, callback, "savepoint");
     if driver == "sqlite" {
-        assert_eq!(orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
+        assert_eq!(polyspec_orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
     }
     db.close().await;
 }
 
 /// rollback fault case의 callback 오류다.
 #[cfg(feature = "test-faults")]
-fn fault_callback() -> orm::Error {
-    orm::Error::Config("rollback fault callback failed".into())
+fn fault_callback() -> polyspec_orm::Error {
+    polyspec_orm::Error::Config("rollback fault callback failed".into())
 }
 
 /// rollback fault의 ROLLBACK 오류가 callback 오류와 FAULT 오류를 가지는지
 /// 확인한다.
 #[cfg(feature = "test-faults")]
-fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
+fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
     let callback = check_rollback(driver, error, subject);
     assert_eq!(callback.to_string(), fault_callback().to_string(), "{driver}: {subject}: callback error");
-    let orm::Error::Rollback { rollback, .. } = error else { unreachable!() };
+    let polyspec_orm::Error::Rollback { rollback, .. } = error else { unreachable!() };
     assert_eq!(rollback.code(), "FAULT", "{driver}: {subject}: rollback error {rollback}");
 }
 
@@ -225,24 +225,24 @@ fn check_fault(driver: &str, error: &orm::Error, subject: &str) {
 #[cfg(feature = "test-faults")]
 async fn rollback_fault(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
-    orm::testing::fail_next_rollback(&db);
+    polyspec_orm::testing::fail_next_rollback(&db);
     db.transaction(async || create("committed").await).retry(0).await.unwrap_or_else(|e| panic!("{driver}: a committed transaction with an armed fault: {e}"));
-    let failing = async || -> orm::Result<()> {
+    let failing = async || -> polyspec_orm::Result<()> {
         create("rolled back").await?;
         Err(fault_callback())
     };
     let error = db.transaction(failing).retry(0).await.expect_err("transaction");
     check_fault(driver, &error, "transaction");
-    let count = async || orm::model::get_count(connected(&db).core()).await.unwrap();
+    let count = async || polyspec_orm::model::get_count(connected(&db).core()).await.unwrap();
     assert_eq!(count().await, 1, "{driver}: the faulted rollback keeps only the committed row");
     let again = db.transaction(failing).retry(0).await.expect_err("transaction");
     assert!(
-        matches!(again, orm::Error::Config(_)) && again.to_string() == fault_callback().to_string(),
+        matches!(again, polyspec_orm::Error::Config(_)) && again.to_string() == fault_callback().to_string(),
         "{driver}: the transaction after the consumed fault = {again}"
     );
     assert_eq!(count().await, 1, "{driver}: the second rollback keeps only the committed row");
 
-    orm::testing::fail_next_rollback(&db);
+    polyspec_orm::testing::fail_next_rollback(&db);
     let error = db
         .transaction_send(|| async {
             create("rolled back").await?;
@@ -253,7 +253,7 @@ async fn rollback_fault(driver: &str, dsn: &str) {
         .expect_err("transaction_send");
     check_fault(driver, &error, "transaction_send");
 
-    orm::testing::fail_next_rollback(&db);
+    polyspec_orm::testing::fail_next_rollback(&db);
     let error = db
         .transaction_once(async || -> Result<(), std::io::Error> {
             create("rolled back").await.map_err(std::io::Error::other)?;
@@ -262,7 +262,7 @@ async fn rollback_fault(driver: &str, dsn: &str) {
         .await
         .expect_err("transaction_once");
     match error {
-        orm::TransactionOnceError::Rollback { callback, rollback } => {
+        polyspec_orm::TransactionOnceError::Rollback { callback, rollback } => {
             assert_eq!(callback.to_string(), "rollback fault callback failed", "{driver}: transaction_once callback error");
             assert_eq!(rollback.code(), "FAULT", "{driver}: transaction_once rollback error {rollback}");
         }

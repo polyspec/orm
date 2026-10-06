@@ -9,13 +9,17 @@
 
 use std::time::Duration;
 
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static REFUSAL_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/refusal.dbs"), "sha256:b4173544710d221d7a8b1802fee458fcd58bd4eb70aba5c07fbfb126a94d017d");
-static REFUSED_ROW: Entity =
-    Entity { name: "refused_row", schema: &REFUSAL_SCHEMA, new: orm::model::new_boxed::<RefusedRow>, collect: orm::model::collect_boxed::<RefusedRow> };
+static REFUSED_ROW: Entity = Entity {
+    name: "refused_row",
+    schema: &REFUSAL_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<RefusedRow>,
+    collect: polyspec_orm::model::collect_boxed::<RefusedRow>,
+};
 const COLUMNS: [&str; 2] = ["seq", "amount"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
@@ -41,7 +45,7 @@ impl Model for RefusedRow {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -60,7 +64,7 @@ fn connected(db: &Db) -> RefusedRow {
 }
 
 async fn installed(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
     db.utils().schema().install(&REFUSAL_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     db
 }
@@ -71,18 +75,18 @@ async fn trigger_refused(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     let mut row = connected(&db);
     row.core_mut().set("amount", Param::I64(1));
-    let created = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+    let created = polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
     let seq = created.value("seq").expect("generated seq").as_i64().unwrap();
     let mut changed = connected(&db);
     changed.core_mut().set("seq", Param::I64(seq));
     changed.core_mut().set("amount", Param::I64(2));
-    let error = orm::model::update(&mut changed, false).await.expect_err("refused update");
+    let error = polyspec_orm::model::update(&mut changed, false).await.expect_err("refused update");
     assert_eq!(error.code(), "DRIVER", "{driver}: refused update {error}");
     assert!(error.to_string().contains("table refused_row is immutable"), "{driver}: refused update message {error}");
     assert!(std::error::Error::source(&error).is_some(), "{driver}: refused update keeps the driver error");
     let mut q = connected(&db);
     q.core_mut().add_all_columns();
-    let rows = orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
     assert_eq!(rows.len(), 1, "{driver}: rows");
     assert_eq!(rows[0].values["amount"].as_i64().unwrap(), 1, "{driver}: refused update keeps the row");
     db.close().await;
@@ -93,11 +97,11 @@ async fn check_refused(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     let mut row = connected(&db);
     row.core_mut().set("amount", Param::I64(0));
-    let error = orm::model::create(&mut row).await.map(|_| ()).expect_err("refused insert");
+    let error = polyspec_orm::model::create(&mut row).await.map(|_| ()).expect_err("refused insert");
     assert_eq!(error.code(), "CONSTRAINT", "{driver}: refused insert {error}");
     assert!(error.to_string().contains("amount_positive"), "{driver}: refused insert message {error}");
     assert!(std::error::Error::source(&error).is_some(), "{driver}: refused insert keeps the driver error");
-    assert_eq!(orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "{driver}: refused insert writes no row");
+    assert_eq!(polyspec_orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "{driver}: refused insert writes no row");
     db.close().await;
 }
 

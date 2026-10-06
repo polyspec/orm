@@ -1,7 +1,7 @@
 //! A complex statement in every client language, one JSON document. Run:
 //!
 //!   clients/rust/target/debug/complex
-orm::models!();
+polyspec_orm::models!();
 
 use model::{Author, Service, ServiceMember, User};
 use serde::Serialize;
@@ -42,7 +42,7 @@ fn dsn() -> String {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = orm::Config {
+    let config = polyspec_orm::Config {
         aes_key: "bench-salt".into(),
         blind_index_key: "bench-blind-index".into(),
         ..Default::default()

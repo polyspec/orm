@@ -4,7 +4,7 @@
 
 use std::sync::{Arc, OnceLock};
 
-use orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
+use polyspec_orm_schema::dbspec::{self, Document, Entity, RuntimeModel};
 
 use crate::{codes, Error, Result};
 

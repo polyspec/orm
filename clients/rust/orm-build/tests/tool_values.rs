@@ -1,4 +1,4 @@
-use orm_build::tool_db::{self, Val};
+use polyspec_orm_build::tool_db::{self, Val};
 
 #[test]
 fn tool_accessors_reject_invalid_values_without_defaults_or_contents() {

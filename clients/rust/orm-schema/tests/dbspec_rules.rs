@@ -1,7 +1,7 @@
 //! dbspec rules that the shared vectors in tests/dbspec/cases.json do not cover yet.
 
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec;
+use polyspec_orm_schema::dbspec;
 use std::collections::BTreeMap;
 use std::time::Duration;
 

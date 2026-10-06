@@ -1,5 +1,5 @@
 //! Plan chains applied to MySQL, PostgreSQL and SQLite through
-//! `orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/plans.md,
+//! `polyspec_orm::dbspec::apply`, `recover`, `rollback` and `finalize` (docs/plans.md,
 //! "Apply"): the chain of create-from-empty and rename-table-and-column of
 //! tests/dbspec/plans.json with its history and a second apply without
 //! events, drift, the lock of a second session, an apply to a second
@@ -16,8 +16,8 @@ mod dbspec_probe;
 
 use chrono::{DateTime, TimeZone, Utc};
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
-use orm::db::{parse_dsn, ConnectOptions};
-use orm::dbspec::{
+use polyspec_orm::db::{parse_dsn, ConnectOptions};
+use polyspec_orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
     Dialect, Plan,
 };

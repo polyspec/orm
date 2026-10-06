@@ -12,7 +12,7 @@ async fn coverage_root_in_chunking() {
         let values: Vec<i64> = (1..=70000).chain(1..=200).chain(200001..=200100).collect();
         assert_eq!(values.len(), 70300);
         assert_eq!(Author::new().connect(&db).seq(values.clone()).get_count().await.unwrap(), 70000, "count of the split IN list");
-        assert_eq!(code(Author::new().connect(&db).seq(values).limit(0, 10).gets().await), orm::codes::IR_INVALID, "limited split IN list");
+        assert_eq!(code(Author::new().connect(&db).seq(values).limit(0, 10).gets().await), polyspec_orm::codes::IR_INVALID, "limited split IN list");
         db.close().await;
     })
     .await;

@@ -9,7 +9,7 @@ use syn::Expr;
 use crate::manifest::{check_column_name, function_column, numeric, styled, DocumentSet};
 use crate::names::{column_name, parse_chain, parse_order, pascal, snake_to_pascal, split_pair, ChainKey};
 use crate::scan::{Call, Scan};
-use orm_schema::dbspec::{Entity, Field, RuntimeModel, Type};
+use polyspec_orm_schema::dbspec::{Entity, Field, RuntimeModel, Type};
 
 pub(crate) fn fallible_setters(model: &RuntimeModel) -> HashSet<(String, String)> {
     model
@@ -118,7 +118,7 @@ fn base(c: &Field) -> &'static str {
         return ORDERED;
     }
     if c.styled_value() {
-        return "orm::serde_json::Value";
+        return "polyspec_orm::serde_json::Value";
     }
     if !c.codec.is_empty() {
         return "String";
@@ -129,8 +129,8 @@ fn base(c: &Field) -> &'static str {
         Type::I64 => "i64",
         Type::F64 => "f64",
         Type::Bool => "bool",
-        Type::DateTime(_) => "orm::chrono::NaiveDateTime",
-        Type::Date => "orm::chrono::NaiveDate",
+        Type::DateTime(_) => "polyspec_orm::chrono::NaiveDateTime",
+        Type::Date => "polyspec_orm::chrono::NaiveDate",
         Type::Bytes => "Vec<u8>",
         Type::Decimal(..) | Type::Varchar(_) | Type::Text | Type::Uuid | Type::Time(_) => "String",
     }
@@ -168,14 +168,14 @@ mod field_type_tests {
         assert_eq!(base(&field_of(Type::Bytes, &["ip"])), "String");
         for codec in [&["gz"][..], &["base64"], &["serialize"], &["yaml"]] {
             let column = field_of(if codec[0] == "gz" { Type::Bytes } else { Type::Text }, codec);
-            assert_eq!(base(&column), "orm::serde_json::Value", "{codec:?}");
+            assert_eq!(base(&column), "polyspec_orm::serde_json::Value", "{codec:?}");
             assert!(column.styled_value(), "{codec:?}: a styled value");
         }
     }
 }
 
 /// The type of a column with the `ordered_json` stage.
-const ORDERED: &str = "orm::ordered_json::Value";
+const ORDERED: &str = "polyspec_orm::ordered_json::Value";
 
 fn field(c: &Field) -> String {
     let t = base(c);
@@ -187,7 +187,7 @@ fn field(c: &Field) -> String {
 }
 
 fn copy_type(t: &str) -> bool {
-    !matches!(t, "String" | "Vec<u8>" | "orm::serde_json::Value" | ORDERED)
+    !matches!(t, "String" | "Vec<u8>" | "polyspec_orm::serde_json::Value" | ORDERED)
 }
 
 fn convert(t: &str) -> &'static str {
@@ -197,9 +197,9 @@ fn convert(t: &str) -> &'static str {
         "i64" => "v.as_i64()?",
         "f64" => "v.as_f64()?",
         "bool" => "v.as_bool()?",
-        "orm::chrono::NaiveDateTime" => "v.as_datetime()?",
-        "orm::chrono::NaiveDate" => "v.as_date()?",
-        "orm::serde_json::Value" => "v.into_json()?",
+        "polyspec_orm::chrono::NaiveDateTime" => "v.as_datetime()?",
+        "polyspec_orm::chrono::NaiveDate" => "v.as_date()?",
+        "polyspec_orm::serde_json::Value" => "v.into_json()?",
         ORDERED => "v.take_ordered()?",
         "Vec<u8>" => "v.take_bytes()?",
         _ => "v.take_string()?",
@@ -208,16 +208,16 @@ fn convert(t: &str) -> &'static str {
 
 fn to_val(t: &str, x: &str) -> String {
     match t {
-        "i16" | "i32" => format!("orm::Val::I64({x} as i64)"),
-        "i64" => format!("orm::Val::I64({x})"),
-        "f64" => format!("orm::Val::F64({x})"),
-        "bool" => format!("orm::Val::Bool({x})"),
-        "orm::chrono::NaiveDateTime" => format!("orm::Val::DateTime({x})"),
-        "orm::chrono::NaiveDate" => format!("orm::Val::Date({x})"),
-        "orm::serde_json::Value" => format!("orm::Val::Json({x}.clone())"),
-        ORDERED => format!("orm::Val::ordered({x}.clone())"),
-        "Vec<u8>" => format!("orm::Val::Bytes({x}.clone())"),
-        _ => format!("orm::Val::Str({x}.clone())"),
+        "i16" | "i32" => format!("polyspec_orm::Val::I64({x} as i64)"),
+        "i64" => format!("polyspec_orm::Val::I64({x})"),
+        "f64" => format!("polyspec_orm::Val::F64({x})"),
+        "bool" => format!("polyspec_orm::Val::Bool({x})"),
+        "polyspec_orm::chrono::NaiveDateTime" => format!("polyspec_orm::Val::DateTime({x})"),
+        "polyspec_orm::chrono::NaiveDate" => format!("polyspec_orm::Val::Date({x})"),
+        "polyspec_orm::serde_json::Value" => format!("polyspec_orm::Val::Json({x}.clone())"),
+        ORDERED => format!("polyspec_orm::Val::ordered({x}.clone())"),
+        "Vec<u8>" => format!("polyspec_orm::Val::Bytes({x}.clone())"),
+        _ => format!("polyspec_orm::Val::Str({x}.clone())"),
     }
 }
 
@@ -238,7 +238,7 @@ fn kind(c: &Field) -> String {
             Type::Varchar(_) | Type::Text | Type::Uuid | Type::Time(_) => "Text",
         }
     };
-    format!("orm::args::kind::{k}{}", if c.nullable { "Null" } else { "" })
+    format!("polyspec_orm::args::kind::{k}{}", if c.nullable { "Null" } else { "" })
 }
 
 #[derive(Clone, PartialEq)]
@@ -314,12 +314,12 @@ fn function_arg(e: &Expr) -> bool {
 }
 
 fn keys_const(keys: &[ChainKey]) -> String {
-    let mut b = String::from("        const KEYS: &[orm::core::ChainKey] = &[\n");
+    let mut b = String::from("        const KEYS: &[polyspec_orm::core::ChainKey] = &[\n");
     for k in keys {
         let cols: Vec<String> = k.columns.iter().map(|c| format!("{c:?}")).collect();
         let _ = writeln!(
             b,
-            "            orm::core::ChainKey {{ conn: {:?}, op: {:?}, column: {:?}, columns: &[{}], compare: {:?} }},",
+            "            polyspec_orm::core::ChainKey {{ conn: {:?}, op: {:?}, column: {:?}, columns: &[{}], compare: {:?} }},",
             k.conn,
             k.op,
             k.column,
@@ -421,7 +421,7 @@ impl<'m> Gen<'m> {
             gi,
             r,
             &format!("get_{name}"),
-            Getter { result: "orm::Result<Option<orm::serde_json::Value>>".into(), expr: format!("self.__orm.attached({name:?})"), origin },
+            Getter { result: "polyspec_orm::Result<Option<polyspec_orm::serde_json::Value>>".into(), expr: format!("self.__orm.attached({name:?})"), origin },
         );
     }
 
@@ -443,7 +443,10 @@ impl<'m> Gen<'m> {
                 self.fail(r, format!("{typ}::{name} takes {} values, not {}", keys.len(), args.len()));
                 return None;
             }
-            return Some(("(f: orm::Func, v: impl orm::args::Compared)".into(), "vec![orm::core::Arg::Function(f, v.into_param())]".into()));
+            return Some((
+                "(f: polyspec_orm::Func, v: impl polyspec_orm::args::Compared)".into(),
+                "vec![polyspec_orm::core::Arg::Function(f, v.into_param())]".into(),
+            ));
         }
         if args.len() != keys.len() {
             self.fail(r, format!("{typ}::{name} takes {} values, not {}", keys.len(), args.len()));
@@ -457,19 +460,19 @@ impl<'m> Gen<'m> {
                     let cols: Vec<&Field> = k.columns.iter().filter_map(|c| e.field(c)).collect();
                     let types: Vec<&str> = cols.iter().map(|c| base(c)).collect();
                     let vars: Vec<String> = (0..cols.len()).map(|j| format!("a{j}")).collect();
-                    let conv: Vec<String> = (0..cols.len()).map(|j| format!("orm::Param::from(a{j})")).collect();
+                    let conv: Vec<String> = (0..cols.len()).map(|j| format!("polyspec_orm::Param::from(a{j})")).collect();
                     params.push(format!("{p}: Vec<({})>", types.join(", ")));
-                    call.push(format!("orm::core::Arg::Tuples({p}.into_iter().map(|({})| vec![{}]).collect())", vars.join(", "), conv.join(", ")));
+                    call.push(format!("polyspec_orm::core::Arg::Tuples({p}.into_iter().map(|({})| vec![{}]).collect())", vars.join(", "), conv.join(", ")));
                 }
                 _ => {
                     let c = e.field(&k.column).expect("parsed column");
                     if !k.compare.is_empty() {
                         self.owners.insert(k.compare.clone());
                         params.push(format!("{p}: &impl super::{}", has_trait(&k.compare)));
-                        call.push(format!("orm::core::Arg::Model(orm::Model::core({p}).id())"));
+                        call.push(format!("polyspec_orm::core::Arg::Model(polyspec_orm::Model::core({p}).id())"));
                     } else if k.op == "lk" || k.op == "lb" {
-                        params.push(format!("{p}: impl orm::args::LikeArg"));
-                        call.push(format!("orm::core::Arg::Value(orm::args::LikeArg::into_value({p}))"));
+                        params.push(format!("{p}: impl polyspec_orm::args::LikeArg"));
+                        call.push(format!("polyspec_orm::core::Arg::Value(polyspec_orm::args::LikeArg::into_value({p}))"));
                     } else {
                         let tr = match k.op {
                             "" | "ne" => "EqArg",
@@ -477,9 +480,9 @@ impl<'m> Gen<'m> {
                             _ => "CmpArg",
                         };
                         let knd = kind(c);
-                        tparams.push(format!("V{i}: orm::args::{tr}<{knd}>"));
+                        tparams.push(format!("V{i}: polyspec_orm::args::{tr}<{knd}>"));
                         params.push(format!("{p}: V{i}"));
-                        call.push(format!("orm::core::Arg::Value(orm::args::{tr}::<{knd}>::into_value({p}))"));
+                        call.push(format!("polyspec_orm::core::Arg::Value(polyspec_orm::args::{tr}::<{knd}>::into_value({p}))"));
                     }
                 }
             }
@@ -514,9 +517,12 @@ impl<'m> Gen<'m> {
             };
             let Some((params, args)) = self.chain_params(gi, r, &keys) else { return };
             let (result, body) = match prefix {
-                "get_by_" => ("orm::Result<Self>", format!("orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
-                "gets_by_" => ("orm::Result<orm::Collection<Self>>", format!("orm::model::gets_core(&self.__orm.by(KEYS, {args}), \"all\").await")),
-                _ => ("orm::Result<i64>", format!("orm::model::get_count(&self.__orm.by(KEYS, {args})).await")),
+                "get_by_" => ("polyspec_orm::Result<Self>", format!("polyspec_orm::model::get_core(&self.__orm.by(KEYS, {args})).await")),
+                "gets_by_" => (
+                    "polyspec_orm::Result<polyspec_orm::Collection<Self>>",
+                    format!("polyspec_orm::model::gets_core(&self.__orm.by(KEYS, {args}), \"all\").await"),
+                ),
+                _ => ("polyspec_orm::Result<i64>", format!("polyspec_orm::model::get_count(&self.__orm.by(KEYS, {args})).await")),
             };
             let code = format!(
                 "    /// Runs the terminal with the condition {rest}.\n    pub async fn {name}{} -> {result} {{\n{}        {body}\n    }}\n",
@@ -551,7 +557,7 @@ impl<'m> Gen<'m> {
             };
             self.owners.insert(right.clone());
             let code = format!(
-                "    /// Joins the child on {left} = child.{right}.\n    pub fn {name}<C: super::{}>(mut self, child: C) -> Self {{\n        self.__orm.join({join_kind:?}, {left:?}, {right:?}, orm::Model::into_core(child));\n        self\n    }}\n",
+                "    /// Joins the child on {left} = child.{right}.\n    pub fn {name}<C: super::{}>(mut self, child: C) -> Self {{\n        self.__orm.join({join_kind:?}, {left:?}, {right:?}, polyspec_orm::Model::into_core(child));\n        self\n    }}\n",
                 has_trait(&right)
             );
             return self.add_method(gi, r, name, argc, code);
@@ -577,7 +583,7 @@ impl<'m> Gen<'m> {
                 return self.fail(r, format!("{typ}::{name}: no model has the column {rest}"));
             };
             let code = format!(
-                "    /// Loads the relation only when parent.{col} equals the value.\n    pub fn {name}(mut self, v: impl Into<orm::Param>) -> Self {{\n        self.__orm.possible({col:?}, v.into());\n        self\n    }}\n"
+                "    /// Loads the relation only when parent.{col} equals the value.\n    pub fn {name}(mut self, v: impl Into<polyspec_orm::Param>) -> Self {{\n        self.__orm.possible({col:?}, v.into());\n        self\n    }}\n"
             );
             return self.add_method(gi, r, name, argc, code);
         }
@@ -595,7 +601,7 @@ impl<'m> Gen<'m> {
                 return;
             }
             let code = format!(
-                "    /// Attaches {attr} to the row output.\n    pub fn {name}(mut self, v: impl Into<orm::serde_json::Value>) -> Self {{\n        self.__orm.attach({attr:?}, v.into());\n        self\n    }}\n"
+                "    /// Attaches {attr} to the row output.\n    pub fn {name}(mut self, v: impl Into<polyspec_orm::serde_json::Value>) -> Self {{\n        self.__orm.attach({attr:?}, v.into());\n        self\n    }}\n"
             );
             self.add_method(gi, r, name, argc, code);
             return self.value_getter(gi, r, attr, format!("the value attached with {name}"));
@@ -617,7 +623,7 @@ impl<'m> Gen<'m> {
                     return;
                 }
                 let code = format!(
-                    "    /// Adds {col} as {attr} wrapped in a column function.\n    pub fn {name}(mut self, f: orm::Func) -> Self {{\n        self.__orm.add_column_func({col:?}, {attr:?}, f);\n        self\n    }}\n"
+                    "    /// Adds {col} as {attr} wrapped in a column function.\n    pub fn {name}(mut self, f: polyspec_orm::Func) -> Self {{\n        self.__orm.add_column_func({col:?}, {attr:?}, f);\n        self\n    }}\n"
                 );
                 self.add_method(gi, r, name, argc, code);
                 return self.value_getter(gi, r, attr, format!("the column added with {name}"));
@@ -626,7 +632,7 @@ impl<'m> Gen<'m> {
                 return;
             }
             let code = format!(
-                "    /// Adds the scalar subquery column {rest}; the callback receives this model.\n    pub fn {name}<R: orm::Model>(mut self, f: impl Fn(&Self) -> R + Send + Sync + 'static) -> Self {{\n        self.__orm.add_column_query::<Self, R>({rest:?}, f);\n        self\n    }}\n"
+                "    /// Adds the scalar subquery column {rest}; the callback receives this model.\n    pub fn {name}<R: polyspec_orm::Model>(mut self, f: impl Fn(&Self) -> R + Send + Sync + 'static) -> Self {{\n        self.__orm.add_column_query::<Self, R>({rest:?}, f);\n        self\n    }}\n"
             );
             self.add_method(gi, r, name, argc, code);
             return self.value_getter(gi, r, rest, format!("the column added with {name}"));
@@ -684,13 +690,13 @@ impl<'m> Gen<'m> {
         let typ = format!("super::{module}::{ctyp}");
         let g = if many {
             Getter {
-                result: format!("orm::Result<Option<&orm::Collection<{typ}>>>"),
+                result: format!("polyspec_orm::Result<Option<&polyspec_orm::Collection<{typ}>>>"),
                 expr: format!("self.__orm.related_many::<{typ}>({key:?})"),
                 origin: format!("the {table} result {key}"),
             }
         } else {
             Getter {
-                result: format!("orm::Result<Option<&{typ}>>"),
+                result: format!("polyspec_orm::Result<Option<&{typ}>>"),
                 expr: format!("self.__orm.related_one::<{typ}>({key:?})"),
                 origin: format!("the {table} result {key}"),
             }
@@ -811,25 +817,25 @@ fn emit(g: &Gen<'_>, manifest_hash: &str, manifest_file: &str, external_file: Op
         None => {
             let _ = writeln!(
                 b,
-                "/// The manifest text of the document set the models were generated from.\npub static SCHEMA: orm::Schema = orm::Schema::new(include_str!({manifest_file:?}), MANIFEST_HASH);\n"
+                "/// The manifest text of the document set the models were generated from.\npub static SCHEMA: polyspec_orm::Schema = polyspec_orm::Schema::new(include_str!({manifest_file:?}), MANIFEST_HASH);\n"
             );
         }
         Some(external_file) => {
             let _ = writeln!(
                 b,
-                "/// The manifest text and the external text of the document set the models were generated from.\npub static SCHEMA: orm::Schema = orm::Schema::with_external(include_str!({manifest_file:?}), include_str!({external_file:?}), MANIFEST_HASH);\n"
+                "/// The manifest text and the external text of the document set the models were generated from.\npub static SCHEMA: polyspec_orm::Schema = polyspec_orm::Schema::with_external(include_str!({manifest_file:?}), include_str!({external_file:?}), MANIFEST_HASH);\n"
             );
         }
     }
     b.push_str(
-        "/// Connects to the database selected by the DSN URI and registers the set of these models on the connection.\npub async fn connect(dsn: &str, pool_size: u32, cfg: orm::Config) -> orm::Result<orm::Db> {\n    orm::Db::connect_schema(dsn, &SCHEMA, pool_size, cfg).await\n}\n\n",
+        "/// Connects to the database selected by the DSN URI and registers the set of these models on the connection.\npub async fn connect(dsn: &str, pool_size: u32, cfg: polyspec_orm::Config) -> polyspec_orm::Result<polyspec_orm::Db> {\n    polyspec_orm::Db::connect_schema(dsn, &SCHEMA, pool_size, cfg).await\n}\n\n",
     );
     for gm in &g.models {
         let _ = writeln!(b, "pub use {}::{};", gm.module, gm.typ);
     }
     for c in &g.owners {
         let tr = has_trait(c);
-        let _ = writeln!(b, "\n/// A model with the column {c}.\npub trait {tr}: orm::Model {{}}");
+        let _ = writeln!(b, "\n/// A model with the column {c}.\npub trait {tr}: polyspec_orm::Model {{}}");
         for gm in &g.models {
             if gm.e.field(c).is_some() {
                 let _ = writeln!(b, "impl {tr} for {} {{}}", gm.typ);
@@ -849,38 +855,40 @@ const FIXED_CODE: &str = include_str!("fixed.rs.txt");
 fn model_source(gm: &Model<'_>) -> String {
     let (e, t) = (gm.e, gm.typ.as_str());
     let mut b = String::new();
-    let _ = write!(b, "/// A {} model or row.\n#[derive(Clone)]\npub struct {t} {{\n    __orm: orm::Core,\n", e.name);
+    let _ = write!(b, "/// A {} model or row.\n#[derive(Clone)]\npub struct {t} {{\n    __orm: polyspec_orm::Core,\n", e.name);
     for c in &e.fields {
         let _ = writeln!(b, "    {}: {},", ident(&c.name), field(c));
     }
     b.push_str("}\n\n");
     let _ = write!(
         b,
-        "/// The descriptor of {t}.\npub static ENTITY: orm::Entity = orm::Entity {{\n    name: {:?},\n    schema: &super::SCHEMA,\n    new: orm::model::new_boxed::<{t}>,\n    collect: orm::model::collect_boxed::<{t}>,\n}};\n\n",
+        "/// The descriptor of {t}.\npub static ENTITY: polyspec_orm::Entity = polyspec_orm::Entity {{\n    name: {:?},\n    schema: &super::SCHEMA,\n    new: polyspec_orm::model::new_boxed::<{t}>,\n    collect: polyspec_orm::model::collect_boxed::<{t}>,\n}};\n\n",
         e.name
     );
-    let _ = writeln!(b, "impl orm::Model for {t} {{");
-    b.push_str("    fn entity() -> &'static orm::Entity {\n        &ENTITY\n    }\n\n");
-    b.push_str("    fn core(&self) -> &orm::Core {\n        &self.__orm\n    }\n\n");
-    b.push_str("    fn core_mut(&mut self) -> &mut orm::Core {\n        &mut self.__orm\n    }\n\n");
-    let _ = write!(b, "    fn from_core(core: orm::Core) -> Self {{\n        {t} {{\n            __orm: core,\n");
+    let _ = writeln!(b, "impl polyspec_orm::Model for {t} {{");
+    b.push_str("    fn entity() -> &'static polyspec_orm::Entity {\n        &ENTITY\n    }\n\n");
+    b.push_str("    fn core(&self) -> &polyspec_orm::Core {\n        &self.__orm\n    }\n\n");
+    b.push_str("    fn core_mut(&mut self) -> &mut polyspec_orm::Core {\n        &mut self.__orm\n    }\n\n");
+    let _ = write!(b, "    fn from_core(core: polyspec_orm::Core) -> Self {{\n        {t} {{\n            __orm: core,\n");
     for c in &e.fields {
         let init = if c.nullable {
             "None"
         } else if base(c) == ORDERED {
-            "orm::ordered_json::Value::null()"
+            "polyspec_orm::ordered_json::Value::null()"
         } else {
             "Default::default()"
         };
         let _ = writeln!(b, "            {}: {init},", ident(&c.name));
     }
     b.push_str("        }\n    }\n\n");
-    b.push_str("    fn into_core(self) -> orm::Core {\n        self.__orm\n    }\n\n");
-    b.push_str("    #[allow(unused_mut)]\n    fn assign(&mut self, name: &str, mut v: orm::Val) -> orm::Result<bool> {\n        match name {\n");
+    b.push_str("    fn into_core(self) -> polyspec_orm::Core {\n        self.__orm\n    }\n\n");
+    b.push_str(
+        "    #[allow(unused_mut)]\n    fn assign(&mut self, name: &str, mut v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {\n        match name {\n",
+    );
     for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));
         let conversion = match c.ty {
-            Type::Decimal(precision, scale) if c.codec.is_empty() => format!("orm::decimal::decode(v, {precision}, {scale})?"),
+            Type::Decimal(precision, scale) if c.codec.is_empty() => format!("polyspec_orm::decimal::decode(v, {precision}, {scale})?"),
             _ => convert(bt).to_owned(),
         };
         if field(c) != bt {
@@ -890,14 +898,14 @@ fn model_source(gm: &Model<'_>) -> String {
         }
     }
     b.push_str("            _ => return Ok(false),\n        }\n        self.__orm.mark_field_ready(name);\n        Ok(true)\n    }\n\n");
-    b.push_str("    fn value(&self, name: &str) -> Option<orm::Val> {\n        if !self.__orm.field_ready(name) { return None; }\n        Some(match name {\n");
+    b.push_str("    fn value(&self, name: &str) -> Option<polyspec_orm::Val> {\n        if !self.__orm.field_ready(name) { return None; }\n        Some(match name {\n");
     for c in &e.fields {
         let (bt, id) = (base(c), ident(&c.name));
         if field(c) != bt {
             let x = if copy_type(bt) { "*x" } else { "x" };
             let _ = writeln!(
                 b,
-                "            {:?} => match &self.{id} {{\n                None => orm::Val::Null,\n                Some(x) => {},\n            }},",
+                "            {:?} => match &self.{id} {{\n                None => polyspec_orm::Val::Null,\n                Some(x) => {},\n            }},",
                 c.name,
                 to_val(bt, x)
             );
@@ -908,11 +916,11 @@ fn model_source(gm: &Model<'_>) -> String {
     b.push_str("            _ => return None,\n        })\n    }\n}\n\n");
     let _ = write!(
         b,
-        "impl<M> orm::GroupArg<M> for &{t} {{\n    fn apply(self, conn: &'static str, core: &mut orm::Core) {{\n        core.place(conn, self.__orm.id());\n    }}\n}}\n\n"
+        "impl<M> polyspec_orm::GroupArg<M> for &{t} {{\n    fn apply(self, conn: &'static str, core: &mut polyspec_orm::Core) {{\n        core.place(conn, self.__orm.id());\n    }}\n}}\n\n"
     );
     let _ = write!(
         b,
-        "impl orm::serde::Serialize for {t} {{\n    fn serialize<S: orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        orm::serde::Serialize::serialize(&orm::model::raw_json(orm::model::to_json(self)).map_err(orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
+        "impl polyspec_orm::serde::Serialize for {t} {{\n    fn serialize<S: polyspec_orm::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {{\n        polyspec_orm::serde::Serialize::serialize(&polyspec_orm::model::raw_json(polyspec_orm::model::to_json(self)).map_err(polyspec_orm::serde::ser::Error::custom)?, s)\n    }}\n}}\n\n"
     );
     b.push_str(&FIXED_CODE.replacen("impl T {", &format!("impl {t} {{"), 1));
     for c in &e.fields {
@@ -920,13 +928,13 @@ fn model_source(gm: &Model<'_>) -> String {
         b.push('\n');
         if c.styled_value() {
             let value = if c.nullable {
-                format!("match &self.{id} {{ None => orm::StyledValue::SqlNull, Some(value) => orm::StyledValue::Value(value.clone()) }}")
+                format!("match &self.{id} {{ None => polyspec_orm::StyledValue::SqlNull, Some(value) => polyspec_orm::StyledValue::Value(value.clone()) }}")
             } else {
-                format!("orm::StyledValue::Value(self.{id}.clone())")
+                format!("polyspec_orm::StyledValue::Value(self.{id}.clone())")
             };
-            let _ = write!(b, "    /// Returns the selected or assigned styled value of {col}.\n    pub fn get_{col}(&self) -> orm::Result<orm::StyledValue<{bt}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok({value})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns the selected or assigned styled value of {col}.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<{bt}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok({value})\n    }}\n\n");
         } else if fd != bt && copy_type(bt) {
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{fd}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<{fd}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if fd != bt {
             let r = if bt == "Vec<u8>" {
                 "&[u8]"
@@ -936,38 +944,38 @@ fn model_source(gm: &Model<'_>) -> String {
                 bt
             };
             let access = if bt == "Vec<u8>" || bt == "String" { "as_deref" } else { "as_ref" };
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<Option<{r}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id}.{access}())\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<Option<{r}>> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id}.{access}())\n    }}\n\n");
         } else if copy_type(bt) {
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(self.{id})\n    }}\n\n");
         } else if bt == "String" {
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&str> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<&str> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         } else if bt == "Vec<u8>" {
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&[u8]> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<&[u8]> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         } else {
-            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> orm::Result<&{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
+            let _ = write!(b, "    /// Returns {col} after checking that it was loaded or assigned.\n    pub fn get_{col}(&self) -> polyspec_orm::Result<&{bt}> {{\n        self.__orm.require_field({col:?})?;\n        Ok(&self.{id})\n    }}\n\n");
         }
         if c.styled_value() {
             let store = if bt == ORDERED { "set_ordered" } else { "set_json" };
             let sql_null = if c.nullable {
-                format!("self.__orm.set({col:?}, orm::Param::Null);\n                self.{id} = None;")
+                format!("self.__orm.set({col:?}, polyspec_orm::Param::Null);\n                self.{id} = None;")
             } else {
-                format!("return Err(orm::Error::Engine {{ code: orm::codes::CODEC_ENCODE.into(), msg: \"{col} does not accept SQL NULL\".into() }});")
+                format!("return Err(polyspec_orm::Error::Engine {{ code: polyspec_orm::codes::CODEC_ENCODE.into(), msg: \"{col} does not accept SQL NULL\".into() }});")
             };
             let field_value = if c.nullable { "Some(value)" } else { "value" };
             let _ = write!(
                 b,
-                "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: orm::StyledValue<{bt}>) -> orm::Result<Self> {{\n        match v {{\n            orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
+                "    /// Sets {col} with an explicit SQL NULL or decoded value.\n    pub fn set_{col}(mut self, v: polyspec_orm::StyledValue<{bt}>) -> polyspec_orm::Result<Self> {{\n        match v {{\n            polyspec_orm::StyledValue::SqlNull => {{\n                {sql_null}\n            }}\n            polyspec_orm::StyledValue::Value(value) => {{\n                self.__orm.{store}({col:?}, value.clone());\n                self.{id} = {field_value};\n            }}\n        }}\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n"
             );
         } else if let Type::Decimal(precision, scale) = c.ty {
             if c.nullable {
-                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<String>) -> orm::Result<Self> {{\n        let value = v.into_nullable();\n        let value = match value {{ Some(text) => Some(orm::decimal::normalize(&text, {precision}, {scale})?), None => None }};\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self> {{\n        let value = v.into_nullable();\n        let value = match value {{ Some(text) => Some(polyspec_orm::decimal::normalize(&text, {precision}, {scale})?), None => None }};\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
             } else {
-                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> orm::Result<Self> {{\n        let value = orm::decimal::normalize(&v.into(), {precision}, {scale})?;\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
+                let _ = write!(b, "    /// Sets {col} after exact decimal validation.\n    pub fn set_{col}(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self> {{\n        let value = polyspec_orm::decimal::normalize(&v.into(), {precision}, {scale})?;\n        self.__orm.set({col:?}, value.clone().into());\n        self.{id} = value;\n        self.__orm.mark_field_ready({col:?});\n        Ok(self)\n    }}\n\n");
             }
         } else if fd != bt {
             let _ = write!(
                 b,
-                "    /// Sets {col}; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl orm::IntoNullable<{bt}>) -> Self {{\n        let v = v.into_nullable();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
+                "    /// Sets {col}; None or Null stores NULL.\n    pub fn set_{col}(mut self, v: impl polyspec_orm::IntoNullable<{bt}>) -> Self {{\n        let v = v.into_nullable();\n        self.__orm.set({col:?}, v.clone().into());\n        self.{id} = v;\n        self.__orm.mark_field_ready({col:?});\n        self\n    }}\n\n"
             );
         } else {
             let _ = write!(
@@ -988,7 +996,7 @@ fn model_source(gm: &Model<'_>) -> String {
             if gm.order_fn.get(&name).copied().unwrap_or(false) {
                 let _ = writeln!(
                     b,
-                    "\n    /// Orders by a column function of {col}.\n    pub fn {name}(mut self, f: orm::Func) -> Self {{\n        self.__orm.order_by({col:?}, {desc}, Some(f));\n        self\n    }}"
+                    "\n    /// Orders by a column function of {col}.\n    pub fn {name}(mut self, f: polyspec_orm::Func) -> Self {{\n        self.__orm.order_by({col:?}, {desc}, Some(f));\n        self\n    }}"
                 );
             } else {
                 let _ = writeln!(

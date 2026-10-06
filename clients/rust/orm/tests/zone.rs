@@ -6,10 +6,10 @@
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime, Utc};
-use orm::core::{Arg, ChainKey};
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use orm_case_database::{CaseDatabase, CaseTable};
+use polyspec_orm::core::{Arg, ChainKey};
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 /// Returns the DSN in `var`; an unset or empty variable fails the test.
 fn require_dsn(var: &str) -> String {
@@ -23,7 +23,7 @@ static SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/zone.dbs"), "sha256:c889e6d039d9245e5093d386a7c707419fddf5f9a303d39a5eb7cca4c8499891");
 
 static ENTITY: Entity =
-    Entity { name: "zone_event", schema: &SCHEMA, new: orm::model::new_boxed::<ZoneEvent>, collect: orm::model::collect_boxed::<ZoneEvent> };
+    Entity { name: "zone_event", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<ZoneEvent>, collect: polyspec_orm::model::collect_boxed::<ZoneEvent> };
 
 #[derive(Clone)]
 struct ZoneEvent {
@@ -49,7 +49,7 @@ impl Model for ZoneEvent {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         match name {
             "seq" => self.seq = v.as_i64()?,
             "start_dt" => self.start_dt = v.as_datetime()?,
@@ -87,38 +87,38 @@ async fn connections_use_utc() {
             let sep = if base.contains('?') { '&' } else { '?' };
             let dsn = if zone.is_empty() { base.clone() } else { format!("{base}{sep}timezone={}", zone.replace('+', "%2B")) };
             let label = format!("{driver}/{zone}");
-            let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{label}: {e}"));
+            let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{label}: install: {e}"));
             let before = Utc::now().naive_utc();
             let mut row = event(&db);
             row.core_mut().set("start_dt", Param::DateTime(start));
-            orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
-            let got = orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
+            polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{label}: create: {e}"));
+            let got = polyspec_orm::model::get(&event(&db)).await.unwrap_or_else(|e| panic!("{label}: {e}"));
             assert_eq!(got.start_dt, start, "{label}: start_dt");
             // `default now`는 UTC statement 시각이다.
             let skew = (got.created_ts - before).num_seconds().abs();
             assert!(skew < 60, "{label}: created_ts {} is not about {before}", got.created_ts);
             const KEYS: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "start_dt", columns: &[], compare: "" }];
-            let filter = event(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(Param::DateTime(start)))]);
-            let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: count: {e}"));
+            let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(Param::DateTime(start)))]);
+            let found = polyspec_orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: count: {e}"));
             assert_eq!(found, 1, "{label}: where start_dt");
             let text = |v: &str| Param::Str(v.to_owned());
             const BETWEEN: &[ChainKey] = &[ChainKey { conn: "", op: "between", column: "start_dt", columns: &[], compare: "" }];
             let filters = [
-                ("equal by text", KEYS, orm::args::Value::One(text("2026-01-02 00:00:00")), 1),
-                ("equal by text with fraction", KEYS, orm::args::Value::One(text("2026-01-02T00:00:00.0")), 1),
-                ("in by text", KEYS, orm::args::Value::List(vec![text("2026-01-02 00:00:00"), text("2026-01-03 00:00:00")]), 1),
-                ("between by text", BETWEEN, orm::args::Value::Pair(text("2026-01-02 00:00:00"), text("2026-01-02 00:00:00.5")), 1),
+                ("equal by text", KEYS, polyspec_orm::args::Value::One(text("2026-01-02 00:00:00")), 1),
+                ("equal by text with fraction", KEYS, polyspec_orm::args::Value::One(text("2026-01-02T00:00:00.0")), 1),
+                ("in by text", KEYS, polyspec_orm::args::Value::List(vec![text("2026-01-02 00:00:00"), text("2026-01-03 00:00:00")]), 1),
+                ("between by text", BETWEEN, polyspec_orm::args::Value::Pair(text("2026-01-02 00:00:00"), text("2026-01-02 00:00:00.5")), 1),
             ];
             for (name, keys, value, want) in filters {
                 let filter = event(&db).core().by(keys, vec![Arg::Value(value)]);
-                let found = orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: {name}: {e}"));
+                let found = polyspec_orm::model::get_count(&filter).await.unwrap_or_else(|e| panic!("{label}: {name}: {e}"));
                 assert_eq!(found, want, "{label}: {name}");
             }
             if driver == "sqlite" {
-                let filter = event(&db).core().by(KEYS, vec![Arg::Value(orm::args::Value::One(text("2026-01-02")))]);
-                let err = orm::model::get_count(&filter).await.expect_err("date-only datetime text");
-                assert_eq!(err.code(), orm::codes::CODEC_ENCODE, "{label}: date-only datetime text: {err}");
+                let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(text("2026-01-02")))]);
+                let err = polyspec_orm::model::get_count(&filter).await.expect_err("date-only datetime text");
+                assert_eq!(err.code(), polyspec_orm::codes::CODEC_ENCODE, "{label}: date-only datetime text: {err}");
             }
             db.close().await;
             database.drop().await;
@@ -135,13 +135,13 @@ fn non_utc_time_zones_are_rejected() {
         "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
         "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
     ] {
-        let err = orm::db::parse_dsn(dsn).err().unwrap_or_else(|| panic!("{dsn}: a non-UTC timezone was accepted"));
-        assert_eq!(err.code(), orm::codes::CONFIG, "{dsn}: {err}");
+        let err = polyspec_orm::db::parse_dsn(dsn).err().unwrap_or_else(|| panic!("{dsn}: a non-UTC timezone was accepted"));
+        assert_eq!(err.code(), polyspec_orm::codes::CONFIG, "{dsn}: {err}");
     }
     for dsn in
         ["mysql://root@localhost/orm_example", "postgres://root@localhost/orm_example?timezone=UTC", "sqlite:///tmp/orm_example.sqlite?timezone=%2B00:00"]
     {
-        orm::db::parse_dsn(dsn).unwrap_or_else(|e| panic!("{dsn}: {e}"));
+        polyspec_orm::db::parse_dsn(dsn).unwrap_or_else(|e| panic!("{dsn}: {e}"));
     }
 }
 
@@ -151,9 +151,9 @@ fn non_utc_time_zones_are_rejected() {
 async fn mysql_install_inside_transaction() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     let database = CaseDatabase::create("mysql").await;
-    let db = Db::connect(database.dsn(), 2, orm::Config::default()).await.unwrap();
-    let inside: orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
-    assert_eq!(inside.as_ref().map_err(|e| e.code().to_owned()), Err(orm::codes::CONFIG.to_owned()), "install inside a transaction: {inside:?}");
+    let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.unwrap();
+    let inside: polyspec_orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
+    assert_eq!(inside.as_ref().map_err(|e| e.code().to_owned()), Err(polyspec_orm::codes::CONFIG.to_owned()), "install inside a transaction: {inside:?}");
     db.utils().schema().install(&SCHEMA).await.unwrap();
     db.close().await;
     database.drop().await;
@@ -166,7 +166,7 @@ async fn pool_size() {
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
-    let db = Db::connect(&dsn, 3, orm::Config::default()).await.unwrap();
+    let db = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap();
     assert_eq!(db.stats().max_open_connections, 3, "configured pool size");
     db.close().await;
     let _ = std::fs::remove_dir_all(&tmp);
@@ -182,16 +182,16 @@ async fn pool_idle_size_and_lifetime() {
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
     for (size, idle) in [(3, 4), (0, 11)] {
-        let r = Db::connect(&dsn, size, orm::Config { pool_idle_size: idle, ..orm::Config::default() }).await;
-        assert_eq!(r.err().map(|e| e.code().to_owned()), Some(orm::codes::CONFIG.to_owned()), "pool size {size}, idle size {idle}");
+        let r = Db::connect(&dsn, size, polyspec_orm::Config { pool_idle_size: idle, ..polyspec_orm::Config::default() }).await;
+        assert_eq!(r.err().map(|e| e.code().to_owned()), Some(polyspec_orm::codes::CONFIG.to_owned()), "pool size {size}, idle size {idle}");
     }
-    let Pool::Sqlite(unset) = Db::connect(&dsn, 3, orm::Config::default()).await.unwrap().pool().clone() else { unreachable!() };
+    let Pool::Sqlite(unset) = Db::connect(&dsn, 3, polyspec_orm::Config::default()).await.unwrap().pool().clone() else { unreachable!() };
     assert_eq!(unset.options().get_max_lifetime(), Some(std::time::Duration::from_secs(30 * 60)), "default lifetime");
     unset.close().await;
 
     // Three connections are in use at once; after they return the pool keeps
     // one idle connection and closes the others.
-    let db = Db::connect(&dsn, 3, orm::Config { pool_idle_size: 1, ..orm::Config::default() }).await.unwrap();
+    let db = Db::connect(&dsn, 3, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() }).await.unwrap();
     let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
     let mut held = Vec::new();
     for _ in 0..3 {
@@ -204,7 +204,7 @@ async fn pool_idle_size_and_lifetime() {
     assert_eq!((db.stats().idle, db.stats().open_connections), (1, 1), "pool idle size 1");
     db.close().await;
 
-    let db = Db::connect(&dsn, 2, orm::Config { pool_lifetime_ms: 100, ..orm::Config::default() }).await.unwrap();
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config { pool_lifetime_ms: 100, ..polyspec_orm::Config::default() }).await.unwrap();
     let Pool::Sqlite(pool) = db.pool().clone() else { unreachable!() };
     assert_eq!(pool.options().get_max_lifetime(), Some(std::time::Duration::from_millis(100)), "configured lifetime");
     assert_eq!(db.stats().open_connections, 1, "the connection opened by connect");
@@ -224,7 +224,7 @@ async fn pool_size_bound() {
     use std::sync::Arc;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
         let dsn = require_dsn(var);
-        let unset = tokio::time::timeout(std::time::Duration::from_secs(5), Db::connect(&dsn, 0, orm::Config::default()))
+        let unset = tokio::time::timeout(std::time::Duration::from_secs(5), Db::connect(&dsn, 0, polyspec_orm::Config::default()))
             .await
             .unwrap_or_else(|_| panic!("{driver}: a pool size of zero did not connect"))
             .unwrap_or_else(|e| panic!("{driver}: {e}"));
@@ -232,7 +232,7 @@ async fn pool_size_bound() {
         unset.close().await;
         // Each transaction holds a connection while it runs, so six
         // transactions on a pool of two run at most two at a time.
-        let bounded = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap();
+        let bounded = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap();
         let (active, peak, opened) = (Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)), Arc::new(AtomicU32::new(0)));
         // A transaction future is not Send, so the tasks run on a LocalSet.
         let local = tokio::task::LocalSet::new();
@@ -240,7 +240,7 @@ async fn pool_size_bound() {
         for _ in 0..6 {
             let (db, active, peak, opened) = (bounded.clone(), active.clone(), peak.clone(), opened.clone());
             tasks.push(local.spawn_local(async move {
-                let r: orm::Result<()> = db
+                let r: polyspec_orm::Result<()> = db
                     .transaction(async || {
                         let n = active.fetch_add(1, Ordering::SeqCst) + 1;
                         peak.fetch_max(n, Ordering::SeqCst);
@@ -300,12 +300,12 @@ impl HeldRows {
 }
 
 /// `db`의 transaction에서 `entity`의 행을 FOR UPDATE로 읽는다. 다른 연결이 그 행을 잡고 있으면 기다린다.
-async fn locked_read(db: &Db, entity: &'static Entity) -> orm::Result<()> {
+async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<()> {
     db.transaction(async || {
         let mut core = Core::new(entity);
         core.connect(db);
         core.lock("update");
-        orm::model::get(&ZoneEvent::from_core(core)).await.map(drop)
+        polyspec_orm::model::get(&ZoneEvent::from_core(core)).await.map(drop)
     })
     .retry(0)
     .await
@@ -320,16 +320,16 @@ async fn statement_timeout() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let cfg = orm::Config { statement_timeout_ms: 200, ..orm::Config::default() };
+        let cfg = polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() };
         let db = Db::connect(database.dsn(), 2, cfg).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
-        let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
         let err = locked_read(&db, &ENTITY).await.expect_err("a statement past the timeout");
-        assert_eq!(err.code(), orm::codes::CANCELED, "{driver}: {err}");
+        assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "{driver}: {err}");
         held.release().await;
         holder.close().await;
         db.close().await;
@@ -352,33 +352,33 @@ async fn statement_timeout_through_a_pooler() {
     let table = CaseTable::reserve(&base);
     // zone document의 table 이름만 바꾼 schema와 그 entity다. Schema와 Entity는 'static 값을 받는다.
     let text = include_str!("../../../../contracts/fixtures/zone.dbs").replace("zone_event", table.name());
-    let document = orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
-    let manifest = orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
+    let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
+    let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
     let schema: &'static Schema =
         Box::leak(Box::new(Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()))));
     let entity: &'static Entity = Box::leak(Box::new(Entity {
         name: Box::leak(table.name().to_owned().into_boxed_str()),
         schema,
-        new: orm::model::new_boxed::<ZoneEvent>,
-        collect: orm::model::collect_boxed::<ZoneEvent>,
+        new: polyspec_orm::model::new_boxed::<ZoneEvent>,
+        collect: polyspec_orm::model::collect_boxed::<ZoneEvent>,
     }));
-    let setup = Db::connect(&base, 1, orm::Config::default()).await.unwrap();
+    let setup = Db::connect(&base, 1, polyspec_orm::Config::default()).await.unwrap();
     setup.utils().schema().install(schema).await.unwrap();
     for _ in 0..3 {
         let mut core = Core::new(entity);
         core.connect(&setup);
         let mut row = ZoneEvent::from_core(core);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        orm::model::create(&mut row).await.unwrap();
+        polyspec_orm::model::create(&mut row).await.unwrap();
     }
     // A direct connection holds the rows, so a locking read through the pooler
     // waits for the lock.
     let held = HeldRows::hold(&setup, table.name()).await;
     let single = require_dsn("ORM_TEST_PGBOUNCER_SINGLE_DSN");
-    let bounded = Db::connect_schema(&single, schema, 1, orm::Config { statement_timeout_ms: 200, ..orm::Config::default() }).await.unwrap();
+    let bounded = Db::connect_schema(&single, schema, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() }).await.unwrap();
     let err = locked_read(&bounded, entity).await.expect_err("the bounded connection through the pooler");
-    assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
-    let plain = Db::connect_schema(&single, schema, 1, orm::Config::default()).await.unwrap();
+    assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "the bounded connection through the pooler: {err}");
+    let plain = Db::connect_schema(&single, schema, 1, polyspec_orm::Config::default()).await.unwrap();
     // The holder keeps the rows for a declared 400 ms, past the 200 ms bound of
     // the other connection, so the plain read waits that long and then succeeds.
     let release = async {
@@ -391,7 +391,7 @@ async fn statement_timeout_through_a_pooler() {
     assert!(started.elapsed() >= std::time::Duration::from_millis(200), "the plain read waited {:?}, not past the bound", started.elapsed());
     let held = HeldRows::hold(&setup, table.name()).await;
     let err = locked_read(&bounded, entity).await.expect_err("the bounded connection after the plain one");
-    assert_eq!(err.code(), orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
+    assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "the bounded connection after the plain one: {err}");
     held.release().await;
     bounded.close().await;
     plain.close().await;
@@ -404,7 +404,7 @@ async fn statement_timeout_through_a_pooler() {
 #[tokio::test]
 async fn postgres_float_round_trip() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, orm::Config::default()).await.unwrap();
+    let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, polyspec_orm::Config::default()).await.unwrap();
     let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
     let values = [0.1 + 0.2, 1.0 / 3.0, f64::MIN_POSITIVE, 5e-324, f64::MAX, -123456.789e-7];
     for v in values {
@@ -425,17 +425,17 @@ async fn dropping_a_query_cancels_it() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-        let mut row = orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
-        let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let mut row = polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+        let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         let held = HeldRows::hold(&holder, "zone_event").await;
 
         row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 3).unwrap().and_hms_opt(0, 0, 0).unwrap()));
         let started = std::time::Instant::now();
-        let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), orm::model::update(&mut row, false)).await;
+        let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), polyspec_orm::model::update(&mut row, false)).await;
         assert!(dropped.is_err(), "{driver}: the blocked statement finished");
         if started.elapsed() >= std::time::Duration::from_secs(4) {
             orm_testcase::warning(format_args!("{driver}: dropping waited for the statement"));
@@ -444,7 +444,7 @@ async fn dropping_a_query_cancels_it() {
         holder.close().await;
         // The pool holds one connection, so the next statement proves the
         // cancelled one released it.
-        let count = tokio::time::timeout(std::time::Duration::from_secs(5), orm::model::get_count(event(&db).core()))
+        let count = tokio::time::timeout(std::time::Duration::from_secs(5), polyspec_orm::model::get_count(event(&db).core()))
             .await
             .unwrap_or_else(|_| panic!("{driver}: the connection did not come back"))
             .unwrap_or_else(|e| panic!("{driver}: count after cancellation: {e}"));
@@ -462,7 +462,7 @@ async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = orm_testcase::case!(orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
-        let db = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+        let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
         // MySQL과 PostgreSQL에서는 다른 연결이 미리 만든 행을 잡아 transaction의 locking read가 기다린다.
         let held = if driver == "sqlite" {
@@ -470,8 +470,8 @@ async fn dropping_a_transaction_frees_a_single_connection() {
         } else {
             let mut row = event(&db);
             row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-            orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
-            let holder = Db::connect(database.dsn(), 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
+            polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+            let holder = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
             let held = HeldRows::hold(&holder, "zone_event").await;
             Some((holder, held))
         };
@@ -482,28 +482,28 @@ async fn dropping_a_transaction_frees_a_single_connection() {
             db.transaction(async || {
                 let mut row = event(&tx_db);
                 row.core_mut().set("start_dt", Param::DateTime(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
-                orm::model::create(&mut row).await?;
+                polyspec_orm::model::create(&mut row).await?;
                 if driver == "sqlite" {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 } else {
                     let mut core = Core::new(&ENTITY);
                     core.connect(&tx_db);
                     core.lock("update");
-                    orm::model::get(&ZoneEvent::from_core(core)).await?;
+                    polyspec_orm::model::get(&ZoneEvent::from_core(core)).await?;
                 }
-                Ok::<(), orm::Error>(())
+                Ok::<(), polyspec_orm::Error>(())
             })
             .retry(0),
         )
         .await;
         assert!(dropped.is_err(), "{driver}: transaction future completed before it was dropped");
-        let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), orm::Error>(())).retry(0)).await;
+        let next = tokio::time::timeout(std::time::Duration::from_secs(2), db.transaction(async || Ok::<(), polyspec_orm::Error>(())).retry(0)).await;
         assert!(next.is_ok(), "{driver}: single pool connection was not released after transaction drop");
         if let Some((holder, held)) = held {
             held.release().await;
             holder.close().await;
         }
-        assert_eq!(orm::model::get_count(event(&db).core()).await.unwrap(), committed, "{driver}: dropped transaction committed");
+        assert_eq!(polyspec_orm::model::get_count(event(&db).core()).await.unwrap(), committed, "{driver}: dropped transaction committed");
         db.close().await;
         database.drop().await;
     }

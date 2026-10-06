@@ -1,4 +1,4 @@
-//! dbspec introspection through `orm::dbspec::introspect` on MySQL,
+//! dbspec introspection through `polyspec_orm::dbspec::introspect` on MySQL,
 //! PostgreSQL and SQLite (docs/dialects.md, "Introspection"). Every vector of
 //! tests/dbspec/ddl.json and every schema document is rendered, applied to an
 //! empty database of each dialect and introspected into the schema text of
@@ -11,7 +11,7 @@
 mod dbspec_probe;
 
 use dbspec_probe::{connection_rules, lines, repository, run_probe, strings, Servers, DIALECTS};
-use orm_schema::dbspec::{self, Document};
+use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};

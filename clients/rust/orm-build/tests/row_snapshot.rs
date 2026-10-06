@@ -1,4 +1,4 @@
-use orm_build::{
+use polyspec_orm_build::{
     catalog::{RowSnapshot, TableColumnMetadata, TableKind, TableMetadata, TablePage, TableRef},
     tool_db::{GridCell, GridQueryResult, QueryColumn},
 };

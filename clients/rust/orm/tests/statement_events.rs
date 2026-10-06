@@ -12,15 +12,19 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use orm::core::{Arg, ChainKey};
-use orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subscription, Val};
 use orm_case_database::CaseDatabase;
+use polyspec_orm::core::{Arg, ChainKey};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subscription, Val};
 use serde_json::{json, Value};
 
 static EVENTS_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/statement_events.dbs"), "sha256:0f576f8672d1b7c7ad72fa90e88dfcbcfeb41d35efd02cc7afe3ce6765f8b207");
-static EVENT_PROBE: Entity =
-    Entity { name: "event_probe", schema: &EVENTS_SCHEMA, new: orm::model::new_boxed::<EventProbe>, collect: orm::model::collect_boxed::<EventProbe> };
+static EVENT_PROBE: Entity = Entity {
+    name: "event_probe",
+    schema: &EVENTS_SCHEMA,
+    new: polyspec_orm::model::new_boxed::<EventProbe>,
+    collect: polyspec_orm::model::collect_boxed::<EventProbe>,
+};
 const COLUMNS: [&str; 2] = ["seq", "label"];
 const VECTOR: &str = include_str!("../../../../tests/events/vectors.json");
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
@@ -48,7 +52,7 @@ impl Model for EventProbe {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         if !COLUMNS.contains(&name) {
             return Ok(false);
         }
@@ -116,24 +120,24 @@ impl EventRun {
         EventProbe::from_core(core)
     }
 
-    async fn by_label(&self, label: &str) -> orm::Result<EventProbe> {
-        let filter = self.model().core().by(BY_LABEL, vec![Arg::Value(orm::args::Value::One(Param::from(label)))]);
-        orm::model::get_core::<EventProbe>(&filter).await
+    async fn by_label(&self, label: &str) -> polyspec_orm::Result<EventProbe> {
+        let filter = self.model().core().by(BY_LABEL, vec![Arg::Value(polyspec_orm::args::Value::One(Param::from(label)))]);
+        polyspec_orm::model::get_core::<EventProbe>(&filter).await
     }
 
     /// step 하나를 실행하고 그 결과를 돌려준다.
-    fn step<'a>(&'a self, s: &'a Value) -> Pin<Box<dyn Future<Output = orm::Result<()>> + 'a>> {
+    fn step<'a>(&'a self, s: &'a Value) -> Pin<Box<dyn Future<Output = polyspec_orm::Result<()>> + 'a>> {
         Box::pin(async move {
             let label = s["label"].as_str().unwrap_or_default();
             match s["op"].as_str().expect("step op") {
                 "create" => {
                     let mut row = self.model();
                     row.core_mut().set("label", Param::from(label));
-                    orm::model::create(&mut row).await.map(|_| ())
+                    polyspec_orm::model::create(&mut row).await.map(|_| ())
                 }
                 "get" => self.by_label(label).await.map(|_| ()),
                 "count" => {
-                    let n = orm::model::get_count(self.model().core()).await?;
+                    let n = polyspec_orm::model::get_count(self.model().core()).await?;
                     if let Some(want) = s["result"].as_i64() {
                         assert_eq!(n, want, "{}: count", self.driver);
                     }
@@ -142,11 +146,11 @@ impl EventRun {
                 "update" => {
                     let mut row = self.by_label(label).await?;
                     row.core_mut().set("label", Param::from(s["to"].as_str().expect("update to")));
-                    orm::model::update(&mut row, false).await
+                    polyspec_orm::model::update(&mut row, false).await
                 }
                 "delete" => {
                     let row = self.by_label(label).await?;
-                    orm::model::delete(&row, false).await
+                    polyspec_orm::model::delete(&row, false).await
                 }
                 "transaction" => {
                     let steps = s["steps"].as_array().cloned().unwrap_or_default();
@@ -157,7 +161,7 @@ impl EventRun {
                                 self.checked(inner).await?;
                             }
                             if fail {
-                                return Err(orm::Error::Config(CALLBACK_FAILED.into()));
+                                return Err(polyspec_orm::Error::Config(CALLBACK_FAILED.into()));
                             }
                             Ok(())
                         })
@@ -192,7 +196,7 @@ impl EventRun {
     /// step을 실행하고 그 오류가 step이 기대한 것인지 확인한다. 기대한 오류는 삼키지 않고
     /// 돌려주어 바깥 transaction의 callback이 받게 한다. transaction step이 기대한 callback
     /// 오류는 바깥 callback에서 처리된 것으로 본다.
-    async fn checked(&self, s: &Value) -> orm::Result<()> {
+    async fn checked(&self, s: &Value) -> polyspec_orm::Result<()> {
         let result = self.step(s).await;
         let op = s["op"].as_str().unwrap_or_default();
         match (s["error"].as_str(), result) {
@@ -216,7 +220,7 @@ async fn run_case(driver: &'static str, case: &Value) {
     let id = case["id"].as_str().expect("case id");
     let database = CaseDatabase::create(driver).await;
     let run = async {
-        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {id}: {e}"));
+        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {id}: {e}"));
         if case["install"].as_bool().unwrap_or(true) {
             db.utils().schema().install(&EVENTS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: {id}: install: {e}"));
         }
@@ -307,11 +311,11 @@ async fn statement_events_server_transactions() {
     assert_eq!(spec["database"], driver, "server_transactions database");
     let database = CaseDatabase::create(driver).await;
     let run = async {
-        let setup = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, orm::Config::default()).await.expect("connect");
+        let setup = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, polyspec_orm::Config::default()).await.expect("connect");
         setup.utils().schema().install(&EVENTS_SCHEMA).await.expect("install");
         setup.close().await;
-        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, orm::Config::default()).await.expect("connect");
-        let orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
+        let db = Db::connect_schema(database.dsn(), &EVENTS_SCHEMA, 1, polyspec_orm::Config::default()).await.expect("connect");
+        let polyspec_orm::db::Pool::Postgres(pool) = db.pool() else { panic!("postgres pool") };
         let (setting, source): (String, String) =
             sqlx::query_as("SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'").fetch_one(pool).await.expect("TimeZone");
         // pooler를 거치면 pooler가 startup parameter를 server connection에 SET으로 적용하므로

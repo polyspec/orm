@@ -110,12 +110,12 @@ fn limit() -> sqlx::Error {
 mod tests;
 
 /// 검사된 dbspec text를 chrono 값으로 읽는다.
-pub(super) fn date(value: &str) -> Result<orm::chrono::NaiveDate, sqlx::Error> {
-    orm::chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|_| invalid())
+pub(super) fn date(value: &str) -> Result<polyspec_orm::chrono::NaiveDate, sqlx::Error> {
+    polyspec_orm::chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").map_err(|_| invalid())
 }
-pub(super) fn time(value: &str) -> Result<orm::chrono::NaiveTime, sqlx::Error> {
-    orm::chrono::NaiveTime::parse_from_str(value, "%H:%M:%S%.f").map_err(|_| invalid())
+pub(super) fn time(value: &str) -> Result<polyspec_orm::chrono::NaiveTime, sqlx::Error> {
+    polyspec_orm::chrono::NaiveTime::parse_from_str(value, "%H:%M:%S%.f").map_err(|_| invalid())
 }
-pub(super) fn datetime(value: &str) -> Result<orm::chrono::NaiveDateTime, sqlx::Error> {
-    orm::chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S%.f").map_err(|_| invalid())
+pub(super) fn datetime(value: &str) -> Result<polyspec_orm::chrono::NaiveDateTime, sqlx::Error> {
+    polyspec_orm::chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S%.f").map_err(|_| invalid())
 }

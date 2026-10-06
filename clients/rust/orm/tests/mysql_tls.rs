@@ -4,8 +4,8 @@
 //! 넘긴다. `make test-servers`의 ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
 //! ORM_TEST_MYSQL_TLS_MISMATCH_DSN이 없으면 test가 실패한다.
 
-use orm::db::Pool;
-use orm::Db;
+use polyspec_orm::db::Pool;
+use polyspec_orm::Db;
 
 /// `var`의 DSN이다. 없거나 비어 있으면 test가 실패한다.
 fn require_dsn(var: &str) -> String {
@@ -17,7 +17,7 @@ fn require_dsn(var: &str) -> String {
 
 /// DSN으로 연 session의 TLS version이다.
 async fn ssl_version(dsn: &str) -> Result<String, String> {
-    let db = Db::connect(dsn, 1, orm::Config::default()).await.map_err(|e| e.to_string())?;
+    let db = Db::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| e.to_string())?;
     let Pool::MySql(pool) = db.pool().clone() else { panic!("{dsn} is not a MySQL DSN") };
     let row: (String, String) = sqlx::query_as("SHOW SESSION STATUS LIKE 'Ssl_version'").fetch_one(&pool).await.map_err(|e| e.to_string())?;
     Ok(row.1)

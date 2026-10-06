@@ -1,4 +1,4 @@
-use orm_build::catalog::CatalogConnection;
+use polyspec_orm_build::catalog::CatalogConnection;
 
 #[tokio::test]
 async fn catalog_connection_does_not_create_a_missing_sqlite_database() {

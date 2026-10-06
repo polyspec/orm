@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use orm_schema::dbspec::{self, Document, Field, RuntimeModel};
+use polyspec_orm_schema::dbspec::{self, Document, Field, RuntimeModel};
 
 /// 한 document set의 manifest와 runtime model.
 pub struct DocumentSet {

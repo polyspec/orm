@@ -77,7 +77,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # 네 클라
 `docs/errors.yaml` 오류 코드 · `docs/perf.md` 측정과 성능 검사 · `docs/checklist.md` 작업 계획.
 
 ## 도구
-`orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), `orm-build`(Rust),
+`orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), `polyspec-orm-build`(Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License

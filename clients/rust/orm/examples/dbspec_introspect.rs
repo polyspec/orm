@@ -4,7 +4,7 @@
 //!
 //! Usage: dbspec_introspect <mysql|postgres|sqlite> <uri>
 
-use orm::dbspec::{emit, introspect, Dialect, IntrospectError, Introspection};
+use polyspec_orm::dbspec::{emit, introspect, Dialect, IntrospectError, Introspection};
 use sqlx::Connection;
 use std::time::Instant;
 
@@ -42,7 +42,7 @@ async fn main() {
 /// 연결을 introspect하고 introspection에 걸린 시간을 ms로 돌려준다.
 async fn run<C>(connection: Result<C, sqlx::Error>, dialect: Dialect) -> Result<(Introspection, f64), String>
 where
-    C: orm::dbspec::CatalogQuerier,
+    C: polyspec_orm::dbspec::CatalogQuerier,
 {
     let mut connection = connection.map_err(|e| e.to_string())?;
     let start = Instant::now();

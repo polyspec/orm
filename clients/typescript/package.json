@@ -1,5 +1,5 @@
 {
-  "name": "@polyspec/orm-typescript",
+  "name": "@polyspec/orm",
   "version": "0.0.2",
   "description": "TypeScript ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite",
   "license": "MIT",

@@ -1,7 +1,7 @@
 //! feature-check가 고른 database와 DSN, 그리고 coverage case의 기한과 진행 출력.
 //! feature-check는 ORM_FEATURE_DATABASE와 ORM_FEATURE_DSN을 주고 시드된 bench
 //! database에서 ignored coverage test를 --include-ignored로 실행한다.
-use orm::Db;
+use polyspec_orm::Db;
 use std::future::Future;
 use std::time::{Duration, Instant};
 
@@ -15,7 +15,7 @@ pub async fn connect() -> Db {
         .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
     assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
-    let config = orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = super::model::connect(&dsn, 2, config).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     db
@@ -32,7 +32,7 @@ pub async fn run<F: Future<Output = ()>>(case: &str, body: F) {
 }
 
 /// 결과의 error code. 성공은 "ok"다.
-pub fn code<T>(r: orm::Result<T>) -> String {
+pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),

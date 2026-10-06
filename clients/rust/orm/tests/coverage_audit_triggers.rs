@@ -8,8 +8,8 @@ mod audit_rows;
 mod restore_rows;
 
 use audit_rows::drop_tables;
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use sqlx::Row;
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -48,7 +48,7 @@ fn feature_database() -> (String, String) {
 /// 그 실패를 이어 간다. item, item_history, audit이 미리 있으면 실패한다.
 async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
@@ -91,8 +91,12 @@ static COLUMNS_SCHEMA: Schema =
 /// audit_columns의 table을 column 이름으로 읽고 쓰는 model.
 macro_rules! columns_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
-        static $entity: Entity =
-            Entity { name: $entity_name, schema: &COLUMNS_SCHEMA, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
+        static $entity: Entity = Entity {
+            name: $entity_name,
+            schema: &COLUMNS_SCHEMA,
+            new: polyspec_orm::model::new_boxed::<$name>,
+            collect: polyspec_orm::model::collect_boxed::<$name>,
+        };
 
         #[derive(Clone)]
         struct $name {
@@ -116,7 +120,7 @@ macro_rules! columns_model {
             fn into_core(self) -> Core {
                 self.core
             }
-            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+            fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
                 if !$columns.contains(&name) {
                     return Ok(false);
                 }
@@ -188,7 +192,7 @@ async fn drop_columns_tables(db: &Db, driver: &str) {
 
 async fn audit_selected_columns() {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
@@ -198,11 +202,11 @@ async fn audit_selected_columns() {
     adb.utils().schema().install(&COLUMNS_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
     let (seq, id) = adb
         .transaction(async || {
-            let card = orm::model::create(&mut with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
+            let card = polyspec_orm::model::create(&mut with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
             let seq = card.value("seq").expect("generated seq").as_i64()?;
-            let tag = orm::model::create(&mut with::<Tag>(&[("label", text("x")), ("color", text("red"))])).await?;
+            let tag = polyspec_orm::model::create(&mut with::<Tag>(&[("label", text("x")), ("color", text("red"))])).await?;
             let id = tag.value("id").expect("generated id").as_i64()?;
-            orm::model::update(&mut with::<Card>(&[("seq", Param::I64(seq)), ("title", text("second")), ("secret", text("s2"))]), false).await?;
+            polyspec_orm::model::update(&mut with::<Card>(&[("seq", Param::I64(seq)), ("title", text("second")), ("secret", text("s2"))]), false).await?;
             Ok((seq, id))
         })
         .audit([("actor", "first")])
@@ -210,8 +214,8 @@ async fn audit_selected_columns() {
         .await
         .unwrap_or_else(|e| panic!("{driver}: audit first: {e}"));
     adb.transaction(async || {
-        orm::model::delete(&with::<Card>(&[("seq", Param::I64(seq))]), false).await?;
-        orm::model::update(&mut with::<Tag>(&[("id", Param::I64(id)), ("color", text("blue"))]), false).await
+        polyspec_orm::model::delete(&with::<Card>(&[("seq", Param::I64(seq))]), false).await?;
+        polyspec_orm::model::update(&mut with::<Tag>(&[("id", Param::I64(id)), ("color", text("blue"))]), false).await
     })
     .audit([("actor", "second")])
     .retry(0)
@@ -285,7 +289,7 @@ async fn drop_restore_tables(db: &Db, driver: &str) {
 /// audit 없는 table의 soft delete한 행을 restore로 되돌린다. 끝나면 설치한 table과 function을 지운다.
 async fn soft_delete_restore() {
     let (driver, dsn) = feature_database();
-    let db = Db::connect(&dsn, 2, orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
+    let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in restore_rows::TABLES {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");

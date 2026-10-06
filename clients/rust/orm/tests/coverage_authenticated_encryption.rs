@@ -1,8 +1,8 @@
 //! authenticated_encryption: contracts/fixtures/authenticated_encryption.json의 case를 client의
 //! AES envelope와 blind index 함수로 실행한다. 값은 fixture에서 읽는다.
-use orm::codec::{aes_decrypt, aes_encrypt, blind_index, hex_decode, hex_upper};
-use orm::Param;
 use orm_case_clock::CaseClock;
+use polyspec_orm::codec::{aes_decrypt, aes_encrypt, blind_index, hex_decode, hex_upper};
+use polyspec_orm::Param;
 use serde_json::Value;
 use std::time::Duration;
 
@@ -37,7 +37,7 @@ fn run(id: &str, body: impl FnOnce()) {
     orm_testcase::step(format_args!("{id} cpu={cpu:?} wall={:?}", clock.wall()));
 }
 
-fn decrypt(input: &Value) -> orm::Result<Vec<u8>> {
+fn decrypt(input: &Value) -> polyspec_orm::Result<Vec<u8>> {
     let envelope = hex_decode(text(input, "envelope_hex")).expect("fixture envelope hex");
     aes_decrypt(&envelope, text(input, "key"))
 }

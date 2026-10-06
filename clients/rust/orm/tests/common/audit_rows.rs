@@ -4,8 +4,8 @@
 
 use std::collections::BTreeMap;
 
-use orm::db::Pool;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::db::Pool;
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use sqlx::Row;
 
 pub static SCHEMA: Schema =
@@ -15,7 +15,7 @@ pub static SCHEMA: Schema =
 macro_rules! row_model {
     ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
         static $entity: Entity =
-            Entity { name: $entity_name, schema: &SCHEMA, new: orm::model::new_boxed::<$name>, collect: orm::model::collect_boxed::<$name> };
+            Entity { name: $entity_name, schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<$name>, collect: polyspec_orm::model::collect_boxed::<$name> };
 
         #[derive(Clone)]
         pub struct $name {
@@ -39,7 +39,7 @@ macro_rules! row_model {
             fn into_core(self) -> Core {
                 self.core
             }
-            fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+            fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
                 if !$columns.contains(&name) {
                     return Ok(false);
                 }
@@ -71,18 +71,18 @@ pub fn connected<M: Model>(db: &Db) -> M {
 }
 
 /// actor를 audit 값으로 주는 audit source다.
-pub fn audit_source(actor: &str) -> orm::AuditSource {
+pub fn audit_source(actor: &str) -> polyspec_orm::AuditSource {
     let actor = actor.to_owned();
     std::sync::Arc::new(move || Ok(vec![("actor".to_owned(), Param::from(actor.as_str()))]))
 }
 
 /// actor를 audit 값으로 주는 연결 설정이다.
-pub fn audit_config(actor: &str) -> orm::Config {
-    orm::Config { audit_source: Some(audit_source(actor)), ..Default::default() }
+pub fn audit_config(actor: &str) -> polyspec_orm::Config {
+    polyspec_orm::Config { audit_source: Some(audit_source(actor)), ..Default::default() }
 }
 
 /// dsn에 config로 연결하고 audit.dbs를 등록한다. table이 없으면 설치한다.
-pub async fn audit_db(dsn: &str, config: orm::Config) -> Db {
+pub async fn audit_db(dsn: &str, config: polyspec_orm::Config) -> Db {
     let db = Db::connect(dsn, 2, config).await.unwrap_or_else(|e| panic!("connect: {e}"));
     db.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("install: {e}"));
     db
@@ -136,7 +136,7 @@ pub async fn history(db: &Db) -> Vec<BTreeMap<String, Val>> {
     let mut q: History = connected(db);
     q.core_mut().add_all_columns();
     q.core_mut().order_by("history_id", false, None);
-    orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
+    polyspec_orm::model::gets(&q).await.unwrap().into_vec().into_iter().map(|r| r.values).collect()
 }
 
 /// item_history의 (change, previous, seq, title, audit, deleted)를 history_id 순서로 읽는다.
@@ -170,7 +170,7 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     }
 }
 
-pub fn code<T>(r: orm::Result<T>) -> String {
+pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
     match r {
         Ok(_) => "ok".into(),
         Err(e) => e.code().to_owned(),
@@ -196,34 +196,35 @@ pub async fn audit_case(driver: &str, dsn: &str) {
     let db = &adb;
     let mut outside = new_item("outside");
     outside.core_mut().connect(db);
-    assert_eq!(code(orm::model::create(&mut outside).await), orm::codes::CONFIG, "{driver}: insert without an audit");
-    let no_column: orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("reason".to_owned(), Param::from("x"))]));
+    assert_eq!(code(polyspec_orm::model::create(&mut outside).await), polyspec_orm::codes::CONFIG, "{driver}: insert without an audit");
+    let no_column: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("reason".to_owned(), Param::from("x"))]));
     for (name, config) in [
-        ("without an audit source", orm::Config::default()),
-        ("with a source value that is no column", orm::Config { audit_source: Some(no_column), ..Default::default() }),
+        ("without an audit source", polyspec_orm::Config::default()),
+        ("with a source value that is no column", polyspec_orm::Config { audit_source: Some(no_column), ..Default::default() }),
     ] {
         let other = audit_db(dsn, config).await;
         let failed = other.transaction(async || Ok(())).audit([("actor", "x")]).await;
         other.close().await;
-        assert_eq!(code(failed), orm::codes::CONFIG, "{driver}: an audit transaction of a connection {name}");
+        assert_eq!(code(failed), polyspec_orm::codes::CONFIG, "{driver}: an audit transaction of a connection {name}");
     }
-    let unavailable: orm::AuditSource = std::sync::Arc::new(|| Err(orm::Error::Engine { code: "UNAVAILABLE".into(), msg: "no request".into() }));
-    let failing = audit_db(dsn, orm::Config { audit_source: Some(unavailable), ..Default::default() }).await;
+    let unavailable: polyspec_orm::AuditSource =
+        std::sync::Arc::new(|| Err(polyspec_orm::Error::Engine { code: "UNAVAILABLE".into(), msg: "no request".into() }));
+    let failing = audit_db(dsn, polyspec_orm::Config { audit_source: Some(unavailable), ..Default::default() }).await;
     let failed = failing.transaction(async || Ok(())).audit(NO_VALUES).await;
     failing.close().await;
     assert!(
-        matches!(&failed, Err(orm::Error::Engine { code, msg }) if code == "UNAVAILABLE" && msg == "no request"),
+        matches!(&failed, Err(polyspec_orm::Error::Engine { code, msg }) if code == "UNAVAILABLE" && msg == "no request"),
         "{driver}: an audit transaction whose source fails: {failed:?}"
     );
     let unknown = adb.transaction(async || Ok(())).audit([("reason", "x")]).await;
-    assert_eq!(code(unknown), orm::codes::CONFIG, "{driver}: an audit value that is no column");
+    assert_eq!(code(unknown), polyspec_orm::codes::CONFIG, "{driver}: an audit value that is no column");
     let seq = adb
         .transaction(async || {
-            let seq = orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64()?;
+            let seq = polyspec_orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64()?;
             let nested = adb.transaction(async || Ok(())).audit([("actor", "nested")]).await;
-            assert_eq!(code(nested), orm::codes::CONFIG, "{driver}: a nested transaction with an audit");
+            assert_eq!(code(nested), polyspec_orm::codes::CONFIG, "{driver}: a nested transaction with an audit");
             // 중첩 transaction은 바깥 audit을 쓴다.
-            db.transaction(async || orm::model::update(&mut changed_item(seq, "second"), false).await).retry(0).await?;
+            db.transaction(async || polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await).retry(0).await?;
             Ok(seq)
         })
         .audit([("actor", "create")])
@@ -232,15 +233,15 @@ pub async fn audit_case(driver: &str, dsn: &str) {
         .unwrap_or_else(|e| panic!("{driver}: create: {e}"));
     let mut titled = changed_item(seq, "third");
     titled.core_mut().connect(db);
-    assert_eq!(code(orm::model::update(&mut titled, false).await), orm::codes::CONFIG, "{driver}: update without an audit");
+    assert_eq!(code(polyspec_orm::model::update(&mut titled, false).await), polyspec_orm::codes::CONFIG, "{driver}: update without an audit");
     // 값이 없는 audit transaction은 기본값만으로 기록한다.
-    adb.transaction(async || orm::model::delete(&changed_item(seq, "second"), false).await)
+    adb.transaction(async || polyspec_orm::model::delete(&changed_item(seq, "second"), false).await)
         .audit(NO_VALUES)
         .retry(0)
         .await
         .unwrap_or_else(|e| panic!("{driver}: delete: {e}"));
-    let failed = adb.transaction(async || Err::<(), _>(orm::Error::Config("callback failed".into()))).audit([("actor", "rolled back")]).retry(0).await;
-    assert!(matches!(&failed, Err(orm::Error::Config(m)) if m == "callback failed"), "{driver}: failed callback = {failed:?}");
+    let failed = adb.transaction(async || Err::<(), _>(polyspec_orm::Error::Config("callback failed".into()))).audit([("actor", "rolled back")]).retry(0).await;
+    assert!(matches!(&failed, Err(polyspec_orm::Error::Config(m)) if m == "callback failed"), "{driver}: failed callback = {failed:?}");
 
     assert!(
         try_exec(db, "INSERT INTO item (title, audit_seq) VALUES ('raw', 999)").await.is_err(),
@@ -268,34 +269,34 @@ pub async fn entry_points_case(driver: &str, dsn: &str) {
     let adb = audit_db(dsn, audit_config("default")).await;
     let db = &adb;
     let seq = adb
-        .transaction(async || orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64())
+        .transaction(async || polyspec_orm::model::create(&mut new_item("first")).await?.value("seq").expect("generated seq").as_i64())
         .audit([("actor", "transaction")])
         .retry(0)
         .await
         .unwrap_or_else(|e| panic!("{driver}: transaction: {e}"));
-    adb.transaction_send(|| async { orm::model::update(&mut changed_item(seq, "second"), false).await })
+    adb.transaction_send(|| async { polyspec_orm::model::update(&mut changed_item(seq, "second"), false).await })
         .audit([("actor", "send")])
         .retry(0)
         .await
         .unwrap_or_else(|e| panic!("{driver}: transaction_send: {e}"));
-    adb.transaction_once(async || orm::model::update(&mut changed_item(seq, "third"), false).await)
+    adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "third"), false).await)
         .audit([("actor", "once")])
         .await
         .unwrap_or_else(|e| panic!("{driver}: transaction_once: {e:?}"));
-    let without = adb.transaction_once(async || orm::model::update(&mut changed_item(seq, "fourth"), false).await).await;
+    let without = adb.transaction_once(async || polyspec_orm::model::update(&mut changed_item(seq, "fourth"), false).await).await;
     assert!(
-        matches!(&without, Err(orm::TransactionOnceError::Callback(e)) if e.code() == orm::codes::CONFIG),
+        matches!(&without, Err(polyspec_orm::TransactionOnceError::Callback(e)) if e.code() == polyspec_orm::codes::CONFIG),
         "{driver}: transaction_once without an audit: {without:?}"
     );
     let nested = adb
-        .transaction(async || match adb.transaction_once(async || Ok::<(), orm::Error>(())).audit([("actor", "nested")]).await {
-            Err(orm::TransactionOnceError::Orm(e)) => Err::<(), orm::Error>(e),
+        .transaction(async || match adb.transaction_once(async || Ok::<(), polyspec_orm::Error>(())).audit([("actor", "nested")]).await {
+            Err(polyspec_orm::TransactionOnceError::Orm(e)) => Err::<(), polyspec_orm::Error>(e),
             other => panic!("{driver}: nested transaction_once with an audit: {other:?}"),
         })
         .audit(NO_VALUES)
         .retry(0)
         .await;
-    assert_eq!(code(nested), orm::codes::CONFIG, "{driver}: a nested transaction_once audit");
+    assert_eq!(code(nested), polyspec_orm::codes::CONFIG, "{driver}: a nested transaction_once audit");
     let records = audit_records(db).await;
     let want = [("1", "transaction"), ("2", "send"), ("3", "once")].map(|(s, a)| (s.to_owned(), a.to_owned()));
     assert_eq!(records, want, "{driver}: audit records");

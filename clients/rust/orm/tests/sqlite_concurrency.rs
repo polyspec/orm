@@ -6,11 +6,12 @@
 use std::time::{Duration, Instant};
 
 use futures_util::future::join_all;
-use orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 
 static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
 
-static ENTITY: Entity = Entity { name: "service", schema: &SCHEMA, new: orm::model::new_boxed::<Service>, collect: orm::model::collect_boxed::<Service> };
+static ENTITY: Entity =
+    Entity { name: "service", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Service>, collect: polyspec_orm::model::collect_boxed::<Service> };
 
 /// The database of a writer process started by `writers_in_several_processes`.
 const WRITER_DSN: &str = "ORM_SQLITE_WRITER_DSN";
@@ -40,7 +41,7 @@ impl Model for Service {
     fn into_core(self) -> Core {
         self.core
     }
-    fn assign(&mut self, name: &str, v: Val) -> orm::Result<bool> {
+    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
         match name {
             "seq" => self.seq = v.as_i64()?,
             "name" => self.name = v.as_string()?,
@@ -67,12 +68,12 @@ fn service(db: Option<&Db>) -> Service {
 }
 
 /// Runs one transaction that reads the service count and then inserts the service `label`.
-async fn write_service(db: &Db, label: &str) -> orm::Result<()> {
+async fn write_service(db: &Db, label: &str) -> polyspec_orm::Result<()> {
     db.transaction(async || {
-        orm::model::get_count(service(None).core()).await?;
+        polyspec_orm::model::get_count(service(None).core()).await?;
         let mut row = service(None);
         row.core_mut().set("name", Param::Str(label.to_owned()));
-        orm::model::create(&mut row).await?;
+        polyspec_orm::model::create(&mut row).await?;
         Ok(())
     })
     .retry(0)
@@ -92,7 +93,7 @@ async fn write_services(db: &Db, name: &str, n: usize) -> Result<(), String> {
 async fn open(dsn: &str, count: usize) -> Vec<Db> {
     let mut out = Vec::new();
     for i in 0..count {
-        out.push(Db::connect_schema(dsn, &SCHEMA, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
+        out.push(Db::connect_schema(dsn, &SCHEMA, 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("connection {i}: {e}")));
     }
     out
 }
@@ -119,7 +120,7 @@ async fn database(name: &str) -> Database {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let dsn = format!("sqlite://{}", dir.join(format!("{name}.sqlite")).display());
-    let db = Db::connect(&dsn, 1, orm::Config::default()).await.unwrap();
+    let db = Db::connect(&dsn, 1, polyspec_orm::Config::default()).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
     db.close().await;
     Database { dsn, dir }
@@ -132,7 +133,7 @@ async fn run_writers(dbs: &[Db], prefix: &str, n: usize) -> Vec<String> {
 }
 
 async fn count(db: &Db) -> i64 {
-    orm::model::get_count(service(Some(db)).core()).await.unwrap()
+    polyspec_orm::model::get_count(service(Some(db)).core()).await.unwrap()
 }
 
 #[tokio::test]
@@ -140,8 +141,8 @@ async fn dsn_rejects_txlock() {
     let _case = orm_testcase::case!(orm_testcase::PROCESS);
     let path = std::env::temp_dir().join(format!("orm-rust-sqlite-txlock-{}.sqlite", std::process::id()));
     for mode in ["immediate", "deferred"] {
-        let result = Db::connect(&format!("sqlite://{}?_txlock={mode}", path.display()), 1, orm::Config::default()).await;
-        assert_eq!(result.err().map(|e| e.code().to_owned()).as_deref(), Some(orm::codes::CONFIG), "_txlock={mode}");
+        let result = Db::connect(&format!("sqlite://{}?_txlock={mode}", path.display()), 1, polyspec_orm::Config::default()).await;
+        assert_eq!(result.err().map(|e| e.code().to_owned()).as_deref(), Some(polyspec_orm::codes::CONFIG), "_txlock={mode}");
     }
     assert!(!path.exists(), "a rejected DSN created the database file");
 }
@@ -199,9 +200,9 @@ async fn reads_during_write() {
         .transaction(async || {
             let mut row = service(None);
             row.core_mut().set("name", Param::Str("pending".into()));
-            orm::model::create(&mut row).await?;
+            polyspec_orm::model::create(&mut row).await?;
             assert_eq!(count(reader).await, 0, "read during the write");
-            let read_only = reader.transaction(async || orm::model::get_count(service(None).core()).await).read_only().retry(0).await?;
+            let read_only = reader.transaction(async || polyspec_orm::model::get_count(service(None).core()).await).read_only().retry(0).await?;
             assert_eq!(read_only, 0, "read-only transaction during the write");
             Ok(())
         })
@@ -222,7 +223,7 @@ async fn lock_wait_expires() {
         .transaction(async || {
             let mut row = service(None);
             row.core_mut().set("name", Param::Str("holder".into()));
-            orm::model::create(&mut row).await?;
+            polyspec_orm::model::create(&mut row).await?;
             let started = Instant::now();
             let result = write_service(waiter, "waiter").await;
             Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
@@ -230,7 +231,7 @@ async fn lock_wait_expires() {
         .retry(0)
         .await
         .unwrap();
-    assert_eq!(code.as_deref(), Some(orm::codes::CANCELED), "write past the lock wait");
+    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "write past the lock wait");
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms lock wait");
 }
 
@@ -240,12 +241,12 @@ async fn statement_timeout_bounds_sqlite_lock_wait() {
     let file = database("config-expiry").await;
     let dsn = file.dsn.clone();
     let holder = open(&dsn, 1).await.remove(0);
-    let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
+    let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
     let (code, waited) = holder
         .transaction(async || {
             let mut row = service(None);
             row.core_mut().set("name", Param::Str("holder".into()));
-            orm::model::create(&mut row).await?;
+            polyspec_orm::model::create(&mut row).await?;
             let started = Instant::now();
             let result = write_service(&waiter, "waiter").await;
             Ok((result.err().map(|e| e.code().to_owned()), started.elapsed()))
@@ -253,7 +254,7 @@ async fn statement_timeout_bounds_sqlite_lock_wait() {
         .retry(0)
         .await
         .unwrap();
-    assert_eq!(code.as_deref(), Some(orm::codes::CANCELED), "statement timeout cancels the lock wait");
+    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "statement timeout cancels the lock wait");
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms statement timeout");
     waiter.close().await;
     holder.close().await;

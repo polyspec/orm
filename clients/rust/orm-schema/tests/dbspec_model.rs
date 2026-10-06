@@ -1,8 +1,8 @@
 //! The dbspec model is public: a tool reads a parsed document, changes it and
 //! emits it again (docs/dbspec.md, "Document").
 
-use orm_schema::dbspec::model::{Column, Name, Pos, Type};
-use orm_schema::dbspec::{emit, parse};
+use polyspec_orm_schema::dbspec::model::{Column, Name, Pos, Type};
+use polyspec_orm_schema::dbspec::{emit, parse};
 use std::collections::BTreeMap;
 
 const SOURCE: &str = "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n";

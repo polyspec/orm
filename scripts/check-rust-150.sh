@@ -43,11 +43,11 @@ orm-build = { path = "$ROOT/clients/rust/orm-build" }
 TOML
 cat > "$WORK/crate/build.rs" <<'RS'
 fn main() {
-    orm_build::Builder::new(["../rust-150.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::new(["../rust-150.dbs"]).scan("src").generate();
 }
 RS
 {
-  echo 'orm::models!();'
+  echo 'polyspec_orm::models!();'
   echo 'pub fn touch() {'
   i=1
   while [ "$i" -le 150 ]; do

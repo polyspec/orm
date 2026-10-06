@@ -13,7 +13,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use orm::db::Pool;
+use polyspec_orm::db::Pool;
 
 /// 이 process에서 정한 case 이름의 수다. 이름의 counter는 1부터 센다.
 static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -70,7 +70,9 @@ impl CaseDatabase {
             return CaseDatabase { driver, dsn: format!("sqlite://{name}"), name, admin: None, path: Some(path), dropped: false };
         };
         let admin = require_dsn(var);
-        let db = orm::Db::connect(&admin, 1, orm::Config::default()).await.unwrap_or_else(|e| panic!("case database {name}: admin connection: {e}"));
+        let db = polyspec_orm::Db::connect(&admin, 1, polyspec_orm::Config::default())
+            .await
+            .unwrap_or_else(|e| panic!("case database {name}: admin connection: {e}"));
         let created = execute(&db, &format!("CREATE DATABASE {name}")).await;
         db.close().await;
         created.unwrap_or_else(|e| panic!("case database {name}: create: {e}"));
@@ -193,7 +195,7 @@ impl Drop for CaseTable {
 }
 
 async fn drop_table(dsn: &str, name: &str) -> Result<(), String> {
-    let db = orm::Db::connect(dsn, 1, orm::Config::default()).await.map_err(|e| format!("connection: {e}"))?;
+    let db = polyspec_orm::Db::connect(dsn, 1, polyspec_orm::Config::default()).await.map_err(|e| format!("connection: {e}"))?;
     let result = execute(&db, &format!("DROP TABLE IF EXISTS {name}")).await;
     db.close().await;
     result
@@ -214,7 +216,7 @@ async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<
         return Ok(());
     }
     let admin = admin.ok_or("no admin DSN")?;
-    let db = orm::Db::connect(admin, 1, orm::Config::default()).await.map_err(|e| format!("admin connection: {e}"))?;
+    let db = polyspec_orm::Db::connect(admin, 1, polyspec_orm::Config::default()).await.map_err(|e| format!("admin connection: {e}"))?;
     let statement = match db.pool() {
         Pool::MySql(_) => format!("SET SESSION lock_wait_timeout = 60; DROP DATABASE {name}"),
         _ => format!("DROP DATABASE {name} WITH (FORCE)"),
@@ -224,7 +226,7 @@ async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<
     result
 }
 
-async fn execute(db: &orm::Db, sql: &str) -> Result<(), String> {
+async fn execute(db: &polyspec_orm::Db, sql: &str) -> Result<(), String> {
     let statement = sqlx::raw_sql(sqlx::AssertSqlSafe(sql.to_owned()));
     match db.pool() {
         Pool::MySql(p) => statement.execute(p).await.map(|_| ()),

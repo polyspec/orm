@@ -1,5 +1,5 @@
 //! The cases of tests/dbspec/plans.json through the plan functions of
-//! `orm_schema::dbspec` (docs/plans.md): every case diffs to its changes,
+//! `polyspec_orm_schema::dbspec` (docs/plans.md): every case diffs to its changes,
 //! writes its steps for MySQL, PostgreSQL and SQLite and emits its plan
 //! text again; every invalid case reports its `plan` diagnostics; every chain
 //! case orders its plans or reports its `chain` diagnostics; every parse case
@@ -8,7 +8,7 @@
 //! diagnostics.
 
 use orm_case_clock::CaseClock;
-use orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
+use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use serde_json::Value;
 
 /// step의 plans.json object다(docs/plans.md "Steps").

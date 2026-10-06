@@ -4,39 +4,39 @@
 
 | Crate | Contents |
 |---|---|
-| `orm` (`clients/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
-| `orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `orm-build` share, and SQL statement splitting |
-| `orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
+| `polyspec-orm` (`clients/rust/orm`) | the runtime: model builder, request validation, SQL planner for MySQL, PostgreSQL, and SQLite, plan cache, sqlx executor, codecs, DSN parser, transactions, utilities, error codes |
+| `polyspec-orm-schema` (`clients/rust/orm-schema`) | schema definitions: the dbspec parser, emitter, manifest, renderer, plans, Mermaid export and import, and runtime model, which the runtime and `polyspec-orm-build` share, and SQL statement splitting |
+| `polyspec-orm-build` (`clients/rust/orm-build`) | the build-time generator: reads a dbspec document set, scans the crate's source, and writes the models it calls and the manifest text into `OUT_DIR`; with the `live-db` feature, the catalog and tool database connections |
 | `orm-tests` (`clients/rust/tests`) | `integration`, `conformance`, `client_bench`, `complex`, and `demo` |
 
 Adopting the client needs only these crates. Statements are planned in the process; there is no service to run.
 
 ## Models
 
-`build.rs` generates the models; `orm::models!()` includes them as the module `model`.
+`build.rs` generates the models; `polyspec_orm::models!()` includes them as the module `model`.
 
 ```toml
 [dependencies]
-orm = { path = "…/clients/rust/orm" }
+polyspec-orm = { path = "…/clients/rust/orm" }
 
 [build-dependencies]
-orm-build = { path = "…/clients/rust/orm-build" }
+polyspec-orm-build = { path = "…/clients/rust/orm-build" }
 ```
 
 ```rust
 // build.rs
 fn main() {
-    orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
 }
 ```
 
 ```rust
 // src/main.rs
-orm::models!();
+polyspec_orm::models!();
 
 use model::Author;
 
-let db = model::connect(&dsn, 8, orm::Config::default()).await?;
+let db = model::connect(&dsn, 8, polyspec_orm::Config::default()).await?;
 let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_by_seq_desc().gets().await?;
 ```
 
@@ -47,7 +47,7 @@ Every model has its fixed methods (`connect`, `get`, `gets`, `set_<col>`, `order
 `model::connect(dsn, pool_size, config)` and `Db::connect(dsn, pool_size, config)` take a DSN URI; `Db::connect` opens a connection without any registered set. the scheme selects `mysql`, `postgres`, or `sqlite`, and the `timezone` parameter sets the connection time zone. Supply credentials in the DSN and AES keys in `Config`. MySQL connections that use `caching_sha2_password` require TLS; set `ssl-mode=verify_ca` and `ssl-ca` in the DSN. The client does not enable RSA authentication over an unencrypted connection.
 
 `db.utils().schema().install(&model::SCHEMA)` renders the document set for the connection's database, applies the statements and registers the set on the connection; a manifest text that does not hash to its `manifestHash` returns `CONFIG`. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set. `db.utils().schema().register(&model::SCHEMA)` registers the set on an open connection without reading the database.
-`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await` upgrades the installed set: it creates the tables the database lacks, adds the missing columns of the existing tables that are null or have a default and creates their missing indexes with the plan steps of the dialect (`orm_schema::dbspec::add_tables_and_columns_steps`), which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table, and returns the created tables as `table`, the added columns as `table.column` and the created indexes as `table.index`; every other difference, a missing unique key included, returns `SCHEMA_DIFFERS` before any statement (docs/schema.md, "Adding tables and columns"). MySQL and SQLite add them outside a transaction.
+`db.utils().schema().add_tables_and_columns(&model::SCHEMA).await` upgrades the installed set: it creates the tables the database lacks, adds the missing columns of the existing tables that are null or have a default and creates their missing indexes with the plan steps of the dialect (`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`), which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table, and returns the created tables as `table`, the added columns as `table.column` and the created indexes as `table.index`; every other difference, a missing unique key included, returns `SCHEMA_DIFFERS` before any statement (docs/schema.md, "Adding tables and columns"). MySQL and SQLite add them outside a transaction.
 
 ## Required calls
 
@@ -130,11 +130,11 @@ of `Val::as_f64` for ordinary values.
 
 ## Errors
 
-`orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried.
+`polyspec_orm::codes` is generated from `docs/errors.yaml` (`orm-gen errors --lang rust --out clients/rust/orm/src/codes.rs`). Request errors are `Error::Engine { code, msg }`; the executor raises `Error::Config` (`CONFIG`) and `Error::OptimisticLock`. Every driver error becomes `Error::Driver { code, msg, source }`: a condition that `docs/errors.yaml` lists, such as a deadlock, a duplicate key, a foreign key, or a CHECK violation, has its shared code, every other driver error, such as a write that a trigger refuses, has `DRIVER`, and `source` is the driver error. A SQLite lock that another connection still holds when `busy_timeout` ends becomes `CANCELED`. `Db::transaction` runs the callback again on `DEADLOCK` (three retries by default). A callback that failed and whose transaction or savepoint rollback failed too returns `Error::Rollback { callback, rollback }` (`ROLLBACK`) with the message `transaction failed (<callback error>) and rollback failed (<rollback error>)`; it keeps both errors and is never retried.
 
 ## Statement events
 
-`db.subscribe(|e: &orm::StatementEvent<'_>| Ok(()))` registers a subscriber for every statement the connection and its clones send: model statements, transaction control, savepoints and the statements of utilities and schema utilities. The event has `sql`, `binds` (secret binds shown as `$SECRET`, executor clock binds as `$NOW`), `kind`, `tables`, `elapsed`, `transaction` (the number of the transaction on the connection, `None` outside one) and `error`. Subscribers run synchronously in registration order after the statement ends; an error a subscriber returns fails the operation with `Error::Subscriber` (`SUBSCRIBER`), whose source is that error. `subscription.unsubscribe()` removes the subscriber. [docs/usage.md](../../docs/usage.md#statement-events) states the events of every client.
+`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))` registers a subscriber for every statement the connection and its clones send: model statements, transaction control, savepoints and the statements of utilities and schema utilities. The event has `sql`, `binds` (secret binds shown as `$SECRET`, executor clock binds as `$NOW`), `kind`, `tables`, `elapsed`, `transaction` (the number of the transaction on the connection, `None` outside one) and `error`. Subscribers run synchronously in registration order after the statement ends; an error a subscriber returns fails the operation with `Error::Subscriber` (`SUBSCRIBER`), whose source is that error. `subscription.unsubscribe()` removes the subscriber. [docs/usage.md](../../docs/usage.md#statement-events) states the events of every client.
 
 ## Build and test
 

@@ -3,9 +3,9 @@
 //! language, the process and the run, created before and dropped after the
 //! probe body, which runs within its deadline.
 
-use orm::db::{parse_dsn, ConnectOptions};
-use orm::dbspec::{introspect, CatalogQuerier, IntrospectError};
-use orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
+use polyspec_orm::db::{parse_dsn, ConnectOptions};
+use polyspec_orm::dbspec::{introspect, CatalogQuerier, IntrospectError};
+use polyspec_orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, SqlSafeStr, SqliteConnection};
 use std::path::PathBuf;

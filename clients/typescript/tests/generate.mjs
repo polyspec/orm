@@ -33,7 +33,7 @@ await suite.run('generate', PROCESS, async () => {
     check(text.includes('getsByServiceSeqAndLtStartDt(v0: number | readonly (number)[] | ValueFunction | Model, v1: string | Date | ValueFunction): Promise<Collection<this>>;'), 'chain declaration');
     check(text.includes('andNeUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;'), 'nullable condition declaration');
     check(text.includes('joinServiceSeqWithSeq(child: '), 'join declaration');
-    check(text.includes("from '@polyspec/orm-typescript'"), 'generated output outside the repository imports the package');
+    check(text.includes("from '@polyspec/orm'"), 'generated output outside the repository imports the package');
     check(text.includes('export const MANIFEST_TEXT = `dbspec 1 bench\n') && /export const MANIFEST_HASH = 'sha256:[0-9a-f]{64}';/.test(text), 'the manifest text and hash are embedded');
     // The value type of each codec: a styled value for ordered_json and gz, a string for aes hex and ip.
     for (const declaration of [

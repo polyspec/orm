@@ -1,8 +1,8 @@
 //! dbspec introspection over a sqlx connection (docs/dialects.md,
 //! "Introspection"): [`introspect`] runs the fixed catalog queries of
-//! `orm_schema::dbspec` on the connection and reads their rows into one dbspec
+//! `polyspec_orm_schema::dbspec` on the connection and reads their rows into one dbspec
 //! document and the objects it cannot express. The module also re-exports
-//! every item of `orm_schema::dbspec`, so `orm::dbspec` is the one path to
+//! every item of `polyspec_orm_schema::dbspec`, so `polyspec_orm::dbspec` is the one path to
 //! the dbspec language.
 
 mod apply;
@@ -11,7 +11,7 @@ pub use apply::{
     apply, effect_holds, effect_query, finalize, recover, rollback, ApplyClock, ApplyConnection, ApplyError, ApplyEvent, ApplyEventError, ApplyEventKind,
     ApplyEvents,
 };
-pub use orm_schema::dbspec::*;
+pub use polyspec_orm_schema::dbspec::*;
 use sqlx::mysql::MySqlRow;
 use sqlx::postgres::PgRow;
 use sqlx::sqlite::SqliteRow;

@@ -8,7 +8,7 @@
 //! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
 use chrono::{DateTime, TimeZone, Utc};
-use orm::dbspec::{apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, Dialect, Plan};
+use polyspec_orm::dbspec::{apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, Dialect, Plan};
 use serde_json::Value;
 use sqlx::Connection;
 

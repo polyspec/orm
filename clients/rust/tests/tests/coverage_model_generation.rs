@@ -5,7 +5,7 @@ use std::path::Path;
 /// build.rs와 같은 document와 scan 경로로 `out`에 생성하고 model과 manifest text를 읽는다.
 fn generate(out: &Path) -> (String, String) {
     let root = orm_testcase::manifest_dir();
-    let model = orm_build::Builder::new([root.join("../../../schema/bench.dbs")])
+    let model = polyspec_orm_build::Builder::new([root.join("../../../schema/bench.dbs")])
         .scan(root.join("src"))
         .scan(root.join("../../../examples/complex/rust"))
         .scan(root.join("../../../examples/thin-slice/rust"))
@@ -13,7 +13,7 @@ fn generate(out: &Path) -> (String, String) {
         .try_generate()
         .unwrap_or_else(|e| panic!("generate: {e}"));
     let read = |path: &Path| std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    (read(&model), read(&out.join(orm_build::MANIFEST_FILE)))
+    (read(&model), read(&out.join(polyspec_orm_build::MANIFEST_FILE)))
 }
 
 #[test]
@@ -37,10 +37,10 @@ fn coverage_model_generation_check() {
 
     // 생성된 model은 manifest file을 절대 경로로 include한다. build의 경로를 이 생성의 경로로 바꿔 비교한다.
     let built_dir = &std::fs::canonicalize(env!("OUT_DIR")).expect("canonical OUT_DIR");
-    let built_model = std::fs::read_to_string(built_dir.join(orm_build::MODEL_FILE)).expect("built model");
-    let built_manifest = std::fs::read_to_string(built_dir.join(orm_build::MANIFEST_FILE)).expect("built manifest");
-    let built_path = built_dir.join(orm_build::MANIFEST_FILE).display().to_string();
-    let generated_path = out.join(orm_build::MANIFEST_FILE).display().to_string();
+    let built_model = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MODEL_FILE)).expect("built model");
+    let built_manifest = std::fs::read_to_string(built_dir.join(polyspec_orm_build::MANIFEST_FILE)).expect("built manifest");
+    let built_path = built_dir.join(polyspec_orm_build::MANIFEST_FILE).display().to_string();
+    let generated_path = out.join(polyspec_orm_build::MANIFEST_FILE).display().to_string();
     assert_eq!(built_model.matches(&built_path).count(), 1, "the built model includes its manifest file once");
     assert!(built_model.replace(&built_path, &generated_path) == first.0, "the generated model differs from the model this crate builds with");
     assert!(built_manifest == first.1, "the generated manifest differs from the manifest this crate builds with");
