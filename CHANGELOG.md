@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.85: `make feature-unit-check` passes again: the push-gate workflow and the extension's apply cleanup test have their owners, and the feature list is generated from its source.
+
 - G5.48: a push is refused while a checklist item is `[~]`, by the pre-push hook and again by the CI workflow `push-gate`.
 
 - T9.13: the PHP extension implements apply, recover, rollback and finalize like the PHP client, so it has every method of the PHP client's `Dbspec`, and its public classes are checked against the PHP client's.
