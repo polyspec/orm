@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.85: `make feature-unit-check`가 다시 통과한다. push-gate workflow와 확장의 apply 정리 test가 owner를 가지고, feature 목록은 원본에서 생성된다.
+
 - G5.48: checklist 항목이 `[~]`인 동안 pre-push hook과 CI workflow `push-gate`가 push를 거부한다.
 
 - T9.13: PHP 확장이 apply, recover, rollback, finalize를 PHP client처럼 구현해 PHP client `Dbspec`의 모든 메서드를 가지며, public class를 PHP client의 것과 비교한다.
