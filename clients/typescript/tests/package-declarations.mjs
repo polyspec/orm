@@ -68,7 +68,7 @@ try {
     mkdirSync(target, { recursive: true });
     const tar = await command('tar', ['-xzf', join(work, filename), '-C', target, '--strip-components', '1'], {}, step);
     if (tar.code !== 0) throw new Error(`tar exited with ${tar.code}`);
-    cpSync(join(client, 'node_modules', 'ordered-json'), join(project, 'node_modules', 'ordered-json'), { recursive: true });
+    cpSync(join(client, 'node_modules', '@polyspec', 'ordered-json'), join(project, 'node_modules', '@polyspec', 'ordered-json'), { recursive: true });
     for (const types of [['@types', 'node'], ['undici-types']]) {
       cpSync(join(client, 'node_modules', ...types), join(project, 'node_modules', ...types), { recursive: true });
     }

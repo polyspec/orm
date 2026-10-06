@@ -1,6 +1,6 @@
 import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encode, type CodecValue, type JsonValue } from './codec.js';
-import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from 'ordered-json';
+import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';

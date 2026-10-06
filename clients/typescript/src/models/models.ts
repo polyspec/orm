@@ -538,8 +538,8 @@ export interface Author {
   andLtSeq(v0: number | ValueFunction): this;
   andLtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
   andName(v0: string | readonly (string)[] | ValueFunction | Model): this;
-  andNePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   andNeIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
+  andNePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   andNeReadCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
   andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   andStartDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
@@ -547,7 +547,6 @@ export interface Author {
   andUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   betweenReadCount(v0: readonly [number, number]): this;
   betweenStartDt(v0: readonly [string | Date, string | Date]): this;
-  photoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   geReadCount(v0: number | ValueFunction): this;
   getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
@@ -570,6 +569,7 @@ export interface Author {
   newLabel(value: unknown): this;
   orIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   orderByReadCountDescAndSeqAsc(): this;
+  photoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   readCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
   readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;

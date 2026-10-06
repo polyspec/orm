@@ -1,4 +1,4 @@
-import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from 'ordered-json';
+import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { OrmError } from './runtime_error.js';
 
 /** The SQL NULL state or an encoded value of a styled column. */

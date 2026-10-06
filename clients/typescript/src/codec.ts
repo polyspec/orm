@@ -1,7 +1,7 @@
 import { deflateSync, inflateSync } from 'node:zlib';
 import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
-import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from 'ordered-json';
+import { Value as JsonValue, parse as orderedJsonParse, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
 import { isScalar, parseDocument, stringify as stringifyYaml, visit } from 'yaml';
 import { StyledValue } from './styled_value.js';
 

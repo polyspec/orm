@@ -1912,13 +1912,13 @@ func (x *AuthorModel) AndLtStartDt[T0 argTimeCmp](v0 T0, compared ...any) *Autho
 	return x
 }
 
-func (x *AuthorModel) AndNePhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
-	x.m.Where("and", chainAuthorAndNePhotoUrl, v0)
+func (x *AuthorModel) AndNeIsClose[T0 argBoolEq](v0 T0) *AuthorModel {
+	x.m.Where("and", chainAuthorAndNeIsClose, v0)
 	return x
 }
 
-func (x *AuthorModel) AndNeIsClose[T0 argBoolEq](v0 T0) *AuthorModel {
-	x.m.Where("and", chainAuthorAndNeIsClose, v0)
+func (x *AuthorModel) AndNePhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
+	x.m.Where("and", chainAuthorAndNePhotoUrl, v0)
 	return x
 }
 
@@ -1954,11 +1954,6 @@ func (x *AuthorModel) AndUuid[T0 argStringEqNull](v0 T0) *AuthorModel {
 
 func (x *AuthorModel) BetweenReadCount[T0 argIntBetween](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorBetweenReadCount, v0)
-	return x
-}
-
-func (x *AuthorModel) PhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
-	x.m.Where("", chainAuthorPhotoUrl, v0)
 	return x
 }
 
@@ -2070,6 +2065,11 @@ func (x *AuthorModel) OrderByReadCountDescAndSeqAsc() *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) PhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorPhotoUrl, v0)
+	return x
+}
+
 func (x *AuthorModel) ReadCount[T0 argIntEq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorReadCount, v0)
 	return x
@@ -2130,9 +2130,9 @@ var chainAuthorAndLtSeq = []orm.ChainKey{{Op: "lt", Column: "seq"}}
 
 var chainAuthorAndLtStartDt = []orm.ChainKey{{Op: "lt", Column: "start_dt"}}
 
-var chainAuthorAndNePhotoUrl = []orm.ChainKey{{Op: "ne", Column: "photo_url"}}
-
 var chainAuthorAndNeIsClose = []orm.ChainKey{{Op: "ne", Column: "is_close"}}
+
+var chainAuthorAndNePhotoUrl = []orm.ChainKey{{Op: "ne", Column: "photo_url"}}
 
 var chainAuthorAndNeReadCount = []orm.ChainKey{{Op: "ne", Column: "read_count"}}
 
@@ -2147,8 +2147,6 @@ var chainAuthorAndSuccessCountLtSeq = []orm.ChainKey{{Op: "lt", Column: "success
 var chainAuthorAndUuid = []orm.ChainKey{{Column: "uuid"}}
 
 var chainAuthorBetweenReadCount = []orm.ChainKey{{Op: "between", Column: "read_count"}}
-
-var chainAuthorPhotoUrl = []orm.ChainKey{{Column: "photo_url"}}
 
 var chainAuthorGeReadCount = []orm.ChainKey{{Op: "ge", Column: "read_count"}}
 
@@ -2181,6 +2179,8 @@ var chainAuthorNePhotoUrl = []orm.ChainKey{{Op: "ne", Column: "photo_url"}}
 var chainAuthorOrGtReadCount = []orm.ChainKey{{Op: "gt", Column: "read_count"}}
 
 var chainAuthorOrIsClose = []orm.ChainKey{{Column: "is_close"}}
+
+var chainAuthorPhotoUrl = []orm.ChainKey{{Column: "photo_url"}}
 
 var chainAuthorReadCount = []orm.ChainKey{{Column: "read_count"}}
 
