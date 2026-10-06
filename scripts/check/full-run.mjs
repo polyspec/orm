@@ -2,7 +2,8 @@
 // 기록이다. 전체 suite는 push 뒤 GitHub CI에서 실행되며(AGENTS.md), 로컬 make check는 할 수 있지만 push 전에
 // 필요한 단계가 아니다. guard는 어디서 실행하든 같은 규칙을 적용한다.
 //
-// guard는 어떤 단계보다 먼저 결정하고 그 결정을 이유와 함께 출력한다. docs/checklist.md의 항목(하위 항목
+// guard는 어떤 단계보다 먼저 결정하고 그 결정을 이유와 함께 출력한다. pre-push hook이 설치되지 않은 checkout
+// (core.hooksPath가 `.githooks`가 아니거나 hook이 실행 가능하지 않다, hooks.mjs)과, docs/checklist.md의 항목(하위 항목
 // 포함)이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, 기록이
 // 적은 실행의 process가 아직 실행 중인 동안 두 진입점을 모두 거부한다. make check는 기록이 같은
 // tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 담고 있으면 거부한다: 전체 suite는 tree마다 한 번
@@ -28,6 +29,7 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, u
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { selectTargets } from '../features/owners.mjs';
+import { hooksProblem } from './hooks.mjs';
 
 export const ENTRIES = { check: 'make check', 'rerun-failed': 'make rerun-failed' };
 const ITEM = /^\s*- \[(.)\] (\S+)\s+(.*)$/gm;
@@ -62,11 +64,12 @@ export function base(record) {
   return last ? { commit: last.commit, tree: last.tree } : { commit: record.commit, tree: record.tree };
 }
 
-// decide는 mode를 실행할 수 있는지 정한다. targets는 전체 실행의 target이고, running은 기록이 적은 실행
+// decide는 mode를 실행할 수 있는지 정한다. hooks는 pre-push hook이 설치되지 않은 이유(hooks.mjs의 hooksProblem)나 null이다. targets는 전체 실행의 target이고, running은 기록이 적은 실행
 // process가 아직 실행 중인지다. rerun-failed에서 commit은 현재 commit, descends는 그것이 base(record)의 commit의
 // 후손인지, changed는 그 commit 뒤에 바뀐 path, declared는 contracts/check-inputs.json의 targets다.
-export function decide(mode, { items, changes, tree, commit, record, targets, running = false, descends = false, changed = [], declared = {} }) {
+export function decide(mode, { items, changes, hooks = null, tree, commit, record, targets, running = false, descends = false, changed = [], declared = {} }) {
   const reasons = [];
+  if (hooks) reasons.push(`pre-push hook: ${hooks}`);
   if (items.length) {
     reasons.push('checklist items are in progress (docs/checklist.md):');
     for (const { id, title } of items) reasons.push(`  ${id} ${title}`);
@@ -168,6 +171,7 @@ function state(root) {
     tree: git(root, 'rev-parse', 'HEAD^{tree}').trim(),
     changes: git(root, 'status', '--porcelain', '--untracked-files=no').split('\n').filter(Boolean),
     items: activeItems(readFileSync(resolve(root, 'docs/checklist.md'), 'utf8')),
+    hooks: hooksProblem(root),
     record,
     running: Boolean(record?.runner && alive(record.runner.pid)),
   };

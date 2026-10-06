@@ -1,0 +1,33 @@
+name: push-gate
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push cancels the run of the push before it on the same ref: the runners are few, and only the run of the
+# newest head counts. make repo-check requires this on every workflow that runs on push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-26.04-arm
+    # The push gate of the pre-push hook, run again on the pushed commit: a push that bypassed the hook (git push
+    # --no-verify, or a checkout without core.hooksPath) fails here when its checklist has an item in progress or its
+    # commit does not track the hook as an executable file. The actions are pinned to the commits of their tags.
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        id: checkout
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: .node-version
+      - name: push gate
+        id: gate
+        if: ${{ !cancelled() }}
+        run: make push-gate-commit COMMIT=${{ github.sha }}

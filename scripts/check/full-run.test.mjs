@@ -125,8 +125,12 @@ function checkout(t, checklist) {
   writeFileSync(join(base, 'stub.mjs'), STUB);
   const servers = join(base, 'servers.env');
   writeFileSync(servers, "export ORM_TEST_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_test'\n");
+  // guard는 pre-push hook이 설치된 checkout만 허용하므로 checkout은 실행 가능한 hook과 core.hooksPath를 갖는다.
+  mkdirSync(join(root, '.githooks'));
+  writeFileSync(join(root, '.githooks/pre-push'), '#!/bin/sh\n', { mode: 0o755 });
   const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' }).toString();
   git('init', '-q');
+  git('config', 'core.hooksPath', '.githooks');
   git('add', '.');
   git('-c', 'user.name=test', '-c', 'user.email=test@example.com', 'commit', '-q', '-m', 'init');
   const log = join(base, 'ran.log');
@@ -170,6 +174,15 @@ caseTest('the decision refuses active items and allows a committed tree without 
   assert.deepEqual([allowed.allowed, allowed.targets], [true, ['a', 'b']]);
 });
 
+caseTest('the decision refuses a checkout whose pre-push hook is not installed', COMPUTE, () => {
+  const hooks = 'core.hooksPath is unset, not .githooks: the pre-push hook .githooks/pre-push does not run; run make hooks';
+  for (const mode of ['check', 'rerun-failed']) {
+    const refused = decide(mode, { items: [], changes: [], hooks, tree: 't1', commit: 'c1', record: null, targets: ['a'] });
+    assert.equal(refused.allowed, false);
+    assert.ok(refused.reasons.includes(`pre-push hook: ${hooks}`), refused.reasons.join('\n'));
+  }
+});
+
 caseTest('make check and make rerun-failed start with the guard', COMPUTE, () => {
   assert.deepEqual(recipe('check'), [
     'node scripts/check/full-run.mjs decide check',
@@ -179,6 +192,20 @@ caseTest('make check and make rerun-failed start with the guard', COMPUTE, () =>
     'node scripts/check/full-run.mjs decide rerun-failed',
     '$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))',
   ]);
+});
+
+caseTest('a checkout without the pre-push hook setting refuses before any step', PROCESS, ({ step }) => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    c.git('config', '--unset', 'core.hooksPath');
+    const result = c.run('decide', 'check');
+    step(`decide: exit ${result.status}`);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.match(result.stdout, /full-run: pre-push hook: core\.hooksPath is unset, not \.githooks: the pre-push hook \.githooks\/pre-push does not run; run make hooks/);
+    assert.deepEqual(c.ran(), []);
+  } finally {
+    cleanup();
+  }
 });
 
 caseTest('an active item refuses before any step', PROCESS, ({ step }) => {
