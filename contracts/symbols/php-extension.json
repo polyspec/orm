@@ -71,6 +71,7 @@
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::externalDifferences": "public static function externalDifferences(Orm\\Dbspec\\Native\\Document $live, array $documents): array",
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::importMermaid": "public static function importMermaid(string $text, string $name): Orm\\Dbspec\\Native\\MermaidImportResult",
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::installedDifferences": "public static function installedDifferences(Orm\\Dbspec\\Native\\Document $live, array $unsupported, Orm\\Dbspec\\Native\\Document $target): array",
+  "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::introspect": "public static function introspect(PDO $connection, string $dialect, string $name): Orm\\Dbspec\\Native\\IntrospectResult",
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::manifest": "public static function manifest(array $documents): Orm\\Dbspec\\Native\\ManifestResult",
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::parse": "public static function parse(string $text, array $documents): Orm\\Dbspec\\Native\\ParseResult",
   "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::parsePlan": "public static function parsePlan(string $text): Orm\\Dbspec\\Native\\PlanParseResult",

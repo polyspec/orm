@@ -9,6 +9,9 @@ declare(strict_types=1);
 // - hashes case와 tests/dbspec/ddl.json: manifest의 다섯 값과 세 dialect의 statement가 PHP client와 같다.
 // - Document는 PHP client처럼 고칠 수 있는 객체 graph다: 같게 고친 두 문서의 emission, manifest, statement가 같다.
 // - 인자 오류와 결과 객체의 규칙이 PHP client와 같다.
+// - introspect: 메모리 SQLite database에 적용한 tests/dbspec/ddl.json case와 tests/dbspec/introspect.json의 SQLite case를
+//   PHP client와 같게 읽고 vector의 문서와 미지원 객체를 낸다. 실패하는 catalog query(두 error mode), 모양이 다른
+//   catalog 값, PDO 하위 class가 던진 예외, 알 수 없는 dialect는 PHP client와 같은 예외와 이전 예외다.
 //
 // Usage: php -d extension=<orm_dbspec library> clients/php-extension/tests/dbspec_test.php
 
@@ -279,6 +282,103 @@ $run('php-extension/documents', static function (callable $step): void {
         [(new Orm\Dbspec\Native\ColumnType('decimal', [5, 2]))->text(), (new Orm\Dbspec\Native\ColumnType('i32'))->isInteger()]);
     same('changes child rows', $php->tables[1]->foreignKeys[0]->changesChildRows(), $native->tables[1]->foreignKeys[0]->changesChildRows());
     $step('changed documents');
+});
+
+/** catalog query 마다 정해진 row를 돌려주거나 정해진 예외를 던지는 PDO 하위 class다. */
+final class ScriptedPdo extends PDO
+{
+    /** @param Closure(string): mixed $answer */
+    public function __construct(private Closure $answer)
+    {
+        parent::__construct('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    }
+
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
+    {
+        // row는 값의 type을 지키는 SQLite literal의 SELECT로 돌려준다: 정수는 int, 실수는 float, null은 null이다.
+        $literal = fn(mixed $v): string => match (true) {
+            $v === null => 'NULL',
+            is_int($v), is_float($v) => var_export($v, true),
+            default => $this->quote((string) $v),
+        };
+        $rows = ($this->answer)($query);
+        $selects = array_map(static fn(array $row): string => 'SELECT ' . implode(', ', array_map($literal, $row)), $rows);
+        return parent::query($rows === [] ? 'SELECT 1 WHERE 0' : implode(' UNION ALL ', $selects), PDO::FETCH_NUM);
+    }
+}
+
+/** introspect의 결과나 예외와 그 이전 예외의 class와 message다. */
+function introspected(string $dbspec, PDO $pdo, string $dialect): array
+{
+    try {
+        $result = $dbspec::introspect($pdo, $dialect, 'introspected');
+        return ['returned', $dbspec::emit($result->document), array_map(static fn(object $u): array => [$u->kind, $u->table, $u->name, $u->reason], $result->unsupported)];
+    } catch (Throwable $error) {
+        $previous = $error->getPrevious();
+        return [get_class($error), $error->getMessage(), $previous === null ? null : [get_class($previous), $previous->getMessage()]];
+    }
+}
+
+$run('php-extension/introspect', static function (callable $step) use ($ddl, $root): void {
+    $applied = static function (array $statements): PDO {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        foreach (['PRAGMA foreign_keys = ON', ...$statements] as $statement) {
+            $pdo->exec($statement);
+        }
+        return $pdo;
+    };
+    $sets = 0;
+    foreach ($ddl['cases'] as $case) {
+        $documents = parsed_set(Dbspec::class, $case['documents']);
+        $statements = Dbspec::render($documents, 'sqlite')->statements;
+        $pdo = $applied($statements);
+        $php = introspected(Dbspec::class, $pdo, 'sqlite');
+        same("ddl/{$case['id']} introspection against the PHP client", $php, introspected(NativeDbspec::class, $pdo, 'sqlite'));
+        same("ddl/{$case['id']} unsupported", [], $php[2] ?? $php);
+        $sets++;
+    }
+    $vectors = json_decode(file_get_contents("$root/tests/dbspec/introspect.json"), true, 512, JSON_THROW_ON_ERROR);
+    foreach ($vectors['cases'] as $case) {
+        if ($case['dialect'] !== 'sqlite') {
+            continue;
+        }
+        $documents = parsed_set(Dbspec::class, $case['documents']);
+        $pdo = $applied([...Dbspec::render($documents, 'sqlite')->statements, ...$case['statements']]);
+        $native = introspected(NativeDbspec::class, $pdo, 'sqlite');
+        same("introspect/{$case['id']} against the PHP client", introspected(Dbspec::class, $pdo, 'sqlite'), $native);
+        same("introspect/{$case['id']} document", implode("\n", $case['document']) . "\n", $native[1]);
+        same("introspect/{$case['id']} unsupported", $case['unsupported'], array_map(static fn(array $u): array => array_slice($u, 0, 3), $native[2]));
+        $sets++;
+    }
+    // 실패하는 catalog query는 error mode와 무관하게 query를 담은 RuntimeException이다.
+    foreach ([PDO::ERRMODE_EXCEPTION, PDO::ERRMODE_SILENT, PDO::ERRMODE_WARNING] as $mode) {
+        foreach (['mysql', 'postgres'] as $dialect) {
+            $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => $mode]);
+            same("$dialect query failure in error mode $mode", @introspected(Dbspec::class, $pdo, $dialect), @introspected(NativeDbspec::class, $pdo, $dialect));
+        }
+    }
+    // 모양이 다른 catalog 값과 PDO 하위 class가 던진 예외
+    $answers = [
+        'a table name that is a number' => static fn(string $q): array => [[5, 'table', 't', '']],
+        'a null table kind' => static fn(string $q): array => [['t', null, 't', '']],
+        'a float flag' => static fn(string $q): array => str_contains($q, 'pg_class c') ? [['t', 'r', 1.5]] : [],
+        'a word flag' => static fn(string $q): array => str_contains($q, 'pg_class c') ? [['t', 'r', 'yes']] : [],
+        'an exception of the subclass' => static fn(string $q): array => throw new DomainException('refused'),
+        'a PDOException of the subclass' => static fn(string $q): array => throw new PDOException('SQLSTATE[HY000]: gone'),
+    ];
+    foreach ($answers as $what => $answer) {
+        foreach (['sqlite', 'postgres'] as $dialect) {
+            $pdo = new ScriptedPdo($answer);
+            same("$what in $dialect", introspected(Dbspec::class, $pdo, $dialect), introspected(NativeDbspec::class, $pdo, $dialect));
+        }
+    }
+    $pdo = new PDO('sqlite::memory:');
+    same_outcome('an unknown dialect', static fn() => Dbspec::introspect($pdo, 'oracle', 'x'), static fn() => NativeDbspec::introspect($pdo, 'oracle', 'x'));
+    // 내부 함수의 TypeError message에는 사용자 함수의 ", called in <file> on line <n>"이 없다.
+    $php = outcome(static fn() => Dbspec::introspect(new stdClass(), 'sqlite', 'x'));
+    same('a connection that is not a PDO', [$php[0], preg_replace('/, called in .* on line \d+$/', '', $php[1])],
+        array_map(static fn(string $s): string => str_replace('Orm\\Dbspec\\Native\\', 'Orm\\Dbspec\\', $s), outcome(static fn() => NativeDbspec::introspect(new stdClass(), 'sqlite', 'x'))));
+    $step("$sets SQLite databases and the failure cases");
 });
 
 exit($failed === 0 ? 0 : 1);

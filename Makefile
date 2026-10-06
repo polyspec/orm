@@ -131,7 +131,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
@@ -253,6 +253,14 @@ dbspec-introspect-ts-check: lease-tool
 dbspec-introspect-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_introspect_test.php
 
+# dbspec-introspect-php-extension-check는 같은 round trip과 미지원 case를 PHP 확장 orm_dbspec의
+# Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
+.PHONY: dbspec-introspect-php-extension-check
+dbspec-introspect-php-extension-check:
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_introspect_test.php
+	rm -rf $(RUN_DIR)
+
 # dbspec-introspect-rust-check는 같은 round trip과 tests/dbspec/introspect.json의 case를 Rust
 # client의 orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
@@ -335,8 +343,8 @@ dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php
 
 # dbspec-introspect-compare-check는 stress 문서(DBSPEC_INTROSPECT_TABLES개 table)를 MySQL,
-# PostgreSQL, SQLite에 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust
-# introspection runner를 실행해 같은 출력, source schema text, 미지원 객체 없음을 요구하고, 각
+# PostgreSQL, SQLite에 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust와
+# PHP 확장 orm_dbspec(이 실행의 directory에 build한다) introspection runner를 실행해 같은 출력, source schema text, 미지원 객체 없음을 요구하고, 각
 # introspection의 시간을 출력하며 기준값을 넘으면 경고한다. dbspec-introspect-compare-bench는 같은 target을 2000
 # table 문서와 release runner로 실행한다.
 .PHONY: dbspec-introspect-compare-check dbspec-introspect-compare-bench
@@ -346,7 +354,8 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd clients/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p orm --example dbspec_introspect
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 	rm -rf $(RUN_DIR)
 
 dbspec-introspect-compare-bench:

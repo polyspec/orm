@@ -43,23 +43,23 @@ const compareDeadline = 10 * time.Minute
 // applyProgressEvery는 statement를 몇 개 적용할 때마다 단계 줄을 출력하는지다.
 const applyProgressEvery = 1000
 
-// TestIntrospectCompare는 stress 문서를 세 database에 적용하고 네 client의
+// TestIntrospectCompare는 stress 문서를 세 database에 적용하고 네 client와 PHP 확장 orm_dbspec의
 // introspection runner가 같은 출력을 내는지, 그 문서의 schema text가 원본과
 // 같은지, 미지원 객체가 없는지 확인하고, 각 client의 시간을 출력하며 기준값을 넘으면 경고한다.
 func TestIntrospectCompare(t *testing.T) {
 	testcase.Group(t)
-	stressPath, rustRunner := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST")
+	stressPath, rustRunner, extension := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if stressPath == "" || rustRunner == "" || mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
+	if stressPath == "" || rustRunner == "" || extension == "" || mysqlDSN == "" || postgresDSN == "" {
+		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_DBSPEC_EXTENSION, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// make는 자기 실행 directory(RUN_DIR)의 문서와 program 복사본을 절대 경로로 준다.
-	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) {
-		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q and DBSPEC_INTROSPECT_RUST %q must be absolute paths in the run directory of make", stressPath, rustRunner)
+	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) {
+		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q and ORM_DBSPEC_EXTENSION %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension)
 	}
 	text, diagnostics, err := dbspec.ReadFile(stressPath)
 	if err != nil {
@@ -82,6 +82,7 @@ func TestIntrospectCompare(t *testing.T) {
 		{"php", []string{"php", "tests/dbspec/introspect/php.php"}},
 		{"typescript", []string{"node", "tests/dbspec/introspect/typescript.mjs"}},
 		{"rust", []string{rustRunner}},
+		{"php-extension", []string{"php", "-d", "extension=" + extension, "tests/dbspec/introspect/php-extension.php"}},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {

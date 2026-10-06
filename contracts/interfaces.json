@@ -46,7 +46,7 @@
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:9fdcb57dc2dd02b12a5e50bee29c4e22f9aa9ad8699fbb543ed566984f0628eb",
+      "symbol_hash": "sha256:b71bfa113dd481838eeb5cd2c870bb279e3a766e3fbe7f09a65c55e1fdb3a104",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -54,6 +54,7 @@
         "Dbspec.emit",
         "Dbspec.manifest",
         "Dbspec.render",
+        "Dbspec.introspect",
         "Dbspec.externalDifferences",
         "Dbspec.parsePlan",
         "Dbspec.emitPlan",
@@ -1709,6 +1710,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/introspect.ts::introspectDbspec",
           "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection>"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::introspect",
+          "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Orm\\Dbspec\\Native\\IntrospectResult"
         }
       }
     },

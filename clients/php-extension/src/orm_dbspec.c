@@ -3,6 +3,7 @@
  * 등록하고, 그 생성자와 메서드, Dbspec의 정적 메서드를 PHP client(clients/php/src/Dbspec)와 같게 구현한다.
  */
 #include "dbspec.h"
+#include "ext/pdo/php_pdo_driver.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "ext/spl/spl_exceptions.h"
@@ -1549,6 +1550,30 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, importMermaid)
     LEAVE();
 }
 
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, introspect)
+{
+    zval *connection;
+    zend_string *dialect_name, *name;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_OBJECT_OF_CLASS(connection, php_pdo_get_dbh_ce())
+        Z_PARAM_STR(dialect_name)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    dialect d;
+    unsupportedv unsupported = {0};
+    document *doc = dbs_dialect(zs(dialect_name), &d) ? dbs_introspect(connection, d, zs(name), &unsupported) : NULL;
+    if (doc != NULL && !dbs_failed()) {
+        obj_new(return_value, dbs_ce_IntrospectResult);
+        zval dz, list;
+        out_document(doc, &dz);
+        obj_put(return_value, "document", &dz);
+        out_unsupported(&unsupported, &list);
+        obj_put(return_value, "unsupported", &list);
+    }
+    LEAVE();
+}
+
 /* ------------------------------------------------------------------ module */
 
 /* gen_stub이 쓰지 못하는 배열 상수를 영속 불변 배열로 선언한다. */
@@ -1652,6 +1677,7 @@ static PHP_MINFO_FUNCTION(orm_dbspec)
 static const zend_module_dep orm_dbspec_deps[] = {
     ZEND_MOD_REQUIRED("spl")
     ZEND_MOD_REQUIRED("hash")
+    ZEND_MOD_REQUIRED("pdo")
     ZEND_MOD_END
 };
 

@@ -68,7 +68,7 @@ $packaged = testcase_run('php-extension/package', TESTCASE_PROCESS, static funct
 // use) 뒤 `const CASE_DEADLINE_MS`부터 끝까지가 PHP client test의 같은 부분과 같다.
 $mirrored = testcase_run('php-extension/mirrors', TESTCASE_PROCESS, static function (callable $step): void {
     $root = dirname(__DIR__, 3);
-    $mirrors = ['dbspec_plan_test.php', 'dbspec_mermaid_test.php'];
+    $mirrors = ['dbspec_plan_test.php', 'dbspec_mermaid_test.php', 'dbspec_introspect_test.php'];
     foreach ($mirrors as $file) {
         $body = static function (string $path): string {
             $text = file_get_contents($path);
