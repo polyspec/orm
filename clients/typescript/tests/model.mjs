@@ -16,7 +16,7 @@ import {
   ServiceMember, ServiceRegion, StyledValue, User, connect as connectBench, dbspecManifest, parseDbspec,
   registerModel,
 } from '../dist/index.js';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mjs';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 

@@ -5,7 +5,7 @@ go 1.27
 require (
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/polyspec/ordered-json/go v0.0.0-20261002025228-b4c1c61cf2a2
+	github.com/polyspec/ordered-json/go v0.0.0-20261006155449-f491200d3179
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/sys v0.47.0
 	golang.org/x/tools v0.49.0

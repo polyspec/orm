@@ -14,7 +14,7 @@ import { caseTest } from '../../../tests/testcase.mjs';
 import { createCaseDatabase } from './case-database.mjs';
 import { auditCase, auditSource, restoreCase, restoreSchema } from './restore_case.mjs';
 import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 
 const root = new URL('../../..', import.meta.url).pathname;
 

@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { CodecError, StyledValue, blindIndex, decodeCodec, encodeCodec, hostDecode, hostEncode } from '../dist/index.js';
-import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '../node_modules/ordered-json/js/index.js';
+import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const vectors = JSON.parse(await readFile('tests/codec/vectors.json', 'utf8')).vectors;

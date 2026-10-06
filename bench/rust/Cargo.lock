@@ -1092,16 +1092,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
-name = "ordered-json"
-version = "0.0.1"
-source = "git+https://github.com/polyspec/ordered-json.git#b4c1c61cf2a29e58dcdcaf89f6460978a279020e"
-dependencies = [
- "serde",
- "serde_ignored",
- "serde_json",
-]
-
-[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1149,6 +1139,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "polyspec-ordered-json"
+version = "0.0.1"
+source = "git+https://github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570"
+dependencies = [
+ "serde",
+ "serde_ignored",
+ "serde_json",
+]
+
+[[package]]
 name = "polyspec-orm"
 version = "0.0.2"
 dependencies = [
@@ -1160,7 +1160,7 @@ dependencies = [
  "hmac 0.12.1",
  "indexmap",
  "libsqlite3-sys",
- "ordered-json",
+ "polyspec-ordered-json",
  "polyspec-orm-schema",
  "rand 0.10.2",
  "regex",
