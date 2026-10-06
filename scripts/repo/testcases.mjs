@@ -49,7 +49,7 @@ export function goTestCaseErrors(files) {
   return errors;
 }
 
-// rustTestCaseErrors는 Rust의 #[test]나 #[tokio::test] 함수가 orm_testcase의 case(case! macro나
+// rustTestCaseErrors는 Rust의 #[test]나 #[tokio::test] 함수가 polyspec_orm_testcase의 case(case! macro나
 // start)를 시작하지 않을 때마다 오류 하나를 돌려준다. files는 {path: text}다.
 export function rustTestCaseErrors(files) {
   const errors = [];
@@ -58,7 +58,7 @@ export function rustTestCaseErrors(files) {
     const pattern = /#\[(?:tokio::)?test(?:\([^)]*\))?\]\s*(?:#\[[^\]]*\]\s*)*(?:pub\s+)?(?:async\s+)?fn\s+(\w+)/g;
     for (const match of text.matchAll(pattern))
       if (!/\bcase!\(|\btestcase::(?:case!|start)\(/.test(body(text, match.index + match[0].length)))
-        errors.push(`${path}: ${match[1]} does not start its case with orm_testcase, so it runs without a deadline or RUN line`);
+        errors.push(`${path}: ${match[1]} does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line`);
   }
   return errors;
 }

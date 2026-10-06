@@ -3,7 +3,7 @@ use crate::catalog::{TableKind, TableRef};
 
 #[test]
 fn a_postgres_insert_takes_the_insert_lock_of_its_table() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let metadata = TableMetadata {
         table: TableRef { namespace: "public".into(), name: "orm_insert_identity_1".into() },
         kind: TableKind::Table,

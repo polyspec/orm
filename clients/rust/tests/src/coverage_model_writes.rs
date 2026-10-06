@@ -8,7 +8,7 @@ const TENANT: i64 = 990002;
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_model_write_cycle() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_cycle", async {
         let db = connect().await;
         let account = || CompositeAccount::new().connect(&db);

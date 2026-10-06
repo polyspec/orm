@@ -1,7 +1,7 @@
 use super::validate;
 #[test]
 fn policy_validates_nested_read_shapes_and_rejects_writes() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for dialect in ["mysql", "postgres", "sqlite"] {
         for sql in [
             "SELECT 1",

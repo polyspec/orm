@@ -1047,47 +1047,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orm-case-clock"
-version = "0.0.2"
-dependencies = [
- "libc",
- "orm-testcase",
-]
-
-[[package]]
-name = "orm-case-database"
-version = "0.0.2"
-dependencies = [
- "orm-testcase",
- "polyspec-orm",
- "sqlx",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "orm-testcase"
-version = "0.0.2"
-dependencies = [
- "tokio",
-]
-
-[[package]]
-name = "orm-tests"
-version = "0.0.2"
-dependencies = [
- "chrono",
- "orm-case-database",
- "orm-testcase",
- "polyspec-orm",
- "polyspec-orm-build",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
-]
-
-[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1148,10 +1107,10 @@ dependencies = [
  "libsqlite3-sys",
  "log",
  "ordered-json",
- "orm-case-clock",
- "orm-case-database",
- "orm-testcase",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-case-database",
  "polyspec-orm-schema",
+ "polyspec-orm-testcase",
  "rand 0.10.2",
  "regex",
  "rust_decimal",
@@ -1172,10 +1131,10 @@ version = "0.0.2"
 dependencies = [
  "bigdecimal",
  "futures-util",
- "orm-case-clock",
- "orm-testcase",
  "polyspec-orm",
+ "polyspec-orm-case-clock",
  "polyspec-orm-schema",
+ "polyspec-orm-testcase",
  "proc-macro2",
  "regex",
  "serde",
@@ -1189,14 +1148,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-orm-case-clock"
+version = "0.0.2"
+dependencies = [
+ "libc",
+ "polyspec-orm-testcase",
+]
+
+[[package]]
+name = "polyspec-orm-case-database"
+version = "0.0.2"
+dependencies = [
+ "polyspec-orm",
+ "polyspec-orm-testcase",
+ "sqlx",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "polyspec-orm-schema"
 version = "0.0.2"
 dependencies = [
- "orm-case-clock",
- "orm-testcase",
+ "polyspec-orm-case-clock",
+ "polyspec-orm-testcase",
  "regex",
  "serde_json",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "polyspec-orm-testcase"
+version = "0.0.2"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
+name = "polyspec-orm-tests"
+version = "0.0.2"
+dependencies = [
+ "chrono",
+ "polyspec-orm",
+ "polyspec-orm-build",
+ "polyspec-orm-case-database",
+ "polyspec-orm-testcase",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
 ]
 
 [[package]]

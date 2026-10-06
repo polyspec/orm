@@ -16,7 +16,7 @@ fn is_failure(r: &polyspec_orm::Result<()>, message: &str) -> bool {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_transaction_rollback() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_rollback", async {
         let db = connect().await;
         assert_eq!(CompositeAccount::new().connect(&db).tenant_id(TENANT).get_count().await.unwrap(), 0, "a row of tenant {TENANT} already exists");
@@ -40,7 +40,7 @@ async fn coverage_transaction_rollback() {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_transaction_savepoint() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_savepoint", async {
         let db = connect().await;
         assert_eq!(CompositeAccount::new().connect(&db).tenant_id(TENANT).get_count().await.unwrap(), 0, "a row of tenant {TENANT} already exists");

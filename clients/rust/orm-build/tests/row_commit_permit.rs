@@ -9,12 +9,12 @@ use std::sync::{
 
 #[tokio::test]
 async fn rejected_commit_permits_rollback_all_native_mutations() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
         let path = std::env::temp_dir().join(format!("orm-commit-permit-{}.sqlite", std::process::id()));
         assert!(!path.exists());
         for dialect in ["sqlite", "mysql", "postgres"] {
-            orm_testcase::step(format_args!("running {dialect}"));
+            polyspec_orm_testcase::step(format_args!("running {dialect}"));
             let dsn = match dialect {
                 "sqlite" => format!("sqlite://{}", path.display()),
                 "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
@@ -76,7 +76,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             catalog.close().await;
             drop(seed);
             db.close().await;
-            orm_testcase::step(format_args!("{dialect} passed"));
+            polyspec_orm_testcase::step(format_args!("{dialect} passed"));
         }
         std::fs::remove_file(path).unwrap();
     })

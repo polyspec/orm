@@ -4,7 +4,7 @@
 
 #[tokio::test]
 async fn sqlite_file_name_is_the_path() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-name-{}", std::process::id()));
     assert!(!directory.exists(), "{} already exists", directory.display());
     std::fs::create_dir(&directory).expect("temporary directory");
@@ -32,8 +32,8 @@ async fn sqlite_file_name_is_the_path() {
 /// path는 CONFIG다(docs/config.md "Runtime connection").
 #[tokio::test]
 async fn sqlite_path_cases() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
-    let path = orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dsn/sqlite-paths.json");
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");
@@ -41,7 +41,7 @@ async fn sqlite_path_cases() {
     for (index, case) in cases.iter().enumerate() {
         let id = case["id"].as_str().expect("id");
         // 각 vector는 연결 하나를 10 s 기한 안에서 열고 닫는다.
-        let mut inner = orm_testcase::start(format!("dsn/sqlite-path/{id}"), std::time::Duration::from_secs(10));
+        let mut inner = polyspec_orm_testcase::start(format!("dsn/sqlite-path/{id}"), std::time::Duration::from_secs(10));
         let directory = std::env::temp_dir().join(format!("orm-rust-sqlite-path-{}-{index}", std::process::id()));
         assert!(!directory.exists(), "{} already exists", directory.display());
         std::fs::create_dir(&directory).expect("temporary directory");

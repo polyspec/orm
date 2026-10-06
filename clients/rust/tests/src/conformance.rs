@@ -89,7 +89,7 @@ fn param_json(p: &Param) -> Result<Value, String> {
 
 #[test]
 fn invalid_binds_cannot_be_rendered_as_valid_values() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     assert!(param_json(&Param::Bytes(vec![0xff])).is_err());
     assert!(param_json(&Param::Bytes(b"ORM-AES2\0".to_vec())).is_err());
     let mut encrypted = b"ORM-AES2\0".to_vec();
@@ -171,7 +171,7 @@ fn int(v: Option<Value>) -> i64 {
 
 #[test]
 fn invalid_derived_integers_cannot_be_reported_as_zero() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for value in [None, Some(json!("bad")), Some(json!(1.5)), Some(json!(9_223_372_036_854_775_808.0))] {
         assert!(std::panic::catch_unwind(|| int(value)).is_err());
     }
@@ -210,7 +210,7 @@ impl Args {
 
 #[test]
 fn arguments_reject_missing_duplicate_and_unknown_flags() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let parse = |args: &[&str]| Args::parse(&args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>());
     let args = parse(&["--dsn", "sqlite://x", "--vector", "relations", "--vector", "conditions_values"]).unwrap();
     assert_eq!((args.dsn.as_str(), args.vectors), ("sqlite://x", vec!["relations".to_owned(), "conditions_values".to_owned()]));

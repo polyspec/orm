@@ -4,13 +4,13 @@
 //! the client reports it with the code DRIVER, the driver message, and the
 //! driver error. Its CHECK constraint refuses a nonpositive amount with
 //! CONSTRAINT. Each case runs in a case database of its own
-//! (orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or
+//! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
 use std::time::Duration;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 
 static REFUSAL_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/refusal.dbs"), "sha256:b4173544710d221d7a8b1802fee458fcd58bd4eb70aba5c07fbfb126a94d017d");
@@ -120,36 +120,36 @@ async fn bounded(driver: &str, case: &str) {
 
 #[tokio::test]
 async fn trigger_refused_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "trigger").await;
 }
 
 #[tokio::test]
 async fn trigger_refused_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "trigger").await;
 }
 
 #[tokio::test]
 async fn trigger_refused_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "trigger").await;
 }
 
 #[tokio::test]
 async fn check_refused_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "check").await;
 }
 
 #[tokio::test]
 async fn check_refused_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "check").await;
 }
 
 #[tokio::test]
 async fn check_refused_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "check").await;
 }

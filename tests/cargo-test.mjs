@@ -61,7 +61,7 @@ export function executables(stdout) {
 }
 
 // programs는 cargo가 test와 함께 build한 package의 program(`[[bin]]`, test가 아닌 것)을 이름과 실행 file로 읽는다.
-// test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다(orm_testcase::program).
+// test는 그 경로를 ORM_PROGRAM_<NAME>으로 받는다(polyspec_orm_testcase::program).
 export function programs(stdout) {
   const out = {};
   for (const line of stdout.split('\n')) {

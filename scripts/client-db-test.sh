@@ -73,7 +73,7 @@ rust_lane() {
   # 복사본을 실행한다.
   run="$ROOT/.runtime/run/client-db-rust-$$"
   # integration program은 그 build가 통과할 때만 실행한다. build가 실패하면 그 사실을 FAILED에 쌓는다.
-  if node tests/run-long.mjs rust-build/integration --cwd clients/rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p orm-tests --bin integration; then
+  if node tests/run-long.mjs rust-build/integration --cwd clients/rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration; then
     keep "$run/debug/integration" "$ROOT/schema/bench.dbs"
   else
     FAILED="$FAILED

@@ -2,7 +2,7 @@ use polyspec_orm_build::tool_db::{Conn, QueryLimits};
 
 #[tokio::test]
 async fn bounded_query_rejects_ambiguous_multiple_result_sets() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
         let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
         let mut connection = Conn::Sqlite(pool.acquire().await.unwrap());

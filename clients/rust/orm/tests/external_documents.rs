@@ -8,20 +8,20 @@
 //!   - member의 audit transaction은 core가 소유한 ext_audit에 기록을 삽입한다.
 //!   - 외부 문서의 쓰는 table이 database와 다르면(없는 column) CONFIG다.
 //!
-//! 각 case는 자기 case database(orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
+//! 각 case는 자기 case database(polyspec-orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나 ORM_TEST_POSTGRES_DSN이
 //! 없으면 실패한다.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::db::Pool;
 use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 
 /// contracts/fixtures/<name>.dbs의 text.
 fn fixture(name: &str) -> String {
-    let path = format!("{}/../../../contracts/fixtures/{name}.dbs", orm_testcase::manifest_dir().display());
+    let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
     dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
 }
 
@@ -186,11 +186,11 @@ async fn external_case(driver: &str, dsn: &str) {
 
 #[tokio::test]
 async fn external_documents() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         external_case(driver, database.dsn()).await;
         database.drop().await;
-        orm_testcase::step(format_args!("external_documents {driver}"));
+        polyspec_orm_testcase::step(format_args!("external_documents {driver}"));
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "orm-interface-symbols"
+name = "polyspec-orm-interface-symbols"
 version = "0.0.2"
 edition = "2021"
 publish = false

@@ -27,7 +27,7 @@ pub fn connection_rules(db: &str) -> &'static [&'static str] {
 }
 
 pub fn repository() -> PathBuf {
-    orm_testcase::manifest_dir().join("../../..")
+    polyspec_orm_testcase::manifest_dir().join("../../..")
 }
 
 pub fn require_dsn(var: &str) -> String {
@@ -300,7 +300,7 @@ pub async fn run_probe<T>(
     body: impl for<'c> FnOnce(&'c mut Conn) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, String>> + 'c>>,
 ) -> Result<T, String> {
     // probe case의 기한은 probe 자신의 기한과 그 database를 만들고 지우는 일의 같은 시간이다.
-    let mut probe = orm_testcase::start(id, PROBE_DEADLINE * 2);
+    let mut probe = polyspec_orm_testcase::start(id, PROBE_DEADLINE * 2);
     let session = servers.session(db, index);
     let name = session.name.clone();
     let (result, conn) = match servers.create(&session).await {

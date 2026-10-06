@@ -1,5 +1,5 @@
 [package]
-name = "orm-case-clock"
+name = "polyspec-orm-case-clock"
 version = "0.0.2"
 edition = "2021"
 publish = false
@@ -11,4 +11,4 @@ libc = "0.2"
 
 [dev-dependencies]
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
-orm-testcase = { path = "../testcase" }
+polyspec-orm-testcase = { path = "../testcase" }

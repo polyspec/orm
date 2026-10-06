@@ -2,17 +2,17 @@
 //! (docs/dbspec.md, "Runtime model")과 `dbspec::parse_manifest`로 manifest text에서
 //! 다시 읽은 document를 검사한다.
 
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Document, Type};
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
-// (orm_testcase::wall_for_cpu).
+// (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
 
 fn source(path: &str) -> String {
-    dbspec::read_file(&orm_testcase::manifest_dir().join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
+    dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../..").join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
 fn document(path: &str) -> Document {
@@ -21,7 +21,7 @@ fn document(path: &str) -> Document {
 
 #[test]
 fn manifest_text_reads_back_as_the_same_document_set() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let bench = document("schema/bench.dbs");
     let audit = document("contracts/fixtures/audit.dbs");
@@ -32,14 +32,14 @@ fn manifest_text_reads_back_as_the_same_document_set() {
     assert_eq!(again, manifest, "the documents of a manifest text have the same manifest");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec runtime manifest round trip cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn manifest_text_without_header_is_rejected() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let errors = dbspec::parse_manifest("table t {\n}\n").expect_err("a manifest text starts with a header");
     assert_eq!(errors[0].rule, "header");
@@ -50,14 +50,14 @@ fn manifest_text_without_header_is_rejected() {
     assert!(errors[0].message.starts_with("document a: "), "{errors:?}");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn runtime_model_of_bench() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let bench = document("schema/bench.dbs");
     let model = dbspec::runtime_model(&[&bench]).unwrap();
@@ -133,14 +133,14 @@ fn runtime_model_of_bench() {
     assert!(model.entity("missing").is_none());
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec runtime model of bench cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn runtime_model_names_entities_and_reads_settings() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
     let clock = CaseClock::start();
     let text = "dbspec 1 shop\n\ntable service_member {\n  id i64 identity\n  rank i16 default 3\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  index ix_service_member_audit (audit_seq)\n  foreign key fk_service_member_audit (audit_seq) references member_audit (seq) on delete restrict on update restrict\n  settings {\n    entity member\n    soft_delete deleted_at\n    audit into member_history column audit_seq references member_audit action change previous previous_audit_seq\n  }\n}\n\ntable member_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  rank i16\n  key uuid\n  opens time(3) null\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n  settings {\n    immutable\n  }\n}\n\ntable member_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n  settings {\n    entity member_record\n  }\n}\n";
     let shop = dbspec::parse(text, &BTreeMap::new()).unwrap_or_else(|errors| panic!("{errors:?}"));
@@ -167,7 +167,7 @@ fn runtime_model_names_entities_and_reads_settings() {
     assert_eq!(repeated[0].rule, "name.duplicate");
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= DEADLINE {
-        orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("cpu {cpu:?} exceeds {DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec runtime model settings cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec runtime model settings cpu={cpu:?} wall={wall:?}"));
 }

@@ -191,7 +191,7 @@ testcase-check/runners:
 testcase-check/php:
 	php tests/testcase_test.php
 testcase-check/rust: cargo-downloads-check
-	cd clients/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p orm-testcase
+	cd clients/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
@@ -726,7 +726,7 @@ unselected-column-physical-check:
 case-database-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd clients/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p orm-tests --bin integration
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd clients/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration
 	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
 	rm -rf $(RUN_DIR)
 
@@ -946,7 +946,7 @@ rust-driver-check: cargo-downloads-check
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check: cargo-downloads-check
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd clients/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p orm-tests --bin complex --bin demo
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd clients/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 	rm -rf $(RUN_DIR)
 

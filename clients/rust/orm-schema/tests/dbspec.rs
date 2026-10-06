@@ -1,4 +1,4 @@
-use orm_case_clock::CaseClock;
+use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, Document};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -7,11 +7,11 @@ use std::time::Duration;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 // SUITE_DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
-// (orm_testcase::wall_for_cpu).
+// (polyspec_orm_testcase::wall_for_cpu).
 const SUITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn cases_path() -> PathBuf {
-    orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json")
+    polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json")
 }
 
 /// Line ends of a case: LF, CRLF when `crlf` is true, or alternating CRLF and
@@ -73,7 +73,7 @@ fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
 fn run(case: &Value, kind: &str) {
     let clock = CaseClock::start();
     let id = case["id"].as_str().unwrap();
-    let inner = orm_testcase::start(format!("{kind}/{id}"), orm_testcase::wall_for_cpu(CASE_DEADLINE));
+    let inner = polyspec_orm_testcase::start(format!("{kind}/{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
     let (text, set) = declared(case);
     match kind {
         "canonical" => {
@@ -111,17 +111,17 @@ fn run(case: &Value, kind: &str) {
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= CASE_DEADLINE {
-        orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
     }
     inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
 #[test]
 fn shared_dbspec_vectors() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let path = cases_path();
-    orm_testcase::step(format_args!("start dbspec vectors {}", path.display()));
+    polyspec_orm_testcase::step(format_args!("start dbspec vectors {}", path.display()));
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
     assert_eq!(file["version"].as_u64(), Some(1));
     let mut seen = std::collections::BTreeSet::new();
@@ -138,9 +138,9 @@ fn shared_dbspec_vectors() {
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= SUITE_DEADLINE {
-        orm_testcase::warning(format_args!("dbspec vectors: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
+        polyspec_orm_testcase::warning(format_args!("dbspec vectors: cpu {cpu:?} exceeds {SUITE_DEADLINE:?} (wall {wall:?})"));
     }
-    orm_testcase::step(format_args!("dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}"));
+    polyspec_orm_testcase::step(format_args!("dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}"));
 }
 
 /// files case는 `dbspec::read_file`에 path를 주어, `dbspec::read_bytes`에 파일 byte와 case
@@ -149,7 +149,7 @@ fn shared_dbspec_vectors() {
 /// 파일은 그 byte를 돌려주며 그 text는 parse와 emit에서 바뀌지 않는다.
 #[test]
 fn shared_dbspec_files() {
-    let _case = orm_testcase::case!(orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let path = cases_path();
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
@@ -157,7 +157,7 @@ fn shared_dbspec_files() {
     assert!(!cases.is_empty(), "files cases are not empty");
     for case in cases {
         let id = case["id"].as_str().unwrap();
-        let inner = orm_testcase::start(format!("files/{id}"), orm_testcase::wall_for_cpu(CASE_DEADLINE));
+        let inner = polyspec_orm_testcase::start(format!("files/{id}"), polyspec_orm_testcase::wall_for_cpu(CASE_DEADLINE));
         let case_clock = CaseClock::start();
         let file_path = path.parent().unwrap().join(case["path"].as_str().unwrap());
         let expected: Vec<(String, usize, usize)> = case["errors"]
@@ -197,10 +197,10 @@ fn shared_dbspec_files() {
         }
         let (cpu, wall) = (case_clock.cpu(), case_clock.wall());
         if cpu >= CASE_DEADLINE {
-            orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
+            polyspec_orm_testcase::warning(format_args!("{id}: cpu {cpu:?} exceeds {CASE_DEADLINE:?} (wall {wall:?})"));
         }
         inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
-    orm_testcase::step(format_args!("dbspec files {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
+    polyspec_orm_testcase::step(format_args!("dbspec files {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
 }

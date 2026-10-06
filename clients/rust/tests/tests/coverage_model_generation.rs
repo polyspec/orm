@@ -4,7 +4,7 @@ use std::path::Path;
 
 /// build.rs와 같은 document와 scan 경로로 `out`에 생성하고 model과 manifest text를 읽는다.
 fn generate(out: &Path) -> (String, String) {
-    let root = orm_testcase::manifest_dir();
+    let root = polyspec_orm_testcase::manifest_dir();
     let model = polyspec_orm_build::Builder::new([root.join("../../../schema/bench.dbs")])
         .scan(root.join("src"))
         .scan(root.join("../../../examples/complex/rust"))
@@ -19,7 +19,7 @@ fn generate(out: &Path) -> (String, String) {
 #[test]
 #[ignore = "run by feature-check"]
 fn coverage_model_generation_check() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // 생성기는 output directory를 canonical path로 include하므로 비교할 path도 canonical path로 만든다.
     let temp = std::fs::canonicalize(std::env::temp_dir()).expect("canonical temp dir");
     let out = temp.join(format!("orm-rust-model-generation-{}", std::process::id()));

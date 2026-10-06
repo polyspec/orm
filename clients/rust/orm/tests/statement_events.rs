@@ -12,9 +12,9 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, StatementEvent, Subscription, Val};
+use polyspec_orm_case_database::CaseDatabase;
 use serde_json::{json, Value};
 
 static EVENTS_SCHEMA: Schema =
@@ -254,26 +254,26 @@ async fn run_case(driver: &'static str, case: &Value) {
 async fn run_cases(driver: &'static str) {
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     for case in vector["cases"].as_array().expect("vector cases") {
-        orm_testcase::step(format_args!("{driver}: case {}", case["id"].as_str().unwrap_or_default()));
+        polyspec_orm_testcase::step(format_args!("{driver}: case {}", case["id"].as_str().unwrap_or_default()));
         run_case(driver, case).await;
     }
 }
 
 #[tokio::test]
 async fn statement_events_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run_cases("mysql").await;
 }
 
 #[tokio::test]
 async fn statement_events_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run_cases("postgres").await;
 }
 
 #[tokio::test]
 async fn statement_events_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run_cases("sqlite").await;
 }
 
@@ -282,7 +282,7 @@ async fn statement_events_sqlite() {
 #[tokio::test]
 #[ignore = "run by feature-check"]
 async fn coverage_statement_events() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
         Ok("mysql") => "mysql",
         Ok("postgres") => "postgres",
@@ -299,7 +299,7 @@ async fn coverage_statement_events() {
 /// rust가 first_run_prepare_clients에 있으면 첫 실행은 event 수에 statement text 수를 더한다.
 #[tokio::test]
 async fn statement_events_server_transactions() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let vector: Value = serde_json::from_str(VECTOR).expect("tests/events/vectors.json");
     let spec = &vector["server_transactions"];
     let listed = |key: &str| spec[key].as_array().unwrap_or_else(|| panic!("{key}")).iter().any(|c| c == "rust");

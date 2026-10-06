@@ -2,13 +2,13 @@
 //! `uuid`, `time(p)`, `date` 값이 그대로 돌아오고, `select explicit` column은 default
 //! select set에서 빠지며, default가 있는 column을 빼면 database default를 쓰고 default가
 //! 없는 NOT NULL column을 빼면 실패한다. SQLite, MySQL, PostgreSQL에서 database마다 자기만의
-//! case database(orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나
+//! case database(polyspec-orm-case-database)로 실행하며 ORM_TEST_MYSQL_DSN이나
 //! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
 
 use std::collections::BTreeMap;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::CaseDatabase;
 
 const DOCUMENT: &str = "dbspec 1 value_types
 
@@ -100,7 +100,7 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
 
 #[tokio::test]
 async fn runtime_value_types() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
     let day = chrono::NaiveDate::from_ymd_opt(2026, 1, 2).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
@@ -146,6 +146,6 @@ async fn runtime_value_types() {
 
         db.close().await;
         database.drop().await;
-        orm_testcase::step(format_args!("runtime_value_types {driver}"));
+        polyspec_orm_testcase::step(format_args!("runtime_value_types {driver}"));
     }
 }

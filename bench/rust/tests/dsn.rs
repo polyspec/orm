@@ -27,10 +27,10 @@ fn assert_dsn_required(program: &str, output: std::process::Output) {
 
 #[test]
 fn benchmarks_fail_when_dsn_is_unset() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     for program in &[
-        orm_testcase::program("native"),
-        orm_testcase::program("driver_compare"),
+        polyspec_orm_testcase::program("native"),
+        polyspec_orm_testcase::program("driver_compare"),
     ] {
         assert_dsn_required(program, run_without_dsn(program, None));
     }
@@ -38,10 +38,10 @@ fn benchmarks_fail_when_dsn_is_unset() {
 
 #[test]
 fn benchmarks_fail_when_dsn_is_empty() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     for program in &[
-        orm_testcase::program("native"),
-        orm_testcase::program("driver_compare"),
+        polyspec_orm_testcase::program("native"),
+        polyspec_orm_testcase::program("driver_compare"),
     ] {
         assert_dsn_required(program, run_without_dsn(program, Some("")));
     }
@@ -63,10 +63,10 @@ fn run_with_args(program: &str, args: &[&str]) -> (Option<i32>, String) {
 
 #[test]
 fn benchmarks_require_the_iterations_argument() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     for program in &[
-        orm_testcase::program("native"),
-        orm_testcase::program("driver_compare"),
+        polyspec_orm_testcase::program("native"),
+        polyspec_orm_testcase::program("driver_compare"),
     ] {
         let (code, stderr) = run_with_args(program, &[]);
         assert_eq!(code, Some(1), "{program} without arguments: {stderr}");
@@ -79,10 +79,10 @@ fn benchmarks_require_the_iterations_argument() {
 
 #[test]
 fn benchmarks_reject_an_invalid_iterations_argument() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     for (program, minimum) in [
-        (orm_testcase::program("native"), 3),
-        (orm_testcase::program("driver_compare"), 10),
+        (polyspec_orm_testcase::program("native"), 3),
+        (polyspec_orm_testcase::program("driver_compare"), 10),
     ] {
         let program = program.as_str();
         let small = (minimum - 1).to_string();

@@ -152,7 +152,7 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
             }
             (None, Some(sql)) if step.fails => match conn.exec(sql).await {
                 Ok(()) => return Err(format!("{sql}: succeeded; want an error")),
-                Err(e) => orm_testcase::step(format_args!("expected failure {e}")),
+                Err(e) => polyspec_orm_testcase::step(format_args!("expected failure {e}")),
             },
             (None, Some(sql)) => conn.exec(sql).await?,
             (None, None) => return Err("a step has neither query nor sql".to_owned()),
@@ -163,7 +163,7 @@ async fn run_steps(conn: &mut Conn, db: &str, steps: &[Step]) -> Result<(), Stri
 
 #[tokio::test]
 async fn plan_apply() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let started = Instant::now();
     let path = repository().join("tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
@@ -189,7 +189,7 @@ async fn plan_apply() {
             let id = format!("{db}.plan.{}", case_id.replace('-', "_"));
             runs += 1;
             let (before, after) = (steps(&case["before"]), steps(&case["after"]));
-            orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
+            polyspec_orm_testcase::step(format_args!("{id}: {} steps, reversible {reversible}", steps_of.len()));
             let result = run_probe(&mut servers, &id, db, runs, |conn| {
                 Box::pin(async move {
                     let forward: Vec<String> = steps_of.iter().take_while(|s| !s.finalize).map(|s| s.statement.clone()).collect();
@@ -256,7 +256,7 @@ async fn plan_apply() {
     assert_eq!(runs, cases.len() * DIALECTS.len(), "plan runs");
     // 세 database의 plan 적용은 개발 machine에서 몇 초 걸린다(T27 측정 8 s, build 포함). 5분이 지나면 멈춘 것이다.
     if started.elapsed() >= Duration::from_secs(300) {
-        orm_testcase::warning(format_args!("plan apply exceeded 300s"));
+        polyspec_orm_testcase::warning(format_args!("plan apply exceeded 300s"));
     }
-    orm_testcase::step(format_args!("dbspec plan apply: {runs} runs of {} cases on three databases in {:?}", cases.len(), started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("dbspec plan apply: {runs} runs of {} cases on three databases in {:?}", cases.len(), started.elapsed()));
 }

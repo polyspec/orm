@@ -45,8 +45,8 @@ fn assert_lines(program: &str, stdout: &str, names: &[&str]) {
 
 #[test]
 fn native_reads_the_seeded_database() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let program = &orm_testcase::program("native");
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let program = &polyspec_orm_testcase::program("native");
     let stdout = run_seeded(program, "30");
     assert_lines(
         program,
@@ -62,8 +62,8 @@ fn native_reads_the_seeded_database() {
 
 #[test]
 fn driver_compare_reads_the_seeded_database() {
-    let _case = orm_testcase::case!(orm_testcase::PROCESS);
-    let program = &orm_testcase::program("driver_compare");
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
+    let program = &polyspec_orm_testcase::program("driver_compare");
     let stdout = run_seeded(program, "10");
     assert_lines(
         program,

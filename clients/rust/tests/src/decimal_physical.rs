@@ -39,7 +39,7 @@ async fn decimal_physical(env: &str) {
 #[tokio::test]
 #[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_MYSQL_DSN").await;
 }
 
@@ -47,7 +47,7 @@ async fn decimal_mysql() {
 #[tokio::test]
 #[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_POSTGRES_DSN").await;
 }
 
@@ -55,7 +55,7 @@ async fn decimal_postgres() {
 #[tokio::test]
 #[ignore = "run by decimal-physical-check with the DECIMAL_*_DSN variables"]
 async fn decimal_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_SQLITE_DSN").await;
 }
 
@@ -137,21 +137,21 @@ async fn schema_set(driver: &str) {
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set("mysql").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set("postgres").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set("sqlite").await;
 }
 
@@ -259,42 +259,42 @@ async fn drop_schema_set_database(driver: &str, dsn: &str, name: &str) {
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_unregistered("mysql").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_unregistered("postgres").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_unregistered_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_unregistered("sqlite").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_mysql() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("mysql").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_postgres() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("postgres").await;
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn schema_set_edited_manifest_sqlite() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     schema_set_edited_manifest("sqlite").await;
 }
 

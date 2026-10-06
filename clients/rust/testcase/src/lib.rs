@@ -59,7 +59,7 @@ pub fn program(name: &str) -> String {
 }
 
 /// test 함수 이름을 case 이름으로 쓰고 기한 `$deadline` 아래의 case를 시작한다. 돌려준 값이
-/// scope를 벗어나면 결과를 출력하므로 `let _case = orm_testcase::case!(..);`로 묶어 둔다.
+/// scope를 벗어나면 결과를 출력하므로 `let _case = polyspec_orm_testcase::case!(..);`로 묶어 둔다.
 #[macro_export]
 macro_rules! case {
     ($deadline:expr) => {

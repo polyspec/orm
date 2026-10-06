@@ -44,12 +44,12 @@ yaml-rust2 = { version = "0.13.0", default-features = false }
 
 [dev-dependencies]
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
-orm-testcase = { path = "../testcase" }
+polyspec-orm-testcase = { path = "../testcase" }
 # SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
 libsqlite3-sys = { version = "0.37", default-features = false }
 # coverage test가 자기 계산의 CPU 시간을 잰다.
-orm-case-clock = { path = "../case-clock" }
+polyspec-orm-case-clock = { path = "../case-clock" }
 # database case가 자기만의 database를 만들고 끝날 때 지운다.
-orm-case-database = { path = "../case-database" }
+polyspec-orm-case-database = { path = "../case-database" }
 # 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
 log = "0.4"

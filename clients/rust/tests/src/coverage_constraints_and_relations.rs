@@ -6,7 +6,7 @@ use super::model::{Author, User};
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_constraint_errors() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("constraint_errors", async {
         let db = connect().await;
         let user = User::new().connect(&db).get_by_seq(1).await.unwrap();

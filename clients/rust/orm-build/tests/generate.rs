@@ -4,11 +4,11 @@
 use std::path::PathBuf;
 
 fn schema() -> PathBuf {
-    orm_testcase::manifest_dir().join("../../../contracts/fixtures/zone.dbs")
+    polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/zone.dbs")
 }
 
 fn bench() -> PathBuf {
-    orm_testcase::manifest_dir().join("../../../schema/bench.dbs")
+    polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")
 }
 
 static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
@@ -31,7 +31,7 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
 
 #[test]
 fn generates_called_methods() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate(
         r#"
         fn main() {
@@ -61,7 +61,7 @@ fn generates_called_methods() {
 
 #[test]
 fn generated_rows_reject_unselected_fields_and_separate_group_results() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { let row = ZoneEvent::new(); let _ = row.get_start_dt(); let _ = row.gets_count(); }").unwrap();
     assert!(!text.contains("pub start_dt:"), "typed fields cannot bypass checked getters");
     assert!(text.contains("pub fn get_start_dt(&self) -> polyspec_orm::Result<polyspec_orm::chrono::NaiveDateTime>"), "getter must report missing selection");
@@ -70,7 +70,7 @@ fn generated_rows_reject_unselected_fields_and_separate_group_results() {
 
 #[test]
 fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     let text = generate_with_schema(
         root,
@@ -94,7 +94,7 @@ fn nullable_json_fields_keep_sql_null_separate_from_json_null() {
 
 #[test]
 fn column_function_order_takes_the_function() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { ZoneEvent::new().order_by_start_dt_asc(polyspec_orm::year()); }").unwrap();
     assert!(text.contains("pub fn order_by_start_dt_asc(mut self, f: polyspec_orm::Func) -> Self"));
     assert!(text.contains("pub fn order_by_seq_asc(mut self) -> Self"));
@@ -102,7 +102,7 @@ fn column_function_order_takes_the_function() {
 
 #[test]
 fn rejects_unknown_names_of_a_known_model() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let err = generate("fn main() {\n    ZoneEvent::new().and_lk_start_dt(\"x\").name(\"y\");\n}\n").unwrap_err();
     assert!(err.contains("main.rs:2:22: ZoneEvent has no method and_lk_start_dt"), "{err}");
     assert!(err.contains("main.rs:2:43: ZoneEvent has no method name"), "{err}");
@@ -110,21 +110,21 @@ fn rejects_unknown_names_of_a_known_model() {
 
 #[test]
 fn rejects_argument_count() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let err = generate("fn main() { let x = ZoneEvent::new(); x.seq(1, 2); }").unwrap_err();
     assert!(err.contains("ZoneEvent::seq takes 1 values, not 2"), "{err}");
 }
 
 #[test]
 fn ignores_calls_of_other_types() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate("fn main() { let v = vec![1]; v.len(); v.iter().map(|x| x + 1); }").unwrap();
     assert!(!text.contains("pub fn len"));
 }
 
 #[test]
 fn rejects_an_invalid_document() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let dir = std::env::temp_dir().join(format!("orm-build-invalid-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let text = std::fs::read_to_string(schema()).unwrap().replace("start_dt datetime(6)", "start_dt datetime(9)");
@@ -137,9 +137,9 @@ fn rejects_an_invalid_document() {
 /// dbspec::read_file이 parse 전에 DbSchema project XML과 빈 파일을 signature로 거부한다.
 #[test]
 fn rejects_a_file_without_the_signature() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for name in ["dbschema.dbs", "empty.dbs"] {
-        let path = orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
+        let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/files").join(name);
         let out = std::env::temp_dir().join(format!("orm-build-signature-{}-{name}", std::process::id()));
         let err = polyspec_orm_build::Builder::new([path.clone()]).out_dir(out.clone()).try_generate().unwrap_err();
         assert!(!out.exists(), "{name}: generation wrote {}", out.display());
@@ -150,12 +150,12 @@ fn rejects_a_file_without_the_signature() {
 
 #[test]
 fn manifest_text_is_embedded_with_its_hash() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-manifest-{}-{n}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src/main.rs"), "fn main() {}").unwrap();
-    let audit = orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
+    let audit = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
     polyspec_orm_build::Builder::new([schema(), audit.clone()]).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
     let embedded = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MANIFEST_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
@@ -166,7 +166,7 @@ fn manifest_text_is_embedded_with_its_hash() {
 
 #[test]
 fn generated_field_types_follow_the_runtime_model() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
         bench(),
         "fn main() { let row = Author::new(); let _ = row.get_gz_extend(); let _ = row.get_base64_extra(); let _ = row.get_ip(); let _ = row.get_aes_hex_email(); }",
@@ -191,7 +191,7 @@ fn generated_field_types_follow_the_runtime_model() {
 
 #[test]
 fn styled_setter_result_handling_preserves_model_calls() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     for handler in ["expect(\"assigned config\")", "unwrap()"] {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handler}; let _ = row.get_jsons_tags(); }}");
@@ -204,7 +204,7 @@ fn styled_setter_result_handling_preserves_model_calls() {
 
 #[test]
 fn unknown_model_call_after_setter_result_handling_still_fails() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     let error = generate_with_schema(
         root,
@@ -216,7 +216,7 @@ fn unknown_model_call_after_setter_result_handling_still_fails() {
 
 #[test]
 fn styled_setter_result_transformations_are_not_column_calls() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).map(Some)"] {
         let source = format!(
@@ -230,7 +230,7 @@ fn styled_setter_result_transformations_are_not_column_calls() {
 
 #[test]
 fn unknown_model_after_result_error_mapping_still_fails() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     for handling in ["map_err(|error| error)?", "map_err(|error| error).unwrap()"] {
         let source = format!("fn main() {{ let row = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())).{handling}; row.missing_method(); }}");
@@ -242,7 +242,7 @@ fn unknown_model_after_result_error_mapping_still_fails() {
 
 #[test]
 fn infallible_setter_does_not_accept_result_methods() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     let error = generate_with_schema(root, "fn main() { Author::new().set_seq(1).map_err(|error| error); }")
         .expect_err("infallible model setter does not return Result");
@@ -251,7 +251,7 @@ fn infallible_setter_does_not_accept_result_methods() {
 
 #[test]
 fn bound_setter_results_preserve_model_calls_after_extraction() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let root = bench();
     let source = "fn main() { let result = Author::new().set_jsons_tags(polyspec_orm::StyledValue::Value(polyspec_orm::ordered_json::Value::null())); let row = result.map_err(|error| error).unwrap(); row.missing_method(); }";
     let error = generate_with_schema(root, source).expect_err("bound Result must retain its model after extraction");
@@ -262,7 +262,7 @@ fn bound_setter_results_preserve_model_calls_after_extraction() {
 /// relation getter는 실패한 downcast를 None으로 버리지 않고 `polyspec_orm::Result`로 보고한다.
 #[test]
 fn relation_getters_report_a_mismatched_relation_value() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
         bench(),
         "fn main() { let b = Author::new().relation(User::new().match_user_seq_with_seq().alias_owner()).relations(ServiceMember::new().match_service_seq_with_service_seq().alias_members()); let _ = b.get_owner(); let _ = b.get_members(); }",
@@ -280,8 +280,8 @@ fn relation_getters_report_a_mismatched_relation_value() {
 /// 싣는다.
 #[test]
 fn generation_leaves_external_tables_out() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
-    let fixtures = orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let fixtures = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
     let out = polyspec_orm_build::Builder::new([fixtures.join("member.dbs")]).uses([fixtures.join("core.dbs")]).out_dir(dir.join("out")).try_generate();
@@ -301,7 +301,7 @@ fn generation_leaves_external_tables_out() {
 /// `./`를 넣은 path, 끝에 `/`를 붙인 path) 같은 generated source를 만든다.
 #[test]
 fn scan_path_spelling_keeps_the_generated_source() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();

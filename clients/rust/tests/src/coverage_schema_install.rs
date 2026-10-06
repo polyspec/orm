@@ -21,7 +21,7 @@ table coverage_install_missing {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_existing() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_existing", async {
         let db = connect().await;
         db.utils().schema().install(&super::model::SCHEMA).await.unwrap();
@@ -51,7 +51,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_partial() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_partial", async {
         let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default()).unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
         let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
@@ -109,7 +109,7 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_schema_install_external_documents() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_external_documents", async {
         let dsn =
             std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");

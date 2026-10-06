@@ -603,7 +603,7 @@ func buildRust(c *testcase.Case, root, directory string) (string, error) {
 	}
 	manifest := filepath.Join(root, "tests/interfaces/rust/Cargo.toml")
 	cmd := exec.CommandContext(c.Context(), lease, "run", leases, "exclusive", "--wait", "--", "sh", filepath.Join(root, "scripts", "cargo-build-copy.sh"),
-		directory, "debug/orm-interface-symbols", "--", "cargo", "build", "--locked", "--manifest-path", manifest)
+		directory, "debug/polyspec-orm-interface-symbols", "--", "cargo", "build", "--locked", "--manifest-path", manifest)
 	steps := c.StepWriter()
 	cmd.Stdout = steps
 	cmd.Stderr = steps
@@ -613,7 +613,7 @@ func buildRust(c *testcase.Case, root, directory string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("cargo build: %w", err)
 	}
-	executable := filepath.Join(directory, "debug", "orm-interface-symbols")
+	executable := filepath.Join(directory, "debug", "polyspec-orm-interface-symbols")
 	if info, err := os.Stat(executable); err != nil || info.IsDir() {
 		return "", fmt.Errorf("cargo build left no executable %s: %v", executable, err)
 	}

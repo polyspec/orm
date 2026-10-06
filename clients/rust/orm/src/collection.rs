@@ -354,7 +354,7 @@ mod group_tests {
 
     #[test]
     fn grouped_rows_contain_only_group_values_and_checked_counts() {
-        let _case = orm_testcase::case!(orm_testcase::DATABASE);
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let row = GroupRow::new(vec![("is_close".into(), Val::Bool(false)), ("row_count".into(), Val::I64(3))]).unwrap();
         assert_eq!(row.count(), 3);
         assert_eq!(row.value("is_close").unwrap(), &Val::Bool(false));

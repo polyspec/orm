@@ -1,5 +1,5 @@
 //! Generated model integration test on SQLite, MySQL and PostgreSQL. Each
-//! case runs in a case database of its own (orm-case-database), created on
+//! case runs in a case database of its own (polyspec-orm-case-database), created on
 //! the servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN and dropped when
 //! the case ends; the test fails when either is unset.
 //!
@@ -36,7 +36,7 @@ mod nonnull_model {
 
 #[test]
 fn generated_nonnull_styled_setter_rejects_sql_null() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let err = match nonnull_model::NonnullDocument::new().set_body(polyspec_orm::StyledValue::SqlNull) {
         Ok(_) => panic!("non-null styled setter accepted SQL NULL"),
         Err(err) => err,
@@ -58,14 +58,14 @@ fn generated_nonnull_styled_setter_rejects_sql_null() {
 }
 
 use model::{Account, Author, CompositeAccount, CompositeMembership, Service, ServiceMember, ServiceRegion, User};
-use orm_case_database::CaseDatabase;
 use polyspec_orm::db::Pool;
 use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
+use polyspec_orm_case_database::CaseDatabase;
 
 #[tokio::test]
 #[ignore = "run by feature-check with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN"]
 async fn coverage_generated_model_connection() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let driver = std::env::var("ORM_FEATURE_DATABASE")
         .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
     let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
@@ -96,7 +96,7 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
 
 #[test]
 fn generated_fields_require_selection_or_assignment() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let model = Author::new();
     assert_eq!(model.get_name().unwrap_err().code(), polyspec_orm::codes::COLUMN_UNSELECTED);
     assert_eq!(model.clone().set_name("assigned").get_name().unwrap(), "assigned");
@@ -692,7 +692,7 @@ async fn main() {
     const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];
     if selected.is_none_or(|case| case == "schema_empty") {
         for driver in DRIVERS {
-            let case = orm_testcase::start(format!("schema_empty/{driver}"), orm_testcase::DATABASE);
+            let case = polyspec_orm_testcase::start(format!("schema_empty/{driver}"), polyspec_orm_testcase::DATABASE);
             let t = Target::empty(driver).await;
             schema_empty(&t).await;
             t.finish().await;
@@ -706,7 +706,7 @@ async fn main() {
         }
         // 각 case는 자기 case database에 schema를 설치하고 statement 수백 개 이하를 실행한다.
         for driver in DRIVERS {
-            let case = orm_testcase::start(format!("{name}/{driver}"), orm_testcase::DATABASE);
+            let case = polyspec_orm_testcase::start(format!("{name}/{driver}"), polyspec_orm_testcase::DATABASE);
             let t = Target::installed(driver).await;
             match name {
                 "conditions" => conditions(&t).await,
@@ -724,7 +724,7 @@ async fn main() {
     }
     if selected.is_none_or(|case| case == "primary_and_replica") {
         for driver in DRIVERS {
-            let case = orm_testcase::start(format!("primary_and_replica/{driver}"), orm_testcase::DATABASE);
+            let case = polyspec_orm_testcase::start(format!("primary_and_replica/{driver}"), polyspec_orm_testcase::DATABASE);
             let t = Target::installed(driver).await;
             if driver == "sqlite" {
                 read_only_sqlite(&t).await;

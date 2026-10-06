@@ -1102,21 +1102,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "orm-bench"
-version = "0.0.2"
-dependencies = [
- "mysql_async",
- "orm-testcase",
- "polyspec-orm",
- "sqlx",
- "tokio",
-]
-
-[[package]]
-name = "orm-testcase"
-version = "0.0.2"
-
-[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1192,12 +1177,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "polyspec-orm-bench"
+version = "0.0.2"
+dependencies = [
+ "mysql_async",
+ "polyspec-orm",
+ "polyspec-orm-testcase",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "polyspec-orm-schema"
 version = "0.0.2"
 dependencies = [
  "regex",
  "sha2 0.10.9",
 ]
+
+[[package]]
+name = "polyspec-orm-testcase"
+version = "0.0.2"
 
 [[package]]
 name = "polyval"

@@ -103,22 +103,22 @@ async fn behavior(driver: &str, dsn: &str) {
 }
 async fn check(driver: &str, key: &str) {
     let started = Instant::now();
-    orm_testcase::step(format_args!("start send_savepoint {driver}"));
+    polyspec_orm_testcase::step(format_args!("start send_savepoint {driver}"));
     tokio::time::timeout(Duration::from_secs(10), behavior(driver, &dsn(key))).await.expect("individual savepoint test deadline");
-    orm_testcase::step(format_args!("send_savepoint {driver} {:?}", started.elapsed()));
+    polyspec_orm_testcase::step(format_args!("send_savepoint {driver} {:?}", started.elapsed()));
 }
 #[tokio::test]
 async fn mysql_send_savepoint() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("mysql", "ORM_TEST_MYSQL_DSN").await;
 }
 #[tokio::test]
 async fn postgres_send_savepoint() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("postgres", "ORM_TEST_POSTGRES_DSN").await;
 }
 #[tokio::test]
 async fn sqlite_send_savepoint() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("sqlite", "ORM_SEND_SQLITE_DSN").await;
 }

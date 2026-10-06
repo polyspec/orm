@@ -48,3 +48,22 @@ caseTest('a declaration that disappears is reported', COMPUTE, async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+caseTest('the version of each Rust package in a lockfile and each version pin of a manifest are read', COMPUTE, async () => {
+  const dir = await copyDeclarations();
+  try {
+    const lock = join(dir, 'clients/rust/Cargo.lock');
+    const lockText = await readFile(lock, 'utf8');
+    for (const name of ['polyspec-orm', 'polyspec-orm-testcase']) {
+      assert.match(lockText, new RegExp(`^name = "${name}"\\nversion = "`, 'm'), `${name} is a package of clients/rust/Cargo.lock`);
+    }
+    await writeFile(lock, lockText.replace(/^(name = "polyspec-orm-testcase"\nversion = ")[^"]+"/m, '$19.9.9"'));
+    const manifest = join(dir, 'clients/rust/orm/Cargo.toml');
+    await writeFile(manifest, (await readFile(manifest, 'utf8')).replace(/^(polyspec-orm-schema = \{ version = "=)[^"]+"/m, '$19.9.8"'));
+    const errors = await versionErrors(dir);
+    assert.ok(errors.some(e => e.startsWith('clients/rust/Cargo.lock: version 9.9.9')), errors.join('\n'));
+    assert.ok(errors.some(e => e.startsWith('clients/rust/orm/Cargo.toml: version 9.9.8')), errors.join('\n'));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -2,14 +2,14 @@
 //! UTC on SQLite, MySQL and PostgreSQL, whatever the server zone (docs/dialects.md
 //! "Date and time"); a wall-clock value round-trips and `default now` writes the
 //! UTC statement time. A test that installs zone_event does so in a case
-//! database of its own (orm-case-database). A test fails when
+//! database of its own (polyspec-orm-case-database). A test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
 use chrono::{NaiveDate, NaiveDateTime, Utc};
-use orm_case_database::{CaseDatabase, CaseTable};
 use polyspec_orm::core::{Arg, ChainKey};
 use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm_case_database::{CaseDatabase, CaseTable};
 
 /// Returns the DSN in `var`; an unset or empty variable fails the test.
 fn require_dsn(var: &str) -> String {
@@ -76,7 +76,7 @@ fn event(db: &Db) -> ZoneEvent {
 
 #[tokio::test]
 async fn connections_use_utc() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
         // 시험 server의 MySQL은 SYSTEM(KST), PostgreSQL은 Asia/Seoul이다.
@@ -129,7 +129,7 @@ async fn connections_use_utc() {
 /// UTC가 아닌 timezone parameter는 CONFIG로 실패한다.
 #[test]
 fn non_utc_time_zones_are_rejected() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for dsn in [
         "mysql://root@localhost/orm_example?timezone=%2B09:00",
         "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
@@ -149,7 +149,7 @@ fn non_utc_time_zones_are_rejected() {
 /// commit implicitly.
 #[tokio::test]
 async fn mysql_install_inside_transaction() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let database = CaseDatabase::create("mysql").await;
     let db = Db::connect(database.dsn(), 2, polyspec_orm::Config::default()).await.unwrap();
     let inside: polyspec_orm::Result<()> = db.transaction(async || db.utils().schema().install(&SCHEMA).await).await;
@@ -162,7 +162,7 @@ async fn mysql_install_inside_transaction() {
 /// The pool size a connection is opened with is its maximum open connections.
 #[tokio::test]
 async fn pool_size() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
@@ -177,7 +177,7 @@ async fn pool_size() {
 /// above the pool size returns CONFIG.
 #[tokio::test]
 async fn pool_idle_size_and_lifetime() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let tmp = std::env::temp_dir().join(format!("orm-rust-pool-idle-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let dsn = format!("sqlite://{}", tmp.join("pool.sqlite").display());
@@ -219,7 +219,7 @@ async fn pool_idle_size_and_lifetime() {
 /// more concurrent transactions or opens more connections than its maximum.
 #[tokio::test]
 async fn pool_size_bound() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
     for (driver, var) in [("mysql", "ORM_TEST_MYSQL_DSN"), ("postgres", "ORM_TEST_POSTGRES_DSN")] {
@@ -317,7 +317,7 @@ async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<(
 /// locking read of a row that another connection holds.
 #[tokio::test]
 async fn statement_timeout() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let cfg = polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() };
@@ -347,7 +347,7 @@ async fn statement_timeout() {
 /// 끝에서(실패해도) 지운다.
 #[tokio::test]
 async fn statement_timeout_through_a_pooler() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let base = require_dsn("ORM_TEST_POSTGRES_DSN");
     let table = CaseTable::reserve(&base);
     // zone document의 table 이름만 바꾼 schema와 그 entity다. Schema와 Entity는 'static 값을 받는다.
@@ -403,7 +403,7 @@ async fn statement_timeout_through_a_pooler() {
 /// of the simple protocol and in the binary format of prepared statements.
 #[tokio::test]
 async fn postgres_float_round_trip() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let db = Db::connect(&require_dsn("ORM_TEST_POSTGRES_DSN"), 1, polyspec_orm::Config::default()).await.unwrap();
     let Pool::Postgres(pool) = db.pool() else { panic!("a postgres pool") };
     let values = [0.1 + 0.2, 1.0 / 3.0, f64::MIN_POSITIVE, 5e-324, f64::MAX, -123456.789e-7];
@@ -422,7 +422,7 @@ async fn postgres_float_round_trip() {
 /// that another connection holds, so it waits until its future is dropped.
 #[tokio::test]
 async fn dropping_a_query_cancels_it() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
@@ -438,7 +438,7 @@ async fn dropping_a_query_cancels_it() {
         let dropped = tokio::time::timeout(std::time::Duration::from_millis(300), polyspec_orm::model::update(&mut row, false)).await;
         assert!(dropped.is_err(), "{driver}: the blocked statement finished");
         if started.elapsed() >= std::time::Duration::from_secs(4) {
-            orm_testcase::warning(format_args!("{driver}: dropping waited for the statement"));
+            polyspec_orm_testcase::warning(format_args!("{driver}: dropping waited for the statement"));
         }
         held.release().await;
         holder.close().await;
@@ -459,7 +459,7 @@ async fn dropping_a_query_cancels_it() {
 /// PostgreSQL the transaction waits for a row that another connection holds.
 #[tokio::test]
 async fn dropping_a_transaction_frees_a_single_connection() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = Db::connect(database.dsn(), 1, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));

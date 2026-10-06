@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.93: orm의 내부 Rust crate는 `polyspec-orm-testcase`, `polyspec-orm-case-clock`, `polyspec-orm-case-database`, `polyspec-orm-tests`, `polyspec-orm-bench`, `polyspec-orm-interface-symbols`이고, version check는 `polyspec-orm` package의 version을 읽는다.
+
 - G5.91: 모든 변경은 pull request와 merge queue로 `main`에 들어가며, `.github/ruleset.json`은 ruleset `main`을 선언하고 `make github-ruleset`이 적용하며 `make github-ruleset-check`가 비교한다. workflow는 `merge_group`에서 실행된다.
 
 - G5.89: Rust와 TypeScript client는 PHP client처럼 ordered-json에 그 저장소로 의존하고, lock 갱신은 그 main을 받는다.

@@ -6,15 +6,15 @@
 //! table은 그대로 둔다. 다시 부르면 아무것도 더하지 않는다. 있는 table에 빠진 index는 더하고,
 //! 빠진 unique key는 그 이유를 적은 SCHEMA_DIFFERS다. 다른 차이가 있는 set은 아무것도
 //! 바꾸기 전에 SCHEMA_DIFFERS다. fixture는 contracts/fixtures/add_tables_and_columns/*.dbs다. 각
-//! case는 자기 case database(orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나
+//! case는 자기 case database(polyspec-orm-case-database)에서 실행하며 ORM_TEST_MYSQL_DSN이나
 //! ORM_TEST_POSTGRES_DSN이 없으면 실패한다.
 
 use std::collections::BTreeMap;
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::db::Pool;
 use polyspec_orm::dbspec;
 use polyspec_orm::{Db, Schema};
+use polyspec_orm_case_database::CaseDatabase;
 
 const ADDED: [&str; 11] = [
     "addcol_extra",
@@ -37,7 +37,7 @@ const MISSING_UNIQUE: &str = "add_unique addcol_item.uq_addcol_item_label: a mis
 /// contracts/fixtures/add_tables_and_columns/<name>.dbs의 schema 값. generated code처럼 manifest text와
 /// 그 manifestHash를 가진다.
 fn fixture(name: &str) -> &'static Schema {
-    let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", orm_testcase::manifest_dir().display());
+    let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
     let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     let document = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{path}: {e:?}"));
@@ -101,7 +101,7 @@ fn added(r: polyspec_orm::Result<Vec<String>>) -> Vec<String> {
 
 #[tokio::test]
 async fn add_tables_and_columns() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
@@ -142,7 +142,7 @@ async fn add_tables_and_columns() {
 
 #[tokio::test]
 async fn add_tables_and_columns_differs() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
@@ -160,7 +160,7 @@ async fn add_tables_and_columns_differs() {
 /// 실패할 수 있다는 이유를 적은 SCHEMA_DIFFERS다.
 #[tokio::test]
 async fn add_tables_and_columns_index() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
@@ -187,7 +187,7 @@ async fn add_tables_and_columns_index() {
 
 #[tokio::test]
 async fn add_tables_and_columns_transaction() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;
@@ -212,7 +212,7 @@ async fn add_tables_and_columns_transaction() {
 
 #[tokio::test]
 async fn add_tables_and_columns_edited_manifest() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let db = installed(&database).await;

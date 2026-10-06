@@ -2,7 +2,7 @@ use polyspec_orm::decimal::normalize;
 
 #[test]
 fn decimal_model_fixture() {
-    let _case = orm_testcase::case!(orm_testcase::COMPUTE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture: polyspec_orm::serde_json::Value =
         polyspec_orm::serde_json::from_str(include_str!("../../../../contracts/fixtures/decimal_model.json")).unwrap();
     for case in fixture["cases"].as_array().unwrap() {

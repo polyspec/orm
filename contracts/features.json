@@ -4097,7 +4097,7 @@
         },
         {
           "id": "chunking-rust",
-          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- sh scripts/cargo-build-copy.sh \"$run\" debug/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
+          "command": "sh -c 'run=\"$PWD/.runtime/run/chunking-rust-$$\"; trap \"rm -rf \\\"$run\\\"\" EXIT; PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/integration -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- sh scripts/cargo-build-copy.sh \"$run\" debug/integration -- cargo build --manifest-path clients/rust/Cargo.toml --locked -p polyspec-orm-tests --bin integration && \"$run/debug/integration\" \"$PWD/schema/bench.dbs\"'",
           "inputs": [
             "clients/rust/tests/src/integration.rs",
             "schema/bench.dbs",
@@ -5484,7 +5484,7 @@
         },
         {
           "id": "conformance-runner-rust-build",
-          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/conformance --cwd clients/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo build --locked -p orm-tests --bin conformance",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mjs rust-build/conformance --cwd clients/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo build --locked -p polyspec-orm-tests --bin conformance",
           "inputs": [
             "clients/rust/tests/src/conformance.rs"
           ]

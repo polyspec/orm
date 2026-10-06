@@ -11,9 +11,9 @@
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use orm_case_database::CaseDatabase;
 use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Db, Schema};
+use polyspec_orm_case_database::CaseDatabase;
 
 /// sqlx가 database에 보낸 statement의 log record 수다.
 static SENT: AtomicU64 = AtomicU64::new(0);
@@ -38,7 +38,7 @@ static COUNTER: StatementCounter = StatementCounter;
 /// manifestHash를 가진다.
 fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
     let fixture = |name: &str| {
-        let path = format!("{}/../../../contracts/fixtures/{name}.dbs", orm_testcase::manifest_dir().display());
+        let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
         dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"))
     };
     let texts: Vec<(String, bool)> = owned.iter().map(|n| (fixture(n), false)).chain(external.iter().map(|n| (fixture(n), true))).collect();
@@ -91,13 +91,13 @@ async fn register_case(driver: &str, dsn: &str) {
 
 #[tokio::test]
 async fn register_sends_no_statement() {
-    let _case = orm_testcase::case!(orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     log::set_logger(&COUNTER).expect("the statement counter is the only logger of this test binary");
     log::set_max_level(log::LevelFilter::Trace);
     for driver in ["sqlite", "mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         register_case(driver, database.dsn()).await;
         database.drop().await;
-        orm_testcase::step(format_args!("register_sends_no_statement {driver}"));
+        polyspec_orm_testcase::step(format_args!("register_sends_no_statement {driver}"));
     }
 }

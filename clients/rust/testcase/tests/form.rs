@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::time::Duration;
 
-use orm_testcase::{case, duration, start, COMPUTE, PROCESS};
+use polyspec_orm_testcase::{case, duration, start, COMPUTE, PROCESS};
 
 const FIXTURE: &str = "TESTCASE_FIXTURE";
 
@@ -23,7 +23,7 @@ fn fixture_pass() {
 
 /// case 값 없이 단계를 출력하는 helper다.
 fn helper_step() {
-    orm_testcase::step("helper step");
+    polyspec_orm_testcase::step("helper step");
 }
 
 #[test]
