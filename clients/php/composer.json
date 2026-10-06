@@ -6,7 +6,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.4",
-        "ordered-json/ordered-json": "dev-main",
+        "polyspec/ordered-json": "dev-main",
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",

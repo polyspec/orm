@@ -10,8 +10,8 @@ use Polyspec\Orm\Model;
 // result check는 memory 안에서 result 값 몇 개를 쓰고 비교하는 case 하나다.
 testcase_begin('conformance_result_php', TESTCASE_COMPUTE);
 $result = [
-    'exact' => OrderedJson\parse('9007199254740993'),
-    'styled' => ['kind' => 'value', 'value' => OrderedJson\parse('{"n":9007199254740993}')],
+    'exact' => Polyspec\OrderedJson\parse('9007199254740993'),
+    'styled' => ['kind' => 'value', 'value' => Polyspec\OrderedJson\parse('{"n":9007199254740993}')],
     'sqlNull' => ['kind' => 'sql-null'],
 ];
 $want = '{"exact":9007199254740993,"styled":{"kind":"value","value":{"n":9007199254740993}},"sqlNull":{"kind":"sql-null"}}';

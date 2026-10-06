@@ -20,8 +20,8 @@ $canon = fn(mixed $v): string => json_encode(canon($v), JSON_UNESCAPED_SLASHES |
 /** Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted string keys. */
 function canon(mixed $v): mixed
 {
-    if ($v instanceof \OrderedJson\Value) {
-        $v = json_decode(\OrderedJson\stringify($v), true, 512, JSON_THROW_ON_ERROR);
+    if ($v instanceof \Polyspec\OrderedJson\Value) {
+        $v = json_decode(\Polyspec\OrderedJson\stringify($v), true, 512, JSON_THROW_ON_ERROR);
     }
     if (!is_array($v)) {
         return $v;

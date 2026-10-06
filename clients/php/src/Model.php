@@ -2070,8 +2070,8 @@ abstract class Model implements \JsonSerializable
                 ? '{"kind":"sql-null"}'
                 : '{"kind":"value","value":' . self::jsonText($v->payload()) . '}';
         }
-        if ($v instanceof \OrderedJson\Value) {
-            return \OrderedJson\stringify($v);
+        if ($v instanceof \Polyspec\OrderedJson\Value) {
+            return \Polyspec\OrderedJson\stringify($v);
         }
         if ($v instanceof Model || $v instanceof Collection) {
             return $v->toJson();
@@ -2096,7 +2096,7 @@ abstract class Model implements \JsonSerializable
     private static function holdsOrderedJson(array $v): bool
     {
         foreach ($v as $item) {
-            if ($item instanceof \OrderedJson\Value || (is_array($item) && self::holdsOrderedJson($item))) {
+            if ($item instanceof \Polyspec\OrderedJson\Value || (is_array($item) && self::holdsOrderedJson($item))) {
                 return true;
             }
         }
@@ -2112,8 +2112,8 @@ abstract class Model implements \JsonSerializable
     {
         $out = [];
         foreach ($this->pairs() as [$name, $v]) {
-            if ($v instanceof \OrderedJson\Value
-                || ($v instanceof StyledValue && $v->kind === 'value' && $v->payload() instanceof \OrderedJson\Value)
+            if ($v instanceof \Polyspec\OrderedJson\Value
+                || ($v instanceof StyledValue && $v->kind === 'value' && $v->payload() instanceof \Polyspec\OrderedJson\Value)
                 || (is_array($v) && self::holdsOrderedJson($v))) {
                 throw new OrmException(Code::CODEC_ENCODE, "json_encode cannot write the ordered-json value of $name; use toJson()");
             }

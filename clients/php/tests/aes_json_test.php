@@ -23,10 +23,10 @@ use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StyledValue;
-use OrderedJson\Value;
+use Polyspec\OrderedJson\Value;
 
-use function OrderedJson\parse;
-use function OrderedJson\stringify;
+use function Polyspec\OrderedJson\parse;
+use function Polyspec\OrderedJson\stringify;
 
 $work = sys_get_temp_dir() . '/orm-php-aes-json-' . getmypid();
 @mkdir($work, 0o700, true);

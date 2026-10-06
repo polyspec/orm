@@ -84,7 +84,7 @@ try {
 } catch (OrmException $error) {
     if ($error->code_ !== $cases['nonnull_sql_null']['error']) throw $error;
 }
-$probe->setPayload(StyledValue::value(\OrderedJson\parse('null')));
+$probe->setPayload(StyledValue::value(\Polyspec\OrderedJson\parse('null')));
 if (json_decode(Model::jsonText($probe->getPayload()), true, 512, JSON_THROW_ON_ERROR) !== $cases['nonnull_value_null']['getter']) {
     throw new RuntimeException('non-null column rejected JSON literal null');
 }
