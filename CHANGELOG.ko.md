@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.9: PHP 확장이 externalDifferences, parsePlan, emitPlan, chain, diff, compareSchemas, installedDifferences, addTablesAndColumnsSteps, planSteps를 PHP client와 같은 결과로 구현하고, PHP client의 plan test를 실행하며, plan 출력을 다른 runner와 비교한다.
+
 - T9.8: PHP 확장 orm_dbspec은 Rust가 아니라 phpize로 build하는 C다. `Orm\Dbspec\Native`는 PHP client dbspec 표면의 class와 그 가변 문서 graph를 가지며, parse, emit, readFile, readBytes, manifest, render가 PHP client의 결과, message, 예외를 낸다. gen_stub.php가 stub에서 arginfo를 쓰고, 확장 build는 더 이상 Rust나 libclang이 필요 없다.
 
 - T9.7: PHP parser는 header가 다른 이름인 문서를 거치는 use cycle에서 memory가 다할 때까지 재귀하지 않고 use cycle을 보고하며, audit 대상 table의 숫자만으로 된 column 이름에서 TypeError를 내지 않는다. tests/dbspec/cases.json이 모든 client를 위해 두 case를 가진다.

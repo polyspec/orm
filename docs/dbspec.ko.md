@@ -360,7 +360,7 @@ Mermaid 언어와 manifest의 모든 기능:
 
 ## PHP 확장 {#php-extension}
 
-PHP 확장 `orm_dbspec`(`clients/php-extension`)은 PHP client의 dbspec 표면을 C로 구현한, 같은 인터페이스의 독립된 다섯 번째 구현이다. namespace `Orm\Dbspec\Native`는 dbspec 호출이 받거나 돌려주는 `Orm\Dbspec`의 모든 class를 가진다. 문서 class(`Document`, `UseLine`, `Table`, `Column`, `ColumnType`, `PrimaryKey`, `UniqueKey`, `Index`, `IndexColumn`, `ForeignKey`, `Check`, `Settings`, `Setting`, `Diagram`, `Placement`)는 같은 public 가변 property를, 결과와 값 class는 같은 readonly property를 PHP client의 순서대로 가지며, 생성자, 메서드, 상수도 같다. `Orm\Dbspec\Native\Dbspec`은 `Orm\Dbspec\Dbspec`과 같은 인자, 결과, diagnostic message, 예외의 `readFile`, `readBytes`, `parse`, `emit`, `manifest`, `render`를 가진다. PHP code가 만들거나 고친 문서도 PHP client의 문서처럼 이 메서드에 준다. PHP code는 그 namespace로 확장을 고른다. PHP client와 확장 사이를 자동으로 바꾸는 것은 없고, 한쪽의 문서를 다른 쪽에 주면 `TypeError`다.
+PHP 확장 `orm_dbspec`(`clients/php-extension`)은 PHP client의 dbspec 표면을 C로 구현한, 같은 인터페이스의 독립된 다섯 번째 구현이다. namespace `Orm\Dbspec\Native`는 dbspec 호출이 받거나 돌려주는 `Orm\Dbspec`의 모든 class를 가진다. 문서 class(`Document`, `UseLine`, `Table`, `Column`, `ColumnType`, `PrimaryKey`, `UniqueKey`, `Index`, `IndexColumn`, `ForeignKey`, `Check`, `Settings`, `Setting`, `Diagram`, `Placement`)는 같은 public 가변 property를, 결과와 값 class는 같은 readonly property를 PHP client의 순서대로 가지며, 생성자, 메서드, 상수도 같다. `Orm\Dbspec\Native\Dbspec`은 `Orm\Dbspec\Dbspec`과 같은 인자, 결과, diagnostic message, 예외의 `readFile`, `readBytes`, `parse`, `emit`, `manifest`, `render`, `externalDifferences`, `parsePlan`, `emitPlan`, `chain`, `diff`, `compareSchemas`, `installedDifferences`, `addTablesAndColumnsSteps`, `planSteps`를 가진다. PHP code가 만들거나 고친 문서도 PHP client의 문서처럼 이 메서드에 준다. PHP code는 그 namespace로 확장을 고른다. PHP client와 확장 사이를 자동으로 바꾸는 것은 없고, 한쪽의 문서를 다른 쪽에 주면 `TypeError`다.
 
 확장은 `PATH`의 `phpize`와 `php-config`가 가리키는 PHP를 위해 `phpize`로 build한다. `clients/php-extension/composer.json`은 build path가 `src`인 PIE package로 그것을 선언한다.
 
@@ -369,7 +369,7 @@ cd clients/php-extension/src && phpize && ./configure && make
 php -d extension=clients/php-extension/src/modules/orm_dbspec.so your-script.php
 ```
 
-선언은 `clients/php-extension/stubs/orm_dbspec.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 그것을 읽는다. PHP 설치의 `gen_stub.php`가 그것으로 `src/orm_dbspec_arginfo.h`를 쓰고(`make php-extension-arginfo`), `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/orm_dbspec.c`가 등록한다. `make dbspec-php-extension-check`는 header가 stub에서 만든 것인지 확인하고, 확장을 그 실행의 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 vector와 고친 문서에서 PHP client의 결과, message, 예외를 내는지 확인한다. `make dbspec-compare-check`는 그것을 다섯 번째 runner로 실행한다.
+선언은 `clients/php-extension/stubs/orm_dbspec.stub.php`에 있고, interface 검사(`contracts/interfaces.json`의 `extensions`)가 그것을 읽는다. PHP 설치의 `gen_stub.php`가 그것으로 `src/orm_dbspec_arginfo.h`를 쓰고(`make php-extension-arginfo`), `gen_stub.php`가 쓰지 못하는 배열 상수는 `src/orm_dbspec.c`가 등록한다. `make dbspec-php-extension-check`는 header가 stub에서 만든 것인지 확인하고, 확장을 그 실행의 directory에 build한 뒤, load한 확장이 stub과 정확히 같은 선언을 가지는지, 공유 문서, statement, plan vector와 고친 문서에서 PHP client의 결과, message, 예외를 내는지 확인한다. `make dbspec-compare-check`는 그것을 다섯 번째 runner로 실행한다.
 
 ## 검증
 

@@ -674,3 +674,221 @@ void out_document(const document *d, zval *out)
     obj_put_bool(out, "external", d->external);
     zend_hash_destroy(&c.types);
 }
+
+/* ------------------------------------------------------------------ plans */
+
+static bool in_str_prop(zval *obj, const char *name, str *out)
+{
+    zval *v = obj_get(obj, name);
+    if (v == NULL) {
+        return false;
+    }
+    *out = str_z(Z_STR_P(v));
+    return true;
+}
+
+bool in_plan(zval *v, plan **out)
+{
+    if (!in_obj(v, dbs_ce_Plan, "the plan argument")) {
+        return false;
+    }
+    ZVAL_DEREF(v);
+    GET(v, name);
+    GET(v, from);
+    GET(v, renameTables);
+    GET(v, renameColumns);
+    GET(v, dropTables);
+    GET(v, dropColumns);
+    GET(v, schema);
+    GET(v, to);
+    plan *p = dbs_alloc(sizeof *p);
+    p->name = str_z(Z_STR_P(name_));
+    if (Z_TYPE_P(from_) == IS_STRING) {
+        p->has_from = true;
+        p->from = str_z(Z_STR_P(from_));
+    }
+    p->to = str_z(Z_STR_P(to_));
+    p->src = Z_OBJ_P(v);
+    EACH_OBJ(renameTables_, dbs_ce_TableRename, "Orm\\Dbspec\\Native\\Plan::$renameTables", {
+        trename r;
+        if (!in_str_prop(item, "old", &r.old) || !in_str_prop(item, "new", &r.new_)) return false;
+        PUSH(p->rename_tables, r);
+    });
+    EACH_OBJ(renameColumns_, dbs_ce_ColumnRename, "Orm\\Dbspec\\Native\\Plan::$renameColumns", {
+        crename r;
+        if (!in_str_prop(item, "table", &r.table) || !in_str_prop(item, "old", &r.old) || !in_str_prop(item, "new", &r.new_)) return false;
+        PUSH(p->rename_columns, r);
+    });
+    if (!in_strs(dropTables_, &p->drop_tables, "Orm\\Dbspec\\Native\\Plan::$dropTables")) {
+        return false;
+    }
+    EACH_OBJ(dropColumns_, dbs_ce_ColumnName, "Orm\\Dbspec\\Native\\Plan::$dropColumns", {
+        cname c;
+        if (!in_str_prop(item, "table", &c.table) || !in_str_prop(item, "name", &c.name)) return false;
+        PUSH(p->drop_columns, c);
+    });
+    if (!in_document(schema_, &p->schema)) {
+        return false;
+    }
+    *out = p;
+    return true;
+}
+
+bool in_plans(zval *v, planv *out, const char *what)
+{
+    *out = (planv){0};
+    zval *e;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), e) {
+        if (!in_obj(e, dbs_ce_Plan, what)) {
+            return false;
+        }
+        plan *p;
+        if (!in_plan(e, &p)) {
+            return false;
+        }
+        PUSH(*out, p);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+void out_plan(const plan *p, zval *out)
+{
+    if (p->src != NULL) {
+        ZVAL_OBJ_COPY(out, p->src);
+        return;
+    }
+    obj_new(out, dbs_ce_Plan);
+    obj_put_str(out, "name", p->name);
+    if (p->has_from) {
+        obj_put_str(out, "from", p->from);
+    } else {
+        obj_put_null(out, "from");
+    }
+    zval list;
+    out_list_begin(&list, p->rename_tables.n);
+    for (size_t i = 0; i < p->rename_tables.n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_TableRename);
+        obj_put_str(&o, "old", p->rename_tables.v[i].old);
+        obj_put_str(&o, "new", p->rename_tables.v[i].new_);
+        add_next_index_zval(&list, &o);
+    }
+    obj_put(out, "renameTables", &list);
+    out_list_begin(&list, p->rename_columns.n);
+    for (size_t i = 0; i < p->rename_columns.n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_ColumnRename);
+        obj_put_str(&o, "table", p->rename_columns.v[i].table);
+        obj_put_str(&o, "old", p->rename_columns.v[i].old);
+        obj_put_str(&o, "new", p->rename_columns.v[i].new_);
+        add_next_index_zval(&list, &o);
+    }
+    obj_put(out, "renameColumns", &list);
+    obj_put_strs(out, "dropTables", &p->drop_tables);
+    out_list_begin(&list, p->drop_columns.n);
+    for (size_t i = 0; i < p->drop_columns.n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_ColumnName);
+        obj_put_str(&o, "table", p->drop_columns.v[i].table);
+        obj_put_str(&o, "name", p->drop_columns.v[i].name);
+        add_next_index_zval(&list, &o);
+    }
+    obj_put(out, "dropColumns", &list);
+    zval schema;
+    if (p->schema->src != NULL) {
+        ZVAL_OBJ_COPY(&schema, p->schema->src);
+    } else {
+        out_document(p->schema, &schema);
+    }
+    obj_put(out, "schema", &schema);
+    obj_put_str(out, "to", p->to);
+}
+
+static void out_effect(const effect *e, zval *out)
+{
+    obj_new(out, dbs_ce_Effect);
+    obj_put_str(out, "kind", e->kind);
+    obj_put_str(out, "table", e->table);
+    obj_put_str(out, "name", e->name);
+    obj_put_bool(out, "present", e->present);
+}
+
+void out_steps(const planstepv *steps, zval *out)
+{
+    out_list_begin(out, steps->n);
+    for (size_t i = 0; i < steps->n; i++) {
+        const planstep *s = &steps->v[i];
+        zval o, e, checks;
+        obj_new(&o, dbs_ce_PlanStep);
+        obj_put_str(&o, "statement", s->statement);
+        obj_put_str(&o, "rollback", s->rollback);
+        obj_put_str(&o, "irreversible", s->irreversible);
+        out_effect(&s->effect, &e);
+        obj_put(&o, "effect", &e);
+        obj_put_str(&o, "restore", s->restore);
+        obj_put_str(&o, "rollbackRestore", s->rollback_restore);
+        if (s->has_restore_if) {
+            zval r;
+            out_effect(&s->restore_if, &r);
+            obj_put(&o, "restoreIf", &r);
+        } else {
+            obj_put_null(&o, "restoreIf");
+        }
+        out_list_begin(&checks, s->null_checks.n);
+        for (size_t k = 0; k < s->null_checks.n; k++) {
+            const nullcheck *n = &s->null_checks.v[k];
+            zval c;
+            obj_new(&c, dbs_ce_NullCheck);
+            obj_put_str(&c, "table", n->table);
+            obj_put_str(&c, "column", n->column);
+            if (n->has_default) {
+                obj_put_str(&c, "default", n->def);
+            } else {
+                obj_put_null(&c, "default");
+            }
+            add_next_index_zval(&checks, &c);
+        }
+        obj_put(&o, "nullChecks", &checks);
+        obj_put_bool(&o, "finalize", s->finalize);
+        add_next_index_zval(out, &o);
+    }
+}
+
+void out_changes(const changev *changes, zend_class_entry *ce, zval *out)
+{
+    out_list_begin(out, changes->n);
+    for (size_t i = 0; i < changes->n; i++) {
+        zval o;
+        obj_new(&o, ce);
+        obj_put_str(&o, "kind", changes->v[i].kind);
+        obj_put_str(&o, "table", changes->v[i].table);
+        obj_put_str(&o, "name", changes->v[i].name);
+        add_next_index_zval(out, &o);
+    }
+}
+
+bool in_unsupported(zval *v, unsupportedv *out, const char *what)
+{
+    *out = (unsupportedv){0};
+    EACH_OBJ(v, dbs_ce_Unsupported, what, {
+        unsupported u;
+        if (!in_str_prop(item, "kind", &u.kind) || !in_str_prop(item, "table", &u.table) || !in_str_prop(item, "name", &u.name)
+            || !in_str_prop(item, "reason", &u.reason)) return false;
+        PUSH(*out, u);
+    });
+    return true;
+}
+
+void out_unsupported(const unsupportedv *list, zval *out)
+{
+    out_list_begin(out, list->n);
+    for (size_t i = 0; i < list->n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_Unsupported);
+        obj_put_str(&o, "kind", list->v[i].kind);
+        obj_put_str(&o, "table", list->v[i].table);
+        obj_put_str(&o, "name", list->v[i].name);
+        obj_put_str(&o, "reason", list->v[i].reason);
+        add_next_index_zval(out, &o);
+    }
+}

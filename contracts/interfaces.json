@@ -46,18 +46,37 @@
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:2642be7af9585d3884500abbfa7534d9a004e8dc22401831116b1613f48e872f",
+      "symbol_hash": "sha256:970cfb2ca9abd94f656f7fed1d785822249fb466db99044633ee9fe2a2dc076c",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
         "Dbspec.parse",
         "Dbspec.emit",
         "Dbspec.manifest",
-        "Dbspec.render"
+        "Dbspec.render",
+        "Dbspec.externalDifferences",
+        "Dbspec.parsePlan",
+        "Dbspec.emitPlan",
+        "Dbspec.chain",
+        "Dbspec.diff",
+        "Dbspec.compareSchemas",
+        "Dbspec.installedDifferences",
+        "Dbspec.addTablesAndColumnsSteps",
+        "Dbspec.planSteps"
       ],
       "owners": [
         "DbspecDiagnostic",
-        "DbspecManifest"
+        "DbspecManifest",
+        "DbspecPlan",
+        "DbspecPlanStep",
+        "DbspecEffect",
+        "DbspecNullCheck",
+        "DbspecChange",
+        "DbspecDifference",
+        "DbspecUnsupported",
+        "DbspecTableRename",
+        "DbspecColumnRename",
+        "DbspecColumnName"
       ]
     }
   },
@@ -1716,6 +1735,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/index.ts::externalDifferences",
           "signature": "export function externalDifferences(live: DbspecDocument, documents: readonly DbspecDocument[]): string[]"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
+          "signature": "public static function externalDifferences(Orm\\Dbspec\\Native\\Document $live, array $documents): array"
         }
       }
     },
@@ -1744,6 +1767,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan.ts::parsePlan",
           "signature": "export function parsePlan(text: string): DbspecPlanResult"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::parsePlan",
+          "signature": "public static function parsePlan(string $text): Orm\\Dbspec\\Native\\PlanParseResult"
         }
       }
     },
@@ -1772,6 +1799,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan.ts::emitPlan",
           "signature": "export function emitPlan(plan: DbspecPlan): string"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::emitPlan",
+          "signature": "public static function emitPlan(Orm\\Dbspec\\Native\\Plan $plan): string"
         }
       }
     },
@@ -1800,6 +1831,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan.ts::chainPlans",
           "signature": "export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::chain",
+          "signature": "public static function chain(array $plans): Orm\\Dbspec\\Native\\ChainResult"
         }
       }
     },
@@ -1828,6 +1863,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan_diff.ts::diffPlan",
           "signature": "export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::diff",
+          "signature": "public static function diff(?Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Plan $plan): Orm\\Dbspec\\Native\\DiffResult"
         }
       }
     },
@@ -1856,6 +1895,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/compare.ts::compareSchemas",
           "signature": "export function compareSchemas(source: DbspecDocument, target: DbspecDocument): DbspecComparisonResult"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
+          "signature": "public static function compareSchemas(Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Document $target): Orm\\Dbspec\\Native\\ComparisonResult"
         }
       }
     },
@@ -1884,6 +1927,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/add_tables_and_columns.ts::installedDifferences",
           "signature": "export function installedDifferences(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): readonly string[]"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
+          "signature": "public static function installedDifferences(Orm\\Dbspec\\Native\\Document $live, array $unsupported, Orm\\Dbspec\\Native\\Document $target): array"
         }
       }
     },
@@ -1912,6 +1959,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/add_tables_and_columns.ts::addTablesAndColumnsSteps",
           "signature": "export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument, dialect: DbspecDialect): DbspecAddTablesAndColumnsSteps"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
+          "signature": "public static function addTablesAndColumnsSteps(Orm\\Dbspec\\Native\\Document $live, array $unsupported, Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
         }
       }
     },
@@ -1940,6 +1991,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan_steps.ts::planSteps",
           "signature": "export function planSteps(source: DbspecDocument | null, plan: DbspecPlan, dialect: DbspecDialect): DbspecPlanStepsResult"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::planSteps",
+          "signature": "public static function planSteps(?Orm\\Dbspec\\Native\\Document $source, Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Orm\\Dbspec\\Native\\PlanStepsResult"
         }
       }
     },
@@ -3091,6 +3146,19 @@
             "schema",
             "to"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Plan",
+          "fields": [
+            "dropColumns",
+            "dropTables",
+            "from",
+            "name",
+            "renameColumns",
+            "renameTables",
+            "schema",
+            "to"
+          ]
         }
       }
     },
@@ -3153,6 +3221,20 @@
             "rollbackRestore",
             "statement"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\PlanStep",
+          "fields": [
+            "effect",
+            "finalize",
+            "irreversible",
+            "nullChecks",
+            "restore",
+            "restoreIf",
+            "rollback",
+            "rollbackRestore",
+            "statement"
+          ]
         }
       }
     },
@@ -3189,6 +3271,15 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan_steps.ts::DbspecEffect",
+          "fields": [
+            "kind",
+            "name",
+            "present",
+            "table"
+          ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Effect",
           "fields": [
             "kind",
             "name",
@@ -3234,6 +3325,14 @@
             "default",
             "table"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\NullCheck",
+          "fields": [
+            "column",
+            "default",
+            "table"
+          ]
         }
       }
     },
@@ -3272,6 +3371,14 @@
             "name",
             "table"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Change",
+          "fields": [
+            "kind",
+            "name",
+            "table"
+          ]
         }
       }
     },
@@ -3305,6 +3412,14 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/compare.ts::DbspecDifference",
+          "fields": [
+            "kind",
+            "name",
+            "table"
+          ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Difference",
           "fields": [
             "kind",
             "name",
@@ -3352,6 +3467,15 @@
             "reason",
             "table"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Unsupported",
+          "fields": [
+            "kind",
+            "name",
+            "reason",
+            "table"
+          ]
         }
       }
     },
@@ -3382,6 +3506,13 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan.ts::DbspecTableRename",
+          "fields": [
+            "new",
+            "old"
+          ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\TableRename",
           "fields": [
             "new",
             "old"
@@ -3424,6 +3555,14 @@
             "old",
             "table"
           ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\ColumnRename",
+          "fields": [
+            "new",
+            "old",
+            "table"
+          ]
         }
       }
     },
@@ -3454,6 +3593,13 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/plan.ts::DbspecColumnName",
+          "fields": [
+            "name",
+            "table"
+          ]
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\ColumnName",
           "fields": [
             "name",
             "table"
