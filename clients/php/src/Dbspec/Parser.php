@@ -108,7 +108,7 @@ final class Parser
     /**
      * @param array<string, string> $documents the declared document set
      * @param list<string> $using the documents whose `use` lines lead to this one, to find cycles
-     * @param \ArrayObject<string, array{0: ?Document, 1: ?string}> $used used document => [document, reason it is unusable]
+     * @param \ArrayObject<string, array{0: ?Document, 1: ?string}|false> $used used document => [document, reason it is unusable], false while it is read
      */
     public function __construct(
         private readonly array $documents,
@@ -428,8 +428,11 @@ final class Parser
     private function usedDocument(string $name): array
     {
         if (isset($this->used[$name])) {
-            return $this->used[$name];
+            // 읽는 중인 문서를 다시 쓰면 use cycle이다. 문서의 header 이름이 집합의 이름과 다르면 이름의
+            // 사슬로는 찾지 못하므로 읽는 중임을 표시해 둔다.
+            return $this->used[$name] === false ? [null, 'use cycle: ' . implode(' -> ', [...$this->using, $this->document->name, $name])] : $this->used[$name];
         }
+        $this->used[$name] = false;
         [$document, $diagnostics] = (new self($this->documents, [...$this->using, $this->document->name], $this->used))->run($this->documents[$name]);
         if ($document === null) {
             $first = $diagnostics[0];
@@ -1503,7 +1506,9 @@ final class Parser
             if ($recorded === null) {
                 continue;
             }
+            // 숫자로만 된 column 이름은 배열 key에서 int가 되므로 문자열로 되돌린다.
             foreach ($columns as $name => $column) {
+                $name = (string) $name;
                 if (!$recorded($name)) {
                     continue;
                 }
@@ -1514,6 +1519,7 @@ final class Parser
                 }
             }
             foreach ($historyColumns as $name => $column) {
+                $name = (string) $name;
                 if (isset($reserved[$name])) {
                     continue;
                 }

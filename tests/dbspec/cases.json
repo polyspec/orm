@@ -1484,6 +1484,39 @@
       ]
     },
     {
+      "id": "use-cycle-through-another-header-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "use core { users }",
+          "",
+          "table orders {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ],
+        "core": [
+          "dbspec 1 other",
+          "",
+          "use core { users }",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 5,
+          "rule": "use"
+        }
+      ]
+    },
+    {
       "id": "use-self",
       "documents": {
         "shop": [
@@ -4893,6 +4926,62 @@
           "line": 20,
           "column": 17,
           "rule": "check"
+        }
+      ]
+    },
+    {
+      "id": "audit-digit-column-names",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table h {",
+          "  id i64 identity",
+          "  act varchar(8)",
+          "  prev i64 null",
+          "  10 i64",
+          "  primary key (id)",
+          "}",
+          "",
+          "table r {",
+          "  id i64",
+          "  primary key (id)",
+          "}",
+          "",
+          "table t {",
+          "  id i64",
+          "  10 i64",
+          "  aid i64",
+          "  primary key (id)",
+          "  foreign key f (aid) references r (id)",
+          "  index ix (aid)",
+          "  settings {",
+          "    audit into h column aid references r action act previous prev",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 3,
+          "rule": "name.format"
+        },
+        {
+          "line": 18,
+          "column": 3,
+          "rule": "name.format"
+        },
+        {
+          "line": 24,
+          "column": 16,
+          "rule": "setting"
+        },
+        {
+          "line": 24,
+          "column": 16,
+          "rule": "setting"
         }
       ]
     }
