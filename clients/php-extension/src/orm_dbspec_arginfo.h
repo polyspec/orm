@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 73ff83b47a21b77a2ff691d572655cce9004b850 */
+ * Stub hash: 55088343cc795ca68231c704007c30b191e5f1ab */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -427,6 +427,15 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_pl
 	ZEND_ARG_TYPE_INFO(0, dialect, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_exportMermaid, 0, 1, Orm\\Dbspec\\\116ative\\MermaidExportResult, 0)
+	ZEND_ARG_OBJ_INFO(0, document, Orm\\Dbspec\\\116ative\\Document, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Orm_Dbspec_Native_Dbspec_importMermaid, 0, 2, Orm\\Dbspec\\\116ative\\MermaidImportResult, 0)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Orm_Dbspec_Native_Diagnostic, __construct);
 ZEND_METHOD(Orm_Dbspec_Native_Document, __construct);
 ZEND_METHOD(Orm_Dbspec_Native_UseLine, __construct);
@@ -512,6 +521,8 @@ ZEND_METHOD(Orm_Dbspec_Native_Dbspec, compareSchemas);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, installedDifferences);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps);
 ZEND_METHOD(Orm_Dbspec_Native_Dbspec, planSteps);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, exportMermaid);
+ZEND_METHOD(Orm_Dbspec_Native_Dbspec, importMermaid);
 
 static const zend_function_entry class_Orm_Dbspec_Native_Diagnostic_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Diagnostic, __construct, arginfo_class_Orm_Dbspec_Native_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -767,6 +778,8 @@ static const zend_function_entry class_Orm_Dbspec_Native_Dbspec_methods[] = {
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, installedDifferences, arginfo_class_Orm_Dbspec_Native_Dbspec_installedDifferences, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, addTablesAndColumnsSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_addTablesAndColumnsSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Orm_Dbspec_Native_Dbspec, planSteps, arginfo_class_Orm_Dbspec_Native_Dbspec_planSteps, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, exportMermaid, arginfo_class_Orm_Dbspec_Native_Dbspec_exportMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Orm_Dbspec_Native_Dbspec, importMermaid, arginfo_class_Orm_Dbspec_Native_Dbspec_importMermaid, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
 };
 

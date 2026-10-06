@@ -2505,7 +2505,8 @@
         "clients/php-extension/tests/declarations.php",
         "clients/php-extension/tests/declarations_test.php",
         "clients/php-extension/tests/dbspec_test.php",
-        "clients/php-extension/tests/dbspec_plan_test.php"
+        "clients/php-extension/tests/dbspec_plan_test.php",
+        "clients/php-extension/tests/dbspec_mermaid_test.php"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2606,6 +2607,9 @@
             "clients/php-extension/tests/dbspec_plan_test.php",
             "clients/php/tests/dbspec_plan_test.php",
             "tests/dbspec/plans.json",
+            "clients/php-extension/tests/dbspec_mermaid_test.php",
+            "clients/php/tests/dbspec_mermaid_test.php",
+            "tests/dbspec/mermaid.json",
             "clients/php/tests/dbspec_cases.php",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",

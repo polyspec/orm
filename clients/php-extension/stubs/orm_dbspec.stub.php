@@ -572,4 +572,10 @@ final class Dbspec
 
     /** The steps of the plan from the source schema in `mysql`, `postgres` or `sqlite`, or the diff's diagnostics. */
     public static function planSteps(?Document $source, Plan $plan, string $dialect): PlanStepsResult {}
+
+    /** Writes the document as a standard Mermaid erDiagram and lists what the diagram leaves out. */
+    public static function exportMermaid(Document $document): MermaidExportResult {}
+
+    /** Reads a standard Mermaid erDiagram into a document named `$name`, or the `mermaid` diagnostic of a line outside the grammar. */
+    public static function importMermaid(string $text, string $name): MermaidImportResult {}
 }

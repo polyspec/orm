@@ -46,7 +46,7 @@
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:970cfb2ca9abd94f656f7fed1d785822249fb466db99044633ee9fe2a2dc076c",
+      "symbol_hash": "sha256:9fdcb57dc2dd02b12a5e50bee29c4e22f9aa9ad8699fbb543ed566984f0628eb",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -62,7 +62,9 @@
         "Dbspec.compareSchemas",
         "Dbspec.installedDifferences",
         "Dbspec.addTablesAndColumnsSteps",
-        "Dbspec.planSteps"
+        "Dbspec.planSteps",
+        "Dbspec.exportMermaid",
+        "Dbspec.importMermaid"
       ],
       "owners": [
         "DbspecDiagnostic",
@@ -2135,6 +2137,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/mermaid.ts::exportMermaid",
           "signature": "export function exportMermaid(document: DbspecDocument): DbspecMermaidExport"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
+          "signature": "public static function exportMermaid(Orm\\Dbspec\\Native\\Document $document): Orm\\Dbspec\\Native\\MermaidExportResult"
         }
       }
     },
@@ -2163,6 +2169,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/mermaid.ts::importMermaid",
           "signature": "export function importMermaid(text: string, name: string): DbspecMermaidImport"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::importMermaid",
+          "signature": "public static function importMermaid(string $text, string $name): Orm\\Dbspec\\Native\\MermaidImportResult"
         }
       }
     }

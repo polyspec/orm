@@ -352,11 +352,10 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool
 dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
-# dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner를 tests/dbspec/cases.json,
-# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로,
-# PHP 확장 orm_dbspec의 runner를 dbspec 인터페이스의 input(cases, stress 문서, ddl)으로
-# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. PHP 확장의 출력은 첫 Go 출력의 첫 plan case
-# 앞까지와 같아야 한다. PHP 확장은 이 실행의 directory에 build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
+# dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner와 PHP 확장 orm_dbspec의 runner를 tests/dbspec/cases.json,
+# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
+# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. PHP 확장은 이 실행의 directory에
+# build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
 # apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
@@ -474,15 +473,16 @@ dbspec-php-check/apply-cleanup:
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, PHP client의 dbspec 표면을 C로 구현한
 # Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
 # phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec
-# vector, statement vector, plan vector(PHP client의 plan test와 같은 case)와 순수 PHP client에 대해 같은 결과를 내는지
+# vector, statement vector, plan vector와 Mermaid vector(PHP client의 plan, Mermaid test와 같은 case)와 순수 PHP client에
+# 대해 같은 결과를 내는지
 # 각각 두 번 확인한다. build는 PATH의 phpize와
 # php-config를 쓰고, gen_stub.php는 make install-php-extension-tools가 둔 것을 쓴다. php-extension-arginfo는 stub에서
 # header를 다시 쓴다.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -497,6 +497,9 @@ dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
 dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_plan_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_plan_test.php
+dbspec-php-extension-check/mermaid: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_mermaid_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_mermaid_test.php
 php-extension-arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) write
 

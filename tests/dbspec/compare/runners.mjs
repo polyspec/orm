@@ -1,9 +1,7 @@
-// 다섯 dbspec compare runner. Go, PHP, TypeScript, Rust runner는 <cases.json> <stress document>
-// <ddl.json> <plans.json> <mermaid.json>을 받고, PHP 확장 runner는 Mermaid를 아직 구현하지 않으므로
-// <cases.json> <stress document> <ddl.json> <plans.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
+// 다섯 dbspec compare runner. Go, PHP, TypeScript, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
+// <ddl.json> <plans.json> <mermaid.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
 // line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
-// error를 쓰고 nonzero로 끝난다. until이 있는 runner의 출력은 첫 Go 출력에서 그 문자열로 시작하는 첫
-// 줄 앞까지와 같아야 한다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
+// error를 쓰고 nonzero로 끝난다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
 // example의 debug build를, PHP 확장 runner는 make가 build한 확장 orm_dbspec(ORM_DBSPEC_EXTENSION)을 요구한다.
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
@@ -33,8 +31,7 @@ export const runners = [
     get args() {
       return ['-d', `extension=${phpExtension()}`, 'tests/dbspec/compare/php-extension.php'];
     },
-    reads: ['cases', 'stress', 'ddl', 'plans'],
-    until: 'mermaid/',
+    reads: INPUTS,
   },
 ];
 
