@@ -10,7 +10,7 @@ import { caseTest } from '../../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { DbspecApplyError, applyPlans, parsePlan } from '../dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, parsePlan, rollbackPlans } from '../dist/dbspec/index.js';
 import { EFFECT_QUERIES, dbspecEffectHolds } from '../dist/dbspec/apply.js';
 
 const root = new URL('../../../', import.meta.url);
@@ -83,6 +83,23 @@ vector('apply/cleanup-errors/begin-restore', async () => {
       e => e instanceof DbspecApplyError && e.code === 'locked' && e.cause === begin,
       [restore],
     );
+  } finally {
+    db.close();
+  }
+});
+
+vector('apply/rollback-step-outside', async () => {
+  // applied row의 step이 plan의 step 밖이면 rollback은 step을 읽지 않고 chain error로 멈춘다.
+  const db = failingSqlite(new Map());
+  try {
+    await applyPlans(db, 'sqlite', plans, fixedNow, null);
+    db.exec('UPDATE "dbspec$plans" SET step = 99');
+    await assert.rejects(rollbackPlans(db, 'sqlite', plans, fixedNow, null), error => {
+      assert(error instanceof DbspecApplyError && error.code === 'chain', `${error}; want a chain error`);
+      assert.match(error.message, /the recorded step 99 is outside the plan's 4 steps/);
+      console.log(`  ${error.message}`);
+      return true;
+    });
   } finally {
     db.close();
   }

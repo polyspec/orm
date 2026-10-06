@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.12: history row가 plan 밖의 step을 기록한 applied plan의 rollback이 모든 client에서 없는 step에서 실패하지 않고 `chain` error로 멈춘다.
+
 - T9.11: PHP 확장이 introspect를 PHP client처럼 구현하고, introspection 교차 검사와 PHP client introspection test를 따르는 test가 그것을 MySQL, PostgreSQL, SQLite에서 실행한다.
 
 - T9.10: PHP 확장이 exportMermaid와 importMermaid를 PHP client처럼 구현하고, `make dbspec-compare-check`가 plan과 Mermaid diagram을 포함한 모든 input에서 확장을 비교한다.

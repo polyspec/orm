@@ -776,6 +776,7 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
     let k = row.step;
     const applied = row.state === APPLIED || row.state === DONE;
     if (applied) {
+      if (k < 0 || k > steps.length) throw new DbspecApplyError('chain', p.name, 0, `the recorded step ${k} is outside the plan's ${steps.length} steps`);
       try {
         await a.verify(p.to);
       } catch (error) {

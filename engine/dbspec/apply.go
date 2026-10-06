@@ -216,6 +216,9 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 		k := row.step
 		applied := row.state == stateApplied || row.state == stateDone
 		if applied {
+			if k < 0 || k > len(steps) {
+				return &ApplyError{Code: "chain", Plan: p.Name, Message: fmt.Sprintf("the recorded step %d is outside the plan's %d steps", k, len(steps))}
+			}
 			if err := a.verify(p.To); err != nil {
 				return &ApplyError{Code: "drift", Plan: p.Name, Message: err.Error()}
 			}

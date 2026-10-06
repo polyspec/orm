@@ -682,6 +682,12 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         let steps = self.steps(p)?;
         let applied = state == APPLIED || state == DONE;
         let k = if applied {
+            if step > steps.len() {
+                return Err(ApplyError::Chain {
+                    plan: Some(p.name().to_owned()),
+                    message: format!("the recorded step {step} is outside the plan's {} steps", steps.len()),
+                });
+            }
             self.verify(Some(p.to())).await.map_err(|message| ApplyError::Drift { message })?;
             step
         } else {
