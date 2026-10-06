@@ -108,7 +108,9 @@
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
   subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
   through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
-  commit cannot be changed and `git-check` would fail on it from then on.
+  commit cannot be changed. In CI `git-check` reads the subjects of the pushed range or the
+  pull request, which the workflow gives make check as `ORM_GIT_RANGE`; without it the check
+  reads HEAD. No tracked file records a commit id.
 - Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
   checks owning the changed files; no rule requires it before a commit or a push, because CI runs
   the full suite after the push.

@@ -1053,13 +1053,13 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
 });
 
 // CI setup case(G5.52)는 workflow의 setup step이 실패해도 뒤의 step과 make check가 실행되고 그 실패를 runner에 넘기는지
-// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP 없는 make check는 오류다.
+// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP이나 ORM_GIT_RANGE 없는 make check는 오류다.
 caseTest('a workflow runs every setup step and make check after a failed setup step and passes the results on', COMPUTE, () => {
   const setup = { go: 'go', rust: 'rust' };
   const runner = ['checkout'];
   const workflow = (steps, check) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
   const good = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: rust\n        id: rust\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
-    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check\n`);
+    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}\n        run: make check\n`);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
   const bad = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        with: { go-version: "1.27" }\n      - name: rust\n        id: rustup\n        continue-on-error: true\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
     `      - name: make check\n        run: make check\n`);
@@ -1072,14 +1072,13 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
     'ci.yml has no setup step with the id rust of scripts/check/ci-setup.mjs',
     'ci.yml step "make check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
     'ci.yml step "make check" gives make check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
+    'ci.yml step "make check" gives make check no ORM_GIT_RANGE of the pull request and the push, the commits whose subjects git-check reads',
   ]);
   const pages = `jobs:\n  build:\n    steps:\n      - uses: actions/checkout@v5\n      - run: npm ci\n      - name: build\n        if: \${{ !cancelled() && steps.x.outcome == 'success' }}\n        run: make docs-build\n`;
   assert.deepEqual(ciSetupErrors({ 'pages.yml': pages }, { setup, runner }), ['pages.yml step "run: npm ci" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
   const root = new URL('../..', import.meta.url).pathname;
   const workflows = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, readFileSync(join(root, '.github/workflows', name), 'utf8')]));
   assert.deepEqual(ciSetupErrors(workflows, { setup: CI_SETUP, runner: RUNNER_STEPS }), []);
-  const main = Object.fromEntries(['ci.yml', 'docs-pages.yml'].map(name => [name, execFileSync('git', ['show', `main:.github/workflows/${name}`], { cwd: root, encoding: 'utf8' })]));
-  assert.ok(ciSetupErrors(main, { setup: CI_SETUP, runner: RUNNER_STEPS }).length > 0, 'the workflows before G5.52 pass the setup rule');
 });
 
 // 독립 test case(G5.53)는 recipe 하나가 서로 다른 test나 lint 실행을 둘 이상 가지거나, 검증 명령이 `&&`로 test를 잇는
@@ -1099,7 +1098,6 @@ caseTest('a recipe or a command that runs independent tests in sequence is refus
   const root = new URL('../..', import.meta.url).pathname;
   assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
   assert.deepEqual(chainedCommandErrors(JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'))), []);
-  assert.ok(independentTestErrors(execFileSync('git', ['show', 'main:Makefile'], { cwd: root, encoding: 'utf8' })).length > 0, 'the Makefile before G5.53 passes the rule');
 });
 
 

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.88: `git-check`는 CI가 pull request나 push된 범위로 정하는 `ORM_GIT_RANGE`의 제목을 읽고, 그것이 없으면 HEAD를 읽는다.
+
 - G5.87: Rust crate는 `polyspec-orm`, `polyspec-orm-build`, `polyspec-orm-schema`이고 npm package는 `@polyspec/orm`이다. dependency와 `polyspec_orm::` 경로를 바꾸고 TypeScript model을 다시 생성한다.
 
 - G5.86: PHP package는 namespace `Polyspec\Orm`의 `polyspec/orm`과 `polyspec/orm-dbspec`이다. `use` 문을 바꾼 뒤 PHP model을 orm-gen으로 다시 생성한다.

@@ -85,7 +85,9 @@
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
   추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
-  커밋을 거부한다. push된 커밋은 바꿀 수 없고 그 뒤로 `git-check`가 그것에서 실패하기 때문이다.
+  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. CI에서 `git-check`는 push된 범위나 pull request의 제목을
+  읽고, workflow가 그 범위를 make check에 `ORM_GIT_RANGE`로 준다. 그것이 없으면 HEAD를 읽는다. 추적하는 file은
+  commit id를 기록하지 않는다.
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
   도구다. CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
   `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는

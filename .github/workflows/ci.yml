@@ -37,8 +37,9 @@ jobs:
     # other target runs. A failed step fails the job. The checkout and Node are
     # what the runner itself needs.
     steps:
-      # git-check reads history from the recorded subject-format baseline, so
-      # the checkout must carry the full commit graph.
+      # git-check reads the commits of the push or the pull request
+      # (ORM_GIT_RANGE of make check), so the checkout carries the full commit
+      # graph.
       - uses: actions/checkout@v5
         id: checkout
         with:
@@ -165,6 +166,10 @@ jobs:
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           ORM_CI_SETUP: ${{ toJSON(steps) }}
+          # The commits git-check reads: the pull request, or the push when it
+          # adds to a branch; a new branch, a forced push and a manual run give
+          # none, and git-check reads HEAD.
+          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || (github.event_name == 'push' && !github.event.created && !github.event.forced) && format('{0}..{1}', github.event.before, github.sha) || '' }}
         run: make check
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
