@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.48: checklist 항목이 `[~]`인 동안 pre-push hook과 CI workflow `push-gate`가 push를 거부한다.
+
 - T9.13: PHP 확장이 apply, recover, rollback, finalize를 PHP client처럼 구현해 PHP client `Dbspec`의 모든 메서드를 가지며, public class를 PHP client의 것과 비교한다.
 
 - T9.12: history row가 plan 밖의 step을 기록한 applied plan의 rollback이 모든 client에서 없는 step에서 실패하지 않고 `chain` error로 멈춘다.

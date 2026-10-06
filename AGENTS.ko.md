@@ -2,7 +2,7 @@
 
 [English](AGENTS.md)
 
-- 사용자 지시가 우선이다. 로컬에서 개발하고 원격 저장소를 추가하거나 푸시하지 않는다.
+- 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
 - 기본은 `main`에서 바로 작업한다. 에이전트나 병렬 작업에 필요할 때 브랜치와 워크트리를 쓴다. merge 뒤 남은
   브랜치나 워크트리는 디스크를 차지하고 폴더를 흩뜨리며 merge 여부를 헷갈리게 한다.
 - 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
@@ -70,7 +70,10 @@
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 매번 owner의 승인이 필요하고 `[~]`인 체크리스트 항목이 없을
-  때만 한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
+  때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/check/push-gate.mjs)를 실행하고, gate는 push하는
+  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 push한 commit을 다시
+  검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make owner-check`와 전체 묶음의 guard는
+  hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
 - `make check`는 어떤 단계보다 먼저, 체크리스트 항목(하위 항목 포함)이 `[~]`인 동안, 추적하는 file에 commit하지
   않은 변경이 있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부한다.
   `make rerun-failed`는 기록된 commit이나 그 후손 commit에서, 통과하지 못한 target과 그 commit 뒤에 바뀐

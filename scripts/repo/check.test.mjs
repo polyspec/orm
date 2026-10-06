@@ -145,7 +145,7 @@ const workflows = Object.fromEntries(readdirSync(new URL('.github/workflows/', r
   .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')]));
 
 caseTest('the checks and every workflow run the Node of .node-version', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 

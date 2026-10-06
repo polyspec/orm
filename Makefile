@@ -3,9 +3,12 @@
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
-# git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`)을 실행하고, 그 설정은 clone마다
-# 따로 있다. 그래서 make는 실행마다 parse 때 그 설정을 둔다(값이 다를 때만 쓴다). commit-msg hook은 커밋하려는
-# subject를 git.subject-format(contracts/rules.json)으로 검사하고 어기면 커밋을 거부한다.
+# git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`, `.githooks/pre-push`)을 실행하고, 그
+# 설정은 clone마다 따로 있다. 그래서 make는 실행마다 parse 때 그 설정을 둔다(값이 다를 때만 쓴다). CI의 make도 같다.
+# commit-msg hook은 커밋하려는 subject를 git.subject-format(contracts/rules.json)으로 검사하고 어기면 커밋을 거부한다.
+# pre-push hook은 push gate(scripts/check/push-gate.mjs)를 실행하고, gate는 checklist 항목이 `[~]`인 push를 거부한다
+# (AGENTS.md). make hooks는 설정을 두고 hooks-check로 확인하며, hooks-check는 make owner-check의 첫 단계이고 전체
+# suite의 guard도 같은 검사를 한다.
 ifneq ($(shell git -C $(CURDIR) config core.hooksPath),.githooks)
 $(shell git -C $(CURDIR) config core.hooksPath .githooks)
 endif
@@ -205,7 +208,7 @@ checklist-check/run:
 # full-run-check는 전체 suite의 guard와 runner(scripts/check/full-run.mjs, scripts/check/run.mjs)를 임시 git
 # checkout과 stub 단계로 검사한다. 실제 target과 database는 실행하지 않는다.
 full-run-check:
-	node --test scripts/check/full-run.test.mjs scripts/check/continue.test.mjs scripts/check/step.test.mjs scripts/check/downloads.test.mjs
+	node --test scripts/check/full-run.test.mjs scripts/check/continue.test.mjs scripts/check/step.test.mjs scripts/check/downloads.test.mjs scripts/check/push-gate.test.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
@@ -595,9 +598,21 @@ test-servers-leases-clear:
 # 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
 # 기능의 검증 명령과 coverage만, 그리고 contracts/check-inputs.json이 scope owner로 선언한 target만
-# 실행한다(AGENTS.md "Owner checks").
+# 실행한다(AGENTS.md "Owner checks"). 그 전에 hooks-check가 pre-push hook의 설치를 확인한다.
+.PHONY: hooks hooks-check
+hooks:
+	git config core.hooksPath .githooks
+	node scripts/check/push-gate.mjs hooks-check
+hooks-check:
+	node scripts/check/push-gate.mjs hooks-check
+# push-gate-commit은 CI(.github/workflows/push-gate.yml)가 push한 commit(COMMIT)에 실행하는 push gate다: 그 commit의
+# checklist에 `[~]` 항목이 없고 commit이 .githooks/pre-push를 mode 100755로 추적해야 한다.
+.PHONY: push-gate-commit
+push-gate-commit:
+	node scripts/check/push-gate.mjs commit $(COMMIT)
+
 .PHONY: owner-check
-owner-check:
+owner-check: hooks-check
 	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) node scripts/features/owners.mjs $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners

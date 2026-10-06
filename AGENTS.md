@@ -2,7 +2,8 @@
 
 [Korean](AGENTS.ko.md)
 
-- The user's instructions take precedence. Develop locally; do not add a remote or push.
+- The user's instructions take precedence. Develop locally; the GitHub remote receives a push only
+  as the push rule below allows.
 - Work on `main` directly by default; use a branch and worktree when agents or parallel work need
   one. A branch or worktree left after its merge takes disk space, scatters folders and makes the
   merge state unclear.
@@ -86,7 +87,11 @@
   (real database servers, conformance across languages, browsers, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required
   before a push; read each CI report and fix what it finds. A push needs the
-  owner's approval each time and happens only when no checklist item is `[~]`. A CI failure is
+  owner's approval each time and happens only when no checklist item is `[~]`: the pre-push hook
+  `.githooks/pre-push` runs the push gate (scripts/check/push-gate.mjs), which refuses a push while
+  an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
+  the pushed commit again (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and `make
+  owner-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
   fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
 - `make check` refuses before any step while a checklist item, sub-items included, is `[~]`,
   while tracked files have uncommitted changes, and when `.runtime/full-run.json` records a full
