@@ -360,16 +360,16 @@ Every feature of the Mermaid language and its manifest:
 
 ## PHP extension
 
-The PHP extension `orm_dbspec` (`clients/php-extension`) is a fifth implementation of the dbspec interface: `Orm\Dbspec\Native\Dbspec` has `readFile`, `readBytes`, `parse`, `emit`, `manifest` and `render` with the arguments of `Orm\Dbspec\Dbspec`, and returns the classes `Document`, `Diagnostic`, `ReadResult`, `ParseResult`, `Manifest`, `ManifestResult` and `RenderResult` of the namespace `Orm\Dbspec\Native`, which have the readonly properties of the PHP client classes in the same order. It runs the Rust implementation (`orm_schema::dbspec`), so its emission and its diagnostics (rule, line and column) are those of every client. PHP code selects it by that namespace; nothing switches between the PHP client and the extension, and a document of one cannot be given to the other. A text that is not UTF-8 gives the `encoding` diagnostic of the PHP client; a text of the declared document set, a name or a path that is not UTF-8 is an `InvalidArgumentException`. The extension implements the `Dbspec` component only: plans and Mermaid diagrams belong to the PHP client.
+The PHP extension `orm_dbspec` (`clients/php-extension`) implements the dbspec surface of the PHP client in C, as an independent fifth implementation of the same interface. The namespace `Orm\Dbspec\Native` has every class of `Orm\Dbspec` that a dbspec call takes or returns: the document classes (`Document`, `UseLine`, `Table`, `Column`, `ColumnType`, `PrimaryKey`, `UniqueKey`, `Index`, `IndexColumn`, `ForeignKey`, `Check`, `Settings`, `Setting`, `Diagram`, `Placement`) with the same public mutable properties, and the result and value classes with the same readonly properties, each in the order of the PHP client, with the same constructors, methods and constants. `Orm\Dbspec\Native\Dbspec` has `readFile`, `readBytes`, `parse`, `emit`, `manifest` and `render` with the arguments, results, diagnostic messages and exceptions of `Orm\Dbspec\Dbspec`. A document that PHP code built or changed is given to these methods like a document of the PHP client. PHP code selects the extension by that namespace; nothing switches between the PHP client and the extension, and a document of one given to the other is a `TypeError`.
 
-The extension is built with Cargo for the PHP whose `php-config` is on `PATH`, and its build reads the PHP headers through libclang:
+The extension is built with `phpize` for the PHP whose `phpize` and `php-config` are on `PATH`; `clients/php-extension/composer.json` declares it as a PIE package whose build path is `src`:
 
 ```sh
-cargo build --release --locked --manifest-path clients/php-extension/Cargo.toml
-php -d extension=clients/rust/target/release/liborm_dbspec.so your-script.php   # .dylib on macOS
+cd clients/php-extension/src && phpize && ./configure && make
+php -d extension=clients/php-extension/src/modules/orm_dbspec.so your-script.php
 ```
 
-Its declarations are in `clients/php-extension/stubs/orm_dbspec.stub.php`, which the interface check reads (`extensions` of `contracts/interfaces.json`). `make dbspec-php-extension-check` checks that the loaded extension declares exactly what the stub declares and that it gives the results of the shared vectors and of the PHP client, and `make dbspec-compare-check` runs it as the fifth runner.
+Its declarations are in `clients/php-extension/stubs/orm_dbspec.stub.php`, which the interface check reads (`extensions` of `contracts/interfaces.json`); `gen_stub.php` of the PHP installation writes `src/orm_dbspec_arginfo.h` from it (`make php-extension-arginfo`), and `src/orm_dbspec.c` registers the array constants, which `gen_stub.php` cannot write. `make dbspec-php-extension-check` checks that the header is generated from the stub, builds the extension into its run directory, and checks that the loaded extension declares exactly what the stub declares and that it gives the results, messages and exceptions of the PHP client on the shared vectors and on changed documents; `make dbspec-compare-check` runs it as the fifth runner.
 
 ## Verification
 

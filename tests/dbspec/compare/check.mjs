@@ -14,7 +14,7 @@
 // 같아야 한다. 각 runner는 두 번 실행하며 모든 출력이 첫 Go 출력과 같아야 한다.
 //
 // Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
-// (TypeScript build, Rust example과 PHP 확장의 debug build 뒤)
+// (TypeScript build, Rust example의 debug build와 PHP 확장의 build 뒤)
 import { compare } from './compare.mjs';
 import { runRunner, runners } from './runners.mjs';
 import { COMPUTE, runCase } from '../../testcase.mjs';

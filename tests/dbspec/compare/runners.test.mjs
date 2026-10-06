@@ -2,7 +2,7 @@
 // line을 위치를 밝힌 error와 nonzero exit로 거부하는지 확인한다.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/compare/runners.test.mjs
-// (after the TypeScript build and the debug builds of the Rust example and the PHP extension)
+// (after the TypeScript build, the debug build of the Rust example and the build of the PHP extension)
 import { after } from 'node:test';
 import { caseTest } from '../../testcase.mjs';
 import assert from 'node:assert/strict';

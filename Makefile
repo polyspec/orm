@@ -1,6 +1,6 @@
 .PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
-.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces rust-fmt-check/php-extension fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`)을 실행하고, 그 설정은 clone마다
@@ -356,7 +356,7 @@ dbspec-introspect-compare-bench:
 # stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로,
 # PHP 확장 orm_dbspec의 runner를 dbspec 인터페이스의 input(cases, stress 문서, ddl)으로
 # 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. PHP 확장의 출력은 첫 Go 출력의 첫 plan case
-# 앞까지와 같아야 한다. 그 전에 모든 runner가
+# 앞까지와 같아야 한다. PHP 확장은 이 실행의 directory에 build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
 # apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
@@ -378,13 +378,13 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_compare --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm-schema --example dbspec_compare --example dbspec_stress
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
-	$(RUN_LONG) rust-build/orm_dbspec --cwd clients/php-extension -- $(CARGO_COPY) $(PHP_EXTENSION_LIBRARY) -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -470,26 +470,31 @@ dbspec-php-check/apply-cleanup:
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 	php clients/php/tests/dbspec_apply_cleanup_test.php
 
-.PHONY: dbspec-php-extension-check
-# dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, orm-schema의 dbspec 인터페이스를
-# Orm\Dbspec\Native\Dbspec으로 낸다)을 clippy로 검사하고 debug build를 실행의 directory로 복사한 뒤, 그 확장을
-# load해 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec vector, statement vector와 순수 PHP
-# client에 대해 같은 결과를 내는지 각각 두 번 확인한다. 확장 build는 PATH의 php-config와 bindgen의 libclang을 쓴다.
-PHP_EXTENSION_LIBRARY = debug/liborm_dbspec.$(if $(filter Darwin,$(shell uname -s)),dylib,so)
+.PHONY: dbspec-php-extension-check php-extension-arginfo
+# dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, PHP client의 dbspec 표면을 C로 구현한
+# Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
+# phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec
+# vector, statement vector와 순수 PHP client에 대해 같은 결과를 내는지 각각 두 번 확인한다. build는 PATH의 phpize와
+# php-config를 쓰고, gen_stub.php는 make install-php-extension-tools가 둔 것을 쓴다. php-extension-arginfo는 stub에서
+# header를 다시 쓴다.
+PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
+GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/clippy dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
-dbspec-php-extension-check: dbspec-php-extension-check/clippy dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors
 	rm -rf $(RUN_DIR)
-dbspec-php-extension-check/clippy: cargo-downloads-check lease-tool
-	$(RUN_LONG) rust-clippy/orm_dbspec --cwd clients/php-extension -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -- -D warnings
-dbspec-php-extension-check/prepare: cargo-downloads-check lease-tool
-	$(RUN_LONG) rust-build/orm_dbspec --cwd clients/php-extension -- $(CARGO_COPY) $(PHP_EXTENSION_LIBRARY) -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline
+dbspec-php-extension-check/arginfo:
+	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) check
+dbspec-php-extension-check/prepare:
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
-	ORM_DBSPEC_EXTENSION=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
-	ORM_DBSPEC_EXTENSION=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
+	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
+	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php clients/php-extension/tests/declarations_test.php
 dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
-	php -d extension=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
-	php -d extension=$(RUN_TARGET)/$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_test.php
+php-extension-arginfo:
+	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) write
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지, CI workflow가 make test-servers로 서버를 시작하고 그 환경 파일의 모든 변수를
@@ -817,15 +822,13 @@ codec-check/compare: codec-check/go codec-check/rust codec-check/typescript
 # workspace (clients/rust/rustfmt.toml).
 # rust-fmt-check는 저장소의 모든 Rust workspace(clients/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
 # 정리되어 있는지 확인한다.
-rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces rust-fmt-check/php-extension
+rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd clients/rust -- cargo fmt --all --check
 rust-fmt-check/bench:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
 rust-fmt-check/interfaces:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/interfaces --cwd tests/interfaces/rust -- cargo fmt --all --check
-rust-fmt-check/php-extension:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/php-extension --cwd clients/php-extension -- cargo fmt --all --check
 
 rust-150-check: lease-tool
 	$(RUN_LONG) rust-150 -- ./scripts/check-rust-150.sh
@@ -841,12 +844,13 @@ rust-check/clippy-test-faults: lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd clients/rust -- $(CARGO_LEASED) cargo clippy --locked -p orm --all-targets --features test-faults -- -D warnings
 
 # install은 check가 읽는 것을 download한다: npm package(root와 TypeScript client), Composer package, Rust
-# toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node. 이미 받은 것은 다시 받지 않는다.
+# toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node, PHP 확장의 gen_stub.php와 PHP-Parser.
+# 이미 받은 것은 다시 받지 않는다.
 # 부분은 서로 독립이다(make -k).
 
 .PHONY: docs-ci
 .PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
-install: install-node install-php install-rust install-go install-node-min
+install: install-node install-php install-rust install-go install-node-min install-php-extension-tools
 install-node:
 	$(ONLINE) npm ci
 	$(ONLINE) npm ci --prefix clients/typescript
@@ -858,7 +862,6 @@ install-rust:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path clients/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path clients/php-extension/Cargo.toml
 install-go:
 	$(ONLINE) go mod download
 install-node-min:
@@ -869,8 +872,8 @@ install-browsers:
 	$(ONLINE) npx playwright install --with-deps chromium
 install-server-programs:
 	$(ONLINE) ./scripts/ci/server-programs.sh
-# install-php-extension-tools는 CI의 Linux runner에 PHP 확장 orm_dbspec의 build가 쓰는 libclang(ext-php-rs의
-# bindgen)을 설치하고 php-config가 PATH의 PHP를 가리키는지 확인한다(scripts/ci/php-extension-tools.sh).
+# install-php-extension-tools는 PHP 확장 orm_dbspec의 build가 쓰는 phpize와 php-config가 PATH의 PHP 것인지 확인하고,
+# 그 PHP의 gen_stub.php와 PHP-Parser를 .runtime/bin/gen-stub에 둔다(scripts/ci/php-extension-tools.sh).
 install-php-extension-tools:
 	$(ONLINE) ./scripts/ci/php-extension-tools.sh
 
