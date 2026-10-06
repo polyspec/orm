@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9: the PHP extension orm_dbspec is a fifth implementation of the dbspec interface, checked against its stub, the shared vectors, the PHP client and the four clients, and declared in the interface contract; CI passed on commit T9.5.
+
 - T9.5: the dbspec input test runs the apply runners and the stress harness with their own arguments again; only the compare runners take the inputs that their `reads` names.
 
 - G5.83: AGENTS.md states the rules of pinned toolchains, atomic build outputs, failure messages with their fix, leased or owned ports and databases, and files found without compile-time paths.
