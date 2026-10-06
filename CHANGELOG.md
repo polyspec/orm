@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.6: contracts/interfaces.json declares the plan, Mermaid, apply and introspect methods of `Dbspec` as rules with their Go, PHP, Rust and TypeScript adapters, and their value types as owners, so the interface check compares them across the four languages.
+
 - T9: the PHP extension orm_dbspec is a fifth implementation of the dbspec interface, checked against its stub, the shared vectors, the PHP client and the four clients, and declared in the interface contract; CI passed on commit T9.5.
 
 - T9.5: the dbspec input test runs the apply runners and the stress harness with their own arguments again; only the compare runners take the inputs that their `reads` names.

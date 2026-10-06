@@ -187,6 +187,22 @@ classDiagram
         emit()
         manifest()
         render()
+        introspect()
+        externalDifferences()
+        parsePlan()
+        emitPlan()
+        chain()
+        diff()
+        compareSchemas()
+        installedDifferences()
+        addTablesAndColumnsSteps()
+        planSteps()
+        apply()
+        recover()
+        rollback()
+        finalize()
+        exportMermaid()
+        importMermaid()
     }
     class DbspecDocument {
     }
@@ -236,7 +252,7 @@ classDiagram
 | AESRotationStatus | key version별 행 수다. |
 | Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
 | Error | docs/errors.yaml의 안정적인 code다. |
-| Dbspec | signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링한다(docs/dbspec.md, docs/dialects.md). |
+| Dbspec | signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링하고, database를 문서로 introspect하고, database를 외부 문서와 집합에 비교하고, plan을 읽고 쓰고 잇고 diff하고 step으로 쓰며, schema text를 비교하고, 연결에서 plan을 적용하고 이어 가고 되돌리고 finalize하며, Mermaid erDiagram을 export하고 import한다(docs/dbspec.md, docs/dialects.md, docs/plans.md, docs/mermaid.md). |
 | DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |
 
 | 시작 | 대상 | 관계 |
