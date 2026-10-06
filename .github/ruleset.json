@@ -1,0 +1,87 @@
+{
+  "repository": "polyspec/orm",
+  "settings": {
+    "allow_rebase_merge": true,
+    "allow_auto_merge": true,
+    "delete_branch_on_merge": true
+  },
+  "ruleset": {
+    "name": "main",
+    "target": "branch",
+    "enforcement": "active",
+    "bypass_actors": [],
+    "conditions": {
+      "ref_name": {
+        "include": [
+          "refs/heads/main"
+        ],
+        "exclude": []
+      }
+    },
+    "rules": [
+      {
+        "type": "deletion"
+      },
+      {
+        "type": "non_fast_forward"
+      },
+      {
+        "type": "required_linear_history"
+      },
+      {
+        "type": "pull_request",
+        "parameters": {
+          "required_approving_review_count": 0,
+          "dismiss_stale_reviews_on_push": false,
+          "require_code_owner_review": false,
+          "require_last_push_approval": false,
+          "required_review_thread_resolution": false,
+          "require_extra_approval_for_unattributed_changes": false,
+          "required_reviewers": [],
+          "dismissal_restriction": {
+            "enabled": false,
+            "allowed_actors": []
+          },
+          "allowed_merge_methods": [
+            "merge",
+            "squash",
+            "rebase"
+          ]
+        }
+      },
+      {
+        "type": "merge_queue",
+        "parameters": {
+          "merge_method": "REBASE",
+          "grouping_strategy": "ALLGREEN",
+          "max_entries_to_build": 5,
+          "min_entries_to_merge": 1,
+          "max_entries_to_merge": 5,
+          "min_entries_to_merge_wait_minutes": 0,
+          "check_response_timeout_minutes": 360
+        }
+      },
+      {
+        "type": "required_status_checks",
+        "parameters": {
+          "strict_required_status_checks_policy": false,
+          "do_not_enforce_on_create": false,
+          "required_status_checks": [
+            {
+              "context": "gate",
+              "integration_id": 15368
+            },
+            {
+              "context": "test",
+              "integration_id": 15368
+            },
+            {
+              "context": "build",
+              "integration_id": 15368
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.91: 모든 변경은 pull request와 merge queue로 `main`에 들어가며, `.github/ruleset.json`은 ruleset `main`을 선언하고 `make github-ruleset`이 적용하며 `make github-ruleset-check`가 비교한다. workflow는 `merge_group`에서 실행된다.
+
 - G5.89: Rust와 TypeScript client는 PHP client처럼 ordered-json에 그 저장소로 의존하고, lock 갱신은 그 main을 받는다.
 
 - G5.88: `git-check`는 CI가 pull request나 push된 범위로 정하는 `ORM_GIT_RANGE`의 제목을 읽고, 그것이 없으면 HEAD를 읽는다.

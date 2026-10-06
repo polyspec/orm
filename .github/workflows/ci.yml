@@ -16,6 +16,7 @@ name: ci
 on:
   push:
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 # A new push cancels the run of the push before it on the same ref: the runners are few, and only the run of the
@@ -169,7 +170,7 @@ jobs:
           # The commits git-check reads: the pull request, or the push when it
           # adds to a branch; a new branch, a forced push and a manual run give
           # none, and git-check reads HEAD.
-          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || (github.event_name == 'push' && !github.event.created && !github.event.forced) && format('{0}..{1}', github.event.before, github.sha) || '' }}
+          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || (github.event_name == 'push' && !github.event.created && !github.event.forced) && format('{0}..{1}', github.event.before, github.sha) || '' }}
         run: make check
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
