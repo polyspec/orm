@@ -51,6 +51,40 @@ $passed = testcase_run('php-extension/declarations', TESTCASE_PROCESS, static fu
     }
     $step(count($native) . ' declarations equal');
 });
+// 확장은 PHP client의 @internal이 아닌 class마다 같은 public 선언(이름, 부모, 상수, property의 순서와 type, 메서드)을 가지고,
+// 그 밖의 class는 stub이 @internal로 적은 것뿐이다.
+$matched = testcase_run('php-extension/client', TESTCASE_PROCESS, static function (callable $step) use ($extension): void {
+    $native = declarations(['-d', "extension=$extension"], 'extension');
+    $client = declarations([], 'client');
+    $differences = [];
+    $classes = [];
+    foreach ($client as $key => $want) {
+        $classes[explode('::', $key)[0]] = true;
+        $got = $native[$key] ?? '(not declared)';
+        if ($want !== $got) {
+            $differences[] = "$key\n  client    $want\n  extension $got";
+        }
+    }
+    // property 순서: 생성자와 객체 graph가 PHP client의 순서를 따른다.
+    $order = static fn(array $declarations): array => array_values(array_filter(array_keys($declarations), static fn(string $k): bool => str_contains($k, '::$')));
+    $clientOrder = $order($client);
+    $nativeOrder = array_values(array_filter($order($native), static fn(string $k): bool => isset($classes[explode('::', $k)[0]]) && str_starts_with($native[$k], 'public')));
+    if ($clientOrder !== $nativeOrder) {
+        $differences[] = 'public properties in another order: client ' . implode(', ', $clientOrder) . '; extension ' . implode(', ', $nativeOrder);
+    }
+    preg_match_all('/@internal\n \*\/\n(?:final |abstract )?(?:readonly )?class (\w+)/', file_get_contents(dirname(__DIR__) . '/stubs/orm_dbspec.stub.php'), $internal);
+    foreach (array_keys($native) as $key) {
+        $class = explode('::', $key)[0];
+        if (!isset($classes[$class]) && !in_array(substr($class, strlen('Orm\\Dbspec\\Native\\')), $internal[1], true)) {
+            $differences[] = "$class is neither a class of the PHP client nor @internal in the stub";
+            $classes[$class] = true;
+        }
+    }
+    if ($differences !== []) {
+        throw new RuntimeException("the extension differs from the PHP client's dbspec classes:\n" . implode("\n", $differences));
+    }
+    $step(count($client) . ' public declarations of ' . count($classes) . ' classes equal the PHP client\'s');
+});
 // PIE는 composer.json의 php-ext로 확장을 build한다: 그 이름은 load한 확장의 이름이고 build-path에 config.m4가 있다.
 $packaged = testcase_run('php-extension/package', TESTCASE_PROCESS, static function (callable $step): void {
     $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
@@ -65,16 +99,16 @@ $packaged = testcase_run('php-extension/package', TESTCASE_PROCESS, static funct
     $step("$name builds from {$package['php-ext']['build-path']}");
 });
 // 확장의 test 가운데 PHP client test와 같은 case를 따르는 것은 그 test와 본문이 같다: 그 file의 header(설명, require와
-// use) 뒤 `const CASE_DEADLINE_MS`부터 끝까지가 PHP client test의 같은 부분과 같다.
+// use) 뒤 첫 `const` 선언부터 끝까지가 PHP client test의 같은 부분과 같다.
 $mirrored = testcase_run('php-extension/mirrors', TESTCASE_PROCESS, static function (callable $step): void {
     $root = dirname(__DIR__, 3);
-    $mirrors = ['dbspec_plan_test.php', 'dbspec_mermaid_test.php', 'dbspec_introspect_test.php'];
+    $mirrors = ['dbspec_plan_test.php', 'dbspec_mermaid_test.php', 'dbspec_introspect_test.php', 'dbspec_apply_cleanup_test.php', 'dbspec_apply_test.php'];
     foreach ($mirrors as $file) {
         $body = static function (string $path): string {
             $text = file_get_contents($path);
-            $at = strpos($text, "\nconst CASE_DEADLINE_MS");
+            $at = strpos($text, "\nconst ");
             if ($at === false) {
-                throw new RuntimeException("$path has no const CASE_DEADLINE_MS, where the shared body starts");
+                throw new RuntimeException("$path has no const declaration, where the shared body starts");
             }
             return substr($text, $at);
         };
@@ -84,4 +118,4 @@ $mirrored = testcase_run('php-extension/mirrors', TESTCASE_PROCESS, static funct
     }
     $step(count($mirrors) . ' tests follow the PHP client tests');
 });
-exit($passed && $packaged && $mirrored ? 0 : 1);
+exit($passed && $matched && $packaged && $mirrored ? 0 : 1);

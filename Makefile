@@ -131,7 +131,7 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
@@ -290,7 +290,7 @@ dbspec-apply-stress-bench:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
-# tests/dbspec/apply의 Go, PHP, TypeScript, Rust runner의 모든 순서쌍마다 MySQL, PostgreSQL,
+# tests/dbspec/apply의 Go, PHP, TypeScript, Rust와 PHP 확장 orm_dbspec(이 실행의 directory에 build한다) runner의 모든 순서쌍마다 MySQL, PostgreSQL,
 # SQLite에서 chain의 첫 plan을 한 client로, 나머지를 다른 client로 적용하고, 첫 client가 멈춘
 # plan을 둘째 client가 recover로 마치며, 다시 멈춘 plan을 둘째 client가 rollback한다. history
 # row와 introspect한 schema text가 chain의 것과 같아야 한다.
@@ -299,7 +299,8 @@ dbspec-apply-pairs-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p orm --example dbspec_apply
-	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 	rm -rf $(RUN_DIR)
 
 # dbspec-apply-rust-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 Rust client의
@@ -341,6 +342,14 @@ dbspec-plan-php-check:
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check:
 	$(WITH_TEST_ENV) php clients/php/tests/dbspec_apply_test.php
+
+# dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Orm\Dbspec\Native\Dbspec::apply,
+# recover, rollback, finalize로 실행한다. 확장은 이 실행의 directory에 build한다.
+.PHONY: dbspec-apply-php-extension-check
+dbspec-apply-php-extension-check:
+	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_apply_test.php
+	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-compare-check는 stress 문서(DBSPEC_INTROSPECT_TABLES개 table)를 MySQL,
 # PostgreSQL, SQLite에 적용하고, database마다 tests/dbspec/introspect의 Go, PHP, TypeScript, Rust와
@@ -481,17 +490,17 @@ dbspec-php-check/apply-cleanup:
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(clients/php-extension, PHP client의 dbspec 표면을 C로 구현한
 # Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
-# phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 같은지와, 공유 dbspec
-# vector, statement vector, plan vector와 Mermaid vector(PHP client의 plan, Mermaid test와 같은 case)와 순수 PHP client에
-# 대해 같은 결과를 내는지
+# phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 PHP client의 public dbspec
+# class와 같은지와, 공유 dbspec vector, statement vector, plan vector, Mermaid vector, apply 정리 error(PHP client의 plan,
+# Mermaid, apply 정리 test와 같은 case), SQLite의 introspection과 apply에서 순수 PHP client에 대해 같은 결과를 내는지
 # 각각 두 번 확인한다. build는 PATH의 phpize와
 # php-config를 쓰고, gen_stub.php는 make install-php-extension-tools가 둔 것을 쓴다. php-extension-arginfo는 stub에서
 # header를 다시 쓴다.
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -509,6 +518,9 @@ dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
 dbspec-php-extension-check/mermaid: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_mermaid_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_mermaid_test.php
+dbspec-php-extension-check/apply-cleanup: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_apply_cleanup_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) clients/php-extension/tests/dbspec_apply_cleanup_test.php
 php-extension-arginfo:
 	php clients/php-extension/scripts/arginfo.php $(GEN_STUB) write
 

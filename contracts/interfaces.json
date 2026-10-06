@@ -46,7 +46,7 @@
         "clients/php-extension/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:b71bfa113dd481838eeb5cd2c870bb279e3a766e3fbe7f09a65c55e1fdb3a104",
+      "symbol_hash": "sha256:8785f2e42e42ae8b7fcbf7e40b8f373c587eda5c7268500ef59341298962c8d4",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -64,6 +64,10 @@
         "Dbspec.installedDifferences",
         "Dbspec.addTablesAndColumnsSteps",
         "Dbspec.planSteps",
+        "Dbspec.apply",
+        "Dbspec.recover",
+        "Dbspec.rollback",
+        "Dbspec.finalize",
         "Dbspec.exportMermaid",
         "Dbspec.importMermaid"
       ],
@@ -2030,6 +2034,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/apply.ts::applyPlans",
           "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::apply",
+          "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
     },
@@ -2058,6 +2066,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/apply.ts::recoverPlans",
           "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::recover",
+          "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
     },
@@ -2086,6 +2098,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/apply.ts::rollbackPlans",
           "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::rollback",
+          "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
     },
@@ -2114,6 +2130,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/apply.ts::finalizePlans",
           "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
+        },
+        "php-extension": {
+          "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Orm\\Dbspec\\Native\\Dbspec::finalize",
+          "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         }
       }
     },

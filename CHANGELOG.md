@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.13: the PHP extension implements apply, recover, rollback and finalize like the PHP client, so it has every method of the PHP client's `Dbspec`, and its public classes are checked against the PHP client's.
+
 - T9.12: rollback of an applied plan whose history row records a step outside the plan stops with a `chain` error in every client instead of failing on the missing step.
 
 - T9.11: the PHP extension implements introspect like the PHP client, and the introspection cross check and a mirror of the PHP client's introspection test run it on MySQL, PostgreSQL and SQLite.

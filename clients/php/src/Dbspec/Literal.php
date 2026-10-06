@@ -3,7 +3,11 @@ declare(strict_types=1);
 
 namespace Orm\Dbspec;
 
-/** Canonical literal forms of dbspec defaults, check literals and coordinates. */
+/**
+ * Canonical literal forms of dbspec defaults, check literals and coordinates.
+ *
+ * @internal
+ */
 final class Literal
 {
     private const INTEGER_LIMITS = ['i16' => ['32767', '32768'], 'i32' => ['2147483647', '2147483648'], 'i64' => ['9223372036854775807', '9223372036854775808']];
