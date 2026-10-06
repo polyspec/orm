@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9: PHP 확장 orm_dbspec은 dbspec 인터페이스의 다섯 번째 구현이며, 그 stub, 공유 vector, PHP client, 네 client와 비교하고 interface contract에 선언한다. commit T9.5에서 CI가 통과했다.
+
 - T9.5: dbspec input test는 apply runner와 stress harness를 다시 그 자신의 인자로 실행한다. `reads`가 정한 input을 받는 것은 compare runner뿐이다.
 
 - G5.83: AGENTS.md는 고정한 toolchain, 원자적인 build 출력, 고치는 방법을 적은 실패 message, lease로 갖거나 소유한 port와 database, compile 시점 경로 없이 file을 찾는 규칙을 적는다.
