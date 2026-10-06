@@ -160,6 +160,9 @@ final class PlanApply
             $k = $row['step'];
             $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
             if ($applied) {
+                if ($k < 0 || $k > count($steps)) {
+                    throw new ApplyError('chain', $plan->name, 0, sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps)));
+                }
                 try {
                     $a->verify($plan->to);
                 } catch (\RuntimeException $e) {

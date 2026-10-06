@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- T9.12: rollback of an applied plan whose history row records a step outside the plan stops with a `chain` error in every client instead of failing on the missing step.
+
 - T9.11: the PHP extension implements introspect like the PHP client, and the introspection cross check and a mirror of the PHP client's introspection test run it on MySQL, PostgreSQL and SQLite.
 
 - T9.10: the PHP extension implements exportMermaid and importMermaid like the PHP client, and `make dbspec-compare-check` compares it on every input, plans and Mermaid diagrams included.

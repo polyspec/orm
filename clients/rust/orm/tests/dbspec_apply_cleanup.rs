@@ -1,14 +1,16 @@
 //! The cleanup errors of `orm::dbspec::apply` (docs/plans.md, "Apply"): a
 //! wrapped SQLite connection injects a failing lock release after an event
 //! stops apply and a failing foreign key restore after a failing BEGIN
-//! EXCLUSIVE, and a scripted MySQL connection returns no row for an effect
-//! query. Apply must return every error: the first
+//! EXCLUSIVE, a rollback of an applied row whose recorded step lies outside
+//! the plan stops with a chain error, and a scripted MySQL connection returns
+//! no row for an effect query. Apply must return every error: the first
 //! failure alone, or `ApplyError::Cleanup` with the first failure and the
 //! cleanup error.
 
 use chrono::{DateTime, TimeZone, Utc};
 use orm::dbspec::{
-    apply, effect_holds, effect_query, parse_plan, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Effect, Plan,
+    apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
+    Effect, Plan,
 };
 use serde_json::Value;
 use sqlx::{Connection, SqliteConnection};
@@ -166,6 +168,17 @@ async fn begin_restore(plans: Vec<Plan>) -> Result<String, String> {
     }
 }
 
+async fn rollback_step_outside(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[]).await?;
+    apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
+    c.execute(r#"UPDATE "dbspec$plans" SET step = 99"#).await.map_err(|e| format!("update: {e}"))?;
+    let result = rollback(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await;
+    match &result {
+        Err(ApplyError::Chain { message, .. }) if message == "the recorded step 99 is outside the plan's 4 steps" => Ok(message.clone()),
+        _ => Err(format!("{result:?}; want a chain error about the recorded step")),
+    }
+}
+
 async fn effect_row() -> Result<String, String> {
     let tables = effect_query(Dialect::MySql, "table").ok_or("no MySQL table effect query")?;
     let mut c = Scripted { executes: vec![], queries: HashMap::from([(tables.to_owned(), vec![])]) };
@@ -200,6 +213,7 @@ async fn apply_reports_cleanup_errors() {
     let results = [
         case("apply/cleanup-errors/release", release(plans.clone())).await,
         case("apply/cleanup-errors/begin-restore", begin_restore(plans.clone())).await,
+        case("apply/rollback-step-outside", rollback_step_outside(plans.clone())).await,
         case("apply/effect-row", effect_row()).await,
     ];
     let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();

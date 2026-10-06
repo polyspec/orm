@@ -3,7 +3,8 @@ declare(strict_types=1);
 // Wraps a SQLite PDO to inject failures into Orm\Dbspec apply and checks
 // that no error is lost (docs/plans.md "Apply"): a failing lock release
 // after an event stops apply, a failing foreign key restore after a failing
-// BEGIN EXCLUSIVE, an effect query that returns no row, and a result that
+// BEGIN EXCLUSIVE, a rollback of an applied row whose recorded step lies
+// outside the plan, an effect query that returns no row, and a result that
 // cannot be closed.
 // Usage: php clients/php/tests/dbspec_apply_cleanup_test.php
 require __DIR__ . '/autoload.php';
@@ -184,6 +185,12 @@ $cases = [
             static fn(?Throwable $e): bool => $e instanceof ApplyError && $e->code_ === 'locked' && $e->getPrevious() === $begin,
             [$restore],
         );
+    }],
+    ['apply/rollback-step-outside', static function () use ($plans, $now): void {
+        $pdo = failing_pdo([]);
+        Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+        $pdo->exec('UPDATE "dbspec$plans" SET step = 99');
+        want_message(static fn() => Dbspec::rollback($pdo, 'sqlite', $plans, $now, null), "chain {$plans[0]->name}: the recorded step 99 is outside the plan's 4 steps");
     }],
     ['apply/effect-row', static function () use ($effect, $tablesQuery): void {
         $pdo = failing_pdo([], [$tablesQuery => 'SELECT 1 WHERE 0']);

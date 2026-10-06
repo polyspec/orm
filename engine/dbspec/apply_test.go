@@ -132,3 +132,28 @@ func TestEffectRequiresRow(t *testing.T) {
 	}
 	logResult(t, "apply/effect-row", start)
 }
+
+// TestRollbackRejectsRecordedStepOutsidePlan은 applied row의 step이 plan의 step 밖이면 rollback이 step을 읽지 않고
+// chain error로 멈추는지 확인한다(docs/plans.md "Apply").
+func TestRollbackRejectsRecordedStepOutsidePlan(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	start := time.Now()
+	t.Log("RUN apply/rollback-step-outside deadline=20s")
+	now := func() time.Time { return time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC) }
+	plans := applyTestPlans(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	conn := applyTestConn(t)
+	if err := Apply(ctx, conn, DialectSQLite, plans, now, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.ExecContext(ctx, `UPDATE "dbspec$plans" SET step = 99`); err != nil {
+		t.Fatal(err)
+	}
+	err := Rollback(ctx, conn, DialectSQLite, plans, now, nil)
+	applyErr := (*ApplyError)(nil)
+	if !errors.As(err, &applyErr) || applyErr.Code != "chain" || !strings.Contains(applyErr.Message, "the recorded step 99 is outside the plan's") {
+		t.Errorf("rollback of an applied row at step 99: %v, want a chain error about the recorded step", err)
+	}
+	logResult(t, "apply/rollback-step-outside", start)
+}
