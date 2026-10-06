@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.91: every change reaches `main` through a pull request and the merge queue; `.github/ruleset.json` declares the ruleset `main`, which `make github-ruleset` applies and `make github-ruleset-check` compares, and the workflows run on `merge_group`.
+
 - G5.89: the Rust and TypeScript clients depend on ordered-json by its repository, like the PHP client; a lock update takes its main.
 
 - G5.88: `git-check` reads the subjects of `ORM_GIT_RANGE`, which CI sets to the pull request or the pushed range, and of HEAD without it.

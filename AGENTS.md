@@ -86,13 +86,25 @@
 - During development run unit tests only: the Red/Green unit cases of what changed. End-to-end runs
   (real database servers, conformance across languages, browsers, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required
-  before a push; read each CI report and fix what it finds. A push needs the
-  owner's approval each time and happens only when no checklist item is `[~]`: the pre-push hook
+  before a push; read each CI report and fix what it finds. A push happens only when no checklist
+  item is `[~]`: the pre-push hook
   `.githooks/pre-push` runs the push gate (scripts/check/push-gate.mjs), which refuses a push while
   an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
   the pushed commit again (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and `make
   owner-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
   fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
+- Every change reaches `main` through a pull request and the merge queue; no command of this
+  repository pushes `main`. Publish a branch with the standard commands of GitHub or the GitHub UI:
+  `git push origin HEAD:refs/heads/<branch>`, `gh pr create --base main --head <branch> --fill`,
+  `gh pr merge <branch> --auto --rebase`. The GitHub ruleset `main` of `.github/ruleset.json`
+  requires a pull request (no approval), the merge queue with the merge method `REBASE`, a linear
+  history and the GitHub Actions checks `gate` (`.github/workflows/push-gate.yml`), `test`
+  (`.github/workflows/ci.yml`) and `build` (`.github/workflows/docs-pages.yml`), which run on every
+  merge group; it refuses a force-push and the deletion of `main` and has no bypass actor, so
+  GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies
+  the ruleset and the declared repository settings (`allow_rebase_merge`, `allow_auto_merge`,
+  `delete_branch_on_merge`); `make github-ruleset-check` fails when they differ from the
+  declaration, naming each field.
 - `make check` refuses before any step while a checklist item, sub-items included, is `[~]`,
   while tracked files have uncommitted changes, and when `.runtime/full-run.json` records a full
   run of the same tree. `make rerun-failed` reruns, on the recorded commit or a

@@ -8,6 +8,7 @@
     "repo-check": {"scope": "owner", "needs": ["php", "rust"], "inputs": ["scripts/repo/**", "tests/new-session/**"], "lints": ["**"]},
     "test-servers-check": {"scope": "owner", "needs": ["go", "server-programs"], "inputs": ["scripts/test-servers.sh", "scripts/test-servers.test.mjs", "scripts/test-servers-mysql.mjs", "scripts/test-servers-mysql.test.mjs", "tests/stop-process/**", "tests/new-session/**", "tests/lease/**", "internal/procevent/**", "tests/testcase.mjs"]},
     "git-check": {"scope": "owner", "needs": [], "inputs": ["scripts/git/**", "contracts/rules.json", ".githooks/**", "Makefile"]},
+    "github-check": {"scope": "owner", "needs": [], "inputs": ["scripts/github/**", ".github/ruleset.json", ".github/workflows/**", "Makefile"]},
     "docs-rules-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["contracts/rules.json", "scripts/docs/**"], "lints": ["**/*.md"]},
     "docs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
