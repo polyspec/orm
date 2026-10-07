@@ -4,11 +4,11 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0ea07a71f46b5da6d0add9a52807d1a6",
+    "content-hash": "1d841f054ab3e49cf6bd48aba08d2ee1",
     "packages": [
         {
             "name": "polyspec/ordered-json",
-            "version": "dev-main",
+            "version": "v0.0.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/polyspec/ordered-json.git",
@@ -28,7 +28,6 @@
             "suggest": {
                 "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "files": [
@@ -39,7 +38,11 @@
                 "MIT"
             ],
             "description": "JSON document order at every depth, with optional native parser",
-            "time": "2026-10-06T15:54:43+00:00"
+            "support": {
+                "source": "https://github.com/polyspec/ordered-json/tree/v0.0.1",
+                "issues": "https://github.com/polyspec/ordered-json/issues"
+            },
+            "time": "2026-10-06T15:54:49+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -275,9 +278,7 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "polyspec/ordered-json": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
