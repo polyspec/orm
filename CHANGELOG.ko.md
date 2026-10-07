@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.114: `make full-run-check`의 runner unit case는 group으로 나눈 `make check` recipe와 부분 `feature-unit-check/select`를 읽는다.
+
 - G5.113-1: CHANGELOG.md와 CHANGELOG.ko.md는 어느 tag도 release하지 않은 변경을 맨 위의 `## Unreleased` 아래에 두고, `make version-check`는 그것과, 다른 section이 모두 VERSION보다 크지 않은 release한 version이기를 요구한다.
 
 - G5.112: PHP 확장의 선언 test는 php.ini 없이 PHP를 실행할 때 확장이 요구하는 module(예: shared `pdo`)을 load하고, 실패는 PHP의 stdout을 적는다.

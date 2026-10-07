@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.114: the runner unit cases of `make full-run-check` read the grouped `make check` recipe and the part `feature-unit-check/select`.
+
 - G5.113-1: CHANGELOG.md and CHANGELOG.ko.md keep the changes that no tag released under `## Unreleased` at the top, and `make version-check` requires it, with every other section a released version not above VERSION.
 
 - G5.112: the declarations test of the PHP extension loads the modules that the extension requires, such as a shared `pdo`, when it runs PHP without php.ini, and its failure states the stdout of PHP.
