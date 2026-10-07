@@ -155,3 +155,21 @@ export function composerVersionErrors(declared, workflows, running) {
     errors.push(`Composer ${running} runs the checks; .composer-version declares ${version}; install Composer ${version} (composer self-update ${version}) or change .composer-version together with the CI evidence of the new release`);
   return errors;
 }
+
+// GO_MODULE_ROOT는 저장소 root의 Go module path다(GitHub의 저장소 path).
+export const GO_MODULE_ROOT = 'github.com/polyspec/orm';
+
+// goModulePathErrors는 추적된 go.mod가 자기 directory의 module path(root는 GO_MODULE_ROOT, 하위 directory는 그 아래 그
+// directory)를 선언하지 않는 곳마다 오류 하나를 돌려준다. go get은 module path에서 저장소와 directory를 찾고, 하위
+// directory의 module은 tag `<dir>/vX.Y.Z`로 release한다. files는 {path: text}다.
+export function goModulePathErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!/(?:^|\/)go\.mod$/.test(path)) continue;
+    const dir = path === 'go.mod' ? '' : path.slice(0, -'/go.mod'.length);
+    const want = dir ? `${GO_MODULE_ROOT}/${dir}` : GO_MODULE_ROOT;
+    const declared = /^module\s+(\S+)/m.exec(text)?.[1];
+    if (declared !== want) errors.push(`${path} declares the module ${declared ?? '(none)'}; declare ${want}, the path of its directory, so go get resolves it and its tags`);
+  }
+  return errors;
+}
