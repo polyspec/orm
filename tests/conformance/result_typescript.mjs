@@ -1,5 +1,5 @@
 import { StyledValue } from '../../clients/typescript/dist/index.js';
-import { Value as JsonValue, parse } from '../../clients/typescript/node_modules/@polyspec/ordered-json/js/index.js';
+import { Value as JsonValue, parse } from '../../clients/typescript/node_modules/@polyspec/ordered-json/index.js';
 
 export function derivedInteger(value) {
   if (typeof value === 'number') {
