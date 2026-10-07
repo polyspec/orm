@@ -1,6 +1,6 @@
 # CI: every check of the repository. The job test runs make check, the targets
 # of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
-# interfaces and the hot-path regression check of feature-check, the decoder
+# interfaces and the hot-path regression check of the feature verification, the decoder
 # fuzz checks and the common state contracts of the conformance results, split
 # into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
 # once, each running make check GROUP=<group> on the targets CI_TARGETS_<group>;
@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [static, clients, conformance, dbspec, features, stress-mysql, stress-pg-sqlite]
+        group: [static, clients, conformance, dbspec, feature-coverage, feature-verify-rust, feature-verify-other, stress-mysql, stress-pg-sqlite]
     # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
     # one failed install never hides another. The step group-needs writes the
@@ -176,10 +176,10 @@ jobs:
         # local checks, with its own bench and decimal databases when a target
         # needs them; make repo-check fails when the groups omit or repeat a
         # target of CHECK_TARGETS, or this workflow runs one of them or a
-        # verification command of feature-check again. The run never stops at a
-        # failure: every target runs unless a setup step it needs failed, and
-        # the step fails when a target failed or did not run. The report of the
-        # run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
+        # verification command of the feature checks again. The run never
+        # stops at a failure: every target runs unless a setup step it needs
+        # failed, and the step fails when a target failed or did not run. The
+        # report of the run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
         if: ${{ !cancelled() }}
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}

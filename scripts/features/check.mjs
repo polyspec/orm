@@ -3,7 +3,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import path, { resolve } from 'node:path';
 import { COMPUTE, runGroup, sections, stepLines } from '../../tests/testcase.mjs';
 import { manifestInputErrors } from './owners.mjs';
-import { parseSelection, selectChecks, selectionErrors } from './select.mjs';
+import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mjs';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifestPath = resolve(root, 'contracts/features.json');
@@ -14,6 +14,8 @@ const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 const errors = [];
 const ids = new Set();
 const statuses = new Set(['planned', 'partial', 'implemented']);
+// shardOf는 (cwd, command)마다 그것을 처음 선언한 검증 명령과 그 shard다.
+const shardOf = new Map();
 const clientStatuses = new Set(['planned', 'partial', 'pass', 'unsupported']);
 const clients = ['go', 'php', 'rust', 'typescript'];
 const databases = ['mysql', 'postgres', 'sqlite'];
@@ -62,7 +64,13 @@ for (const feature of manifest.features ?? []) {
     }
     for (const [index, check] of (feature.verification ?? []).entries()) {
       if (!check.id || !check.command) errors.push(`${feature.id}: verification ${index} is incomplete`);
-      if (Object.keys(check).some(key => !['id', 'command', 'inputs', 'cwd', 'environment'].includes(key))) errors.push(`${feature.id}: verification ${index} has a field other than id, command, inputs, cwd and environment`);
+      if (Object.keys(check).some(key => !['id', 'command', 'shard', 'inputs', 'cwd', 'environment'].includes(key))) errors.push(`${feature.id}: verification ${index} has a field other than id, command, shard, inputs, cwd and environment`);
+      if (!SHARDS.includes(check.shard)) errors.push(`${feature.id}: verification ${index} declares the shard ${JSON.stringify(check.shard)}; declare one of ${SHARDS.join(', ')}`);
+      // 같은 directory의 같은 명령은 한 번만 실행되므로(아래 executed) 그 명령을 선언한 모든 기능이 같은 shard에 있어야 한다.
+      const key = JSON.stringify([check.cwd ?? '.', check.command]);
+      const first = shardOf.get(key);
+      if (first && first.shard !== check.shard) errors.push(`${feature.id}/${check.id}: shard ${check.shard} differs from shard ${first.shard} of ${first.name}, which runs the same command; declare one shard for both`);
+      else if (!first) shardOf.set(key, { shard: check.shard, name: `${feature.id}/${check.id}` });
       if (check.environment !== undefined && check.environment !== 'linux-runner') errors.push(`${feature.id}: verification ${index} environment must be linux-runner`);
     }
   }
