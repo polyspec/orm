@@ -4,6 +4,7 @@
 
 ## 0.0.3
 
+- G5.134: the four clients use ordered-json 0.0.2: the TypeScript client takes `@polyspec/ordered-json` from the npm archive of the GitHub release `v0.0.2`, so `npm ci` installs it without git; go.mod requires `github.com/polyspec/ordered-json/go` `v0.0.2`, and the Rust and PHP clients take the tag `v0.0.2`. `make repo-check` fails a tracked package.json with a git dependency spec and a tracked package-lock.json with a `resolved` from git.
 - G5.133: VERSION, every package file, the lockfile entries of the orm packages, the feature contract and the version statements of the documents declare 0.0.3, and the changelogs record the changes of 0.0.3 under `## 0.0.3`, so `make release-versions` passes for the tag `v0.0.3`.
 - G5.132: `make release-publish` uses the changelog section as the release notes when it has at most 125000 characters, the limit of a GitHub release body, and otherwise one line that links the section `## X.Y.Z` of CHANGELOG.md at the tag.
 

@@ -1140,8 +1140,8 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "polyspec-ordered-json"
-version = "0.0.1"
-source = "git+https://github.com/polyspec/ordered-json.git?tag=v0.0.1#f491200d3179c36afe29255b0f3ee964f6e83570"
+version = "0.0.2"
+source = "git+https://github.com/polyspec/ordered-json.git?tag=v0.0.2#dcd1c4c924e38b9c26289577c9d5d0b87c7d14cd"
 dependencies = [
  "serde",
  "serde_ignored",

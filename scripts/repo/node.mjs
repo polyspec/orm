@@ -38,3 +38,33 @@ export function nodeVersionErrors(declared, minimum, workflows, running) {
     errors.push(`Node ${running} runs the checks; .node-version declares ${declared.trim()}`);
   return errors;
 }
+
+// npm의 git source 검사. polyspec package는 GitHub tag의 release archive URL로 받고, npm은 git으로
+// 받는 package가 없어야 git을 쓸 수 없는 `npm ci`에서도 설치한다.
+const GIT_SOURCE = /^(?:git\+|git:|ssh:|github:)/;
+// GITHUB_SHORTHAND는 npm이 GitHub 저장소로 읽는 `owner/repo` 또는 `owner/repo#ref` spec이다.
+const GITHUB_SHORTHAND = /^[^@\s/:.][^\s/:]*\/[^\s/:]+$/;
+const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+
+// npmGitSourceErrors는 files({path: text}, 추적된 package.json과 package-lock.json)에서 git으로 받는
+// dependency마다 오류 하나를 돌려준다.
+//   - package.json의 dependency spec은 `git+`, `git:`, `ssh:`, `github:`로 시작하지 않고 GitHub
+//     shorthand(`owner/repo#ref`)가 아니다.
+//   - package-lock.json의 모든 `resolved`는 `git+`, `git:`, `ssh:`, `github:`로 시작하지 않는다.
+export function npmGitSourceErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    const data = JSON.parse(text);
+    if (/(?:^|\/)package\.json$/.test(path)) {
+      for (const field of DEPENDENCY_FIELDS)
+        for (const [name, spec] of Object.entries(data[field] ?? {}))
+          if (GIT_SOURCE.test(spec) || GITHUB_SHORTHAND.test(spec))
+            errors.push(`${path} ${field} ${name} is ${spec}, a git source; use the release archive URL of the GitHub tag`);
+    } else if (/(?:^|\/)package-lock\.json$/.test(path)) {
+      for (const [entry, record] of Object.entries(data.packages ?? {}))
+        if (typeof record.resolved === 'string' && GIT_SOURCE.test(record.resolved))
+          errors.push(`${path} resolves ${entry} from ${record.resolved}, a git source; use the release archive URL of the GitHub tag`);
+    }
+  }
+  return errors;
+}

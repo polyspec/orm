@@ -40,7 +40,7 @@ table service_config {
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
-| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | 저장소 `main`의 ordered-json `0.0.1`; Go는 go.mod가 요구하는 version의 module `github.com/polyspec/ordered-json/go`를, Rust는 `rust/Cargo.toml`의 package를, PHP·TypeScript는 root package를 사용한다 |
+| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | tag `v0.0.2`의 ordered-json `0.0.2`; Go는 go.mod가 요구하는 version(`v0.0.2`)의 module `github.com/polyspec/ordered-json/go`를, Rust는 그 tag의 `rust/Cargo.toml` package를, PHP는 그 tag의 root package를, TypeScript는 GitHub release `v0.0.2`의 npm archive를 사용한다 |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
