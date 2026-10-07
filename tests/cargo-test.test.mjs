@@ -7,6 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isolatedEnvironment } from './environment.mjs';
 import { caseTest, COMPUTE, PROCESS } from './testcase.mjs';
 
 caseTest('cargo-test splits options, name filters and test binary arguments', COMPUTE, () => {
@@ -60,7 +61,7 @@ caseTest('cargo-test runs every test binary after a failed one and names the fai
     // 가짜 lease는 `--` 뒤의 명령을 그대로 실행한다.
     writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
     const result = spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mjs', import.meta.url)), 'stub', '--', 'cargo', 'test'],
-      { encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') } });
+      { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     assert.equal(result.status, 4, result.stdout + result.stderr);
     assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['one', 'two', 'three']);
     assert.match(result.stdout, /cargo-test: 1 of 3 test binaries failed: two \(exit 4\)/);
@@ -83,7 +84,9 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
       writeFileSync(join(base, name, 'src/main.rs'), `fn main() { println!("${text}"); }\n`);
       for (const file of ['Cargo.toml', 'src/main.rs']) utimesSync(join(base, name, file), old, old);
     };
-    const env = target => ({ ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}`, CARGO_TARGET_DIR: target });
+    // cargo는 case가 주는 toolchain(rust-toolchain.toml의 channel)과 offline 설정만 받는다.
+    const toolchain = /^channel = "(.*)"$/m.exec(readFileSync(new URL('../rust-toolchain.toml', import.meta.url), 'utf8'))[1];
+    const env = target => isolatedEnvironment({ PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}`, RUSTUP_TOOLCHAIN: toolchain, CARGO_NET_OFFLINE: 'true', CARGO_TARGET_DIR: target });
     const built = (name, target) => {
       const build = spawnSync('cargo', ['build', '--offline', '--quiet'], { cwd: join(base, name), env: env(target), encoding: 'utf8' });
       assert.equal(build.status, 0, build.stderr);
@@ -104,7 +107,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
 // 실행하지 않고 그 이유를 적고 멈추는지, 이 checkout 안의 directory는 받는지 확인한다.
 caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
   const repo = fileURLToPath(new URL('..', import.meta.url));
-  const make = target => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8' });
+  const make = target => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
   const other = make(join(tmpdir(), 'another-checkout', 'clients', 'rust', 'target'));
   assert.notEqual(other.status, 0, 'make ran with the target directory of another checkout');
   assert.match(other.stderr, /CARGO_TARGET_DIR=\S+ is outside this checkout \S+; each checkout builds Rust into its own target directory/);
@@ -129,7 +132,7 @@ caseTest('cargo-test fails when the name filters select no test in any test bina
     writeFileSync(join(base, 'bin/cargo'), `#!/bin/sh\ncat ${join(base, 'messages.json')}\n`, { mode: 0o755 });
     writeFileSync(join(base, 'lease'), '#!/bin/sh\nwhile [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
     const run = filter => spawnSync(process.execPath, [fileURLToPath(new URL('./cargo-test.mjs', import.meta.url)), 'stub', '--', 'cargo', 'test', filter],
-      { encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') } });
+      { encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, LEASE: join(base, 'lease'), CARGO_LEASES: join(base, 'leases') }) });
     const none = run('no_such_name');
     assert.equal(none.status, 1, none.stdout + none.stderr);
     assert.match(none.stdout, /cargo-test: the filters no_such_name select no test in 2 test binaries/);

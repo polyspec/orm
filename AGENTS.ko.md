@@ -47,6 +47,10 @@
   Go `main`은 `os.Exit(run())`으로 끝나고 `defer` 뒤에 `os.Exit`를 부르지 않으며(`make repo-check`), Rust test는
   임시 directory를 drop할 때 지우는 값으로 가진다. 자기 session을 새로 여는 process는 group을 떠나 보이지 않으므로,
   단계보다 오래 사는 server는 setup 단계만 시작한다.
+- test의 결과는 그것을 실행한 쪽의 환경에 달리지 않는다. JavaScript test는 하위 process(make, check script, 가짜
+  도구)를 tests/environment.mjs의 `isolatedEnvironment`로 시작한다: `PATH`, `HOME`, `TMPDIR`과 case가 주는 변수뿐이므로
+  CI job의 `GROUP`, `GITHUB_ACTIONS`, `ORM_CHECK_RUN_ID`, 상위 make의 `MAKEFLAGS`와 Makefile이 export하는 변수는 그
+  process에 닿지 않는다(`make repo-check`).
 - 성능은 측정하고 보고할 뿐 test를 실패시키지 않는다. test는 측정(CPU 시간과 wall-clock 시간, 기준, 비율, 기계)을
   출력하고, 측정이 문서의 기준값을 넘으면 측정값, 기준값, 기계를 담은 `WARNING` 줄을 출력한다. check runner는 그 줄을
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만

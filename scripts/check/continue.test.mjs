@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, PROCESS } from '../../tests/testcase.mjs';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -20,7 +21,7 @@ function fake(programs, failing) {
     writeFileSync(join(base, 'bin', program), `#!/bin/sh\necho "${program} $*" >> ${log}\ncase "$*" in *'${failing}'*) echo 'FAIL ${failing}: expected 1 row, actual 0'; exit 3;; esac\n`, { mode: 0o755 });
   return {
     base,
-    run: (args, env = {}) => spawnSync('sh', args, { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}`, ...env } }),
+    run: (args, env = {}) => spawnSync('sh', args, { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, ...env }) }),
     ran: () => readFileSync(log, 'utf8').trim().split('\n'),
   };
 }
@@ -138,7 +139,7 @@ esac
       writeFileSync(join(base, 'bin', 'psql'), '#!/bin/sh\n', { mode: 0o755 });
       const servers = join(base, 'servers.env');
       writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\nexport ORM_TEST_MYSQL_REPLICA_DSN='mysql://root@127.0.0.1:3/orm_test'\n");
-      const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}` } });
+      const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}` }) });
       const ran = readFileSync(log, 'utf8').trim().split('\n');
       assert.ok(!(result.stdout + result.stderr).includes('127.0.0.1'), 'no DSN or address is printed');
       if (applied === '7') {
@@ -179,7 +180,7 @@ esac
 `, { mode: 0o755 });
     const servers = join(base, 'servers.env');
     writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\n");
-    const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop-dead', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: { ...process.env, PATH: `${join(base, 'bin')}:${process.env.PATH}` } });
+    const result = spawnSync('sh', ['scripts/check/databases.sh', 'drop-dead', servers, join(base, 'databases'), 'orm_x'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}` }) });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const dropped = readFileSync(log, 'utf8').trim().split('\n');
     assert.deepEqual(dropped, [

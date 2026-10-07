@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 import { neededFailures } from './ci-passed.mjs';
 
 const script = fileURLToPath(new URL('./ci-passed.mjs', import.meta.url));
-const run = env => spawnSync(process.execPath, [script], { encoding: 'utf8', env: { ...process.env, ...env } });
+const run = env => spawnSync(process.execPath, [script], { encoding: 'utf8', env: isolatedEnvironment(env) });
 
 // ci-passed case(G5.113-2)는 needs의 모든 job이 success일 때만 통과하고, 실패, 취소, 건너뛴 job과 빈 needs는 그 job과 결과를
 // 적고 실패하는지 본다.

@@ -20,6 +20,26 @@ export function nodeTestErrors(files) {
   return errors;
 }
 
+// callerEnvironmentErrors는 하위 process에 자기를 실행한 쪽의 환경을 넘기는 JavaScript test file(`.test.mjs`)의 줄마다
+// 오류 하나를 돌려준다: `...process.env`나 `env: process.env`, 그리고 `env: isolatedEnvironment(`가 없는 make 실행이다.
+// 그런 case의 결과는 CI의 `make check GROUP=<group>`이 환경에 둔 GROUP, GITHUB_ACTIONS, ORM_CHECK_RUN_ID와 상위
+// make의 MAKEFLAGS, Makefile이 export하는 변수에 달린다. 하위 process는 tests/environment.mjs의 isolatedEnvironment로
+// case가 주는 변수만 받는다. files는 {path: text}다.
+export function callerEnvironmentErrors(files) {
+  const errors = [];
+  for (const [path, text] of Object.entries(files)) {
+    if (!path.endsWith('.test.mjs')) continue;
+    text.split('\n').forEach((line, index) => {
+      const at = `${path}:${index + 1}`;
+      if (/\.\.\.process\.env\b|\benv:\s*process\.env\b(?!\.)/.test(line))
+        errors.push(`${at} gives a child process the environment of its caller; give it isolatedEnvironment of tests/environment.mjs with the variables of the case`);
+      else if (/\b(?:spawnSync|spawn|execFileSync|execFile)\(\s*['"]make['"]/.test(line) && !/\benv:\s*isolatedEnvironment\(/.test(line))
+        errors.push(`${at} runs make with the environment of its caller, whose GROUP, GITHUB_ACTIONS and MAKEFLAGS reach the recipe; pass env: isolatedEnvironment(...) of tests/environment.mjs with the variables of the case`);
+    });
+  }
+  return errors;
+}
+
 // body는 text의 index에서 시작하는 첫 `{`부터 짝이 맞는 `}`까지다. 문자열 안의 괄호는 세지 않으므로
 // 함수의 경계를 찾는 데만 쓴다.
 function body(text, index) {

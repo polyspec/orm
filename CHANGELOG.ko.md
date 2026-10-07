@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.119: JavaScript test는 하위 process를 case가 주는 변수만으로 시작하므로(tests/environment.mjs) CI group, `GITHUB_ACTIONS`, 실행 id와 상위 make가 그 결과를 바꾸지 않는다. `make repo-check`는 하위 process에 자기를 실행한 쪽의 환경을 넘기는 test를 거부한다.
+
 - G5.118: `make group-rows-physical-check`와 `make unselected-column-physical-check`는 case가 실행되기 전에 그 case의 state reader를 기한 없이 build한다.
 
 - G5.117: scripts/github/ruleset.mjs의 머리말은 요구하는 check `push-gate`와 `ci-passed`를 적는다.
