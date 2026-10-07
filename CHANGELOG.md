@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.0.4
+
+- G5.137: VERSION, every package file, the lockfile entries of the orm packages, the feature contract and the version statements of the documents declare 0.0.4, and the changelogs record the changes of 0.0.4 under `## 0.0.4`, so `make release-versions` passes for the tag `v0.0.4`.
 - G5.136: the npm tarball and the Composer zips of `make release-assets` declare every polyspec dependency by the exact version of its release, the Composer zips carry the release `version` and no `repositories`, the release refuses a packed manifest that breaks this, and `make package-check` installs the assets of HEAD outside the repository; docs/packaging.md describes the install from release assets.
 
 ## 0.0.3

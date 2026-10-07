@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.0.4
+
+- G5.137: VERSION, 모든 package file, orm package의 lockfile 항목, feature contract와 문서의 version 문장은 0.0.4를 선언하고, 변경 이력은 0.0.4의 변경을 `## 0.0.4`에 기록하므로, `make release-versions`는 tag `v0.0.4`에서 통과한다.
 - G5.136: `make release-assets`의 npm tarball과 Composer zip은 모든 polyspec dependency를 그 release의 정확한 version으로 선언하고, Composer zip은 release의 `version`을 가지며 `repositories`가 없고, release는 이를 어긴 packed manifest를 거부하며, `make package-check`는 HEAD의 asset을 저장소 밖에 설치한다. docs/packaging.ko.md가 release asset에서 설치하는 방법을 설명한다.
 
 ## 0.0.3
