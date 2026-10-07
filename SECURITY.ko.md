@@ -6,7 +6,7 @@
 
 ## 지원 version
 
-개발 version은 `0.0.2`이다. 보안 수정은 현재 source tree를 기준으로 검토한다.
+개발 version은 `0.0.3`이다. 보안 수정은 현재 source tree를 기준으로 검토한다.
 
 ## 범위
 

@@ -4,7 +4,7 @@ The PHP client: generated models (`Polyspec\Orm\Tests\Model\Author`, …) over P
 `pdo_sqlite`). The library assembles SQL itself: each statement shape is validated against
 the runtime model of the dbspec document set (docs/dbspec.md), planned once, and kept in a
 bounded process-local plan cache. No service or extension
-runs beside it. PHP 8.4 or later. Version 0.0.2. The scheme of a DSN selects its PDO driver, so
+runs beside it. PHP 8.4 or later. Version 0.0.3. The scheme of a DSN selects its PDO driver, so
 `composer.json` requires none of the three and suggests each one; `scripts/php-without-mysql.sh` runs
 the client on SQLite with `php -n` and only the extensions it needs, so that `mysqlnd`, `pdo_mysql` and
 `mysqli` are not loaded, on the Linux runner of `.github/runner`, where they are shared modules.
