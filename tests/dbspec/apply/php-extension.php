@@ -13,7 +13,7 @@ declare(strict_types=1);
 //
 // Usage: php -d extension=<orm_dbspec library> tests/dbspec/apply/php-extension.php <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 
-require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../../../vendor-php/autoload.php';
 require __DIR__ . '/../input.php';
 
 use Polyspec\Orm\Dbspec\Native\ApplyError;

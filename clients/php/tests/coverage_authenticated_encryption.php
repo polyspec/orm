@@ -4,7 +4,7 @@ declare(strict_types=1);
 // 각 case를 PHP client의 AES envelope(Codec::hostEncode, Codec::hostDecode의
 // `aes` stage)과 blind index(Codec::blindIndex)로 실행한다.
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Bytes;

@@ -612,7 +612,7 @@ function holdRows(string $driver, string $dsn, string $table): PDO
  */
 function holdRowsFor(string $dsn, string $table, int $ms)
 {
-    $code = 'require ' . var_export(dirname(__DIR__) . '/vendor/autoload.php', true) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
+    $code = 'require ' . var_export(dirname(__DIR__, 3) . '/vendor-php/autoload.php', true) . '; require ' . var_export(__DIR__ . '/case_database.php', true) . ';'
         . ' $pdo = case_admin(' . var_export($dsn, true) . '); $pdo->beginTransaction();'
         . ' $pdo->exec(' . var_export('UPDATE "' . $table . '" SET "seq" = "seq"', true) . '); echo "held\n"; fflush(STDOUT);'
         . ' usleep(' . ($ms * 1000) . '); $pdo->rollBack();';

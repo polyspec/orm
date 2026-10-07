@@ -6,7 +6,7 @@ declare(strict_types=1);
 // soft_delete_restore는 contracts/fixtures/restore.dbs로 같은 일을 한다. fixture의 model은
 // fixture마다 자기 namespace로 임시 directory에 생성하며 bench model은 읽지 않는다.
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 require __DIR__ . '/restore_case.php';
 require __DIR__ . '/audit_case.php';

@@ -1005,9 +1005,8 @@ rust-check/clippy-test-faults: lease-tool
 install: install-node install-php install-rust install-go install-node-min install-php-extension-tools
 install-node:
 	$(ONLINE) npm ci
-	$(ONLINE) npm ci --prefix clients/typescript
 install-php:
-	$(ONLINE) composer install --working-dir=clients/php --no-interaction --no-progress --prefer-dist
+	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
 install-rust:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version

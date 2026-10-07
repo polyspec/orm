@@ -7,7 +7,7 @@ declare(strict_types=1);
 //
 // Usage: php tests/dbspec/compare/php.php <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
 
-require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../../../vendor-php/autoload.php';
 require __DIR__ . '/php-interface.php';
 
 if ($argc !== 6) {

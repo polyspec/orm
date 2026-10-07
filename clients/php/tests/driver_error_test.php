@@ -10,7 +10,7 @@
 // Usage: php clients/php/tests/driver_error_test.php [case ...]
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 

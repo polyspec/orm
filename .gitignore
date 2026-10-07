@@ -10,7 +10,7 @@
 
 /node_modules/
 /clients/typescript/node_modules/
-/clients/php/vendor/
+/vendor-php/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /.runtime/

@@ -30,7 +30,7 @@ node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "ut
 }
 
 php_package() {
-composer validate --working-dir="$ROOT/clients/php" --no-check-publish
+composer validate --working-dir="$ROOT/clients/php" --no-check-publish --no-check-lock
 }
 
 rust_package() {

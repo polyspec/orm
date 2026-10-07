@@ -3,7 +3,7 @@
 // Usage: php tests/codec/gen.php > tests/codec/vectors.json
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/clients/php/vendor/autoload.php';
+require dirname(__DIR__, 2) . '/vendor-php/autoload.php';
 
 use Symfony\Component\Yaml\Yaml;
 

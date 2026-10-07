@@ -3,7 +3,7 @@
   "targets": {
     "checklist-check": {"scope": "owner", "needs": [], "inputs": ["docs/checklist.md", "docs/checklist.ko.md", "scripts/checklist/**"]},
     "full-run-check": {"scope": "owner", "needs": [], "inputs": ["scripts/check/**", "scripts/features/owners.mjs", "scripts/client-db-test.sh", "scripts/typescript/sqlite-test.sh", "Makefile", "tests/testcase.mjs", "tests/environment.mjs"]},
-    "version-check": {"scope": "owner", "needs": [], "inputs": ["VERSION", "scripts/version/**", "**/Cargo.toml", "**/Cargo.lock", "clients/php/composer.json", "clients/typescript/package.json", "clients/typescript/package-lock.json", "contracts/features.json", "**/*.md"]},
+    "version-check": {"scope": "owner", "needs": [], "inputs": ["VERSION", "scripts/version/**", "**/Cargo.toml", "**/Cargo.lock", "clients/php/composer.json", "clients/typescript/package.json", "package-lock.json", "clients/php-extension/composer.json", "contracts/features.json", "**/*.md"]},
     "testcase-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer"], "inputs": ["internal/testcase/**", "tests/testcase.mjs", "tests/testcase.test.mjs", "tests/go-test.mjs", "tests/go-test.test.mjs", "tests/cargo-test.mjs", "tests/cargo-test.test.mjs", "tests/run-long.mjs", "tests/testcase.php", "tests/testcase_test.php", "clients/rust/testcase/**", "tests/environment.mjs"]},
     "repo-check": {"scope": "owner", "needs": ["php", "rust"], "inputs": ["scripts/repo/**", "tests/new-session/**"], "lints": ["**"]},
     "test-servers-check": {"scope": "owner", "needs": ["go", "server-programs"], "inputs": ["scripts/test-servers.sh", "scripts/test-servers.test.mjs", "scripts/test-servers-mysql.mjs", "scripts/test-servers-mysql.test.mjs", "tests/stop-process/**", "tests/new-session/**", "tests/lease/**", "internal/procevent/**", "tests/testcase.mjs", "tests/environment.mjs"]},
@@ -74,7 +74,7 @@
     ".composer-version": {"scope": "suite", "reason": "it selects the Composer release that installs the PHP dependencies of every PHP check in CI"},
     ".php-version": {"scope": "suite", "reason": "it selects the PHP release of every check, locally and in CI, so it changes the runtime of every PHP target"},
     "LICENSE": {"scope": "lint", "reason": "license text; no code or test reads it"},
-    "clients/php/composer.lock": {"scope": "suite", "reason": "it pins the PHP dependencies that every PHP check loads through the autoloader"},
+    "composer.lock": {"scope": "suite", "reason": "it pins the PHP dependencies that every PHP check loads through the autoloader"},
     "clients/rust/rustfmt.toml": {"scope": "lint", "reason": "it configures rustfmt, which rust-fmt-check runs over every Rust file"},
     "go.mod": {"scope": "suite", "reason": "it pins the Go toolchain and the modules of every Go build and test"},
     "go.sum": {"scope": "suite", "reason": "it pins the module checksums of every Go build and test"},

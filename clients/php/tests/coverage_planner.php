@@ -5,7 +5,7 @@ declare(strict_types=1);
 // compile하고, statement의 role, sql, bind slot(출처, param 번호, type)이나 오류
 // code를 fixture와 비교한다.
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Engine;

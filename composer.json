@@ -1,0 +1,44 @@
+{
+    "name": "polyspec/orm-workspace",
+    "description": "Development root of the repository, not published: it installs clients/php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "polyspec/orm": "*"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "clients/php",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "polyspec/ordered-json",
+                "version": "0.0.2",
+                "type": "library",
+                "require": {
+                    "php": ">=8.2",
+                    "ext-json": "*",
+                    "ext-pcre": "*"
+                },
+                "autoload": {
+                    "files": [
+                        "src/OrderedJson.php"
+                    ]
+                },
+                "dist": {
+                    "type": "zip",
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.zip"
+                }
+            }
+        }
+    ],
+    "config": {
+        "vendor-dir": "vendor-php",
+        "optimize-autoloader": true
+    }
+}

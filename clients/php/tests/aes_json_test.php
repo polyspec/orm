@@ -11,7 +11,7 @@
 declare(strict_types=1);
 
 // bench model은 읽지 않는다: 이 test는 자기 document set의 model만 쓴다.
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
 require_once __DIR__ . '/case_database.php';
 

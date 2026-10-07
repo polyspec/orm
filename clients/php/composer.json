@@ -12,12 +12,6 @@
         "ext-zlib": "*",
         "symfony/yaml": "^7.4"
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/polyspec/ordered-json.git"
-        }
-    ],
     "suggest": {
         "ext-pdo_mysql": "mysql:// DSNs",
         "ext-pdo_pgsql": "postgres:// DSNs",
