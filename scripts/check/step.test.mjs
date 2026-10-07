@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 import { command } from './run.mjs';
 import { endGroup, runStep } from './step.mjs';
 import { spawn } from 'node:child_process';
@@ -123,7 +124,7 @@ caseTest('a group signal never reaches the process group of the runner', PROCESS
       const own = processGroupOf(process.pid);
       ${body}
       console.log('alive');
-    `], { detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    `], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: isolatedEnvironment() });
     let out = '';
     child.stdout.on('data', chunk => { out += chunk; });
     child.stderr.on('data', chunk => { out += chunk; });
@@ -131,7 +132,7 @@ caseTest('a group signal never reaches the process group of the runner', PROCESS
   });
   const guarded = await fake(`
     for (const group of [own, 0, 1, -5, process.pid]) signalGroup(group, 'SIGTERM');
-    await runStep('sh', ['-c', 'sleep 41 >/dev/null 2>&1 & exit 0'], { cwd: process.cwd(), env: process.env, step: () => {}, label: 'fake' }).catch(() => {});
+    await runStep('sh', ['-c', 'sleep 41 >/dev/null 2>&1 & exit 0'], { cwd: process.cwd(), env: { PATH: process.env.PATH }, step: () => {}, label: 'fake' }).catch(() => {});
   `);
   assert.equal(guarded.signal, null, guarded.out);
   assert.match(guarded.out, /alive\n$/);
@@ -147,7 +148,7 @@ caseTest('a run directory named after the step is a leftover of the step', PROCE
   const root = mkdtempSync(join(tmpdir(), 'orm-step-test-'));
   try {
     const { step } = collect();
-    await assert.rejects(runStep('sh', ['-c', 'mkdir -p ".runtime/run/cargo-test-$ORM_STEP-1-x"'], { cwd: root, env: process.env, step, label: 'named' }),
+    await assert.rejects(runStep('sh', ['-c', 'mkdir -p ".runtime/run/cargo-test-$ORM_STEP-1-x"'], { cwd: root, env: isolatedEnvironment(), step, label: 'named' }),
       /check: named left \.runtime\/run\/cargo-test-orm-step-\w+-1-x/);
     assert.deepEqual(readdirSync(join(root, '.runtime/run')), []);
   } finally {

@@ -10,7 +10,7 @@ import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { callerEnvironmentErrors, goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
 import { COMPUTE, sections } from '../../tests/testcase.mjs';
 
@@ -69,6 +69,8 @@ failures.push(...connectProbeErrors(Object.fromEntries(tracked.filter(runtimeSou
 // 모든 test는 자기 기한 아래 case로 보고한다(scripts/repo/testcases.mjs).
 const trackedText = paths => Object.fromEntries(paths.map(path => [path, readFileSync(join(root, path), 'utf8')]));
 failures.push(...nodeTestErrors(trackedText(tracked.filter(path => /\.(?:mjs|js)$/.test(path) && !path.startsWith('docs/')))));
+// JavaScript test는 하위 process에 자기를 실행한 쪽의 환경을 넘기지 않는다: case가 주는 변수만 준다.
+failures.push(...callerEnvironmentErrors(trackedText(tracked.filter(path => path.endsWith('.test.mjs')))));
 failures.push(...goTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('_test.go')))));
 failures.push(...rustTestCaseErrors(trackedText(tracked.filter(path => path.endsWith('.rs')))));
 // Makefile, contracts/features.json, scripts/의 shell script와 root package.json이 실행하는 PHP와

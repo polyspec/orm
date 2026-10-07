@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { isolatedEnvironment } from '../tests/environment.mjs';
 import { caseTest, COMPUTE, PROCESS } from '../tests/testcase.mjs';
 import { collisions, countDifferences } from './test-servers-mysql.mjs';
 
@@ -44,7 +45,7 @@ function fixture(mysqlPort, replicaPort) {
     sql,
     leases: join(root, '.runtime/servers.leases'),
     migrate: () => spawnSync('node', [join(root, 'scripts/test-servers-mysql.mjs'), join(root, 'scripts/test-servers.sh'), join(root, '.runtime/servers'), String(mysqlPort), String(replicaPort), '1'],
-      { encoding: 'utf8', env: { ...process.env, LEASES: join(root, '.runtime/servers.leases') } }),
+      { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE, LEASES: join(root, '.runtime/servers.leases') }) }),
     close: () => {
       spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });
       rmSync(root, { recursive: true, force: true });

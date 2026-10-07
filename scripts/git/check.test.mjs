@@ -1,4 +1,5 @@
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -94,7 +95,7 @@ caseTest('a commit whose subject breaks the rule is refused by the commit-msg ho
     const other = realpathSync(mkdtempSync(join(tmpdir(), 'hooks-path-')));
     try {
       spawnSync('git', ['-C', other, 'init', '-q']);
-      const make = spawnSync('make', ['-n', '--no-print-directory', '-f', join(repo, 'Makefile'), '-C', other, 'version-check'], { encoding: 'utf8' });
+      const make = spawnSync('make', ['-n', '--no-print-directory', '-f', join(repo, 'Makefile'), '-C', other, 'version-check'], { encoding: 'utf8', env: isolatedEnvironment() });
       assert.equal(spawnSync('git', ['-C', other, 'config', 'core.hooksPath'], { encoding: 'utf8' }).stdout.trim(), '.githooks', make.stderr);
     } finally {
       rmSync(other, { recursive: true, force: true });

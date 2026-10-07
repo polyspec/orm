@@ -60,6 +60,11 @@
   a `defer` (`make repo-check`), and a Rust test holds its temporary directory in a value that
   removes it on drop. A process that starts a session of its own leaves the group and is not seen,
   so only the setup steps start servers that outlive a step.
+- A test's result does not depend on the environment of whoever runs it. A JavaScript test starts a
+  child process (make, a check script, a fake tool) with `isolatedEnvironment` of
+  tests/environment.mjs: `PATH`, `HOME` and `TMPDIR`, and the variables the case gives, so the
+  `GROUP`, `GITHUB_ACTIONS` and `ORM_CHECK_RUN_ID` of a CI job, the `MAKEFLAGS` of a calling make
+  and the variables the Makefile exports do not reach it (`make repo-check`).
 - Performance is measured and reported; it never fails a test. A test prints its measurements (CPU and wall-clock
   time, the reference, the ratio and the machine), and a measurement above its documented reference value prints a
   `WARNING` line with the measurement, the reference and the machine, which the check runner keeps in the run record

@@ -6,6 +6,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { isolatedEnvironment } from './environment.mjs';
 import { caseTest, COMPUTE, duration, PROCESS } from './testcase.mjs';
 
 const harness = new URL('./testcase.mjs', import.meta.url).href;
@@ -29,9 +30,9 @@ async function runChild(source, args = [], timeout = 30_000) {
   try {
     const file = join(dir, 'fixture.mjs');
     await writeFile(file, source);
-    // 안쪽 node --test가 바깥 test runner의 자식으로 보고하지 않도록 NODE_TEST_CONTEXT를 뺀다.
-    const env = { ...process.env };
-    delete env.NODE_TEST_CONTEXT;
+    // 안쪽 node --test는 case가 주는 변수만 가진 환경으로 실행한다: 바깥 test runner의 NODE_TEST_CONTEXT도 받지 않으므로
+    // 그 runner의 자식으로 보고하지 않는다.
+    const env = isolatedEnvironment();
     try {
       const { stdout } = await promisify(execFile)(process.execPath, [...args, file], { env, timeout, killSignal: 'SIGKILL' });
       return { code: 0, stdout };

@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { activeItems, decide, summarize } from './full-run.mjs';
 
@@ -145,7 +146,7 @@ function checkout(t, checklist) {
     root,
     git,
     servers,
-    run: (action, mode, kill = '', env = {}) => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill, servers], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { ...process.env, ...env } }),
+    run: (action, mode, kill = '', env = {}) => spawnSync(process.execPath, [join(base, 'stub.mjs'), root, action, mode, log, kill, servers], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: isolatedEnvironment(env) }),
     ran: () => {
       const names = existsSync(log) ? readFileSync(log, 'utf8').split('\n').filter(Boolean) : [];
       rmSync(log, { force: true });
@@ -190,8 +191,10 @@ caseTest('the decision refuses a checkout whose pre-push hook is not installed',
   }
 });
 
-// make check의 첫 두 줄은 GROUP을 확인하는 make 함수이고 명령이 없다: GROUP이 없으면 빈 줄로 펼쳐지고, 맞지 않는 GROUP은
-// 명령 전에 make를 멈춘다(G5.111). 첫 명령은 guard다.
+// make check의 첫 두 줄은 GROUP을 확인하는 make 함수이고 명령이 없다: GROUP이 없으면 빈 줄로 펼쳐지고, 맞지 않는 GROUP과
+// GitHub Actions 밖의 GROUP은 명령 전에 make를 멈춘다(G5.111). 첫 명령은 guard다. `make -n check`는 case가 주는 변수만 가진
+// 환경으로 실행하므로(tests/environment.mjs) CI group의 job이 이 case를 실행해도 그 GROUP과 GITHUB_ACTIONS는 닿지 않는다
+// (G5.119).
 caseTest('make check and make rerun-failed start with the guard', COMPUTE, () => {
   const check = recipe('check');
   assert.ok(check.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), check.join('\n'));
@@ -199,8 +202,17 @@ caseTest('make check and make rerun-failed start with the guard', COMPUTE, () =>
     'node scripts/check/full-run.mjs decide check',
     '$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)',
   ]);
-  const dry = spawnSync('make', ['-n', '--no-print-directory', 'check'], { cwd: repo, encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: '' } });
-  assert.equal(dry.stdout.split('\n')[0], 'node scripts/check/full-run.mjs decide check', dry.stdout + dry.stderr);
+  const dry = variables => spawnSync('make', ['-n', '--no-print-directory', 'check'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
+  for (const variables of [{}, { GROUP: 'static', GITHUB_ACTIONS: 'true' }]) {
+    const result = dry(variables);
+    assert.equal(result.stdout.split('\n')[0], 'node scripts/check/full-run.mjs decide check', `${JSON.stringify(variables)}: ${result.stdout}${result.stderr}`);
+  }
+  const local = dry({ GROUP: 'static' });
+  assert.notEqual(local.status, 0, local.stdout);
+  assert.match(local.stderr, /GROUP runs one CI group of make check on GitHub Actions only; run make check without GROUP/);
+  const unknown = dry({ GROUP: 'nope', GITHUB_ACTIONS: 'true' });
+  assert.notEqual(unknown.status, 0, unknown.stdout);
+  assert.match(unknown.stderr, /GROUP nope names no CI group; give one of CI_GROUPS:/);
   assert.deepEqual(recipe('rerun-failed'), [
     'node scripts/check/full-run.mjs decide rerun-failed',
     '$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))',

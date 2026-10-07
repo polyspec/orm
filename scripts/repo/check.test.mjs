@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { CI_SETUP, groupOutputs, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
-import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
+import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
 const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
 
@@ -848,6 +848,23 @@ caseTest('a JavaScript test that declares tests with node:test directly fails', 
     'd.test.mjs': "import { after } from 'node:test';\nimport { caseTest } from '../testcase.mjs';\n",
     'tests/testcase.mjs': "import test from 'node:test';\n",
   }), [message('a.test.mjs'), message('b.test.mjs'), message('c.test.mjs')]);
+});
+
+// 호출 환경 case(G5.119)는 JavaScript test가 하위 process에 자기를 실행한 쪽의 환경을 넘기지 않는지 본다. CI group의 job이
+// 실행한 `make -n check`는 그 job의 GROUP을 받아 멈췄다.
+caseTest('a JavaScript test gives its child processes only the variables of the case', COMPUTE, () => {
+  assert.deepEqual(callerEnvironmentErrors(trackedTexts(trackedFiles('*.test.mjs'))), []);
+  // 아래 fixture의 환경 이름은 이 file 자체가 그 규칙에 걸리지 않도록 조립한다.
+  const caller = ['process', 'env'].join('.');
+  const spawn = 'spawn' + 'Sync';
+  const spread = at => `${at} gives a child process the environment of its caller; give it isolatedEnvironment of tests/environment.mjs with the variables of the case`;
+  const make = at => `${at} runs make with the environment of its caller, whose GROUP, GITHUB_ACTIONS and MAKEFLAGS reach the recipe; pass env: isolatedEnvironment(...) of tests/environment.mjs with the variables of the case`;
+  assert.deepEqual(callerEnvironmentErrors({
+    'a.test.mjs': `${spawn}('make', ['-n', 'check'], { cwd: repo, encoding: 'utf8', env: { ...${caller}, GITHUB_ACTIONS: '' } });\n`,
+    'b.test.mjs': `const dry = ${spawn}('make', ['-n', 'check'], { cwd: repo });\nrun('sh', [], { env: ${caller} });\n`,
+    'c.test.mjs': `${spawn}('make', ['-n', 'check'], { env: isolatedEnvironment({ GROUP: 'static' }) });\nrun('sh', [], { env: isolatedEnvironment({ PATH: ${caller}.PATH }) });\n`,
+    'd.mjs': `${spawn}('make', ['check'], { env: { ...${caller} } });\n`,
+  }), [spread('a.test.mjs:1'), make('b.test.mjs:1'), spread('b.test.mjs:2')]);
 });
 
 caseTest('every Go and Rust test starts its case with the shared testcase package', COMPUTE, () => {

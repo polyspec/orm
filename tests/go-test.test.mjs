@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { buildArguments, packages, testEvents } from './go-test.mjs';
+import { isolatedEnvironment } from './environment.mjs';
 import { caseTest, COMPUTE, PROCESS } from './testcase.mjs';
 
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
@@ -39,7 +40,7 @@ esac
     const run = async extra => {
       try {
         const { stdout } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', './engine', '-count=1'],
-          { env: { ...process.env, ...extra, PATH: `${dir}:${process.env.PATH}` } });
+          { env: isolatedEnvironment({ ...extra, PATH: `${dir}:${process.env.PATH}` }) });
         return { code: 0, stdout };
       } catch (error) {
         return { code: error.code, stdout: error.stdout };
@@ -71,7 +72,7 @@ caseTest('a go test run whose -run selects no test fails', PROCESS, async () => 
     const script = new URL('./go-test.mjs', import.meta.url).pathname;
     const run = async pattern => {
       try {
-        const { stdout, stderr } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', '-run', pattern, '-count=1', '.'], { cwd: dir, env: { ...process.env, GOFLAGS: '', GOWORK: 'off' } });
+        const { stdout, stderr } = await promisify(execFile)(process.execPath, [script, '-v', '-timeout', '0', '-run', pattern, '-count=1', '.'], { cwd: dir, env: isolatedEnvironment({ GOFLAGS: '', GOWORK: 'off', GOPROXY: 'off' }) });
         return { code: 0, stdout, stderr };
       } catch (error) {
         return { code: error.code, stdout: error.stdout, stderr: error.stderr };

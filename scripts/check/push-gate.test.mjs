@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, PROCESS } from '../../tests/testcase.mjs';
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const GATE = 'scripts/check/push-gate.mjs';
@@ -63,8 +64,8 @@ function checkout({ checklist = CHECKLIST, hooks = true } = {}) {
     },
     push: (...args) => spawnSync('git', ['push', remote, 'HEAD:refs/heads/main', ...args], { cwd: root, encoding: 'utf8' }),
     remoteMain: () => spawnSync('git', ['--git-dir', remote, 'rev-parse', '--verify', '-q', 'refs/heads/main'], { encoding: 'utf8' }).stdout.trim(),
-    gate: (args, env = {}) => spawnSync(process.execPath, [GATE, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, ...env } }),
-    make: (...args) => spawnSync('make', ['--no-print-directory', ...args], { cwd: root, encoding: 'utf8' }),
+    gate: (args, env = {}) => spawnSync(process.execPath, [GATE, ...args], { cwd: root, encoding: 'utf8', env: isolatedEnvironment(env) }),
+    make: (...args) => spawnSync('make', ['--no-print-directory', ...args], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() }),
     remove: () => rmSync(base, { recursive: true, force: true }),
   };
 }

@@ -3,6 +3,7 @@
 // `gh`, which `--gh` names. The fake keeps its state in a JSON file, answers as the REST API does and logs every call, so
 // a case asserts the requests that apply sends and the result of check without reaching GitHub. A case runs the script as
 // a child that it awaits, so the timeout of the case fails a script that never ends.
+import { isolatedEnvironment } from '../../tests/environment.mjs';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -14,11 +15,10 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// The command lines of `make -n <target> <variables>`, without the variables of a calling make, which print the lines
-// Entering directory and Leaving directory around the commands .
+// The command lines of `make -n <target> <variables>`, in an environment that holds only the variables of the case
+// (tests/environment.mjs): no variable of a calling make or of the CI job reaches the recipe.
 function dryRun(target, { variables = [] } = {}) {
-  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !['MAKEFLAGS', 'MFLAGS', 'MAKELEVEL', 'MAKEOVERRIDES'].includes(name)));
-  const result = spawnSync('make', ['--no-print-directory', '-n', target, ...variables], { cwd: ROOT, encoding: 'utf8', env });
+  const result = spawnSync('make', ['--no-print-directory', '-n', target, ...variables], { cwd: ROOT, encoding: 'utf8', env: isolatedEnvironment() });
   assert.equal(result.status, 0, `make -n ${target}: ${result.stderr}`);
   return result.stdout.split('\n').filter(Boolean);
 }

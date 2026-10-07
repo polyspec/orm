@@ -6,6 +6,7 @@
 //
 // Usage: make timing-check (the target builds the Go test binary, the Rust stress example and
 // the TypeScript client, and writes the stress document first).
+import { isolatedEnvironment } from '../environment.mjs';
 import { caseTest, stepLines } from '../testcase.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -22,6 +23,10 @@ const STOP_MS = 90;
 // 멈추지 않을 때 1분 안에 끝나는 test가 10분까지 걸린다.
 const TIMEOUT = 600_000;
 
+// TOOLCHAIN은 make timing-check의 Makefile이 export하는 toolchain 설정이다: cargo, go, npm과 Composer는 이 값으로 같은
+// toolchain, target directory와 offline 실행을 쓴다.
+const TOOLCHAIN = ['RUSTUP_TOOLCHAIN', 'CARGO_TARGET_DIR', 'CARGO_INCREMENTAL', 'CARGO_PROFILE_DEV_DEBUG', 'CARGO_NET_OFFLINE', 'GOPROXY', 'npm_config_offline', 'COMPOSER_DISABLE_NETWORK'];
+
 function declared(name) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required; make timing-check declares it`);
@@ -33,9 +38,9 @@ function declared(name) {
 async function runPreempted(step, command, args, cwd) {
   step(`start ${command} ${args.join(' ')}`);
   const lines = stepLines(step);
-  // 안쪽 node --test가 바깥 test runner의 자식으로 보고하지 않도록 NODE_TEST_CONTEXT를 뺀다.
-  const env = { ...process.env };
-  delete env.NODE_TEST_CONTEXT;
+  // 하위 process는 case가 주는 변수만 받는다(tests/environment.mjs): Makefile이 export하는 toolchain 설정(TOOLCHAIN)이다.
+  // 바깥 test runner의 NODE_TEST_CONTEXT도 받지 않으므로 안쪽 node --test는 그 runner의 자식으로 보고하지 않는다.
+  const env = isolatedEnvironment(Object.fromEntries(TOOLCHAIN.filter(name => process.env[name] !== undefined).map(name => [name, process.env[name]])));
   const child = spawn(command, args, { cwd, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', (chunk) => { output += chunk; lines.write(String(chunk)); });

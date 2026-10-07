@@ -6,6 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
+import { isolatedEnvironment } from '../tests/environment.mjs';
 import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mjs';
 
 // stop_pid case는 test-servers.sh의 stop_pid를 그대로 꺼내 가짜 서버를 멈춘다. 서버 정지는 장기 작업이므로
@@ -55,7 +56,7 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   const ready = join(root, 'ready');
   const leases = join(root, '.runtime/servers.leases');
   let holder;
-  const stop = () => spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'stop'], { encoding: 'utf8', env: { ...process.env, LEASE: lease, STOP_PROCESS: stopProcess } });
+  const stop = () => spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
     mkdirSync(join(root, 'scripts'));
     copyFileSync(new URL('./test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
