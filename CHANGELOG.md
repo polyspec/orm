@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.102: the Rust model of a table named `polyspec_orm` is in the module `model::polyspec_orm_model`, and a table named `orm` has the module `model::orm`.
+
 - G5.101: `make rust-150-check` builds its generated crate against `polyspec-orm` and `polyspec-orm-build`.
 
 - G5.100: the site renders Mermaid in the browser of the reader; `make docs-build` and the documentation checks (`make docs-check`, `make docs-verify-idempotent`, `make docs-rules-check`) run with Node only and need no browser.

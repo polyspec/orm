@@ -333,3 +333,19 @@ fn scan_path_spelling_keeps_the_generated_source() {
         assert!(text == first, "the generated source of the {name} paths differs from the relative paths");
     }
 }
+
+#[test]
+fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let schema = dir.join("crate_name.dbs");
+    std::fs::write(&schema, "dbspec 1 crate_name\n\ntable polyspec_orm {\n  seq i64 identity\n  primary key (seq)\n}\n").unwrap();
+    let text = generate_with_schema(schema, "fn main() { let _ = PolyspecOrm::new(); }");
+    let _ = std::fs::remove_dir_all(&dir);
+    let text = text.unwrap();
+    // 생성된 code는 runtime crate를 polyspec_orm::으로 부르므로, 같은 이름의 model module은 그 path를 가린다.
+    assert!(text.contains("pub mod polyspec_orm_model {"), "the model module of table polyspec_orm is polyspec_orm_model");
+    assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
+}

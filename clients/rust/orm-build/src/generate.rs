@@ -286,7 +286,7 @@ impl<'m> Model<'m> {
         for name in index_names(e) {
             fixed.insert(format!("force_index_{}", index_method(name)));
         }
-        let module = if RUST_RESERVED.contains(&e.name.as_str()) || matches!(e.name.as_str(), "orm" | "std" | "core" | "alloc") {
+        let module = if RUST_RESERVED.contains(&e.name.as_str()) || matches!(e.name.as_str(), "polyspec_orm" | "std" | "core" | "alloc") {
             format!("{}_model", e.name)
         } else {
             e.name.clone()
