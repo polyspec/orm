@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.126: CI는 `make feature-helper-check`를 group feature-helpers에서 실행하고, group conformance는 TypeScript와 conformance 검사를 실행한다.
+
 - G5.125: CI는 dbspec apply target을 group dbspec-apply에서, 나머지 dbspec target을 `case-database-check`와 함께 group dbspec에서 실행한다.
 
 - G5.124: CI는 client database test를 group clients-db에서, pooler test를 group clients-pooler에서 실행한다.

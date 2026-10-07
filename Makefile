@@ -148,13 +148,15 @@ CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo
 #   dbspec-apply: dbspec plan 적용의 database target
 #   feature-coverage, feature-verify-rust, feature-verify-other: feature-check의 세 부분(기능의 coverage, shard rust와
 #     other의 검증 명령)
+#   feature-helpers: stress helper와 FEATURE_SUITE_HELPERS를 뺀 helper check(feature-helper-check)
 #   stress-mysql: 2000 table plan의 MySQL 적용(feature-stress-mysql-check)
 #   stress-pg-sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
-CI_GROUPS = static clients-db clients-pooler conformance dbspec dbspec-apply feature-coverage feature-verify-rust feature-verify-other stress-mysql stress-pg-sqlite
+CI_GROUPS = static clients-db clients-pooler conformance dbspec dbspec-apply feature-coverage feature-verify-rust feature-verify-other feature-helpers stress-mysql stress-pg-sqlite
 CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check release-check
 CI_TARGETS_clients-db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
 CI_TARGETS_clients-pooler = client-pooler-check
-CI_TARGETS_conformance = ts-check ts-min-check conformance-check feature-helper-check
+CI_TARGETS_conformance = ts-check ts-min-check conformance-check
+CI_TARGETS_feature-helpers = feature-helper-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check
 CI_TARGETS_dbspec-apply = dbspec-apply-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 CI_TARGETS_feature-coverage = feature-coverage
