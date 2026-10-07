@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.0.2
+
+- G5.130: the changelogs record the changes of 0.0.2 under `## 0.0.2` below an empty `## Unreleased`, so `make release-versions` passes for the tag `v0.0.2`.
+
 - G5.129: the process cases of the step runner wait until the background child runs `sleep`, so the reported command line does not depend on the order of exec and the process check.
 - G5.128: the CI groups are named with lowercase letters, digits and `_` only, so each job uploads the report directory that its runner writes, and `make repo-check` fails a group whose upload path differs from it.
 
