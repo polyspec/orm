@@ -1,4 +1,4 @@
-.PHONY: check ci-group-needs ci-passed release-verify release-versions release-assets release-publish release-check feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check ci-group-needs ci-passed release-verify release-versions release-assets release-publish release-check feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
@@ -134,19 +134,22 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check release-check feature-check feature-helper-check feature-stress-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check release-check feature-check feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
 # 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행 하나에서 잰 target의 시간으로 가장 긴 group이 짧도록 나눈다:
 # static은 database가 필요 없는 target, clients, conformance, dbspec은 database target, features는 feature-check(기능의
-# coverage와 검증 명령), stress는 feature-stress-check다. 로컬 make check는 GROUP 없이 모든 target을 실행한다.
-CI_GROUPS = static clients conformance dbspec features stress
+# coverage와 검증 명령), stress-mysql은 2000 table plan의 MySQL 적용(feature-stress-mysql-check), stress-pg-sqlite는 stress
+# 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)이다. 로컬 make check는 GROUP 없이 모든 target을
+# 실행한다.
+CI_GROUPS = static clients conformance dbspec features stress-mysql stress-pg-sqlite
 CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check release-check
 CI_TARGETS_clients = rust-driver-check example-check client-db-check client-pooler-check dialect-facts-check go-test-check
 CI_TARGETS_conformance = ts-check ts-min-check conformance-check feature-helper-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 CI_TARGETS_features = feature-check
-CI_TARGETS_stress = feature-stress-check
+CI_TARGETS_stress-mysql = feature-stress-mysql-check
+CI_TARGETS_stress-pg-sqlite = feature-stress-pg-sqlite-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
@@ -332,11 +335,17 @@ dbspec-plan-check:
 dbspec-apply-check:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
 
-# dbspec-apply-stress-bench는 2000 table 문서를 첫 plan으로 MySQL, PostgreSQL, SQLite에
-# 적용한다(make bench). MySQL은 statement와 history step 22000개씩을 따로 commit한다.
+# dbspec-apply-stress-bench는 2000 table 문서를 첫 plan으로 APPLY_STRESS_DIALECTS의 database에
+# 적용한다(make bench는 셋 모두). MySQL은 statement와 history step 22000개씩을 따로 commit한다.
+# APPLY_STRESS_DIALECTS는 `|`로 나눈 database(mysql, postgres, sqlite)이고 TestApplyStressPlan의 subtest를 고른다. 그래서
+# CI는 가장 긴 MySQL 적용을 PostgreSQL, SQLite와 다른 group에서 실행한다(feature-stress-mysql-check,
+# feature-stress-pg-sqlite-check). database가 아닌 이름이나 빈 값은 subtest를 하나도 고르지 않고 통과하므로 make가 명령
+# 전에 멈춘다.
+APPLY_STRESS_DIALECTS = mysql|postgres|sqlite
 .PHONY: dbspec-apply-stress-bench
 dbspec-apply-stress-bench:
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$' -count=1
+	$(if $(APPLY_STRESS_DIALECTS),,$(error APPLY_STRESS_DIALECTS is empty; give mysql, postgres or sqlite separated by |))$(foreach dialect,$(subst |, ,$(APPLY_STRESS_DIALECTS)),$(if $(filter $(dialect),mysql postgres sqlite),,$(error APPLY_STRESS_DIALECTS names $(dialect), which is no database; give mysql, postgres or sqlite separated by |)))
+	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyStressPlan$$/^($(APPLY_STRESS_DIALECTS))$$' -count=1
 
 # dbspec-apply-pairs-check는 TypeScript client와 Rust apply runner를 build하고,
 # tests/dbspec/apply의 Go, PHP, TypeScript, Rust와 PHP 확장 orm_dbspec(이 실행의 directory에 build한다) runner의 모든 순서쌍마다 MySQL, PostgreSQL,
@@ -640,7 +649,7 @@ test-servers-leases-clear:
 # feature-unit-check는 feature 문서가 manifest와 같은지와 coverage, owner 선택의 unit test를 실행한다.
 # feature-check는 TypeScript client를 한 번 build한 뒤 모든 기능의 coverage(native test binary를 한 번
 # build해 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다. helper check는
-# feature-helper-check와 feature-stress-check가 실행한다. 기능 하나는
+# feature-helper-check와 stress target(feature-stress-mysql-check, feature-stress-pg-sqlite-check)이 실행한다. 기능 하나는
 # `node scripts/features/coverage.mjs --feature <id>`와 `node scripts/features/check.mjs --run --feature <id>`로
 # 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
@@ -680,20 +689,26 @@ feature-check/coverage: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 feature-check/verification: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features
-# feature-helper-check와 feature-stress-check는 contracts/features.json의 helper check를 실행한다. FEATURE_STRESS_HELPERS는
-# 시간이 가장 긴 stress bench의 helper이고 feature-stress-check가, 나머지 helper는 feature-helper-check가 실행한다. 그래서
-# CI group 셋이 기능의 검증 명령, helper, stress bench를 동시에 실행한다.
+# feature-helper-check, feature-stress-mysql-check와 feature-stress-pg-sqlite-check는 contracts/features.json의 helper check를
+# 실행한다. FEATURE_STRESS_HELPERS는 시간이 가장 긴 stress bench의 helper다: 2000 table plan의 MySQL 적용
+# (FEATURE_STRESS_MYSQL_HELPERS)은 feature-stress-mysql-check가, stress 문서의 bench와 PostgreSQL, SQLite 적용
+# (FEATURE_STRESS_PG_SQLITE_HELPERS)은 feature-stress-pg-sqlite-check가, 나머지 helper는 feature-helper-check가 실행한다. 그래서
+# CI group들이 기능의 검증 명령, helper, stress bench를 동시에 실행한다.
 # FEATURE_SUITE_HELPERS는 check가 make check의 다른 곳에서 실행되는 helper다: conformance-runners는 conformance-check,
 # conformance-result는 그 선행 target conformance-result-check, case-database는 case-database-check, bench-database
 # (scripts/bench-db.sh)는 runner의 setup 단계 databases/create(scripts/check/databases.sh)가 실행한다. feature-helper-check는
 # 그 helper를 빼므로 make check는 helper check마다 한 번 실행한다(make repo-check가 확인한다). make owner-check는 helper의
 # file이 바뀌면 그 helper check를 그대로 실행한다.
-FEATURE_STRESS_HELPERS = dbspec-stress dbspec-apply-stress
+FEATURE_STRESS_MYSQL_HELPERS = dbspec-apply-stress-mysql
+FEATURE_STRESS_PG_SQLITE_HELPERS = dbspec-stress dbspec-apply-stress-pg-sqlite
+FEATURE_STRESS_HELPERS = $(FEATURE_STRESS_MYSQL_HELPERS) $(FEATURE_STRESS_PG_SQLITE_HELPERS)
 FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners
 feature-helper-check: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
-feature-stress-check: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_HELPERS))
+feature-stress-mysql-check:
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_MYSQL_HELPERS))
+feature-stress-pg-sqlite-check: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_PG_SQLITE_HELPERS))
 
 feature-docs:
 	node scripts/features/build.mjs
