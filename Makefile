@@ -1,4 +1,4 @@
-.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-static-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
@@ -808,17 +808,14 @@ docs-dev:
 docs-build:
 	npm run docs:build
 
-# docs-ci는 CI(ci.yml)의 job docs가 실행하는 문서 검사(docs-build, docs-verify-idempotent, docs-static-check)를 make check의 runner로
+# docs-ci는 CI(ci.yml)의 job docs가 실행하는 문서 검사(docs-verify-idempotent, docs-check)를 make check의 runner로
 # test server 없이 실행한다(scripts/check/run.mjs `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
 # .runtime/check/<실행 id>/report에 남기며, workflow는 그것을 job summary와 artifact로 올린다.
 docs-ci:
-	node scripts/check/run.mjs - docs-build docs-verify-idempotent docs-static-check
+	node scripts/check/run.mjs - docs-verify-idempotent docs-check
 
 docs-check:
 	npm run docs:check
-
-docs-static-check:
-	npm run docs:static-check
 
 docs-verify-idempotent:
 	npm run docs:verify-idempotent
@@ -892,7 +889,7 @@ rust-check/clippy-test-faults: lease-tool
 # 부분은 서로 독립이다(make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-node install-php install-rust install-go install-node-min install-browsers install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
+.PHONY: install install-node install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
 install: install-node install-php install-rust install-go install-node-min install-php-extension-tools
 install-node:
 	$(ONLINE) npm ci
@@ -909,10 +906,8 @@ install-go:
 	$(ONLINE) go mod download
 install-node-min:
 	$(ONLINE) ORM_NODE_MIN_INSTALL=1 ./scripts/typescript/node-min.sh
-# install-browsers는 docs-static-check의 Chromium과 그 system package를, install-server-programs는 CI의 Linux runner에
-# make test-servers가 시작하는 server program을 설치한다(scripts/ci/server-programs.sh).
-install-browsers:
-	$(ONLINE) npx playwright install --with-deps chromium
+# install-server-programs는 CI의 Linux runner에 make test-servers가 시작하는 server program을 설치한다
+# (scripts/ci/server-programs.sh).
 install-server-programs:
 	$(ONLINE) ./scripts/ci/server-programs.sh
 # install-php-extension-tools는 PHP 확장 orm_dbspec의 build가 쓰는 phpize와 php-config가 PATH의 PHP 것인지 확인하고,

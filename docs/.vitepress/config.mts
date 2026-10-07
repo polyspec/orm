@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress';
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const base = process.env.VITEPRESS_BASE || '/orm/';
@@ -8,7 +7,6 @@ if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base)) throw new Error('Invalid VITEPRESS_
 const root = process.cwd();
 const docs = path.join(root, 'docs');
 const repo = 'https://github.com/polyspec/orm';
-const diagrams = new Set<string>(JSON.parse(readFileSync(path.join(docs, '.vitepress/generated/diagrams.json'), 'utf8')));
 
 export default defineConfig({
   title: 'orm',
@@ -147,18 +145,13 @@ export default defineConfig({
         };
         visit(state.tokens);
       });
+      // A Mermaid fence stays its source: the theme renders it in the reader's browser
+      // (theme/index.ts), and without JavaScript the source is shown.
       const fence = md.renderer.rules.fence!;
       md.renderer.rules.fence = (tokens, index, options, env, self) => {
         const token = tokens[index];
         if (token.info.trim() !== 'mermaid') return fence(tokens, index, options, env, self);
-        const id = 'diagram-' + createHash('sha256').update(token.content).digest('hex').slice(0, 24);
-        if (!diagrams.has(id)) throw new Error(`${env.relativePath}: run the docs build to prepare Mermaid SVGs`);
-        const url = `${base}diagrams/${id}.svg`;
-        let title = env.relativePath;
-        for (let n = index - 1; n >= 0; n--) {
-          if (tokens[n].type === 'heading_open') { title = tokens[n + 1].content; break; }
-        }
-        return `<figure class="orm-diagram"><div class="orm-diagram-viewport" tabindex="0" role="region" aria-label="스크롤 가능한 도표"><img :src="'${url}'" alt="${md.utils.escapeHtml(title)}" loading="lazy"></div><figcaption><a href="${url}" target="_blank" rel="noopener">SVG 원본 보기</a></figcaption><details><summary>Mermaid 소스</summary><pre v-pre><code>${md.utils.escapeHtml(token.content)}</code></pre></details></figure>`;
+        return `<pre class="mermaid" v-pre>${md.utils.escapeHtml(token.content)}</pre>`;
       };
     },
   },

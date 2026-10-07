@@ -14,21 +14,17 @@
 
 .vp-doc { word-break: keep-all; overflow-wrap: anywhere; }
 .vp-doc table { word-break: normal; }
-.orm-diagram { margin: 24px 0; }
-.orm-diagram-viewport {
+.vp-doc pre.mermaid {
+  margin: 24px 0;
   overflow: auto;
-  max-height: 720px;
   padding: 20px;
   border: 1px solid var(--vp-c-divider);
   border-radius: 8px;
   background: #fff;
+  color: #3c3c43;
+  font-size: 13px;
+  white-space: pre;
 }
-.orm-diagram-viewport img { max-width: none; }
-.orm-diagram figcaption { margin: 8px 0; font-size: 13px; }
-.orm-diagram details { font-size: 13px; }
-.orm-diagram summary { cursor: pointer; color: var(--vp-c-text-2); }
-.orm-diagram pre { overflow: auto; padding: 16px; background: var(--vp-code-block-bg); }
-.orm-diagram pre code { white-space: pre; }
 
 @media (max-width: 767px) {
   .VPHome .vp-doc { padding: 0 24px; }
