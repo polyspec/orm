@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.97: the clients depend on ordered-json by its tags: `v0.0.1` for the Rust, TypeScript and PHP packages and `go/v0.0.1` for the Go module.
+
 - G5.96: the Rust test commands select the features of `polyspec-orm` and `polyspec-orm-build` by those package names.
 
 - G5.95: the Rust client depends on the crate `polyspec-ordered-json` and the TypeScript client on `@polyspec/ordered-json`; the locks of the Rust, TypeScript and PHP clients and go.mod resolve ordered-json from the branch main of polyspec/ordered-json.

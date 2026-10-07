@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.97: client는 ordered-json에 그 tag로 의존한다. Rust, TypeScript, PHP package는 `v0.0.1`, Go module은 `go/v0.0.1`이다.
+
 - G5.96: Rust test 명령은 `polyspec-orm`과 `polyspec-orm-build`의 feature를 그 package 이름에 따라 고른다.
 
 - G5.95: Rust client는 crate `polyspec-ordered-json`에, TypeScript client는 `@polyspec/ordered-json`에 의존한다. Rust, TypeScript, PHP client의 lock과 go.mod는 ordered-json을 polyspec/ordered-json의 branch main에서 받는다.
