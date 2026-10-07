@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.106: the interface check case `TestPHPRecordSourceMutationChangesExtractedWire` declares its PHP fixture in `Polyspec\Orm`.
+
 - G5.105: the PHP case `schema_set/external_documents` generates its sets in the namespace `Polyspec\Orm\Tests` that it calls.
 
 - G5.104: the PHP extension builds with GCC 16 without warnings.

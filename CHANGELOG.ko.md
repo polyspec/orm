@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.106: interface 검사 case `TestPHPRecordSourceMutationChangesExtractedWire`는 PHP fixture를 `Polyspec\Orm`에 선언한다.
+
 - G5.105: PHP case `schema_set/external_documents`는 자기가 부르는 namespace `Polyspec\Orm\Tests`에 set을 생성한다.
 
 - G5.104: PHP 확장은 GCC 16에서 경고 없이 build된다.
