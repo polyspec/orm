@@ -4,13 +4,12 @@
 // 단계를 차례로 실행하고, 각 단계는 이 script의 action 하나다:
 //   verify    tag한 commit이 main에 있고(`git merge-base --is-ancestor <sha> origin/main`), 그 commit의 GitHub check run에서
 //             push-gate와 ci-passed의 가장 최근 run이 success인지 확인한다. test는 다시 실행하지 않는다.
-//   versions  root tag는 RELEASED의 모든 manifest와 VERSION이 tag의 version을 선언하는지(version 없는 composer.json은 tag의
-//             version을 쓴다), go.mod가 그 directory의 module path를 선언하는지, CHANGELOG.md와 CHANGELOG.ko.md에 section
+//   versions  root tag는 RELEASED의 모든 manifest와 VERSION이 tag의 version을 선언하는지, go.mod가 그 directory의 module path를 선언하는지, CHANGELOG.md와 CHANGELOG.ko.md에 section
 //             `## X.Y.Z`가 있는지 확인한다. Go module tag는 그 go.mod와 변경 이력만 확인한다. 실패는 file과 두 값을 적는다.
 //   assets    root tag의 asset을 .runtime/release/assets에 만든다: npm package는 `npm pack`, Composer package는 그 directory의
-//             `git archive` zip(Composer가 설치하는 내용)이다. packed manifest는 polyspec dependency를 정확한 version으로
-//             선언하고, packed composer.json은 `repositories` 없이 tag의 `version`을 가지며, 단계는 asset마다 이를 확인한다
-//             (buildAssets, packedManifestErrors). 이름은 <package-name>-<version>.<ext>이고 `@scope/`는 `scope-`,
+//             `git archive` zip(Composer가 설치하는 내용)이다. packed manifest는 tree의 manifest 그대로이고 polyspec
+//             dependency를 정확한 version으로 선언하며, 단계는 asset마다 이를 확인한다(buildAssets, manifestErrors).
+//             이름은 <package-name>-<version>.<ext>이고 `@scope/`는 `scope-`,
 //             Composer의 `vendor/`는 `vendor-`가 된다. Rust crate와 Go module은 asset이 없다: Cargo는 0.1까지 git
 //             dependency와 tag로 의존하고, Go는 tag로 module을 얻는다. Go module tag는 아무것도 만들지 않는다.
 //   publish   CHANGELOG.md의 section X.Y.Z를 notes로, assets가 만든 asset과 함께 `gh release create <tag> --verify-tag`를
@@ -19,8 +18,7 @@
 //
 // Usage: [GITHUB_REPOSITORY=<owner>/<repo>] node scripts/release/release.mjs verify|versions|assets|publish <tag>
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,7 +45,8 @@ export const RELEASED = [
 
 // NOT_RELEASED는 release하지 않는 추적된 manifest와 그 이유다. 추적된 manifest는 모두 RELEASED나 여기에 있다(release-check).
 export const NOT_RELEASED = {
-  'package.json': 'the private npm workspace of the repository tools',
+  'package.json': 'the private npm workspace root: it installs clients/typescript as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides',
+  'composer.json': 'the private Composer root: it installs clients/php as a path repository and takes polyspec/ordered-json from its GitHub release zip',
   'clients/rust/Cargo.toml': 'the Cargo workspace of the Rust crates, no package of its own',
   'clients/rust/case-clock/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
   'clients/rust/case-database/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
@@ -149,7 +148,7 @@ export function versionErrors({ version, module }, read) {
       const text = read(path);
       if (text === null) { errors.push(`${path} is missing; the tag releases it`); continue; }
       const found = manifest(kind, text).version;
-      if (found !== undefined && found !== version) errors.push(`${path} declares ${found}, the tag declares ${version}`);
+      if (found !== version) errors.push(`${path} declares ${found ?? 'no version'}, the tag declares ${version}`);
     }
   } else goModule(`${module}/go.mod`, `${GO_MODULE}/${module}`);
   for (const path of CHANGELOGS) {
@@ -161,14 +160,11 @@ export function versionErrors({ version, module }, read) {
 
 // polyspec는 0.1까지 registry에 publish하지 않는다. 소비자는 필요한 release asset을 내려받아 함께 설치하고(npm은 그 tarball을
 // `file:`로 나열하고, Composer는 zip을 담은 artifact repository를 쓴다), asset은 서로를 이름과 정확한 version으로 찾는다. 그래서
-// packed manifest는 polyspec dependency를 정확한 version으로만 선언한다: URL, path, git source와 범위는 저장소 밖에서 풀리지 않거나
-// 함께 설치한 asset과 맞지 않는다.
+// release하는 manifest는 저장소 tree의 것 그대로이고, polyspec dependency를 정확한 version으로만 선언한다. 개발에서 다른 polyspec
+// 저장소의 release asset을 주는 것은 publish하지 않는 root(package.json의 `overrides`, composer.json의 `repositories`)다.
 const NPM_SECTIONS = ['dependencies', 'peerDependencies', 'optionalDependencies'];
 const COMPOSER_SECTIONS = ['require', 'require-dev'];
 const EXACT = /^\d+\.\d+\.\d+$/;
-// RELEASE_TARBALL은 저장소의 package.json이 git 없이 설치하려고 polyspec npm package를 가리키는 GitHub Release tarball의 URL이다.
-// packedPackage는 그것을 tag의 version으로 바꾼다.
-export const RELEASE_TARBALL = /^https:\/\/github\.com\/polyspec\/[^/]+\/releases\/download\/v(\d+\.\d+\.\d+)\/[^/]+\.tgz$/;
 
 // dependencyForm은 정확한 version이 아닌 dependency spec의 형식을 이름으로 돌려준다.
 function dependencyForm(spec) {
@@ -179,81 +175,45 @@ function dependencyForm(spec) {
   return 'a version range';
 }
 
-// packedManifestErrors는 release asset의 packed manifest(npm의 package.json, Composer의 composer.json) text에서 규칙을 어긴
-// 곳마다 오류 하나를 돌려준다: `@polyspec/*`와 `polyspec/*` dependency는 정확한 version이고, Composer manifest는
-// `repositories`가 없으며(Composer는 root package의 것만 읽는다) `version`이 release의 version이다(artifact repository는 zip의
-// version을 읽는다).
-export function packedManifestErrors(asset, kind, text, version) {
+// manifestErrors는 release하는 manifest(npm의 package.json, Composer의 composer.json) text에서 규칙을 어긴 곳마다 오류 하나를
+// 돌려준다: `@polyspec/*`와 `polyspec/*` dependency는 정확한 version이고, Composer manifest는 `repositories`가 없으며(Composer는
+// root package의 것만 읽는다) `version`이 release의 version이다(artifact repository는 zip의 version을 읽는다).
+export function manifestErrors(file, kind, text, version) {
   const json = JSON.parse(text);
   const errors = [];
   const [scope, sections] = kind === 'npm' ? ['@polyspec/', NPM_SECTIONS] : ['polyspec/', COMPOSER_SECTIONS];
   for (const section of sections)
     for (const [name, spec] of Object.entries(json[section] ?? {}))
       if (name.startsWith(scope) && !EXACT.test(spec))
-        errors.push(`${asset} declares ${section} ${name} as ${JSON.stringify(spec)}, ${dependencyForm(spec)}; declare the exact version of its release`);
+        errors.push(`${file} declares ${section} ${name} as ${JSON.stringify(spec)}, ${dependencyForm(spec)}; declare the exact version of its release`);
   if (kind === 'composer') {
-    if ('repositories' in json) errors.push(`${asset} declares repositories, which Composer reads only from the root package; remove them from the packed composer.json`);
-    if (json.version !== version) errors.push(`${asset} declares the version ${json.version ?? '(none)'}, the release is ${version}; an artifact repository reads the version from the zip`);
+    if ('repositories' in json) errors.push(`${file} declares repositories, which Composer reads only from the root package; give them in the root composer.json`);
+    if (json.version !== version) errors.push(`${file} declares the version ${json.version ?? '(none)'}, the release is ${version}; an artifact repository reads the version from the zip`);
   }
   return errors;
 }
 
-// packedPackage는 npm tarball에 넣는 package.json이다: `@polyspec/*` dependency의 RELEASE_TARBALL URL을 그 tag의 version으로
-// 바꾼다. 다른 형식은 그대로 두어 packedManifestErrors가 거부한다. 저장소의 package.json은 바꾸지 않는다.
-export function packedPackage(text) {
-  const json = JSON.parse(text);
-  for (const section of NPM_SECTIONS)
-    for (const [name, spec] of Object.entries(json[section] ?? {}))
-      if (name.startsWith('@polyspec/')) json[section][name] = RELEASE_TARBALL.exec(spec)?.[1] ?? spec;
-  return `${JSON.stringify(json, null, 2)}\n`;
-}
-
-// packedComposer는 Composer zip에 넣는 composer.json이다: 저장소의 composer.json에서 `repositories`를 빼고 `version`을 release의
-// version으로 둔다(`type` 다음, 없으면 `name` 다음). 저장소의 composer.json은 바꾸지 않는다.
-export function packedComposer(text, version) {
-  const { repositories, version: declared, ...rest } = JSON.parse(text);
-  const after = 'type' in rest ? 'type' : 'name';
-  const packed = {};
-  for (const [key, value] of Object.entries(rest)) {
-    packed[key] = value;
-    if (key === after) packed.version = version;
-  }
-  return `${JSON.stringify(packed, null, 4)}\n`;
-}
-
-// buildAssets는 commit sha의 npm과 Composer asset을 directory assets에 만들고, 각 asset의 packed manifest를 그 asset에서
-// 다시 읽어 packedManifestErrors로 확인한 뒤 그 이름을 돌려준다. npm package는 package.json을 packedPackage로 바꿔 다시 pack한
-// `npm pack`이고, Composer package는 그 directory의 `git archive` zip이며 그 composer.json은 packedComposer다.
-// run(program, args, options)는 stdout을 돌려주고 실패하면 던진다.
+// buildAssets는 commit sha의 npm과 Composer asset을 directory assets에 만들고 그 이름을 돌려준다: npm package는 `npm pack`,
+// Composer package는 그 directory의 `git archive` zip이다. asset마다 packed manifest를 다시 읽어, 그것이 commit의 manifest와
+// 같은지와 manifestErrors를 확인하고, 어긋나면 모두 적은 오류를 던진다. run(program, args, options)는 stdout을 돌려주고 실패하면
+// 던진다.
 export function buildAssets({ root, sha, version, assets, run, log = console.log }) {
   mkdirSync(assets, { recursive: true });
   const built = [];
   const errors = [];
   for (const { path, kind } of RELEASED.filter(({ kind }) => EXTENSION[kind])) {
     const dir = path.slice(0, path.lastIndexOf('/'));
-    const text = run('git', ['show', `${sha}:${path}`]);
-    const asset = assetName(manifest(kind, text).name, version, EXTENSION[kind]);
+    const source = run('git', ['show', `${sha}:${path}`]);
+    const asset = assetName(manifest(kind, source).name, version, EXTENSION[kind]);
     const file = join(assets, asset);
     if (kind === 'npm') {
       run('make', ['--no-print-directory', 'typescript-build']);
-      // npm pack이 만든 tarball을 풀어 package.json을 packedPackage로 바꾸고 그 directory를 다시 pack한다.
-      const unpacked = mkdtempSync(join(tmpdir(), 'orm-release-npm-'));
-      try {
-        const packed = run('npm', ['pack', '--pack-destination', unpacked], { cwd: join(root, dir) }).trim().split('\n').at(-1).trim();
-        run('tar', ['-xzf', join(unpacked, packed), '-C', unpacked]);
-        const packageJson = join(unpacked, 'package', 'package.json');
-        writeFileSync(packageJson, packedPackage(readFileSync(packageJson, 'utf8')));
-        const repacked = run('npm', ['pack', '--pack-destination', assets], { cwd: join(unpacked, 'package') }).trim().split('\n').at(-1).trim();
-        if (repacked !== asset) renameSync(join(assets, repacked), file);
-      } finally {
-        rmSync(unpacked, { recursive: true, force: true });
-      }
-    } else {
-      const name = path.slice(dir.length + 1);
-      run('git', ['archive', '--format=zip', '-o', file, `--add-virtual-file=${name}:${packedComposer(text, version)}`, `${sha}:${dir}`, `:(exclude)${name}`]);
-    }
-    const packedText = kind === 'npm' ? run('tar', ['-xzOf', file, 'package/package.json']) : run('unzip', ['-p', file, 'composer.json']);
-    errors.push(...packedManifestErrors(asset, kind, packedText, version));
+      const packed = run('npm', ['pack', '--pack-destination', assets], { cwd: join(root, dir) }).trim().split('\n').at(-1).trim();
+      if (packed !== asset) renameSync(join(assets, packed), file);
+    } else run('git', ['archive', '--format=zip', '-o', file, `${sha}:${dir}`]);
+    const packed = kind === 'npm' ? run('tar', ['-xzOf', file, 'package/package.json']) : run('unzip', ['-p', file, 'composer.json']);
+    if (packed !== source) errors.push(`${asset} packs a manifest that differs from ${path}; publish the manifest of the tree unchanged`);
+    errors.push(...manifestErrors(asset, kind, packed, version));
     built.push(asset);
     log(`release: built ${asset}`);
   }

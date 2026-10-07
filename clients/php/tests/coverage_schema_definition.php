@@ -4,7 +4,7 @@ declare(strict_types=1);
 // 각 case를 PHP dbspec 구현(Polyspec\Orm\Dbspec\Dbspec)으로 실행한다: parse 후 emit의
 // byte 단위 재현, document set의 manifest hash, dialect별 rendered statement.
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;

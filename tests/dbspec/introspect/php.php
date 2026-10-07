@@ -8,7 +8,7 @@ declare(strict_types=1);
 //
 // Usage: php tests/dbspec/introspect/php.php <mysql|postgres|sqlite> <uri>
 
-require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../../../vendor-php/autoload.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;

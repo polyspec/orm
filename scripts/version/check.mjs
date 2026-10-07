@@ -17,10 +17,9 @@ const cargoToml = text => [
 ];
 const cargoLock = text => [...text.matchAll(/^name = "([^"]+)"\nversion = "([^"]+)"$/gm)]
   .filter(m => RUST_PACKAGES.includes(m[1])).map(m => m[2]);
-const packageLock = text => {
-  const lock = JSON.parse(text);
-  return [lock.version, lock.packages?.['']?.version].filter(Boolean);
-};
+// 저장소 root의 package-lock.json에서 orm version은 workspace clients/typescript의 항목이다(root는 version이 없는 private
+// workspace다).
+const packageLock = text => [JSON.parse(text).packages?.['clients/typescript']?.version].filter(Boolean);
 
 // 각 선언의 파일과 그 파일에서 orm version을 읽는 방법.
 export const DECLARATIONS = [
@@ -28,8 +27,9 @@ export const DECLARATIONS = [
     'clients/rust/testcase', 'clients/rust/tests', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
   ...['clients/rust', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
   { file: 'clients/php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'clients/php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
   { file: 'clients/typescript/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'clients/typescript/package-lock.json', read: packageLock },
+  { file: 'package-lock.json', read: packageLock },
   { file: 'contracts/features.json', read: text => [JSON.parse(text).contract_version].filter(Boolean) },
   { file: 'README.md', read: first(/^# orm (\S+)$/gm) },
   { file: 'README.ko.md', read: first(/^# orm (\S+)$/gm) },

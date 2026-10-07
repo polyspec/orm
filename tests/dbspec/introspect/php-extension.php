@@ -8,7 +8,7 @@ declare(strict_types=1);
 //
 // Usage: php -d extension=<orm_dbspec library> tests/dbspec/introspect/php-extension.php <mysql|postgres|sqlite> <uri>
 
-require __DIR__ . '/../../../clients/php/vendor/autoload.php';
+require __DIR__ . '/../../../vendor-php/autoload.php';
 
 use Polyspec\Orm\Dbspec\Native\Dbspec;
 use Polyspec\Orm\Orm;

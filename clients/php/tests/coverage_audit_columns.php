@@ -9,7 +9,7 @@ declare(strict_types=1);
 // document의 model은 임시 directory에 생성한다: 한 process는 한 document set의
 // model만 가진다.
 
-require dirname(__DIR__) . '/vendor/autoload.php';
+require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
 require __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\CoverageAuditColumns\Card;

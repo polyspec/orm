@@ -2,6 +2,7 @@
   "name": "polyspec/orm-dbspec",
   "description": "PHP extension orm_dbspec: the dbspec interface of orm (parse, emit, render, plans, Mermaid, introspection and apply) in C",
   "type": "php-ext",
+  "version": "0.0.4",
   "license": "MIT",
   "require": {
     "php": ">=8.4"

@@ -13,9 +13,9 @@
 
 ## release asset에서 설치
 
-0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip`, `polyspec-orm-dbspec-<version>.zip`이 있다. packed manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make package-check`는 현재 commit의 asset을 저장소 밖의 directory에서 이렇게 설치한다.
+0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip`, `polyspec-orm-dbspec-<version>.zip`이 있다. 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make package-check`는 현재 commit의 asset을 저장소 밖의 directory에서 offline으로 이렇게 설치한다.
 
-- npm: orm tarball과 그것이 의존하는 polyspec package의 tarball(packed `package.json`이 적은 version의 ordered-json release에 있는 `@polyspec/ordered-json`)을 모두 `file:` dependency로 나열한다:
+- npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 
   ```json
   {
@@ -26,21 +26,20 @@
   }
   ```
 
-- Composer: `artifact` repository는 내려받은 zip의 directory다. Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. `composer.json`에 `version`이 없는 zip(ordered-json 0.0.2)은 대신 `package` repository 항목으로 준다: 그 `composer.json`에 `version`과 zip의 `dist`를 더한 것이며, Composer는 package 항목을 zip의 file 대신 읽기 때문이다.
+- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. ordered-json의 zip은 ordered-json 0.0.3부터 `version`을 선언하므로, 그 release부터 artifact repository가 orm zip과 ordered-json zip을 담는다.
 
   ```json
   {
     "require": { "polyspec/orm": "<version>" },
-    "repositories": [
-      { "type": "artifact", "url": "vendor/polyspec" },
-      { "type": "package", "package": {
-        "name": "polyspec/ordered-json", "version": "0.0.2", "type": "library",
-        "require": { "php": ">=8.2", "ext-json": "*", "ext-pcre": "*" },
-        "autoload": { "files": ["src/OrderedJson.php"] },
-        "dist": { "type": "zip", "url": "vendor/polyspec-ordered-json-0.0.2.zip" }
-      } }
-    ]
+    "repositories": [{ "type": "artifact", "url": "vendor/polyspec" }]
   }
   ```
 
   `polyspec/orm-dbspec`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
+
+## 개발 배치
+
+release하는 manifest는 clients/typescript/package.json, clients/php/composer.json, clients/php-extension/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
+
+- 저장소 root의 package.json은 `workspaces`에 clients/typescript를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL에서 받는다. URL이 release tag를 적는다. root의 `npm ci`가 workspace를 설치하고, .npmrc는 clients/typescript의 dependency를 clients/typescript/node_modules에 둔다(`install-strategy=nested`). root의 package-lock.json이 유일한 npm lockfile이다.
+- 저장소 root의 composer.json은 clients/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL인 `package` repository에서 설치한다. URL이 release tag를 적는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.

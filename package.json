@@ -5,6 +5,9 @@
   "engines": {
     "node": ">=22.16.0"
   },
+  "workspaces": [
+    "clients/typescript"
+  ],
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "node scripts/docs/build.mjs",
@@ -12,14 +15,15 @@
     "docs:check": "npm run docs:build && node scripts/docs/check.mjs",
     "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
     "docs:rules-check": "node scripts/docs/rules.mjs",
-    "typescript:check": "tsc -p clients/typescript/tsconfig.json --noEmit",
+    "typescript:check": "npm exec --workspace clients/typescript -- tsc -p tsconfig.json --noEmit",
     "typescript:build": "npm --prefix clients/typescript run build",
     "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node clients/typescript/tests/dsn.mjs && node clients/typescript/tests/idle-connection-end.mjs && node clients/typescript/tests/engine.mjs && node clients/typescript/tests/generate.mjs && node clients/typescript/tests/generate-scan.mjs && node clients/typescript/tests/codec-vector.mjs && node clients/typescript/tests/styled-value.mjs && node clients/typescript/tests/dbspec.mjs && node clients/typescript/tests/dbspec-rules.mjs && node clients/typescript/tests/package-declarations.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
-    "@types/node": "22.20.2",
     "mermaid": "11.17.2",
-    "typescript": "^5.9.2",
     "vitepress": "1.6.4"
+  },
+  "overrides": {
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.tgz"
   }
 }

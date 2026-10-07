@@ -12,7 +12,8 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { COMPUTE, runCase, runLong, stepLines } from '../../../tests/testcase.mjs';
 
 const client = new URL('..', import.meta.url).pathname;
@@ -69,9 +70,11 @@ try {
     const tar = await command('tar', ['-xzf', join(work, filename), '-C', target, '--strip-components', '1'], {}, step);
     if (tar.code !== 0) throw new Error(`tar exited with ${tar.code}`);
     cpSync(join(client, 'node_modules', '@polyspec', 'ordered-json'), join(project, 'node_modules', '@polyspec', 'ordered-json'), { recursive: true });
-    for (const types of [['@types', 'node'], ['undici-types']]) {
-      cpSync(join(client, 'node_modules', ...types), join(project, 'node_modules', ...types), { recursive: true });
-    }
+    // undici-types는 @types/node의 dependency다: node처럼 @types/node에서 찾는다(npm이 그 아래나 위에 설치한다).
+    const typesNode = join(client, 'node_modules', '@types', 'node');
+    const undiciTypes = dirname(createRequire(join(typesNode, 'package.json')).resolve('undici-types/package.json'));
+    cpSync(typesNode, join(project, 'node_modules', '@types', 'node'), { recursive: true });
+    cpSync(undiciTypes, join(project, 'node_modules', 'undici-types'), { recursive: true });
     step(`installed ${name}, ordered-json, @types/node and undici-types into ${project}`);
   });
   if (installed) {

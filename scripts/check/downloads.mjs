@@ -11,10 +11,11 @@ import { join } from 'node:path';
 
 // CARGO_LOCKS는 check가 build하는 crate의 Cargo.lock이 있는 manifest다.
 export const CARGO_MANIFESTS = ['clients/rust/Cargo.toml', 'bench/rust/Cargo.toml', 'tests/interfaces/rust/Cargo.toml'];
-// NPM_ROOTS는 npm ci로 설치하는 package directory다.
-export const NPM_ROOTS = ['.', 'clients/typescript'];
-// COMPOSER_ROOTS는 composer install로 설치하는 package directory다.
-export const COMPOSER_ROOTS = ['clients/php'];
+// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 clients/typescript를 workspace로 함께 설치한다.
+export const NPM_ROOTS = ['.'];
+// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 clients/php를 path
+// repository로 설치한다.
+export const COMPOSER_ROOTS = ['.'];
 
 const fix = 'run make install, which downloads it';
 const offline = { CARGO_NET_OFFLINE: 'true', GOPROXY: 'off', npm_config_offline: 'true', COMPOSER_DISABLE_NETWORK: '1' };
@@ -36,11 +37,14 @@ export function npmMissing(root, directory) {
 }
 
 // composerMissing은 composer.lock의 package 가운데 vendor에 없거나 version이 다른 것이다.
+// vendor directory는 composer.json의 config.vendor-dir이고, 없으면 vendor다.
 export function composerMissing(root, directory) {
   const lock = join(root, directory, 'composer.lock');
-  const installed = join(root, directory, 'vendor', 'composer', 'installed.json');
+  const manifest = join(root, directory, 'composer.json');
+  const vendor = (existsSync(manifest) ? json(manifest).config?.['vendor-dir'] : undefined) ?? 'vendor';
+  const installed = join(root, directory, vendor, 'composer', 'installed.json');
   if (!existsSync(lock)) return [];
-  if (!existsSync(installed)) return [`${directory}/vendor is not installed`];
+  if (!existsSync(installed)) return [`${join(directory, vendor)} is not installed`];
   const present = new Map((json(installed).packages ?? []).map(entry => [entry.name, entry.version]));
   const locked = json(lock);
   return [...(locked.packages ?? []), ...(locked['packages-dev'] ?? [])]

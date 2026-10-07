@@ -33,7 +33,7 @@ if ($mode === 'extension') {
         fwrite(STDERR, "declarations.php client: the extension orm_dbspec is loaded; run php without it\n");
         exit(1);
     }
-    require dirname(__DIR__, 2) . '/php/vendor/autoload.php';
+    require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
     $classes = [];
     foreach (glob(dirname(__DIR__, 2) . '/php/src/Dbspec/*.php') as $file) {
         $client = new ReflectionClass('Polyspec\\Orm\\Dbspec\\' . basename($file, '.php'));
