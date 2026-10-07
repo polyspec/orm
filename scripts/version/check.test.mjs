@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { versionErrors, DECLARATIONS } from './check.mjs';
+import { changelogErrors, CHANGELOGS, versionErrors, DECLARATIONS } from './check.mjs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
 
 const root = resolve(import.meta.dirname, '..', '..');
@@ -66,4 +66,29 @@ caseTest('the version of each Rust package in a lockfile and each version pin of
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+// 변경 이력 case(G5.113-1)는 저장소의 CHANGELOG.md와 CHANGELOG.ko.md가 `## Unreleased`로 시작하는지 보고, 최소 file에서 release
+// PR의 결과를 받아들이며 빠지거나 둘인 `## Unreleased`, VERSION보다 큰 section, 순서가 틀린 section, 두 언어의 다른 section을
+// 거부한다.
+caseTest('the changelogs keep ## Unreleased at the top above the released versions', COMPUTE, async () => {
+  const version = (await readFile(join(root, 'VERSION'), 'utf8')).trim();
+  const files = Object.fromEntries(await Promise.all(CHANGELOGS.map(async path => [path, await readFile(join(root, path), 'utf8')])));
+  assert.deepEqual(changelogErrors(version, files), []);
+  const pair = text => ({ 'CHANGELOG.md': `# Changelog\n\n${text}`, 'CHANGELOG.ko.md': `# 변경 이력\n\n${text}` });
+  // release PR 0.0.2: VERSION은 0.0.2이고 `## Unreleased`는 `## 0.0.2`가 되며 그 위에 빈 `## Unreleased`가 온다.
+  assert.deepEqual(changelogErrors('0.0.2', pair('## Unreleased\n\n## 0.0.2\n\n- G1: a.\n\n## 0.0.1\n\n- G0: b.\n')), []);
+  assert.deepEqual(changelogErrors('0.0.2', pair('## 0.0.2\n\n- G1: a.\n')), [
+    'CHANGELOG.md: the first section is ## 0.0.2; write the entries of the changes that no tag released under ## Unreleased at the top',
+    'CHANGELOG.ko.md: the first section is ## 0.0.2; write the entries of the changes that no tag released under ## Unreleased at the top',
+  ]);
+  assert.deepEqual(changelogErrors('0.0.2', pair('## Unreleased\n\n## 0.1.0\n\n## Unreleased\n')).slice(0, 2), [
+    'CHANGELOG.md: ## Unreleased appears 2 times; keep one at the top',
+    'CHANGELOG.md: the section ## 0.1.0 is above VERSION 0.0.2; the release PR sets VERSION to the version it releases',
+  ]);
+  assert.deepEqual(changelogErrors('0.0.3', { 'CHANGELOG.md': '## Unreleased\n\n## 0.0.1\n\n## 0.0.2\n', 'CHANGELOG.ko.md': '## Unreleased\n\n## 0.0.2\n\n## next\n' }), [
+    'CHANGELOG.md: the section ## 0.0.2 follows ## 0.0.1; a newer version comes first and appears once',
+    'CHANGELOG.ko.md: the section ## next is neither ## Unreleased nor a released version X.Y.Z',
+    'CHANGELOG.ko.md: the sections ## Unreleased, ## 0.0.2, ## next differ from the sections ## Unreleased, ## 0.0.1, ## 0.0.2 of CHANGELOG.md',
+  ]);
 });

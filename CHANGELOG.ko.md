@@ -1,6 +1,8 @@
 # 변경 이력
 
-## 0.0.2
+## Unreleased
+
+- G5.113-1: CHANGELOG.md와 CHANGELOG.ko.md는 어느 tag도 release하지 않은 변경을 맨 위의 `## Unreleased` 아래에 두고, `make version-check`는 그것과, 다른 section이 모두 VERSION보다 크지 않은 release한 version이기를 요구한다.
 
 - G5.112: PHP 확장의 선언 test는 php.ini 없이 PHP를 실행할 때 확장이 요구하는 module(예: shared `pdo`)을 load하고, 실패는 PHP의 stdout을 적는다.
 
@@ -1495,8 +1497,6 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 - Go JSON·JSONS codec이 ordered-json 값을 사용하여 객체 멤버 순서를 보존하고 빈 객체와 빈 배열을 구분한다.
 - Go JSON·JSONS codec이 tag가 있는 Go 구조체와 raw `jsontext.Value` 입력을 표준 JSON encoder 경계 없이 ordered-json으로 변환한다.
 - Go client가 ordered-json 모노레포의 `github.com/polyspec/ordered-json/go` `v0.0.1` 패키지를 사용한다.
-
-## 0.0.1
 
 - 초기 개발 version이다.
 - 공통 IR, compiler, generated client, database executor, migration, 인증된 version encryption, relation, batch, keyset pagination, conformance check를 추가했다.
