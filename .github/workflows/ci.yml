@@ -5,7 +5,9 @@
 # into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
 # once, each running make check GROUP=<group> on the targets CI_TARGETS_<group>;
 # the groups together run every target of CHECK_TARGETS once. The job docs runs
-# the documentation checks of the published site. This is where the full suite
+# the documentation checks of the published site, and the last job ci-passed,
+# the check that the ruleset of main requires, passes only when every other
+# job succeeded. This is where the full suite
 # runs: on every pull request and merge group, never stopping at a failure, and
 # recording enough to fix every failure before the next run. A check it lacks
 # belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
@@ -244,3 +246,18 @@ jobs:
           name: docs-${{ github.run_id }}-${{ github.run_attempt }}
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_docs/report/
           if-no-files-found: error
+
+  # The one check of this workflow that the ruleset of main requires: it runs
+  # after every other job, also after a failed or cancelled one (if: always()),
+  # and passes only when each job of needs succeeded, every CI group of test
+  # included. make repo-check requires that it is the last job and that needs
+  # lists every other job.
+  ci-passed:
+    if: ${{ always() }}
+    needs: [test, docs]
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - name: every job passed
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: make ci-passed

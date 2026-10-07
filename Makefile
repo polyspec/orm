@@ -1,4 +1,4 @@
-.PHONY: check ci-group-needs feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check ci-group-needs ci-passed feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
@@ -173,6 +173,11 @@ check:
 	node scripts/check/full-run.mjs decide check
 	$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
 
+# ci-passed는 ci.yml의 마지막 job ci-passed가 실행한다: 그 job이 needs로 받은 다른 모든 job의 결과(CI_NEEDS, `${{
+# toJSON(needs) }}`)가 success일 때만 통과한다(scripts/check/ci-passed.mjs). ruleset은 이 check와 push-gate를 요구한다.
+ci-passed:
+	node scripts/check/ci-passed.mjs
+
 # ci-group-needs는 CI group GROUP의 job이 실행할 setup step을 step output 줄(`<output>=true|false`)로 쓴다: group의
 # target이 contracts/check-inputs.json에 선언한 need에서 정한다(scripts/check/ci-setup.mjs). workflow는 그 줄을
 # $GITHUB_OUTPUT에 더하고, setup step은 자기 output이 true일 때만 실행한다.
@@ -232,7 +237,7 @@ checklist-check/run:
 # full-run-check는 전체 suite의 guard와 runner(scripts/check/full-run.mjs, scripts/check/run.mjs)를 임시 git
 # checkout과 stub 단계로 검사한다. 실제 target과 database는 실행하지 않는다.
 full-run-check:
-	node --test scripts/check/full-run.test.mjs scripts/check/continue.test.mjs scripts/check/step.test.mjs scripts/check/downloads.test.mjs scripts/check/push-gate.test.mjs
+	node --test scripts/check/full-run.test.mjs scripts/check/continue.test.mjs scripts/check/step.test.mjs scripts/check/downloads.test.mjs scripts/check/push-gate.test.mjs scripts/check/ci-passed.test.mjs
 
 # dbspec-rust-check는 공유 dbspec vector, Rust rule case, plan과 Mermaid case, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 두 번 실행한다.
