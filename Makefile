@@ -49,9 +49,9 @@ export CARGO_PROFILE_DEV_DEBUG := line-tables-only
 # feature coverage와 검증 명령, dbspec Rust check)은 `--workspace --features
 # $(ORM_RUST_TEST_FEATURES)`로 의존성 feature를 같게 정해 test build 하나를 함께 쓰고, `--test`와
 # 이름 filter로 자기 test만 실행한다. `-p`로 package를 고르면 feature가 달라져 같은 crate를 다시
-# compile한다. test-faults는 fault 주입 module만 더하고, live-db는 orm-tests의 dev-dependency가
+# compile한다. test-faults는 fault 주입 module만 더하고, live-db는 polyspec-orm-tests의 dev-dependency가
 # 이미 켜는 feature다.
-export ORM_RUST_TEST_FEATURES := orm/test-faults,orm-build/live-db
+export ORM_RUST_TEST_FEATURES := polyspec-orm/test-faults,polyspec-orm-build/live-db
 # check는 network를 읽지 않는다: make install이 check가 읽는 것을 download하고, 모든 recipe와 그것이 시작하는
 # script는 cargo, go, npm, Composer를 offline으로 실행한다. 그래서 빠진 download는 registry에 닿는 실행과 닿지 않는
 # 실행으로 결과가 갈리지 않고 곧바로 실패하며, scripts/check/downloads.mjs가 그것을 `run make install`과 함께 적는다.
