@@ -312,9 +312,11 @@ async function dependencyFiles(executable, workspace) {
 // package마다 `go test -c` test binary와 test2json, Rust crate마다 `cargo test --no-run`의
 // test binary다. 두 번의 실행과 모든 database가 같은 binary를 실행한다. build 하나는 장기 작업
 // 하나로 시작, 진행(compiler 출력), 종료 코드, 결과와 경과 시간을 보고하고 기한이 없다(runLong). 실패한
-// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다.
+// build는 builds의 error로 남고 그 build를 쓰는 실행이 그 error로 실패한다. state reader와 Go build는
+// 끝난 뒤 돌아오고, 가장 긴 Rust build는 시작만 하고 돌아온다: builds.cargoReady가 그 build가 끝나고
+// builds.cargo를 채우면 끝나는 promise다. 그래서 cargo를 쓰지 않는 실행은 Rust build와 함께 진행한다.
 async function buildNative(plans, directory) {
-  const builds = { state: null, test2json: null, go: new Map(), cargo: new Map() };
+  const builds = { state: null, test2json: null, go: new Map(), cargo: new Map(), cargoReady: Promise.resolve() };
   const build = async (name, work) => {
     let failure;
     const passed = await runLong(`features/coverage/build/${name}`, async ({ step }) => {
@@ -345,6 +347,14 @@ async function buildNative(plans, directory) {
       go(['test', '-c', '-tags', 'featurecoverage', '-o', binary, '.'], cwd, step));
     builds.go.set(cwd, error ? { error } : { binary });
   }
+  builds.cargoReady = buildCargo(plans, directory, builds, build);
+  return builds;
+}
+
+// buildCargo는 Rust test binary의 build다(buildNative). 끝나면 builds.cargo에 crate마다 그 binary나 error를 둔다.
+// 실패는 builds.cargo의 error로 남기므로 이 promise는 거부되지 않는다.
+async function buildCargo(plans, directory, builds, build) {
+  const specs = plans.flatMap(plan => plan.native);
   // Rust test binary는 crate가 속한 workspace마다 한 번 build한다. `--workspace`와
   // ORM_RUST_TEST_FEATURES(Makefile)는 client DB test와 다른 Rust 검사가 쓰는 것과 같은 feature
   // 결정을 만들어 그 build를 함께 쓴다. crate 하나만 고르면(`-p`, manifest) feature가 달라져 같은
@@ -389,7 +399,6 @@ async function buildNative(plans, directory) {
     });
     for (const crate of crates) builds.cargo.set(crate, error ? { error } : { files, programs: programsOf.get(workspace) ?? {} });
   }
-  return builds;
 }
 
 // prepared는 spec 하나를 build된 binary를 실행하는 process 목록으로 바꾼다. Go는 test2json이
@@ -425,6 +434,9 @@ async function state(builds, database, dsn, timeoutMs) {
   if (!match) throw new Error('database state reader returned an invalid digest');
   return match[1];
 }
+
+// usesCargo는 실행이 cargo test binary(buildNative의 Rust build)를 쓰는지다.
+const usesCargo = plan => plan.native.some(spec => spec.format === 'cargo');
 
 // executeCoverage의 기한이다.
 // timeoutMs: 실행 하나가 띄우는 process 하나의 기한이다. process는 build된 binary로, database
@@ -489,17 +501,23 @@ export async function executeCoverage(manifest, root, timeoutMs = DATABASE) {
     builds = await buildNative(plans, directory);
     // 실행은 database마다 한 줄(lane)로 차례로 하고, 줄끼리는 함께 진행한다. 한 database의 state는
     // 그 database의 실행만 바꿀 수 있으므로 앞뒤 state 비교는 그대로이고, 세 database와
-    // database가 없는 실행이 서로 기다리지 않는다.
+    // database가 없는 실행이 서로 기다리지 않는다. 줄 안에서는 cargo를 쓰지 않는 실행이 먼저, Rust build
+    // 동안 진행하고, cargo test binary를 쓰는 실행이 그 build가 끝난 뒤 manifest의 순서대로 온다.
+    // 실행마다 자기 앞뒤 state를 비교하므로 실행의 순서는 결과를 바꾸지 않는다.
     const lanes = Map.groupBy(plans, plan => plan.item.database);
-    await Promise.all([...lanes.values()].map(lane => runLane(lane)));
+    await Promise.all([...lanes.values()].map(lane => runLane([...lane.filter(plan => !usesCargo(plan)), ...lane.filter(usesCargo)])));
   } finally {
+    // 임시 directory를 지우기 전에 Rust build(그 directory에 binary를 복사한다)가 끝나기를 기다린다.
+    await builds?.cargoReady;
     await rm(directory, { recursive: true, force: true });
   }
   return [...errors, ...checkCoverage(manifest, reports)];
 
   async function runLane(lane) {
-    for (const { feature, item, native, dsn } of lane) {
+    for (const plan of lane) {
+        const { feature, item, native, dsn } = plan;
         const { key, command } = item;
+        if (usesCargo(plan)) await builds.cargoReady;
         reports[key] = [];
         const testEnv = { ...process.env };
         delete testEnv.ORM_FEATURE_DATABASE;

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.123: the feature coverage runs the cases that use no cargo test binary while the Rust coverage build runs, and the Rust cases of each database after it.
+
 - G5.122: every verification command of contracts/features.json declares its `shard` (`rust` or `other`), and `make check` runs the feature coverage and the two shards as `make feature-coverage`, `make feature-verify-rust` and `make feature-verify-other`, each in a CI group of its own; `make feature-check` runs the three.
 
 - G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>` applies the 2000 table plan to the given databases, and CI runs the MySQL apply in the group `stress-mysql` (`make feature-stress-mysql-check`) and the stress bench with the PostgreSQL and SQLite applies in the group `stress-pg-sqlite` (`make feature-stress-pg-sqlite-check`).

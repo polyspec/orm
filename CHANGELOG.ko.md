@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.123: 기능 coverage는 cargo test binary를 쓰지 않는 case를 Rust coverage build 동안 실행하고, database마다 Rust case를 그 build 뒤에 실행한다.
+
 - G5.122: contracts/features.json의 모든 검증 명령은 자기 `shard`(`rust`나 `other`)를 선언하고, `make check`는 기능 coverage와 두 shard를 `make feature-coverage`, `make feature-verify-rust`, `make feature-verify-other`로 각각 자기 CI group에서 실행한다. `make feature-check`는 그 셋을 실행한다.
 
 - G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>`는 2000 table plan을 주어진 database에 적용하고, CI는 MySQL 적용을 group `stress-mysql`(`make feature-stress-mysql-check`)에서, stress bench와 PostgreSQL, SQLite 적용을 group `stress-pg-sqlite`(`make feature-stress-pg-sqlite-check`)에서 실행한다.
