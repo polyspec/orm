@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.110: 문서는 Rust crate를 `polyspec-orm`과 `polyspec-orm-build`로 부른다.
+
 - G5.109: `make timing-check`는 `polyspec-orm-schema`의 preempted vector test를 실행한다.
 
 - G5.108: conformance vector `conditions_values`는 대소문자 무시 조건 `uthor-10`으로 seed된 author 이름에 맞춘다.

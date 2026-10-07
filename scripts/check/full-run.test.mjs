@@ -755,13 +755,13 @@ caseTest('a case name that holds an error word does not make its step lines fail
     '[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error',
     "[rust] thread 'audit_record_transaction' (29159) panicked at orm/tests/common/audit_rows.rs:87:67:",
     '[rust] STEP plan elapsed=3ms: write /tmp/go-build1/b001/_testmain.go: disk quota exceeded',
-    'error: could not compile `orm-build` (test "row_mutation")',
+    'error: could not compile `polyspec-orm-build` (test "row_mutation")',
   ]) found.line(line);
   assert.deepEqual(found.lines(), [
     '[rust] FAIL audit_record_transaction elapsed=29ms: install: DRIVER: disk I/O error',
     "[rust] thread 'audit_record_transaction' (29159) panicked at orm/tests/common/audit_rows.rs:87:67:",
     '[rust] STEP plan elapsed=3ms: write /tmp/go-build1/b001/_testmain.go: disk quota exceeded',
-    'error: could not compile `orm-build` (test "row_mutation")',
+    'error: could not compile `polyspec-orm-build` (test "row_mutation")',
   ]);
 });
 

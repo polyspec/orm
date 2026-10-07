@@ -19,7 +19,7 @@
 | `vectors.postgres.json`, `vectors.sqlite.json` | PostgreSQL과 SQLite 기대값 |
 | `runner_go/main.go` | Go 실행기(`clients/go/model`의 생성 모델) |
 | `runner.php` | PHP 실행기(PDO) |
-| `clients/rust/tests/src/conformance.rs` | Rust 실행기(`orm-build` 생성 모델, sqlx) |
+| `clients/rust/tests/src/conformance.rs` | Rust 실행기(`polyspec-orm-build` 생성 모델, sqlx) |
 | `runner_typescript.mjs` | TypeScript 실행기(네이티브 데이터베이스 드라이버) |
 | `check/main.go` | 실행 제어와 결과 비교 |
 
