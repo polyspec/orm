@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- G5.129: step runner의 process 사례는 background 자식이 `sleep`을 실행할 때까지 기다리므로, 보고되는 명령줄이 exec와 process 검사의 순서에 따라 달라지지 않는다.
 - G5.128: CI group 이름은 영문 소문자, 숫자와 `_`만 쓰므로 job마다 runner가 쓰는 보고서 directory를 올리고, `make repo-check`는 upload path가 그것과 다른 group을 실패시킨다.
 
 - G5.127: CI group의 setup은 setup 단계 `databases/create`가 필요로 하는 것(PHP와 Composer autoload)을 포함하고, `make repo-check`는 target이 직접 또는 `databases/create`를 거쳐 필요로 하는 setup step을 건너뛰는 CI group을 실패시킨다.

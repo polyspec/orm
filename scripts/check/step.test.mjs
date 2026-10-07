@@ -52,13 +52,16 @@ caseTest('a passed step that leaves a temporary entry fails and the entry is rem
   }
 });
 
+// The forked child is named after the shell until it runs exec; the step waits for the exec of sleep.
+const UNTIL_EXEC = 'until ps -o args= -p $! | grep -q "^sleep "; do :; done';
+
 caseTest('a passed step that leaves a process in its group fails and the process is killed', PROCESS, async () => {
   const work = mkdtempSync(join(tmpdir(), 'orm-step-test-'));
   const pidFile = join(work, 'pid');
   let pid;
   try {
     const { lines, step } = collect();
-    const error = await run('sh', ['-c', `sleep 37 >/dev/null 2>&1 & echo $! > ${pidFile}`], step).then(() => null, error => error);
+    const error = await run('sh', ['-c', `sleep 37 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}`], step).then(() => null, error => error);
     pid = Number(readFileSync(pidFile, 'utf8'));
     assert.ok(error, 'the step fails');
     assert.match(error.message, new RegExp(`left 1 processes: ${pid} sleep 37`));
@@ -77,7 +80,7 @@ caseTest('a failed step keeps its temporary entries in the report and leaves no 
   let pid;
   try {
     const { lines, step } = collect();
-    await assert.rejects(run('sh', ['-c', `mkdir "$TMPDIR/out"; echo evidence > "$TMPDIR/out/result.txt"; sleep 38 >/dev/null 2>&1 & echo $! > ${pidFile}; exit 3`], step, () => {}, { keep }),
+    await assert.rejects(run('sh', ['-c', `mkdir "$TMPDIR/out"; echo evidence > "$TMPDIR/out/result.txt"; sleep 38 >/dev/null 2>&1 & echo $! > ${pidFile}; ${UNTIL_EXEC}; exit 3`], step, () => {}, { keep }),
       /exited with 3/);
     pid = Number(readFileSync(pidFile, 'utf8'));
     assert.equal(readFileSync(join(keep, 'out/result.txt'), 'utf8'), 'evidence\n');
