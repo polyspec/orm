@@ -1001,10 +1001,15 @@ rust-check/clippy-test-faults: lease-tool
 # 부분은 서로 독립이다(make -k).
 
 .PHONY: docs-ci
-.PHONY: install install-node install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
+.PHONY: install install-release-fixtures install-node install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
 install: install-node install-php install-rust install-go install-node-min install-php-extension-tools
 install-node:
 	$(ONLINE) npm ci
+# install-release-fixtures는 tests/release-install의 소비자 fixture lock을 다시 만든다(scripts/release/install-check.mjs lock):
+# version 범위를 registry에서 푸는 유일한 단계이므로 install target이다. fixture의 package.json이나 composer.json, 또는 release의
+# version이 바뀌면 실행한다.
+install-release-fixtures:
+	$(ONLINE) node scripts/release/install-check.mjs lock
 install-php:
 	$(ONLINE) composer install --no-interaction --no-progress --prefer-dist
 install-rust:

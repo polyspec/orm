@@ -59,10 +59,13 @@
   실행 기록과 summary에 남기고 GitHub `::warning::` annotation으로 쓴다. test는 그래도 통과한다. test는 정확성으로만
   실패하고, 기한은 멈추지 않는 case를 끝낼 뿐이다. `make repo-check`는 측정한 시간이 한도를 넘었다고 실패하는 test를
   거부한다. 경고를 없애려고 기준값을 올리지 않는다. 바꾸려면 CI runner에서 얻은 같은 종류의 새 증거가 필요하다.
-- 검사는 network를 읽지 않는다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm,
-  Composer를 offline으로 실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
-  `COMPOSER_DISABLE_NETWORK`), install target만 `$(ONLINE)`으로 download한다. 빠진 download는 online으로 다시
-  시도하라는 말이 아니라 `run make install`과 함께 실패한다.
+- 검사는 결과가 시간에 따라 달라지는 registry 조회를 하지 않는다: 최신 version 조회, version 범위의 해석, 오래된
+  package나 새 release의 조회가 없다. lock이 정확한 version과 integrity로 고정한 package의 download는 설치이며
+  허용한다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm, Composer를 offline으로
+  실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
+  `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
+  실패한다. `make package-check`의 release asset 설치 검사는 tests/release-install의 commit한 lock에서 빈 cache로
+  `npm ci`와 `composer install`을 실행하고, `make install-release-fixtures`가 그 lock을 쓴다.
 - 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `.go-version`,
   `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면

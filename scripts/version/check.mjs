@@ -30,6 +30,11 @@ export const DECLARATIONS = [
   { file: 'clients/php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
   { file: 'clients/typescript/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
   { file: 'package-lock.json', read: packageLock },
+  // release asset 설치 검사의 소비자 fixture는 release의 asset 이름과 version을 적는다(make install-release-fixtures가 lock을 만든다).
+  { file: 'tests/release-install/npm/package.json', read: text => [/^file:polyspec-orm-(.+)\.tgz$/.exec(JSON.parse(text).dependencies['@polyspec/orm'])?.[1]].filter(Boolean) },
+  { file: 'tests/release-install/npm/package-lock.json', read: text => [JSON.parse(text).packages?.['node_modules/@polyspec/orm']?.version].filter(Boolean) },
+  { file: 'tests/release-install/composer/composer.json', read: text => [JSON.parse(text).require?.['polyspec/orm']].filter(Boolean) },
+  { file: 'tests/release-install/composer/composer.lock', read: text => JSON.parse(text).packages.filter(({ name }) => name === 'polyspec/orm').map(({ version }) => version) },
   { file: 'contracts/features.json', read: text => [JSON.parse(text).contract_version].filter(Boolean) },
   { file: 'README.md', read: first(/^# orm (\S+)$/gm) },
   { file: 'README.ko.md', read: first(/^# orm (\S+)$/gm) },

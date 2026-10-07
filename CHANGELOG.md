@@ -4,6 +4,7 @@
 
 ## 0.0.4
 
+- G5.139: `make package-check` installs the release assets with `npm ci` and `composer install` from the committed consumer projects of tests/release-install with empty caches, and `make install-release-fixtures` writes their locks.
 - G5.138: every released manifest is the manifest of the tree: clients/typescript/package.json requires `@polyspec/ordered-json` `0.0.2`, the Composer manifests declare `version` and no `repositories`, the private root package.json (npm workspace with `overrides`) and composer.json (into vendor-php) take ordered-json from its GitHub release, and the release refuses a packed manifest that differs from its source.
 - G5.137: VERSION, every package file, the lockfile entries of the orm packages, the feature contract and the version statements of the documents declare 0.0.4, and the changelogs record the changes of 0.0.4 under `## 0.0.4`, so `make release-versions` passes for the tag `v0.0.4`.
 - G5.136: the npm tarball and the Composer zips of `make release-assets` declare every polyspec dependency by the exact version of its release, the Composer zips carry the release `version` and no `repositories`, the release refuses a packed manifest that breaks this, and `make package-check` installs the assets of HEAD outside the repository; docs/packaging.md describes the install from release assets.
