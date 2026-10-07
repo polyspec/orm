@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.113-2: the last job `ci-passed` of ci.yml runs after every other job and passes only when each of them succeeded; the ruleset of main requires the checks `push-gate` and `ci-passed`.
+
 - G5.114: the runner unit cases of `make full-run-check` read the grouped `make check` recipe and the part `feature-unit-check/select`.
 
 - G5.113-1: CHANGELOG.md and CHANGELOG.ko.md keep the changes that no tag released under `## Unreleased` at the top, and `make version-check` requires it, with every other section a released version not above VERSION.

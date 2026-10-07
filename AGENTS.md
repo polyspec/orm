@@ -104,10 +104,11 @@
   `git push origin HEAD:refs/heads/<branch>`, `gh pr create --base main --head <branch> --fill`,
   `gh pr merge <branch> --auto --rebase`. The GitHub ruleset `main` of `.github/ruleset.json`
   requires a pull request (no approval), the merge queue with the merge method `REBASE`, a linear
-  history and the GitHub Actions checks `push-gate` (`.github/workflows/push-gate.yml`) and the
-  jobs `test` (one check `test (<group>)` per CI group) and `docs` of `.github/workflows/ci.yml`,
-  which hold every check of the repository
-  and run on every pull request and merge group; `.github/workflows/docs-pages.yml` only builds
+  history and the GitHub Actions checks `push-gate` (`.github/workflows/push-gate.yml`) and
+  `ci-passed`, the last job of `.github/workflows/ci.yml`, which runs after the jobs `test` (one
+  job per CI group) and `docs`, also after a failed one, and passes only when every one of them
+  succeeded; ci.yml holds every check of the repository and runs on every pull request and merge
+  group; `.github/workflows/docs-pages.yml` only builds
   and deploys the site of `main`. The ruleset refuses a force-push and the deletion of `main` and
   has no bypass actor, so GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies
   the ruleset and the declared repository settings (`allow_rebase_merge`, `allow_auto_merge`,

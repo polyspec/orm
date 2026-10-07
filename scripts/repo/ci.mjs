@@ -708,3 +708,29 @@ export function concurrencyErrors(workflows) {
   }
   return errors;
 }
+
+// CI_PASSED는 ci.yml의 마지막 job ci-passed의 정의다(job id와 runs-on 사이, 그리고 step). ruleset이 요구하는 ci.yml의 check는
+// 이 job 하나다: `if: always()`로 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이
+// success일 때만 make ci-passed가 통과한다.
+export const CI_PASSED_STEP = ['- name: every job passed', 'env:', 'CI_NEEDS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
+
+// ciPassedErrors는 ci.yml에 job ci-passed가 없거나, 마지막 job이 아니거나, `if: ${{ always() }}`가 아니거나, needs가 다른 모든
+// job과 같지 않거나, step이 CI_PASSED_STEP이 아닌 곳마다 오류 하나를 돌려준다.
+export function ciPassedErrors(workflow) {
+  const jobs = workflowJobs(workflow);
+  const ids = jobs.map(([id]) => id);
+  const at = ids.indexOf('ci-passed');
+  if (at === -1) return ['ci.yml has no job ci-passed, the check that the ruleset requires; add it as the last job with if: ${{ always() }} and needs: every other job'];
+  const errors = [];
+  if (at !== ids.length - 1) errors.push(`ci.yml job ci-passed is not the last job; move it after ${ids.at(-1)}`);
+  const job = jobs[at][1];
+  if (!/^ {4}if: \$\{\{ always\(\) \}\}$/m.test(job)) errors.push('ci.yml job ci-passed does not run with if: ${{ always() }}, so a failed or cancelled job skips it instead of failing it');
+  const needs = /^ {4}needs: \[(.*)\]$/m.exec(job)?.[1].split(',').map(item => item.trim()).filter(Boolean) ?? [];
+  const others = ids.filter(id => id !== 'ci-passed');
+  for (const id of others) if (!needs.includes(id)) errors.push(`ci.yml job ci-passed does not need the job ${id}; list every other job under needs`);
+  for (const id of needs) if (!others.includes(id)) errors.push(`ci.yml job ci-passed needs ${id}, which is no other job of ci.yml`);
+  const steps = stepTexts(job);
+  if (steps.length !== 1 || steps[0].join('\n') !== CI_PASSED_STEP.join('\n'))
+    errors.push(`ci.yml job ci-passed has the steps ${steps.map(step => step.join(' | ')).join(' || ')} instead of ${CI_PASSED_STEP.join(' | ')}`);
+  return errors;
+}
