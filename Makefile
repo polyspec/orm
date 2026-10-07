@@ -806,9 +806,15 @@ conformance-check/run: lease-tool
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
 
+# decimal-physical-check의 case는 owner process마다 기한(scripts/decimal-physical-check.mjs의 timeoutMs)을 가진다. 그 process가
+# 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test, Go state reader)는 장기 작업이므로 case 앞에서 기한 없이
+# RUN_LONG으로 먼저 하고(Go build는 .runtime/bin에 publish하며 build cache를 채운다), case는 build된 것을 실행한다.
 decimal-physical-check: cargo-downloads-check lease-tool
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path clients/rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
+	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./clients/go/decimalmodel
+	$(RUN_LONG) go-build/conformance-state -- $(PUBLISH) $(abspath .runtime/bin/conformance-state) go build -o @OUT@ ./tests/conformance/check
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
 interface-check: lease-tool

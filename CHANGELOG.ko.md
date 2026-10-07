@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.116: `make decimal-physical-check`는 case가 실행되기 전에 그 case의 Rust test binary, Go test와 state reader를 기한 없이 build한다.
+
 - G5.115: interface 검사의 생성 검사 case는 CI의 group으로 나눈 `make check GROUP=${{ matrix.group }}`과 CI group에 있는 `CHECK_TARGETS`의 모든 target을 요구한다.
 
 - G5.113: ci.yml은 완료 check `ci-passed`로 끝나고, main의 tag `vX.Y.Z`는 GitHub Release를 만들며, 변경 이력은 release하지 않은 변경을 `## Unreleased` 아래에 두고, 모든 go.mod는 자기 directory의 module path를 선언한다.
