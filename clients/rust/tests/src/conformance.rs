@@ -342,7 +342,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             author().service_seq(7).and_ne_photo_url(Null),
             author().service_seq(7).and_ne_read_count(vec![6, 106, 206]),
             author().service_seq(7).and_between_read_count([100, 200]),
-            author().service_seq(7).and_lk_name("attle-10"),
+            author().service_seq(7).and_lk_name("uthor-10"),
             author().service_seq(7).and_lb_name("Author-10"),
             author().service_seq(7).and_ge_read_count(990),
             author().service_seq(7).and_le_read_count(10),

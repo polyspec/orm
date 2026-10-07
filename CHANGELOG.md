@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.108: the conformance vector `conditions_values` matches the seeded author names with the case-insensitive condition `uthor-10`.
+
 - G5.107: `orm-gen errors --lang php` generates the class `Polyspec\Orm\Code`.
 
 - G5.106: the interface check case `TestPHPRecordSourceMutationChangesExtractedWire` declares its PHP fixture in `Polyspec\Orm`.

@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.108: conformance vector `conditions_values`는 대소문자 무시 조건 `uthor-10`으로 seed된 author 이름에 맞춘다.
+
 - G5.107: `orm-gen errors --lang php`는 class `Polyspec\Orm\Code`를 생성한다.
 
 - G5.106: interface 검사 case `TestPHPRecordSourceMutationChangesExtractedWire`는 PHP fixture를 `Polyspec\Orm`에 선언한다.
