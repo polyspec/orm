@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mjs';
 import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
-import { nodeVersionErrors } from './node.mjs';
+import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
@@ -165,6 +165,8 @@ failures.push(...fullSuiteRuleErrors(Object.fromEntries(['AGENTS.md', 'AGENTS.ko
 failures.push(...runnerErrors(existsSync(join(root, '.github/runner')) ? readFileSync(join(root, '.github/runner'), 'utf8') : '', workflows));
 failures.push(...nodeVersionErrors(existsSync(nodeVersionPath) ? readFileSync(nodeVersionPath, 'utf8') : '',
   rootPackage.engines?.node, workflows, process.versions.node));
+// npm은 git으로 받는 dependency 없이 release archive와 registry에서만 설치한다.
+failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)package(?:-lock)?\.json$/.test(path)).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 
 // 검사를 실행하는 PHP와 Rust도 .php-version과 rust-toolchain.toml이 선언한 것 하나다. 실행 중인
 // version은 repository root에서 PATH의 php와 rustc가 보고한 것이다.

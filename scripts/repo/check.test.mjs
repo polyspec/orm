@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
-import { nodeVersionErrors } from './node.mjs';
+import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
@@ -149,6 +149,30 @@ const workflows = Object.fromEntries(readdirSync(new URL('.github/workflows/', r
 caseTest('the checks and every workflow run the Node of .node-version', COMPUTE, () => {
   assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml', '.github/workflows/release.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
+});
+
+const archive = 'https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.tgz';
+const lockOf = resolved => JSON.stringify({ lockfileVersion: 3, packages: { '': { name: 'a' }, 'node_modules/@polyspec/ordered-json': { version: '0.0.2', resolved } } });
+
+caseTest('npm dependencies from a release archive and the registry pass', COMPUTE, () => {
+  assert.deepEqual(npmGitSourceErrors({
+    'clients/typescript/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
+    'clients/typescript/package-lock.json': lockOf(archive),
+  }), []);
+});
+
+caseTest('a package.json dependency from git fails', COMPUTE, () => {
+  for (const spec of ['github:polyspec/ordered-json#v0.0.1', 'git+https://github.com/polyspec/ordered-json.git#v0.0.1', 'git+ssh://git@github.com/polyspec/ordered-json.git', 'polyspec/ordered-json#v0.0.1'])
+    assert.deepEqual(npmGitSourceErrors({ 'package.json': JSON.stringify({ devDependencies: { '@polyspec/ordered-json': spec } }) }), [
+      `package.json devDependencies @polyspec/ordered-json is ${spec}, a git source; use the release archive URL of the GitHub tag`,
+    ]);
+});
+
+caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
+  for (const resolved of ['git+ssh://git@github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570', 'git://github.com/polyspec/ordered-json.git', 'ssh://git@github.com/polyspec/ordered-json.git', 'github:polyspec/ordered-json'])
+    assert.deepEqual(npmGitSourceErrors({ 'clients/typescript/package-lock.json': lockOf(resolved) }), [
+      `clients/typescript/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
+    ]);
 });
 
 const node = [

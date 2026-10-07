@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "040ab4dd4fb93cc4536571b0a72ed6a8",
+    "content-hash": "ed4edced5cd302f96f26fb6111b72ab4",
     "packages": [
         {
             "name": "polyspec/ordered-json",
-            "version": "v0.0.1",
+            "version": "v0.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/polyspec/ordered-json.git",
-                "reference": "f491200d3179c36afe29255b0f3ee964f6e83570"
+                "reference": "dcd1c4c924e38b9c26289577c9d5d0b87c7d14cd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/polyspec/ordered-json/zipball/f491200d3179c36afe29255b0f3ee964f6e83570",
-                "reference": "f491200d3179c36afe29255b0f3ee964f6e83570",
+                "url": "https://api.github.com/repos/polyspec/ordered-json/zipball/dcd1c4c924e38b9c26289577c9d5d0b87c7d14cd",
+                "reference": "dcd1c4c924e38b9c26289577c9d5d0b87c7d14cd",
                 "shasum": ""
             },
             "require": {
@@ -39,10 +39,10 @@
             ],
             "description": "JSON document order at every depth, with optional native parser",
             "support": {
-                "source": "https://github.com/polyspec/ordered-json/tree/v0.0.1",
+                "source": "https://github.com/polyspec/ordered-json/tree/v0.0.2",
                 "issues": "https://github.com/polyspec/ordered-json/issues"
             },
-            "time": "2026-10-06T15:54:49+00:00"
+            "time": "2026-10-07T09:26:06+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
