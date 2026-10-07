@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.96: the Rust test commands select the features of `polyspec-orm` and `polyspec-orm-build` by those package names.
+
 - G5.95: the Rust client depends on the crate `polyspec-ordered-json` and the TypeScript client on `@polyspec/ordered-json`; the locks of the Rust, TypeScript and PHP clients and go.mod resolve ordered-json from the branch main of polyspec/ordered-json.
 
 - G5.94: the PHP client requires `polyspec/ordered-json` and uses its namespace `Polyspec\OrderedJson`; update `use OrderedJson\…` to `use Polyspec\OrderedJson\…` where code passes ordered-json values to the client.
