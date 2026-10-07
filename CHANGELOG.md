@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.116: `make decimal-physical-check` builds the Rust test binary, the Go test and the state reader of its cases without a deadline before the cases run.
+
 - G5.115: the generated-check case of the interface check requires the grouped `make check GROUP=${{ matrix.group }}` of CI and every target of `CHECK_TARGETS` in a CI group.
 
 - G5.113: ci.yml ends with the completion check `ci-passed`, a tag `vX.Y.Z` of main creates the GitHub Release, the changelogs keep unreleased changes under `## Unreleased`, and every go.mod declares the module path of its directory.
