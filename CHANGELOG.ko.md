@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.117: scripts/github/ruleset.mjs의 머리말은 요구하는 check `push-gate`와 `ci-passed`를 적는다.
+
 - G5.116: `make decimal-physical-check`는 case가 실행되기 전에 그 case의 Rust test binary, Go test와 state reader를 기한 없이 build한다.
 
 - G5.115: interface 검사의 생성 검사 case는 CI의 group으로 나눈 `make check GROUP=${{ matrix.group }}`과 CI group에 있는 `CHECK_TARGETS`의 모든 target을 요구한다.
