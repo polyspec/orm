@@ -31,7 +31,7 @@
     "case-database-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "dialect-facts-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/probe.go", "tests/dialects/probe_test.go", "tests/dialects/probes_*.go", "tests/dialects/facts_physical_test.go", "tests/dialects/sqlite_filename_physical_test.go", "tests/dialects/servers.go"]},
     "conformance-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
-    "package-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules"], "inputs": ["scripts/package-check.sh", "scripts/build-artifacts.sh"]},
+    "package-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules"], "inputs": ["scripts/package-check.sh", "scripts/build-artifacts.sh", "scripts/release/release.mjs", "scripts/release/install-check.mjs"]},
     "dbspec-ddl-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/ddl_physical_test.go", "tests/dialects/schema_documents_physical_test.go"]},
     "dbspec-introspect-check": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["tests/dialects/introspect_physical_test.go", "tests/dbspec/introspect.json"]},
     "dbspec-introspect-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["clients/typescript/tests/dbspec-introspect.mjs"]},

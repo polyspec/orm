@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.136: `make release-assets`의 npm tarball과 Composer zip은 모든 polyspec dependency를 그 release의 정확한 version으로 선언하고, Composer zip은 release의 `version`을 가지며 `repositories`가 없고, release는 이를 어긴 packed manifest를 거부하며, `make package-check`는 HEAD의 asset을 저장소 밖에 설치한다. docs/packaging.ko.md가 release asset에서 설치하는 방법을 설명한다.
+
 ## 0.0.3
 
 - G5.135: TypeScript conformance runner는 release archive가 제공하는 OrderedJSON package의 진입점으로 import한다.
