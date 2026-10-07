@@ -147,7 +147,7 @@ const workflows = Object.fromEntries(readdirSync(new URL('.github/workflows/', r
   .map(name => [`.github/workflows/${name}`, readFileSync(new URL(`.github/workflows/${name}`, repository), 'utf8')]));
 
 caseTest('the checks and every workflow run the Node of .node-version', COMPUTE, () => {
-  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml']);
+  assert.deepEqual(Object.keys(workflows), ['.github/workflows/ci.yml', '.github/workflows/docs-pages.yml', '.github/workflows/push-gate.yml', '.github/workflows/release.yml']);
   assert.deepEqual(nodeVersionErrors(declared, minimum, workflows, process.versions.node), []);
 });
 
@@ -1335,9 +1335,14 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
     ".github/workflows/push-gate.yml is missing; it runs on push: branches-ignore: ['gh-readonly-queue/**'] pull_request: merge_group:",
-    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
+    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
+  // release.yml은 version tag의 push에서만 실행한다(G5.113-3).
+  assert.deepEqual(WORKFLOW_TRIGGERS['.github/workflows/release.yml'], ['on:', '  push:', "    tags: ['v*', '**/v*']"]);
+  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/release.yml': text(['on:', '  push:', '    branches: [main]']) }), [
+    ".github/workflows/release.yml has the triggers on: push: branches: [main] instead of on: push: tags: ['v*', '**/v*']",
+  ]);
 });
 
 caseTest('every workflow that runs on push cancels the run of the push before it', COMPUTE, () => {

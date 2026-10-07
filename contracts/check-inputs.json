@@ -50,6 +50,7 @@
     "dbspec-apply-rust-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["clients/rust/orm/tests/dbspec_apply.rs"]},
     "dbspec-apply-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["clients/typescript/tests/dbspec-apply-physical.mjs"]},
     "dbspec-apply-pairs-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules", "php-extension-tools", "databases"], "inputs": ["tests/dialects/apply_clients_physical_test.go", "clients/rust/orm/examples/dbspec_apply.rs", "tests/dbspec/apply/**"]},
+    "release-check": {"scope": "owner", "needs": [], "inputs": ["scripts/release/**", ".github/workflows/release.yml", "Makefile", "tests/testcase.mjs"]},
     "feature-unit-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer"], "inputs": ["scripts/features/**", "contracts/features.json", "contracts/check-inputs.json", "docs/features.md", "docs/features.ko.md", "tests/testcase.mjs", "Makefile"]},
     "feature-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "php-extension-tools", "databases"]},
     "feature-helper-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},

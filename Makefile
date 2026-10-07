@@ -1,4 +1,4 @@
-.PHONY: check ci-group-needs ci-passed feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check ci-group-needs ci-passed release-verify release-versions release-assets release-publish release-check feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
 .PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
@@ -134,14 +134,14 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check feature-helper-check feature-stress-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check release-check feature-check feature-helper-check feature-stress-check go-test-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
 # 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행 하나에서 잰 target의 시간으로 가장 긴 group이 짧도록 나눈다:
 # static은 database가 필요 없는 target, clients, conformance, dbspec은 database target, features는 feature-check(기능의
 # coverage와 검증 명령), stress는 feature-stress-check다. 로컬 make check는 GROUP 없이 모든 target을 실행한다.
 CI_GROUPS = static clients conformance dbspec features stress
-CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check
+CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check release-check
 CI_TARGETS_clients = rust-driver-check example-check client-db-check client-pooler-check dialect-facts-check go-test-check
 CI_TARGETS_conformance = ts-check ts-min-check conformance-check feature-helper-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
@@ -172,6 +172,23 @@ check:
 	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
 	node scripts/check/full-run.mjs decide check
 	$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+
+# release-verify, release-versions, release-assets, release-publish는 release workflow(.github/workflows/release.yml)가 tag의
+# push에서 이 순서로 실행하는 네 단계다(scripts/release/release.mjs). tag는 환경 변수 TAG로 받는다(release.yml이
+# github.ref_name을 준다). verify는 tag한 commit이 main에 있고 그 check push-gate와 ci-passed가 성공했는지, versions는 tag의
+# version이 release하는 모든 manifest와 변경 이력의 section과 같은지 확인하고, assets는 npm과 Composer의 asset을
+# .runtime/release/assets에 만들며, publish는 그것과 변경 이력의 section으로 GitHub Release를 만든다. release-check는 그
+# unit case다.
+release-verify:
+	node scripts/release/release.mjs verify "$$TAG"
+release-versions:
+	node scripts/release/release.mjs versions "$$TAG"
+release-assets:
+	node scripts/release/release.mjs assets "$$TAG"
+release-publish:
+	node scripts/release/release.mjs publish "$$TAG"
+release-check:
+	node --test scripts/release/release.test.mjs
 
 # ci-passed는 ci.yml의 마지막 job ci-passed가 실행한다: 그 job이 needs로 받은 다른 모든 job의 결과(CI_NEEDS, `${{
 # toJSON(needs) }}`)가 success일 때만 통과한다(scripts/check/ci-passed.mjs). ruleset은 이 check와 push-gate를 요구한다.

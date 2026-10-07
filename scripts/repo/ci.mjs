@@ -654,12 +654,13 @@ export function ciMakeErrors(workflows) {
 
 // WORKFLOW_TRIGGERS는 workflow마다 그 `on:` block이다. ci.yml은 모든 검사 job을 pull request, merge group과 수동 실행에서,
 // push-gate.yml은 push gate를 push(merge queue의 임시 branch 제외), pull request와 merge group에서 실행하고,
-// docs-pages.yml은 main의 push와 수동 실행에서 공개 site를 build하고 deploy한다. 다른 workflow는 push, pull_request,
-// merge_group으로 실행하지 않는다.
+// docs-pages.yml은 main의 push와 수동 실행에서 공개 site를 build하고 deploy하며, release.yml은 version tag(`vX.Y.Z`,
+// `<dir>/vX.Y.Z`)의 push에서 GitHub Release를 만든다. 다른 workflow는 push, pull_request, merge_group으로 실행하지 않는다.
 export const WORKFLOW_TRIGGERS = {
   '.github/workflows/ci.yml': ['on:', '  pull_request:', '  merge_group:', '  workflow_dispatch:'],
   '.github/workflows/push-gate.yml': ['on:', '  push:', "    branches-ignore: ['gh-readonly-queue/**']", '  pull_request:', '  merge_group:'],
   '.github/workflows/docs-pages.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
+  '.github/workflows/release.yml': ['on:', '  push:', "    tags: ['v*', '**/v*']"],
 };
 
 // onBlock은 workflow의 `on:` 줄부터 다음 최상위 key 앞까지의 줄을 끝의 빈 줄과 주석 없이 돌려준다.
@@ -687,7 +688,7 @@ export function workflowTriggerErrors(workflows) {
   for (const [path, workflow] of Object.entries(workflows)) {
     if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
     const events = onBlock(workflow).join('\n').match(/\b(?:push|pull_request|merge_group)\b/g) ?? [];
-    if (events.length) errors.push(`${path} runs on ${[...new Set(events)].join(', ')}; only ci.yml, push-gate.yml and docs-pages.yml run on these events`);
+    if (events.length) errors.push(`${path} runs on ${[...new Set(events)].join(', ')}; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events`);
   }
   return errors;
 }

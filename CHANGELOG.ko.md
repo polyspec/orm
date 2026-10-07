@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.113-3: tag `vX.Y.Z`의 push는 .github/workflows/release.yml을 실행하고, 그 단계 `make release-verify`, `make release-versions`, `make release-assets`, `make release-publish`는 tag한 commit이 `push-gate`와 `ci-passed`가 성공한 main의 commit인지, release하는 모든 manifest가 tag의 version을 선언하는지, 변경 이력에 그 section이 있는지 확인하고, npm tarball, Composer zip과 그 section의 notes로 GitHub Release를 만든다.
+
 - G5.113-2: ci.yml의 마지막 job `ci-passed`는 다른 모든 job 뒤에 실행되고 그 모두가 성공했을 때만 통과한다. main의 ruleset은 check `push-gate`와 `ci-passed`를 요구한다.
 
 - G5.114: `make full-run-check`의 runner unit case는 group으로 나눈 `make check` recipe와 부분 `feature-unit-check/select`를 읽는다.
