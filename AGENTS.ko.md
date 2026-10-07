@@ -157,3 +157,15 @@
 - 생성 typed 모델 필드는 비공개다. 조회하거나 대입하지 않은 필드 접근은 `COLUMN_UNSELECTED`로 실패하며 그룹 개수는 일부 필드만 채운 모델 대신 전용 결과를 쓴다.
 - 그룹 결과는 선택한 각 컬럼의 선언된 값 타입을 보존한다. 불리언 그룹 컬럼은 모든 데이터베이스에서 불리언을 반환하며 저장된 불리언 값이 잘못되면 숫자나 기본값으로 바꾸지 않고 실패한다.
 - 영문과 국문 문서를 동등하게 유지한다. 추가 작성자 표기 없이 `min-median-max <max@blue.tools>`로 로컬 커밋한다. 기록은 이 저장소의 동작을 설명하며 외부 출처의 이력을 담지 않는다.
+
+## Release
+
+- release는 version을 올리는 pull request `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다:
+  그것은 VERSION과 모든 package file을 X.Y.Z로 바꾸고(`make version-check`), CHANGELOG.md와 CHANGELOG.ko.md에서
+  `## Unreleased`를 새 빈 `## Unreleased` 아래의 `## X.Y.Z`로 바꾼다.
+- 그것이 merge되면 maintainer가 `main`의 merge된 commit에 `vX.Y.Z`(하위 directory의 Go module은 `<dir>/vX.Y.Z`)를
+  tag한다. tag는 pull request로 올리지 않으며, tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
+- tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
+  (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
+  manifest가 X.Y.Z를 가지고 변경 이력에 그 section이 있다), `make release-assets`(npm tarball과 Composer zip),
+  `make release-publish`(그 section의 notes로 만든 release)다. test는 다시 실행하지 않는다.

@@ -190,3 +190,17 @@
 - Generated typed model fields are private. Access to a field that was neither selected nor assigned fails with `COLUMN_UNSELECTED`; grouped counts use a dedicated result instead of a partial model.
 - A grouped result preserves each selected column's declared value type. A boolean group column returns a boolean on every database; an invalid stored boolean fails instead of becoming a number or a default.
 - Keep English and Korean documentation aligned. Commit locally as `min-median-max <max@blue.tools>` without additional author trailers. Records describe this repository's behavior and contain no external origin history.
+
+## Releases
+
+- A release starts with a version-bump pull request `chore(release): Release X.Y.Z (#<checklist ID>)`:
+  it sets VERSION and every package file to X.Y.Z (`make version-check`) and renames `## Unreleased`
+  to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty `## Unreleased`.
+- After it merges, the maintainer tags the merged commit of `main` `vX.Y.Z` (a Go module in a
+  subdirectory `<dir>/vX.Y.Z`). A tag is never raised through a pull request, and only the
+  maintainer creates, moves or pushes a tag.
+- The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
+  `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
+  succeeded), `make release-versions` (every released manifest carries X.Y.Z and the changelogs have
+  its section), `make release-assets` (the npm tarball and the Composer zips) and
+  `make release-publish` (the release with the notes of that section). The tests do not run again.
