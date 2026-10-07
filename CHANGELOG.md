@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.118: `make group-rows-physical-check` and `make unselected-column-physical-check` build the state reader of their cases without a deadline before the cases run.
+
 - G5.117: the header of scripts/github/ruleset.mjs names the required checks `push-gate` and `ci-passed`.
 
 - G5.116: `make decimal-physical-check` builds the Rust test binary, the Go test and the state reader of its cases without a deadline before the cases run.
