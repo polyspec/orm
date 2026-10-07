@@ -1,0 +1,85 @@
+# Release: the maintainer tags a commit of main with vX.Y.Z (or <dir>/vX.Y.Z
+# for a Go module in a subdirectory, at any depth), and this workflow creates
+# the GitHub Release of that tag in four make steps (scripts/release/release.mjs).
+# Every commit of main reached it through the merge queue with the required
+# checks, so the tests are not run again: release-verify checks that the tagged
+# commit is on main and that the latest runs of its checks push-gate and
+# ci-passed succeeded; release-versions checks that every released manifest
+# declares the version of the tag and that CHANGELOG.md and CHANGELOG.ko.md
+# have its section; release-assets builds the npm tarball and the Composer zips
+# (a Go module tag builds nothing); release-publish creates the release with
+# them and the notes of that section. No step or job has timeout-minutes
+# (make repo-check).
+name: release
+
+on:
+  push:
+    tags: ['v*', '**/v*']
+
+# The release creates the GitHub Release and uploads its assets.
+permissions:
+  contents: write
+
+# A new push of the same tag cancels the run before it; make repo-check
+# requires this on every workflow that runs on push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-26.04-arm
+    # The tag reaches every step as TAG, and each make recipe passes "$TAG".
+    env:
+      TAG: ${{ github.ref_name }}
+    # Every step after the checkout runs after a failed earlier one
+    # (if: !cancelled()), so one run reports every problem of the tag;
+    # release-publish runs only when the three steps before it succeeded.
+    # The actions are pinned to the commits of their tags.
+    steps:
+      # release-verify reads origin/main and the tag, so the checkout carries
+      # the full commit graph.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        id: checkout
+        with:
+          fetch-depth: 0
+      # .node-version declares the one Node release, locally and here.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: .node-version
+      # The TypeScript build of the npm tarball builds the lease program with
+      # the Go of .go-version and its modules.
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        id: go
+        if: ${{ !cancelled() }}
+        with: { go-version-file: .go-version }
+      - name: Go modules
+        id: go-modules
+        if: ${{ !cancelled() }}
+        run: make install-go
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-node
+      - name: tagged commit and its checks
+        id: verify
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make release-verify
+      - name: versions and changelog section
+        id: versions
+        if: ${{ !cancelled() }}
+        run: make release-versions
+      - name: release assets
+        id: assets
+        if: ${{ !cancelled() }}
+        run: make release-assets
+      - name: GitHub release
+        id: publish
+        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.versions.outcome == 'success' && steps.assets.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make release-publish
