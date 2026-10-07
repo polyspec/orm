@@ -8,7 +8,8 @@
 //
 // The declaration names the repository, the repository settings (`settings`, fields of PATCH /repos/{owner}/{repo}) and
 // the ruleset as the REST API takes it. The ruleset requires a pull request, the merge queue, a linear history and the
-// checks of GitHub Actions (push-gate and every job of ci.yml), so every change reaches the protected branch through a pull request and the merge queue;
+// checks of GitHub Actions push-gate and ci-passed (the last job of ci.yml, which passes only when every other job of
+// ci.yml succeeded), so every change reaches the protected branch through a pull request and the merge queue;
 // no command of this repository pushes that branch.
 //
 // `--gh` names the GitHub CLI, authenticated with administration access to the repository; the Makefile passes its
