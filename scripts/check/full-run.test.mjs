@@ -190,11 +190,17 @@ caseTest('the decision refuses a checkout whose pre-push hook is not installed',
   }
 });
 
+// make check의 첫 두 줄은 GROUP을 확인하는 make 함수이고 명령이 없다: GROUP이 없으면 빈 줄로 펼쳐지고, 맞지 않는 GROUP은
+// 명령 전에 make를 멈춘다(G5.111). 첫 명령은 guard다.
 caseTest('make check and make rerun-failed start with the guard', COMPUTE, () => {
-  assert.deepEqual(recipe('check'), [
+  const check = recipe('check');
+  assert.ok(check.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), check.join('\n'));
+  assert.deepEqual(check.slice(2), [
     'node scripts/check/full-run.mjs decide check',
-    '$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)',
+    '$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)',
   ]);
+  const dry = spawnSync('make', ['-n', '--no-print-directory', 'check'], { cwd: repo, encoding: 'utf8', env: { ...process.env, GITHUB_ACTIONS: '' } });
+  assert.equal(dry.stdout.split('\n')[0], 'node scripts/check/full-run.mjs decide check', dry.stdout + dry.stderr);
   assert.deepEqual(recipe('rerun-failed'), [
     'node scripts/check/full-run.mjs decide rerun-failed',
     '$(BUILD_LEASE) && node scripts/check/run.mjs --rerun-failed $(abspath $(TEST_ENV))',
@@ -495,7 +501,7 @@ const PARTS = {
   'checklist-check': ['unit', 'run'], 'version-check': ['unit', 'run'], 'repo-check': ['unit', 'run'], 'git-check': ['unit', 'run'],
   'testcase-check': ['go', 'node', 'runners', 'php', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
-  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners'],
+  'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
   'feature-check': ['build', 'coverage', 'verification'],
   'client-unit-check': ['dsn', 'relation-keys', 'hostcodec', 'engine', 'runtime-model', 'orm-gen', 'perf-extensions'],
 };
