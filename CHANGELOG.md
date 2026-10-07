@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- G5.129: the process cases of the step runner wait until the background child runs `sleep`, so the reported command line does not depend on the order of exec and the process check.
 - G5.128: the CI groups are named with lowercase letters, digits and `_` only, so each job uploads the report directory that its runner writes, and `make repo-check` fails a group whose upload path differs from it.
 
 - G5.127: the setup of a CI group includes what the setup step `databases/create` needs (PHP and the Composer autoload), and `make repo-check` fails a CI group that skips a setup step its targets need directly or through `databases/create`.
