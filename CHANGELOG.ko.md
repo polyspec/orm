@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.98: 모든 검사는 pull request, merge group, 수동 실행에서 ci.yml이 실행한다: job `test`(make check)와 `docs`(문서 검사)다. push-gate.yml은 merge queue branch 밖의 push, pull request, merge group에서 job `push-gate`를 실행하고, docs-pages.yml은 main의 push와 수동 실행에서 site를 build하고 deploy한다. main의 ruleset은 check `push-gate`, `test`, `docs`를 요구한다.
+
 - G5.97: client는 ordered-json에 그 tag로 의존한다. Rust, TypeScript, PHP package는 `v0.0.1`, Go module은 `go/v0.0.1`이다.
 
 - G5.96: Rust test 명령은 `polyspec-orm`과 `polyspec-orm-build`의 feature를 그 package 이름에 따라 고른다.

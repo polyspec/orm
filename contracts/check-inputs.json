@@ -56,9 +56,9 @@
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},
-    ".github/workflows/ci.yml": {"scope": "suite", "reason": "it defines the CI job that installs the toolchains and runs make check, so it changes how every target runs in CI"},
-    ".github/workflows/push-gate.yml": {"scope": "suite", "reason": "it runs the push check on every pushed commit, so it decides whether each push of every file passes in CI"},
-    ".github/workflows/docs-pages.yml": {"scope": "suite", "reason": "it builds and publishes the documentation site from every document on each push, so it changes the publication of every page"},
+    ".github/workflows/ci.yml": {"scope": "suite", "reason": "it defines the CI jobs that install the toolchains and run make check and the documentation checks, so it changes how every target runs in CI"},
+    ".github/workflows/push-gate.yml": {"scope": "suite", "reason": "it runs the push check on every push, pull request and merge group, so it decides whether each change of every file passes in CI"},
+    ".github/workflows/docs-pages.yml": {"scope": "suite", "reason": "it builds and publishes the documentation site from every document on each push to main, so it changes the publication of every page"},
     "scripts/ci/server-programs.sh": {"scope": "suite", "reason": "the CI setup step server-programs runs it to install the programs of the database servers on the Linux runner, so it changes the servers of every database target in CI"},
     "scripts/ci/php-extension-tools.sh": {"scope": "suite", "reason": "the CI setup step php-extension-tools runs it to check phpize and php-config and to install the gen_stub.php and PHP-Parser that the arginfo check of the PHP extension orm_dbspec reads, so it gates the PHP extension targets in CI"},
     "scripts/ci/php-sqlite.php": {"scope": "suite", "reason": "the CI setup step php-sqlite runs it to check the SQLite that the PHP of the runner links, so it gates every PHP target in CI"},

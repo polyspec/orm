@@ -12,7 +12,7 @@
 5. Run the unit tests of what changed, its Red/Green cases, and record the result in the commit
    description when needed. End-to-end runs, `make owner-check` and the full suite run in CI after
    the push; no local check is required before a push.
-6. The full suite `make check` runs in CI after every push. Before any step it refuses, with the reasons and exit status 2, while an item of `docs/checklist.md` is `[~]`
+6. The full suite `make check` runs in CI on every pull request and merge group. Before any step it refuses, with the reasons and exit status 2, while an item of `docs/checklist.md` is `[~]`
    (each is named with its ID and title), while tracked files have uncommitted changes, and when
    `.runtime/full-run.json` records a full run of the same tree (`git rev-parse HEAD^{tree}`). The
    record holds the tree, the commit, the result, the targets that did not pass and the times of

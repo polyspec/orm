@@ -605,7 +605,7 @@ hooks:
 	node scripts/check/push-gate.mjs hooks-check
 hooks-check:
 	node scripts/check/push-gate.mjs hooks-check
-# push-gate-commit은 CI(.github/workflows/push-gate.yml)가 push한 commit(COMMIT)에 실행하는 push gate다: 그 commit의
+# push-gate-commit은 CI(.github/workflows/push-gate.yml)가 push, pull request, merge group의 commit(COMMIT)에 실행하는 push gate다: 그 commit의
 # checklist에 `[~]` 항목이 없고 commit이 .githooks/pre-push를 mode 100755로 추적해야 한다.
 .PHONY: push-gate-commit
 push-gate-commit:
@@ -808,7 +808,7 @@ docs-dev:
 docs-build:
 	npm run docs:build
 
-# docs-ci는 문서 workflow의 검사(docs-build, docs-verify-idempotent, docs-static-check)를 make check의 runner로
+# docs-ci는 CI(ci.yml)의 job docs가 실행하는 문서 검사(docs-build, docs-verify-idempotent, docs-static-check)를 make check의 runner로
 # test server 없이 실행한다(scripts/check/run.mjs `-`). 실패해도 다음 target을 실행하고, target마다의 log와 summary를
 # .runtime/check/<실행 id>/report에 남기며, workflow는 그것을 job summary와 artifact로 올린다.
 docs-ci:
@@ -978,7 +978,7 @@ git-check/run:
 # GH는 저장소 관리 권한으로 인증된 개발 machine의 GitHub CLI이며, github-ruleset과 github-ruleset-check만 이를 실행한다.
 GH := gh
 # .github/ruleset.json의 GitHub ruleset main과 저장소 설정(scripts/github/ruleset.mjs): main은 pull request와 merge
-# queue로만 변경을 받고, merge group에서 check gate, test, build가 통과한 뒤에 받으며, 이 저장소의 어떤 target도 main을
+# queue로만 변경을 받고, merge group에서 check push-gate와 ci.yml의 job test, docs가 통과한 뒤에 받으며, 이 저장소의 어떤 target도 main을
 # push하지 않는다. 두 target은 GitHub API에 닿으므로 full suite의 어떤 target도 실행하지 않고, github-check가 가짜
 # GitHub CLI로 script를 검사한다.
 github-ruleset: ## Change the repository settings and create or update the ruleset of .github/ruleset.json where they differ, then compare again

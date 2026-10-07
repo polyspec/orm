@@ -1,9 +1,10 @@
-# CI: make check, the targets of the local checks, against MySQL, PostgreSQL,
-# and SQLite, with the common interfaces and the hot-path regression check of
-# feature-check, the decoder fuzz checks and the common state contracts of the
-# conformance results. This is where the full suite runs: after a push, never
-# stopping at a failure, and recording enough to fix every failure before the
-# next run. A check it lacks belongs in a target of CHECK_TARGETS, and make
+# CI: every check of the repository. The job test runs make check, the targets
+# of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
+# interfaces and the hot-path regression check of feature-check, the decoder
+# fuzz checks and the common state contracts of the conformance results; the
+# job docs runs the documentation checks of the published site. This is where
+# the full suite runs: on every pull request and merge group, never stopping
+# at a failure, and recording enough to fix every failure before the next run. A check it lacks belongs in a target of CHECK_TARGETS, and make
 # repo-check fails a step after make check other than the summary and the
 # report upload.
 # make test-servers starts the database servers and writes their DSNs, as it
@@ -14,13 +15,12 @@
 # deadline. make repo-check fails a workflow with timeout-minutes.
 name: ci
 on:
-  push:
   pull_request:
   merge_group:
   workflow_dispatch:
 
-# A new push cancels the run of the push before it on the same ref: the runners are few, and only the run of the
-# newest head counts. make repo-check requires this on every workflow that runs on push.
+# A new run cancels the run before it on the same ref: the runners are few, and only the run of the newest head
+# counts.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -38,7 +38,7 @@ jobs:
     # other target runs. A failed step fails the job. The checkout and Node are
     # what the runner itself needs.
     steps:
-      # git-check reads the commits of the push or the pull request
+      # git-check reads the commits of the pull request or the merge group
       # (ORM_GIT_RANGE of make check), so the checkout carries the full commit
       # graph.
       - uses: actions/checkout@v5
@@ -167,10 +167,9 @@ jobs:
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           ORM_CI_SETUP: ${{ toJSON(steps) }}
-          # The commits git-check reads: the pull request, or the push when it
-          # adds to a branch; a new branch, a forced push and a manual run give
-          # none, and git-check reads HEAD.
-          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || (github.event_name == 'push' && !github.event.created && !github.event.forced) && format('{0}..{1}', github.event.before, github.sha) || '' }}
+          # The commits git-check reads: the pull request or the merge group; a
+          # manual run gives none, and git-check reads HEAD.
+          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}
         run: make check
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
@@ -188,4 +187,48 @@ jobs:
         with:
           name: check-${{ github.run_id }}-${{ github.run_attempt }}
           path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/
+          if-no-files-found: error
+
+  docs:
+    runs-on: ubuntu-26.04-arm
+    env:
+      VITEPRESS_BASE: /orm/
+    # The documentation checks of the site that docs-pages.yml publishes, with
+    # its base path. Every step has an id and runs whatever the earlier steps
+    # did (if: !cancelled()); make docs-ci records a target whose setup step
+    # failed as not-run, and the report is uploaded under !cancelled().
+    steps:
+      - uses: actions/checkout@v5
+        id: checkout
+      - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-node
+      - id: browsers
+        if: ${{ !cancelled() }}
+        run: make install-browsers
+      # docs-build writes docs/.vitepress/dist, docs-verify-idempotent builds
+      # it twice more and compares every byte, and docs-static-check serves it
+      # and opens it in a browser. make docs-ci runs the three through the
+      # runner of make check, also after a failed one, and writes the log of
+      # each and a summary to the report of this run id, which the next step
+      # uploads whatever the result.
+      - name: documentation checks
+        id: docs
+        if: ${{ !cancelled() }}
+        env:
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-docs
+          ORM_CI_SETUP: ${{ toJSON(steps) }}
+        run: make docs-ci
+      - name: report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_docs/report/
           if-no-files-found: error

@@ -153,7 +153,13 @@ caseTest('the declaration requires a pull request, the merge queue and every che
   assert.equal(ruleset.rules.find(rule => rule.type === 'merge_queue').parameters.merge_method, 'REBASE');
   const checks = ruleset.rules.find(rule => rule.type === 'required_status_checks').parameters;
   // 15368 is the integration id of GitHub Actions, so a status of the same name from another integration does not satisfy the rule.
-  const expected = [...checkNames('.github/workflows/push-gate.yml', ['gate']), ...checkNames('.github/workflows/ci.yml', ['test']), ...checkNames('.github/workflows/docs-pages.yml', ['build'])];
+  // The required checks are the push gate and every job of ci.yml, which holds every check of the repository; the
+  // Pages workflow builds and deploys the site and runs on no merge group (G5.98).
+  const ci = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+  const ciJobs = [...ci.split('\njobs:\n')[1].matchAll(/^ {2}([\w-]+):\s*$/gm)].map(match => match[1]);
+  assert.deepEqual(ciJobs, ['test', 'docs']);
+  assert.doesNotMatch(readFileSync(path.join(ROOT, '.github/workflows/docs-pages.yml'), 'utf8'), /^\s{2}(?:merge_group|pull_request):/m);
+  const expected = [...checkNames('.github/workflows/push-gate.yml', ['push-gate']), ...checkNames('.github/workflows/ci.yml', ciJobs)];
   assert.deepEqual(checks.required_status_checks, expected.map(context => ({ context, integration_id: 15368 })));
   assert.equal(checks.strict_required_status_checks_policy, false);
 });

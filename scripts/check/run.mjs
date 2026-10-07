@@ -241,7 +241,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   });
   for (const { need, message } of missing) failedSetup[need] ??= message;
   // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다. servers가
-  // 없는 실행(문서 workflow, `-`)은 server와 database 단계를 두지 않고, database가 필요한 target을 not-run으로 기록한다.
+  // 없는 실행(ci.yml의 job docs, `-`)은 server와 database 단계를 두지 않고, database가 필요한 target을 not-run으로 기록한다.
   if (!servers) failedSetup.databases = 'this run has no database servers';
   const serversReady = servers && await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);
@@ -289,7 +289,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...(recorder?.writeErrors ?? [])].join('\n')}`);
   if (failed.length) console.log(`check: ${failed.length} of ${results.length} step(s) failed or did not run; report ${relative(root, report)}`);
   // summary는 기록에서 만든다. 기록이 없는 실행(make bench, make run-databases)은 이 실행의 결과로 만든다.
-  // 기록이 없는 실행(make run-databases, 문서 workflow의 make docs-ci)은 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다. 기록이
+  // 기록이 없는 실행(make run-databases, ci.yml의 job docs가 실행하는 make docs-ci)은 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다. 기록이
   // 있는 make check는 summary 단계(scripts/check/summary.mjs)가 쓴다.
   writer.run(join(report, 'summary.md'), () => publish(summary(finished ?? {
     commit: '', tree: '', started: '', ended: new Date().toISOString(), result: failed.length ? 'failed' : 'passed',

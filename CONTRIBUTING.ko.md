@@ -10,7 +10,7 @@
 4. 영문과 한글 paired document를 함께 갱신한다.
 5. 바뀐 것의 unit test, 곧 그 Red/Green case를 실행하고 필요하면 commit 설명에 결과를 기록한다. end-to-end
    실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
-6. 전체 묶음 `make check`는 push마다 CI에서 실행한다. 어떤 단계보다 먼저,
+6. 전체 묶음 `make check`는 모든 pull request와 merge group에서 CI가 실행한다. 어떤 단계보다 먼저,
    `docs/checklist.md`의 항목이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이
    있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 기록하고
    있을 때 이유와 종료 상태 2로 거부한다. 기록은 tree, commit, 결과, 통과하지 못한 target과 모든 단계의 시각을
