@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.115: the generated-check case of the interface check requires the grouped `make check GROUP=${{ matrix.group }}` of CI and every target of `CHECK_TARGETS` in a CI group.
+
 - G5.113: ci.yml ends with the completion check `ci-passed`, a tag `vX.Y.Z` of main creates the GitHub Release, the changelogs keep unreleased changes under `## Unreleased`, and every go.mod declares the module path of its directory.
 
 - G5.113-5: `make repo-check` requires every go.mod to declare the module path of its directory, `github.com/polyspec/orm` at the root.

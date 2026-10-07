@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.115: interface 검사의 생성 검사 case는 CI의 group으로 나눈 `make check GROUP=${{ matrix.group }}`과 CI group에 있는 `CHECK_TARGETS`의 모든 target을 요구한다.
+
 - G5.113: ci.yml은 완료 check `ci-passed`로 끝나고, main의 tag `vX.Y.Z`는 GitHub Release를 만들며, 변경 이력은 release하지 않은 변경을 `## Unreleased` 아래에 두고, 모든 go.mod는 자기 directory의 module path를 선언한다.
 
 - G5.113-5: `make repo-check`는 모든 go.mod가 자기 directory의 module path, root에서는 `github.com/polyspec/orm`을 선언하기를 요구한다.

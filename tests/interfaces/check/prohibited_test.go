@@ -72,9 +72,9 @@ func TestAttemptedMultiStatementCallsFailInterfaceValidation(t *testing.T) {
 }
 
 // TestCIRequiresGeneratedChecks는 CI가 생성 model 검사(go-model-check, ts-model-check)와 공통
-// interface 검사를 실행하는지 확인한다. CI는 make check로 CHECK_TARGETS를 모두 실행하고
-// (make repo-check가 빠진 target을 거부한다), interface 검사는 make check의 feature-check가
-// contracts/features.json의 검증 명령으로 실행한다.
+// interface 검사를 실행하는지 확인한다. CI는 CI group마다 job 하나로 make check GROUP=<group>을 실행하고,
+// CHECK_TARGETS의 모든 target은 어느 CI group(CI_TARGETS_<group>)의 target이다. interface 검사는 make check의
+// feature-check가 contracts/features.json의 검증 명령으로 실행한다.
 func TestCIRequiresGeneratedChecks(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	read := func(path ...string) string {
@@ -90,8 +90,11 @@ func TestCIRequiresGeneratedChecks(t *testing.T) {
 	}
 	for _, mutation := range []struct{ name, workflow, makefile, features string }{
 		{"make check", strings.Replace(workflow, "run: make check", "run: true", 1), makefile, features},
+		{"make check GROUP", strings.Replace(workflow, groupCheck, "run: make check", 1), makefile, features},
 		{"go-model-check", workflow, withoutCheckTarget(makefile, "go-model-check"), features},
 		{"ts-model-check", workflow, withoutCheckTarget(makefile, "ts-model-check"), features},
+		{"go-model-check in a CI group", workflow, withoutGroupTarget(makefile, "go-model-check"), features},
+		{"ts-model-check in a CI group", workflow, withoutGroupTarget(makefile, "ts-model-check"), features},
 		{"interface-check", workflow, makefile, strings.Replace(features, interfaceCommand, "true", 1)},
 	} {
 		if mutation.workflow == workflow && mutation.makefile == makefile && mutation.features == features {
@@ -105,19 +108,43 @@ func TestCIRequiresGeneratedChecks(t *testing.T) {
 
 // withoutCheckTarget은 CHECK_TARGETS 줄에서 target 하나를 뺀 Makefile을 돌려준다.
 func withoutCheckTarget(makefile, target string) string {
+	return withoutTarget(makefile, "CHECK_TARGETS = ", target)
+}
+
+// withoutGroupTarget은 CI_TARGETS_<group> 줄에서 target 하나를 뺀 Makefile을 돌려준다.
+func withoutGroupTarget(makefile, target string) string {
+	return withoutTarget(makefile, "CI_TARGETS_", target)
+}
+
+func withoutTarget(makefile, prefix, target string) string {
 	lines := strings.Split(makefile, "\n")
 	for index, line := range lines {
-		if rest, ok := strings.CutPrefix(line, "CHECK_TARGETS = "); ok {
-			kept := []string{}
-			for _, field := range strings.Fields(rest) {
-				if field != target {
-					kept = append(kept, field)
-				}
-			}
-			lines[index] = "CHECK_TARGETS = " + strings.Join(kept, " ")
+		name, rest, ok := strings.Cut(line, " = ")
+		if !ok || !strings.HasPrefix(line, prefix) {
+			continue
 		}
+		kept := []string{}
+		for _, field := range strings.Fields(rest) {
+			if field != target {
+				kept = append(kept, field)
+			}
+		}
+		lines[index] = name + " = " + strings.Join(kept, " ")
 	}
 	return strings.Join(lines, "\n")
+}
+
+// groupCheck는 CI group job의 make check step이다.
+const groupCheck = "run: make check GROUP=${{ matrix.group }}"
+
+// makeVariable은 Makefile의 한 줄 정의 `NAME = value`의 값을 필드로 돌려준다.
+func makeVariable(makefile, name string) []string {
+	for _, line := range strings.Split(makefile, "\n") {
+		if rest, ok := strings.CutPrefix(line, name+" = "); ok {
+			return strings.Fields(rest)
+		}
+	}
+	return nil
 }
 
 // interfaceCommand는 make interface-check의 명령이며 feature-check가 검증 명령으로 실행한다. go run 대신
@@ -127,24 +154,32 @@ const interfaceCommand = "node tests/go-run.mjs interfaces-check ./tests/interfa
 func validateGeneratedCI(workflow, makefile, features string) error {
 	runsCheck := false
 	for _, line := range strings.Split(workflow, "\n") {
-		if strings.TrimSpace(line) == "run: make check" {
+		if strings.TrimSpace(line) == groupCheck {
 			runsCheck = true
 		}
 	}
 	if !runsCheck {
-		return fmt.Errorf("CI must run make check")
+		return fmt.Errorf("CI must run make check for each CI group: %s", groupCheck)
 	}
 	targets := map[string]bool{}
-	for _, line := range strings.Split(makefile, "\n") {
-		if rest, ok := strings.CutPrefix(line, "CHECK_TARGETS = "); ok {
-			for _, target := range strings.Fields(rest) {
-				targets[target] = true
-			}
-		}
+	for _, target := range makeVariable(makefile, "CHECK_TARGETS") {
+		targets[target] = true
 	}
 	for _, target := range []string{"go-model-check", "ts-model-check"} {
 		if !targets[target] {
 			return fmt.Errorf("CHECK_TARGETS must include %s", target)
+		}
+	}
+	// 모든 CHECK_TARGETS target은 어느 CI group의 target이다: 그 group의 job이 make check GROUP=<group>으로 실행한다.
+	grouped := map[string]bool{}
+	for _, group := range makeVariable(makefile, "CI_GROUPS") {
+		for _, target := range makeVariable(makefile, "CI_TARGETS_"+group) {
+			grouped[target] = true
+		}
+	}
+	for _, target := range makeVariable(makefile, "CHECK_TARGETS") {
+		if !grouped[target] {
+			return fmt.Errorf("no CI group of CI_GROUPS runs %s of CHECK_TARGETS", target)
 		}
 	}
 	if !strings.Contains(features, interfaceCommand) {
