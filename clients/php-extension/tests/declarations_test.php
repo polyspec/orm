@@ -15,11 +15,31 @@ if ($extension === false || $extension === '' || !is_file($extension)) {
     exit(1);
 }
 
-/** declarations.php를 $arguments(php 인자)로 실행해 그 JSON을 돌려준다. */
-function declarations(array $arguments, string $mode): array
+/** requiredModules는 확장이 ZEND_MOD_REQUIRED로 요구하는 module의 이름이다(src/orm_dbspec.c). */
+function requiredModules(): array
 {
-    // -n은 php.ini를 읽지 않는다: php.ini가 확장을 load하면 stub과 같은 이름의 class가 이미 있다.
-    $command = [PHP_BINARY, '-n', ...$arguments, __DIR__ . '/declarations.php', $mode];
+    preg_match_all('/ZEND_MOD_REQUIRED\("([a-z_]+)"\)/', file_get_contents(dirname(__DIR__) . '/src/orm_dbspec.c'), $names);
+    return $names[1];
+}
+
+/**
+ * moduleArguments는 php.ini 없이(-n) 실행하는 PHP가 확장이 요구하는 module을 갖게 하는 인자다. -n은 php.ini가 load하는
+ * shared module(예: Ubuntu의 PHP package가 conf.d로 load하는 pdo)도 load하지 않으므로, 그 PHP에 들어 있지 않은 module은
+ * 이 PHP의 extension_dir에서 load한다. 요구한 module이 없으면 PHP는 확장을 load하지 않는다. $loaded(module 이름)는 php -n이
+ * 그 module을 갖는지다.
+ */
+function moduleArguments(array $modules, callable $loaded, string $extensionDir): array
+{
+    $missing = array_values(array_filter($modules, static fn(string $module): bool => !$loaded($module)));
+    if ($missing === []) {
+        return [];
+    }
+    return ['-d', "extension_dir=$extensionDir", ...array_merge(...array_map(static fn(string $module): array => ['-d', "extension=$module"], $missing))];
+}
+
+/** run은 명령을 실행해 [종료 코드, stdout, stderr]를 돌려준다. */
+function run(array $command): array
+{
     $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     if ($process === false) {
         throw new RuntimeException('cannot start ' . implode(' ', $command));
@@ -28,13 +48,47 @@ function declarations(array $arguments, string $mode): array
     $err = stream_get_contents($pipes[2]);
     fclose($pipes[1]);
     fclose($pipes[2]);
-    $code = proc_close($process);
+    return [proc_close($process), $out, $err];
+}
+
+/**
+ * declarations.php를 $arguments(php 인자)로 실행해 그 JSON을 돌려준다. 실패하면 stderr와 stdout을 함께 적는다: PHP가
+ * 확장을 load하지 못한 이유(startup 경고)는 CLI에서 stdout에 쓴다.
+ */
+function declarations(array $arguments, string $mode): array
+{
+    // -n은 php.ini를 읽지 않는다: php.ini가 확장을 load하면 stub과 같은 이름의 class가 이미 있다. 확장이 요구하는 module은
+    // moduleArguments가 load한다.
+    $loaded = static fn(string $module): bool => run([PHP_BINARY, '-n', '-r', 'exit(extension_loaded($argv[1]) ? 0 : 1);', $module])[0] === 0;
+    $command = [PHP_BINARY, '-n', ...moduleArguments(requiredModules(), $loaded, (string) ini_get('extension_dir')), ...$arguments, __DIR__ . '/declarations.php', $mode];
+    [$code, $out, $err] = run($command);
     if ($code !== 0) {
-        throw new RuntimeException(implode(' ', $command) . " exited with $code: $err");
+        throw new RuntimeException(implode(' ', $command) . " exited with $code: stderr: " . trim($err) . '; stdout: ' . trim($out));
     }
     return json_decode($out, true, 512, JSON_THROW_ON_ERROR);
 }
 
+// module case는 php.ini 없는 PHP에 확장이 요구하는 module이 shared module로만 있을 때(CI runner의 PHP package에서 pdo) 그
+// module을 extension_dir에서 load하는 인자를 만들고, 모두 들어 있으면 인자를 더하지 않는지 본다.
+$modules = testcase_run('php-extension/required-modules', TESTCASE_COMPUTE, static function (callable $step): void {
+    $required = requiredModules();
+    if (!in_array('pdo', $required, true)) {
+        throw new RuntimeException('src/orm_dbspec.c requires ' . implode(', ', $required) . ', without pdo');
+    }
+    $shared = moduleArguments(['spl', 'hash', 'pdo'], static fn(string $module): bool => $module !== 'pdo', '/usr/lib/php/20250925');
+    if ($shared !== ['-d', 'extension_dir=/usr/lib/php/20250925', '-d', 'extension=pdo']) {
+        throw new RuntimeException('a PHP without a built-in pdo gets the arguments ' . json_encode($shared) . ', not the shared pdo of its extension_dir');
+    }
+    $builtIn = moduleArguments(['spl', 'hash', 'pdo'], static fn(string $module): bool => true, '/usr/lib/php/20250925');
+    if ($builtIn !== []) {
+        throw new RuntimeException('a PHP with every required module built in gets the arguments ' . json_encode($builtIn));
+    }
+    [$code, $out] = run([PHP_BINARY, '-n', '-r', 'echo "startup line"; exit(3);']);
+    if ($code !== 3 || $out !== 'startup line') {
+        throw new RuntimeException("the run of a failing PHP keeps exit $code and stdout " . json_encode($out));
+    }
+    $step('required modules ' . implode(', ', $required) . '; a shared pdo is loaded from extension_dir');
+});
 $passed = testcase_run('php-extension/declarations', TESTCASE_PROCESS, static function (callable $step) use ($extension): void {
     $native = declarations(['-d', "extension=$extension"], 'extension');
     $stub = declarations([], 'stub');
@@ -118,4 +172,4 @@ $mirrored = testcase_run('php-extension/mirrors', TESTCASE_PROCESS, static funct
     }
     $step(count($mirrors) . ' tests follow the PHP client tests');
 });
-exit($passed && $matched && $packaged && $mirrored ? 0 : 1);
+exit($modules && $passed && $matched && $packaged && $mirrored ? 0 : 1);
