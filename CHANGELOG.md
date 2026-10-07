@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.99: the build job of docs-pages.yml installs the browsers before the site build, and `make repo-check` requires that of every job that builds the site.
+
 - G5.98: every check runs in `ci.yml` on pull requests, merge groups and manual runs: the jobs `test` (make check) and `docs` (the documentation checks); `push-gate.yml` runs the job `push-gate` on pushes outside the merge queue branches, pull requests and merge groups; `docs-pages.yml` builds and deploys the site on pushes to main and manual runs; the ruleset of main requires the checks `push-gate`, `test` and `docs`.
 
 - G5.97: the clients depend on ordered-json by its tags: `v0.0.1` for the Rust, TypeScript and PHP packages and `go/v0.0.1` for the Go module.
