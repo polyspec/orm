@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.0.3
+
+- G5.133: VERSION, 모든 package file, orm package의 lockfile 항목, feature contract와 문서의 version 문장은 0.0.3을 선언하고, 변경 이력은 0.0.3의 변경을 `## 0.0.3`에 기록하므로, `make release-versions`는 tag `v0.0.3`에서 통과한다.
 - G5.132: `make release-publish`는 변경 이력 section이 GitHub release 본문의 한도인 125000자 이하면 그것을 release notes로 쓰고, 넘으면 tag의 CHANGELOG.md에서 section `## X.Y.Z`를 가리키는 한 줄을 쓴다.
 
 ## 0.0.2

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 0.0.3
+
+- G5.133: VERSION, every package file, the lockfile entries of the orm packages, the feature contract and the version statements of the documents declare 0.0.3, and the changelogs record the changes of 0.0.3 under `## 0.0.3`, so `make release-versions` passes for the tag `v0.0.3`.
 - G5.132: `make release-publish` uses the changelog section as the release notes when it has at most 125000 characters, the limit of a GitHub release body, and otherwise one line that links the section `## X.Y.Z` of CHANGELOG.md at the tag.
 
 ## 0.0.2

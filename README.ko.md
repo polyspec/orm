@@ -1,6 +1,6 @@
-# orm 0.0.2
+# orm 0.0.3
 
-**Go, PHP, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 버전은 0.0.2이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
+**Go, PHP, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 버전은 0.0.3이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
