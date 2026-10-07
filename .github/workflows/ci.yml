@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [static, clients, conformance, dbspec, features, stress]
+        group: [static, clients, conformance, dbspec, features, stress-mysql, stress-pg-sqlite]
     # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
     # one failed install never hides another. The step group-needs writes the

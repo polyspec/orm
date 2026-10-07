@@ -140,7 +140,7 @@ const groupStep = step => step.run.split('\n').flatMap(segments).some(segment =>
 // ciGroups는 Makefile의 CI group이다: groups는 CI_GROUPS, targets는 CI_TARGETS_<group>마다 그 target이다.
 export function ciGroups(makefile) {
   const groups = /^CI_GROUPS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/).filter(Boolean) ?? [];
-  const targets = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9]+) = (.*)$/gm)].map(match => [match[1], match[2].trim().split(/\s+/).filter(Boolean)]));
+  const targets = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9-]+) = (.*)$/gm)].map(match => [match[1], match[2].trim().split(/\s+/).filter(Boolean)]));
   return { groups, targets };
 }
 

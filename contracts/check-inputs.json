@@ -54,7 +54,8 @@
     "feature-unit-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer"], "inputs": ["scripts/features/**", "contracts/features.json", "contracts/check-inputs.json", "docs/features.md", "docs/features.ko.md", "tests/testcase.mjs", "Makefile"]},
     "feature-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "php-extension-tools", "databases"]},
     "feature-helper-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
-    "feature-stress-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
+    "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
+    "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]}
   },
   "paths": {
