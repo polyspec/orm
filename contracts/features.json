@@ -1322,6 +1322,7 @@
           "shard": "other",
           "inputs": [
             "clients/typescript/tests/clock.mjs",
+            "clients/typescript/src/clock.ts",
             "contracts/fixtures/clock.dbs",
             "contracts/fixtures/clock_mark.dbs"
           ]

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- G5.143: the TypeScript client clock (`wallMicros`) stays within the millisecond of `Date.now()` and does not go back while the wall clock does not, so a SQLite `now` condition read after an insert matches the inserted row.
 - G5.142: the npm workspace installs with the default hoisted layout, and the TypeScript build, the package declaration check, the conformance result helpers and the `decimal-typescript-types` commands resolve their modules by package name.
 
 ## 0.0.4

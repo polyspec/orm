@@ -12,6 +12,7 @@
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { CORE, Db, Model, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
+import { wallMicros } from '../dist/clock.js';
 import { runCase } from '../../../tests/testcase.mjs';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 
@@ -151,16 +152,68 @@ async function clockNowCondition(dsn) {
   } finally { await db.close(); }
 }
 
+/**
+ * wallMicros under a wall clock and a monotonic clock that the case sets.
+ * The monotonic clock runs ahead of the wall clock, which never goes back:
+ * reading a falls 1.9 ms after the millisecond of the wall clock, reading b
+ * 2.0 ms after the millisecond of reading a, and Date.now() advances by one
+ * millisecond between them. Every reading lies within the millisecond that
+ * Date.now() reports, and reading b is not earlier than reading a; a now
+ * condition read right after an insert then matches the inserted row.
+ */
+function clockWallMicrosOrder() {
+  const wallNow = Date.now;
+  const monotonicNow = performance.now;
+  let wall = 0;
+  let monotonic = 0;
+  Date.now = () => wall;
+  performance.now = () => monotonic;
+  try {
+    // base는 실제 wall clock보다 하루 뒤라서, 첫 읽기는 그 millisecond의 시작으로 옮겨지고 anchor가 정해진다.
+    const base = wallNow() + 86_400_000;
+    wall = base; monotonic = 1_000;
+    const start = wallMicros();
+    check(start === base * 1000, `start ${start} is the wall clock ${base * 1000}`);
+    const readings = [];
+    for (const [w, m] of [[base + 4000, 5001.9], [base + 4001, 5003.0], [base + 4001, 5003.5], [base + 4002, 5004.2]]) {
+      wall = w; monotonic = m;
+      const micros = wallMicros();
+      readings.push(micros);
+      check(Math.floor(micros / 1000) === w, `reading ${micros} at wall ${w} and monotonic ${m} lies within the millisecond of the wall clock`);
+    }
+    for (let i = 1; i < readings.length; i++) {
+      check(readings[i] >= readings[i - 1], `reading ${readings[i]} is not earlier than the previous reading ${readings[i - 1]} while the wall clock goes from ${base + 4000} to ${base + 4002}`);
+    }
+  } finally {
+    Date.now = wallNow;
+    performance.now = monotonicNow;
+  }
+}
+
+// databaseFree는 database 없이 한 번 실행하는 case다.
+const databaseFree = {
+  clock_wall_micros_order: clockWallMicrosOrder,
+};
 const cases = {
   clock_microseconds: clockMicroseconds,
   clock_soft_delete_microseconds: clockSoftDeleteMicroseconds,
   clock_now_condition: clockNowCondition,
 };
-const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
+const selected = process.argv.length > 2 ? process.argv.slice(2) : [...Object.keys(databaseFree), ...Object.keys(cases)];
+for (const name of selected.filter(name => Object.hasOwn(databaseFree, name))) {
+  const before = failures;
+  current = name;
+  const passed = await runCase(`clock/${name}`, CASE_DEADLINE_MS, async () => {
+    databaseFree[name]();
+    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+  });
+  if (!passed && failures === before) failures++;
+}
+const databaseCases = selected.filter(name => !Object.hasOwn(databaseFree, name));
+for (const env of databaseCases.length > 0 ? ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN'] : []) {
   if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make test-servers`);
 }
-for (const name of selected) {
+for (const name of databaseCases) {
   const run = cases[name];
   if (run === undefined) throw new Error(`unknown case ${name}`);
   for (const driver of ['sqlite', 'mysql', 'postgres']) {
