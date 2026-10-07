@@ -2,7 +2,7 @@
     "name": "polyspec/orm",
     "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
     "type": "library",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "license": "MIT",
     "require": {
         "php": ">=8.4",
