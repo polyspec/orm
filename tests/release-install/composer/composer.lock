@@ -4,27 +4,36 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b1b088bf19fcbb4c22507be23e0c04b1",
+    "content-hash": "38ed6ee4a77c1c2df978f8ca206e2cc4",
     "packages": [
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.2",
+            "version": "0.0.3",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.zip",
-                "shasum": "dba5e4c66e249b63d149856fc48e4634a5bbe03d"
+                "url": "assets/polyspec-ordered-json-0.0.3.zip",
+                "shasum": "93e3a3f234a2dd21cff17f4b47390562656a6c68"
             },
             "require": {
                 "ext-json": "*",
                 "ext-pcre": "*",
                 "php": ">=8.2"
             },
+            "suggest": {
+                "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
+            },
             "type": "library",
             "autoload": {
                 "files": [
                     "src/OrderedJson.php"
                 ]
-            }
+            },
+            "scripts": {
+                "test": [
+                    "python3 ../scripts/verify.py --only php"
+                ]
+            },
+            "description": "JSON document order at every depth, with optional native parser"
         },
         {
             "name": "polyspec/orm",
@@ -39,7 +48,7 @@
                 "ext-pdo": "*",
                 "ext-zlib": "*",
                 "php": ">=8.4",
-                "polyspec/ordered-json": "0.0.2",
+                "polyspec/ordered-json": "0.0.3",
                 "symfony/yaml": "^7.4"
             },
             "suggest": {

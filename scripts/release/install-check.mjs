@@ -6,9 +6,9 @@
 //             package-lock.json은 다른 package를 정확한 version과 integrity로 고정한다. 이 저장소가 만드는 tarball
 //             옆에 다른 polyspec 저장소의 tarball을 그 GitHub Release에서 받아 두고(integrity는 lock이 확인한다), `npm ci`를
 //             `@polyspec` registry가 닿지 않는 주소인 채로 실행하므로 polyspec package는 tarball로만 풀린다.
-//   Composer  fixture의 composer.json은 asset zip의 artifact repository `assets`와 ordered-json 0.0.2 zip(`version`이 없어
-//             artifact repository가 읽지 못한다)의 shasum을 가진 `package` repository를 두고, composer.lock은 다른 package를
-//             dist reference로 고정한다. `composer install`이 lock대로 설치한다. polyspec/orm-dbspec는 type `php-ext`이므로
+//   Composer  fixture의 composer.json은 artifact repository `assets`만 두고, 그 directory는 이 저장소가 만드는 zip과 그것이
+//             요구하는 다른 polyspec 저장소의 zip(그 GitHub Release에서 받는다)을 담는다. composer.lock은 받은 zip을 shasum으로,
+//             다른 package를 dist reference로 고정한다. `composer install`이 lock대로 설치한다. polyspec/orm-dbspec는 type `php-ext`이므로
 //             Composer가 아니라 PIE가 설치한다.
 // lock이 고정한 package의 download는 설치이므로 허용한다(AGENTS.md): 이 script는 make가 export한 npm_config_offline과
 // COMPOSER_DISABLE_NETWORK를 npm ci와 composer install에서 지운다. 시간에 따라 결과가 달라지는 registry 조회(version 범위의
@@ -23,7 +23,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAssets } from './release.mjs';
+import { assetName, buildAssets } from './release.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const FIXTURE = join(root, 'tests', 'release-install');
@@ -37,9 +37,10 @@ const run = (program, args, options = {}) => {
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
 const write = (path, data, indent) => writeFileSync(path, `${JSON.stringify(data, null, indent)}\n`);
 
-// download는 다른 polyspec 저장소의 release asset을 받는다: `@polyspec/<repo>`의 tarball은 그 저장소의 tag `v<version>`에 있다.
+// download는 다른 polyspec 저장소의 release asset을 받는다: `@polyspec/<repo>`와 `polyspec/<repo>`의 asset은 그 저장소의 tag
+// `v<version>`에 있다.
 async function download(name, version, file, directory) {
-  const url = `https://github.com/polyspec/${name.replace(/^@polyspec\//, '')}/releases/download/v${version}/${file}`;
+  const url = `https://github.com/polyspec/${name.replace(/^@?polyspec\//, '')}/releases/download/v${version}/${file}`;
   const response = await fetch(url);
   if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`);
   writeFileSync(join(directory, file), Buffer.from(await response.arrayBuffer()));
@@ -84,12 +85,21 @@ try {
   const composer = join(work, 'composer');
   mkdirSync(join(composer, 'assets'), { recursive: true });
   copyFileSync(join(FIXTURE, 'composer', 'composer.json'), join(composer, 'composer.json'));
-  for (const asset of built.filter(asset => asset.endsWith('.zip'))) copyFileSync(join(assets, asset), join(composer, 'assets', asset));
+  const zips = built.filter(asset => asset.endsWith('.zip'));
+  for (const asset of zips) copyFileSync(join(assets, asset), join(composer, 'assets', asset));
+  const required = new Map();
+  for (const asset of zips)
+    for (const [name, at] of Object.entries(JSON.parse(run('unzip', ['-p', join(assets, asset), 'composer.json'])).require ?? {}))
+      if (name.startsWith('polyspec/')) required.set(name, at);
+  for (const [name, at] of required) {
+    const file = assetName(name, at, 'zip');
+    if (!zips.includes(file)) await download(name, at, file, join(composer, 'assets'));
+  }
   if (action === 'lock') {
     run('composer', ['update', '--no-install', '--no-interaction', '--no-progress'], { cwd: composer, env });
     const lock = json(join(composer, 'composer.lock'));
     for (const entry of [...lock.packages, ...(lock['packages-dev'] ?? [])])
-      if (entry.dist?.url?.startsWith('assets/')) entry.dist.shasum = '';
+      if (zips.includes(String(entry.dist?.url).replace(/^assets\//, ''))) entry.dist.shasum = '';
     write(join(FIXTURE, 'composer', 'composer.lock'), lock, 4);
     console.log('install-check: wrote tests/release-install/composer/composer.lock');
   } else {

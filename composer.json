@@ -18,12 +18,15 @@
             "type": "package",
             "package": {
                 "name": "polyspec/ordered-json",
-                "version": "0.0.2",
+                "version": "0.0.3",
                 "type": "library",
                 "require": {
                     "php": ">=8.2",
                     "ext-json": "*",
                     "ext-pcre": "*"
+                },
+                "suggest": {
+                    "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
                 },
                 "autoload": {
                     "files": [
@@ -32,7 +35,8 @@
                 },
                 "dist": {
                     "type": "zip",
-                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.zip"
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.3/polyspec-ordered-json-0.0.3.zip",
+                    "shasum": "93e3a3f234a2dd21cff17f4b47390562656a6c68"
                 }
             }
         }
