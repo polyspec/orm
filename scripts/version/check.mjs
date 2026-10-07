@@ -55,14 +55,51 @@ export async function versionErrors(root) {
   return errors;
 }
 
+// CHANGELOGS는 변경 이력 file이다. 각 file은 맨 위에 `## Unreleased`(아직 tag하지 않은 변경)를 두고, 그 아래 section은
+// release한 version `## X.Y.Z`이며 새 version이 위에 온다. release PR은 VERSION과 모든 package file을 X.Y.Z로 바꾸고
+// `## Unreleased`를 `## X.Y.Z`로 바꾼 뒤 그 위에 빈 `## Unreleased`를 둔다(AGENTS.md), 그래서 어느 section도 VERSION보다 크지
+// 않다. 두 언어의 file은 같은 section을 가진다.
+export const CHANGELOGS = ['CHANGELOG.md', 'CHANGELOG.ko.md'];
+const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
+const compare = (a, b) => {
+  const [x, y] = [SEMVER.exec(a).slice(1).map(Number), SEMVER.exec(b).slice(1).map(Number)];
+  return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+};
+
+// changelogErrors는 version의 변경 이력 file({path: text})이 그 규칙을 어기는 곳마다 오류 하나를 돌려준다.
+export function changelogErrors(version, files) {
+  const errors = [];
+  const sections = {};
+  for (const [path, text] of Object.entries(files)) {
+    const headings = [...text.matchAll(/^## (.*)$/gm)].map(match => match[1].trim());
+    sections[path] = headings;
+    if (headings[0] !== 'Unreleased') errors.push(`${path}: the first section is ${headings[0] === undefined ? 'missing' : `## ${headings[0]}`}; write the entries of the changes that no tag released under ## Unreleased at the top`);
+    if (headings.filter(heading => heading === 'Unreleased').length > 1) errors.push(`${path}: ## Unreleased appears ${headings.filter(heading => heading === 'Unreleased').length} times; keep one at the top`);
+    const versions = headings.filter(heading => heading !== 'Unreleased');
+    for (const heading of versions) {
+      if (!SEMVER.test(heading)) errors.push(`${path}: the section ## ${heading} is neither ## Unreleased nor a released version X.Y.Z`);
+      else if (compare(heading, version) > 0) errors.push(`${path}: the section ## ${heading} is above VERSION ${version}; the release PR sets VERSION to the version it releases`);
+    }
+    const released = versions.filter(heading => SEMVER.test(heading));
+    for (const [index, heading] of released.slice(1).entries())
+      if (compare(released[index], heading) <= 0) errors.push(`${path}: the section ## ${heading} follows ## ${released[index]}; a newer version comes first and appears once`);
+  }
+  const [first, ...others] = Object.keys(sections);
+  for (const path of others)
+    if (sections[path].join('\n') !== sections[first].join('\n')) errors.push(`${path}: the sections ${sections[path].map(heading => `## ${heading}`).join(', ')} differ from the sections ${sections[first].map(heading => `## ${heading}`).join(', ')} of ${first}`);
+  return errors;
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   // version check는 선언 file을 읽고 비교하는 case 하나다.
   const log = sections();
   log.begin('version', COMPUTE);
   const root = resolve(import.meta.dirname, '..', '..');
-  const errors = await versionErrors(root);
+  const version = (await readFile(join(root, 'VERSION'), 'utf8')).trim();
+  const errors = [...await versionErrors(root),
+    ...changelogErrors(version, Object.fromEntries(await Promise.all(CHANGELOGS.map(async path => [path, await readFile(join(root, path), 'utf8')]))))];
   for (const error of errors) console.error(`version: ${error}`);
-  if (errors.length === 0) console.log(`version: ${DECLARATIONS.length} declarations agree on ${(await readFile(join(root, 'VERSION'), 'utf8')).trim()}`);
+  if (errors.length === 0) console.log(`version: ${DECLARATIONS.length} declarations agree on ${version}; ${CHANGELOGS.join(' and ')} start with ## Unreleased`);
   log.end(errors.length ? `${errors.length} declaration(s) differ; each is listed above` : undefined);
   if (errors.length > 0) process.exitCode = 1;
 }

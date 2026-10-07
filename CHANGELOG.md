@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.0.2
+## Unreleased
+
+- G5.113-1: CHANGELOG.md and CHANGELOG.ko.md keep the changes that no tag released under `## Unreleased` at the top, and `make version-check` requires it, with every other section a released version not above VERSION.
 
 - G5.112: the declarations test of the PHP extension loads the modules that the extension requires, such as a shared `pdo`, when it runs PHP without php.ini, and its failure states the stdout of PHP.
 
@@ -1599,8 +1601,6 @@ Prefix generated MySQL CHECK constraint names with their table name so distinct 
 - Go JSON and JSONS codecs use ordered-json values, preserving object member order and distinguishing empty objects from empty arrays.
 - Go JSON and JSONS codecs convert tagged Go structs and raw `jsontext.Value` inputs into ordered-json without using the standard JSON encoder as the value boundary.
 - The Go client uses the `v0.0.1` package at `github.com/polyspec/ordered-json/go` from the ordered-json monorepo.
-
-## 0.0.1
 
 - Initial development version.
 - Added the shared IR, compiler, generated clients, database executors, migrations, authenticated versioned encryption, relations, batches, keyset pagination, and conformance checks.
