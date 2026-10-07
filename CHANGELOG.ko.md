@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.124: CI는 client database test를 group clients-db에서, pooler test를 group clients-pooler에서 실행한다.
+
 - G5.123: 기능 coverage는 cargo test binary를 쓰지 않는 case를 Rust coverage build 동안 실행하고, database마다 Rust case를 그 build 뒤에 실행한다.
 
 - G5.122: contracts/features.json의 모든 검증 명령은 자기 `shard`(`rust`나 `other`)를 선언하고, `make check`는 기능 coverage와 두 shard를 `make feature-coverage`, `make feature-verify-rust`, `make feature-verify-other`로 각각 자기 CI group에서 실행한다. `make feature-check`는 그 셋을 실행한다.

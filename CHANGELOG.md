@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.124: CI runs the client database tests in the group clients-db and the pooler tests in the group clients-pooler.
+
 - G5.123: the feature coverage runs the cases that use no cargo test binary while the Rust coverage build runs, and the Rust cases of each database after it.
 
 - G5.122: every verification command of contracts/features.json declares its `shard` (`rust` or `other`), and `make check` runs the feature coverage and the two shards as `make feature-coverage`, `make feature-verify-rust` and `make feature-verify-other`, each in a CI group of its own; `make feature-check` runs the three.

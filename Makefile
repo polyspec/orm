@@ -137,14 +137,21 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check release-check feature-coverage feature-verify-rust feature-verify-other feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check go-test-check
 # CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
 # job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
-# 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행 하나에서 잰 target의 시간으로 가장 긴 group이 짧도록 나눈다:
-# static은 database가 필요 없는 target, clients, conformance, dbspec은 database target, feature-coverage,
-# feature-verify-rust, feature-verify-other는 feature-check의 세 부분(기능의 coverage, shard rust와 other의 검증 명령),
-# stress-mysql은 2000 table plan의 MySQL 적용(feature-stress-mysql-check), stress-pg-sqlite는 stress 문서의 bench와
-# PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)이다. 로컬 make check는 GROUP 없이 모든 target을 실행한다.
-CI_GROUPS = static clients conformance dbspec feature-coverage feature-verify-rust feature-verify-other stress-mysql stress-pg-sqlite
+# 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행에서 잰 target의 시간으로 job마다 setup과 함께 10분 안에
+# 끝나도록 나눈다. 2000 table plan의 MySQL 적용 하나가 그보다 길므로 stress-mysql만 넘는다. 로컬 make check는 GROUP 없이
+# 모든 target을 실행한다.
+#   static: database가 필요 없는 target
+#   clients-db: client의 database test, Rust driver, example, dialect fact와 Go test
+#   clients-pooler: pooler를 거친 client의 database test. 그 test build를 자기 job에서 다시 한다
+#   conformance, dbspec: conformance와 dbspec의 database target
+#   feature-coverage, feature-verify-rust, feature-verify-other: feature-check의 세 부분(기능의 coverage, shard rust와
+#     other의 검증 명령)
+#   stress-mysql: 2000 table plan의 MySQL 적용(feature-stress-mysql-check)
+#   stress-pg-sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
+CI_GROUPS = static clients-db clients-pooler conformance dbspec feature-coverage feature-verify-rust feature-verify-other stress-mysql stress-pg-sqlite
 CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check release-check
-CI_TARGETS_clients = rust-driver-check example-check client-db-check client-pooler-check dialect-facts-check go-test-check
+CI_TARGETS_clients-db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
+CI_TARGETS_clients-pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check ts-min-check conformance-check feature-helper-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
 CI_TARGETS_feature-coverage = feature-coverage
