@@ -1,5 +1,5 @@
 import { segments } from './testcases.mjs';
-import { CI_SETUP } from '../check/ci-setup.mjs';
+import { CI_SETUP, stepCondition } from '../check/ci-setup.mjs';
 
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
 // (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
@@ -128,10 +128,62 @@ export function checkTargets(makefile) {
   return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/) ?? [];
 }
 
+// GROUP_CHECK는 CI group의 job이 make check를 실행하는 줄이다: matrix의 group 하나의 target(CI_TARGETS_<group>)을 실행한다.
+export const GROUP_CHECK = 'make check GROUP=${{ matrix.group }}';
+
+// runsCheck는 명령 조각이 make check를 실행하는지다: 모든 target(`make check`)이거나 CI group 하나(GROUP_CHECK)다.
+export const runsCheck = segment => /^make\s+check\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
+const checkStep = step => step.run.split('\n').flatMap(segments).some(runsCheck);
+const groupStep = step => step.run.split('\n').flatMap(segments).some(segment => segment.trim() === GROUP_CHECK);
+
+// ciGroups는 Makefile의 CI group이다: groups는 CI_GROUPS, targets는 CI_TARGETS_<group>마다 그 target이다.
+export function ciGroups(makefile) {
+  const groups = /^CI_GROUPS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/).filter(Boolean) ?? [];
+  const targets = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9]+) = (.*)$/gm)].map(match => [match[1], match[2].trim().split(/\s+/).filter(Boolean)]));
+  return { groups, targets };
+}
+
+// matrixGroups는 job text의 matrix `group: [a, b]` 목록이다. 없으면 null이다.
+export function matrixGroups(job) {
+  const list = /^\s*group:\s*\[(.*)\]\s*$/m.exec(job)?.[1];
+  return list === undefined ? null : list.split(',').map(item => item.trim()).filter(Boolean);
+}
+
+// ciGroupErrors는 CI group이 CHECK_TARGETS를 나누지 않는 곳마다 오류 하나를 돌려준다. GROUP_CHECK를 실행하는 job의
+// matrix group은 CI_GROUPS와 같고, CI group마다 CI_TARGETS_<group>이 있으며, 모든 group의 target을 합하면 CHECK_TARGETS와
+// 같고 어느 target도 두 group에 있지 않다. 그래서 job들이 함께 make check의 모든 target을 한 번씩 실행한다.
+export function ciGroupErrors(workflow, makefile) {
+  const errors = [];
+  const { groups, targets } = ciGroups(makefile);
+  const checks = checkTargets(makefile);
+  if (groups.length === 0) return [`ci.yml runs ${GROUP_CHECK}, but the Makefile declares no CI_GROUPS`];
+  for (const [id, job] of workflowJobs(workflow)) {
+    if (!workflowSteps(job).some(groupStep)) continue;
+    const matrix = matrixGroups(job);
+    if (!matrix) { errors.push(`ci.yml job ${id} runs ${GROUP_CHECK} without a matrix group: [...] of CI_GROUPS`); continue; }
+    for (const group of new Set(matrix.filter((group, index) => matrix.indexOf(group) !== index))) errors.push(`ci.yml job ${id} lists the matrix group ${group} twice`);
+    for (const group of groups) if (!matrix.includes(group)) errors.push(`ci.yml job ${id} has no matrix group ${group} of CI_GROUPS, so no job runs its targets`);
+    for (const group of new Set(matrix)) if (!groups.includes(group)) errors.push(`ci.yml job ${id} has the matrix group ${group}, which is not in CI_GROUPS`);
+  }
+  for (const group of new Set(groups.filter((group, index) => groups.indexOf(group) !== index))) errors.push(`Makefile CI_GROUPS lists ${group} twice`);
+  for (const group of groups) if (!(targets[group]?.length > 0)) errors.push(`Makefile CI group ${group} declares no CI_TARGETS_${group}`);
+  for (const group of Object.keys(targets)) if (!groups.includes(group)) errors.push(`Makefile declares CI_TARGETS_${group}, but ${group} is not in CI_GROUPS`);
+  const owners = new Map();
+  for (const group of groups) for (const target of targets[group] ?? []) owners.set(target, [...(owners.get(target) ?? []), group]);
+  for (const target of checks) {
+    const runs = owners.get(target) ?? [];
+    if (runs.length === 0) errors.push(`no CI group runs ${target} of CHECK_TARGETS; add it to one CI_TARGETS_<group>`);
+    else if (runs.length > 1) errors.push(`CI groups ${runs.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
+  }
+  for (const [target, runs] of owners) if (!checks.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
+  return errors;
+}
+
 // ciCheckTargetErrors는 CI workflow가 make check의 target(CHECK_TARGETS)을 빠뜨리거나 두 번
 // 실행하는 곳마다 오류 하나를 돌려준다. step의 run text에서 줄 머리의 `make`가 실행하는 target을
 // 읽는다. `make check`는 모든 CHECK_TARGETS를 make check의 runner(scripts/check/run.mjs)로 실행하므로
-// 그 target을 따로 실행하면 두 번 실행한다. `make check`가 없으면 각 target이 어느 step에 있어야 한다.
+// 그 target을 따로 실행하면 두 번 실행한다. `make check GROUP=...`은 CI group 하나를 실행하므로 group들이
+// CHECK_TARGETS를 정확히 나눠야 한다(ciGroupErrors). `make check`가 없으면 각 target이 어느 step에 있어야 한다.
 export function ciCheckTargetErrors(workflow, makefile) {
   const targets = checkTargets(makefile);
   if (targets.length === 0) return ['Makefile declares no CHECK_TARGETS'];
@@ -147,8 +199,9 @@ export function ciCheckTargetErrors(workflow, makefile) {
     }
   }
   if (ran.has('check'))
-    return targets.filter(target => ran.has(target)).map(target =>
-      `ci.yml step "${ran.get(target)}" runs ${target}, which make check runs`);
+    return [...targets.filter(target => ran.has(target)).map(target =>
+      `ci.yml step "${ran.get(target)}" runs ${target}, which make check runs`),
+    ...(workflowSteps(workflow).some(groupStep) ? ciGroupErrors(workflow, makefile) : [])];
   return targets.filter(target => !ran.has(target)).map(target =>
     `ci.yml does not run ${target} of CHECK_TARGETS`);
 }
@@ -293,7 +346,7 @@ export function runnerIdentity(segment) {
 // 실행하는 make target(CHECK_TARGETS 밖)의 recipe도 변수를 풀어 같은 방식으로 본다.
 export function ciRerunErrors(workflow, makefile) {
   const steps = workflowSteps(workflow);
-  if (!steps.some(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)))) return [];
+  if (!steps.some(checkStep)) return [];
   const targets = new Set(checkTargets(makefile));
   const variables = makeVariables(makefile);
   const errors = [];
@@ -302,6 +355,7 @@ export function ciRerunErrors(workflow, makefile) {
     // CI setup step(scripts/check/ci-setup.mjs)은 도구를 설치하고 그 환경을 확인할 뿐 test를 실행하지 않는다.
     if (Object.hasOwn(CI_SETUP, step.id ?? '')) continue;
     for (const segment of step.run.split('\n').flatMap(segments)) {
+      if (runsCheck(segment)) continue;
       const identity = runnerIdentity(segment);
       if (identity) { report(step, identity, ''); continue; }
       const make = /^make\s+(.*)$/.exec(segment)?.[1];
@@ -363,10 +417,19 @@ export function ciLeaseErrors(workflows, tracked, read) {
 // AFTER_CHECK은 make check 뒤에 오는 step이다. 전체 suite는 push 뒤 CI에서 실행되고 실패에서 멈추지 않으므로, 그
 // 뒤에는 검사가 아니라 그 실행의 정보를 남기는 두 step만 온다: runner가 끝나지 않았어도 summary를 job summary와
 // 보고서에 쓰는 summary, 그리고 그 실행 id의 보고서 directory만 올리는 report다. 둘 다 `if: ${{ !cancelled() }}`다.
+// AFTER_GROUP_CHECK은 CI group job의 같은 두 step이다: 실행 id, artifact 이름과 보고서 directory가 matrix의 group을 가지므로
+// group들의 보고서가 서로 겹치지 않는다.
+export const RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}';
+export const GROUP_RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
 export const AFTER_CHECK = [
-  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}', 'run: node scripts/check/summary.mjs'],
+  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', RUN_ID, 'run: node scripts/check/summary.mjs'],
   ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
     'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', 'if-no-files-found: error'],
+];
+export const AFTER_GROUP_CHECK = [
+  ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', GROUP_RUN_ID, 'run: node scripts/check/summary.mjs'],
+  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}',
+    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found: error'],
 ];
 
 // stepText는 workflow의 step마다 주석과 빈 줄을 뺀 줄을 앞뒤 공백 없이 돌려준다.
@@ -393,21 +456,24 @@ export function ciAfterCheckErrors(workflows) {
   const errors = [];
   for (const [path, whole] of Object.entries(workflows)) for (const [, workflow] of workflowJobs(whole)) {
     const steps = workflowSteps(workflow);
-    const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
+    const check = steps.findIndex(checkStep);
     if (check === -1) continue;
+    const grouped = groupStep(steps[check]);
+    const declared = grouped ? AFTER_GROUP_CHECK : AFTER_CHECK;
+    const runId = grouped ? GROUP_RUN_ID : RUN_ID;
     const texts = stepTexts(workflow);
-    if (!texts[check].includes('ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}'))
-      errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}, which names the report of the run`);
+    if (!texts[check].includes(runId))
+      errors.push(`${path} step "${steps[check].name}" gives make check no ${runId}, which names the report of the run`);
     const after = texts.slice(check + 1);
     for (const [index, step] of after.entries()) {
-      const want = AFTER_CHECK[index];
+      const want = declared[index];
       if (want && step.join('\n') === want.join('\n')) continue;
       const name = steps[check + 1 + index].name;
       errors.push(want
         ? `${path} step "${name}" after make check is not the declared ${want[0].slice('- name: '.length)} step: ${step.join(' | ')} instead of ${want.join(' | ')}`
         : `${path} step "${name}" runs ${steps[check + 1 + index].run.split('\n')[0] || step[0]} after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS`);
     }
-    for (const want of AFTER_CHECK.slice(after.length))
+    for (const want of declared.slice(after.length))
       errors.push(`${path} has no ${want[0].slice('- name: '.length)} step after make check: ${want.join(' | ')}`);
   }
   return errors;
@@ -446,6 +512,9 @@ export function fullSuiteRuleErrors(documents) {
 // group의 ORM_GIT_RANGE로 받는다. 다른 job의 `run:` step도 같은 job의 앞 step이
 // 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
 // 없다.
+// GROUP_NEEDS는 CI group job의 step group-needs가 실행하는 줄이다.
+export const GROUP_NEEDS = 'make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"';
+
 export function ciSetupErrors(workflows, { setup, runner }) {
   const errors = [];
   for (const [path, whole] of Object.entries(workflows)) {
@@ -453,7 +522,7 @@ export function ciSetupErrors(workflows, { setup, runner }) {
     for (const [, workflow] of workflowJobs(whole)) {
       const steps = workflowSteps(workflow);
       const texts = stepTexts(workflow);
-      const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
+      const check = steps.findIndex(checkStep);
       const guarded = index => texts[index].some(line => /^if: \$\{\{ !cancelled\(\)/.test(line));
       if (check === -1) {
         for (const [index, step] of steps.entries())
@@ -464,6 +533,18 @@ export function ciSetupErrors(workflows, { setup, runner }) {
         if (!step.id) errors.push(`${path} step "${step.name}" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mjs`);
         else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mjs does not map to what it installs`);
         if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
+      }
+      // CI group의 job에서 setup step은 그 group이 필요로 할 때만 실행한다: 조건은 scripts/check/ci-setup.mjs의
+      // stepCondition이고, group-needs step이 make ci-group-needs의 output을 $GITHUB_OUTPUT에 쓴다.
+      if (groupStep(steps[check])) {
+        for (const [index, step] of steps.slice(0, check).entries()) {
+          if (!Object.hasOwn(setup, step.id ?? '')) continue;
+          const want = `if: ${stepCondition(step.id)}`;
+          const have = texts[index].find(line => line.startsWith('if:'));
+          if (have !== want) errors.push(`${path} step "${step.name}" of the CI group job runs under ${have ?? 'no if:'} instead of ${want}, the condition that scripts/check/ci-setup.mjs declares for the step ${step.id}`);
+        }
+        const needs = steps.slice(0, check).find(step => step.id === 'group-needs');
+        if (needs && needs.run !== GROUP_NEEDS) errors.push(`${path} step "${needs.name}" runs ${needs.run} instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`);
       }
       const ids = new Set(steps.slice(0, check).map(step => step.id));
       for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);

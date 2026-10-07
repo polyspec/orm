@@ -129,11 +129,13 @@ function checkNames(file, jobs) {
   assert.match(text, /^\s{2}merge_group:\s*$/m, `${file} runs on merge_group, so the merge queue receives its checks`);
   const ids = [...text.split('\njobs:\n')[1].matchAll(/^ {2}([\w-]+):\s*$/gm)].map(match => match[1]).filter(job => jobs.includes(job));
   assert.deepEqual(ids, jobs, `${file} has the jobs ${jobs.join(', ')}`);
-  for (const job of ids) {
+  // A job with a matrix group reports one check per group, named `<job> (<group>)` (G5.111).
+  return ids.flatMap(job => {
     const body = text.split(new RegExp(`\\n {2}${job}:\\n`))[1].split(/\n {2}[\w-]+:\n/)[0];
     assert.doesNotMatch(body, /^ {4}name:/m, `${file} job ${job} has a name, so its check is not its job ID`);
-  }
-  return ids;
+    const groups = /^ {8}group: \[(.*)\]$/m.exec(body)?.[1].split(',').map(group => group.trim());
+    return groups ? groups.map(group => `${job} (${group})`) : [job];
+  });
 }
 
 caseTest('the declaration requires a pull request, the merge queue and every check of CI on main without a bypass actor (G5.91)', COMPUTE, () => {

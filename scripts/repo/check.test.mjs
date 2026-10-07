@@ -4,14 +4,14 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
 import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
-import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
+import { CI_SETUP, groupOutputs, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
@@ -312,6 +312,77 @@ caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COM
     'ci.yml step "checks" runs ts-min-check, which make check runs',
   ]);
   assert.deepEqual(ciCheckTargetErrors(steps, 'CHECK =\n'), ['Makefile declares no CHECK_TARGETS']);
+});
+
+// CI group case(G5.111)는 저장소의 Makefile과 workflow가 CHECK_TARGETS를 group으로 정확히 나누는지 보고, 최소
+// Makefile과 workflow에서 빠진 target, 두 group의 target, CHECK_TARGETS 밖의 target, CI_GROUPS와 다른 matrix를 거부한다.
+caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const { groups, targets } = ciGroups(makefile);
+  assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
+  assert.deepEqual(groups.flatMap(group => targets[group]).sort(), [...checkTargets(makefile)].sort());
+  assert.ok(workflow.includes('        run: make check GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check for the group of its matrix');
+  assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
+});
+
+caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
+  const grouped = (matrix = '[one, two]') => `jobs:\n  test:\n    strategy:\n      matrix:\n        group: ${matrix}\n    steps:\n      - name: make check\n        run: make check GROUP=\${{ matrix.group }}\n`;
+  const make = groups => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
+  const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), good), []);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check b-check d-check', 'CI_TARGETS_two = b-check'])), [
+    'CI groups one, two each run b-check; every target of CHECK_TARGETS runs in exactly one group',
+    'no CI group runs c-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
+    'CI group one runs d-check, which is not a target of CHECK_TARGETS',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(grouped('[one, three, three]'), good), [
+    'ci.yml job test lists the matrix group three twice',
+    'ci.yml job test has no matrix group two of CI_GROUPS, so no job runs its targets',
+    'ci.yml job test has the matrix group three, which is not in CI_GROUPS',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check b-check c-check', 'CI_TARGETS_three = b-check'])), [
+    'Makefile CI group two declares no CI_TARGETS_two',
+    'Makefile declares CI_TARGETS_three, but three is not in CI_GROUPS',
+  ]);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), make([])), ['ci.yml runs make check GROUP=${{ matrix.group }}, but the Makefile declares no CI_GROUPS']);
+  assert.deepEqual(ciCheckTargetErrors(grouped().replace('    strategy:\n      matrix:\n        group: [one, two]\n', ''), good), [
+    'ci.yml job test runs make check GROUP=${{ matrix.group }} without a matrix group: [...] of CI_GROUPS',
+  ]);
+  // group job도 CHECK_TARGETS의 target을 따로 실행하면 두 번 실행한다.
+  assert.deepEqual(ciCheckTargetErrors(grouped().replace('GROUP=${{ matrix.group }}\n', 'GROUP=${{ matrix.group }}\n      - name: again\n        run: make b-check\n'), good), [
+    'ci.yml step "again" runs b-check, which make check runs',
+  ]);
+});
+
+// CI group setup case(G5.111)는 group job의 setup step이 scripts/check/ci-setup.mjs가 선언한 조건으로만 실행되는지, group-needs
+// step이 make ci-group-needs의 output을 쓰는지, 그 뒤의 summary와 report가 group마다의 실행 id와 보고서를 쓰는지 본다.
+caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
+  assert.equal(stepCondition('go'), '${{ !cancelled() }}');
+  assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
+  assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
+  assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
+    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true });
+  assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
+  const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
+  const runner = ['checkout'];
+  const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check GROUP=\${{ matrix.group }}\n`;
+  const after = AFTER_GROUP_CHECK.map(lines => lines.map((line, index) => `${index === 0 ? '      ' : '        '}${line.startsWith('ORM_') || line.startsWith('name: check') || line.startsWith('path:') || line.startsWith('if-no') ? '  ' : ''}${line}`).join('\n')).join('\n') + '\n';
+  const job = (needs, composer) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - name: setup of the CI group\n        id: group-needs\n        if: \${{ !cancelled() }}\n        run: ${needs}\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: install PHP dependencies\n        id: composer\n        if: ${composer}\n        run: make install-php\n      - name: database servers\n        id: servers\n        if: ${stepCondition('servers')}\n        run: make test-servers\n${check}${after}`;
+  const good = job(GROUP_NEEDS, stepCondition('composer'));
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good }), []);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': job(GROUP_NEEDS, '${{ !cancelled() }}') }, { setup, runner }), [
+    `ci.yml step "install PHP dependencies" of the CI group job runs under if: \${{ !cancelled() }} instead of if: ${stepCondition('composer')}, the condition that scripts/check/ci-setup.mjs declares for the step composer`,
+  ]);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': job('make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT"', stepCondition('composer')) }, { setup, runner }), [
+    `ci.yml step "setup of the CI group" runs make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT" instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`,
+  ]);
+  // group마다의 보고서가 아닌 report step과 group 없는 실행 id는 group의 보고서를 서로 덮는다.
+  const shared = good.replace('name: check-${{ matrix.group }}-', 'name: check-');
+  assert.match(ciAfterCheckErrors({ 'ci.yml': shared })[0], /^ci\.yml step "report" after make check is not the declared report step: /);
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good.replace('${{ github.run_attempt }}-${{ matrix.group }}\n          ORM_CI_SETUP', '${{ github.run_attempt }}\n          ORM_CI_SETUP') }), [
+    'ci.yml step "make check" gives make check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}, which names the report of the run',
+  ]);
 });
 
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.

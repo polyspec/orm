@@ -1,12 +1,16 @@
 # CI: every check of the repository. The job test runs make check, the targets
 # of the local checks, against MySQL, PostgreSQL, and SQLite, with the common
 # interfaces and the hot-path regression check of feature-check, the decoder
-# fuzz checks and the common state contracts of the conformance results; the
-# job docs runs the documentation checks of the published site. This is where
-# the full suite runs: on every pull request and merge group, never stopping
-# at a failure, and recording enough to fix every failure before the next run. A check it lacks belongs in a target of CHECK_TARGETS, and make
-# repo-check fails a step after make check other than the summary and the
-# report upload.
+# fuzz checks and the common state contracts of the conformance results, split
+# into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
+# once, each running make check GROUP=<group> on the targets CI_TARGETS_<group>;
+# the groups together run every target of CHECK_TARGETS once. The job docs runs
+# the documentation checks of the published site. This is where the full suite
+# runs: on every pull request and merge group, never stopping at a failure, and
+# recording enough to fix every failure before the next run. A check it lacks
+# belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
+# make check other than the summary and the report upload, and a group set that
+# omits or repeats a target of CHECK_TARGETS.
 # make test-servers starts the database servers and writes their DSNs, as it
 # does for the local checks. No step or job has timeout-minutes: every step
 # (a checkout, an install, a server start, a tool run or a whole suite) is a
@@ -30,13 +34,24 @@ jobs:
     # .github/runner declares the runner of every job; make repo-check
     # requires it.
     runs-on: ubuntu-26.04-arm
+    # One job per CI group of the Makefile (CI_GROUPS); make repo-check
+    # requires that this list equals CI_GROUPS. A failed group does not cancel
+    # the others: every group runs to its end.
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [static, clients, conformance, dbspec, features, stress]
     # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
-    # one failed install never hides another. make check runs after all of
-    # them and reads their results (ORM_CI_SETUP): a target that needs what a
-    # failed step installs is recorded as not-run with that step, and every
-    # other target runs. A failed step fails the job. The checkout and Node are
-    # what the runner itself needs.
+    # one failed install never hides another. The step group-needs writes the
+    # needs of the targets of the group (contracts/check-inputs.json) as step
+    # outputs, and a setup step runs only when the group needs what it
+    # installs; make repo-check requires the condition of each step that
+    # scripts/check/ci-setup.mjs declares. make check runs after all of them
+    # and reads their results (ORM_CI_SETUP): a target that needs what a
+    # failed or skipped step installs is recorded as not-run with that step,
+    # and every other target runs. A failed step fails the job. The checkout
+    # and Node are what the runner itself needs.
     steps:
       # git-check reads the commits of the pull request or the merge group
       # (ORM_GIT_RANGE of make check), so the checkout carries the full commit
@@ -45,6 +60,20 @@ jobs:
         id: checkout
         with:
           fetch-depth: 0
+      # .node-version declares the one Node release of the checks, locally and
+      # here; make repo-check requires it. make ts-min-check runs the
+      # TypeScript client on the lowest release of package.json engines.node.
+      - uses: actions/setup-node@v7
+        id: node
+        if: ${{ !cancelled() }}
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: setup of the CI group
+        id: group-needs
+        if: ${{ !cancelled() }}
+        run: make --no-print-directory ci-group-needs GROUP=${{ matrix.group }} >> "$GITHUB_OUTPUT"
+      # make check builds the lease program with Go in every group.
       - uses: actions/setup-go@v6
         id: go
         if: ${{ !cancelled() }}
@@ -57,35 +86,24 @@ jobs:
         id: go-modules
         if: ${{ !cancelled() }}
         run: make install-go
-      # .node-version declares the one Node release of the checks, locally and
-      # here; make repo-check requires it. make ts-min-check runs the
-      # TypeScript client on the lowest release of package.json engines.node.
-      - uses: actions/setup-node@v7
-        id: node
-        if: ${{ !cancelled() }}
-        with:
-          node-version-file: .node-version
-          cache: npm
       - name: install Node dependencies
         id: node-modules
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
         run: make install-node
       - name: lowest Node release of the TypeScript client
         id: node-min
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
         run: make install-node-min
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
-        if: ${{ !cancelled() }}
-        # rustup installs the channel and components that rust-toolchain.toml
-        # declares; every cargo and rustc run of the repository uses them.
+        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
         # rustup installs the channel and components of rust-toolchain.toml, and
         # make check runs cargo offline on the crates of every Cargo.lock that
         # make install-rust downloads.
         run: make install-rust
       - uses: Swatinem/rust-cache@v2
         id: rust-cache
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
         with:
           workspaces: |
             clients/rust -> target
@@ -96,11 +114,11 @@ jobs:
         # of require.php in clients/php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         run: make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"
       - uses: shivammathur/setup-php@v2
         id: php-min-release
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         with:
           php-version: ${{ steps.php-min.outputs.version }}
           extensions: pdo_sqlite, openssl
@@ -110,7 +128,7 @@ jobs:
       # .php-version declares the PHP release of the checks, locally and here.
       - uses: shivammathur/setup-php@v2
         id: php
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         with:
           php-version-file: .php-version
           extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
@@ -120,17 +138,17 @@ jobs:
           coverage: none
       - name: PHP releases and their SQLite
         id: php-sqlite
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         # Every client requires SQLite 3.46; PHP links the system SQLite of
         # the runner.
         run: make ci-php-sqlite
       - name: install PHP dependencies
         id: composer
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         run: make install-php
       - name: tools of the PHP extension build
         id: php-extension-tools
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.php-extension-tools == 'true' }}
         # make dbspec-php-extension-check and make dbspec-compare-check build
         # the PHP extension orm_dbspec with phpize and check its arginfo with
         # gen_stub.php; scripts/ci/php-extension-tools.sh checks phpize and
@@ -138,7 +156,7 @@ jobs:
         run: make install-php-extension-tools
       - name: programs of the database servers
         id: server-programs
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.server-programs == 'true' }}
         # scripts/ci/server-programs.sh installs the programs from which make
         # test-servers starts the servers.
         run: make install-server-programs
@@ -149,24 +167,25 @@ jobs:
         # records the targets that need the servers as not-run with this failure
         # and runs every other target.
         id: servers
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}
         run: make test-servers
       - name: make check
-        # The targets of CHECK_TARGETS through the runner of the local checks,
-        # with its own bench and decimal databases; make repo-check fails
-        # when this workflow omits or repeats one of them or a verification
-        # command of feature-check. The run never stops at a failure: every
-        # target runs unless a setup step it needs failed, and the step fails
-        # when a target failed or did not run. The report of the run is
-        # .runtime/check/ci_<run id>_<attempt>/report.
+        # The targets CI_TARGETS_<group> of the group through the runner of the
+        # local checks, with its own bench and decimal databases when a target
+        # needs them; make repo-check fails when the groups omit or repeat a
+        # target of CHECK_TARGETS, or this workflow runs one of them or a
+        # verification command of feature-check again. The run never stops at a
+        # failure: every target runs unless a setup step it needs failed, and
+        # the step fails when a target failed or did not run. The report of the
+        # run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
         if: ${{ !cancelled() }}
         env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
           ORM_CI_SETUP: ${{ toJSON(steps) }}
           # The commits git-check reads: the pull request or the merge group; a
           # manual run gives none, and git-check reads HEAD.
           ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}
-        run: make check
+        run: make check GROUP=${{ matrix.group }}
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
       # the report of this run id alone, so no file of an earlier run is
@@ -175,14 +194,14 @@ jobs:
       - name: summary
         if: ${{ !cancelled() }}
         env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
         run: node scripts/check/summary.mjs
       - name: report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: check-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/
+          name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/
           if-no-files-found: error
 
   docs:
