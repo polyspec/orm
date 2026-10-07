@@ -78,15 +78,51 @@ export const stepCondition = id => STEP_OUTPUT[id]
   ? `\${{ !cancelled() && steps.group-needs.outputs.${STEP_OUTPUT[id]} == 'true' }}`
   : '${{ !cancelled() }}';
 
-// groupOutputs는 target들이 선언한 need(needs: {target: [need]})에서 group-needs의 output을 {output: boolean}으로 돌려준다.
-// 선언하지 않은 target은 그 이름과 고치는 방법과 함께 던진다.
+// SETUP_NEEDS는 runner의 setup 단계가 마련하는 need마다 그 단계 자신이 필요로 하는 need다. databases는 setup 단계
+// servers와 databases/create(scripts/check/databases.sh)가 마련한다: server는 make test-servers가 server-programs의
+// program으로 시작하고, databases.sh는 bench database를 Go program으로(scripts/bench-db.sh), decimal database를
+// scripts/decimal-db-setup.php로 설치하며, 그 PHP는 clients/php의 Composer autoload(vendor)를 읽는다. 그래서 databases가
+// 필요한 target은 이 need도 필요하다(expandNeeds).
+export const SETUP_NEEDS = { databases: ['go', 'php', 'composer', 'server-programs'] };
+
+// expandNeeds는 need 목록에 SETUP_NEEDS가 적는 need를 끝까지 더한 목록이다(선언한 순서, 그다음 더한 순서).
+export function expandNeeds(needs) {
+  const all = [...needs];
+  for (let index = 0; index < all.length; index++)
+    for (const need of SETUP_NEEDS[all[index]] ?? []) if (!all.includes(need)) all.push(need);
+  return all;
+}
+
+// groupOutputs는 target들이 선언한 need(needs: {target: [need]})와 그 need의 setup 단계가 필요로 하는 need(expandNeeds)에서
+// group-needs의 output을 {output: boolean}으로 돌려준다. 선언하지 않은 target은 그 이름과 고치는 방법과 함께 던진다.
 export function groupOutputs(targets, needs) {
   const wanted = new Set();
   for (const target of targets) {
     if (!Object.hasOwn(needs, target)) throw new Error(`target ${target} declares no needs in contracts/check-inputs.json; declare its scope and needs there`);
-    for (const need of needs[target]) wanted.add(need);
+    for (const need of expandNeeds(needs[target])) wanted.add(need);
   }
   return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.some(need => wanted.has(need))]));
+}
+
+// groupSetupErrors는 CI group의 job이 그 target에 필요한 setup step을 건너뛰는 곳마다 오류 하나를 돌려준다. groups는
+// {group: [target]}, needs는 {target: [need]}이고, outputs는 group의 target에서 group-needs의 output을 만드는 함수(groupOutputs)다.
+// target의 need와 그 need의 setup 단계가 필요로 하는 need(SETUP_NEEDS)마다, 그 need를 마련하는 CI setup step(CI_SETUP)은
+// 언제나 실행되거나(STEP_OUTPUT이 null) 그 output이 true여야 한다.
+export function groupSetupErrors(groups, needs, outputs = groupOutputs) {
+  const errors = [];
+  for (const [group, targets] of Object.entries(groups)) {
+    const values = outputs(targets, needs);
+    for (const target of targets) {
+      for (const need of expandNeeds(needs[target] ?? [])) {
+        const why = (needs[target] ?? []).includes(need) ? `${target} needs ${need}` : `${target} needs databases, whose setup step databases/create needs ${need}`;
+        for (const [step, provided] of Object.entries(CI_SETUP)) {
+          if (provided !== need || STEP_OUTPUT[step] === null || values[STEP_OUTPUT[step]]) continue;
+          errors.push(`CI group ${group} skips the setup step ${step}, which installs ${need}: ${why}; scripts/check/ci-setup.mjs must set the output ${STEP_OUTPUT[step]} for it`);
+        }
+      }
+    }
+  }
+  return [...new Set(errors)];
 }
 
 // failedCiSetup은 ORM_CI_SETUP의 text에서 성공하지 않은(실패했거나 건너뛴) setup step을 [{ id, need, outcome }]으로 돌려준다.

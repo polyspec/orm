@@ -58,6 +58,9 @@ const diskio = process.env.STUB_SUITE?.startsWith('diskio-');
 const npm = process.env.STUB_SUITE === 'npm';
 // STUB_SUITE=cisetup은 CI setup step rust가 실패한 실행이다(G5.52): a는 rust가, c는 go가 필요하고 b는 아무것도 필요하지 않다.
 const cisetup = process.env.STUB_SUITE === 'cisetup';
+// STUB_SUITE=composer는 CI group이 setup step composer를 건너뛴 실행이다(G5.127): a와 c는 databases만 선언하고, databases/create가
+// decimal database를 Composer autoload로 설치하므로 그것도 composer가 필요하다.
+const composer = process.env.STUB_SUITE === 'composer';
 // STUB_SUITE=group과 group-rust는 CI group의 job이다(G5.111): group-needs가 rust, php와 server의 setup step을 건너뛰게
 // 했고, 어느 target도 database가 필요하지 않다. group에서는 c만 go가 필요하고, group-rust에서는 a가 건너뛴 rust도 필요하다.
 const group = process.env.STUB_SUITE === 'group';
@@ -111,7 +114,7 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !composer && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
 const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
@@ -120,7 +123,7 @@ const removed = '## files under /tmp that were removed but are still open (lsof 
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: composer ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, php: { outcome: 'success' }, composer: { outcome: 'skipped' } }) : cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
 `;
 
 function checkout(t, checklist) {
@@ -846,6 +849,26 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
   }
 });
 
+
+// databases setup need case(G5.127)는 databases/create가 필요로 하는 setup step(composer)이 마련되지 않은 실행이다. runner는
+// server를 읽거나 database를 만들지 않고, databases를 선언한 target을 그 step과 함께 not-run으로 기록하며, 나머지 target은 실행한다.
+caseTest('a run without the setup step that databases/create needs records the database targets as not-run', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'composer', ORM_CHECK_RUN_ID: '17-1-stress' }).status, 1);
+    const record = c.record();
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name]) => name.startsWith('ci/') || name.startsWith('databases') || name === 'servers'), [['ci/composer', 'failed']]);
+    for (const name of ['a', 'c']) {
+      const target = record.targets.find(item => item.name === name);
+      assert.equal(target.status, 'not-run', name);
+      assert.match(target.reason, /^the setup steps servers and databases\/create need composer: the CI setup step composer was skipped, and a target of this run needs composer/);
+    }
+    assert.equal(record.targets.find(item => item.name === 'b').status, 'passed');
+    assert.deepEqual(c.ran(), ['b']);
+  } finally {
+    cleanup();
+  }
+});
 
 // CI group case(G5.111)는 group-needs가 setup step을 건너뛴 job의 실행이다. 건너뛴 step의 need를 이 실행의 어느 target도
 // 선언하지 않으면 그 step은 setup 단계로 기록하지 않고, database가 필요한 target이 없으므로 servers와 databases 단계도

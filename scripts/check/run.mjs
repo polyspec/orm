@@ -28,7 +28,7 @@ import { basename, join, relative, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup } from '../../tests/testcase.mjs';
-import { failedCiSetup } from './ci-setup.mjs';
+import { expandNeeds, failedCiSetup, SETUP_NEEDS } from './ci-setup.mjs';
 import { claim, ENTRIES, printRefusal } from './full-run.mjs';
 import { runStep } from './step.mjs';
 import { monitor } from './resources.mjs';
@@ -216,8 +216,10 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   };
 
   const failedSetup = {};
-  // wanted는 이 실행의 target이 선언한 need다.
-  const wanted = new Set(targets.flatMap(target => needs[target] ?? []));
+  // needsOf는 target이 선언한 need와 그 need의 setup 단계가 필요로 하는 need(scripts/check/ci-setup.mjs의 SETUP_NEEDS)다.
+  // wanted는 이 실행의 target의 그 need다.
+  const needsOf = target => expandNeeds(needs[target] ?? []);
+  const wanted = new Set(targets.flatMap(needsOf));
   // CI setup step(scripts/check/ci-setup.mjs): workflow가 ORM_CI_SETUP으로 준 step 결과에서 실패한 step마다 setup 단계
   // ci/<id>를 실패로 기록하고, 그 step이 마련하는 need를 선언한 target은 not-run으로 기록한다. step의 출력은 job
   // log의 그 step에 있다. CI group의 job은 그 group의 target이 필요로 하지 않는 setup step을 건너뛴다(make
@@ -256,6 +258,13 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     servers = null;
   }
   if (!servers) failedSetup.databases = 'this run has no database servers';
+  // databases의 setup 단계가 필요로 하는 need(SETUP_NEEDS)가 마련되지 않았으면 server를 읽거나 database를 만들지 않고, 그 이유로
+  // databases를 실패로 기록한다.
+  const unmet = servers && SETUP_NEEDS.databases.find(need => failedSetup[need]);
+  if (unmet) {
+    failedSetup.databases = `the setup steps servers and databases/create need ${unmet}: ${failedSetup[unmet]}`;
+    servers = null;
+  }
   const serversReady = servers && await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);
     Object.assign(process.env, env);
@@ -274,7 +283,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     if (!created) failedSetup.databases = `the setup step databases/create failed: ${results.at(-1).failures.join(' / ')}`;
   }
   for (const target of targets) {
-    const blocked = (needs[target] ?? []).find(need => failedSetup[need]);
+    const blocked = needsOf(target).find(need => failedSetup[need]);
     if (blocked) {
       skip(target, failedSetup[blocked]);
       continue;

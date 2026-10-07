@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mjs';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -63,6 +63,9 @@ failures.push(...workflowTriggerErrors(workflows));
 // owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;
 failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked));
+// CI group의 job은 그 target의 need와, 그 need의 setup 단계(databases/create)가 필요로 하는 need의 setup step을 실행한다.
+const { targets: groupTargets } = ciGroups(makefile);
+failures.push(...groupSetupErrors(groupTargets, Object.fromEntries(Object.entries(checkInputs).map(([name, target]) => [name, target.needs ?? []]))));
 // cargo가 만든 program의 경로는 CARGO_TARGET_DIR에서 얻는다.
 failures.push(...targetPathErrors(Object.fromEntries(tracked.filter(runFile).map(path => [path, readFileSync(join(root, path), 'utf8')]))));
 failures.push(...manifestDirErrors(Object.fromEntries(tracked.filter(path => path.endsWith('.rs')).map(path => [path, readFileSync(join(root, path), 'utf8')]))));

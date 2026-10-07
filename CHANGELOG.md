@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.127: the setup of a CI group includes what the setup step `databases/create` needs (PHP and the Composer autoload), and `make repo-check` fails a CI group that skips a setup step its targets need directly or through `databases/create`.
+
 - G5.126: CI runs `make feature-helper-check` in the group feature-helpers, and the group conformance runs the TypeScript and conformance checks.
 
 - G5.125: CI runs the dbspec apply targets in the group dbspec-apply and the other dbspec targets with `case-database-check` in the group dbspec.
