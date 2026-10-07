@@ -53,6 +53,8 @@ export const NOT_RELEASED = {
   'clients/rust/testcase/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
   'clients/rust/tests/Cargo.toml': 'the integration tests of the Rust client (publish = false)',
   'bench/rust/Cargo.toml': 'the benchmark crate of the Rust client',
+  'tests/release-install/npm/package.json': 'the npm project of the release asset install check (scripts/release/install-check.mjs)',
+  'tests/release-install/composer/composer.json': 'the Composer project of the release asset install check (scripts/release/install-check.mjs)',
   'tests/interfaces/rust/Cargo.toml': 'the interface check crate of the Rust client',
 };
 

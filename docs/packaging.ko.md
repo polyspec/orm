@@ -13,7 +13,7 @@
 
 ## release asset에서 설치
 
-0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip`, `polyspec-orm-dbspec-<version>.zip`이 있다. 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make package-check`는 현재 commit의 asset을 저장소 밖의 directory에서 offline으로 이렇게 설치한다.
+0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip`, `polyspec-orm-dbspec-<version>.zip`이 있다. 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make package-check`는 현재 commit의 asset을 저장소 밖의 directory에서 이렇게 설치한다: tests/release-install의 소비자 project에서 빈 cache로 `npm ci`와 `composer install`을 실행하며, 그 lock은 `make install-release-fixtures`가 쓴다.
 
 - npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 

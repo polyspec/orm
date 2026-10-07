@@ -1,25 +1,33 @@
-// install-check는 release asset이 저장소 없이 설치되는지 확인한다(make package-check). HEAD의 npm과 Composer asset을
-// release-assets와 같은 buildAssets로 만들고(packed manifest의 확인 포함), 저장소 밖의 임시 directory에서 그 asset으로 root
-// package를 설치한 뒤 load한다. check는 network를 읽지 않으므로(make의 npm_config_offline, COMPOSER_DISABLE_NETWORK) 다른
-// package는 make install이 이 checkout에 설치한 것에서 온다. npm cache, COMPOSER_HOME, Composer cache는 비어 있는 임시
+// install-check는 release asset이 저장소 없이 소비자처럼 설치되는지 확인한다(make package-check). HEAD의 npm과 Composer asset을
+// release-assets와 같은 buildAssets로 만들고(packed manifest의 확인 포함), tests/release-install의 소비자 fixture를 저장소 밖의
+// 임시 directory에 복사해 그 lock대로 설치한 뒤 load한다. npm cache, COMPOSER_HOME, Composer cache는 비어 있는 임시
 // directory다:
-//   npm       project의 package.json이 orm tarball과, 그것이 의존하는 package마다 저장소 root의 package-lock.json이
-//             설치한 directory를 `npm pack`한 tarball을 모두 `file:`로 나열하고, `npm install
-//             --offline`으로 설치한다. `@polyspec` scope의 registry는 닿지 않는 주소다. orm tarball이 선언한 정확한 version을
-//             함께 설치한 tarball이 채운다.
-//   Composer  artifact repository가 asset zip을 담고, 다른 package는 저장소 root의 composer.lock이 vendor-php에 설치한
-//             directory를 그 lock의 version으로 주는 `path` repository다. Packagist는 끈다. polyspec/orm-dbspec는 type
-//             `php-ext`이므로 Composer가 아니라 PIE가 설치하고, project는 polyspec/orm을 요구한다.
+//   npm       fixture의 package.json은 polyspec package를 release tarball 이름의 `file:` dependency로 나열하고, 그
+//             package-lock.json은 다른 package를 정확한 version과 integrity로 고정한다. 이 저장소가 만드는 tarball
+//             옆에 다른 polyspec 저장소의 tarball을 그 GitHub Release에서 받아 두고(integrity는 lock이 확인한다), `npm ci`를
+//             `@polyspec` registry가 닿지 않는 주소인 채로 실행하므로 polyspec package는 tarball로만 풀린다.
+//   Composer  fixture의 composer.json은 asset zip의 artifact repository `assets`와 ordered-json 0.0.2 zip(`version`이 없어
+//             artifact repository가 읽지 못한다)의 shasum을 가진 `package` repository를 두고, composer.lock은 다른 package를
+//             dist reference로 고정한다. `composer install`이 lock대로 설치한다. polyspec/orm-dbspec는 type `php-ext`이므로
+//             Composer가 아니라 PIE가 설치한다.
+// lock이 고정한 package의 download는 설치이므로 허용한다(AGENTS.md): 이 script는 make가 export한 npm_config_offline과
+// COMPOSER_DISABLE_NETWORK를 npm ci와 composer install에서 지운다. 시간에 따라 결과가 달라지는 registry 조회(version 범위의
+// 해석, 최신 version 조회)는 `lock` action만 하고, 그것은 make install-release-fixtures가 실행한다.
 //
-// Usage: node scripts/release/install-check.mjs
+// Usage: node scripts/release/install-check.mjs [check|lock]
+//   check  fixture의 lock대로 설치한다.
+//   lock   fixture의 lock을 다시 만든다. 이 저장소가 만드는 package는 commit마다 내용이 바뀌므로 그 integrity와 shasum은 lock에
+//          두지 않는다.
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assetName, buildAssets } from './release.mjs';
+import { buildAssets } from './release.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
+const FIXTURE = join(root, 'tests', 'release-install');
+const { npm_config_offline: _npmOffline, COMPOSER_DISABLE_NETWORK: _composerOffline, ...online } = process.env;
 const run = (program, args, options = {}) => {
   const result = spawnSync(program, args, { cwd: root, ...options, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
   if (result.error || result.status !== 0)
@@ -27,74 +35,69 @@ const run = (program, args, options = {}) => {
   return result.stdout;
 };
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
+const write = (path, data, indent) => writeFileSync(path, `${JSON.stringify(data, null, indent)}\n`);
 
+// download는 다른 polyspec 저장소의 release asset을 받는다: `@polyspec/<repo>`의 tarball은 그 저장소의 tag `v<version>`에 있다.
+async function download(name, version, file, directory) {
+  const url = `https://github.com/polyspec/${name.replace(/^@polyspec\//, '')}/releases/download/v${version}/${file}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`GET ${url} answered ${response.status}`);
+  writeFileSync(join(directory, file), Buffer.from(await response.arrayBuffer()));
+}
+
+const action = process.argv[2] ?? 'check';
+if (!['check', 'lock'].includes(action)) throw new Error(`unknown action ${JSON.stringify(action)}; give check or lock`);
 const version = readFileSync(join(root, 'VERSION'), 'utf8').trim();
 const sha = run('git', ['rev-parse', 'HEAD^{commit}']).trim();
 const work = mkdtempSync(join(tmpdir(), 'orm-release-install-'));
 try {
   const assets = join(work, 'assets');
   const built = buildAssets({ root, sha, version, assets, run, log: line => console.log(line.replace('release: ', 'install-check: ')) });
+  const env = { ...online, COMPOSER_HOME: join(work, 'composer-home'), COMPOSER_CACHE_DIR: join(work, 'composer-cache') };
 
-  // npm: orm tarball과, clients/typescript의 dependencies에서 package-lock.json의 dependency, optional과 peer dependency를 따라
-  // 닿는 package마다 그 설치된 directory의
-  // tarball이다. node처럼 가까운 node_modules부터 위로 찾는다. 같은 이름은 version 하나다.
+  // npm: fixture와 tarball을 한 directory에 둔다.
   const npm = join(work, 'npm');
-  const tarballs = join(work, 'tarballs');
   mkdirSync(npm);
-  mkdirSync(tarballs);
-  const dependencies = { '@polyspec/orm': `file:${join(assets, assetName('@polyspec/orm', version, 'tgz'))}` };
-  const lock = json(join(root, 'package-lock.json')).packages;
-  const locate = (from, name) => {
-    for (let at = from; ; at = at.includes('/node_modules/') ? at.slice(0, at.lastIndexOf('/node_modules/')) : '') {
-      const path = `${at ? `${at}/` : ''}node_modules/${name}`;
-      if (lock[path]) return path;
-      if (!at) return null;
-    }
-  };
-  const versions = new Map();
-  const visit = (from, entry) => {
-    const peerOptional = name => entry.peerDependenciesMeta?.[name]?.optional === true;
-    const edges = [
-      ...Object.keys(entry.dependencies ?? {}).map(name => [name, false]),
-      ...Object.keys(entry.optionalDependencies ?? {}).map(name => [name, true]),
-      ...Object.keys(entry.peerDependencies ?? {}).map(name => [name, peerOptional(name)]),
-    ];
-    for (const [name, optional] of edges) {
-      const path = locate(from, name);
-      if (path === null) { if (optional) continue; throw new Error(`package-lock.json installs no ${name} for ${from}`); }
-      const { version: at } = lock[path];
-      if (versions.has(name)) {
-        if (versions.get(name) !== at) throw new Error(`package-lock.json installs ${name} at ${versions.get(name)} and ${at}; the project lists one tarball per package`);
-        continue;
-      }
-      versions.set(name, at);
-      const packed = run('npm', ['pack', '--ignore-scripts', '--pack-destination', tarballs, join(root, path)], { cwd: work }).trim().split('\n').at(-1).trim();
-      dependencies[name] = `file:${join(tarballs, packed)}`;
-      visit(path, lock[path]);
-    }
-  };
-  visit('clients/typescript', lock['clients/typescript']);
-  writeFileSync(join(npm, 'package.json'), `${JSON.stringify({ name: 'orm-release-install', private: true, type: 'module', dependencies }, null, 2)}\n`);
-  run('npm', ['install', '--offline', '--cache', join(work, 'npm-cache'), '--ignore-scripts', '--no-audit', '--no-fund', '--@polyspec:registry=http://127.0.0.1:9/'], { cwd: npm });
-  run('node', ['--input-type=module', '-e', "const orm = await import('@polyspec/orm'); if (typeof orm.StyledValue !== 'function') throw new Error('@polyspec/orm exports no StyledValue');"], { cwd: npm });
-  console.log(`install-check: npm installed @polyspec/orm ${version} offline from its tarball and ${versions.size} dependency tarballs`);
+  const manifest = json(join(FIXTURE, 'npm', 'package.json'));
+  copyFileSync(join(FIXTURE, 'npm', 'package.json'), join(npm, 'package.json'));
+  if (action === 'check') copyFileSync(join(FIXTURE, 'npm', 'package-lock.json'), join(npm, 'package-lock.json'));
+  for (const [name, spec] of Object.entries(manifest.dependencies)) {
+    const file = spec.replace(/^file:/, '');
+    if (built.includes(file)) copyFileSync(join(assets, file), join(npm, file));
+    else await download(name, /-(\d+\.\d+\.\d+)\.tgz$/.exec(file)[1], file, npm);
+  }
+  const npmArgs = ['--cache', join(work, 'npm-cache'), '--ignore-scripts', '--no-audit', '--no-fund', '--@polyspec:registry=http://127.0.0.1:9/'];
+  if (action === 'lock') {
+    run('npm', ['install', '--package-lock-only', ...npmArgs], { cwd: npm, env });
+    const lock = json(join(npm, 'package-lock.json'));
+    for (const entry of Object.values(lock.packages))
+      if (built.includes(String(entry.resolved).replace(/^file:/, ''))) delete entry.integrity;
+    write(join(FIXTURE, 'npm', 'package-lock.json'), lock, 2);
+    console.log('install-check: wrote tests/release-install/npm/package-lock.json');
+  } else {
+    run('npm', ['ci', ...npmArgs], { cwd: npm, env });
+    run('node', ['--input-type=module', '-e', "const orm = await import('@polyspec/orm'); if (typeof orm.StyledValue !== 'function') throw new Error('@polyspec/orm exports no StyledValue');"], { cwd: npm });
+    console.log(`install-check: npm ci installed @polyspec/orm ${version} from tests/release-install/npm with an empty cache`);
+  }
 
-  // Composer: asset zip의 artifact repository와, root composer.lock의 다른 package마다 vendor-php directory의 path repository다.
+  // Composer: fixture 옆의 directory assets가 artifact repository다.
   const composer = join(work, 'composer');
-  mkdirSync(composer);
-  const locked = json(join(root, 'composer.lock')).packages.filter(({ name }) => name !== 'polyspec/orm');
-  writeFileSync(join(composer, 'composer.json'), `${JSON.stringify({
-    require: { 'polyspec/orm': version },
-    repositories: [
-      { type: 'artifact', url: assets },
-      ...locked.map(({ name, version: at }) => ({ type: 'path', url: join(root, 'vendor-php', name), options: { symlink: false, versions: { [name]: at.replace(/^v/, '') } } })),
-      { 'packagist.org': false },
-    ],
-  }, null, 4)}\n`);
-  const env = { ...process.env, COMPOSER_HOME: join(work, 'composer-home'), COMPOSER_CACHE_DIR: join(work, 'composer-cache'), COMPOSER_DISABLE_NETWORK: '1' };
-  run('composer', ['install', '--no-interaction', '--no-progress'], { cwd: composer, env });
-  run('php', ['-r', "require 'vendor/autoload.php'; if (!class_exists(Polyspec\\Orm\\Db::class) || !class_exists(Polyspec\\OrderedJson\\ParseError::class)) { fwrite(STDERR, 'the installed packages do not load'); exit(1); }"], { cwd: composer });
-  console.log(`install-check: Composer installed polyspec/orm ${version} offline from an artifact repository of ${built.filter(asset => asset.endsWith('.zip')).join(' and ')}`);
+  mkdirSync(join(composer, 'assets'), { recursive: true });
+  copyFileSync(join(FIXTURE, 'composer', 'composer.json'), join(composer, 'composer.json'));
+  for (const asset of built.filter(asset => asset.endsWith('.zip'))) copyFileSync(join(assets, asset), join(composer, 'assets', asset));
+  if (action === 'lock') {
+    run('composer', ['update', '--no-install', '--no-interaction', '--no-progress'], { cwd: composer, env });
+    const lock = json(join(composer, 'composer.lock'));
+    for (const entry of [...lock.packages, ...(lock['packages-dev'] ?? [])])
+      if (entry.dist?.url?.startsWith('assets/')) entry.dist.shasum = '';
+    write(join(FIXTURE, 'composer', 'composer.lock'), lock, 4);
+    console.log('install-check: wrote tests/release-install/composer/composer.lock');
+  } else {
+    copyFileSync(join(FIXTURE, 'composer', 'composer.lock'), join(composer, 'composer.lock'));
+    run('composer', ['install', '--no-interaction', '--no-progress'], { cwd: composer, env });
+    run('php', ['-r', "require 'vendor/autoload.php'; if (!class_exists(Polyspec\\Orm\\Db::class) || !class_exists(Polyspec\\OrderedJson\\ParseError::class)) { fwrite(STDERR, 'the installed packages do not load'); exit(1); }"], { cwd: composer });
+    console.log(`install-check: composer install installed polyspec/orm ${version} from tests/release-install/composer with empty caches`);
+  }
 } finally {
   rmSync(work, { recursive: true, force: true });
 }

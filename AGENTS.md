@@ -75,10 +75,15 @@
   correctness, and a deadline only ends a case that does not stop. `make repo-check` refuses a test that fails on a
   measured time above a bound. A reference value is never raised to remove a warning; a change needs new evidence of
   the same kind from the CI runner.
-- A check reads no network. `make install` downloads what the checks read, the Makefile runs cargo,
-  go, npm and Composer offline (`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`,
-  `COMPOSER_DISABLE_NETWORK`), only the install targets download, through `$(ONLINE)`, and a missing
-  download fails with `run make install`, never with a retry online.
+- A check makes no registry query whose result depends on time: no latest lookup, no resolution of a
+  version range, no query about outdated packages or new releases. Downloading a package that a lock
+  pins by exact version and integrity is installation and is allowed. `make install` downloads what the
+  checks read, the Makefile runs cargo, go, npm and Composer offline (`CARGO_NET_OFFLINE`,
+  `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets resolve
+  versions, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
+  retry online. The release asset install check of `make package-check` runs `npm ci` and
+  `composer install` from the committed locks of tests/release-install with empty caches, and
+  `make install-release-fixtures` writes those locks.
 - Every toolchain the checks use is pinned in one declaration and checked: `.node-version`,
   `.go-version`, `.composer-version` and `rust-toolchain.toml` hold exact releases, `.php-version`
   and the PostgreSQL major release are as exact as their installers allow, CI installs what they

@@ -13,7 +13,7 @@
 
 ## Installing from release assets
 
-Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip` and `polyspec-orm-dbspec-<version>.zip`. Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make package-check` installs the assets of the current commit this way, offline, in a directory outside the repository.
+Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip` and `polyspec-orm-dbspec-<version>.zip`. Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make package-check` installs the assets of the current commit this way in a directory outside the repository: `npm ci` and `composer install` with empty caches from the consumer projects of tests/release-install, whose locks `make install-release-fixtures` writes.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
