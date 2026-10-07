@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.126: CI runs `make feature-helper-check` in the group feature-helpers, and the group conformance runs the TypeScript and conformance checks.
+
 - G5.125: CI runs the dbspec apply targets in the group dbspec-apply and the other dbspec targets with `case-database-check` in the group dbspec.
 
 - G5.124: CI runs the client database tests in the group clients-db and the pooler tests in the group clients-pooler.
