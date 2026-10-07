@@ -8,6 +8,7 @@
 // Usage: node scripts/typescript/build.mjs
 import { spawnSync } from 'node:child_process';
 import { existsSync, renameSync, rmSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
@@ -15,9 +16,12 @@ const client = fileURLToPath(new URL('../../clients/typescript/', import.meta.ur
 const dist = join(client, 'dist');
 const next = join(client, `dist.next-${process.pid}`);
 const old = join(client, `dist.old-${process.pid}`);
-const tsc = join(client, 'node_modules/typescript/bin/tsc');
-if (!existsSync(tsc)) {
-  console.error(`typescript build: ${tsc} is missing; run make install, which installs the TypeScript compiler`);
+// tsc는 client의 dependency typescript다: Node가 client의 package.json에서 package 이름으로 찾는다.
+let tsc;
+try {
+  tsc = createRequire(join(client, 'package.json')).resolve('typescript/bin/tsc');
+} catch (error) {
+  console.error(`typescript build: typescript does not resolve from ${client} (${error.code ?? error.message}); run make install, which installs the TypeScript compiler`);
   process.exit(1);
 }
 const built = spawnSync(process.execPath, [tsc, '-p', join(client, 'tsconfig.build.json'), '--outDir', next], { stdio: 'inherit' });

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.142: npm workspace는 기본 hoisted 배치로 설치되고, TypeScript build, package 선언 검사, conformance 결과 helper와 `decimal-typescript-types` 명령은 module을 package specifier로 찾는다.
+
 ## 0.0.4
 
 - G5.141: 네 client는 ordered-json 0.0.3을 쓰고, release asset은 orm zip과 ordered-json zip만 담은 Composer artifact repository에서 설치된다.
