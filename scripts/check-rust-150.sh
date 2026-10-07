@@ -1,5 +1,5 @@
 #!/bin/sh
-# Generates 150 entities with orm-build and compiles a crate that calls a
+# Generates 150 entities with polyspec-orm-build and compiles a crate that calls a
 # getter, a setter, and a chain on every model.
 set -eu
 
@@ -34,10 +34,10 @@ edition = "2021"
 publish = false
 
 [dependencies]
-orm = { path = "$ROOT/clients/rust/orm" }
+polyspec-orm = { path = "$ROOT/clients/rust/orm" }
 
 [build-dependencies]
-orm-build = { path = "$ROOT/clients/rust/orm-build" }
+polyspec-orm-build = { path = "$ROOT/clients/rust/orm-build" }
 
 [workspace]
 TOML
