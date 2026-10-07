@@ -4,6 +4,7 @@
 
 ## 0.0.4
 
+- G5.140: TypeScript interface 검사는 typescript를 clients/typescript workspace에서 load한다.
 - G5.139: `make package-check`는 tests/release-install의 commit한 소비자 project에서 빈 cache로 `npm ci`와 `composer install`을 실행해 release asset을 설치하고, `make install-release-fixtures`가 그 lock을 쓴다.
 - G5.138: release하는 모든 manifest는 tree의 manifest다: clients/typescript/package.json은 `@polyspec/ordered-json` `0.0.2`를 요구하고, Composer manifest는 `version`을 선언하며 `repositories`가 없고, private root package.json(`overrides`를 가진 npm workspace)과 composer.json(vendor-php에 설치)이 ordered-json을 GitHub release에서 받으며, release는 원본과 다른 packed manifest를 거부한다.
 - G5.137: VERSION, 모든 package file, orm package의 lockfile 항목, feature contract와 문서의 version 문장은 0.0.4를 선언하고, 변경 이력은 0.0.4의 변경을 `## 0.0.4`에 기록하므로, `make release-versions`는 tag `v0.0.4`에서 통과한다.
