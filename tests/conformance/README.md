@@ -27,7 +27,7 @@ The `write_cycle` expectation uses tagged styled-column values for
 | `vectors.postgres.json`, `vectors.sqlite.json` | the same vectors' expectations on the other databases (`check … -driver postgres`); results equal MySQL's except where the dialect differs (`sql_dump` text, fulltext semantics, operators SQLite rejects) |
 | `runner_go/main.go` | Go runner (generated models in `clients/go/model`) |
 | `runner.php` | PHP runner (PDO) |
-| `clients/rust/tests/src/conformance.rs` | Rust runner (models from `orm-build`, sqlx) |
+| `clients/rust/tests/src/conformance.rs` | Rust runner (models from `polyspec-orm-build`, sqlx) |
 | `runner_typescript.mjs` | TypeScript runner (native database drivers) |
 | `check/main.go` | orchestrator + comparator |
 

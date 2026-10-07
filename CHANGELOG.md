@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.110: the documentation names the Rust crates `polyspec-orm` and `polyspec-orm-build`.
+
 - G5.109: `make timing-check` runs the preempted vector tests of `polyspec-orm-schema`.
 
 - G5.108: the conformance vector `conditions_values` matches the seeded author names with the case-insensitive condition `uthor-10`.

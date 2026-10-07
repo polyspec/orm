@@ -5713,8 +5713,8 @@
       "title": "Rust catalog connection",
       "title_ko": "Rust catalog 연결",
       "status": "partial",
-      "description": "With the live-db feature, orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.",
-      "description_ko": "live-db feature가 켜진 orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.",
+      "description": "With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.",
+      "description_ko": "live-db feature가 켜진 polyspec-orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.",
       "inputs": {
         "type": "CatalogRequest",
         "fields": [

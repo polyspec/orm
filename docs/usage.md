@@ -91,7 +91,7 @@ fn main() {
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
 | TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
-| Rust | the `orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
+| Rust | the `polyspec-orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.
 - The generated models depend only on the documents and the scanned sources, not on how a path is written: a scan or output path written relative or absolute, with a `./` component or with a trailing `/` gives the same files, and so does a PHP document path written relative, absolute or with `./`. Rust `include_str!` names the manifest file by the canonical path of the output directory.

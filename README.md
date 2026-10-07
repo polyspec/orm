@@ -42,7 +42,7 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 
 ## How it works
 - **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
-- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `orm-build` crate in `build.rs` (Rust).
+- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `polyspec-orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
 - **Equality**: `tests/conformance` runs the same vectors in the four clients and compares the SQL, binds, and results.

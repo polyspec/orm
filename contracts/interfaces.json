@@ -2386,7 +2386,7 @@
     },
     "runtime_bodies": "Validated by conformance vectors and client database suites, not by declaration snapshots.",
     "update": "Change the common contract first; record candidates explicitly, review their diff, then pass all language gates.",
-    "generated_models": "Go snapshots the generated bench models; PHP and TypeScript snapshot the runtime base class; Rust snapshots the orm-build template of the fixed model methods."
+    "generated_models": "Go snapshots the generated bench models; PHP and TypeScript snapshot the runtime base class; Rust snapshots the polyspec-orm-build template of the fixed model methods."
   },
   "edges": [
     {

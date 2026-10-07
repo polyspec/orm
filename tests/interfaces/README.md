@@ -5,7 +5,7 @@
 The checker verifies these requirements:
 
 - Logical inputs and outputs match the Go, PHP, Rust, and TypeScript signatures of the model methods, the connection, the transaction, and the utilities.
-- Model rules read the generated Go models, the PHP and TypeScript base classes, and the Rust `orm-build` template of the fixed model methods.
+- Model rules read the generated Go models, the PHP and TypeScript base classes, and the Rust `polyspec-orm-build` template of the fixed model methods.
 - Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
 - Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, and TypeScript. PHP record declarations come from `Validator::RECORDS`.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.

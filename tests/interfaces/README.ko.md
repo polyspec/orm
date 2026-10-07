@@ -5,7 +5,7 @@
 검사기는 다음 요구사항을 확인한다.
 
 - 논리 입력과 출력이 모델 메서드, 연결, 트랜잭션, 유틸리티의 Go, PHP, Rust, TypeScript 시그니처와 일치한다.
-- 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `orm-build` 템플릿을 읽는다.
+- 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `polyspec-orm-build` 템플릿을 읽는다.
 - 소유자 규칙은 `Page`와 `AESRotationStatus`의 선언되지 않은 필드를 거부한다.
 - 레코드 규칙은 Go, PHP, Rust, TypeScript의 request 레코드 20개에서 모든 필드와 중첩 타입을 대조한다. PHP 레코드 선언은 `Validator::RECORDS`에서 읽는다.
 - 네이티브 심볼 스냅샷은 공개 및 내부 선언 변경을 보고한다. 매니페스트의 SHA-256 값은 검토하지 않은 스냅샷 교체를 차단한다.
