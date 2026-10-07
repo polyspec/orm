@@ -3,7 +3,7 @@
 // keep the subject git writes and are not checked.
 //
 // Usage: node scripts/git/check.mjs                 (the subjects of the commits of ORM_GIT_RANGE, `<base>..<head>`;
-//                                                     CI sets it to the pushed range or the pull request; without it the
+//                                                     CI sets it to the pull request or the merge group; without it the
 //                                                     check reads the subject of HEAD alone)
 //        node scripts/git/check.mjs --message <file> (the subject of a message being committed;
 //                                                     the commit-msg hook .githooks/commit-msg runs this)

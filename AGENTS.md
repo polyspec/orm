@@ -32,7 +32,8 @@
   changes cover one item only. A received instruction is triaged first: finish the item in
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
-- The repository's full test suite (`make check`) runs on GitHub CI after a push. One CI run must
+- The repository's full test suite (`make check`) runs on GitHub CI after a push, on the pull
+  request of the pushed branch and on its merge group. One CI run must
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a
@@ -90,7 +91,7 @@
   item is `[~]`: the pre-push hook
   `.githooks/pre-push` runs the push gate (scripts/check/push-gate.mjs), which refuses a push while
   an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
-  the pushed commit again (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and `make
+  the commit again on every push, pull request and merge group (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and `make
   owner-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
   fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
 - Every change reaches `main` through a pull request and the merge queue; no command of this
@@ -98,10 +99,11 @@
   `git push origin HEAD:refs/heads/<branch>`, `gh pr create --base main --head <branch> --fill`,
   `gh pr merge <branch> --auto --rebase`. The GitHub ruleset `main` of `.github/ruleset.json`
   requires a pull request (no approval), the merge queue with the merge method `REBASE`, a linear
-  history and the GitHub Actions checks `gate` (`.github/workflows/push-gate.yml`), `test`
-  (`.github/workflows/ci.yml`) and `build` (`.github/workflows/docs-pages.yml`), which run on every
-  merge group; it refuses a force-push and the deletion of `main` and has no bypass actor, so
-  GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies
+  history and the GitHub Actions checks `push-gate` (`.github/workflows/push-gate.yml`) and the
+  jobs `test` and `docs` of `.github/workflows/ci.yml`, which hold every check of the repository
+  and run on every pull request and merge group; `.github/workflows/docs-pages.yml` only builds
+  and deploys the site of `main`. The ruleset refuses a force-push and the deletion of `main` and
+  has no bypass actor, so GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies
   the ruleset and the declared repository settings (`allow_rebase_merge`, `allow_auto_merge`,
   `delete_branch_on_merge`); `make github-ruleset-check` fails when they differ from the
   declaration, naming each field.
@@ -120,8 +122,8 @@
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
   subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
   through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
-  commit cannot be changed. In CI `git-check` reads the subjects of the pushed range or the
-  pull request, which the workflow gives make check as `ORM_GIT_RANGE`; without it the check
+  commit cannot be changed. In CI `git-check` reads the subjects of the pull request or the
+  merge group, which the workflow gives make check as `ORM_GIT_RANGE`; without it the check
   reads HEAD. No tracked file records a commit id.
 - Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
   checks owning the changed files; no rule requires it before a commit or a push, because CI runs

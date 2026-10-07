@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { chainedCommandErrors, concurrencyErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -117,6 +117,8 @@ caseTest('a workflow runs only the summary and the report upload after make chec
     '          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}/report/', '          if-no-files-found: error'];
   const workflow = (...steps) => ['jobs:', '  test:', '    steps:', '      - uses: actions/checkout@v5', '      - name: install', '        run: npm ci', ...steps.flat(), ''].join('\n');
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report) }), []);
+  // 다른 job의 step은 make check job의 step이 아니다(G5.98).
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, ['  docs:', '    steps:', '      - name: documentation checks', '        run: make docs-ci']) }), []);
   const fuzz = ['      - name: decoder fuzz smoke checks', '        if: ${{ !cancelled() }}', '        run: make fuzz-check'];
   assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': workflow(check, summary, report, fuzz) }), [
     'ci.yml step "decoder fuzz smoke checks" runs make fuzz-check after make check; make check runs every check, and only the summary and the report upload follow it, so a check it lacks belongs in a target of CHECK_TARGETS',
@@ -1059,7 +1061,7 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
   const runner = ['checkout'];
   const workflow = (steps, check) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
   const good = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: rust\n        id: rust\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
-    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || format('{0}..{1}', github.event.before, github.sha) }}\n        run: make check\n`);
+    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check\n`);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
   const bad = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        with: { go-version: "1.27" }\n      - name: rust\n        id: rustup\n        continue-on-error: true\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
     `      - name: make check\n        run: make check\n`);
@@ -1072,8 +1074,13 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
     'ci.yml has no setup step with the id rust of scripts/check/ci-setup.mjs',
     'ci.yml step "make check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
     'ci.yml step "make check" gives make check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
-    'ci.yml step "make check" gives make check no ORM_GIT_RANGE of the pull request and the push, the commits whose subjects git-check reads',
+    'ci.yml step "make check" gives make check no ORM_GIT_RANGE of the pull request and the merge group, the commits whose subjects git-check reads',
   ]);
+  // job마다 runner가 따로이므로 make check job 뒤의 docs job은 make check의 setup이나 그 뒤의 step이 아니다(G5.98).
+  const docs = `  docs:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - id: node-modules\n        if: \${{ !cancelled() }}\n        run: make install-node\n      - name: documentation checks\n        id: docs\n        if: \${{ !cancelled() }}\n        run: make docs-ci\n`;
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs }, { setup, runner }), []);
+  assert.deepEqual(ciSetupErrors({ 'ci.yml': good + docs.replace('        if: ${{ !cancelled() }}\n        run: make install-node', '        run: make install-node') }, { setup, runner }),
+    ['ci.yml step "id: node-modules" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
   const pages = `jobs:\n  build:\n    steps:\n      - uses: actions/checkout@v5\n      - run: npm ci\n      - name: build\n        if: \${{ !cancelled() && steps.x.outcome == 'success' }}\n        run: make docs-build\n`;
   assert.deepEqual(ciSetupErrors({ 'pages.yml': pages }, { setup, runner }), ['pages.yml step "run: npm ci" does not run after a failed earlier step; give it if: ${{ !cancelled() ... }}']);
   const root = new URL('../..', import.meta.url).pathname;
@@ -1218,6 +1225,30 @@ caseTest('a test does not fail on a measured time above a bound', COMPUTE, () =>
     'f.rs': '    assert!(waited >= Duration::from_millis(200), "too early");\n    assert!(cpu * 4 < wall, "clock");\n',
     'g.test.mjs': "    check(event.elapsed >= 0, 'negative');\n",
   }), []);
+});
+
+// trigger case(G5.98)는 ci.yml, push-gate.yml과 docs-pages.yml의 `on:` block이 선언과 같고, 다른 workflow가 push,
+// pull_request, merge_group으로 실행하지 않는지 본다.
+caseTest('every workflow runs on its declared events only', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const directory = join(root, '.github/workflows');
+  const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
+  assert.deepEqual(workflowTriggerErrors(actual), []);
+  const text = on => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
+  const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text(on)]));
+  assert.deepEqual(workflowTriggerErrors(declared), []);
+  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  push:', '  pull_request:', '  merge_group:', '  workflow_dispatch:']) }), [
+    '.github/workflows/ci.yml has the triggers on: push: pull_request: merge_group: workflow_dispatch: instead of on: pull_request: merge_group: workflow_dispatch:',
+  ]);
+  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
+    '.github/workflows/docs-pages.yml has the triggers on: push: branches: [main] pull_request: workflow_dispatch: instead of on: push: branches: [main] workflow_dispatch:',
+  ]);
+  const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
+  assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
+    ".github/workflows/push-gate.yml is missing; it runs on push: branches-ignore: ['gh-readonly-queue/**'] pull_request: merge_group:",
+    '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
+  ]);
+  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
 });
 
 caseTest('every workflow that runs on push cancels the run of the push before it', COMPUTE, () => {

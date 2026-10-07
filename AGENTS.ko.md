@@ -25,7 +25,8 @@
 - `[o]` 표시는 변경 기록 항목도 같은 커밋에 남기며, 커밋되지 않은 변경은 항목 하나만 다룬다.
   받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은
   우선순위에 따라 배치한 뒤 시작한다.
-- 저장소의 전체 테스트 묶음(`make check`)은 push 뒤 GitHub CI에서 실행한다. CI 실행 한 번은 다음 CI 실행 전에
+- 저장소의 전체 테스트 묶음(`make check`)은 push 뒤 GitHub CI에서 실행한다: push한 branch의 pull request와 그 merge
+  group에서 실행한다. CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
   setup 단계가 실패한 target은 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지 target은 모두
   실행하며, target의 독립된 부분은 실패한 부분 뒤에도 실행하고, 실행은 묶음 전체를 끝까지 마친다. CI의 setup
@@ -71,15 +72,16 @@
   server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
   때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/check/push-gate.mjs)를 실행하고, gate는 push하는
-  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 push한 commit을 다시
-  검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make owner-check`와 전체 묶음의 guard는
+  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push, pull request와
+  merge group에서 그 commit을 다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make owner-check`와 전체 묶음의 guard는
   hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
 - 모든 변경은 pull request와 merge queue로 `main`에 들어가며, 이 저장소의 어떤 명령도 `main`을 push하지 않는다.
   branch는 GitHub의 표준 명령이나 GitHub UI로 게시한다: `git push origin HEAD:refs/heads/<branch>`,
   `gh pr create --base main --head <branch> --fill`, `gh pr merge <branch> --auto --rebase`. `.github/ruleset.json`의
-  GitHub ruleset `main`은 pull request(승인 없음), merge 방식 `REBASE`의 merge queue, 선형 history, 모든 merge
-  group에서 실행되는 GitHub Actions check `gate`(`.github/workflows/push-gate.yml`), `test`(`.github/workflows/ci.yml`),
-  `build`(`.github/workflows/docs-pages.yml`)를 요구하고, `main`의 force-push와 삭제를 거부하며 bypass actor가 없다.
+  GitHub ruleset `main`은 pull request(승인 없음), merge 방식 `REBASE`의 merge queue, 선형 history, 그리고 모든 pull
+  request와 merge group에서 실행되는 GitHub Actions check `push-gate`(`.github/workflows/push-gate.yml`)와
+  `.github/workflows/ci.yml`의 job `test`, `docs`를 요구한다. ci.yml이 저장소의 모든 검사를 가지고,
+  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다. ruleset은 `main`의 force-push와 삭제를 거부하며 bypass actor가 없다.
   그래서 GitHub는 관리자의 것을 포함해 `main`에 대한 직접 push를 거부한다. `make github-ruleset`은 ruleset과 선언한
   저장소 설정(`allow_rebase_merge`, `allow_auto_merge`, `delete_branch_on_merge`)을 적용하고, `make
   github-ruleset-check`는 그것이 선언과 다르면 각 field를 밝히며 실패한다.
@@ -94,7 +96,7 @@
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
   추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
-  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. CI에서 `git-check`는 push된 범위나 pull request의 제목을
+  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. CI에서 `git-check`는 pull request나 merge group의 제목을
   읽고, workflow가 그 범위를 make check에 `ORM_GIT_RANGE`로 준다. 그것이 없으면 HEAD를 읽는다. 추적하는 file은
   commit id를 기록하지 않는다.
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는

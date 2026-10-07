@@ -36,7 +36,7 @@ VITEPRESS_BASE=/ make docs-check
 
 ## GitHub Pages
 
-[문서 배포 workflow](../.github/workflows/docs-pages.yml)는 `main` push와 수동 실행에서 정적 검사를 통과한 결과를 Pages에 게시한다. Pull request에서도 같은 빌드와 검사를 실행한다. Pages 빌드 방식은 **GitHub Actions**다.
+[문서 배포 workflow](../.github/workflows/docs-pages.yml)는 `main` push와 수동 실행에서 정적 결과를 빌드해 Pages에 게시한다. 문서 검사(`make docs-ci`: 빌드, idempotence 검사, browser smoke test)는 모든 pull request와 merge group에서 [CI workflow](../.github/workflows/ci.yml)의 `docs` job이 실행하고, `main`은 그 검사를 요구한다. Pages 빌드 방식은 **GitHub Actions**다.
 
 `build` 작업은 `docs/.vitepress/dist`를 Pages 아티팩트로 업로드하고 `deploy` 작업은 `github-pages` 환경에 게시한다. 배포 주소와 실행 결과는 [Actions](https://github.com/polyspec/orm/actions/workflows/docs-pages.yml)에서 확인한다.
 

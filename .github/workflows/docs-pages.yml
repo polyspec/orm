@@ -3,8 +3,6 @@ name: docs-pages
 on:
   push:
     branches: [main]
-  pull_request:
-  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -17,14 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The site of main: build builds docs/.vitepress/dist and uploads it as the Pages artifact, and deploy publishes it.
+  # The documentation checks of the site run in the job docs of ci.yml on every pull request and merge group.
   build:
     runs-on: ubuntu-26.04-arm
     env:
       VITEPRESS_BASE: /orm/
-    # Every step has an id and runs whatever the earlier steps did
-    # (if: !cancelled()). make docs-ci records a target whose setup step failed
-    # as not-run, the report is uploaded under !cancelled(), and the pages
-    # artifact is uploaded only when the documentation checks passed.
     steps:
       - uses: actions/checkout@v5
         id: checkout
@@ -37,36 +33,17 @@ jobs:
       - id: node-modules
         if: ${{ !cancelled() }}
         run: make install-node
-      - id: browsers
+      - name: build the site
+        id: build
         if: ${{ !cancelled() }}
-        run: make install-browsers
-      # The job publishes docs/.vitepress/dist: docs-build writes it,
-      # docs-verify-idempotent builds it twice more and compares every byte,
-      # and docs-static-check serves it and opens it in a browser. make docs-ci
-      # runs the three through the runner of make check, also after a failed
-      # one, and writes the log of each and a summary to the report of this
-      # run id, which the next step uploads whatever the result.
-      - name: documentation checks
-        id: docs
-        if: ${{ !cancelled() }}
-        env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-docs
-          ORM_CI_SETUP: ${{ toJSON(steps) }}
-        run: make docs-ci
-      - name: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: docs-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_docs/report/
-          if-no-files-found: error
+        run: make docs-build
       - uses: actions/upload-pages-artifact@v3
-        if: ${{ steps.docs.outcome == 'success' }}
+        if: ${{ steps.build.outcome == 'success' }}
         with:
           path: docs/.vitepress/dist
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-26.04-arm
     permissions:

@@ -45,6 +45,23 @@ export function workflowSteps(workflow) {
   });
 }
 
+// workflowJobs는 workflow의 job마다 [id, text]를 돌려준다. job은 `jobs:` 아래 두 칸 깊은 key이고, text는 그 key부터
+// 다음 job 앞까지다. job마다 runner가 따로이므로 step의 순서와 setup은 job 안에서 본다. `jobs:`가 없는 text는 job
+// 하나다.
+export function workflowJobs(workflow) {
+  const lines = workflow.split('\n');
+  const start = lines.findIndex(line => /^jobs:\s*$/.test(line));
+  if (start === -1) return [[null, workflow]];
+  const jobs = [];
+  for (const line of lines.slice(start + 1)) {
+    const key = /^ {2}([\w-]+):\s*$/.exec(line);
+    if (key) jobs.push([key[1], [line]]);
+    else if (/^\S/.test(line)) break;
+    else if (jobs.length) jobs.at(-1)[1].push(line);
+  }
+  return jobs.map(([id, body]) => [id, body.join('\n')]);
+}
+
 // actionSteps는 workflow에서 action(예: actions/setup-node)을 쓰는 step마다 그 step의 줄을 돌려준다.
 export function actionSteps(workflow, action) {
   const lines = workflow.split('\n');
@@ -369,12 +386,12 @@ function stepTexts(workflow) {
   return out;
 }
 
-// ciAfterCheckErrors는 make check를 실행하는 workflow마다 make check step이 ORM_CHECK_RUN_ID를 주지 않거나, 그 뒤의
+// ciAfterCheckErrors는 make check를 실행하는 workflow의 job마다 make check step이 ORM_CHECK_RUN_ID를 주지 않거나, 그 뒤의
 // step이 AFTER_CHECK의 summary와 report와 정확히 같지 않은 곳마다 오류 하나를 돌려준다. 검사는 모두 make check의
 // target에 있고(CHECK_TARGETS), 그 뒤의 step은 그 실행의 summary와 보고서만 남긴다.
 export function ciAfterCheckErrors(workflows) {
   const errors = [];
-  for (const [path, workflow] of Object.entries(workflows)) {
+  for (const [path, whole] of Object.entries(workflows)) for (const [, workflow] of workflowJobs(whole)) {
     const steps = workflowSteps(workflow);
     const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
     if (check === -1) continue;
@@ -422,36 +439,38 @@ export function fullSuiteRuleErrors(documents) {
 }
 
 // ciSetupErrors는 workflow의 setup step이 실패해도 그 뒤의 step이 실행되고 그 실패가 기록되지 않는 곳마다 오류 하나를
-// 돌려준다. make check를 실행하는 workflow에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
+// 돌려준다. make check를 실행하는 job에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
 // step(RUNNER_STEPS)이거나 scripts/check/ci-setup.mjs의 CI_SETUP이 그 step이 마련하는 것을 적은 step이다. 표의 step은
 // 모두 workflow에 있다. 첫 step 뒤의 step과 make check는 `if: ${{ !cancelled() }}`로 앞의 step이 실패해도 실행되고,
-// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로, git-check가 읽는 commit 범위를 pull request와 push의
-// ORM_GIT_RANGE로 받는다. 다른 workflow의 `run:` step도 앞의 step이
+// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로, git-check가 읽는 commit 범위를 pull request와 merge
+// group의 ORM_GIT_RANGE로 받는다. 다른 job의 `run:` step도 같은 job의 앞 step이
 // 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
 // 없다.
 export function ciSetupErrors(workflows, { setup, runner }) {
   const errors = [];
-  for (const [path, workflow] of Object.entries(workflows)) {
-    const steps = workflowSteps(workflow);
-    const texts = stepTexts(workflow);
-    if (/^\s*continue-on-error:/m.test(workflow)) errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
-    const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
-    const guarded = index => texts[index].some(line => /^if: \$\{\{ !cancelled\(\)/.test(line));
-    if (check === -1) {
-      for (const [index, step] of steps.entries())
-        if (index > 0 && step.run && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier step; give it if: \${{ !cancelled() ... }}`);
-      continue;
+  for (const [path, whole] of Object.entries(workflows)) {
+    if (/^\s*continue-on-error:/m.test(whole)) errors.push(`${path} uses continue-on-error, which hides a failed step from the job; run later steps with if: \${{ !cancelled() }} instead`);
+    for (const [, workflow] of workflowJobs(whole)) {
+      const steps = workflowSteps(workflow);
+      const texts = stepTexts(workflow);
+      const check = steps.findIndex(step => step.run.split('\n').flatMap(segments).some(segment => /^make\s+check\s*$/.test(segment)));
+      const guarded = index => texts[index].some(line => /^if: \$\{\{ !cancelled\(\)/.test(line));
+      if (check === -1) {
+        for (const [index, step] of steps.entries())
+          if (index > 0 && step.run && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier step; give it if: \${{ !cancelled() ... }}`);
+        continue;
+      }
+      for (const [index, step] of steps.slice(0, check).entries()) {
+        if (!step.id) errors.push(`${path} step "${step.name}" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mjs`);
+        else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mjs does not map to what it installs`);
+        if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
+      }
+      const ids = new Set(steps.slice(0, check).map(step => step.id));
+      for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);
+      if (!guarded(check)) errors.push(`${path} step "${steps[check].name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
+      if (!texts[check].includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
+      if (!texts[check].some(line => /^ORM_GIT_RANGE: \$\{\{ .*github\.event\.pull_request\.base\.sha.*github\.event\.merge_group\.base_sha.* \}\}$/.test(line))) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_GIT_RANGE of the pull request and the merge group, the commits whose subjects git-check reads`);
     }
-    for (const [index, step] of steps.slice(0, check).entries()) {
-      if (!step.id) errors.push(`${path} step "${step.name}" before make check has no id; give it the id of what it installs in scripts/check/ci-setup.mjs`);
-      else if (!runner.includes(step.id) && !Object.hasOwn(setup, step.id)) errors.push(`${path} step "${step.name}" has the id ${step.id}, which scripts/check/ci-setup.mjs does not map to what it installs`);
-      if (index > 0 && !guarded(index)) errors.push(`${path} step "${step.name}" does not run after a failed earlier setup step; give it if: \${{ !cancelled() }}`);
-    }
-    const ids = new Set(steps.slice(0, check).map(step => step.id));
-    for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);
-    if (!guarded(check)) errors.push(`${path} step "${steps[check].name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
-    if (!texts[check].includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
-    if (!texts[check].some(line => /^ORM_GIT_RANGE: \$\{\{ .*github\.event\.pull_request\.base\.sha.*github\.event\.before.* \}\}$/.test(line))) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_GIT_RANGE of the pull request and the push, the commits whose subjects git-check reads`);
   }
   return errors;
 }
@@ -548,6 +567,46 @@ export function ciMakeErrors(workflows) {
       for (const line of step.run.split('\n').map(line => line.trim()).filter(Boolean))
         if (!/^make(\s|$)/.test(line)) errors.push(`${path} step "${step.name}" runs ${line}; run it through a make target`);
     }
+  }
+  return errors;
+}
+
+// WORKFLOW_TRIGGERS는 workflow마다 그 `on:` block이다. ci.yml은 모든 검사 job을 pull request, merge group과 수동 실행에서,
+// push-gate.yml은 push gate를 push(merge queue의 임시 branch 제외), pull request와 merge group에서 실행하고,
+// docs-pages.yml은 main의 push와 수동 실행에서 공개 site를 build하고 deploy한다. 다른 workflow는 push, pull_request,
+// merge_group으로 실행하지 않는다.
+export const WORKFLOW_TRIGGERS = {
+  '.github/workflows/ci.yml': ['on:', '  pull_request:', '  merge_group:', '  workflow_dispatch:'],
+  '.github/workflows/push-gate.yml': ['on:', '  push:', "    branches-ignore: ['gh-readonly-queue/**']", '  pull_request:', '  merge_group:'],
+  '.github/workflows/docs-pages.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
+};
+
+// onBlock은 workflow의 `on:` 줄부터 다음 최상위 key 앞까지의 줄을 끝의 빈 줄과 주석 없이 돌려준다.
+export function onBlock(workflow) {
+  const lines = workflow.split('\n');
+  const start = lines.findIndex(line => /^on:/.test(line));
+  if (start === -1) return [];
+  const block = [lines[start]];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    block.push(line);
+  }
+  return block.filter(line => line.trim() !== '' && !line.trim().startsWith('#')).map(line => line.trimEnd());
+}
+
+// workflowTriggerErrors는 WORKFLOW_TRIGGERS의 workflow가 없거나 그 `on:` block이 다른 곳, 그리고 다른 workflow가 push,
+// pull_request나 merge_group으로 실행하는 곳마다 오류 하나를 돌려준다. workflows는 {path: text}다.
+export function workflowTriggerErrors(workflows) {
+  const errors = [];
+  for (const [path, want] of Object.entries(WORKFLOW_TRIGGERS)) {
+    if (!Object.hasOwn(workflows, path)) { errors.push(`${path} is missing; it runs on ${want.slice(1).map(line => line.trim()).join(' ')}`); continue; }
+    const have = onBlock(workflows[path]);
+    if (have.join('\n') !== want.join('\n')) errors.push(`${path} has the triggers ${have.map(line => line.trim()).join(' ')} instead of ${want.map(line => line.trim()).join(' ')}`);
+  }
+  for (const [path, workflow] of Object.entries(workflows)) {
+    if (Object.hasOwn(WORKFLOW_TRIGGERS, path)) continue;
+    const events = onBlock(workflow).join('\n').match(/\b(?:push|pull_request|merge_group)\b/g) ?? [];
+    if (events.length) errors.push(`${path} runs on ${[...new Set(events)].join(', ')}; only ci.yml, push-gate.yml and docs-pages.yml run on these events`);
   }
   return errors;
 }

@@ -36,7 +36,7 @@ VITEPRESS_BASE=/ make docs-check
 
 ## GitHub Pages
 
-The [documentation deployment workflow](../.github/workflows/docs-pages.yml) deploys the checked static output to Pages after pushes to `main` and manual runs. Pull requests run the same build and checks. Pages uses **GitHub Actions** as its build method.
+The [documentation deployment workflow](../.github/workflows/docs-pages.yml) builds the static output and deploys it to Pages after pushes to `main` and manual runs. The documentation checks (`make docs-ci`: the build, the idempotence check and the browser smoke test) run in the `docs` job of the [CI workflow](../.github/workflows/ci.yml) on every pull request and merge group, which `main` requires. Pages uses **GitHub Actions** as its build method.
 
 The `build` job uploads `docs/.vitepress/dist` as the Pages artifact, and the `deploy` job publishes it to the `github-pages` environment. The deployment URL and run results are available in [Actions](https://github.com/polyspec/orm/actions/workflows/docs-pages.yml).
 

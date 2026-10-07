@@ -130,7 +130,7 @@
       "id": "git.subject-format",
       "source": "git history",
       "checker": "git-check",
-      "failure": "a commit subject of the checked range (the pushed range or the pull request in CI, otherwise HEAD) does not use type(scope): Subject (#id)",
+      "failure": "a commit subject of the checked range (the pull request or the merge group in CI, otherwise HEAD) does not use type(scope): Subject (#id)",
       "types": [
         "feat",
         "fix",

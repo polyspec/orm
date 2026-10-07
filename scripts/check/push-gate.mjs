@@ -2,7 +2,7 @@
 // 실행하고, 그 guard(full-run.mjs)는 항목이 진행 중인 tree를 거부한다. 진행 중 항목은 guard의 activeItems가 정한다.
 //
 //   node scripts/check/push-gate.mjs hook          .githooks/pre-push가 실행한다. stdin은 git의 pre-push 입력이다
-//   node scripts/check/push-gate.mjs commit <rev>  CI(.github/workflows/push-gate.yml)가 push한 commit에 실행한다
+//   node scripts/check/push-gate.mjs commit <rev>  CI(.github/workflows/push-gate.yml)가 push, pull request, merge group의 commit에 실행한다
 //   node scripts/check/push-gate.mjs hooks-check   core.hooksPath가 `.githooks`이고 hook이 실행 가능한지 본다
 //
 // hook은 push하는 ref마다 그 commit의 docs/checklist.md와 working tree의 docs/checklist.md를 읽고, 진행 중 항목이

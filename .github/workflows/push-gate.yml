@@ -2,8 +2,9 @@ name: push-gate
 
 on:
   push:
+    branches-ignore: ['gh-readonly-queue/**']
+  pull_request:
   merge_group:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,11 +16,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
+  push-gate:
     runs-on: ubuntu-26.04-arm
-    # The push gate of the pre-push hook, run again on the pushed commit: a push that bypassed the hook (git push
-    # --no-verify, or a checkout without core.hooksPath) fails here when its checklist has an item in progress or its
-    # commit does not track the hook as an executable file. The actions are pinned to the commits of their tags.
+    # The push gate of the pre-push hook, run again on the commit of the event: the pushed commit, the merge commit of
+    # the pull request or the head of the merge group (github.sha). A push that bypassed the hook (git push --no-verify,
+    # or a checkout without core.hooksPath) fails here when its checklist has an item in progress or its commit does
+    # not track the hook as an executable file. The check push-gate is the job ID. The actions are pinned to the
+    # commits of their tags.
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         id: checkout
