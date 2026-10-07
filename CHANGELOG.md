@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.101: `make rust-150-check` builds its generated crate against `polyspec-orm` and `polyspec-orm-build`.
+
 - G5.100: the site renders Mermaid in the browser of the reader; `make docs-build` and the documentation checks (`make docs-check`, `make docs-verify-idempotent`, `make docs-rules-check`) run with Node only and need no browser.
 
 - G5.99: the build job of docs-pages.yml installs the browsers before the site build, and `make repo-check` requires that of every job that builds the site.

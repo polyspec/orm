@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.101: `make rust-150-check`는 생성한 crate를 `polyspec-orm`과 `polyspec-orm-build`로 build한다.
+
 - G5.100: 사이트는 읽는 이의 브라우저에서 Mermaid를 그린다. `make docs-build`와 문서 검사(`make docs-check`, `make docs-verify-idempotent`, `make docs-rules-check`)는 Node만으로 실행하며 브라우저가 필요하지 않다.
 
 - G5.99: docs-pages.yml의 build job은 사이트 build 전에 브라우저를 설치하고, `make repo-check`는 사이트를 build하는 모든 job에 이를 요구한다.
