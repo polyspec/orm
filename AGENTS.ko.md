@@ -114,7 +114,9 @@
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
   적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.
   여러 기능이 쓰는 helper는 `helpers`에 자기 check와 함께 선언하고 어떤 입력에도 넣지 않는다. helper의
-  변경은 그 check만 실행하며, helper를 쓰는 모든 기능의 실행은 `make check`가 맡는다. 입력이 없는 검증
+  변경은 그 check만 실행하며, helper를 쓰는 모든 기능의 실행은 `make check`가 맡는다. `make check`는 helper check마다 한 번
+  실행한다: `make feature-helper-check`에서, stress target에서, 또는 check가 `make check`의 target이나 setup 단계인
+  helper(`FEATURE_SUITE_HELPERS`)는 그곳에서다(`make repo-check`). 입력이 없는 검증
   명령, 추적되는 file을 맞추지 않는 입력, 입력으로 쓰인 helper는 검증이 실패시킨다. 또 `contracts/check-inputs.json`이 scope `owner`로 선언하고 입력이 바뀐
   path를 맞추는 make target(예: 바뀐 문서에 대한 `docs-check`와 `docs-verify-idempotent`)을 실행한다.
   owner target은 file 단위 검사다: format, checklist, 문서, 검사기의 unit test. client, database,

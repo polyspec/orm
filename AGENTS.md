@@ -146,6 +146,9 @@
   one, and the commands and parts of a feature whose entry in `contracts/features.json` changed. A
   helper that several features use is declared under `helpers` with its own check and is an input
   of nothing: its change runs only that check, and `make check` runs every feature that uses it.
+  `make check` runs each helper check once: in `make feature-helper-check`, in a stress target, or,
+  for a helper whose check is a target or a setup step of `make check` (`FEATURE_SUITE_HELPERS`),
+  there (`make repo-check`).
   The declaration check fails on a verification command without inputs, an input that matches no
   tracked file and a helper declared as an input. It also runs every make target that `contracts/check-inputs.json`
   declares with scope `owner` and whose inputs match a changed path, such as `docs-check` and

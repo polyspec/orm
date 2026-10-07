@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -434,6 +434,48 @@ caseTest('a workflow that runs a verification command of feature-check again fai
     'ci.yml step "checks" runs ./scripts/perf-test.sh, which make check runs in feature-check',
   ]);
   assert.deepEqual(ciDuplicateCommandErrors(steps.replace('make repo-check', 'make check\n          make fuzz-check'), make, commands), []);
+});
+
+// helper 실행 case(G5.120)는 make check가 helper check마다 한 번 실행하는지 본다: 저장소의 Makefile, feature contract와
+// scripts/check/databases.sh, 그리고 helper를 두 번 실행하거나 한 번도 실행하지 않는 최소 Makefile이다.
+caseTest('make check runs the check of every helper once', COMPUTE, () => {
+  assert.deepEqual(helperRunErrors(JSON.parse(text('contracts/features.json')), text('Makefile'), text('scripts/check/databases.sh')), []);
+  const manifest = { features: [], helpers: [
+    { id: 'plain', command: 'php tests/plain_test.php' },
+    { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_OWNER_TEST_ENV" suite-check' },
+    { id: 'nested', command: 'make --no-print-directory nested-check' },
+    { id: 'seed', command: 'sh scripts/seed.sh' },
+    { id: 'stress', command: 'make stress-bench' },
+  ] };
+  const make = (suite, stress) => [
+    'CHECK_TARGETS = helper-check stress-check suite-check outer-check',
+    `STRESS = ${stress}`,
+    `SUITE = ${suite}`,
+    'helper-check:',
+    '	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))',
+    'stress-check:',
+    '	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(STRESS))',
+    'suite-check:',
+    '	go test ./suite',
+    'outer-check: nested-check',
+    '	go test ./outer',
+    'nested-check:',
+    '	go test ./nested',
+    '',
+  ].join('\n');
+  const setup = 'BENCH_MYSQL_DSN=x "$ROOT/scripts/seed.sh"\n';
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed', 'stress'), setup), []);
+  const twice = (id, places) => `make check runs the check of helper ${id} 2 times: ${places}; run it once, and add a helper whose check a target or setup step of make check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`;
+  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress'), setup), [
+    twice('nested', 'make helper-check; make nested-check, a target of make check'),
+    twice('seed', 'make helper-check; the setup step databases/create of make check (scripts/check/databases.sh runs scripts/seed.sh)'),
+  ]);
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed plain', 'stress'), setup), [
+    'make check runs no check of helper plain: no target of CHECK_TARGETS selects it and its command is no target or setup step of make check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it',
+  ]);
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
+    twice('stress', 'make helper-check; make stress-check'),
+  ]);
 });
 
 // runner case는 저장소의 .github/runner와 workflow, 그리고 최소 workflow를 검사한다.

@@ -1,5 +1,6 @@
 import { segments } from './testcases.mjs';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mjs';
+import { parseSelection, selectChecks } from '../features/select.mjs';
 
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
 // (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
@@ -264,6 +265,63 @@ export function ciDuplicateCommandErrors(workflow, makefile, commands) {
           errors.push(`ci.yml step "${step.name}" runs make ${target}, whose commands make check runs in feature-check`);
       }
     }
+  }
+  return errors;
+}
+
+// makeRules는 Makefile의 규칙 `target: prerequisites`마다 target과 그 선행 target이다. pattern 규칙(`%`)과 target별
+// 변수 정의는 뺀다.
+function makeRules(makefile) {
+  const rules = new Map();
+  for (const match of makefile.matchAll(/^([a-z0-9][a-z0-9/-]*):(?!=)([^=\n]*)$/gm))
+    rules.set(match[1], match[2].trim().split(/\s+/).filter(word => /^[a-z0-9][a-z0-9/-]*$/.test(word)));
+  return rules;
+}
+
+// expandFunctions는 expand 뒤에 남은 make 함수 `$(addprefix <prefix>,<words>)`를 그 결과 단어로 바꾼다.
+function expandFunctions(command) {
+  return command.replace(/\$\(addprefix ([^,()]*),([^()]*)\)/g, (whole, prefix, words) => words.trim().split(/\s+/).filter(Boolean).map(word => `${prefix}${word}`).join(' '));
+}
+
+// helperRunErrors는 make check가 contracts/features.json의 helper check를 한 번이 아니게 실행하는 helper마다 오류 하나를
+// 돌려준다. helper check를 실행하는 곳은 셋이다: CHECK_TARGETS의 recipe가 `node scripts/features/check.mjs --run`으로 그
+// helper를 고르는 target, helper의 명령이 `make ... <target>`이고 그 target이 make check의 target이나 그 선행 target인 경우의
+// 그 target, helper의 명령이 `sh <script>`이고 runner의 setup 단계 databases/create(setupScript, scripts/check/databases.sh)가
+// 그 script를 실행하는 경우의 그 setup 단계다. 같은 일을 두 번 하는 실행은 시간만 쓰고, 한 번도 실행하지 않는 helper는
+// make check가 검사하지 않는다.
+export function helperRunErrors(manifest, makefile, setupScript) {
+  const variables = makeVariables(makefile);
+  const rules = makeRules(makefile);
+  const reached = new Set();
+  const pending = [...checkTargets(makefile)];
+  while (pending.length) {
+    const target = pending.pop();
+    if (reached.has(target)) continue;
+    reached.add(target);
+    pending.push(...(rules.get(target) ?? []));
+  }
+  const places = new Map((manifest.helpers ?? []).map(helper => [helper.id, []]));
+  for (const target of checkTargets(makefile)) {
+    for (const line of recipe(makefile, target) ?? []) {
+      const args = /\bnode\s+scripts\/features\/check\.mjs\s+(.*)$/.exec(expandFunctions(expand(line, variables)))?.[1].trim().split(/\s+/);
+      if (!args?.includes('--run')) continue;
+      for (const { feature, check } of selectChecks(manifest, parseSelection(args)))
+        if (feature.id === 'helpers') places.get(check.id)?.push(`make ${target}`);
+    }
+  }
+  for (const helper of manifest.helpers ?? []) {
+    const make = /^make\s+(.*)$/.exec(helper.command.trim())?.[1];
+    for (const word of make?.split(/\s+/) ?? [])
+      if (!word.startsWith('-') && !word.includes('=') && reached.has(word)) places.get(helper.id).push(`make ${word}, a target of make check`);
+    const script = /^sh\s+(\S+\.sh)$/.exec(helper.command.trim())?.[1];
+    if (script && setupScript.includes(script)) places.get(helper.id).push(`the setup step databases/create of make check (scripts/check/databases.sh runs ${script})`);
+  }
+  const errors = [];
+  for (const [id, runs] of places) {
+    if (runs.length === 0)
+      errors.push(`make check runs no check of helper ${id}: no target of CHECK_TARGETS selects it and its command is no target or setup step of make check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it`);
+    else if (runs.length > 1)
+      errors.push(`make check runs the check of helper ${id} ${runs.length} times: ${runs.join('; ')}; run it once, and add a helper whose check a target or setup step of make check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`);
   }
   return errors;
 }

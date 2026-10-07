@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.120: `make feature-helper-check`는 `make check`가 다른 곳에서 실행하는 helper check(`FEATURE_SUITE_HELPERS`: `bench-database`, `case-database`, `conformance-result`, `conformance-runners`)를 빼고, `make repo-check`는 `make check`가 두 번 실행하거나 실행하지 않는 helper check를 실패시킨다.
+
 - G5.119: JavaScript test는 하위 process를 case가 주는 변수만으로 시작하므로(tests/environment.mjs) CI group, `GITHUB_ACTIONS`, 실행 id와 상위 make가 그 결과를 바꾸지 않는다. `make repo-check`는 하위 process에 자기를 실행한 쪽의 환경을 넘기는 test를 거부한다.
 
 - G5.118: `make group-rows-physical-check`와 `make unselected-column-physical-check`는 case가 실행되기 전에 그 case의 state reader를 기한 없이 build한다.
