@@ -12,7 +12,8 @@
 //             Composer의 `vendor/`는 `vendor-`가 된다. Rust crate와 Go module은 asset이 없다: Cargo는 0.1까지 git
 //             dependency와 tag로 의존하고, Go는 tag로 module을 얻는다. Go module tag는 아무것도 만들지 않는다.
 //   publish   CHANGELOG.md의 section X.Y.Z를 notes로, assets가 만든 asset과 함께 `gh release create <tag> --verify-tag`를
-//             실행한다.
+//             실행한다. section이 GitHub release 본문의 한도 NOTES_LIMIT자를 넘으면 notes는 tag의 CHANGELOG.md에서 그
+//             section을 가리키는 한 줄이다(releaseNotes).
 //
 // Usage: [GITHUB_REPOSITORY=<owner>/<repo>] node scripts/release/release.mjs verify|versions|assets|publish <tag>
 import { spawnSync } from 'node:child_process';
@@ -101,6 +102,18 @@ export function changelogSection(text, version) {
   if (start === -1) return null;
   const end = lines.findIndex((line, index) => index > start && /^## /.test(line));
   return lines.slice(start + 1, end === -1 ? undefined : end).join('\n').trim();
+}
+
+// NOTES_LIMIT는 GitHub가 받는 release 본문의 최대 길이(문자 수)다. 더 긴 본문은 `body is too long`으로 거부된다.
+export const NOTES_LIMIT = 125000;
+
+// releaseNotes는 release의 notes다: section이 NOTES_LIMIT자 이하면 section 그대로이고, 넘으면 tag의 CHANGELOG.md에서
+// heading `## X.Y.Z`의 anchor(version에서 점을 뺀 것)를 가리키는 한 줄이다. tag는 path segment마다 URL로 encode한다.
+export function releaseNotes(section, tag) {
+  const { version } = parseTag(tag);
+  if ([...section].length <= NOTES_LIMIT) return section;
+  const ref = tag.split('/').map(encodeURIComponent).join('/');
+  return `The changes of ${version} are listed in [CHANGELOG.md](https://${GO_MODULE}/blob/${ref}/CHANGELOG.md#${version.replaceAll('.', '')}).`;
 }
 
 // checkErrors는 commit의 check run([{ name, status, conclusion, started_at }])에서 required check마다, run이 없거나 가장
@@ -205,7 +218,7 @@ export function step({ action, tag, root, repository, exec, log = console.log })
     const section = changelogSection(read('CHANGELOG.md') ?? '', parsed.version);
     refuse(section === null ? [`CHANGELOG.md has no section ## ${parsed.version}; run make release-versions, which names the missing section`] : []);
     const notes = join(directory, 'notes.md');
-    writeFileSync(notes, `${section}\n`);
+    writeFileSync(notes, `${releaseNotes(section, tag)}\n`);
     run('gh', ['release', 'create', tag, '--verify-tag', '--title', tag, '--notes-file', notes, ...built.map(asset => join(assets, asset))]);
     log(`release: created the GitHub release ${tag} with ${built.length} asset(s)${built.length ? `: ${built.join(' ')}` : ''}`);
     return built;

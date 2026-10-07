@@ -214,4 +214,6 @@
   `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
   succeeded), `make release-versions` (every released manifest carries X.Y.Z and the changelogs have
   its section), `make release-assets` (the npm tarball and the Composer zips) and
-  `make release-publish` (the release with the notes of that section). The tests do not run again.
+  `make release-publish` (the release with the notes of that section; a section over 125000
+  characters, the limit of a GitHub release body, becomes one line that links the section `#XYZ`
+  of CHANGELOG.md at the tag). The tests do not run again.
