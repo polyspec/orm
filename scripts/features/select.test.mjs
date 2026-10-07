@@ -5,8 +5,8 @@ import { parseSelection, selectChecks, selectionErrors, USAGE } from './select.m
 // manifest는 기능 둘과 helper 셋의 최소 형태다. 각 case는 인자 하나의 고른 결과를 `<feature>/<command>`로 본다(G5.111).
 const manifest = {
   features: [
-    { id: 'alpha', verification: [{ id: 'a1', command: 'make a1' }, { id: 'a2', command: 'make a2' }] },
-    { id: 'beta', verification: [{ id: 'b1', command: 'make b1' }] },
+    { id: 'alpha', verification: [{ id: 'a1', command: 'make a1', shard: 'rust' }, { id: 'a2', command: 'make a2', shard: 'other' }] },
+    { id: 'beta', verification: [{ id: 'b1', command: 'make b1', shard: 'rust' }] },
   ],
   helpers: [{ id: 'small', command: 'make small' }, { id: 'stress', command: 'make stress' }, { id: 'apply-stress', command: 'make apply-stress' }],
 };
@@ -18,6 +18,14 @@ caseTest('no selection runs every feature command and every helper check', COMPU
 
 caseTest('--features runs every feature command and no helper check', COMPUTE, () => {
   assert.deepEqual(names(['--run', '--features']), ['alpha/a1', 'alpha/a2', 'beta/b1']);
+});
+
+// shard case(G5.122)는 --shard가 --features의 명령 가운데 선언한 shard가 그것인 명령만 고르는지 본다.
+caseTest('--features --shard runs the feature commands of that shard only', COMPUTE, () => {
+  assert.deepEqual(names(['--run', '--features', '--shard', 'rust']), ['alpha/a1', 'beta/b1']);
+  assert.deepEqual(names(['--run', '--features', '--shard', 'other']), ['alpha/a2']);
+  assert.deepEqual(selectionErrors(manifest, parseSelection(['--features', '--shard', 'go'])), ['unknown shard go; give one of rust, other']);
+  assert.deepEqual(selectionErrors(manifest, parseSelection(['--features', '--shard', 'rust'])), []);
 });
 
 caseTest('--helpers runs every helper check but the ones of --without-helper and no feature command', COMPUTE, () => {
@@ -32,7 +40,8 @@ caseTest('--feature, --command and --helper select only what they name', COMPUTE
 
 caseTest('a selection that mixes the parts or names nothing is refused with the usage', COMPUTE, () => {
   for (const argv of [['--features', '--helpers'], ['--features', '--feature', 'alpha'], ['--helpers', '--helper', 'small'], ['--without-helper', 'small'],
-    ['--command', 'a1'], ['--feature'], ['--helpers', '--without-helper', '--run'], ['--feature', 'alpha', '--feature', 'beta']])
+    ['--command', 'a1'], ['--feature'], ['--helpers', '--without-helper', '--run'], ['--feature', 'alpha', '--feature', 'beta'],
+    ['--shard', 'rust'], ['--helpers', '--shard', 'rust'], ['--features', '--shard'], ['--features', '--shard', 'rust', '--shard', 'other']])
     assert.throws(() => parseSelection(argv), { message: USAGE }, argv.join(' '));
 });
 

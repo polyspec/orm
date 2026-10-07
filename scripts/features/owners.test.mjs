@@ -139,7 +139,7 @@ const t42 = [
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
   assert.deepEqual(targets(selectTargets(inputs, t42)), ['repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
-  for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-check', 'go-test-check'])
+  for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target].scope, 'suite', `${target} is not a full-suite target`);
   // contracts/interfaces.json과 contracts/symbols/*.json이 적는 source는 interface 검사의 입력이다.
   const owners = await selectOwners(manifest, root, t42);

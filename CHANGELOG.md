@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.122: every verification command of contracts/features.json declares its `shard` (`rust` or `other`), and `make check` runs the feature coverage and the two shards as `make feature-coverage`, `make feature-verify-rust` and `make feature-verify-other`, each in a CI group of its own; `make feature-check` runs the three.
+
 - G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>` applies the 2000 table plan to the given databases, and CI runs the MySQL apply in the group `stress-mysql` (`make feature-stress-mysql-check`) and the stress bench with the PostgreSQL and SQLite applies in the group `stress-pg-sqlite` (`make feature-stress-pg-sqlite-check`).
 
 - G5.120: `make feature-helper-check` leaves out the helper checks that `make check` runs elsewhere (`FEATURE_SUITE_HELPERS`: `bench-database`, `case-database`, `conformance-result`, `conformance-runners`), and `make repo-check` fails on a helper check that `make check` runs twice or never.

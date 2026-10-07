@@ -294,7 +294,7 @@ caseTest('a rustc other than rust-toolchain.toml fails', COMPUTE, () => {
 // CHECK_TARGETS case는 저장소의 workflow와 Makefile, 그리고 최소 workflow를 검사한다.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
-  for (const target of ['ts-min-check', 'php-min-check', 'feature-check', 'go-test-check'])
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
   assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
 });

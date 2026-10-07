@@ -514,7 +514,6 @@ const PARTS = {
   'testcase-check': ['go', 'node', 'runners', 'php', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
   'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
-  'feature-check': ['build', 'coverage', 'verification'],
   'client-unit-check': ['dsn', 'relation-keys', 'hostcodec', 'engine', 'runtime-model', 'orm-gen', 'perf-extensions'],
 };
 
