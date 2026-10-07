@@ -2,19 +2,21 @@
 
 ## Unreleased
 
+- G5.128: CI group 이름은 영문 소문자, 숫자와 `_`만 쓰므로 job마다 runner가 쓰는 보고서 directory를 올리고, `make repo-check`는 upload path가 그것과 다른 group을 실패시킨다.
+
 - G5.127: CI group의 setup은 setup 단계 `databases/create`가 필요로 하는 것(PHP와 Composer autoload)을 포함하고, `make repo-check`는 target이 직접 또는 `databases/create`를 거쳐 필요로 하는 setup step을 건너뛰는 CI group을 실패시킨다.
 
-- G5.126: CI는 `make feature-helper-check`를 group feature-helpers에서 실행하고, group conformance는 TypeScript와 conformance 검사를 실행한다.
+- G5.126: CI는 `make feature-helper-check`를 group feature_helpers에서 실행하고, group conformance는 TypeScript와 conformance 검사를 실행한다.
 
-- G5.125: CI는 dbspec apply target을 group dbspec-apply에서, 나머지 dbspec target을 `case-database-check`와 함께 group dbspec에서 실행한다.
+- G5.125: CI는 dbspec apply target을 group dbspec_apply에서, 나머지 dbspec target을 `case-database-check`와 함께 group dbspec에서 실행한다.
 
-- G5.124: CI는 client database test를 group clients-db에서, pooler test를 group clients-pooler에서 실행한다.
+- G5.124: CI는 client database test를 group clients_db에서, pooler test를 group clients_pooler에서 실행한다.
 
 - G5.123: 기능 coverage는 cargo test binary를 쓰지 않는 case를 Rust coverage build 동안 실행하고, database마다 Rust case를 그 build 뒤에 실행한다.
 
 - G5.122: contracts/features.json의 모든 검증 명령은 자기 `shard`(`rust`나 `other`)를 선언하고, `make check`는 기능 coverage와 두 shard를 `make feature-coverage`, `make feature-verify-rust`, `make feature-verify-other`로 각각 자기 CI group에서 실행한다. `make feature-check`는 그 셋을 실행한다.
 
-- G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>`는 2000 table plan을 주어진 database에 적용하고, CI는 MySQL 적용을 group `stress-mysql`(`make feature-stress-mysql-check`)에서, stress bench와 PostgreSQL, SQLite 적용을 group `stress-pg-sqlite`(`make feature-stress-pg-sqlite-check`)에서 실행한다.
+- G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>`는 2000 table plan을 주어진 database에 적용하고, CI는 MySQL 적용을 group `stress_mysql`(`make feature-stress-mysql-check`)에서, stress bench와 PostgreSQL, SQLite 적용을 group `stress_pg_sqlite`(`make feature-stress-pg-sqlite-check`)에서 실행한다.
 
 - G5.120: `make feature-helper-check`는 `make check`가 다른 곳에서 실행하는 helper check(`FEATURE_SUITE_HELPERS`: `bench-database`, `case-database`, `conformance-result`, `conformance-runners`)를 빼고, `make repo-check`는 `make check`가 두 번 실행하거나 실행하지 않는 helper check를 실패시킨다.
 

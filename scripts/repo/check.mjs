@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -30,6 +30,8 @@ failures.push(...ciServerErrors(ci, readFileSync(join(root, 'scripts/test-server
 
 // CI workflow는 로컬 make check와 같은 target(CHECK_TARGETS)을 모두 한 번씩 실행한다.
 failures.push(...ciCheckTargetErrors(ci, makefile));
+// CI job이 올리는 보고서 directory는 runner가 그 job의 ORM_CHECK_RUN_ID로 쓰는 directory다.
+failures.push(...ciReportPathErrors(ci, makefile));
 // ci.yml의 마지막 job ci-passed는 다른 모든 job을 needs로 받고 `if: always()`로 실행한다. ruleset은 그 check를 요구한다.
 failures.push(...ciPassedErrors(ci));
 // make check의 feature-check가 실행하는 검증 명령을 CI가 따로 다시 실행하지 않는다.
