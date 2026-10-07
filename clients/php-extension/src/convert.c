@@ -21,10 +21,17 @@ static zval *slot(zend_object *o, const char *name)
     return OBJ_PROP(o, info->offset);
 }
 
-void obj_put(zval *obj, const char *name, zval *v)
+/* property name의 값을 놓고 그 자리를 돌려준다. 호출자가 새 값을 쓴 뒤 property flag를 지운다. */
+static zval *released_slot(zval *obj, const char *name)
 {
     zval *p = slot(Z_OBJ_P(obj), name);
     zval_ptr_dtor(p);
+    return p;
+}
+
+void obj_put(zval *obj, const char *name, zval *v)
+{
+    zval *p = released_slot(obj, name);
     ZVAL_COPY_VALUE(p, v);
     Z_PROP_FLAG_P(p) = 0;
 }
@@ -43,18 +50,19 @@ void obj_put_long(zval *obj, const char *name, zend_long n)
     obj_put(obj, name, &v);
 }
 
+/* bool과 null은 value 없이 type만 가지므로 property에 바로 쓴다. ZVAL_COPY_VALUE는 쓰지 않은 value를 읽는다. */
 void obj_put_bool(zval *obj, const char *name, bool b)
 {
-    zval v;
-    ZVAL_BOOL(&v, b);
-    obj_put(obj, name, &v);
+    zval *p = released_slot(obj, name);
+    ZVAL_BOOL(p, b);
+    Z_PROP_FLAG_P(p) = 0;
 }
 
 void obj_put_null(zval *obj, const char *name)
 {
-    zval v;
-    ZVAL_NULL(&v);
-    obj_put(obj, name, &v);
+    zval *p = released_slot(obj, name);
+    ZVAL_NULL(p);
+    Z_PROP_FLAG_P(p) = 0;
 }
 
 void obj_put_strs(zval *obj, const char *name, const strs *l)
