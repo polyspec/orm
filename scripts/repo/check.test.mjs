@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { chainedCommandErrors, concurrencyErrors, docsBrowserErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -1249,6 +1249,23 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml and docs-pages.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
+});
+
+// browser case(G5.99)는 사이트를 build하는 workflow job이 그 앞에서 브라우저를 설치하는지 본다.
+caseTest('every job that builds the site installs the browsers before it', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const directory = join(root, '.github/workflows');
+  const actual = Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [`.github/workflows/${name}`, readFileSync(join(directory, name), 'utf8')]));
+  assert.deepEqual(docsBrowserErrors(actual), []);
+  const job = steps => `name: x\non:\n  workflow_dispatch:\n\njobs:\n  build:\n    runs-on: ubuntu\n    steps:\n${steps.map(step => `      - run: ${step}`).join('\n')}\n`;
+  assert.deepEqual(docsBrowserErrors({ 'a.yml': job(['make install-node', 'make install-browsers', 'make docs-build']) }), []);
+  assert.deepEqual(docsBrowserErrors({ 'a.yml': job(['make install-node', 'make docs-build']) }), [
+    'a.yml job build builds the site without make install-browsers before it; scripts/docs/prepare.mjs draws the diagrams in Chromium',
+  ]);
+  assert.deepEqual(docsBrowserErrors({ 'a.yml': job(['make docs-ci', 'make install-browsers']) }), [
+    'a.yml job build builds the site without make install-browsers before it; scripts/docs/prepare.mjs draws the diagrams in Chromium',
+  ]);
+  assert.deepEqual(docsBrowserErrors({ 'a.yml': job(['make install-node', 'make check']) }), []);
 });
 
 caseTest('every workflow that runs on push cancels the run of the push before it', COMPUTE, () => {
