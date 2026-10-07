@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.113-4: AGENTS.md states the release procedure: the version-bump pull request, the tag `vX.Y.Z` of the merged commit of main and the release workflow that publishes it.
+
 - G5.113-3: a push of a tag `vX.Y.Z` runs .github/workflows/release.yml, whose steps `make release-verify`, `make release-versions`, `make release-assets` and `make release-publish` check that the tagged commit is on main with successful `push-gate` and `ci-passed`, that every released manifest declares the tag version and that the changelogs have its section, and create the GitHub Release with the npm tarball, the Composer zips and the notes of that section.
 
 - G5.113-2: the last job `ci-passed` of ci.yml runs after every other job and passes only when each of them succeeded; the ruleset of main requires the checks `push-gate` and `ci-passed`.
