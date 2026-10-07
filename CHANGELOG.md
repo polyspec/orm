@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.142: the npm workspace installs with the default hoisted layout, and the TypeScript build, the package declaration check, the conformance result helpers and the `decimal-typescript-types` commands resolve their modules by package name.
+
 ## 0.0.4
 
 - G5.141: the four clients use ordered-json 0.0.3, and the release assets install from a Composer artifact repository of the orm zips and the ordered-json zip alone.

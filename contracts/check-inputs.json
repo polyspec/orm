@@ -76,7 +76,6 @@
     "LICENSE": {"scope": "lint", "reason": "license text; no code or test reads it"},
     "composer.lock": {"scope": "suite", "reason": "it pins the PHP dependencies that every PHP check loads through the autoloader"},
     "composer.json": {"scope": "suite", "reason": "the private Composer root that installs the PHP dependencies every PHP check loads through the autoloader"},
-    ".npmrc": {"scope": "suite", "reason": "it places the npm workspace dependencies that every TypeScript check loads from clients/typescript/node_modules"},
     "clients/rust/rustfmt.toml": {"scope": "lint", "reason": "it configures rustfmt, which rust-fmt-check runs over every Rust file"},
     "go.mod": {"scope": "suite", "reason": "it pins the Go toolchain and the modules of every Go build and test"},
     "go.sum": {"scope": "suite", "reason": "it pins the module checksums of every Go build and test"},

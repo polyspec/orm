@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { caseTest } from '../testcase.mjs';
-import { parse } from '../../clients/typescript/node_modules/@polyspec/ordered-json/index.js';
+import { parse } from '@polyspec/ordered-json';
 import { StyledValue } from '../../clients/typescript/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 

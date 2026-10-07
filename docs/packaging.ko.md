@@ -41,5 +41,5 @@
 
 release하는 manifest는 clients/typescript/package.json, clients/php/composer.json, clients/php-extension/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
 
-- 저장소 root의 package.json은 `workspaces`에 clients/typescript를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL에서 받는다. URL이 release tag를 적는다. root의 `npm ci`가 workspace를 설치하고, .npmrc는 clients/typescript의 dependency를 clients/typescript/node_modules에 둔다(`install-strategy=nested`). root의 package-lock.json이 유일한 npm lockfile이다.
+- 저장소 root의 package.json은 `workspaces`에 clients/typescript를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL에서 받는다. URL이 release tag를 적는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
 - 저장소 root의 composer.json은 clients/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.

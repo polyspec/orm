@@ -774,7 +774,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-long.mjs typescript-types -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mjs typescript-types -- npm exec --workspace clients/typescript -- tsc -p tsconfig.json --noEmit",
           "shard": "other",
           "inputs": [
             "clients/typescript/tsconfig.json",
@@ -1229,7 +1229,7 @@
         },
         {
           "id": "decimal-typescript-types",
-          "command": "node tests/run-long.mjs typescript-types -- node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit",
+          "command": "node tests/run-long.mjs typescript-types -- npm exec --workspace clients/typescript -- tsc -p tsconfig.json --noEmit",
           "shard": "other",
           "inputs": [
             "clients/typescript/tsconfig.json",

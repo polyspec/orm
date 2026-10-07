@@ -12,11 +12,14 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { createRequire } from 'node:module';
+import { createRequire, findPackageJSON } from 'node:module';
 import { dirname, join } from 'node:path';
 import { COMPUTE, runCase, runLong, stepLines } from '../../../tests/testcase.mjs';
 
 const client = new URL('..', import.meta.url).pathname;
+// client의 dependency는 Node가 client의 package.json에서 package 이름으로 찾는다.
+const clientPackage = new URL('../package.json', import.meta.url);
+const packageDirectory = name => dirname(findPackageJSON(name, clientPackage));
 // command는 program을 실행하고 출력 줄을 step으로 내보내며 종료 코드와 출력을 돌려준다.
 function command(program, args, options, step) {
   return new Promise((resolve, reject) => {
@@ -69,9 +72,9 @@ try {
     mkdirSync(target, { recursive: true });
     const tar = await command('tar', ['-xzf', join(work, filename), '-C', target, '--strip-components', '1'], {}, step);
     if (tar.code !== 0) throw new Error(`tar exited with ${tar.code}`);
-    cpSync(join(client, 'node_modules', '@polyspec', 'ordered-json'), join(project, 'node_modules', '@polyspec', 'ordered-json'), { recursive: true });
+    cpSync(packageDirectory('@polyspec/ordered-json'), join(project, 'node_modules', '@polyspec', 'ordered-json'), { recursive: true });
     // undici-types는 @types/node의 dependency다: node처럼 @types/node에서 찾는다(npm이 그 아래나 위에 설치한다).
-    const typesNode = join(client, 'node_modules', '@types', 'node');
+    const typesNode = packageDirectory('@types/node');
     const undiciTypes = dirname(createRequire(join(typesNode, 'package.json')).resolve('undici-types/package.json'));
     cpSync(typesNode, join(project, 'node_modules', '@types', 'node'), { recursive: true });
     cpSync(undiciTypes, join(project, 'node_modules', 'undici-types'), { recursive: true });
@@ -96,7 +99,7 @@ try {
     ].join('\n'));
     // tsc의 종료 코드와 출력은 아래 case가 판정한다. runLong은 tsc가 끝나기까지 기다리기만 한다.
     await runLong('package-declarations/tsc', async ({ step }) => {
-      tsc = await command(process.execPath, [join(client, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', project], {}, step);
+      tsc = await command(process.execPath, [createRequire(clientPackage).resolve('typescript/bin/tsc'), '-p', project], {}, step);
     });
   } else failed++;
   await check('package-declarations/type-check-without-driver-types', COMPUTE, () => {
