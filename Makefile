@@ -141,29 +141,29 @@ CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo
 # 끝나도록 나눈다. 2000 table plan의 MySQL 적용 하나가 그보다 길므로 stress-mysql만 넘는다. 로컬 make check는 GROUP 없이
 # 모든 target을 실행한다.
 #   static: database가 필요 없는 target
-#   clients-db: client의 database test, Rust driver, example, dialect fact와 Go test
-#   clients-pooler: pooler를 거친 client의 database test. 그 test build를 자기 job에서 다시 한다
+#   clients_db: client의 database test, Rust driver, example, dialect fact와 Go test
+#   clients_pooler: pooler를 거친 client의 database test. 그 test build를 자기 job에서 다시 한다
 #   conformance: TypeScript client와 conformance runner의 database target
 #   dbspec: case database, dbspec DDL, introspection과 plan의 database target
-#   dbspec-apply: dbspec plan 적용의 database target
-#   feature-coverage, feature-verify-rust, feature-verify-other: feature-check의 세 부분(기능의 coverage, shard rust와
+#   dbspec_apply: dbspec plan 적용의 database target
+#   feature_coverage, feature_verify_rust, feature_verify_other: feature-check의 세 부분(기능의 coverage, shard rust와
 #     other의 검증 명령)
-#   feature-helpers: stress helper와 FEATURE_SUITE_HELPERS를 뺀 helper check(feature-helper-check)
-#   stress-mysql: 2000 table plan의 MySQL 적용(feature-stress-mysql-check)
-#   stress-pg-sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
-CI_GROUPS = static clients-db clients-pooler conformance dbspec dbspec-apply feature-coverage feature-verify-rust feature-verify-other feature-helpers stress-mysql stress-pg-sqlite
+#   feature_helpers: stress helper와 FEATURE_SUITE_HELPERS를 뺀 helper check(feature-helper-check)
+#   stress_mysql: 2000 table plan의 MySQL 적용(feature-stress-mysql-check)
+#   stress_pg_sqlite: stress 문서의 bench와 PostgreSQL, SQLite 적용(feature-stress-pg-sqlite-check)
+CI_GROUPS = static clients_db clients_pooler conformance dbspec dbspec_apply feature_coverage feature_verify_rust feature_verify_other feature_helpers stress_mysql stress_pg_sqlite
 CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check release-check
-CI_TARGETS_clients-db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
-CI_TARGETS_clients-pooler = client-pooler-check
+CI_TARGETS_clients_db = rust-driver-check example-check client-db-check dialect-facts-check go-test-check
+CI_TARGETS_clients_pooler = client-pooler-check
 CI_TARGETS_conformance = ts-check ts-min-check conformance-check
-CI_TARGETS_feature-helpers = feature-helper-check
+CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check
-CI_TARGETS_dbspec-apply = dbspec-apply-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
-CI_TARGETS_feature-coverage = feature-coverage
-CI_TARGETS_feature-verify-rust = feature-verify-rust
-CI_TARGETS_feature-verify-other = feature-verify-other
-CI_TARGETS_stress-mysql = feature-stress-mysql-check
-CI_TARGETS_stress-pg-sqlite = feature-stress-pg-sqlite-check
+CI_TARGETS_dbspec_apply = dbspec-apply-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
+CI_TARGETS_feature_coverage = feature-coverage
+CI_TARGETS_feature_verify_rust = feature-verify-rust
+CI_TARGETS_feature_verify_other = feature-verify-other
+CI_TARGETS_stress_mysql = feature-stress-mysql-check
+CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.

@@ -2,19 +2,21 @@
 
 ## Unreleased
 
+- G5.128: the CI groups are named with lowercase letters, digits and `_` only, so each job uploads the report directory that its runner writes, and `make repo-check` fails a group whose upload path differs from it.
+
 - G5.127: the setup of a CI group includes what the setup step `databases/create` needs (PHP and the Composer autoload), and `make repo-check` fails a CI group that skips a setup step its targets need directly or through `databases/create`.
 
-- G5.126: CI runs `make feature-helper-check` in the group feature-helpers, and the group conformance runs the TypeScript and conformance checks.
+- G5.126: CI runs `make feature-helper-check` in the group feature_helpers, and the group conformance runs the TypeScript and conformance checks.
 
-- G5.125: CI runs the dbspec apply targets in the group dbspec-apply and the other dbspec targets with `case-database-check` in the group dbspec.
+- G5.125: CI runs the dbspec apply targets in the group dbspec_apply and the other dbspec targets with `case-database-check` in the group dbspec.
 
-- G5.124: CI runs the client database tests in the group clients-db and the pooler tests in the group clients-pooler.
+- G5.124: CI runs the client database tests in the group clients_db and the pooler tests in the group clients_pooler.
 
 - G5.123: the feature coverage runs the cases that use no cargo test binary while the Rust coverage build runs, and the Rust cases of each database after it.
 
 - G5.122: every verification command of contracts/features.json declares its `shard` (`rust` or `other`), and `make check` runs the feature coverage and the two shards as `make feature-coverage`, `make feature-verify-rust` and `make feature-verify-other`, each in a CI group of its own; `make feature-check` runs the three.
 
-- G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>` applies the 2000 table plan to the given databases, and CI runs the MySQL apply in the group `stress-mysql` (`make feature-stress-mysql-check`) and the stress bench with the PostgreSQL and SQLite applies in the group `stress-pg-sqlite` (`make feature-stress-pg-sqlite-check`).
+- G5.121: `make dbspec-apply-stress-bench APPLY_STRESS_DIALECTS=<databases>` applies the 2000 table plan to the given databases, and CI runs the MySQL apply in the group `stress_mysql` (`make feature-stress-mysql-check`) and the stress bench with the PostgreSQL and SQLite applies in the group `stress_pg_sqlite` (`make feature-stress-pg-sqlite-check`).
 
 - G5.120: `make feature-helper-check` leaves out the helper checks that `make check` runs elsewhere (`FEATURE_SUITE_HELPERS`: `bench-database`, `case-database`, `conformance-result`, `conformance-runners`), and `make repo-check` fails on a helper check that `make check` runs twice or never.
 

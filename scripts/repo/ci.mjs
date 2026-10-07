@@ -1,6 +1,7 @@
 import { segments } from './testcases.mjs';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mjs';
 import { parseSelection, selectChecks } from '../features/select.mjs';
+import { runName } from '../check/report.mjs';
 
 // CI workflow의 database 서버 검사. make check의 database 검사는 make test-servers
 // (scripts/test-servers.sh)가 쓴 .runtime/servers/env의 변수를 읽으므로, workflow는 같은 정의로
@@ -140,7 +141,7 @@ const groupStep = step => step.run.split('\n').flatMap(segments).some(segment =>
 // ciGroups는 Makefile의 CI group이다: groups는 CI_GROUPS, targets는 CI_TARGETS_<group>마다 그 target이다.
 export function ciGroups(makefile) {
   const groups = /^CI_GROUPS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/).filter(Boolean) ?? [];
-  const targets = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9-]+) = (.*)$/gm)].map(match => [match[1], match[2].trim().split(/\s+/).filter(Boolean)]));
+  const targets = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9_-]+) = (.*)$/gm)].map(match => [match[1], match[2].trim().split(/\s+/).filter(Boolean)]));
   return { groups, targets };
 }
 
@@ -177,6 +178,27 @@ export function ciGroupErrors(workflow, makefile) {
     else if (runs.length > 1) errors.push(`CI groups ${runs.join(', ')} each run ${target}; every target of CHECK_TARGETS runs in exactly one group`);
   }
   for (const [target, runs] of owners) if (!checks.includes(target)) errors.push(`CI group ${runs.join(', ')} runs ${target}, which is not a target of CHECK_TARGETS`);
+  return errors;
+}
+
+// ciReportPathErrors는 CI job이 올리는 보고서 directory가 runner가 쓰는 directory가 아닌 곳마다 오류 하나를 돌려준다. job마다
+// step의 `ORM_CHECK_RUN_ID`와 upload step의 `path:`에 run id 1, attempt 1과 matrix group(CI_GROUPS의 group마다)을 넣고, 그
+// path가 runner의 보고서 `.runtime/check/<runName(ORM_CHECK_RUN_ID)>/report/`와 같기를 요구한다. runName은 영문 소문자와 숫자가
+// 아닌 글자를 `_`로 바꾸므로, 그 밖의 글자가 있는 group 이름의 path는 runner가 쓰지 않은 directory를 가리킨다.
+export function ciReportPathErrors(workflow, makefile) {
+  const { groups } = ciGroups(makefile);
+  const errors = [];
+  for (const [id, job] of workflowJobs(workflow)) {
+    const runId = /^\s*ORM_CHECK_RUN_ID:\s*(.+)$/m.exec(job)?.[1].trim();
+    const path = /^\s*path:\s*(\.runtime\/check\/.+)$/m.exec(job)?.[1].trim();
+    if (!runId || !path) continue;
+    const fill = (text, group) => text.replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1').replaceAll('${{ matrix.group }}', group);
+    for (const group of runId.includes('matrix.group') ? groups : ['']) {
+      const want = `.runtime/check/${runName(fill(runId, group))}/report/`;
+      const have = fill(path, group);
+      if (have !== want) errors.push(`ci.yml job ${id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, group)} to ${want}; name the group with lowercase letters, digits and _ only`);
+    }
+  }
   return errors;
 }
 
