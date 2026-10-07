@@ -246,7 +246,7 @@
           {
             "binds": [
               7,
-              "%attle-10%"
+              "%uthor-10%"
             ],
             "error": null,
             "kind": "select",

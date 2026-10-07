@@ -312,7 +312,7 @@ func run() (status int) {
 			author().ServiceSeq(7).AndNePhotoUrl(orm.Null),
 			author().ServiceSeq(7).AndNeReadCount([]int64{6, 106, 206}),
 			author().ServiceSeq(7).AndBetweenReadCount([2]int64{100, 200}),
-			author().ServiceSeq(7).AndLkName("attle-10"),
+			author().ServiceSeq(7).AndLkName("uthor-10"),
 			author().ServiceSeq(7).AndLbName("Author-10"),
 			author().ServiceSeq(7).AndGeReadCount(990),
 			author().ServiceSeq(7).AndLeReadCount(10),

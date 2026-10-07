@@ -173,7 +173,7 @@ async function main() {
       author().serviceSeq(7).andNePhotoUrl(null),
       author().serviceSeq(7).andNeReadCount([6, 106, 206]),
       author().serviceSeq(7).andBetweenReadCount([100, 200]),
-      author().serviceSeq(7).andLkName('attle-10'),
+      author().serviceSeq(7).andLkName('uthor-10'),
       author().serviceSeq(7).andLbName('Author-10'),
       author().serviceSeq(7).andGeReadCount(990),
       author().serviceSeq(7).andLeReadCount(10),
