@@ -90,7 +90,7 @@ func TestPHPRecordSourceMutationChangesExtractedWire(t *testing.T) {
 		if extra {
 			records += ", 'Extra' => ['kind' => 'string']"
 		}
-		source := "<?php\nnamespace Orm;\nfinal class Validator { private const RECORDS = [" + records + "]; }\n"
+		source := "<?php\nnamespace Polyspec\\Orm;\nfinal class Validator { private const RECORDS = [" + records + "]; }\n"
 		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
 			t.Fatal(err)
 		}
