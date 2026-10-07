@@ -4,6 +4,6 @@
   "type": "module",
   "dependencies": {
     "@polyspec/orm": "file:polyspec-orm-0.0.4.tgz",
-    "@polyspec/ordered-json": "file:polyspec-ordered-json-0.0.2.tgz"
+    "@polyspec/ordered-json": "file:polyspec-ordered-json-0.0.3.tgz"
   }
 }

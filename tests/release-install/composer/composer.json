@@ -9,29 +9,6 @@
         {
             "type": "artifact",
             "url": "assets"
-        },
-        {
-            "type": "package",
-            "package": {
-                "name": "polyspec/ordered-json",
-                "version": "0.0.2",
-                "type": "library",
-                "require": {
-                    "php": ">=8.2",
-                    "ext-json": "*",
-                    "ext-pcre": "*"
-                },
-                "autoload": {
-                    "files": [
-                        "src/OrderedJson.php"
-                    ]
-                },
-                "dist": {
-                    "type": "zip",
-                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.2/polyspec-ordered-json-0.0.2.zip",
-                    "shasum": "dba5e4c66e249b63d149856fc48e4634a5bbe03d"
-                }
-            }
         }
     ]
 }

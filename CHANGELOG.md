@@ -4,6 +4,7 @@
 
 ## 0.0.4
 
+- G5.141: the four clients use ordered-json 0.0.3, and the release assets install from a Composer artifact repository of the orm zips and the ordered-json zip alone.
 - G5.140: the TypeScript interface check loads typescript from the clients/typescript workspace.
 - G5.139: `make package-check` installs the release assets with `npm ci` and `composer install` from the committed consumer projects of tests/release-install with empty caches, and `make install-release-fixtures` writes their locks.
 - G5.138: every released manifest is the manifest of the tree: clients/typescript/package.json requires `@polyspec/ordered-json` `0.0.2`, the Composer manifests declare `version` and no `repositories`, the private root package.json (npm workspace with `overrides`) and composer.json (into vendor-php) take ordered-json from its GitHub release, and the release refuses a packed manifest that differs from its source.
