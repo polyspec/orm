@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.118: `make group-rows-physical-check`와 `make unselected-column-physical-check`는 case가 실행되기 전에 그 case의 state reader를 기한 없이 build한다.
+
 - G5.117: scripts/github/ruleset.mjs의 머리말은 요구하는 check `push-gate`와 `ci-passed`를 적는다.
 
 - G5.116: `make decimal-physical-check`는 case가 실행되기 전에 그 case의 Rust test binary, Go test와 state reader를 기한 없이 build한다.
