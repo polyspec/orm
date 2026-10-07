@@ -33,7 +33,11 @@
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
 - The repository's full test suite (`make check`) runs on GitHub CI after a push, on the pull
-  request of the pushed branch and on its merge group. One CI run must
+  request of the pushed branch and on its merge group. CI splits it into the CI groups of the
+  Makefile (`CI_GROUPS`, `CI_TARGETS_<group>`): one job per group, all at once, each running
+  `make check GROUP=<group>` after only the setup steps that its targets need; the groups together
+  run every target of `CHECK_TARGETS` exactly once (`make repo-check`), and a local `make check`
+  runs every target. One CI run must
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a
@@ -100,7 +104,8 @@
   `gh pr merge <branch> --auto --rebase`. The GitHub ruleset `main` of `.github/ruleset.json`
   requires a pull request (no approval), the merge queue with the merge method `REBASE`, a linear
   history and the GitHub Actions checks `push-gate` (`.github/workflows/push-gate.yml`) and the
-  jobs `test` and `docs` of `.github/workflows/ci.yml`, which hold every check of the repository
+  jobs `test` (one check `test (<group>)` per CI group) and `docs` of `.github/workflows/ci.yml`,
+  which hold every check of the repository
   and run on every pull request and merge group; `.github/workflows/docs-pages.yml` only builds
   and deploys the site of `main`. The ruleset refuses a force-push and the deletion of `main` and
   has no bypass actor, so GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies

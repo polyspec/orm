@@ -72,7 +72,27 @@
               "integration_id": 15368
             },
             {
-              "context": "test",
+              "context": "test (static)",
+              "integration_id": 15368
+            },
+            {
+              "context": "test (clients)",
+              "integration_id": 15368
+            },
+            {
+              "context": "test (conformance)",
+              "integration_id": 15368
+            },
+            {
+              "context": "test (dbspec)",
+              "integration_id": 15368
+            },
+            {
+              "context": "test (features)",
+              "integration_id": 15368
+            },
+            {
+              "context": "test (stress)",
               "integration_id": 15368
             },
             {

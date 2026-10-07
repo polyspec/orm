@@ -216,11 +216,20 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   };
 
   const failedSetup = {};
+  // wanted는 이 실행의 target이 선언한 need다.
+  const wanted = new Set(targets.flatMap(target => needs[target] ?? []));
   // CI setup step(scripts/check/ci-setup.mjs): workflow가 ORM_CI_SETUP으로 준 step 결과에서 실패한 step마다 setup 단계
   // ci/<id>를 실패로 기록하고, 그 step이 마련하는 need를 선언한 target은 not-run으로 기록한다. step의 출력은 job
-  // log의 그 step에 있다.
-  for (const { id: step, need } of failedCiSetup(ciSetup)) {
-    const reason = `the CI setup step ${step} failed; its output is in the job log of that step`;
+  // log의 그 step에 있다. CI group의 job은 그 group의 target이 필요로 하지 않는 setup step을 건너뛴다(make
+  // ci-group-needs): 건너뛴 step은 그 need를 선언한 target이 이 실행에 있을 때만 실패다.
+  for (const { id: step, need, outcome } of failedCiSetup(ciSetup)) {
+    if (outcome === 'skipped' && !wanted.has(need)) {
+      console.log(`check: the CI setup step ${step} was skipped; no target of this run needs ${need}`);
+      continue;
+    }
+    const reason = outcome === 'skipped'
+      ? `the CI setup step ${step} was skipped, and a target of this run needs ${need}; make ci-group-needs runs the setup steps of the needs that contracts/check-inputs.json declares for the targets of the group`
+      : `the CI setup step ${step} failed; its output is in the job log of that step`;
     if (!results.some(result => result.label === `ci/${step}`))
       await record(`ci/${step}`, 'setup', async ({ step: line }) => {
         line(reason);
@@ -231,7 +240,6 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   // downloads: check가 읽는 download가 있는지 network 없이 확인한다(scripts/check/downloads.mjs). 빠진 download의 need를
   // 선언한 target은 그 이유(`run make install`)와 함께 not-run으로 기록하고, 나머지 target은 실행한다.
   // 확인하는 것은 실행하는 target이 선언한 need의 download뿐이다: 문서만 build하는 실행은 Rust crate가 필요 없다.
-  const wanted = new Set(targets.flatMap(target => needs[target] ?? []));
   let missing = [];
   await record('downloads', 'setup', async ({ step }) => {
     missing = downloads(root).filter(({ need }) => wanted.has(need));
@@ -242,6 +250,11 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   for (const { need, message } of missing) failedSetup[need] ??= message;
   // servers: test server 환경을 읽어 하위 make에 주고, server의 shared lease를 이 process가 끝날 때까지 잡는다. servers가
   // 없는 실행(ci.yml의 job docs, `-`)은 server와 database 단계를 두지 않고, database가 필요한 target을 not-run으로 기록한다.
+  // 어느 target도 database가 필요하지 않은 실행(database 없는 CI group)은 server를 읽지 않고 database를 만들지 않는다.
+  if (servers && !wanted.has('databases')) {
+    console.log(`check: no target of this run needs databases; the run reads no servers and creates no databases`);
+    servers = null;
+  }
   if (!servers) failedSetup.databases = 'this run has no database servers';
   const serversReady = servers && await record('servers', 'setup', async ({ step }) => {
     const env = serverEnvironment(servers);

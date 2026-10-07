@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.111: CI는 make check를 Makefile의 CI group(`CI_GROUPS`)마다 job 하나로 모두 동시에 실행하며, 각 job은 그 target이 필요로 하는 setup step만 실행한 뒤 `make check GROUP=<group>`을 실행한다. `make repo-check`는 group들이 `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하기를 요구한다. 새 target `feature-helper-check`와 `feature-stress-check`는 contracts/features.json의 helper check를 실행하고, `feature-check`는 기능의 coverage와 검증 명령을 실행한다.
+
 - G5.110: 문서는 Rust crate를 `polyspec-orm`과 `polyspec-orm-build`로 부른다.
 
 - G5.109: `make timing-check`는 `polyspec-orm-schema`의 preempted vector test를 실행한다.

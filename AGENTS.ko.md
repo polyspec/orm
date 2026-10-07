@@ -26,7 +26,10 @@
   받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은
   우선순위에 따라 배치한 뒤 시작한다.
 - 저장소의 전체 테스트 묶음(`make check`)은 push 뒤 GitHub CI에서 실행한다: push한 branch의 pull request와 그 merge
-  group에서 실행한다. CI 실행 한 번은 다음 CI 실행 전에
+  group에서 실행한다. CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
+  하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check GROUP=<group>`을 실행한다. group들은 함께
+  `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make check`는 모든 target을 실행한다.
+  CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
   setup 단계가 실패한 target은 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지 target은 모두
   실행하며, target의 독립된 부분은 실패한 부분 뒤에도 실행하고, 실행은 묶음 전체를 끝까지 마친다. CI의 setup
@@ -80,7 +83,7 @@
   `gh pr create --base main --head <branch> --fill`, `gh pr merge <branch> --auto --rebase`. `.github/ruleset.json`의
   GitHub ruleset `main`은 pull request(승인 없음), merge 방식 `REBASE`의 merge queue, 선형 history, 그리고 모든 pull
   request와 merge group에서 실행되는 GitHub Actions check `push-gate`(`.github/workflows/push-gate.yml`)와
-  `.github/workflows/ci.yml`의 job `test`, `docs`를 요구한다. ci.yml이 저장소의 모든 검사를 가지고,
+  `.github/workflows/ci.yml`의 job `test`(CI group마다 check `test (<group>)` 하나)와 `docs`를 요구한다. ci.yml이 저장소의 모든 검사를 가지고,
   `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다. ruleset은 `main`의 force-push와 삭제를 거부하며 bypass actor가 없다.
   그래서 GitHub는 관리자의 것을 포함해 `main`에 대한 직접 push를 거부한다. `make github-ruleset`은 ruleset과 선언한
   저장소 설정(`allow_rebase_merge`, `allow_auto_merge`, `delete_branch_on_merge`)을 적용하고, `make

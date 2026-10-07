@@ -1,6 +1,6 @@
-.PHONY: check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
+.PHONY: check ci-group-needs feature-helper-check feature-stress-check rerun-failed full-run-check version-check repo-check checklist-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-docs package-check git-check github-ruleset github-ruleset-check github-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
-.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+.PHONY: checklist-check/unit checklist-check/run version-check/unit version-check/run repo-check/unit repo-check/run git-check/unit git-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build feature-check/coverage feature-check/verification client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check rerun-failed docs-check docs-verify-idempotent
 
 # git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`, `.githooks/pre-push`)을 실행하고, 그
@@ -134,7 +134,19 @@ TSC_BUILD = $(RUN_LONG) typescript-build -- node scripts/typescript/build.mjs
 # dbspec-rust-check, dbspec-ts-check, dbspec-compare-check)은 feature-check 안에서 한 번 실행되므로
 # 목록에 다시 넣지 않는다. contracts/check-inputs.json은 target마다 scope를 선언한다: owner target은
 # make owner-check도 고르고, suite target은 이 전체 suite에서만 실행한다.
-CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check go-test-check
+CHECK_TARGETS = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check ts-check ts-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check rust-driver-check example-check client-db-check codec-check fuzz-check client-pooler-check case-database-check dialect-facts-check conformance-check package-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check ts-model-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check feature-unit-check feature-check feature-helper-check feature-stress-check go-test-check
+# CI는 make check를 CI group마다 job 하나로 나눠 동시에 실행한다(.github/workflows/ci.yml의 job test, matrix group).
+# job마다 `make check GROUP=<group>`이 CI_TARGETS_<group>을 실행하고, group은 함께 CHECK_TARGETS의 모든 target을 한
+# 번씩 실행한다(make repo-check가 확인한다). group은 CI 실행 하나에서 잰 target의 시간으로 가장 긴 group이 짧도록 나눈다:
+# static은 database가 필요 없는 target, clients, conformance, dbspec은 database target, features는 feature-check(기능의
+# coverage와 검증 명령), stress는 feature-stress-check다. 로컬 make check는 GROUP 없이 모든 target을 실행한다.
+CI_GROUPS = static clients conformance dbspec features stress
+CI_TARGETS_static = checklist-check full-run-check version-check testcase-check repo-check test-servers-check git-check github-check docs-rules-check docs-check docs-verify-idempotent go-model-check client-unit-check php-min-check rust-check go-fmt-check go-vet-check rust-fmt-check rust-150-check codec-check fuzz-check package-check ts-model-check feature-unit-check
+CI_TARGETS_clients = rust-driver-check example-check client-db-check client-pooler-check dialect-facts-check go-test-check
+CI_TARGETS_conformance = ts-check ts-min-check conformance-check feature-helper-check
+CI_TARGETS_dbspec = case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-compare-check dbspec-plan-check dbspec-apply-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-apply-php-check dbspec-apply-php-extension-check dbspec-apply-rust-check dbspec-apply-ts-check dbspec-apply-pairs-check
+CI_TARGETS_features = feature-check
+CI_TARGETS_stress = feature-stress-check
 # run-databases는 TARGETS의 make target을 실행 하나의 자기 bench database와 decimal database로 실행한다
 # (scripts/check/run.mjs, make check와 같은 runner). bench나 decimal database를 쓰는 target을 직접 실행할 때
 # 쓴다: TEST_ENV의 server 환경에는 그 database가 없다.
@@ -152,9 +164,21 @@ run-databases:
 # checkout(GitHub CI)에는 기록이 없다. runner는 TEST_ENV를 setup 단계 servers로 읽고 그 server의 shared lease를
 # 잡는다: file이 없으면(make test-servers가 실패했다) database가 필요한 target만 not-run으로 기록하고 나머지는
 # 실행한다.
+# GROUP은 CI group 하나(CI_TARGETS_<group>)만 실행한다. 그 실행은 GitHub Actions의 job 하나가 하는 전체 suite의 한
+# 부분이므로 GITHUB_ACTIONS가 true일 때만 받는다: 로컬 checkout의 기록(.runtime/full-run.json)은 전체 실행이다.
+CHECK_RUN_TARGETS = $(if $(GROUP),$(CI_TARGETS_$(GROUP)),$(CHECK_TARGETS))
 check:
+	$(if $(GROUP),$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS))))
+	$(if $(GROUP),$(if $(filter true,$(GITHUB_ACTIONS)),,$(error GROUP runs one CI group of make check on GitHub Actions only; run make check without GROUP, which runs every target of CHECK_TARGETS)))
 	node scripts/check/full-run.mjs decide check
-	$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_TARGETS)
+	$(BUILD_LEASE) && node scripts/check/run.mjs --full-run $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)
+
+# ci-group-needs는 CI group GROUP의 job이 실행할 setup step을 step output 줄(`<output>=true|false`)로 쓴다: group의
+# target이 contracts/check-inputs.json에 선언한 need에서 정한다(scripts/check/ci-setup.mjs). workflow는 그 줄을
+# $GITHUB_OUTPUT에 더하고, setup step은 자기 output이 true일 때만 실행한다.
+ci-group-needs:
+	$(if $(filter $(GROUP),$(CI_GROUPS)),,$(error GROUP $(GROUP) names no CI group; give one of CI_GROUPS: $(CI_GROUPS)))
+	@node scripts/check/ci-setup.mjs outputs $(CI_TARGETS_$(GROUP))
 
 rerun-failed:
 	node scripts/check/full-run.mjs decide rerun-failed
@@ -593,7 +617,8 @@ test-servers-leases-clear:
 
 # feature-unit-check는 feature 문서가 manifest와 같은지와 coverage, owner 선택의 unit test를 실행한다.
 # feature-check는 TypeScript client를 한 번 build한 뒤 모든 기능의 coverage(native test binary를 한 번
-# build해 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다. 기능 하나는
+# build해 모든 실행이 쓴다)와 검증 명령을 실행한다. 검증 명령은 build된 client를 쓴다. helper check는
+# feature-helper-check와 feature-stress-check가 실행한다. 기능 하나는
 # `node scripts/features/coverage.mjs --feature <id>`와 `node scripts/features/check.mjs --run --feature <id>`로
 # 실행한다(test 환경 아래에서, owner-check가 하듯이).
 # owner-check는 바뀐 file(PATHS, 없으면 HEAD에서 바뀐 file과 추적하지 않는 file)을 입력으로 선언한
@@ -615,13 +640,15 @@ push-gate-commit:
 owner-check: hooks-check
 	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) node scripts/features/owners.mjs $(PATHS)
 
-feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners
+feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:
 	node scripts/features/build.mjs --check
 feature-unit-check/coverage:
 	node --test scripts/features/coverage.test.mjs
 feature-unit-check/owners:
 	node --test scripts/features/owners.test.mjs
+feature-unit-check/select:
+	node --test scripts/features/select.test.mjs
 
 feature-check: feature-check/build feature-check/coverage feature-check/verification
 feature-check/build: lease-tool
@@ -630,7 +657,15 @@ feature-check/build: lease-tool
 feature-check/coverage: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/coverage.mjs
 feature-check/verification: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features
+# feature-helper-check와 feature-stress-check는 contracts/features.json의 helper check를 실행한다. FEATURE_STRESS_HELPERS는
+# 시간이 가장 긴 stress bench의 helper이고 feature-stress-check가, 나머지 helper는 feature-helper-check가 실행한다. 그래서
+# CI group 셋이 기능의 검증 명령, helper, stress bench를 동시에 실행한다.
+FEATURE_STRESS_HELPERS = dbspec-stress dbspec-apply-stress
+feature-helper-check: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS))
+feature-stress-check: feature-check/build
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_HELPERS))
 
 feature-docs:
 	node scripts/features/build.mjs

@@ -57,6 +57,13 @@ const diskio = process.env.STUB_SUITE?.startsWith('diskio-');
 const npm = process.env.STUB_SUITE === 'npm';
 // STUB_SUITE=cisetup은 CI setup step rust가 실패한 실행이다(G5.52): a는 rust가, c는 go가 필요하고 b는 아무것도 필요하지 않다.
 const cisetup = process.env.STUB_SUITE === 'cisetup';
+// STUB_SUITE=group과 group-rust는 CI group의 job이다(G5.111): group-needs가 rust, php와 server의 setup step을 건너뛰게
+// 했고, 어느 target도 database가 필요하지 않다. group에서는 c만 go가 필요하고, group-rust에서는 a가 건너뛴 rust도 필요하다.
+const group = process.env.STUB_SUITE === 'group';
+const groupRust = process.env.STUB_SUITE === 'group-rust';
+const skipped = { checkout: { outcome: 'success' }, node: { outcome: 'success' }, 'group-needs': { outcome: 'success' }, go: { outcome: 'success' },
+  rust: { outcome: 'skipped' }, 'rust-cache': { outcome: 'skipped' }, php: { outcome: 'skipped' }, composer: { outcome: 'skipped' },
+  'server-programs': { outcome: 'skipped' }, servers: { outcome: 'skipped' } };
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
   const name = program === 'sh' ? \`sh \${args[1]}\` : args.at(-1);
@@ -103,16 +110,16 @@ const run = async (program, args, step, spawned = () => {}) => {
   if (throws && name === 'b') {
     await new Promise(() => setImmediate(() => { throw new Error('boom outside the runner'); }));
   }
-  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
+  if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
 const targets = mode !== 'check' ? [] : failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
-const needs = cisetup ? { a: ['rust'], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
+const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
 // 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
 const removed = '## files under /tmp that were removed but are still open (lsof +L1)\\nCOMMAND PID USER FD TYPE DEVICE SIZE/OFF NLINK NODE NAME\\nmysqld 10079 runner 2w REG 0,38 6493765632 0 3807 /tmp/orm-binlog-AHN00Q/mysqld.log (deleted)\\n';
 const snapshot = space ? undefined
   : process.env.STUB_SUITE === 'diskio-full' ? () => ({ text: '## df -k / /tmp\\nstub\\n' + removed, places: { '/': 1, '/tmp': 0 } })
   : () => ({ text: '## df -k / /tmp\\nstub\\n', places: { '/': 1, '/tmp': 1 } });
-process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : '' });
+process.exitCode = await runChecks({ root, mode, servers, targets, run, needs, snapshot, downloads: () => [], ciSetup: cisetup ? JSON.stringify({ checkout: { outcome: 'success' }, go: { outcome: 'success' }, rust: { outcome: 'failure' }, 'rust-cache': { outcome: 'failure' } }) : group || groupRust ? JSON.stringify(skipped) : '' });
 `;
 
 function checkout(t, checklist) {
@@ -280,7 +287,8 @@ caseTest('a rerun runs only the recorded failed targets', PROCESS, () => {
     writeFileSync(join(c.root, 'pass-b'), '');
     const result = c.run('run', 'rerun-failed');
     assert.equal(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(c.ran(), ['sh create', 'b', 'sh drop']);
+    // b는 database가 필요하지 않으므로 재실행은 database를 만들지 않는다(G5.111).
+    assert.deepEqual(c.ran(), ['b']);
     const record = c.record();
     assert.deepEqual([record.result, record.failed, record.reruns.map(rerun => rerun.targets)], ['passed', [], [['b']]]);
     const again = c.run('run', 'rerun-failed');
@@ -821,6 +829,40 @@ caseTest('a failed CI setup step marks the targets that need it not-run and runs
   }
 });
 
+
+// CI group case(G5.111)는 group-needs가 setup step을 건너뛴 job의 실행이다. 건너뛴 step의 need를 이 실행의 어느 target도
+// 선언하지 않으면 그 step은 setup 단계로 기록하지 않고, database가 필요한 target이 없으므로 servers와 databases 단계도
+// 없으며, 모든 target이 실행되어 통과한다. 건너뛴 rust가 필요한 target은 그 step과 이유와 함께 not-run이다.
+caseTest('a CI group job ignores the setup steps it skipped for needs of no target and starts no databases without a database target', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    const result = c.run('run', 'check', '', { STUB_SUITE: 'group', ORM_CHECK_RUN_ID: '15-1-static' });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const record = c.record();
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]), [['downloads', 'passed']]);
+    assert.deepEqual(record.targets.map(({ name, status }) => [name, status]), [['a', 'passed'], ['b', 'passed'], ['c', 'passed']]);
+    assert.deepEqual(c.ran(), ['a', 'b', 'c']);
+    assert.match(result.stdout, /check: the CI setup step rust was skipped; no target of this run needs rust/);
+    assert.match(result.stdout, /check: no target of this run needs databases; the run reads no servers and creates no databases/);
+  } finally {
+    cleanup();
+  }
+});
+
+caseTest('a CI group job records a target not-run when it needs a setup step that the job skipped', PROCESS, () => {
+  const c = checkout({ after: f => after.push(f) }, DONE);
+  try {
+    assert.equal(c.run('run', 'check', '', { STUB_SUITE: 'group-rust', ORM_CHECK_RUN_ID: '16-1-static' }).status, 1);
+    const record = c.record();
+    assert.deepEqual(record.setup.map(({ name, status }) => [name, status]).filter(([name]) => name.startsWith('ci/')), [['ci/rust', 'failed']]);
+    const a = record.targets.find(target => target.name === 'a');
+    assert.equal(a.status, 'not-run');
+    assert.match(a.reason, /^the CI setup step rust was skipped, and a target of this run needs rust; make ci-group-needs runs the setup steps/);
+    assert.deepEqual(record.targets.filter(target => target.name !== 'a').map(({ name, status }) => [name, status]), [['b', 'passed'], ['c', 'passed']]);
+  } finally {
+    cleanup();
+  }
+});
 
 // server 없는 실행 case(G5.67)는 문서 workflow의 make docs-ci처럼 servers 없이 runner를 실행한다. server와 database
 // 단계가 없고, database가 필요한 target은 not-run이며, 나머지 target은 실행되고, summary와 target log가 그 실행의

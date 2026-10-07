@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.111: CI runs make check as one job per CI group of the Makefile (`CI_GROUPS`), all at once, each with `make check GROUP=<group>` and only the setup steps its targets need; `make repo-check` requires that the groups run every target of `CHECK_TARGETS` exactly once; the new targets `feature-helper-check` and `feature-stress-check` run the helper checks of contracts/features.json, and `feature-check` runs the coverage and the verification commands of the features.
+
 - G5.110: the documentation names the Rust crates `polyspec-orm` and `polyspec-orm-build`.
 
 - G5.109: `make timing-check` runs the preempted vector tests of `polyspec-orm-schema`.
