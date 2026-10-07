@@ -235,6 +235,41 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
   }
 });
 
+// Rust build 겹침 case(G5.123)는 cargo test binary를 쓰지 않는 실행이 Rust build를 기다리지 않는지 본다. PATH 앞의 cargo는
+// `cargo test --no-run`에서 FIFO를 읽을 때까지, 곧 PHP case가 그 FIFO에 쓸 때까지 기다린 뒤 실제 cargo를 실행한다. manifest에서
+// Rust 소유자가 PHP 소유자보다 앞에 있으므로, build가 끝난 뒤에야 실행을 시작하거나 줄의 순서대로만 실행하면 build와 PHP
+// case가 서로를 기다려 case의 기한에 실패한다.
+caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
+  const rustFile = 'clients/rust/orm/src/lib.rs';
+  const phpFile = 'clients/php/tests/owner.php';
+  const fifo = join(root, 'build-gate');
+  const written = join(root, 'written');
+  const manifest = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial', php: 'partial' },
+    coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+      rust: { part: 'clients/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'], symbols: { first: 'tests::first' } }] } },
+      php: { part: 'clients/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'] }] } },
+    } } }] };
+  const path = process.env.PATH;
+  try {
+    const realCargo = execFileSync('sh', ['-c', 'command -v cargo']).toString().trim();
+    await mkdir(join(root, 'bin'), { recursive: true });
+    execFileSync('mkfifo', [fifo]);
+    await writeFile(join(root, 'bin/cargo'), `#!/bin/sh\ncase " $* " in *" test "*"--no-run "*) read gate < ${JSON.stringify(fifo)} ;; esac\nexec ${JSON.stringify(realCargo)} "$@"\n`);
+    await chmod(join(root, 'bin/cargo'), 0o755);
+    for (const file of [rustFile, phpFile]) await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, 'clients/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
+    await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
+    // 첫 실행만 FIFO에 쓴다. 쓰기는 cargo가 FIFO를 읽으려고 열 때까지 기다린다.
+    await writeFile(join(root, phpFile), `<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\nif (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\necho "CASE first PASS\\n";\n`);
+    process.env.PATH = `${join(root, 'bin')}:${path}`;
+    assert.deepEqual(await executeCoverage(manifest, root, 30000), []);
+  } finally {
+    process.env.PATH = path;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 caseTest('invented JSON success from an arbitrary command is not execution evidence', 8000, async () => {
   const manifest = contract('independent');
   const report = (role, part, tests, language, cases, dependent) => JSON.stringify({
