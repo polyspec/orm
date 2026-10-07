@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.120: `make feature-helper-check` leaves out the helper checks that `make check` runs elsewhere (`FEATURE_SUITE_HELPERS`: `bench-database`, `case-database`, `conformance-result`, `conformance-runners`), and `make repo-check` fails on a helper check that `make check` runs twice or never.
+
 - G5.119: the JavaScript tests start their child processes with only the variables of the case (tests/environment.mjs), so the CI group, `GITHUB_ACTIONS`, the run id and a calling make do not change their results; `make repo-check` refuses a test that passes its caller's environment to a child process.
 
 - G5.118: `make group-rows-physical-check` and `make unselected-column-physical-check` build the state reader of their cases without a deadline before the cases run.

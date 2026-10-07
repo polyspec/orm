@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -35,6 +35,9 @@ failures.push(...ciPassedErrors(ci));
 // make check의 feature-check가 실행하는 검증 명령을 CI가 따로 다시 실행하지 않는다.
 const features = JSON.parse(readFileSync(join(root, 'contracts/features.json'), 'utf8'));
 failures.push(...ciDuplicateCommandErrors(ci, makefile, featureCommands(features)));
+// make check는 helper check마다 한 번 실행한다: feature-helper-check, stress target, 또는 그 check가 make check의 target이나
+// setup 단계인 helper(FEATURE_SUITE_HELPERS)는 그 target이나 setup 단계에서다.
+failures.push(...helperRunErrors(features, makefile, readFileSync(join(root, 'scripts/check/databases.sh'), 'utf8')));
 // make check를 실행하는 CI는 그 밖에서 test runner를 다시 실행하지 않는다(runner의 정체로 판단).
 failures.push(...ciRerunErrors(ci, makefile));
 

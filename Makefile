@@ -683,9 +683,15 @@ feature-check/verification: feature-check/build
 # feature-helper-check와 feature-stress-check는 contracts/features.json의 helper check를 실행한다. FEATURE_STRESS_HELPERS는
 # 시간이 가장 긴 stress bench의 helper이고 feature-stress-check가, 나머지 helper는 feature-helper-check가 실행한다. 그래서
 # CI group 셋이 기능의 검증 명령, helper, stress bench를 동시에 실행한다.
+# FEATURE_SUITE_HELPERS는 check가 make check의 다른 곳에서 실행되는 helper다: conformance-runners는 conformance-check,
+# conformance-result는 그 선행 target conformance-result-check, case-database는 case-database-check, bench-database
+# (scripts/bench-db.sh)는 runner의 setup 단계 databases/create(scripts/check/databases.sh)가 실행한다. feature-helper-check는
+# 그 helper를 빼므로 make check는 helper check마다 한 번 실행한다(make repo-check가 확인한다). make owner-check는 helper의
+# file이 바뀌면 그 helper check를 그대로 실행한다.
 FEATURE_STRESS_HELPERS = dbspec-stress dbspec-apply-stress
+FEATURE_SUITE_HELPERS = bench-database case-database conformance-result conformance-runners
 feature-helper-check: feature-check/build
-	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS))
+	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --helpers $(addprefix --without-helper ,$(FEATURE_STRESS_HELPERS) $(FEATURE_SUITE_HELPERS))
 feature-stress-check: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run $(addprefix --helper ,$(FEATURE_STRESS_HELPERS))
 
