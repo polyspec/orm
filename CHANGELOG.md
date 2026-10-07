@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.125: CI runs the dbspec apply targets in the group dbspec-apply and the other dbspec targets with `case-database-check` in the group dbspec.
+
 - G5.124: CI runs the client database tests in the group clients-db and the pooler tests in the group clients-pooler.
 
 - G5.123: the feature coverage runs the cases that use no cargo test binary while the Rust coverage build runs, and the Rust cases of each database after it.
