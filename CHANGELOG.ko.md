@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.103: PHP 확장은 parser에 GCC 경고 `-Wclobbered` 없이 build된다.
+
 - G5.102: `polyspec_orm`이라는 table의 Rust model은 module `model::polyspec_orm_model`에 있고, `orm`이라는 table은 module `model::orm`을 갖는다.
 
 - G5.101: `make rust-150-check`는 생성한 crate를 `polyspec-orm`과 `polyspec-orm-build`로 build한다.

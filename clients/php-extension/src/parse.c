@@ -2088,14 +2088,23 @@ static int cmp_ranked(const void *a, const void *b, void *ctx)
     return x->index < y->index ? -1 : (x->index > y->index ? 1 : 0);
 }
 
+/* source를 끝까지 읽으면 true, stop이 longjmp로 읽기를 멈추면 false다. setjmp가 이 함수 안에만 있고 이 함수는
+ * setjmp와 longjmp 사이에 자기 지역 변수를 바꾸지 않으므로, longjmp 뒤에 값이 정해지지 않는 지역 변수가 없다
+ * (C11 7.13.2.1). */
+static bool read_until_stop(parser *p, str source)
+{
+    if (setjmp(p->stop_jump) != 0) {
+        return false;
+    }
+    read_source(p, source);
+    return true;
+}
+
 static document *run(parser *p, str source, diags *out)
 {
-    bool stopped = false;
+    bool stopped = !read_until_stop(p, source);
     diag stopd;
-    if (setjmp(p->stop_jump) == 0) {
-        read_source(p, source);
-    } else {
-        stopped = true;
+    if (stopped) {
         stopd = p->diagnostics.v[--p->diagnostics.n];
     }
     if (p->diagnostics.n == 0 && !stopped) {

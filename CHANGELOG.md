@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.103: the PHP extension builds without the GCC warning `-Wclobbered` in its parser.
+
 - G5.102: the Rust model of a table named `polyspec_orm` is in the module `model::polyspec_orm_model`, and a table named `orm` has the module `model::orm`.
 
 - G5.101: `make rust-150-check` builds its generated crate against `polyspec-orm` and `polyspec-orm-build`.
