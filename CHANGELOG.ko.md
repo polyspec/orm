@@ -4,6 +4,7 @@
 
 ## 0.0.2
 
+- G5.131: CI job ci-passed는 `make ci-passed` 전에 저장소를 checkout하고 node를 설치하며, `make repo-check`는 그 step이 없는 ci-passed job을 실패시킨다.
 - G5.130: 변경 이력은 0.0.2의 변경을 빈 `## Unreleased` 아래 `## 0.0.2`에 기록하므로, `make release-versions`는 tag `v0.0.2`에서 통과한다.
 
 - G5.129: step runner의 process 사례는 background 자식이 `sleep`을 실행할 때까지 기다리므로, 보고되는 명령줄이 exec와 process 검사의 순서에 따라 달라지지 않는다.

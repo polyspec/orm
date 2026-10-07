@@ -790,13 +790,19 @@ export function concurrencyErrors(workflows) {
   return errors;
 }
 
-// CI_PASSED는 ci.yml의 마지막 job ci-passed의 정의다(job id와 runs-on 사이, 그리고 step). ruleset이 요구하는 ci.yml의 check는
-// 이 job 하나다: `if: always()`로 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이
-// success일 때만 make ci-passed가 통과한다.
-export const CI_PASSED_STEP = ['- name: every job passed', 'env:', 'CI_NEEDS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
+// CI_PASSED_STEPS는 ci.yml의 마지막 job ci-passed의 step이다. ruleset이 요구하는 ci.yml의 check는 이 job 하나다: `if: always()`로
+// 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이 success일 때만 make ci-passed가
+// 통과한다. make ci-passed는 저장소의 Makefile과 scripts/check/ci-passed.mjs를 node로 실행하므로, 그 앞에 checkout과
+// .node-version의 node 설치가 있다.
+export const CI_PASSED_STEP = ['- name: every job passed', 'if: ${{ !cancelled() }}', 'env:', 'CI_NEEDS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
+export const CI_PASSED_STEPS = [
+  ['- uses: actions/checkout@v5'],
+  ['- uses: actions/setup-node@v7', 'with:', 'node-version-file: .node-version'],
+  CI_PASSED_STEP,
+];
 
 // ciPassedErrors는 ci.yml에 job ci-passed가 없거나, 마지막 job이 아니거나, `if: ${{ always() }}`가 아니거나, needs가 다른 모든
-// job과 같지 않거나, step이 CI_PASSED_STEP이 아닌 곳마다 오류 하나를 돌려준다.
+// job과 같지 않거나, step이 CI_PASSED_STEPS가 아닌 곳마다 오류 하나를 돌려준다.
 export function ciPassedErrors(workflow) {
   const jobs = workflowJobs(workflow);
   const ids = jobs.map(([id]) => id);
@@ -811,7 +817,8 @@ export function ciPassedErrors(workflow) {
   for (const id of others) if (!needs.includes(id)) errors.push(`ci.yml job ci-passed does not need the job ${id}; list every other job under needs`);
   for (const id of needs) if (!others.includes(id)) errors.push(`ci.yml job ci-passed needs ${id}, which is no other job of ci.yml`);
   const steps = stepTexts(job);
-  if (steps.length !== 1 || steps[0].join('\n') !== CI_PASSED_STEP.join('\n'))
-    errors.push(`ci.yml job ci-passed has the steps ${steps.map(step => step.join(' | ')).join(' || ')} instead of ${CI_PASSED_STEP.join(' | ')}`);
+  const text = steps => steps.map(step => step.join(' | ')).join(' || ');
+  if (text(steps) !== text(CI_PASSED_STEPS))
+    errors.push(`ci.yml job ci-passed has the steps ${text(steps)} instead of ${text(CI_PASSED_STEPS)}`);
   return errors;
 }

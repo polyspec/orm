@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -423,7 +423,8 @@ caseTest('a CI group job runs each setup step under its declared condition and r
 // workflow에서 빠진 job, 마지막이 아닌 job, always()가 아닌 조건, 다른 step을 거부한다.
 caseTest('the job ci-passed runs last under always() and needs every other job', COMPUTE, () => {
   assert.deepEqual(ciPassedErrors(workflow), []);
-  const step = `    steps:\n      ${CI_PASSED_STEP[0]}\n        ${CI_PASSED_STEP[1]}\n          ${CI_PASSED_STEP[2]}\n        ${CI_PASSED_STEP[3]}\n`;
+  const step = `    steps:\n      ${CI_PASSED_STEPS[0][0]}\n      ${CI_PASSED_STEPS[1][0]}\n        ${CI_PASSED_STEPS[1][1]}\n          ${CI_PASSED_STEPS[1][2]}\n`
+    + `      ${CI_PASSED_STEP[0]}\n        ${CI_PASSED_STEP[1]}\n        ${CI_PASSED_STEP[2]}\n          ${CI_PASSED_STEP[3]}\n        ${CI_PASSED_STEP[4]}\n`;
   const job = (condition, needs) => `  ci-passed:\n    if: ${condition}\n    needs: [${needs}]\n    runs-on: ubuntu-26.04-arm\n${step}`;
   const others = '  test:\n    steps:\n      - run: make check\n  docs:\n    steps:\n      - run: make docs-ci\n';
   assert.deepEqual(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs')}`), []);
@@ -434,7 +435,9 @@ caseTest('the job ci-passed runs last under always() and needs every other job',
     'ci.yml job ci-passed does not need the job docs; list every other job under needs',
     'ci.yml job ci-passed needs pages, which is no other job of ci.yml',
   ]);
-  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'true')}`)[0], /^ci\.yml job ci-passed has the steps .* instead of - name: every job passed/);
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace('make ci-passed', 'true')}`)[0], /^ci\.yml job ci-passed has the steps .* instead of - uses: actions\/checkout@v5/);
+  // A job without the checkout runs make where the repository is not, and make finds no Makefile.
+  assert.match(ciPassedErrors(`jobs:\n${others}${job('${{ always() }}', 'test, docs').replace(`      ${CI_PASSED_STEPS[0][0]}\n`, '')}`)[0], /^ci\.yml job ci-passed has the steps - uses: actions\/setup-node@v7/);
 });
 
 // 중복 실행 case는 저장소의 workflow, Makefile, feature contract와 최소 workflow를 검사한다.
