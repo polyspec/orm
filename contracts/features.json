@@ -5962,6 +5962,7 @@
       "paths": [
         "docs/errors.yaml",
         "clients/go/orm/codes.go",
+        "clients/php/src/Code.php",
         "clients/rust/orm/src/codes.rs",
         "cmd/orm-gen/errors.go"
       ],
