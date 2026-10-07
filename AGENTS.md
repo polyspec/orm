@@ -45,7 +45,10 @@
   target run after a failed part; and the run completes the whole suite. The setup steps of CI
   (installs, toolchains, servers) are setup steps too: each runs after a failed earlier one, and a
   target that needs what a failed step installs is recorded as `not-run` with that step, so a
-  failed install never stops the suite. Each failure records its
+  failed install never stops the suite. What a target needs includes what the setup steps of its
+  needs need (`SETUP_NEEDS` of scripts/check/ci-setup.mjs: `databases/create` installs the decimal
+  database with PHP and the Composer autoload), and `make repo-check` requires that every CI group
+  runs the setup steps of all of it. Each failure records its
   inputs, the exact command, its output, the expected against the actual value and the environment
   facts relevant to it, so that it can be diagnosed without running it again locally; a failing
   case states what failed, where and why. The run ends with a summary of every target's status,

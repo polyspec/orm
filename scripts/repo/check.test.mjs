@@ -11,7 +11,7 @@ import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './ta
 import { connectProbeErrors } from './probes.mjs';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
-import { CI_SETUP, groupOutputs, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
+import { CI_SETUP, expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
@@ -354,6 +354,28 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   ]);
 });
 
+// group setup case(G5.127)는 CI_GROUPS의 모든 group이 그 target의 need와, 그 need의 setup 단계가 필요로 하는 need의 setup step을
+// 실행하는지 저장소의 Makefile과 contracts/check-inputs.json으로 본다. databases/create는 decimal database를 PHP와 Composer
+// autoload로 설치하므로 databases만 선언한 target의 group도 php output이 필요하다. 선언한 need만 보는 output(대조군)에서는
+// stress-mysql이 PHP와 Composer setup step을 건너뛴다.
+caseTest('every CI group runs the setup steps of its needs and of the setup step databases/create', COMPUTE, () => {
+  assert.deepEqual(expandNeeds(['databases']), ['databases', 'go', 'php', 'composer', 'server-programs']);
+  assert.deepEqual(expandNeeds(['rust', 'go']), ['rust', 'go']);
+  const { groups, targets } = ciGroups(text('Makefile'));
+  assert.ok(groups.length > 0 && groups.every(group => targets[group]?.length > 0), groups.join(' '));
+  const needs = Object.fromEntries(Object.entries(JSON.parse(text('contracts/check-inputs.json')).targets).map(([name, target]) => [name, target.needs ?? []]));
+  const layout = Object.fromEntries(groups.map(group => [group, targets[group]]));
+  assert.deepEqual(groupSetupErrors(layout, needs), []);
+  const declaredOnly = (names, declared) => {
+    const wanted = new Set(names.flatMap(name => declared[name]));
+    return Object.fromEntries(Object.entries(GROUP_OUTPUTS).map(([output, from]) => [output, from.some(need => wanted.has(need))]));
+  };
+  const skipped = (step, need) => `CI group stress-db skips the setup step ${step}, which installs ${need}: stress-only needs databases, whose setup step databases/create needs ${need}; scripts/check/ci-setup.mjs must set the output php for it`;
+  assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }, declaredOnly),
+    [skipped('php', 'php'), skipped('php-sqlite', 'php'), skipped('composer', 'composer')]);
+  assert.deepEqual(groupSetupErrors({ 'stress-db': ['stress-only'] }, { 'stress-only': ['go', 'databases'] }), []);
+});
+
 // CI group setup case(G5.111)는 group job의 setup step이 scripts/check/ci-setup.mjs가 선언한 조건으로만 실행되는지, group-needs
 // step이 make ci-group-needs의 output을 쓰는지, 그 뒤의 summary와 report가 group마다의 실행 id와 보고서를 쓰는지 본다.
 caseTest('a CI group job runs each setup step under its declared condition and reports per group', COMPUTE, () => {
@@ -361,6 +383,8 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
+    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true });
+  assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
     { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true });
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
