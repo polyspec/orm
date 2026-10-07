@@ -14,7 +14,7 @@ caseTest('cargo-test splits options, name filters and test binary arguments', CO
     { cargo: ['cargo', '+1.98.1'], options: ['--locked', '--features', 'a,b', '--test', 'x'], filters: ['codec'], binaryArgs: ['--nocapture'] });
   assert.deepEqual(split(['cargo', 'test', '--manifest-path', 'c/Cargo.toml', '--lib', '--', 'catalog::', 'tool_db::']),
     { cargo: ['cargo'], options: ['--manifest-path', 'c/Cargo.toml', '--lib'], filters: [], binaryArgs: ['catalog::', 'tool_db::'] });
-  assert.deepEqual(split(['cargo', 'test', '-p', 'orm', '--lib', 'tx::send_tests::']).filters, ['tx::send_tests::']);
+  assert.deepEqual(split(['cargo', 'test', '-p', 'polyspec-orm', '--lib', 'tx::send_tests::']).filters, ['tx::send_tests::']);
   assert.throws(() => split(['cargo', 'test', '--no-run']), /builds with --no-run itself/);
   assert.throws(() => split(['cargo', 'build']), /not a cargo test command/);
 });
@@ -35,7 +35,7 @@ caseTest('cargo-test reads the package programs and names their variables', COMP
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/native', target: { name: 'native', kind: ['bin'] } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/driver-compare', target: { name: 'driver-compare', kind: ['bin'] } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/dsn-1', target: { name: 'dsn', kind: ['test'] } }),
-    JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: null, target: { name: 'orm', kind: ['lib'] } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: null, target: { name: 'polyspec_orm', kind: ['lib'] } }),
   ];
   assert.deepEqual(programs(lines.join('\n')), { native: '/t/debug/native', 'driver-compare': '/t/debug/driver-compare' });
   assert.deepEqual(programEnvironment({ native: '/r/programs/native', 'driver-compare': '/r/programs/driver-compare' }),
