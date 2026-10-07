@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.136: the npm tarball and the Composer zips of `make release-assets` declare every polyspec dependency by the exact version of its release, the Composer zips carry the release `version` and no `repositories`, the release refuses a packed manifest that breaks this, and `make package-check` installs the assets of HEAD outside the repository; docs/packaging.md describes the install from release assets.
+
 ## 0.0.3
 
 - G5.135: the TypeScript conformance runners import OrderedJSON by the entry point of its package, which the release archive provides.
