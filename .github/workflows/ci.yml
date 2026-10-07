@@ -257,7 +257,12 @@ jobs:
     needs: [test, docs]
     runs-on: ubuntu-26.04-arm
     steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
       - name: every job passed
+        if: ${{ !cancelled() }}
         env:
           CI_NEEDS: ${{ toJSON(needs) }}
         run: make ci-passed
