@@ -7,7 +7,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
-import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
+import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
@@ -168,6 +168,8 @@ failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, work
 // Go와 Composer도 .go-version과 .composer-version이 선언한 정확한 release 하나다.
 const goRelease = reported('go', ['env', 'GOVERSION']).replace(/^go/, '');
 failures.push(...goVersionErrors(text('.go-version'), text('go.mod'), workflows, goRelease));
+// 추적된 go.mod는 모두 자기 directory의 module path를 선언한다.
+failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)go\.mod$/.test(path)).map(path => [path, text(path)]))));
 const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';
 failures.push(...composerVersionErrors(text('.composer-version'), workflows, composerRelease));
 

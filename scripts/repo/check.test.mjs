@@ -9,7 +9,7 @@ import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
 import { connectProbeErrors } from './probes.mjs';
-import { composerVersionErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
+import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, groupOutputs, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
@@ -1369,6 +1369,20 @@ caseTest('the checks and every workflow run the Go of .go-version', COMPUTE, () 
     'go.mod declares go 1.26, but .go-version declares 1.27.0; write go 1.27 in go.mod',
     'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version',
     'Go 1.27.1 runs the checks; .go-version declares 1.27.0; install Go 1.27.0 or change .go-version together with the CI evidence of the new release',
+  ]);
+});
+
+// Go module path case(G5.113-5)는 저장소의 모든 go.mod가 자기 directory의 module path를 선언하는지 보고, 최소 file에서 다른
+// path를 선언한 root와 하위 directory의 go.mod를 거부한다.
+caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
+  const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path));
+  assert.ok(paths.includes('go.mod'), paths.join(' '));
+  assert.deepEqual(goModulePathErrors(Object.fromEntries(paths.map(path => [path, text(path)]))), []);
+  assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm\n', 'tools/gen/go.mod': 'module github.com/polyspec/orm/tools/gen\n', 'README.md': '' }), []);
+  assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm/v2\n', 'packages/orm-go/go.mod': 'module github.com/polyspec/orm\n', 'x/go.mod': 'go 1.27\n' }), [
+    'go.mod declares the module github.com/polyspec/orm/v2; declare github.com/polyspec/orm, the path of its directory, so go get resolves it and its tags',
+    'packages/orm-go/go.mod declares the module github.com/polyspec/orm; declare github.com/polyspec/orm/packages/orm-go, the path of its directory, so go get resolves it and its tags',
+    'x/go.mod declares the module (none); declare github.com/polyspec/orm/x, the path of its directory, so go get resolves it and its tags',
   ]);
 });
 

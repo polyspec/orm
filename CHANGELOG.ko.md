@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- G5.113: ci.yml은 완료 check `ci-passed`로 끝나고, main의 tag `vX.Y.Z`는 GitHub Release를 만들며, 변경 이력은 release하지 않은 변경을 `## Unreleased` 아래에 두고, 모든 go.mod는 자기 directory의 module path를 선언한다.
+
+- G5.113-5: `make repo-check`는 모든 go.mod가 자기 directory의 module path, root에서는 `github.com/polyspec/orm`을 선언하기를 요구한다.
+
 - G5.113-4: AGENTS.md는 release 절차를 적는다: version을 올리는 pull request, main의 merge된 commit의 tag `vX.Y.Z`, 그것을 게시하는 release workflow다.
 
 - G5.113-3: tag `vX.Y.Z`의 push는 .github/workflows/release.yml을 실행하고, 그 단계 `make release-verify`, `make release-versions`, `make release-assets`, `make release-publish`는 tag한 commit이 `push-gate`와 `ci-passed`가 성공한 main의 commit인지, release하는 모든 manifest가 tag의 version을 선언하는지, 변경 이력에 그 section이 있는지 확인하고, npm tarball, Composer zip과 그 section의 notes로 GitHub Release를 만든다.
