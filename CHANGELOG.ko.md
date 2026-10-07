@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.100: 사이트는 읽는 이의 브라우저에서 Mermaid를 그린다. `make docs-build`와 문서 검사(`make docs-check`, `make docs-verify-idempotent`, `make docs-rules-check`)는 Node만으로 실행하며 브라우저가 필요하지 않다.
+
 - G5.99: docs-pages.yml의 build job은 사이트 build 전에 브라우저를 설치하고, `make repo-check`는 사이트를 build하는 모든 job에 이를 요구한다.
 
 - G5.98: 모든 검사는 pull request, merge group, 수동 실행에서 ci.yml이 실행한다: job `test`(make check)와 `docs`(문서 검사)다. push-gate.yml은 merge queue branch 밖의 push, pull request, merge group에서 job `push-gate`를 실행하고, docs-pages.yml은 main의 push와 수동 실행에서 site를 build하고 deploy한다. main의 ruleset은 check `push-gate`, `test`, `docs`를 요구한다.

@@ -627,21 +627,3 @@ export function concurrencyErrors(workflows) {
   }
   return errors;
 }
-
-// docsBrowserErrors는 make docs-build나 make docs-ci를 실행하는 workflow job이 그보다 앞의 step에서 make
-// install-browsers를 실행하지 않는 곳마다 오류 하나를 돌려준다. scripts/docs/prepare.mjs가 Chromium으로 Mermaid
-// 그림을 그리므로 사이트 build는 브라우저를 요구한다. workflows는 {path: text}다.
-export function docsBrowserErrors(workflows) {
-  const errors = [];
-  for (const [path, whole] of Object.entries(workflows)) {
-    for (const [job, workflow] of workflowJobs(whole)) {
-      const steps = workflowSteps(workflow).map(step => step.run);
-      const site = steps.findIndex(step => /\bmake\s+(?:-\S+\s+)*docs-(?:build|ci)\b/.test(step));
-      if (site === -1) continue;
-      if (!steps.slice(0, site).some(step => /\bmake\s+(?:-\S+\s+)*install-browsers\b/.test(step))) {
-        errors.push(`${path} job ${job} builds the site without make install-browsers before it; scripts/docs/prepare.mjs draws the diagrams in Chromium`);
-      }
-    }
-  }
-  return errors;
-}

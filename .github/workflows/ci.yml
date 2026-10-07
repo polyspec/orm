@@ -74,10 +74,6 @@ jobs:
         id: node-min
         if: ${{ !cancelled() }}
         run: make install-node-min
-      - name: Chromium of the documentation smoke test
-        id: browsers
-        if: ${{ !cancelled() }}
-        run: make install-browsers
       - name: Rust toolchain of rust-toolchain.toml
         id: rust
         if: ${{ !cancelled() }}
@@ -209,15 +205,12 @@ jobs:
       - id: node-modules
         if: ${{ !cancelled() }}
         run: make install-node
-      - id: browsers
-        if: ${{ !cancelled() }}
-        run: make install-browsers
-      # docs-build writes docs/.vitepress/dist, docs-verify-idempotent builds
-      # it twice more and compares every byte, and docs-static-check serves it
-      # and opens it in a browser. make docs-ci runs the three through the
-      # runner of make check, also after a failed one, and writes the log of
-      # each and a summary to the report of this run id, which the next step
-      # uploads whatever the result.
+      # docs-verify-idempotent builds docs/.vitepress/dist twice and compares
+      # every byte, and docs-check builds it and reads its pages and links
+      # with Node. make docs-ci runs the two through the runner of make check,
+      # also after a failed one, and writes the log of each and a summary to
+      # the report of this run id, which the next step uploads whatever the
+      # result.
       - name: documentation checks
         id: docs
         if: ${{ !cancelled() }}

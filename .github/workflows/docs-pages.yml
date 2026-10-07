@@ -33,9 +33,6 @@ jobs:
       - id: node-modules
         if: ${{ !cancelled() }}
         run: make install-node
-      - id: browsers
-        if: ${{ !cancelled() }}
-        run: make install-browsers
       - name: build the site
         id: build
         if: ${{ !cancelled() }}

@@ -69,7 +69,7 @@
 - code는 file을 working directory나 Makefile이 준 경로에서 찾고, binary가 compile된 경로(Go의
   `runtime.Caller`)에서 찾지 않는다: 그 경로는 실행하는 checkout이 아니라 binary를 build한 checkout을 가리킨다.
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
-  server, 언어 사이의 conformance, browser, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
+  server, 언어 사이의 conformance, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
   때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/check/push-gate.mjs)를 실행하고, gate는 push하는
   commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push, pull request와

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { chainedCommandErrors, concurrencyErrors, docsBrowserErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciServerErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
 import { nodeVersionErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -54,8 +54,6 @@ failures.push(...concurrencyErrors(workflows));
 // ci.yml, push-gate.yml과 docs-pages.yml은 선언한 event에서만 실행하고, 다른 workflow는 push, pull_request, merge_group으로
 // 실행하지 않는다.
 failures.push(...workflowTriggerErrors(workflows));
-// 사이트를 build하는 job은 그 앞에서 브라우저를 설치한다.
-failures.push(...docsBrowserErrors(workflows));
 // CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
 // owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;

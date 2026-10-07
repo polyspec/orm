@@ -85,7 +85,7 @@
   the path a binary was compiled at (`runtime.Caller` in Go): that path names the checkout that
   built the binary, not the one that runs it.
 - During development run unit tests only: the Red/Green unit cases of what changed. End-to-end runs
-  (real database servers, conformance across languages, browsers, containers, full builds),
+  (real database servers, conformance across languages, containers, full builds),
   `make owner-check` and the full suite run in CI after the push, and no local check is required
   before a push; read each CI report and fix what it finds. A push happens only when no checklist
   item is `[~]`: the pre-push hook
