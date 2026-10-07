@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.132: `make release-publish`는 변경 이력 section이 GitHub release 본문의 한도인 125000자 이하면 그것을 release notes로 쓰고, 넘으면 tag의 CHANGELOG.md에서 section `## X.Y.Z`를 가리키는 한 줄을 쓴다.
+
 ## 0.0.2
 
 - G5.131: CI job ci-passed는 `make ci-passed` 전에 저장소를 checkout하고 node를 설치하며, `make repo-check`는 그 step이 없는 ci-passed job을 실패시킨다.

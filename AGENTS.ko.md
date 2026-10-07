@@ -177,4 +177,5 @@
 - tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
   manifest가 X.Y.Z를 가지고 변경 이력에 그 section이 있다), `make release-assets`(npm tarball과 Composer zip),
-  `make release-publish`(그 section의 notes로 만든 release)다. test는 다시 실행하지 않는다.
+  `make release-publish`(그 section의 notes로 만든 release이며, GitHub release 본문의 한도인 125000자를
+  넘는 section은 tag의 CHANGELOG.md에서 그 section `#XYZ`를 가리키는 한 줄이 된다)다. test는 다시 실행하지 않는다.

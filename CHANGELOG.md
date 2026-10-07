@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- G5.132: `make release-publish` uses the changelog section as the release notes when it has at most 125000 characters, the limit of a GitHub release body, and otherwise one line that links the section `## X.Y.Z` of CHANGELOG.md at the tag.
+
 ## 0.0.2
 
 - G5.131: the CI job ci-passed checks out the repository and installs node before `make ci-passed`, and `make repo-check` fails a ci-passed job without these steps.

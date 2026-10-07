@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE } from '../../tests/testcase.mjs';
-import { assetName, changelogSection, checkErrors, CHECK_RUNS, parseTag, RELEASE_DIR, step, unlistedManifests, versionErrors } from './release.mjs';
+import { assetName, changelogSection, checkErrors, CHECK_RUNS, NOTES_LIMIT, parseTag, RELEASE_DIR, releaseNotes, step, unlistedManifests, versionErrors } from './release.mjs';
 
 const repo = fileURLToPath(new URL('../..', import.meta.url));
 // fixture는 release가 읽는 file의 최소 저장소다(G5.113-3): VERSION, release하는 manifest와 변경 이력.
@@ -156,6 +156,24 @@ caseTest('the four steps verify, check the versions, build the npm and Composer 
     assert.throws(() => step({ action: 'publish', tag: 'v0.0.2', root, exec, log: quiet }), /\.runtime\/release\/assets\.txt is missing; run make release-assets/);
     assert.throws(() => step({ action: 'tag', tag: 'v0.0.2', root, exec, log: quiet }), /unknown release action "tag"; give verify, versions, assets or publish/);
   });
+});
+
+caseTest('the notes are the changelog section up to the GitHub body limit and otherwise one line that links the section', COMPUTE, () => {
+  assert.equal(NOTES_LIMIT, 125000);
+  const whole = `- G1: ${'가'.repeat(NOTES_LIMIT - 6)}`;
+  assert.equal([...whole].length, NOTES_LIMIT);
+  assert.equal(releaseNotes(whole, 'v0.0.2'), whole);
+  const link = 'The changes of 0.0.2 are listed in [CHANGELOG.md](https://github.com/polyspec/orm/blob/v0.0.2/CHANGELOG.md#002).';
+  assert.equal(releaseNotes(`${whole}x`, 'v0.0.2'), link);
+  assert.equal(releaseNotes(`${whole}x`, 'tools/gen v2/v0.0.2'),
+    'The changes of 0.0.2 are listed in [CHANGELOG.md](https://github.com/polyspec/orm/blob/tools/gen%20v2/v0.0.2/CHANGELOG.md#002).');
+  withFixture(root => {
+    const { exec, calls } = fakeExec();
+    step({ action: 'assets', tag: 'v0.0.2', root, exec, log: quiet });
+    step({ action: 'publish', tag: 'v0.0.2', root, exec, log: quiet });
+    assert.ok(calls.at(-1).startsWith('gh release create v0.0.2 --verify-tag'), calls.at(-1));
+    assert.equal(readFileSync(join(root, RELEASE_DIR, 'notes.md'), 'utf8'), `${link}\n`);
+  }, '0.0.2', { 'CHANGELOG.md': `# Changelog\n\n## Unreleased\n\n## 0.0.2\n\n${'- G1: a change.\n'.repeat(9000)}\n## 0.0.1\n\n- G0: the start.\n` });
 });
 
 caseTest('a Go module tag <dir>/vX.Y.Z checks its go.mod and creates a release without assets', COMPUTE, () => {
