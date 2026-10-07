@@ -227,7 +227,7 @@ function externalSets(): array
         'drifted' => ['ExtDrifted', ['member'], ['core_extra']],
     ] as $key => [$prefix, $owned, $external]) {
         $model = RuntimeModel::build(RuntimeModel::files(array_map($fixture, $owned), array_map($fixture, $external)));
-        $namespace = "$prefix\\Orm";
+        $namespace = "Polyspec\\Orm\\Tests\\$prefix";
         Generator::generate($model, "$work/$prefix", $namespace);
         autoload("$work/$prefix", $namespace);
         require "$work/$prefix/bootstrap.php";

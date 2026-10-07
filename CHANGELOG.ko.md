@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.105: PHP case `schema_set/external_documents`는 자기가 부르는 namespace `Polyspec\Orm\Tests`에 set을 생성한다.
+
 - G5.104: PHP 확장은 GCC 16에서 경고 없이 build된다.
 
 - G5.103: PHP 확장은 parser에 GCC 경고 `-Wclobbered` 없이 build된다.

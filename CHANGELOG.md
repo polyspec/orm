@@ -2,6 +2,8 @@
 
 ## 0.0.2
 
+- G5.105: the PHP case `schema_set/external_documents` generates its sets in the namespace `Polyspec\Orm\Tests` that it calls.
+
 - G5.104: the PHP extension builds with GCC 16 without warnings.
 
 - G5.103: the PHP extension builds without the GCC warning `-Wclobbered` in its parser.
