@@ -29,6 +29,7 @@ export const DECLARATIONS = [
   { file: 'clients/php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
   { file: 'clients/php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
   { file: 'clients/typescript/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'clients/python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
   { file: 'package-lock.json', read: packageLock },
   // release asset 설치 검사의 소비자 fixture는 release의 asset 이름과 version을 적는다(make install-release-fixtures가 lock을 만든다).
   { file: 'tests/release-install/npm/package.json', read: text => [/^file:polyspec-orm-(.+)\.tgz$/.exec(JSON.parse(text).dependencies['@polyspec/orm'])?.[1]].filter(Boolean) },
