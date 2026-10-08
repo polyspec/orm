@@ -46,5 +46,22 @@ class PythonExtractorTest(unittest.TestCase):
         self.assertNotIn('pkg/mod.py::_private', symbols)
 
 
+    def test_a_typed_dict_record_reports_its_wire_types_and_its_base(self):
+        symbols = self.extract(
+            'from typing import NotRequired, TypedDict\n'
+            'class Base(TypedDict):\n'
+            '    kind: str\n'
+            'class Request(Base):\n'
+            '    count: int\n'
+            '    tags: list[str]\n'
+            '    by_name: dict[str, Base]\n'
+            '    limit: NotRequired[int | None]\n'
+            '    note: str | None\n')
+        self.assertEqual(symbols['pkg/mod.py::Base#wire'], '{"kind":"text"}')
+        self.assertEqual(symbols['pkg/mod.py::Request#wire'],
+                         '{"@flatten":"Base","count":"integer","tags":"list<text>",'
+                         '"by_name":"map<Base>","limit":"integer","note":"text"}')
+
+
 if __name__ == '__main__':
     unittest.main()
