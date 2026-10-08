@@ -1,3 +1,4 @@
+<!-- doc-id: examples-thin-slice-readme -->
 # Thin-slice demo
 
 The same statement in three files; the same JSON on stdout.

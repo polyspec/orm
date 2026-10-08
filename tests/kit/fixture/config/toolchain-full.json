@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "comment": "The shape of a repository that lists PHP minors and declares every installed tool.",
+  "php": ["8.2", "8.5"],
+  "python": "3.14",
+  "composer": { "version": "2.10.3" },
+  "go": { "mod": "packages/fixture-go/go.mod" },
+  "ruff": { "pyproject": "packages/fixture-python/pyproject.toml" },
+  "cargoAudit": "0.22.2",
+  "govulncheck": "1.1.4",
+  "node": {
+    "linux-x64.tar.gz": "b2b76660fa4ded4e0b2a41ee3c0c651cd52ea8170ead91ebac1e147ac3d55643",
+    "darwin-arm64.tar.gz": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

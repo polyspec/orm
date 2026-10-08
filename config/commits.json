@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "types": ["feat", "fix", "docs", "style", "refactor", "test", "chore"],
+  "subjectMax": 50,
+  "bodyMax": 72
+}

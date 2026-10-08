@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "repositoryUrl": "https://example.com/polyspec/kit-fixture",
+  "changelog": "CHANGELOG.md",
+  "checks": [
+    "push-gate",
+    "ci-passed"
+  ],
+  "packages": [
+    {
+      "kind": "npm",
+      "directory": "packages/fixture-lib",
+      "name": "fixture-lib"
+    },
+    {
+      "kind": "npm",
+      "directory": "packages/fixture-app",
+      "name": "fixture-app"
+    },
+    {
+      "kind": "composer",
+      "directory": "packages/fixture-php",
+      "name": "polyspec/kit-fixture"
+    }
+  ],
+  "manifests": {
+    "package.json": "version",
+    "packages/fixture-lib/package.json": "archive",
+    "packages/fixture-app/package.json": "archive",
+    "packages/fixture-php/composer.json": "archive",
+    "packages/fixture-rust/Cargo.toml": "git-tag",
+    "packages/fixture-python/pyproject.toml": "git-tag"
+  },
+  "notReleased": {
+    "vendor/tagged/js/package.json": "the vendored copy of a tagged package",
+    "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
+    "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives"
+  },
+  "goModules": {
+    "packages/fixture-go": "example.com/kit-fixture-go"
+  },
+  "consumers": {
+    "npm": {
+      "directory": "tests/release-consumer/npm",
+      "smoke": {
+        "fixture-lib": [
+          "node",
+          "-e",
+          "require('fixture-lib/package.json')"
+        ],
+        "fixture-app": [
+          "node",
+          "-e",
+          "require('fixture-app/package.json')"
+        ]
+      }
+    },
+    "composer": {
+      "directory": "tests/release-consumer/composer",
+      "smoke": {
+        "polyspec/kit-fixture": [
+          "node",
+          "-e",
+          "require('./vendor/composer/installed.json')"
+        ]
+      }
+    }
+  },
+  "proof": {
+    "gitTag": {
+      "packages/fixture-python/pyproject.toml": {
+        "kind": "python",
+        "name": "kit-fixture",
+        "smoke": [
+          "python",
+          "-c",
+          "import kit_fixture"
+        ]
+      },
+      "packages/fixture-rust/Cargo.toml": {
+        "kind": "rust",
+        "name": "kit-fixture-rust",
+        "smoke": [
+          "cargo",
+          "check"
+        ]
+      }
+    }
+  }
+}

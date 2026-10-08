@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/dependency-policy.json",
+  "type": "object",
+  "required": [
+    "schema",
+    "composerPlatforms",
+    "pythonManifests",
+    "exceptions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "composerPlatforms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "manifest",
+          "php"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "manifest": {
+            "type": "string",
+            "pattern": "^[^/][^\\\\]*composer\\.json$"
+          },
+          "php": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          }
+        }
+      }
+    },
+    "pythonManifests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^/][^\\\\]*pyproject\\.toml$"
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ecosystem",
+          "manifest",
+          "package",
+          "reason",
+          "removalCondition",
+          "verification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ecosystem": {
+            "type": "string",
+            "enum": [
+              "npm",
+              "composer",
+              "pypi",
+              "go"
+            ]
+          },
+          "manifest": {
+            "type": "string"
+          },
+          "package": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "removalCondition": {
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "verification": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "taggedNpmPackages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "directory",
+          "repository",
+          "tag",
+          "version",
+          "fix"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^\\d+\\.\\d+\\.\\d+$"
+          },
+          "fix": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  }
+}

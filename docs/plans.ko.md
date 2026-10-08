@@ -1,3 +1,5 @@
+<!-- doc-id: plans -->
+<!-- source-sha256: 91d5f056b22bff0a912219455a764373871211229225abcb915bbedffd65a719 -->
 # Schema plan
 
 plan은 database를 한 schema에서 다음 schema로 바꾼다. plan은 target schema와, schema가 표현하지 못하는 결정인 rename과 drop 허가를 담는다. plan은 빈 database에서 시작하는 chain을 이룬다. 모든 client는 plan의 두 schema를 같은 방식으로 diff하고 dialect마다 같은 step을 쓴다. `tests/dbspec/plans.json`이 공유 case를 담는다.

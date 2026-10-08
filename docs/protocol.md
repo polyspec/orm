@@ -1,3 +1,4 @@
+<!-- doc-id: protocol -->
 # IR and Plan protocol
 
 A client renders the model built with the [DSL](dsl.md) into the request below, plans it in the calling process, and caches the plan by the request shape. The type definitions in `engine/ir/ir.go` and `engine/plan/plan.go` are authoritative; every client implements the same fields.

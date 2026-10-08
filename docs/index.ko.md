@@ -23,6 +23,8 @@ features:
     details: MySQL, PostgreSQL, SQLite는 query 의미를 유지한다. SQL 차이와 지원 기능은 방언 문서에 기록한다.
     link: /dialects
 ---
+<!-- doc-id: index -->
+<!-- source-sha256: 9f4ca527e73136f41f476988c41cd1769eac9f859e340d28c66e4ef222752b63 -->
 
 ## 네 클라이언트의 같은 query
 
@@ -56,6 +58,6 @@ Go `model.Author()`은 `*model.AuthorModel`을 반환한다. Rust와 TypeScript�
 
 ## 구현 상태
 
-구현 클라이언트는 **Go, PHP, Rust, TypeScript**다. 네 클라이언트는 자기 빌드 도구로 모델을 생성하고, 호출한 프로세스 안에서 문장을 계획하고, 네이티브 데이터베이스 드라이버로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스는 없다. 검사 범위와 잔여 작업은 [구현 대조표](interface-implementation.md)와 [체크리스트](checklist.md)에 기록한다.
+구현 클라이언트는 **Go, PHP, Rust, TypeScript**다. 네 클라이언트는 자기 빌드 도구로 모델을 생성하고, 호출한 프로세스 안에서 문장을 계획하고, 네이티브 데이터베이스 드라이버로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스는 없다. 검사 범위와 잔여 작업은 [구현 대조표](interface-implementation.md)와 [체크리스트](plans/execution-checklist.md)에 기록한다.
 
 [DSL](dsl.md) · [스키마](schema.md) · [IR / Plan](protocol.md) · [복합 query 예제](examples/complex-query.md) · [문서 빌드와 배포](docs-development.md) · [English](index.md)

@@ -1,3 +1,4 @@
+<!-- doc-id: packages-orm-php-readme -->
 # orm — PHP client
 
 The PHP client: generated models (`Polyspec\Orm\Tests\Model\Author`, …) over PDO (`pdo_mysql`, `pdo_pgsql`,

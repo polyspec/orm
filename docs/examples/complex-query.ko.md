@@ -1,3 +1,5 @@
+<!-- doc-id: examples-complex-query -->
+<!-- source-sha256: 301ce6e852a4a1a733a6fa5210ffb356968297eaafff9f80094d7636ec497da8 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](../dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -40,10 +42,10 @@ $page = (new Product)->connect($slave1)
     ->getsPage($pageNo, 20);
 
 foreach ($page->items as $seq => $p) {
-    $p->getName();                         // parentNode로 병합한 product_lang 컬럼
-    $p->getBrand()?->getName();            // 브랜드 언어 컬럼을 병합한 brand
+    $p->getName();                         // product_lang columns merged by parentNode
+    $p->getBrand()?->getName();            // brand with merged brand language columns
     foreach ($p->getReviews() as $reviewSeq => $r) { $r->getUser()->getName(); }
-    $p->getMyOrderItem()?->getSeq();       // 없으면 null
+    $p->getMyOrderItem()?->getSeq();       // null when absent
 }
 $page->totalCount; $page->totalPages;
 ```
@@ -82,9 +84,9 @@ page, err := model.Product().Connect(slave1).
 
 for seq, p := range page.Items.All() {
     _ = p.GetName()
-    _ = p.GetBrand().GetName()                  // nil 안전 getter 연결
+    _ = p.GetBrand().GetName()                  // nil-safe getter chain
     for reviewSeq, r := range p.GetReviews().All() { _ = r.GetUser().GetName() }
-    _ = p.GetMyOrderItem().GetSeq()             // 없으면 0 값
+    _ = p.GetMyOrderItem().GetSeq()             // zero value when absent
 }
 _ = page.TotalCount; _ = page.TotalPages
 ```

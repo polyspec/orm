@@ -1,3 +1,4 @@
+<!-- doc-id: plan -->
 # ORM design plan
 
 This page is the single design plan for the ORM. It replaces the earlier initial design, revised design, and DSL v3 notes. The [DSL](dsl.md) and [common interface](interfaces.md) pages specify the resulting syntax and structures; this page records the goal, the rules, and the work order.

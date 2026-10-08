@@ -1,0 +1,10 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kit-fixture"
+version = "0.0.0"
+
+[project.optional-dependencies]
+dev = ["ruff==0.16.10"]

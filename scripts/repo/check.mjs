@@ -20,7 +20,11 @@ const log = sections();
 log.begin('repo', COMPUTE);
 
 const root = new URL('../../', import.meta.url).pathname;
-const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
+// The files of polyspec/kit (kit.json lists the vendored directories) are checked by make kit-check and make kit-test, and they are
+// never edited here, so the rules of this repository do not read them.
+const vendored = JSON.parse(readFileSync(join(root, 'kit.json'), 'utf8')).vendored.map(directory => `${directory}/`);
+const trackedAll = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
+const tracked = trackedAll.filter(file => !vendored.some(directory => file.startsWith(directory)));
 const failures = [];
 
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
@@ -64,7 +68,7 @@ failures.push(...workflowTriggerErrors(workflows));
 // CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
 // owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;
-failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), tracked));
+failures.push(...checkInputErrors(checkInputs, checkTargets(makefile), trackedAll));
 // CI group의 job은 그 target의 need와, 그 need의 setup 단계(databases/create)가 필요로 하는 need의 setup step을 실행한다.
 const { targets: groupTargets } = ciGroups(makefile);
 failures.push(...groupSetupErrors(groupTargets, Object.fromEntries(Object.entries(checkInputs).map(([name, target]) => [name, target.needs ?? []]))));

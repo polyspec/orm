@@ -1,6 +1,6 @@
 #!/bin/sh
-# pre-push hook: the push gate refuses a push while a checklist item is [~] in a
-# pushed commit or in the working tree (AGENTS.md). make sets core.hooksPath to
-# .githooks at parse time, so git runs this file on every push.
+# The pre-push hook. Git starts it with the pushed refs on standard input. The push gate refuses the push while an item of
+# a tracker of config/checklist.json is in its active state, in a pushed commit or in the working tree. Written by
+# `make hooks` (scripts/kit/git-hooks.mjs); do not edit it.
 cd "$(git rev-parse --show-toplevel)" || exit 1
-exec node scripts/check/push-gate.mjs hook
+exec node scripts/kit/push-gate.mjs hook

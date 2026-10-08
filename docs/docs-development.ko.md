@@ -1,3 +1,5 @@
+<!-- doc-id: docs-development -->
+<!-- source-sha256: 6b30e9c43d788ba8829b0d81a8efaf94d58d4e2628cc4d9d05165df6397e28d0 -->
 # 문서 빌드와 배포
 
 온라인 문서는 [polyspec.github.io/orm](https://polyspec.github.io/orm/)에서 제공한다. VitePress는 `docs/*.md`와 하위 Markdown 파일을 직접 읽는다. 별도의 문서 복사본은 사용하지 않는다. 구성요소 도표는 `contracts/interfaces.json`에서 생성한다.

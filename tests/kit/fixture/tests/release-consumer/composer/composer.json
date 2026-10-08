@@ -1,0 +1,14 @@
+{
+    "name": "polyspec/kit-fixture-consumer",
+    "type": "project",
+    "repositories": [
+        {
+            "type": "artifact",
+            "url": "artifacts"
+        },
+        {
+            "packagist.org": false
+        }
+    ],
+    "require": {}
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/release.json",
+  "description": "The packages, manifests and Go modules that a release tag covers, read by scripts/kit/release.mjs.",
+  "type": "object",
+  "required": [
+    "schema",
+    "repositoryUrl",
+    "changelog",
+    "packages",
+    "manifests",
+    "notReleased",
+    "goModules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "repositoryUrl": {
+      "description": "The URL of the repository; the notes of a release that is too long link CHANGELOG.md below it.",
+      "type": "string",
+      "pattern": "^https://[^/]+/[^/]+/[^/]+$"
+    },
+    "changelog": {
+      "description": "The change log whose section `## X.Y.Z` is the notes of the release.",
+      "type": "string",
+      "pattern": "^[^/][^\\\\]*\\.md$"
+    },
+    "changelogTranslations": {
+      "description": "Further change logs that must hold the section `## X.Y.Z`.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[^/][^\\\\]*\\.md$"
+      }
+    },
+    "checks": {
+      "description": "The check runs of the tagged commit that must have concluded success; push-gate and ci-passed when absent.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[^\\s]+$"
+      }
+    },
+    "packages": {
+      "description": "The packages that a tag vX.Y.Z releases as one archive each.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "directory",
+          "name"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "npm",
+              "composer"
+            ]
+          },
+          "directory": {
+            "type": "string",
+            "pattern": "^[^/\\\\][^\\\\]*[^/\\\\]$"
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^(@[a-z0-9._-]+/)?[a-z0-9._-]+(/[a-z0-9._-]+)?$"
+          }
+        }
+      }
+    },
+    "manifests": {
+      "description": "Each manifest whose version a tag vX.Y.Z sets, with how the tag releases it: archive, version or git-tag.",
+      "type": "object"
+    },
+    "notReleased": {
+      "description": "Each tracked manifest that no tag releases, with the reason.",
+      "type": "object"
+    },
+    "goModules": {
+      "description": "Each Go module by its directory (`.` for the repository root) with its module path.",
+      "type": "object"
+    },
+    "consumers": {
+      "description": "The consumer projects that install the archives of a tag outside the repository (release-consumer.mjs); one per package kind that has packages.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "npm": {
+          "type": "object",
+          "required": [
+            "directory",
+            "smoke"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "directory": {
+              "description": "The directory of the committed manifest and lock of the consumer project.",
+              "type": "string",
+              "pattern": "^[^/\\\\][^\\\\]*[^/\\\\]$"
+            },
+            "smoke": {
+              "description": "Each package that the consumer installs, with the command (an array of strings) that checks it in the installed project.",
+              "type": "object"
+            }
+          }
+        },
+        "composer": {
+          "type": "object",
+          "required": [
+            "directory",
+            "smoke"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "directory": {
+              "description": "The directory of the committed manifest and lock of the consumer project.",
+              "type": "string",
+              "pattern": "^[^/\\\\][^\\\\]*[^/\\\\]$"
+            },
+            "smoke": {
+              "description": "Each package that the consumer installs, with the command (an array of strings) that checks it in the installed project.",
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "proof": {
+      "description": "What the release proof (release-proof.mjs) installs from the tag besides the archives.",
+      "type": "object",
+      "required": [
+        "gitTag"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "gitTag": {
+          "description": "Each manifest with the mode git-tag, with { kind: python|rust, name, smoke } for its install from the tag.",
+          "type": "object"
+        }
+      }
+    }
+  }
+}

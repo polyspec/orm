@@ -1,3 +1,4 @@
+<!-- doc-id: document-rules -->
 # Documentation and Change Rules
 
 English and Korean pages are published as pairs. The Korean page uses the same path and adds `.ko` before `.md`.

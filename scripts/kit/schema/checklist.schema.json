@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/checklist.json",
+  "description": "The checklists that the push gate, the guard of the full run and the document check read, and the Git hooks that a checkout installs.",
+  "type": "object",
+  "required": ["schema", "hooks", "trackers"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "hooks": {
+      "description": "The tracked hooks of .githooks that every checkout installs; pre-push is required and runs the push gate.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z][a-z-]*$" }
+    },
+    "trackers": {
+      "description": "The checklists: documents whose items carry a state. An item in the active state stops a push and a full run.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "format", "active"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "description": "The English document, relative to the repository root.", "type": "string", "pattern": "^[^/].*[^/]$" },
+          "translation": { "description": "The Korean twin of the document, which must hold the same item IDs and states; the document check reads it with the same rules.", "type": "string", "pattern": "^[^/].*[^/]$" },
+          "format": { "description": "table: a row `| ID | ... | state |`; list: an item `- [state] ID text`.", "type": "string", "enum": ["table", "list"] },
+          "idPattern": { "description": "The source of the regular expression that a task ID matches as a whole; a letter followed by letters, digits, . and - when absent.", "type": "string" },
+          "column": { "description": "The zero-based cell of a table row that holds the state; the last cell when absent.", "type": "integer", "minimum": 0 },
+          "states": { "description": "Every state that an item may have; a state outside the list is an error. Any state is accepted when absent.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "active": { "description": "The state that stops a push and a full run, written as the document writes it, for example [~].", "type": "string", "pattern": "^\\S" }
+        }
+      }
+    }
+  }
+}

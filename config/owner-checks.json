@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "comment": "The owners of the paths are selected by scripts/features/owners.mjs from contracts/check-inputs.json and contracts/features.json: the checks that need the database servers run with a bench and a decimal database of their own, which only that script creates. One rule hands every changed path to it.",
+  "fullSuite": ["check-run"],
+  "owners": [
+    { "paths": ["**"], "targets": ["feature-owner-check"], "variable": "PATHS" }
+  ]
+}

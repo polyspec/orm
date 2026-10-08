@@ -1,3 +1,5 @@
+<!-- doc-id: security -->
+<!-- source-sha256: 91faa7dd952295eb331708d3627e130c623cba0e0104c3ee4b2799f33fa436ee -->
 # 보안 정책
 
 ## 신고 방법

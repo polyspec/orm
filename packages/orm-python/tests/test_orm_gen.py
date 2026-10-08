@@ -15,7 +15,7 @@ if _ORDERED_JSON.is_dir():
 
 ORM_GEN = [sys.executable, str(ROOT / 'packages' / 'orm-python' / 'bin' / 'orm-gen')]
 # orm-gen은 하위 프로세스이므로 이 test의 sys.path를 받지 못한다. sibling ordered-json을 PYTHONPATH로
-# 넘긴다(docs/checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
+# 넘긴다(docs/plans/execution-checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
 ORM_GEN_ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
     p for p in [str(_ORDERED_JSON), os.environ.get('PYTHONPATH', '')] if p))
 

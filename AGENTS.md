@@ -1,3 +1,4 @@
+<!-- doc-id: agents -->
 # Development rules
 
 [Korean](AGENTS.ko.md)
@@ -7,6 +8,26 @@
 - Work on `main` directly by default; use a branch and worktree when agents or parallel work need
   one. A branch or worktree left after its merge takes disk space, scatters folders and makes the
   merge state unclear.
+- The 0.x workflow has no pull request, merge queue or ruleset. Work locally item by item: an item
+  becomes `[o]` when its unit tests pass on the committed tree. `main` receives one push, when no
+  item is `[~]` and the work of the push is complete; the CI of that push must succeed (`push-gate`
+  and the job `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
+  Only the maintainer creates, moves or pushes a tag, and the push of a tag runs the release
+  workflow. A release asset is named `<package>-<language>-<version>.<ext>`, for example
+  `polyspec-orm-npm-X.Y.Z.tgz`.
+- The shared tools are the vendored copy of `polyspec/kit`: `scripts/kit`, `tests/kit`, `kit.json`
+  and `.kit/kit.lock.json` are changed only in kit and reach this repository with
+  `make kit-sync KIT_TAG=<tag>`; `make kit-check` compares them with the lock and `make kit-test`
+  runs their tests. This repository differs from the other repositories only in `config/*.json` and
+  in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and the
+  checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
+  copied or edited here. The rules of this repository do not read the vendored files.
+- The packages are `packages/orm-<kind>` with the kind `go`, `npm` (the TypeScript client), `php`,
+  `php-extension`, `python` and `rust`, as the other repositories use `packages/<repository>-<kind>`.
+  The Go module `github.com/polyspec/orm` (`go.mod`, `engine/`, `generator/`, `cmd/`, `internal/`
+  and `contracts/`) stays at the repository root: this is the single exception to that layout.
+  Reason: a new module path breaks every import of the module. Removal condition: a major release
+  that accepts a new module path.
 - Name branches `{type}/{shortname}-{checklist ID}` and worktrees
   `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
   or equivalent changes are present and its worktree is clean. Before removal, preserve any files
@@ -26,19 +47,19 @@
   cannot be integrated into `main`, discard the remaining test-only changes, and remove its worktree
   and branch. If removal is impossible, first add a numbered sub-item to the owning checklist with
   the cause and exact removal condition.
-- `docs/checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make checklist-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make checklist-check` fails on any other with its file, line and column.
+- `docs/plans/execution-checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make documents-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make documents-check` fails on any other with its file, line and column.
 - Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, and `[!]` only when an unfinished item must be bypassed to advance. An `[!]` item states `Cause:` and `Retry:`. Resume it when the retry condition is met; a bypass is not completion.
 - Marking an item `[o]` also writes its changelog entry under `## Unreleased` at the top of
   CHANGELOG.md and CHANGELOG.ko.md in the same commit (`make version-check`), and uncommitted
   changes cover one item only. A received instruction is triaged first: finish the item in
   progress unless the instruction is explicit and urgent, then place the new work by priority
   before starting it.
-- The repository's full test suite (`make check`) runs on GitHub CI after a push, on the pull
-  request of the pushed branch and on its merge group. CI splits it into the CI groups of the
+- The repository's full test suite runs on GitHub CI after a push to `main` and on a manual run.
+  CI splits it into the CI groups of the
   Makefile (`CI_GROUPS`, `CI_TARGETS_<group>`): one job per group, all at once, each running
-  `make check GROUP=<group>` after only the setup steps that its targets need; the groups together
+  `make check-run GROUP=<group>` after only the setup steps that its targets need; the groups together
   run every target of `CHECK_TARGETS` exactly once (`make repo-check`), and a local `make check`
-  runs every target. One CI run must
+  runs every target after its guard. One CI run must
   collect enough information to fix every failure it found before the next CI run. The run never
   stops at a failure: every target runs unless a setup step it needs failed, which records the
   target as `not-run` with that step and its first failure lines; the independent parts of a
@@ -54,7 +75,7 @@
   case states what failed, where and why. The run ends with a summary of every target's status,
   time and first failure lines, which CI publishes as the job summary and uploads with the report
   of that run id, and the job fails when a target failed or did not run.
-- A test step leaves nothing behind. The check runner and `make owner-check` run each step with a
+- A test step leaves nothing behind. The check runner and `make feature-owner-check` run each step with a
   temporary directory of its own (`TMPDIR`) and in a process group of its own; a passed step that
   leaves an entry in that directory, a run directory under `.runtime/run`, or a process in its
   group fails and names what it left, and a failed step's leftovers go into the report. Either way
@@ -81,9 +102,7 @@
   checks read, the Makefile runs cargo, go, npm and Composer offline (`CARGO_NET_OFFLINE`,
   `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets resolve
   versions, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
-  retry online. The release asset install check of `make package-check` runs `npm ci` and
-  `composer install` from the committed locks of tests/release-install with empty caches, and
-  `make install-release-fixtures` writes those locks.
+  retry online.
 - Every toolchain the checks use is pinned in one declaration and checked: `.node-version`,
   `.go-version`, `.composer-version` and `rust-toolchain.toml` hold exact releases, `.php-version`
   and the PostgreSQL major release are as exact as their installers allow, CI installs what they
@@ -107,46 +126,35 @@
   `make owner-check` and the full suite run in CI after the push, and no local check is required
   before a push; read each CI report and fix what it finds. A push happens only when no checklist
   item is `[~]`: the pre-push hook
-  `.githooks/pre-push` runs the push gate (scripts/check/push-gate.mjs), which refuses a push while
+  `.githooks/pre-push` runs the push gate (scripts/kit/push-gate.mjs), which refuses a push while
   an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
-  the commit again on every push, pull request and merge group (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and `make
-  owner-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
+  the commit again on every push (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and
+  `make hooks-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
   fixed as a checklist item; while a CI run is in progress, do not push again to react to it.
-- Every change reaches `main` through a pull request and the merge queue; no command of this
-  repository pushes `main`. Publish a branch with the standard commands of GitHub or the GitHub UI:
-  `git push origin HEAD:refs/heads/<branch>`, `gh pr create --base main --head <branch> --fill`,
-  `gh pr merge <branch> --auto --rebase`. The GitHub ruleset `main` of `.github/ruleset.json`
-  requires a pull request (no approval), the merge queue with the merge method `REBASE`, a linear
-  history and the GitHub Actions checks `push-gate` (`.github/workflows/push-gate.yml`) and
-  `ci-passed`, the last job of `.github/workflows/ci.yml`, which runs after the jobs `test` (one
-  job per CI group) and `docs`, also after a failed one, and passes only when every one of them
-  succeeded; ci.yml holds every check of the repository and runs on every pull request and merge
-  group; `.github/workflows/docs-pages.yml` only builds
-  and deploys the site of `main`. The ruleset refuses a force-push and the deletion of `main` and
-  has no bypass actor, so GitHub refuses a direct push to `main`, also by an administrator. `make github-ruleset` applies
-  the ruleset and the declared repository settings (`allow_rebase_merge`, `allow_auto_merge`,
-  `delete_branch_on_merge`); `make github-ruleset-check` fails when they differ from the
-  declaration, naming each field.
-- `make check` refuses before any step while a checklist item, sub-items included, is `[~]`,
-  while tracked files have uncommitted changes, and when `.runtime/full-run.json` records a full
-  run of the same tree. `make rerun-failed` reruns, on the recorded commit or a
-  commit that descends from it, only the targets that did not pass and the owner targets that the
-  paths changed since that commit select: for a failure whose cause lies outside the tree (an
-  environment or a machine resource), and for a failure of the code fixed as a checklist item
-  after the full run. A commit that does not descend from the recorded one gets a new full suite,
-  which runs once when every active item is complete. Do not delete or edit the record to run
-  again. A fresh checkout has no record, so CI runs `make check` after every push.
+- `.github/workflows/ci.yml` holds every check of the repository and runs on a push to `main` and on
+  a manual run; its last job `ci-passed` runs after the jobs `test` (one job per CI group) and `docs`,
+  also after a failed one, and passes only when every one of them succeeded (`make ci-passed`).
+  `.github/workflows/push-gate.yml` runs the push gate on every push, and
+  `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
+- `make check` runs the guard of `scripts/kit/full-run.mjs` before any step: it refuses while a
+  checklist item, sub-items included, is `[~]`, while tracked files have uncommitted changes, while the
+  Git hooks are not installed, and when `var/full-run.json` records a full run of the same tree; it
+  then runs the target `check-run` and records the result. `make rerun-failed` reruns, on the same
+  tree, the targets of that record that did not pass, for a failure whose cause lies outside the tree
+  (an environment or a machine resource). Do not delete or edit the record to run again. A fresh
+  checkout has no record, so CI runs `make check-run GROUP=<group>`, which has no guard.
 - Write commit messages in English as `type(scope): subject (#issue)`: a subject of at most 50
   characters, capitalized, imperative, without a trailing period; a blank line; a body wrapped
   near 72 characters explaining what changed and why; an optional footer for references. The
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
   subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
   through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
-  commit cannot be changed. In CI `git-check` reads the subjects of the pull request or the
-  merge group, which the workflow gives make check as `ORM_GIT_RANGE`; without it the check
-  reads HEAD. No tracked file records a commit id.
+  commit cannot be changed. `make commits-check` (`scripts/kit/check-commits.mjs`, `config/commits.json`)
+  checks the messages of `RANGE` (`<base>..<head>`) and the message of HEAD without it; the types
+  and the limits are the data of `config/commits.json`. No tracked file records a commit id.
 - Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the
-  checks owning the changed files; no rule requires it before a commit or a push, because CI runs
+  checks owning the changed files (`config/owner-checks.json` hands the paths to
+  `make feature-owner-check`, which selects them with `scripts/features/owners.mjs`); no rule requires it before a commit or a push, because CI runs
   the full suite after the push.
   Every verification command of `contracts/features.json` declares `inputs`, and every coverage
   part (an owner client or a dependent part) declares its `tests` and optional `inputs`. The command runs
@@ -209,20 +217,24 @@
 
 ## Releases
 
-- A release starts with a version-bump pull request `chore(release): Release X.Y.Z (#<checklist ID>)`:
-  it sets VERSION and every package file to X.Y.Z (`make version-check`) and renames `## Unreleased`
-  to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty `## Unreleased`.
-- After it merges, the maintainer tags the merged commit of `main` `vX.Y.Z` (a Go module in a
-  subdirectory `<dir>/vX.Y.Z`). A tag is never raised through a pull request, and only the
-  maintainer creates, moves or pushes a tag.
+- A release starts with a version-bump commit `chore(release): Release X.Y.Z (#<checklist ID>)` on
+  `main`, after the CI of the commit that carries the work succeeded: it sets VERSION and every
+  package file that `config/release.json` names in `manifests` to X.Y.Z (`make version-check`) and
+  renames `## Unreleased` to `## X.Y.Z` in CHANGELOG.md and CHANGELOG.ko.md, below a new empty
+  `## Unreleased`.
+- After the CI of that commit succeeded (`push-gate` and `ci-passed`), the maintainer tags it
+  `vX.Y.Z` and pushes the tag; the tag releases the Go module `github.com/polyspec/orm` of the
+  repository root too. Only the maintainer creates, moves or pushes a tag.
 - The push of the tag runs `.github/workflows/release.yml`, which publishes the GitHub Release:
   `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
-  succeeded), `make release-versions` (every released manifest carries X.Y.Z and the changelogs have
-  its section), `make release-assets` (the npm tarball and the Composer zips) and
-  `make release-publish` (the release with the notes of that section; a section over 125000
-  characters, the limit of a GitHub release body, becomes one line that links the section `#XYZ`
-  of CHANGELOG.md at the tag). The tests do not run again.
-- The Python client (`packages/orm-python/pyproject.toml`) is consumed by its git tag and has no release
-  archive. The version-bump pull request sets its `version` with the other manifests, `make version-check`
-  reads that version, and `make release-versions` and `make release-assets` do not handle it (it is in
-  `NOT_RELEASED` of `scripts/release/release.mjs`).
+  succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
+  `go.mod` is `github.com/polyspec/orm` and the changelogs have its section), `make release-assets`
+  (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm` and
+  `polyspec-orm-dbspec-php-X.Y.Z.zip` of `polyspec/orm-dbspec`) and `make release-publish` (the release
+  with the notes of that section; a section over 125000 characters, the limit of a GitHub release
+  body, becomes one line that links the section of CHANGELOG.md at the tag). The tests do not run
+  again; `make release-coverage` requires every manifest of the checkout to be classified in
+  `config/release.json`.
+- The Python client (`packages/orm-python/pyproject.toml`) and the Rust crates `orm`, `orm-schema` and
+  `orm-build` are consumed by their git tag and have no release archive (`git-tag` in
+  `config/release.json`); the version-bump commit sets their `version` with the other manifests.

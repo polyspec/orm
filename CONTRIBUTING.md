@@ -1,3 +1,4 @@
+<!-- doc-id: contributing -->
 # Contributing
 
 ## Required workflow
@@ -12,13 +13,13 @@
 5. Run the unit tests of what changed, its Red/Green cases, and record the result in the commit
    description when needed. End-to-end runs, `make owner-check` and the full suite run in CI after
    the push; no local check is required before a push.
-6. The full suite `make check` runs in CI on every pull request and merge group. Before any step it refuses, with the reasons and exit status 2, while an item of `docs/checklist.md` is `[~]`
-   (each is named with its ID and title), while tracked files have uncommitted changes, and when
-   `.runtime/full-run.json` records a full run of the same tree (`git rev-parse HEAD^{tree}`). The
-   record holds the tree, the commit, the result, the targets that did not pass and the times of
-   every step, and is written before the first step and after each step, so a killed run stays
-   `incomplete`. `make rerun-failed` runs only the targets of the current tree's record that did
-   not pass and is refused without such a record.
+6. The full suite runs in CI after a push to `main` (`make check-run GROUP=<group>`). A local
+   `make check` first runs the guard of `scripts/kit/full-run.mjs`: it refuses, with the reasons and
+   exit status 1, while an item of `docs/plans/execution-checklist.md` is `[~]` (each is named with its ID and title),
+   while tracked files have uncommitted changes, while the Git hooks are not installed, and when
+   `var/full-run.json` records a full run of the same tree (`git rev-parse HEAD^{tree}`). The guard
+   writes the record before the first step and after each step. `make rerun-failed` runs only the
+   targets of the current tree's record that did not pass and is refused without such a record.
 
 ## Test database servers
 
@@ -49,7 +50,7 @@ The environment file exports `ORM_TEST_MYSQL_DSN`, `ORM_TEST_POSTGRES_DSN`, `ORM
 
 Runs from any checkout and other tools may use the same servers at once, so their use is leased (`tests/lease`). Every make line that reads `TEST_ENV` holds a shared lease of `ORM_TEST_SERVERS_LEASES` until the line ends. `make test-servers-stop`, a fresh `make test-servers` and the MySQL migration hold the exclusive lease and are refused while any lease is held, naming each holder by checkout, process id, start time and command. A tool outside make holds a shared lease for the life of its process with `.runtime/bin/lease hold <ORM_TEST_SERVERS_LEASES> shared --pid <pid>`. A held lease records its holder and the releaser that removes it once the holder ends. A lease whose holder ended while its releaser runs is being released, and a waiting request waits for it. A lease whose holder and releaser both ended is dead and blocks no one: a dead shared lease is taken over by any request, a dead exclusive lease by the next exclusive request, which makes the resource again, and a shared request is refused while a dead exclusive lease remains, because its holder may have left the resource half made. Each takeover is reported. `make test-servers-leases` lists the leases, and `make test-servers-leases-clear` removes the dead ones and names them.
 
-No bench or decimal database is shared. `make check`, `make owner-check` and `make run-databases TARGETS="<target>..."` create the bench and decimal databases of their run with `scripts/check/databases.sh`, seed them, pass them to every target through `TEST_ENV` (`BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`, `ORM_BENCH_MYSQL_DSN`) and `DECIMAL_ENV`, and drop them at the end. A target that reads them fails when it runs with the server environment alone; run it through `make run-databases`.
+No bench or decimal database is shared. `make check-run`, `make feature-owner-check` and `make run-databases TARGETS="<target>..."` create the bench and decimal databases of their run with `scripts/check/databases.sh`, seed them, pass them to every target through `TEST_ENV` (`BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`, `ORM_BENCH_MYSQL_DSN`) and `DECIMAL_ENV`, and drop them at the end. A target that reads them fails when it runs with the server environment alone; run it through `make run-databases`.
 
 `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `client-pooler-check`, `case-database-check`, `conformance-check`, `db-test` and `perf-check` read `.runtime/servers/env` and fail when it is missing. `client-pooler-check` runs the client database tests with `ORM_TEST_POSTGRES_DSN` set to the PgBouncer DSN and `ORM_TEST_MYSQL_DSN` set to the ProxySQL DSN. These targets also export `ORM_TEST_MYSQL_SERVER_DSN` and `ORM_TEST_POSTGRES_SERVER_DSN`, the server DSNs of the environment file, which a pooler check does not replace: the rollback failure cases end the server session of a transaction through them, because ProxySQL takes a text-protocol `KILL` as a command for its own client sessions.
 
@@ -63,6 +64,6 @@ Update the shared contract, generated artifacts, language clients, examples, and
 
 Use a short English imperative subject that states the action, for example `Implement root IN chunking`. Keep each commit focused.
 
-## Pull requests
+## Changes
 
-Describe the behavior change, affected clients and databases, tests run, and any known limitation. Do not include credentials, production data, or generated files that are not produced by the repository generators.
+Describe the behavior change, affected clients and databases, tests run, and any known limitation in the commit message and the changelog entry. Do not include credentials, production data, or generated files that are not produced by the repository generators.

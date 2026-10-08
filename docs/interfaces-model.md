@@ -1,3 +1,4 @@
+<!-- doc-id: interfaces-model -->
 # Common components
 
 <!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->

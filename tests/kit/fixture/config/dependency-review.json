@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
+  "reviewed": "2026-10-08T20:00:59.902Z",
+  "locks": [
+    {
+      "lock": "package-lock.json",
+      "sha256": "5582fa55d5d7597c11c391bc89c02e80e1b254a5a6b3d68fa950284ef8d81c0b",
+      "advisories": []
+    },
+    {
+      "lock": "packages/fixture-php/composer.lock",
+      "sha256": "27e91f2489524c42fc51dd637f0c06c29ae376ce9f21322ed24e61716c8fb92d",
+      "advisories": []
+    },
+    {
+      "lock": "packages/fixture-go/go.sum",
+      "sha256": "0bc3ed6c0782aa9090e414e133f44c5f4cb8bc2ff942b89fc3298c52eee332fd",
+      "advisories": []
+    },
+    {
+      "lock": "packages/fixture-rust/Cargo.lock",
+      "sha256": "e486cf7de06aee527fa073daa694335e7bf0b4d39e502a1119bb7bddb06b41aa",
+      "advisories": []
+    }
+  ],
+  "dependencies": [
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "is-number",
+      "version": "7.0.0",
+      "latest": "7.0.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/fixture-lib/package.json",
+      "package": "semver",
+      "version": "7.6.0",
+      "latest": "7.6.0"
+    },
+    {
+      "ecosystem": "composer",
+      "manifest": "packages/fixture-php/composer.json",
+      "package": "psr/log",
+      "version": "3.0.2",
+      "latest": "3.0.2"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/fixture-python/pyproject.toml",
+      "package": "setuptools",
+      "version": "84.0.0",
+      "latest": "84.0.0"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/fixture-python/pyproject.toml",
+      "package": "ruff",
+      "version": "0.16.10",
+      "latest": "0.16.10"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "packages/fixture-go/go.mod",
+      "package": "github.com/google/uuid",
+      "version": "v1.6.0",
+      "latest": "v1.6.0"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+    "name": "polyspec/kit-fixture",
+    "description": "Fixture of the kit tests of the dependency tools.",
+    "version": "0.0.0",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "psr/log": "^3.0"
+    },
+    "config": {
+        "platform": {
+            "php": "8.2.0"
+        }
+    }
+}

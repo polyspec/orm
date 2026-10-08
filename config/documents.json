@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "include": [
+    "**/*.md"
+  ],
+  "exclude": [
+    "docs/.vitepress/**",
+    "**/node_modules/**",
+    "**/vendor/**",
+    "tests/kit/**"
+  ],
+  "siteLinks": true,
+  "changelogs": [
+    "CHANGELOG.md"
+  ]
+}

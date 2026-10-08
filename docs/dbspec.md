@@ -1,3 +1,4 @@
+<!-- doc-id: dbspec -->
 # dbspec
 
 [Korean](dbspec.ko.md)

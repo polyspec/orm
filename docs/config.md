@@ -1,3 +1,4 @@
+<!-- doc-id: config -->
 # Runtime connection
 
 The clients take connection values as arguments and read no environment variable or secret store of their own. The client does not read a configuration file.

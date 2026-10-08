@@ -1,3 +1,5 @@
+<!-- doc-id: interface-implementation -->
+<!-- source-sha256: 1866b7c2f2b42526c3663f7ac891ac2b92506e81d8910d18c774190b9fa54922 -->
 # 공통 인터페이스 구현 대조표
 
 기준: [공통 인터페이스 v1](interfaces.md), [기계 명세](../contracts/interfaces.json), [생성 도표](interfaces-model.md). 재현 명령과 검사 범위는 [검사 안내](../tests/interfaces/README.md)에 있다.
@@ -47,4 +49,4 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 
 각 owner 테스트는 해당 client 디렉터리에 둔다. Conformance는 네 결과를 비교하며 owner 테스트를 대체하지 않고, `tests/interfaces/check`가 공통 선언과 생성물을 검사한다.
 
-이 결과는 명시한 인터페이스와 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. 전체 진행 상태는 [체크리스트](checklist.ko.md)에서 관리한다.
+이 결과는 명시한 인터페이스와 시나리오의 검증이다. 함수 본문 전체의 등가성이나 모든 입력에 대한 증명으로 확대하지 않는다. 전체 진행 상태는 [체크리스트](plans/execution-checklist.ko.md)에서 관리한다.

@@ -1,3 +1,5 @@
+<!-- doc-id: tests-dialects-readme -->
+<!-- source-sha256: 22afc5e0ea8b6eb6a5dcde71bda545e207e6d83c9d423a84f3a3719ca308ffc6 -->
 # 스키마 dialect 사실 probe
 
 [English](README.md)
@@ -27,7 +29,7 @@ catalog 질의로 된 본문을 가진다. 성공해야 하는 단계, 지정한
 ## 실행
 
 ```sh
-make dialect-facts-check TEST_ENV=<make test-servers 환경 파일 경로>
+make dialect-facts-check TEST_ENV=<path of the environment file of make test-servers>
 ```
 
 Target은 먼저 데이터베이스 없이 probe ID를 검사하고, `TEST_ENV`의

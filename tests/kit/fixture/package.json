@@ -1,0 +1,9 @@
+{
+  "name": "@polyspec/kit-fixture",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "is-number": "7.0.0",
+    "tagged-lib": "file:vendor/tagged/js"
+  }
+}

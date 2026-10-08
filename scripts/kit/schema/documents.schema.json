@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/documents.json",
+  "description": "The documents that scripts/kit/check-documents.mjs checks: which Markdown files are documents, its status tables and changelogs. Its checklists are in config/checklist.json.",
+  "type": "object",
+  "required": ["schema", "include"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "comment": { "type": "string" },
+    "include": {
+      "description": "Globs of the tracked Markdown files that are documents; every English document has a Korean twin .ko.md.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "exclude": {
+      "description": "Globs of tracked Markdown files that are not documents.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "siteLinks": {
+      "description": "True when a static site renders the documents: a link that starts with / is not checked, and a link without extension may name a file with .md, .ko.md or index.md.",
+      "type": "boolean"
+    },
+    "interpolation": {
+      "description": "Globs of the English documents (and their Korean twins) in which {{ outside a fenced code block fails, because the site renderer evaluates it.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "statusTables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "idPattern", "cells", "columns"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "description": "The English document with the table; its Korean twin is read too.", "type": "string" },
+          "idPattern": { "description": "The source of the regular expression that the first cell of a row matches as a whole.", "type": "string" },
+          "cells": { "description": "The number of cells of a row.", "type": "integer", "minimum": 1 },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["index"],
+              "additionalProperties": false,
+              "properties": {
+                "index": { "description": "The cell, counted from 0.", "type": "integer", "minimum": 0 },
+                "enum": { "description": "The values the cell may have; the English and the Korean row must agree on it.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+                "pattern": { "description": "The source of the regular expression that the cell matches.", "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "changelogs": {
+      "description": "The English changelogs; their Korean twins are read too.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

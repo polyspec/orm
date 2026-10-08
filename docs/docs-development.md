@@ -1,3 +1,4 @@
+<!-- doc-id: docs-development -->
 # Documentation build and deployment
 
 The online documentation is at [polyspec.github.io/orm](https://polyspec.github.io/orm/). VitePress reads `docs/*.md` and nested Markdown files directly. No copied documentation tree is used. The component diagram is generated from `contracts/interfaces.json`.

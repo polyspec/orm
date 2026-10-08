@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/owner-checks.json",
+  "description": "The checks that own each tracked path, read by scripts/kit/owner-check.mjs: make owner-check runs the owners of the changed paths, never the full suite.",
+  "type": "object",
+  "required": ["schema", "owners"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "comment": { "type": "string" },
+    "always": {
+      "description": "Node test files that run for every change; they do not make a path owned.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "testTarget": {
+      "description": "A make target that runs node test files given in its variable TESTS; without it the tests run through scripts/kit/run-tests.mjs.",
+      "type": "string"
+    },
+    "fullSuite": {
+      "description": "Make targets that run the full suite besides the targets whose recipe starts full-run.mjs; an owner rule never selects them.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "owners": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["paths"],
+        "additionalProperties": false,
+        "properties": {
+          "paths": { "description": "Globs of repository paths: * within a segment, ** across segments, {a,b} either.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "targets": { "description": "Make targets of the Makefile or of a file it includes.", "type": "array", "items": { "type": "string" } },
+          "scripts": { "description": "Scripts of the root package.json, run as npm run <script>.", "type": "array", "items": { "type": "string" } },
+          "workspaces": { "description": "Workspaces with a test script, run as npm test -w <name>.", "type": "array", "items": { "type": "string" } },
+          "prefixes": { "description": "Package directories outside the workspaces with a test script, run as npm test --prefix <directory>.", "type": "array", "items": { "type": "string" } },
+          "tests": { "description": "Node test files; $path is the changed test file itself.", "type": "array", "items": { "type": "string" } },
+          "variable": { "description": "The make variable that receives the matched changed paths for the targets of the rule.", "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+        }
+      }
+    },
+    "inputs": {
+      "description": "The paths that a check reads. A check is named make <target>, npm run <script>, npm test -w <workspace> or npm test --prefix <directory>; each path needs a rule that selects the check (a make target also through a target that runs it as a prerequisite).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check", "paths"],
+        "additionalProperties": false,
+        "properties": {
+          "check": { "type": "string" },
+          "paths": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

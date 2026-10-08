@@ -3,7 +3,7 @@
 // 필요한 단계가 아니다. guard는 어디서 실행하든 같은 규칙을 적용한다.
 //
 // guard는 어떤 단계보다 먼저 결정하고 그 결정을 이유와 함께 출력한다. pre-push hook이 설치되지 않은 checkout
-// (core.hooksPath가 `.githooks`가 아니거나 hook이 실행 가능하지 않다, hooks.mjs)과, docs/checklist.md의 항목(하위 항목
+// (core.hooksPath가 `.githooks`가 아니거나 hook이 실행 가능하지 않다, hooks.mjs)과, docs/plans/execution-checklist.md의 항목(하위 항목
 // 포함)이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, 기록이
 // 적은 실행의 process가 아직 실행 중인 동안 두 진입점을 모두 거부한다. make check는 기록이 같은
 // tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 담고 있으면 거부한다: 전체 suite는 tree마다 한 번
@@ -71,7 +71,7 @@ export function decide(mode, { items, changes, hooks = null, tree, commit, recor
   const reasons = [];
   if (hooks) reasons.push(`pre-push hook: ${hooks}`);
   if (items.length) {
-    reasons.push('checklist items are in progress (docs/checklist.md):');
+    reasons.push('checklist items are in progress (docs/plans/execution-checklist.md):');
     for (const { id, title } of items) reasons.push(`  ${id} ${title}`);
   }
   if (changes.length) {
@@ -170,7 +170,7 @@ function state(root) {
     commit: git(root, 'rev-parse', 'HEAD').trim(),
     tree: git(root, 'rev-parse', 'HEAD^{tree}').trim(),
     changes: git(root, 'status', '--porcelain', '--untracked-files=no').split('\n').filter(Boolean),
-    items: activeItems(readFileSync(resolve(root, 'docs/checklist.md'), 'utf8')),
+    items: activeItems(readFileSync(resolve(root, 'docs/plans/execution-checklist.md'), 'utf8')),
     hooks: hooksProblem(root),
     record,
     running: Boolean(record?.runner && alive(record.runner.pid)),

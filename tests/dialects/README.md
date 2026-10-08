@@ -1,3 +1,4 @@
+<!-- doc-id: tests-dialects-readme -->
 # Schema dialect fact probes
 
 [Korean](README.ko.md)

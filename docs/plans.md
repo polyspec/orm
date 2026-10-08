@@ -1,3 +1,4 @@
+<!-- doc-id: plans -->
 # Schema plans
 
 A plan changes a database from one schema to the next. It holds the target schema and the decisions that a schema cannot express: renames and the permission to drop. Plans form a chain from an empty database; every client diffs the two schemas of a plan the same way and writes the same steps for each dialect. `tests/dbspec/plans.json` holds the shared cases.

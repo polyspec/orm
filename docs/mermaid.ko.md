@@ -1,3 +1,5 @@
+<!-- doc-id: mermaid -->
+<!-- source-sha256: cad6e07aad9860a8d30952b3c086373ade1b90ac414e8cdd769e82b956b046d8 -->
 # Mermaid diagram
 
 dbspec 문서가 schema의 원천이고, Mermaid `erDiagram`은 다른 도구를 위한 view다. export는 dbspec 문서에서 표준 `erDiagram`을 쓰고, import는 표준 `erDiagram`을 dbspec 문서로 읽으며 옮기지 못한 것을 모두 나열한다. `tests/dbspec/mermaid.json`이 공유 case를 담는다.

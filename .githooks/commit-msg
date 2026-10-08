@@ -1,6 +1,4 @@
 #!/bin/sh
-# commit-msg hook: refuses a commit whose subject breaks git.subject-format
-# (contracts/rules.json), with the rule and the reason. make sets
-# core.hooksPath to .githooks at parse time, so git runs this file on every
-# commit of the checkout. The check is the script beside this hook's checkout.
-exec node "$(dirname "$0")/../scripts/git/check.mjs" --message "$1"
+# commit-msg hook: refuses a commit whose message breaks config/commits.json, with the rule and the reason. make sets
+# core.hooksPath to .githooks at parse time (scripts/kit/kit.mk), so git runs this file on every commit of the checkout.
+exec node "$(dirname "$0")/../scripts/kit/check-commits.mjs" --message "$1"

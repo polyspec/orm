@@ -4,6 +4,7 @@ package contracts
 
 import (
 	"bytes"
+	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -82,6 +83,10 @@ func DiagramKO() ([]byte, error) {
 	return diagram(true)
 }
 
+// documentID is the doc-id of the component document pair (scripts/kit/check-documents.mjs); the Korean document also holds the
+// sha256 of the English one.
+const documentID = "interfaces-model"
+
 func diagram(korean bool) ([]byte, error) {
 	d, err := load()
 	if err != nil {
@@ -89,8 +94,14 @@ func diagram(korean bool) ([]byte, error) {
 	}
 	var b bytes.Buffer
 	if korean {
+		english, err := diagram(false)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Fprintf(&b, "<!-- doc-id: %s -->\n<!-- source-sha256: %x -->\n", documentID, sha256.Sum256(english))
 		b.WriteString("# 공통 구성요소\n\n<!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->\n\n```mermaid\nclassDiagram\n")
 	} else {
+		fmt.Fprintf(&b, "<!-- doc-id: %s -->\n", documentID)
 		b.WriteString("# Common components\n\n<!-- Generated from contracts/interfaces.json; DO NOT EDIT. -->\n\n```mermaid\nclassDiagram\n")
 	}
 	for _, c := range d.Components {

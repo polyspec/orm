@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/commits.json",
+  "description": "The rules of a commit message, read by scripts/kit/check-commits.mjs: the subject is type(scope): Subject (#id), then a blank line and a body.",
+  "type": "object",
+  "required": ["schema", "types", "subjectMax", "bodyMax"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "comment": { "type": "string" },
+    "types": { "description": "The allowed types of the subject.", "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z]+$" } },
+    "subjectMax": { "description": "The most characters of the Subject, the part between the colon and the (#id).", "type": "integer", "minimum": 1 },
+    "bodyMax": { "description": "The most characters of a line of the body; a single word longer than this, such as a URL, is allowed.", "type": "integer", "minimum": 1 }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/toolchain.json",
+  "description": "The toolchains that no other file of the checkout declares. Node.js is declared in .node-version, npm in packageManager of package.json, Rust in rust-toolchain.toml; php and python may also be declared in .php-version and .python-version.",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "integer",
+      "const": 1
+    },
+    "comment": {
+      "type": "string"
+    },
+    "php": {
+      "description": "The PHP minor releases that the checks run on; a patch release of a listed minor passes.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^\\d+\\.\\d+$"
+      }
+    },
+    "python": {
+      "description": "The Python minor release of the checks; a patch release of the minor passes.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "composer": {
+      "description": "The Composer release. With sha256, install-tools installs composer.phar into var/tools; without it, the Composer of the machine is verified.",
+      "type": "object",
+      "required": [
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "go": {
+      "description": "Where the Go release is declared: the go.mod that holds its toolchain line or go directive, and optionally a file that holds the exact release.",
+      "type": "object",
+      "required": [
+        "mod"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "mod": {
+          "type": "string",
+          "pattern": "^([^/\\\\][^\\\\]*/)?go\\.mod$"
+        },
+        "versionFile": {
+          "type": "string",
+          "pattern": "^[^/][^\\\\]*$"
+        }
+      }
+    },
+    "ruff": {
+      "description": "The pyproject.toml whose dev extra pins ruff==<version>; install-tools installs that release into a virtual environment of var/tools.",
+      "type": "object",
+      "required": [
+        "pyproject"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pyproject": {
+          "type": "string",
+          "pattern": "^([^/\\\\][^\\\\]*/)?pyproject\\.toml$"
+        }
+      }
+    },
+    "cargoAudit": {
+      "description": "The cargo-audit release that install-tools builds into var/tools/cargo-audit.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "govulncheck": {
+      "description": "The govulncheck release that install-tools builds into var/tools/govulncheck.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "node": {
+      "description": "The SHA-256 of the Node.js archive of the release in .node-version, for each platform that downloads it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "linux-x64.tar.gz": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "linux-arm64.tar.gz": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "darwin-x64.tar.gz": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "darwin-arm64.tar.gz": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}
