@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 116a8c3482904cfe6bb68b859df3560b11eee9641a638269ce00e54cabd9ddf4 -->
+<!-- source-sha256: 05463ba8bacda61b6bac3820cc3c3883b8d102cfd12d91bea56b303f1925df16 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -761,7 +761,7 @@
 
 ## kit 도입 뒤의 CI
 
-- [!] T45 `b278092f`의 CI 실행 37858088534에서 실패한 job 세 개를 고칩니다. 원인: `test (static)`, `test (feature_coverage)`, `test (clients_db)`가 실패했습니다. 완료 기준: T45.1–T45.3이 끝납니다. 재시도: vendored kit이 stub의 임시 folder를 지웁니다(T45.1).
-  - [!] T45.1 job `test (static)`에서 `kit-test`가 임시 항목을 남기지 않게 합니다. 원인: check runner는 단계마다 자기 `TMPDIR`을 주고 항목을 남긴 통과 단계를 실패로 봅니다. kit v0.0.9의 `tests/kit/release-consumer-sandbox.mjs`는 `npm install --package-lock-only`마다 `inspect`에서 folder `stub-npm-*`을 만들고 지우지 않아서 `check/kit-test`가 "left 112 temporary entries"로 실패합니다(로컬의 `node scripts/check/run.mjs - kit-test`도 같은 112개). 재시도: kit이 manifest를 읽은 뒤 folder를 지우고(stub의 `finally`에서 `fs.rmSync(folder, { recursive: true, force: true })`) 그 변경을 담은 kit release를 `make kit-sync`로 vendor합니다.
+- [o] T45 `b278092f`의 CI 실행 37858088534에서 실패한 job 세 개를 고칩니다. 원인: `test (static)`, `test (feature_coverage)`, `test (clients_db)`가 실패했습니다. 완료 기준: T45.1–T45.3이 끝납니다. Evidence: T45.1–T45.3이 끝났다.
+  - [o] T45.1 job `test (static)`에서 `kit-test`가 임시 항목을 남기지 않게 합니다. 원인: check runner는 단계마다 자기 `TMPDIR`을 주고 항목을 남긴 통과 단계를 실패로 봅니다. kit v0.0.9의 `tests/kit/release-consumer-sandbox.mjs`는 `npm install --package-lock-only`마다 `inspect`에서 folder `stub-npm-*`을 만들고 지우지 않아서 `check/kit-test`가 "left 112 temporary entries"로 실패합니다(로컬의 `node scripts/check/run.mjs - kit-test`도 같은 112개). 완료 기준: kit v0.0.10이 folder를 지운다. Evidence: `make kit-sync KIT_TAG=v0.0.10`의 두 번째 실행이 `unchanged`를 출력하고, `make kit-check`가 0으로 끝나며, `node scripts/check/run.mjs - kit-test`가 0으로 끝난다(`PASS check/kit-test`, 남은 임시 항목 없음).
   - [o] T45.2 `TestCoverageModelGenerationCheck`가 Go client를 새 경로로 복사하게 합니다. 원인: test가 module 복사본에서 `clients/go/model`을 join하는데 T44.1이 그것을 `packages/orm-go/model`로 옮겨서, `test (feature_coverage)`가 "open .../clients/go/model/author.go: no such file or directory"로 실패했습니다. 완료 기준: test가 `packages/orm-go/model`을 join합니다. Red: `go test -tags featurecoverage ./packages/orm-go/model -run TestCoverageModelGenerationCheck`가 그 message로 1로 끝납니다. Green: 같은 명령이 0으로 끝납니다.
   - [o] T45.3 `TestCIRequiresGeneratedChecks`가 CI의 group 명령에 새 target 이름을 적게 합니다. 원인: test는 `ci.yml`에 `run: make check GROUP=${{ matrix.group }}` 줄을 요구하는데 T44.2가 그것을 `make check-run GROUP=...`로 바꿔서, `test (clients_db)`가 `go-test-check`에서 실패했습니다. 완료 기준: test가 `make check-run GROUP=${{ matrix.group }}`를 적습니다. Red: `go test ./tests/interfaces/check -run TestCIRequiresGeneratedChecks`가 "CI must run make check for each CI group"로 1로 끝납니다. Green: `go test ./tests/interfaces/check`가 0으로 끝납니다.

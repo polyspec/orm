@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b152755a8461511d48d42be28329dfc66c04001aaa765bf0df6042b5aee78c91 -->
+<!-- source-sha256: 75c238d1f411726f2e5ef0d56efef1e0e6a4a67192f918c3630dcd1de8d9835f -->
 # 변경 이력
 
 ## Unreleased
 
+- T45.1: vendored kit은 v0.0.10이며, 그 test가 npm stub의 `stub-npm-*` folder를 지우므로 `kit-test`는 runner의 개별 `TMPDIR`에 임시 항목을 남기지 않는다.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck`가 Go client를 `packages/orm-go/model`에서 복사하고 `TestCIRequiresGeneratedChecks`가 `ci.yml`에서 `run: make check-run GROUP=${{ matrix.group }}`를 요구한다. T44.1과 T44.2가 옮긴 대로이다. T45.1은 kit이 npm stub의 임시 folder를 지우기를 기다린다.
 - T43.5-5–T43.7-19, T43, T43.5, T43.6, T44.4: Python client와 kit 도입의 열린 행을 소유 unit 검사(`make dbspec-compare-check`, `make python-check`, `make repo-check`, `make runner-check`, `make interface-check`, `go test ./tests/conformance/check`)로 닫았다. Rust catalog case `native_updates_lock_compare_verify_and_rollback`의 `tokio::select!`은 `biased`여서 probe event가 먼저 온다. `config/release.json`이 `consumers`를 선언하고 `tests/release-consumer`가 그 manifest를 담는다. database server를 읽는 행은 push 뒤 CI가 확인한다.
 - G5.90, T43.7-5: ordered-json을 release v0.0.7로 쓴다. go.mod는 `github.com/polyspec/ordered-json/packages/ordered-json-go v0.0.7`을 요구하고, root package.json과 composer.json은 release의 `polyspec-ordered-json-npm-0.0.7.tgz`와 `polyspec-ordered-json-php-0.0.7.zip`을 받으며, Rust crate와 `Cargo.lock`은 tag `v0.0.7`을 가리키고, Python client, Makefile, ci.yml, Python test는 `packages/ordered-json-python`을 읽는다.
