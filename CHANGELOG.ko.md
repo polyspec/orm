@@ -3,6 +3,7 @@
 ## Unreleased
 
 - T43.5-1-1: `make install`이 고정 버전 의존성을 담은 Python client interpreter(`clients/python/.venv`)를 만들고, dbspec 비교는 그것을 내려받지 않고 있는지만 확인한다.
+- T43.5-2-1: `scripts/bench-db.sh`가 시딩할 방언을 인수로 받는다(`mysql`, `postgres`, `sqlite`). 인수가 없으면 이전처럼 세 DB를 모두 시딩하고, `sqlite`는 MySQL과 PostgreSQL 서버 없이 SQLite bench file만 시딩한다.
 - T43.5-1: Python client가 공유 dbspec 비교에 참여한다(`tests/dbspec/compare/python.py`, `runners.mjs`에 `python`으로 등록). 공유 case와 stress 문서에서 출력이 Go runner 출력과 byte 단위로 같으며, `make python-install`이 client 의존성의 interpreter를 만든다.
 - T43.4: Python client가 문서 집합의 문장을 세 dialect로 쓰고(공유 ddl 사례 131 문장 일치), 살아 있는 database를 미지원 객체와 함께 문서로 introspect하고(공유 introspection 사례의 sqlite 사례 일치), plan 문서를 parse하고 plan을 잇고 schema를 비교하며 plan의 step을 쓴다(공유 plans 사례 50건 일치), plan 묶음을 SQLite connection에 적용하고(sqlite 4 시나리오 일치), 문서를 Mermaid로 쓰고 Mermaid에서 읽는다(공유 mermaid 사례 13건 일치).
 - T43.3: Python model chain이 `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, group의 `getsCount`, `getsPage`로 쓰고 읽는다; join이 column을 조립하고 relation이 step을 읽으며, 자기 connection을 가진 relation이 main row 뒤에 붙고, `Db`가 모든 subscriber에게 statement event를 publish하고 transaction에 번호를 매기며, `forUpdate`의 SQLite row lock을 잡고, `auditSource`로 transaction의 audit 기록을 삽입한다.
