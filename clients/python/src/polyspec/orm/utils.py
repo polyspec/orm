@@ -68,8 +68,22 @@ class Utils:
     def aes(self) -> 'AesUtils':
         return AesUtils(self)
 
+    def schema(self) -> 'SchemaUtils':
+        return SchemaUtils(self)
+
 
 @dataclass
+class SchemaUtils:
+    """The schema tools of one connection: registration, installation and upgrades."""
+
+    def __init__(self, utils: Utils):
+        self.utils = utils
+
+    @property
+    def db(self):
+        return self.utils.db
+
+
 class AesRotationStatus:
     current: int
     total: int = 0
