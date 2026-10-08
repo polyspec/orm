@@ -2242,6 +2242,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/apply.py::apply_plans",
+          "signature": "def apply_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -2274,6 +2278,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/apply.py::recover_plans",
+          "signature": "def recover_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -2306,6 +2314,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/apply.py::rollback_plans",
+          "signature": "def rollback_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -2338,6 +2350,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/apply.py::finalize_plans",
+          "signature": "def finalize_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
     },
@@ -2370,6 +2386,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
           "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Native\\Document $document): Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/mermaid.py::export_mermaid",
+          "signature": "def export_mermaid(document: DbspecDocument) -> dict"
         }
       }
     },
@@ -2402,6 +2422,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid",
           "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/mermaid.py::import_mermaid",
+          "signature": "def import_mermaid(text: str, name: str) -> dict"
         }
       }
     }
