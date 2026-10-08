@@ -21,7 +21,7 @@ try:
     from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps  # noqa: E402
     from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 except ImportError as error:
-    print(f'{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make python-install '
+    print(f'{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make install-python '
           'and set ORM_PYTHON to the interpreter it creates (clients/python/.venv/bin/python)', file=sys.stderr)
     sys.exit(1)
 

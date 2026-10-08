@@ -31,7 +31,7 @@ export const CI_SETUP = {
   'server-programs': 'server-programs',
   servers: 'databases',
   python: 'python',
-  'python-install': 'python',
+  'install-python': 'python',
   'ordered-json': 'python',
 };
 
@@ -76,7 +76,7 @@ export const STEP_OUTPUT = {
   'server-programs': 'server-programs',
   servers: 'databases',
   python: 'python',
-  'python-install': 'python',
+  'install-python': 'python',
   'ordered-json': 'python',
 };
 
