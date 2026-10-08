@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.4: the Python client renders the statements of a document set in the three dialects (131 statements of the shared ddl cases agree), introspects a live database into a document with the unsupported objects (the sqlite cases of the shared introspection cases agree), parses plan documents, chains plans, compares schemas and writes the steps of a plan (50 cases of the shared plans cases agree).
 - T43.3: the Python model chain writes and reads through `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, `getsCount` of a group and `getsPage`; joins assemble their columns, relations read their steps, a relation with its own connection attaches after the main rows, the `Db` publishes a statement event to every subscriber, numbers transactions, takes the SQLite row lock of `forUpdate`, and inserts the audit record of a transaction with `auditSource`.
 - T43.1: the Python package `polyspec.orm` parses, validates and emits dbspec documents, builds the runtime model of a document set, and `orm-gen gen` writes the model modules of a document set with the manifest hash of the other clients.
 - T43.2: the Python client implements the value functions of `orm`, `StyledValue`, the codec stages (`encode`, `decode`, `hostEncode`, `hostDecode`, `blindIndex`, `CodecError`) and `AesKeyring`; the shared codec vectors and the AES vectors pass in Python.
