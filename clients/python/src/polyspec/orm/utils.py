@@ -1,10 +1,15 @@
 """db.utils(): the transaction tools of a connection (docs/usage.md): the named lock, the
 transaction-local values and the AES key version status. Each tool follows the Go client
 (clients/go/orm/utils.go) and runs its statements through the statement events."""
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 
+from polyspec.orm.aes import AesKeyring
 from polyspec.orm.errors import OrmError
+from polyspec.orm.model import Model
+from polyspec.orm.schema import Schema
 
 # validKey accepts a key of at most 64 characters: letters, digits, '_' and '.', not starting with '.'.
 _KEY = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.]{0,63}$')
@@ -65,10 +70,10 @@ class Utils:
             raise OrmError('NO_ROWS', f'local value {key} is not set')
         return frame.locals[key]
 
-    def aes(self) -> 'AesUtils':
+    def aes(self) -> AesUtils:
         return AesUtils(self)
 
-    def schema(self) -> 'SchemaUtils':
+    def schema(self) -> SchemaUtils:
         return SchemaUtils(self)
 
 
@@ -82,7 +87,7 @@ class SchemaUtils:
     def db(self):
         return self.utils.db
 
-    def register(self, schema) -> None:
+    def register(self, schema: Schema) -> None:
         """Registers the generated set on this connection. A text that does not hash to its declared
         hash fails with CONFIG before anything is registered; a set that is registered already changes
         nothing (docs/schema.md "Schema registration")."""
@@ -92,7 +97,7 @@ class SchemaUtils:
             return
         self.db.engines[schema.manifest_hash] = Planner(model, self.db.dialect)
 
-    def add_tables_and_columns(self, schema) -> list:
+    def add_tables_and_columns(self, schema: Schema) -> list[str]:
         """Takes an installed set to a newer schema version by adding its tables and the columns that
         are null or have a default, with the steps of the plan. Other differences are SCHEMA_DIFFERS
         before any statement. PostgreSQL runs in a transaction; SQLite rebuilds tables with foreign keys
@@ -131,7 +136,7 @@ class SchemaUtils:
             return apply(_session_runner(self.db))
         return _sqlite_without_foreign_keys(self.db, apply)
 
-    def install(self, schema) -> None:
+    def install(self, schema: Schema) -> None:
         """Installs the set's tables on this connection and then registers the set. The statements
         run in the active transaction or a new one; MySQL commits schema statements implicitly, so it
         refuses a transaction (docs/schema.md "Schema installation")."""
@@ -191,7 +196,7 @@ class AesUtils:
     def __init__(self, utils: Utils):
         self.utils = utils
 
-    def rotate(self, model, keyring) -> int:
+    def rotate(self, model: Model, keyring: AesKeyring) -> int:
         """Encrypts again, with the current key of the keyring, every row of the model whose key version
         is not the current one, and gives the row the current version; returns the number of rows. The
         rows are read 1000 at a time until none is left, in one transaction (docs/schema.md "AES key
@@ -244,7 +249,7 @@ class AesUtils:
                     rotated += 1
         return db.transaction(body, {'retry': 0})
 
-    def status(self, model, keyring) -> AesRotationStatus:
+    def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus:
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError('CONFIG', f'entity {entity.name} has no AES columns with a key version')

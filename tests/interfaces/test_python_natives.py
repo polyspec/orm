@@ -60,5 +60,31 @@ class EntityRuleNativesTest(unittest.TestCase):
             self.assertEqual(params, self.inputs[','.join(rule['inputs'])], f"{rule['id']} parameters")
 
 
+class ConnectionAndToolRuleNativesTest(unittest.TestCase):
+    """The rules of the connection (Db), the utilities (Utils), the schema tools (SchemaUtils) and the AES
+    tools (AesUtils) name a Python method each, with the same snapshot and table checks as the entity rules."""
+
+    PREFIXES = ('Db.', 'Utils.', 'SchemaUtils.', 'AesUtils.')
+
+    def setUp(self):
+        self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
+        self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
+        validate = (ROOT / 'contracts' / 'validate.go').read_text(encoding='utf-8')
+        self.outputs = python_table(validate, 'outputs')
+        self.inputs = python_table(validate, 'inputs')
+
+    def test_every_connection_and_tool_rule_names_a_python_method_of_the_snapshot(self):
+        rules = [r for r in self.manifest['rules'] if r['for'] == 'once' and r['id'].startswith(self.PREFIXES)]
+        self.assertEqual(len(rules), 13)
+        for rule in rules:
+            native = rule['native'].get('python')
+            self.assertIsNotNone(native, f"{rule['id']} has no python native")
+            self.assertIn(native['symbol'], self.symbols, rule['id'])
+            self.assertEqual(compact(self.symbols[native['symbol']]), compact(native['signature']), rule['id'])
+            params, ret = python_parts(native['signature'])
+            self.assertEqual(ret, self.outputs[rule['output']], f"{rule['id']} return type")
+            self.assertEqual(params, self.inputs[','.join(rule['inputs'])], f"{rule['id']} parameters")
+
+
 if __name__ == '__main__':
     unittest.main()
