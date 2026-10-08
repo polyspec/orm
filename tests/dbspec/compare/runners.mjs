@@ -1,4 +1,4 @@
-// 다섯 dbspec compare runner. Go, PHP, TypeScript, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
+// 여섯 dbspec compare runner. Go, PHP, TypeScript, Python, Rust, PHP 확장 runner는 모두 <cases.json> <stress document>
 // <ddl.json> <plans.json> <mermaid.json>을 받는다(reads). 각 runner는 tests/dbspec/compare/check.mjs의
 // line format을 출력하고, input을 읽을 수 없거나 vector가 없거나 type이 다르면 stderr에 위치를 밝힌
 // error를 쓰고 nonzero로 끝난다. TypeScript runner는 TypeScript build를, Rust runner는 dbspec_compare
@@ -20,10 +20,26 @@ function phpExtension() {
   return path;
 }
 
+// pythonCommand는 Python client의 의존성(cryptography, PyYAML)이 설치된 interpreter다. make dbspec-compare-check가
+// make python-install이 만든 clients/python/.venv의 interpreter를 ORM_PYTHON으로 준다.
+function pythonCommand() {
+  const path = process.env.ORM_PYTHON;
+  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make python-install, which creates clients/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
+  return path;
+}
+
 export const runners = [
   { name: 'go', command: 'go', args: ['run', './tests/dbspec/compare/go'], reads: INPUTS },
   { name: 'php', command: 'php', args: ['tests/dbspec/compare/php.php'], reads: INPUTS },
   { name: 'typescript', command: process.execPath, args: ['tests/dbspec/compare/typescript.mjs'], reads: INPUTS },
+  {
+    name: 'python',
+    get command() {
+      return pythonCommand();
+    },
+    args: ['tests/dbspec/compare/python.py'],
+    reads: INPUTS,
+  },
   { name: 'rust', command: join(cargoTarget(), 'debug/examples/dbspec_compare'), args: [], reads: INPUTS },
   {
     name: 'php-extension',
