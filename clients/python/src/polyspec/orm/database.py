@@ -528,6 +528,11 @@ class Db:
         self._row_lock_ready = False
         self._connection = self._open()
 
+    def utils(self):
+        """The transaction tools of this connection (lock, transaction-local values, AES status)."""
+        from polyspec.orm.utils import Utils
+        return Utils(self)
+
     @staticmethod
     def connect(dsn: str, options: dict | None = None) -> 'Db':
         return Db(dsn, options)
