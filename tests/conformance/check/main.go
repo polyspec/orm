@@ -98,7 +98,7 @@ func (l *listFlag) Set(value string) error {
 	return nil
 }
 
-var requiredLanguages = []string{"go", "php", "rust", "typescript"}
+var requiredLanguages = []string{"go", "php", "rust", "typescript", "python"}
 
 func vectorsPath() string {
 	if driver == "" || driver == "mysql" {
@@ -444,6 +444,12 @@ func runOne(c *testcase.Case, root, output, language string) error {
 			return fmt.Errorf("rust runner is not built")
 		}
 		return runCommand(c, root, output, runnerDeadline, rustRunner, flags...)
+	case "python":
+		interpreter, models := os.Getenv("ORM_PYTHON"), os.Getenv("ORM_PYTHON_MODELS")
+		if interpreter == "" || models == "" {
+			return fmt.Errorf("ORM_PYTHON and ORM_PYTHON_MODELS are unset; run make conformance-check, which sets both and builds the models")
+		}
+		return runCommand(c, root, output, runnerDeadline, interpreter, append([]string{"tests/conformance/runner_python.py", "--models", models}, flags...)...)
 	default:
 		return fmt.Errorf("unsupported language %q", language)
 	}

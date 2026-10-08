@@ -55,20 +55,10 @@ def parse_args(args):
     return dsn, models, vectors
 
 
+# Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
-try:
-    DSN, MODELS_DIR, SELECTED = parse_args(sys.argv[1:])
-except SystemExit:
-    raise
-
-sys.path.insert(0, MODELS_DIR)
-import models as bench  # noqa: E402  (generated from schema/bench.dbs)
-from polyspec.orm.aes import AesKeyring  # noqa: E402
-from polyspec.orm.values import orm  # noqa: E402
-
-Author, CompositeAccount, Service, ServiceMember, ServiceRegion = (
-    bench.Author, bench.CompositeAccount, bench.Service, bench.ServiceMember, bench.ServiceRegion)
-User, SoftRecord, Task = bench.User, bench.SoftRecord, bench.Task
+bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
+User = SoftRecord = Task = None
 
 log = []
 transactions = {}
@@ -253,7 +243,22 @@ def go_escape(text):
             .replace('\u2028', '\\u2028').replace('\u2029', '\\u2029'))
 
 
+def load_models():
+    global bench, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, User, SoftRecord, Task
+    sys.path.insert(0, MODELS_DIR)
+    import models as generated  # noqa: E402  (generated from schema/bench.dbs)
+    bench = generated
+    Author, CompositeAccount, Service, ServiceMember, ServiceRegion = (
+        bench.Author, bench.CompositeAccount, bench.Service, bench.ServiceMember, bench.ServiceRegion)
+    User, SoftRecord, Task = bench.User, bench.SoftRecord, bench.Task
+
+
 def main():
+    global DSN, MODELS_DIR, SELECTED
+    DSN, MODELS_DIR, SELECTED = parse_args(sys.argv[1:])
+    load_models()
+    from polyspec.orm.aes import AesKeyring  # noqa: E402
+    from polyspec.orm.values import orm  # noqa: E402
     db = bench.connect(DSN, aesKey='bench-salt', blindIndexKey='bench-blind-index')
     db.subscribe(on_event)
     global log, transactions, mask_seqs, mask_ts
