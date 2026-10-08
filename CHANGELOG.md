@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-8: the physical result runner list of `tests/conformance/check/result_physical_test.go` names python, as `requiredLanguages` does, so the list matches the languages whose runner result file exists.
 - T43.7-9: `conformance-check` and `feature-verify-other` declare the `python` need in `contracts/check-inputs.json`, so their CI groups install the Python client interpreter that their targets use.
 - T43.7-7 and T43.7-13: `python-install` is renamed `install-python`, so it matches the install target pattern that may download; the ordered-json checkout is inside the workspace and `ORDERED_JSON` names it.
 - T43.7-12: `scripts/check/ci-setup.mjs` declares the ordered-json checkout step as a need of the python group, so the check runner does not stop on it in other groups.

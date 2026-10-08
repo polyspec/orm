@@ -11,7 +11,7 @@ import (
 	"github.com/polyspec/orm/internal/testcase"
 )
 
-var resultRunnerLanguages = []string{"go", "php", "rust", "typescript"}
+var resultRunnerLanguages = []string{"go", "php", "rust", "typescript", "python"}
 
 func TestPhysicalResultRunners(t *testing.T) {
 	testcase.Group(t)
