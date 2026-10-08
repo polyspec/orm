@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T45.1: the vendored kit is v0.0.10, whose tests remove the `stub-npm-*` folders of the npm stub, so `kit-test` leaves no temporary entry under the private `TMPDIR` of the runner.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck` copies the Go client from `packages/orm-go/model` and `TestCIRequiresGeneratedChecks` requires `run: make check-run GROUP=${{ matrix.group }}` in `ci.yml`, as T44.1 and T44.2 moved them; T45.1 waits for kit to remove the temporary folders of its npm stub.
 - T43.5-5 to T43.7-19, T43, T43.5, T43.6, T44.4: the open rows of the Python client and of the kit adoption are closed by their owning unit checks (`make dbspec-compare-check`, `make python-check`, `make repo-check`, `make runner-check`, `make interface-check`, `go test ./tests/conformance/check`); the `tokio::select!` of the Rust catalog case `native_updates_lock_compare_verify_and_rollback` is `biased` so the probe event comes first; `config/release.json` declares the `consumers` and `tests/release-consumer` holds their manifests. The rows that read database servers are checked by CI after the push.
 - G5.90, T43.7-5: ordered-json is taken at its release v0.0.7: go.mod requires `github.com/polyspec/ordered-json/packages/ordered-json-go v0.0.7`, the root package.json and composer.json take `polyspec-ordered-json-npm-0.0.7.tgz` and `polyspec-ordered-json-php-0.0.7.zip` of the release, the Rust crate and `Cargo.lock` name the tag `v0.0.7`, and the Python client, the Makefile, ci.yml and the Python tests read `packages/ordered-json-python`.

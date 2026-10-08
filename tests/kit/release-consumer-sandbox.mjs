@@ -45,9 +45,14 @@ const inspect = file => {
   execFileSync('tar', ['-xzf', file, '-C', folder]);
   return { folder, manifest: readJson(path.join(folder, 'package', 'package.json')) };
 };
+const drop = folder => fs.rmSync(folder, { recursive: true, force: true });
 if (args[0] === 'install' && args.includes('--package-lock-only')) {
   const packages = { '': { name: manifest.name, dependencies: manifest.dependencies } };
-  for (const [name, spec] of tarballs) packages['node_modules/' + name] = { version: inspect(spec.slice(5)).manifest.version, resolved: spec, integrity: 'sha512-own-' + name };
+  for (const [name, spec] of tarballs) {
+    const { folder, manifest: packed } = inspect(spec.slice(5));
+    drop(folder);
+    packages['node_modules/' + name] = { version: packed.version, resolved: spec, integrity: 'sha512-own-' + name };
+  }
   packages['node_modules/semver'] = { version: '7.6.0', resolved: 'https://registry.npmjs.org/semver/-/semver-7.6.0.tgz', integrity: 'sha512-third-party' };
   fs.writeFileSync('package-lock.json', JSON.stringify({ name: manifest.name, lockfileVersion: 3, requires: true, packages }, null, 2));
   finish();
@@ -62,6 +67,7 @@ if (args[0] === 'install' && args.includes('--package-lock-only')) {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.cpSync(path.join(folder, 'package'), target, { recursive: true });
     if (mode === 'wrong-version') fs.writeFileSync(path.join(target, 'package.json'), JSON.stringify({ ...readJson(path.join(target, 'package.json')), version: '9.9.9' }));
+    drop(folder);
   }
   finish();
 } else finish(1, 'npm stub: unexpected arguments ' + JSON.stringify(args));
