@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-5: the ordered-json dependency of the Python client is recorded as a bypass row. The pin of `clients/python/pyproject.toml` stays at tag `v0.0.4`, which the tags of ordered-json do not include yet; its retry condition is that tag with its `python/` directory.
 - T43.7-4: `AGENTS.md` (Releases) and `docs/packaging.md` state that the Python client is consumed by its git tag and has no release archive, and that the version-bump pull request sets the `version` of `clients/python/pyproject.toml`, which `make version-check` reads.
 - T43.7-3: the bypass state of the blocked T43 rows is recorded as it stands. Before the commit "Mark the blocked T43 rows as bypassed", T43, T43.5 and T43.6-1 were in progress, and that commit moved them to bypassed; its message also names T43.5-5 and T43.6, whose bypass marks were set by earlier commits, and does not name T43.6-3, which was bypassed by the commit "Block T43.6-3 on the ordered-json checkout". T43.6 was bypassed by "Block T43.6 on the ordered-json checkout", and T43.5-5 by "Bypass T43.5-5 until the PHP extension runs". The checklist holds the bypassed state for T43, T43.5, T43.5-5, T43.6, T43.6-1 and T43.6-3.
 - T43.7-2: `scripts/release/release.mjs` lists `clients/python/pyproject.toml` in `NOT_RELEASED`, because the Python client is consumed by its git tag and has no release archive, so every tracked manifest is released or listed.
