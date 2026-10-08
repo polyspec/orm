@@ -182,3 +182,7 @@
   manifest가 X.Y.Z를 가지고 변경 이력에 그 section이 있다), `make release-assets`(npm tarball과 Composer zip),
   `make release-publish`(그 section의 notes로 만든 release이며, GitHub release 본문의 한도인 125000자를
   넘는 section은 tag의 CHANGELOG.md에서 그 section `#XYZ`를 가리키는 한 줄이 된다)다. test는 다시 실행하지 않는다.
+- Python client(`clients/python/pyproject.toml`)는 git tag로 소비되고 release archive가 없다. version을 올리는
+  pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽으며,
+  `make release-versions`와 `make release-assets`는 그것을 다루지 않는다(`scripts/release/release.mjs`의
+  `NOT_RELEASED`에 있다).

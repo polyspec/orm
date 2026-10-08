@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-4: `AGENTS.md`(Releases)와 `docs/packaging.md`가 Python client는 git tag로 소비되고 release archive가 없으며, version을 올리는 pull request가 `clients/python/pyproject.toml`의 `version`을 설정하고 `make version-check`가 그 version을 읽는다고 적는다.
 - T43.7-3: 막힌 T43 행의 우회 상태를 현재 상태대로 기록한다. commit "Mark the blocked T43 rows as bypassed" 전에는 T43, T43.5, T43.6-1이 진행 중이었고, 그 commit이 이 셋을 우회 상태로 바꿨다. 그 commit message는 T43.5-5와 T43.6도 적지만 두 행의 우회 표시는 앞선 commit들이 정했고, T43.6-3은 적지 않는다. T43.6은 "Block T43.6 on the ordered-json checkout"이, T43.6-3은 "Block T43.6-3 on the ordered-json checkout"이, T43.5-5는 "Bypass T43.5-5 until the PHP extension runs"가 우회 상태로 바꿨다. checklist는 T43, T43.5, T43.5-5, T43.6, T43.6-1, T43.6-3의 우회 상태를 유지한다.
 - T43.7-2: `scripts/release/release.mjs`가 `clients/python/pyproject.toml`을 `NOT_RELEASED`에 넣는다. Python client는 git tag로 소비되고 release archive가 없어서, 추적된 모든 manifest가 release되거나 목록에 있다.
 - T43.7-6: `docs/checklist.ko.md`의 T43.7-3 행이 docs-rules 검사가 거부하는 낱말 없이 같은 사실을 적으며, 그래서 `node scripts/docs/rules.mjs`가 통과한다.
