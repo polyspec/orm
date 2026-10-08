@@ -517,7 +517,7 @@ class BuiltRequest:
         self.params: list = []
         self.error = None
         self.join_paths: set = set()
-        # 자기 connection을 가진 relation들, parent model마다.
+        # 자기 connection을 가진 relation들, parent Core마다.
         self.external: dict = {}
 
     def param(self, value) -> int:
@@ -576,7 +576,7 @@ class BuiltRequest:
                                        f'{child_core.ent.entity.name} relation uses limit; '
                                        f'use groupLimit'))
                     return None
-                self.external.setdefault(id(c), []).append(relation)
+                self.external.setdefault(c, []).append(relation)
                 continue
             child = self._relation(relation)
             if child is None:

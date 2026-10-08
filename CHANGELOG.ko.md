@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.3: Python model chain이 `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, group의 `getsCount`, `getsPage`로 쓰고 읽는다; join이 column을 조립하고 relation이 step을 읽으며, 자기 connection을 가진 relation이 main row 뒤에 붙고, `Db`가 모든 subscriber에게 statement event를 publish하고 transaction에 번호를 매기며, `forUpdate`의 SQLite row lock을 잡고, `auditSource`로 transaction의 audit 기록을 삽입한다.
 - T43.1: Python package `polyspec.orm`가 dbspec 문서를 parse·검사·출력하고 document set의 runtime model을 만들며, `orm-gen gen`이 다른 client와 같은 manifest hash로 document set의 model module을 쓴다.
 - T43.2: Python client가 `orm`의 값 함수, `StyledValue`, codec 단계(`encode`, `decode`, `hostEncode`, `hostDecode`, `blindIndex`, `CodecError`), `AesKeyring`을 구현한다; 공유 codec vector와 AES vector가 Python에서 통과한다.
 - G5.143: TypeScript client clock(`wallMicros`)은 `Date.now()`의 밀리초 안에 있고 wall clock이 뒤로 가지 않는 동안 뒤로 가지 않아, insert 뒤에 읽은 SQLite `now` 조건이 삽입한 row와 맞는다.

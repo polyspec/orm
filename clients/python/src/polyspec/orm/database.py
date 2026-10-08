@@ -15,6 +15,7 @@ from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, fi
 from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import IR_VERSION, validate
 from polyspec.orm.errors import OrmError, rollback_failed
+from polyspec.orm.events import Subscribers, statement_kind
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.schema import Schema
 from polyspec.orm.styled_value import StyledValue
@@ -30,8 +31,11 @@ DSN_PARAMETERS = {
 }
 
 SQLITE_BUSY_TIMEOUT_MS = 5000
-ROW_LOCK_DDL = ('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY)'
-                ' WITHOUT ROWID')
+ROW_LOCK_TABLES = ['orm__row_lock']
+ROW_LOCK_DDL = ('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY '
+                'CHECK ("id" = 1))')
+ROW_LOCK_TAKE = ('INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO '
+                 'UPDATE SET "id"=excluded."id"')
 
 _ISOLATION_SQL = {'read_committed': 'READ COMMITTED', 'repeatable_read': 'REPEATABLE READ',
                   'serializable': 'SERIALIZABLE', 'read_uncommitted': 'READ UNCOMMITTED'}
@@ -466,12 +470,19 @@ class TxFrame:
         self.finished = False
         self.savepoints = 0
         self.audit = None
+        self.locks: list = []
+        self.locals: dict = {}
         self.connection = None
 
-    def run(self, sql: str, values=None):
+    def run(self, sql: str, values=None, kind: str = 'utility', binds=None):
+        """statement를 실행하고 그 event를 남긴다; kind는 이 statement의
+        종류다."""
         if self.connection is None:
             raise OrmError('CONFIG', 'transaction already finished')
-        return self.connection.execute(sql, values or [])
+        values = values if values is not None else []
+        return self.db.events.send(kind, (), self.number,
+                                   list(values) if binds is None else binds, sql,
+                                   lambda: self.connection.execute(sql, values))
 
 
 class Executor:
@@ -512,6 +523,7 @@ class Db:
         self.engines: dict[str, Planner] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get('planCacheSize', 1024)
+        self.events = Subscribers()
         self._closed = False
         self._row_lock_ready = False
         self._connection = self._open()
@@ -544,6 +556,13 @@ class Db:
     @property
     def closed(self) -> bool:
         return self._closed
+
+    def subscribe(self, subscriber):
+        """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
+        subscriber를 등록한다 (docs/usage.md "Statement events"). subscriber는
+        등록 순서로 statement가 끝난 뒤, 작업이 계속되기 전에 불리고, 던지면
+        안 된다."""
+        return self.events.subscribe(subscriber)
 
     def close(self) -> None:
         if not self._closed:
@@ -641,7 +660,10 @@ class Db:
         resolved = self.args(step, params, parents,
                              ex.frame.audit if ex.frame is not None else None)
         connection = ex.frame.connection if ex.frame is not None else self._connection
-        return connection.execute(sql, resolved['values'])
+        transaction = ex.frame.number if ex.frame is not None else None
+        return self.events.send(statement_kind(sql), step.get('tables', ()), transaction,
+                                resolved['masked'], sql,
+                                lambda: connection.execute(sql, resolved['values']))
 
     # --- transaction ---
 
@@ -657,6 +679,10 @@ class Db:
         if isinstance(timeout_ms, bool) or not isinstance(timeout_ms, int) or timeout_ms < 0:
             raise OrmError('CONFIG', 'transaction timeoutMs must not be negative')
         outer = _active_for(self)
+        # audit 기록은 transaction이 시작하기 전에 검사하고 시도마다 callback 앞에서
+        # 삽입한다.
+        record = self._audit_record(options['audit']) if 'audit' in options \
+            and outer is None else None
         if outer is not None:
             if 'isolation' in options or 'readOnly' in options or 'timeoutMs' in options \
                     or 'audit' in options:
@@ -668,20 +694,22 @@ class Db:
             try:
                 return self._run(callback, {'isolation': options.get('isolation'),
                                             'readOnly': options.get('readOnly'),
-                                            'timeoutMs': timeout_ms})
+                                            'timeoutMs': timeout_ms}, record)
             except OrmError as error:
                 if error.code != 'DEADLOCK' or attempt >= retry:
                     raise
                 time.sleep((50 << attempt) / 1000)
                 attempt += 1
 
-    def _run(self, callback, options: dict):
+    def _run(self, callback, options: dict, record: dict | None = None):
         if self._closed:
             raise OrmError('CONFIG', 'database is closed')
         frame = self._begin(options)
         previous = _ACTIVE.get(id(self))
         _ACTIVE[id(self)] = frame
         try:
+            if record is not None:
+                frame.audit = self._insert_audit(record)
             result = callback()
         except BaseException as error:
             del _ACTIVE[id(self)]
@@ -698,13 +726,119 @@ class Db:
         self._finish(frame, True)
         return result
 
+    def _audit_record(self, values) -> dict:
+        """audit source의 값과 transaction의 값을 더한 audit 기록이다. 같은
+        column이면 transaction의 값이 이긴다. 기록 table은 연결에 등록한 set의
+        audit setting이 references로 이름하는 table 하나이며, 그 table을 entity로
+        가진 set이 이 연결에 등록되어 있어야 한다."""
+        if not isinstance(values, dict):
+            raise OrmError('CONFIG', 'transaction audit is an object of column values')
+        if self.audit_source is None:
+            raise OrmError('CONFIG', 'the transaction has audit values but the '
+                                     'connection has no audit source: set the '
+                                     'auditSource connect option')
+        tables = sorted({entity.audit_record for engine in self.engines.values()
+                         for entity in engine.m.entities.values()
+                         if entity.audit_record != ''})
+        if not tables:
+            raise OrmError('CONFIG', 'the transaction has audit values but no set of '
+                                     'the connection has an audited table')
+        if len(tables) > 1:
+            raise OrmError('CONFIG', f'the audited tables of the connection record '
+                                     f'their audits in {", ".join(tables)}; one audit '
+                                     f'record table is required')
+        table = tables[0]
+        target = None
+        for engine in self.engines.values():
+            for entity in engine.m.entities.values():
+                if entity.table == table:
+                    target = (engine.m, entity)
+        if target is None:
+            raise OrmError('CONFIG', f'the audit record table {table} is not a table of '
+                                     f'a set registered on the connection')
+        if len(target[1].primary_key) != 1:
+            raise OrmError('CONFIG', f'the audit record table {table} needs a primary '
+                                     f'key of one column')
+        source = self.audit_source()
+        merged: dict = {}
+        for item in (source, values):
+            if not isinstance(item, dict):
+                raise OrmError('CONFIG', 'the audit source returns an object of column '
+                                         'values')
+            for column in sorted(item):
+                if field_of(target[1], column) is None:
+                    raise OrmError('CONFIG', f'audit value {column} is not a column of '
+                                             f'{table}')
+                merged[column] = item[column]
+        if not merged:
+            raise OrmError('CONFIG', f'the audit record of {table} has no value: the '
+                                     f'audit source and the transaction give none')
+        return {'runtime': target[0], 'entity': target[1], 'values': merged}
+
+    def _insert_audit(self, record: dict) -> dict:
+        """transaction의 audit 기록을 삽입하고 그 table과 primary key 값을
+        돌려준다. primary key가 identity이면 생성된 key, 아니면 기록의 값이다."""
+        from polyspec.orm.model import EntityDef, Model
+
+        class _RuntimeRef:
+            __slots__ = ('runtime',)
+
+            def __init__(self, runtime):
+                self.runtime = runtime
+
+        class _AuditModel(Model):
+            pass
+
+        entity = record['entity']
+        _AuditModel.entity_def = EntityDef(_RuntimeRef(record['runtime']), entity,
+                                           lambda core: _AuditModel(core))
+        row = _AuditModel()
+        row.core.connect(self)
+        for column in sorted(record['values']):
+            row.core.set_value(column, record['values'][column])
+        from polyspec.orm.model_exec import create as create_row
+        created = create_row(row.core)
+        key = created.core.values.get(entity.primary_key[0])
+        if key is None:
+            raise OrmError('CONFIG', f'the audit record {entity.table} has no '
+                                     f'{entity.primary_key[0]} after its insert')
+        return {'table': entity.table, 'key': key}
+
     def _row_lock_table(self) -> None:
         """SQLite row lock table을 첫 transaction 전에 transaction 밖에서 한 번
         만든다 (docs/usage.md "Statement events")."""
         if self._row_lock_ready:
             return
-        self._connection.execute(ROW_LOCK_DDL, [])
+        self.events.send('utility', ROW_LOCK_TABLES, None, [], ROW_LOCK_DDL,
+                         lambda: self._connection.execute(ROW_LOCK_DDL, []))
         self._row_lock_ready = True
+
+    def row_lock(self, frame: TxFrame, mode: str) -> None:
+        """SQLite의 row lock이다. SQLite에는 row lock 절이 없으므로 lock row 하나가
+        ORM의 lock 요청을 차례로 세운다. 쓰기는 busy_timeout까지 기다리고,
+        NOWAIT 요청은 기다림을 0으로 둔다. 다른 database는 statement의 lock 절이
+        잡는다."""
+        if self.driver != 'sqlite' or mode == '':
+            return
+        no_wait = mode.endswith('_nowait')
+
+        def run(sql: str, values=None):
+            return frame.run(sql, values, 'utility')
+
+        previous = 0
+        if no_wait:
+            previous = int((run('PRAGMA busy_timeout')['rows'] or [[0]])[0][0])
+        try:
+            if no_wait:
+                run('PRAGMA busy_timeout=0')
+            run(ROW_LOCK_TAKE)
+        except Exception as error:  # noqa: BLE001
+            if no_wait and _sqlite_busy(error):
+                raise OrmError('LOCK_NOT_AVAILABLE', str(error), error) from None
+            raise
+        finally:
+            if no_wait:
+                run(f'PRAGMA busy_timeout={previous}')
 
     def _begin(self, options: dict) -> TxFrame:
         driver = self.driver
@@ -719,40 +853,42 @@ class Db:
                                      f'read_uncommitted')
         if driver == 'sqlite':
             self._row_lock_table()
-        frame = TxFrame(self, self._next_transaction, options)
+        frame = TxFrame(self, self.events.next_transaction(), options)
         steps = []
         if driver == 'mysql':
             if level != '':
-                steps.append(f'SET TRANSACTION ISOLATION LEVEL {level}')
-            steps.append('START TRANSACTION READ ONLY' if options.get('readOnly')
-                         else 'START TRANSACTION')
+                steps.append(('utility', f'SET TRANSACTION ISOLATION LEVEL {level}'))
+            steps.append(('begin', 'START TRANSACTION READ ONLY' if options.get('readOnly')
+                         else 'START TRANSACTION'))
         elif driver == 'postgres':
             sql = 'BEGIN'
             if level != '':
                 sql += f' ISOLATION LEVEL {level}'
             if options.get('readOnly'):
                 sql += ' READ ONLY'
-            steps.append(sql)
+            steps.append(('begin', sql))
             if options.get('timeoutMs', 0) > 0:
-                steps.append(f'SET LOCAL statement_timeout = {options["timeoutMs"]}')
+                steps.append(('utility',
+                              f'SET LOCAL statement_timeout = {options["timeoutMs"]}'))
         else:
             # 읽기 전용 transaction은 deferred BEGIN이고, 나머지는 시작할 때 쓰기
             # lock을 잡고 busy_timeout까지 기다린다.
-            steps.append('BEGIN' if options.get('readOnly') else 'BEGIN IMMEDIATE')
+            steps.append(('begin', 'BEGIN' if options.get('readOnly')
+                         else 'BEGIN IMMEDIATE'))
             if options.get('isolation') == 'read_uncommitted':
-                steps.append('PRAGMA read_uncommitted = 1')
+                steps.append(('utility', 'PRAGMA read_uncommitted = 1'))
             if options.get('readOnly'):
-                steps.append('PRAGMA query_only = 1')
+                steps.append(('utility', 'PRAGMA query_only = 1'))
         frame.connection = self._connection
         began = False
         try:
-            for sql in steps:
-                frame.run(sql)
-                if sql.startswith(('START', 'BEGIN')):
+            for kind, sql in steps:
+                frame.run(sql, [], kind)
+                if kind == 'begin':
                     began = True
         except BaseException as error:
             frame.finished = True
-            if not began:
+            if not began and not _subscriber_error(error):
                 raise
             try:
                 self._finish(frame, False)
@@ -767,9 +903,9 @@ class Db:
         frame.finished = True
         errors: list = []
 
-        def attempt(sql: str):
+        def attempt(sql: str, values=None):
             try:
-                return frame.run(sql)
+                return frame.run(sql, values, 'utility')
             except Exception as error:  # noqa: BLE001
                 errors.append(error)
                 return None
@@ -779,11 +915,22 @@ class Db:
                 attempt('PRAGMA query_only = 0')
             if frame.options.get('isolation') == 'read_uncommitted':
                 attempt('PRAGMA read_uncommitted = 0')
+        locks, frame.locks = frame.locks, []
+        for key in locks:
+            released = attempt('SELECT RELEASE_LOCK(?)', [key])
+            # 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
+            if released is not None and int((released['rows'] or [[0]])[0][0]) != 1:
+                errors.append(OrmError('CONFIG', f'lock {key} was not held at '
+                                                 'transaction end'))
+        if self.driver == 'mysql':
+            # 값을 지우는 statement는 key 순서로 보낸다.
+            for key in sorted(frame.locals):
+                attempt(f'SET @`orm.{key}` = NULL')
         try:
             if commit and not errors:
-                frame.run('COMMIT')
+                frame.run('COMMIT', [], 'commit')
                 return
-            frame.run('ROLLBACK')
+            frame.run('ROLLBACK', [], 'rollback')
             if errors:
                 raise errors[0]
         except BaseException as error:
@@ -797,25 +944,24 @@ class Db:
         frame.savepoints += 1
         name = f'orm_sp_{frame.savepoints}'
         try:
-            frame.run(f'SAVEPOINT {name}')
+            frame.run(f'SAVEPOINT {name}', [], 'savepoint')
             try:
                 result = callback()
             except BaseException as error:
                 rollback_errors = []
-                for sql in (f'ROLLBACK TO SAVEPOINT {name}', f'RELEASE SAVEPOINT {name}'):
+                for kind, sql in (('rollback_to', f'ROLLBACK TO SAVEPOINT {name}'),
+                                  ('release', f'RELEASE SAVEPOINT {name}')):
                     try:
-                        frame.run(sql)
+                        frame.run(sql, [], kind)
                     except Exception as failure:  # noqa: BLE001
                         rollback_errors.append(failure)
                 if rollback_errors:
                     raise rollback_failed(error, rollback_errors[0]) from None
                 raise
-            frame.run(f'RELEASE SAVEPOINT {name}')
+            frame.run(f'RELEASE SAVEPOINT {name}', [], 'release')
             return result
         finally:
             frame.savepoints -= 1
-
-    _next_transaction = 1
 
     def active_frame(self):
         """이 연결에서 열려 있는 transaction frame(없으면 None)."""
@@ -868,12 +1014,23 @@ def _check_lock(ex: Executor, request: dict) -> None:
         raise OrmError('CONFIG', 'row locks are allowed only inside a transaction')
 
 
+def _subscriber_error(error) -> bool:
+    return isinstance(error, OrmError) and error.code == 'SUBSCRIBER'
+
+
+def _sqlite_busy(error) -> bool:
+    code = getattr(error, 'sqlite_errorcode', None)
+    return code is not None and (code & 0xff) == 5
+
+
 def query(ex: Executor, request: dict, params):
     """select request를 실행해 main row들과 relation step들의 결과를 낸다."""
     def work():
         _check_lock(ex, request)
         db = ex.db
         cached = db.plan(request)
+        if request.get('lock'):
+            db.row_lock(ex.frame, request['lock'])
         parts = _root_in_parts(request, cached['plan'], db.driver, params)
         if len(parts) > 1:
             main = []

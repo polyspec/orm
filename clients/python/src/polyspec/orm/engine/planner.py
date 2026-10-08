@@ -424,7 +424,7 @@ class Planner:
                 'parent_keys': _key_refs(asm, rc['parent_keys']),
                 'child_keys': _key_refs(child_asm, rc['child_keys']),
                 'key': _key_refs(child_asm,
-                                 [key_by] if key_by else list(self._entity(child_asm['entity']).primaryKey)),
+                                 [key_by] if key_by else list(self._entity(child_asm['entity']).primary_key)),
                 'flatten': bool(relation['query'].get('flatten')),
                 'cascade': cascade,
                 'assemble': child_asm,

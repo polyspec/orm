@@ -1,13 +1,21 @@
 # model 실행: 조립된 chain의 질의를 내보내고 결과를 model로 조립한다
 # (docs/usage.md).
+import re
+
 from polyspec.orm.core import Core, SetSpec
-from polyspec.orm.database import (Db, Executor, convert, key_of_values, key_text,
-                                   key_value, paginate as paginate_query, query, row_key,
-                                   scalar, scalar_key, statement, write)
+from polyspec.orm.database import (Db, Executor, _ACTIVE, convert, key_of_values,
+                                   key_text, key_value, paginate as paginate_query,
+                                   query, row_key, scalar, scalar_key, statement,
+                                   write)
 from polyspec.orm.engine.model import Entity, Field, entity_of, field_of
 from polyspec.orm.errors import OrmError
 from polyspec.orm.model import Collection, Model
+from polyspec.orm.names import ChainKey
 from polyspec.orm.styled_value import StyledValue
+
+_INTEGER_RANGES = {'i16': (-32768, 32767),
+                   'i32': (-2147483648, 2147483647),
+                   'i64': (-9007199254740991, 9007199254740991)}
 
 __all__ = ['execute_query', 'load']
 
@@ -18,9 +26,12 @@ def _terminal(c: Core) -> Executor:
     if c.error is not None:
         raise c.error
     if c.conn is None:
-        raise OrmError('CONFIG', 'the model has no connection: connect(db) first')
-    frame = c.conn.active_frame()
-    return Executor(c.conn, frame)
+        # connect 없는 model은 활성 transaction을 쓴다 (docs/usage.md).
+        if not _ACTIVE:
+            raise OrmError('CONFIG', 'the model has no connection: connect(db) first')
+        frame = next(reversed(_ACTIVE.values()))
+        return Executor(frame.db, frame)
+    return Executor(c.conn, c.conn.active_frame())
 
 
 def _new_model(ent) -> Core:
@@ -36,6 +47,7 @@ class _Assembler:
         self.result = result
         self.db = db
         self.conn = conn
+        self.made: dict = {}
 
     def model(self, builder: Core, asm: dict, row):
         core = _new_model(builder.ent)
@@ -102,6 +114,7 @@ class _Assembler:
                                    rows[0]).self if rows else None
                 row_state.set_related(child['rel'], value, child['cascade'],
                                       child['flatten'])
+        self.made.setdefault(builder, []).append(core)
         return core
 
     def _related(self, step_result, child, parent):
@@ -167,12 +180,91 @@ def _assemble(c: Core, ex: Executor, external, result) -> Collection:
     for row in result['main']:
         made = assembler.model(c, asm, row)
         out.put(_collection_key(c, made, asm, row), made.self)
+    for parent, rels in external.items():
+        parents = assembler.made.get(parent, [])
+        if not parents:
+            continue
+        for rel in rels:
+            _attach_external(parents, rel)
     if c.fetch_value is not None:
         fetched = Collection([])
-        for item in out._items:
+        for item in out._items.values():
             fetched.put(item['key'], item['value'], c.fetch_value(item['value']))
         return fetched
     return out
+
+
+def _value_of(m: Core, name: str):
+    """model의 relation key 성분 값. 조립된 column이나 extra에서 읽는다."""
+    if name in m.values:
+        return m.values[name]
+    return m.row.extra.get(name) if m.row is not None else None
+
+
+def _match_values(m: Core, ch: Core, side: str):
+    """relation key 성분 값을 key 순서로 돌려준다. 성분 하나라도 null이면 None이다."""
+    values = []
+    for k in ch.matches:
+        v = _value_of(m, k[side])
+        if v is None:
+            return None
+        values.append(v)
+    return values
+
+
+def _attach_external(parents: list, rel: dict) -> None:
+    """자기 connection을 가진 relation의 child row를 읽어 parent에 붙인다."""
+    ch: Core = rel['child']
+
+    def possible(p: Core) -> bool:
+        return ch.possible is None \
+            or scalar_key(_value_of(p, ch.possible['column'])) \
+            == scalar_key(ch.possible['value'])
+
+    values: list = []
+    seen: set = set()
+    for p in parents:
+        if not possible(p):
+            continue
+        v = _match_values(p, ch, 'left')
+        if v is None or key_of_values(v) in seen:
+            continue
+        seen.add(key_of_values(v))
+        values.append(v[0] if len(v) == 1 else v)
+    by_key: dict = {}
+    if values:
+        q = ch.clone()
+        q.matches = []
+        q.alias = ''
+        # composite key는 자식 key column 전체를 tuple로 거른다.
+        rights = [k['right'] for k in ch.matches]
+        keys = [ChainKey(conn='', op='', column=rights[0], columns=(), compare='')] \
+            if len(rights) == 1 \
+            else [ChainKey(conn='', op='tuple', column='', columns=tuple(rights),
+                           compare='')]
+        for key, row in load(q.by(keys, [values]), 'all').entries():
+            v = _match_values(row.core, ch, 'right')
+            if v is None:
+                continue
+            k = key_of_values(v)
+            matched = by_key.setdefault(k, [])
+            if ch.group_limit > 0 and len(matched) >= ch.group_limit:
+                continue
+            matched.append((key, row.core))
+    name = ch.result_name(rel['many'])
+    for p in parents:
+        if name in p.row.related:
+            raise OrmError('CONFIG', f'relation result name {name} is used twice')
+        v = _match_values(p, ch, 'left')
+        matched = by_key.get(key_of_values(v), []) if possible(p) and v is not None else []
+        if rel['many']:
+            collection = Collection()
+            for key, m in matched:
+                collection.put(key, m.self)
+            p.row.set_related(name, collection, not ch.delete_lock, False)
+        else:
+            value = matched[0][1].self if matched else None
+            p.row.set_related(name, value, not ch.delete_lock, ch.parent_node)
 
 
 def execute_query(runner_core: Core, kind: str):
@@ -278,6 +370,54 @@ def create(c: Core):
     c.sets = []
     c.duplication = None
     return core.self
+
+
+def creates(c: Core, models) -> int:
+    """여러 model의 set 값을 한 transaction에 나누어 insert하고 row 수를 센다."""
+    ex = _terminal(c)
+    if len(models) == 0:
+        return 0
+    first = models[0].core
+    if not first.sets:
+        raise OrmError('CONFIG', 'creates requires models with set<col> values')
+    columns = []
+    for s in first.sets:
+        if s.plus or s.minus:
+            raise OrmError('CONFIG', 'creates accepts stored values only')
+        columns.append(s.column)
+    schema = c.ent.entity
+    per = (999 if ex.db.driver == 'sqlite' else 65535) // len(columns)
+    total = 0
+
+    def insert_all():
+        nonlocal total
+        for start in range(0, len(models), per):
+            r = _write_request(c, 'insert')
+            rows: list = []
+            for i, model in enumerate(models[start:start + per]):
+                mc = model.core
+                if len(mc.sets) != len(columns) or any(
+                        s.column != columns[j] or s.plus or s.minus
+                        for j, s in enumerate(mc.sets)):
+                    raise OrmError('CONFIG', 'every model of creates must set the same '
+                                             'columns in the same order')
+                ps = []
+                for s in mc.sets:
+                    value = None if s.null else _encode_value(schema, s.column, s.value)
+                    r['params'].append(value)
+                    ps.append(len(r['params']) - 1)
+                if i == 0:
+                    r['ir']['set'] = [{'column': column, 'p': ps[j]}
+                                      for j, column in enumerate(columns)]
+                else:
+                    rows.append(ps)
+            if rows:
+                r['ir']['rows'] = rows
+            r['ir']['n_params'] = len(r['params'])
+            total += write(ex, r['ir'], r['params'])['affected']
+
+    _in_transaction(c.conn, insert_all)
+    return total
 
 
 def _key_values(c: Core, schema: Entity) -> dict:
@@ -432,11 +572,11 @@ def restore(c: Core):
     request = q.build('restore')
     if request.error is not None:
         raise request.error
-    request.ir['set'] = [_assign(request, schema, s) for s in c.sets
-                         if s.column not in key]
-    if not request.ir['set']:
-        del request.ir['set']
-    request.ir['n_params'] = len(request.params)
+    r = {'ir': request.ir, 'params': request.params}
+    set_list = [_assign(r, schema, s) for s in c.sets if s.column not in key]
+    if set_list:
+        request.ir['set'] = set_list
+    request.finish()
     write(ex, request.ir, request.params)
     return q.self.get()
 
@@ -446,3 +586,129 @@ def _in_transaction(conn, fn):
     if conn is None:
         return fn()
     return conn.transaction(fn, {'retry': 0})
+
+
+def gets_count(c: Core):
+    """group 값들과 검사된 row 수를, 불완전한 model row 없이 돌려준다."""
+    from polyspec.orm.group_rows import GroupRow, GroupRows
+    ex = _terminal(c)
+    request = c.build('group_count')
+    if request.error is not None:
+        raise request.error
+    if request.external:
+        raise OrmError('CONFIG', 'group count cannot return relations')
+    result = query(ex, request.finish(), request.params)
+    columns = (result['plan']['steps'][0].get('assemble') or {}).get('columns')
+    if not columns:
+        raise OrmError('INTERNAL', 'group count has no result declaration')
+    names: set[str] = set()
+    for column in columns:
+        if column['hidden']:
+            continue
+        if not column['name'] or column['name'] in names:
+            raise OrmError('CONFIG', f'group result repeats or omits column '
+                                     f'{column["name"]}')
+        names.add(column['name'])
+    if 'row_count' not in names:
+        raise OrmError('INTERNAL', 'group result has no row_count')
+    rows = []
+    for raw in result['main']:
+        entries = []
+        for column in columns:
+            if column['hidden']:
+                continue
+            entries.append((column['name'], _group_value(ex.db, column,
+                                                          raw[column['index']],
+                                                          c.ent.entity)))
+        rows.append(GroupRow(entries))
+    return GroupRows(rows)
+
+
+def _group_value(db, column: dict, raw, schema: Entity):
+    from polyspec.orm.database import column_type
+    declared = field_of(schema, column['name']) \
+        if column.get('column') == column['name'] else None
+    if column['name'] == 'row_count':
+        return raw
+    if raw is None:
+        if declared is not None and not declared.nullable:
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is SQL NULL')
+        return None
+    type_ = column_type(declared) if declared is not None else column['type']
+    if type_ == 'styled':
+        from polyspec.orm.styled_value import StyledValue
+        if not isinstance(raw, StyledValue):
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not '
+                                           f'StyledValue')
+        return raw
+    if type_ == 'bool':
+        if raw in (True, 1, '1', 't', 'true'):
+            return True
+        if raw in (False, 0, '0', 'f', 'false'):
+            return False
+        raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not boolean')
+    if type_ in ('i16', 'i32', 'i64'):
+        if isinstance(raw, bool):
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not an '
+                                           f'exact integer')
+        if isinstance(raw, str) and re.fullmatch(r'-?(0|[1-9][0-9]*)', raw):
+            value = int(raw)
+        elif isinstance(raw, int):
+            value = raw
+        else:
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not an '
+                                           f'exact integer')
+        low, high = _INTEGER_RANGES[type_]
+        if not low <= value <= high:
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is outside its '
+                                           f'exact integer range')
+        return value
+    if type_ == 'f64':
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            value = float(raw)
+        elif isinstance(raw, str) \
+                and re.fullmatch(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?', raw):
+            value = float(raw)
+        else:
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not numeric')
+        if value != value or value in (float('inf'), float('-inf')):
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not finite')
+        return value
+    if type_ == 'decimal':
+        return convert(type_, raw, db.zone, declared)
+    if type_ in ('date', 'time', 'datetime'):
+        return convert(type_, raw, db.zone, declared)
+    if type_ == 'bytes':
+        if not isinstance(raw, bytes):
+            raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not bytes')
+        return raw
+    if type_ in ('string', 'varchar', 'text', 'uuid'):
+        if isinstance(raw, str):
+            return raw
+        if isinstance(raw, bytes):
+            return raw.decode('utf-8')
+        raise OrmError('CODEC_DECODE', f'group column {column["name"]} is not text')
+    raise OrmError('INTERNAL', f'group column {column["name"]} has unsupported type '
+                               f'{type_}')
+
+
+def page_of(c: Core, page: int, per_page: int) -> dict:
+    """matching row의 한 page와 총 개수를 돌려준다."""
+    import math
+    if isinstance(page, bool) or isinstance(per_page, bool) \
+            or not isinstance(page, int) or not isinstance(per_page, int) \
+            or page < 1 or per_page < 1:
+        raise OrmError('CONFIG', 'getsPage requires a positive page and perPage')
+    if c.limit is not None:
+        raise OrmError('CONFIG', 'getsPage cannot be combined with limit')
+    ex = _terminal(c)
+    q = c.clone()
+    q.limit = {'offset': (page - 1) * per_page, 'count': per_page}
+    request = q.build('paginate')
+    if request.error is not None:
+        raise request.error
+    result = paginate_query(ex, request.finish(), request.params)
+    items = _assemble(q, ex, request.external, result['result'])
+    return {'items': items, 'totalCount': result['total'],
+            'totalPages': math.ceil(result['total'] / per_page), 'page': page,
+            'perPage': per_page}

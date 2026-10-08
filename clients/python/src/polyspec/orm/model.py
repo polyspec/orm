@@ -4,7 +4,8 @@
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError
-from polyspec.orm.names import parse_chain, parse_order, split_pair
+from polyspec.orm.names import parse_chain, parse_order, snake, split_pair
+from polyspec.orm.styled_value import StyledValue
 
 __all__ = ['Collection', 'EntityDef', 'Model', 'register_model']
 
@@ -100,6 +101,23 @@ class Collection:
     def __getitem__(self, index):
         return self.values()[index]
 
+    def connect(self, db):
+        """모든 row의 connection을 바꾼다."""
+        for row in self.values():
+            row.connect(db)
+        return self
+
+    def delete(self, recursive: bool = False) -> None:
+        """모든 row를 한 transaction에 지운다; delete(True)는 읽은 관련 row부터
+        지운다."""
+        from polyspec.orm.model_exec import _delete_one, _in_transaction
+        first = self.first()
+        if first is None:
+            return
+        _in_transaction(first.core.conn,
+                        lambda: [_delete_one(row.core, recursive)
+                                 for row in self.values()])
+
     def to_array(self) -> list:
         return [row.to_array() for row in self.values()]
 
@@ -146,7 +164,7 @@ class Model:
             return self._match_method(pascal_name[5:], name)
         if pascal_name.startswith('Alias') and len(pascal_name) > 5:
             def alias():
-                core.alias = pascal_name[5:]
+                core.alias = snake(pascal_name[5:])
                 return self
             return alias
         if pascal_name.startswith('Possible') and len(pascal_name) > 8:
@@ -160,13 +178,20 @@ class Model:
             if column_name(model, entity, pascal_name[3:]) != '':
                 raise AttributeError(name)
             def new(value):
-                core.set_new(pascal_name[3:], value)
+                core.set_new(snake(pascal_name[3:]), value)
                 return self
             return new
         if pascal_name.startswith('AddColumn') and len(pascal_name) > 9:
             return self._add_column_method(pascal_name[9:], name)
-        if pascal_name.startswith('Get'):
-            raise AttributeError(name)
+        if pascal_name.startswith('Get') and len(pascal_name) > 3:
+            key = snake(pascal_name[3:])
+
+            def get_related():
+                core = self.core
+                if core.row is not None and key in core.row.related:
+                    return core.row.related[key]
+                return core.new_value(key)
+            return get_related
         chain = pascal_name
         connector = ''
         if pascal_name.startswith('And') and len(pascal_name) > 3 \
@@ -227,6 +252,16 @@ class Model:
             raise OrmError('CONFIG', 'get_avg requires avg_<col>()')
         return float(scalar_of(self.core, 'avg', self.core.agg))
 
+    def gets_count(self):
+        """group 값들과 검사된 row 수를, 불완전한 model row 없이 돌려준다."""
+        from polyspec.orm.model_exec import gets_count
+        return gets_count(self.core)
+
+    def gets_page(self, page: int, per_page: int) -> dict:
+        """matching row의 한 page와 총 개수를 돌려준다."""
+        from polyspec.orm.model_exec import page_of
+        return page_of(self.core, page, per_page)
+
     def get_query(self) -> dict:
         """gets()의 statement를 실행 없이 돌려준다."""
         from polyspec.orm.model_exec import _terminal
@@ -241,6 +276,11 @@ class Model:
         """row를 insert하고 만들어진 row를 돌려준다."""
         from polyspec.orm.model_exec import create as create_row
         return create_row(self.core)
+
+    def creates(self, rows) -> int:
+        """여러 row를 한 transaction에 insert하고 row 수를 센다."""
+        from polyspec.orm.model_exec import creates as creates_rows
+        return creates_rows(self.core, rows)
 
     def update(self, optimistic: bool = False):
         """바뀐 column을 쓴다; update(True)는 update time이 바뀌지 않았음을 요구한다."""
@@ -257,6 +297,11 @@ class Model:
         """row를 지운다; delete(True)는 읽은 관련 row부터 지운다."""
         from polyspec.orm.model_exec import delete_row
         delete_row(self.core, recursive)
+
+    def restore(self):
+        """soft delete 한 행을 되돌리고 그 행을 읽어 돌려준다."""
+        from polyspec.orm.model_exec import restore as restore_row
+        return restore_row(self.core)
 
     def to_array(self) -> dict:
         """선택된 column과 relation의 값."""
@@ -331,6 +376,22 @@ class Model:
     # 기본 chain method.
     def connect(self, db):
         self.core.connect(db)
+        return self
+
+    def for_update(self):
+        self.core.lock = 'update'
+        return self
+
+    def for_share(self):
+        self.core.lock = 'share'
+        return self
+
+    def for_update_no_wait(self):
+        self.core.lock = 'update_nowait'
+        return self
+
+    def for_share_no_wait(self):
+        self.core.lock = 'share_nowait'
         return self
 
     def and_(self, *args):
