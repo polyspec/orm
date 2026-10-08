@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polyspec-orm"
-version = "0.0.4"
+version = "0.0.5"
 description = "Python ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite"
 license = "MIT"
 requires-python = ">=3.11"

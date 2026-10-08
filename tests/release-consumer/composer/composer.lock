@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0e05bb153395331ca92ac652fbc29cca",
+    "content-hash": "20749bccf12b32cf8e39715cc7cb518f",
     "packages": [
         {
             "name": "polyspec/ordered-json",
@@ -33,9 +33,9 @@
             "name": "polyspec/orm",
             "version": "0.0.5",
             "dist": {
-                "type": "path",
-                "url": "packages/orm-php",
-                "reference": "b87f8fee06ae966c78e949fa2ac01eb93176ddbf"
+                "type": "zip",
+                "url": "artifacts/polyspec-orm-php-0.0.5.zip",
+                "shasum": ""
             },
             "require": {
                 "ext-json": "*",
@@ -67,11 +67,7 @@
             "license": [
                 "MIT"
             ],
-            "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process"
         },
         {
             "name": "symfony/deprecation-contracts",
@@ -312,8 +308,5 @@
     "prefer-lowest": false,
     "platform": {},
     "platform-dev": {},
-    "platform-overrides": {
-        "php": "8.4.0"
-    },
     "plugin-api-version": "2.9.0"
 }

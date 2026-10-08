@@ -4,7 +4,7 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "polyspec/orm": "0.0.4"
+        "polyspec/orm": "0.0.5"
     },
     "repositories": [
         {

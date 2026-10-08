@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 75c238d1f411726f2e5ef0d56efef1e0e6a4a67192f918c3630dcd1de8d9835f -->
+<!-- source-sha256: 1b5f8a06790c61dbb9e0c6dcdcff13b3a1f3d21f3d316206d5781df403881853 -->
 # 변경 이력
 
 ## Unreleased
 
+## 0.0.5
+
+- T46: release 0.0.5: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.5를 선언하고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.5 archive의 lock을 담고, `push-gate.yml`은 branch의 push에서만(`branches: ['**']`) 돌며 tag의 push에서는 돌지 않는다.
 - T45.1: vendored kit은 v0.0.10이며, 그 test가 npm stub의 `stub-npm-*` folder를 지우므로 `kit-test`는 runner의 개별 `TMPDIR`에 임시 항목을 남기지 않는다.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck`가 Go client를 `packages/orm-go/model`에서 복사하고 `TestCIRequiresGeneratedChecks`가 `ci.yml`에서 `run: make check-run GROUP=${{ matrix.group }}`를 요구한다. T44.1과 T44.2가 옮긴 대로이다. T45.1은 kit이 npm stub의 임시 folder를 지우기를 기다린다.
 - T43.5-5–T43.7-19, T43, T43.5, T43.6, T44.4: Python client와 kit 도입의 열린 행을 소유 unit 검사(`make dbspec-compare-check`, `make python-check`, `make repo-check`, `make runner-check`, `make interface-check`, `go test ./tests/conformance/check`)로 닫았다. Rust catalog case `native_updates_lock_compare_verify_and_rollback`의 `tokio::select!`은 `biased`여서 probe event가 먼저 온다. `config/release.json`이 `consumers`를 선언하고 `tests/release-consumer`가 그 manifest를 담는다. database server를 읽는 행은 push 뒤 CI가 확인한다.

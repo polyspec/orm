@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 05463ba8bacda61b6bac3820cc3c3883b8d102cfd12d91bea56b303f1925df16 -->
+<!-- source-sha256: 88d6ec6fd089a6fbe7f54a7f30a238bc3b382e246c73615447fca05d75b81cec -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -765,3 +765,7 @@
   - [o] T45.1 job `test (static)`에서 `kit-test`가 임시 항목을 남기지 않게 합니다. 원인: check runner는 단계마다 자기 `TMPDIR`을 주고 항목을 남긴 통과 단계를 실패로 봅니다. kit v0.0.9의 `tests/kit/release-consumer-sandbox.mjs`는 `npm install --package-lock-only`마다 `inspect`에서 folder `stub-npm-*`을 만들고 지우지 않아서 `check/kit-test`가 "left 112 temporary entries"로 실패합니다(로컬의 `node scripts/check/run.mjs - kit-test`도 같은 112개). 완료 기준: kit v0.0.10이 folder를 지운다. Evidence: `make kit-sync KIT_TAG=v0.0.10`의 두 번째 실행이 `unchanged`를 출력하고, `make kit-check`가 0으로 끝나며, `node scripts/check/run.mjs - kit-test`가 0으로 끝난다(`PASS check/kit-test`, 남은 임시 항목 없음).
   - [o] T45.2 `TestCoverageModelGenerationCheck`가 Go client를 새 경로로 복사하게 합니다. 원인: test가 module 복사본에서 `clients/go/model`을 join하는데 T44.1이 그것을 `packages/orm-go/model`로 옮겨서, `test (feature_coverage)`가 "open .../clients/go/model/author.go: no such file or directory"로 실패했습니다. 완료 기준: test가 `packages/orm-go/model`을 join합니다. Red: `go test -tags featurecoverage ./packages/orm-go/model -run TestCoverageModelGenerationCheck`가 그 message로 1로 끝납니다. Green: 같은 명령이 0으로 끝납니다.
   - [o] T45.3 `TestCIRequiresGeneratedChecks`가 CI의 group 명령에 새 target 이름을 적게 합니다. 원인: test는 `ci.yml`에 `run: make check GROUP=${{ matrix.group }}` 줄을 요구하는데 T44.2가 그것을 `make check-run GROUP=...`로 바꿔서, `test (clients_db)`가 `go-test-check`에서 실패했습니다. 완료 기준: test가 `make check-run GROUP=${{ matrix.group }}`를 적습니다. Red: `go test ./tests/interfaces/check -run TestCIRequiresGeneratedChecks`가 "CI must run make check for each CI group"로 1로 끝납니다. Green: `go test ./tests/interfaces/check`가 0으로 끝납니다.
+
+## Release 0.0.5
+
+- [o] T46 0.0.5를 release합니다. 원인: T43–T45의 작업이 `main`에 있고 그 CI가 통과했습니다. 완료 기준: `config/release.json`의 모든 manifest, lock file, `VERSION`, version을 적는 문서가 0.0.5를 선언하고, changelog의 `## Unreleased`가 새 빈 `## Unreleased` 아래의 `## 0.0.5`로 바뀌며, `config/dependency-review.json`이 review를 다시 기록하고, `tests/release-consumer`가 0.0.5 archive의 lock을 담으며, `push-gate.yml`은 branch의 push에서만 돌고 tag의 push에서는 돌지 않습니다. Evidence: `make version-check`, `make release-versions TAG=v0.0.5`, `make release-go-tags TAG=v0.0.5`, `make release-coverage`, `make release-consumer TAG=v0.0.5`, `make dependency-policy-check`, `make documents-check`가 나중에 지운 local tag로 0으로 끝납니다. maintainer는 CI가 통과한 뒤 이 commit에 tag한다.

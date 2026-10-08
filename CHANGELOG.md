@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+## 0.0.5
+
+- T46: release 0.0.5: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.5, the dependency review is recorded again `tests/release-consumer` holds the locks of the archives of 0.0.5, and `push-gate.yml` runs on pushes to branches only (`branches: ['**']`), not on tag pushes.
 - T45.1: the vendored kit is v0.0.10, whose tests remove the `stub-npm-*` folders of the npm stub, so `kit-test` leaves no temporary entry under the private `TMPDIR` of the runner.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck` copies the Go client from `packages/orm-go/model` and `TestCIRequiresGeneratedChecks` requires `run: make check-run GROUP=${{ matrix.group }}` in `ci.yml`, as T44.1 and T44.2 moved them; T45.1 waits for kit to remove the temporary folders of its npm stub.
 - T43.5-5 to T43.7-19, T43, T43.5, T43.6, T44.4: the open rows of the Python client and of the kit adoption are closed by their owning unit checks (`make dbspec-compare-check`, `make python-check`, `make repo-check`, `make runner-check`, `make interface-check`, `go test ./tests/conformance/check`); the `tokio::select!` of the Rust catalog case `native_updates_lock_compare_verify_and_rollback` is `biased` so the probe event comes first; `config/release.json` declares the `consumers` and `tests/release-consumer` holds their manifests. The rows that read database servers are checked by CI after the push.

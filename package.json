@@ -2,6 +2,7 @@
   "name": "@polyspec/orm-workspace",
   "private": true,
   "type": "module",
+  "packageManager": "npm@11.19.0",
   "engines": {
     "node": ">=22.16.0"
   },
