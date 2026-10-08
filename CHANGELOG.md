@@ -27,6 +27,7 @@
 - T43.5-3-5-1: the 16 owners of contracts/interfaces.json have Python classes or TypedDicts with their fields, and python natives naming them.
 - T43.5-3-5-1-3: the seven difference, rename, unsupported and apply owners (DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError) have python natives whose fields are the keys the Python code writes, checked against the snapshot.
 - T43.5-3-5-1-2: the seven plan and diagnostic owners (DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange) have python natives whose fields are the Python dict keys, checked against the snapshot.
+- T43.5-4-2: the version check, the check inputs and the CI group declare python.
 - T43.5-4-2-2: the Python client has the python-check target, declared in contracts/check-inputs.json, and a CI group python that sets up Python from .python-version; the tool-language rule exempts the Python client's runners.
 - T43.5-4-2-1: make version-check reads the Python client version (clients/python/pyproject.toml), and its 31 declarations agree on 0.0.4.
 - T43.5-4-1: contracts/features.json declares python as planned for each of the 18 features, and the generator lists python, so docs/features.md and docs/features.ko.md name the Python client; no feature claims a python pass before T43.6 runs its vectors.
