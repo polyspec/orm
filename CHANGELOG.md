@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-19: the Python drivers return DECIMAL and NUMERIC cells as their exact text (PyMySQL conversions and the psycopg text loader), as the TypeScript and PHP clients do, instead of decimal.Decimal.
 - T43.7-18: the Python client translates the engine markers for its drivers: `?` to `%s` for MySQL and `$n` to `%(pn)s` for PostgreSQL, outside quoted text and comments, with every `%` escaped; a statement without values is passed unchanged.
 - T43.7-17: the inputs unit run of `dbspec-compare-check` receives `PYTHONPATH` and `ORM_PYTHON`, so the Python runner rejects its cases instead of failing on a missing interpreter variable.
 - T43.7-16: every command that sets `ORM_PYTHON` also sets `PYTHONPATH` to `PYTHON_PATH`, so the Python interpreter imports `polyspec.ordered_json` and the client in the conformance and dbspec comparison runs.
