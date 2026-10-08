@@ -119,7 +119,7 @@ func TestCoverageModelGenerationCheck(t *testing.T) {
 	}
 	copied := t.TempDir()
 	copyModule(t, root, copied)
-	dir := filepath.Join(copied, "clients", "go", "model")
+	dir := filepath.Join(copied, "packages", "orm-go", "model")
 	target := filepath.Join(dir, "author.go")
 	data, err := os.ReadFile(target)
 	if err != nil {
