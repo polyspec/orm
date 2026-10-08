@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-2: `scripts/release/release.mjs`가 `clients/python/pyproject.toml`을 `NOT_RELEASED`에 넣는다. Python client는 git tag로 소비되고 release archive가 없어서, 추적된 모든 manifest가 release되거나 목록에 있다.
 - T43.7-6: `docs/checklist.ko.md`의 T43.7-3 행이 docs-rules 검사가 거부하는 낱말 없이 같은 사실을 적으며, 그래서 `node scripts/docs/rules.mjs`가 통과한다.
 - T43.7-1: `clients/python/pyproject.toml`의 package-data 키가 `polyspec.orm`이다(이전에는 어떤 package도 가리키지 않는 `orm`). 그래서 `polyspec.orm`의 wheel에 `py.typed`가 들어간다. `clients/python/tests/test_packaging.py`가 모든 키가 `src` 아래 package를 가리키고 `polyspec.orm`이 `py.typed`를 담는지 확인한다.
 - T43.5-1-1: `make install`이 고정 버전 의존성을 담은 Python client interpreter(`clients/python/.venv`)를 만들고, dbspec 비교는 그것을 내려받지 않고 있는지만 확인한다.

@@ -56,6 +56,7 @@ export const NOT_RELEASED = {
   'tests/release-install/npm/package.json': 'the npm project of the release asset install check (scripts/release/install-check.mjs)',
   'tests/release-install/composer/composer.json': 'the Composer project of the release asset install check (scripts/release/install-check.mjs)',
   'tests/interfaces/rust/Cargo.toml': 'the interface check crate of the Rust client',
+  'clients/python/pyproject.toml': 'the Python client package: it is consumed by its git tag and has no release archive, as the Rust crates have none',
 };
 
 // MANIFESTS는 manifest file의 이름이다. 추적된 이 이름의 file은 RELEASED나 NOT_RELEASED에 있어야 한다.
