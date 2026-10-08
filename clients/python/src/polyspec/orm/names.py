@@ -57,7 +57,8 @@ def pascal(name: str) -> str:
 
 def snake(name: str) -> str:
     from re import sub
-    return sub(r'[A-Z]', lambda m: m.group(0).lower(), name)
+    return sub(r'[A-Z]',
+               lambda m: ('_' if m.start() > 0 else '') + m.group(0).lower(), name)
 
 
 def upper_first(name: str) -> str:
