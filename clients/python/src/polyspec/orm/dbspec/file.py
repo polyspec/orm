@@ -1,5 +1,7 @@
 # dbspec 문서 파일 reader (docs/dbspec.md "Files"). 파일을 읽는 모든 도구가 이것으로
 # 읽어, signature가 없는 파일을 parse 전에 거부한다.
+from __future__ import annotations
+
 from polyspec.orm.dbspec.model import DbspecDiagnostic
 
 __all__ = ['DBSPEC_SIGNATURE', 'read_dbspec_bytes', 'read_dbspec_file']
@@ -8,7 +10,7 @@ __all__ = ['DBSPEC_SIGNATURE', 'read_dbspec_bytes', 'read_dbspec_file']
 DBSPEC_SIGNATURE = b'dbspec '
 
 
-def read_dbspec_file(path: str):
+def read_dbspec_file(path: str) -> tuple[str | None, list[DbspecDiagnostic]]:
     """parse할 `path`의 dbspec 문서 파일을 읽고 그 byte를 path를 이름으로
     read_dbspec_bytes로 확인한다. 읽을 수 없는 파일은 OSError를 던진다."""
     if not isinstance(path, str):
@@ -17,7 +19,7 @@ def read_dbspec_file(path: str):
         return read_dbspec_bytes(path, handle.read())
 
 
-def read_dbspec_bytes(name: str, data: bytes):
+def read_dbspec_bytes(name: str, data: bytes) -> tuple[str | None, list[DbspecDiagnostic]]:
     """호출자가 자기 규칙으로 읽은 dbspec 문서 파일의 byte를 parse 전에 확인한다.
     `name`은 message가 파일을 가리키는 이름이다. DBSPEC_SIGNATURE로 시작하지 않는
     byte는 text 없이 line 1, column 1의 `signature` 진단 하나와 message `<name> is

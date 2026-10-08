@@ -86,5 +86,37 @@ class ConnectionAndToolRuleNativesTest(unittest.TestCase):
             self.assertEqual(params, self.inputs[','.join(rule['inputs'])], f"{rule['id']} parameters")
 
 
+class DbspecRuleNativesTest(unittest.TestCase):
+    """The dbspec rules name a Python function each; the groups are checked in turn."""
+
+    GROUPS = {
+        'files_parse_emit_render_introspect': [
+            'Dbspec.readFile', 'Dbspec.readBytes', 'Dbspec.parse', 'Dbspec.emit',
+            'Dbspec.manifest', 'Dbspec.render', 'Dbspec.introspect', 'Dbspec.externalDifferences'],
+    }
+
+    def setUp(self):
+        self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
+        self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
+        validate = (ROOT / 'contracts' / 'validate.go').read_text(encoding='utf-8')
+        self.outputs = python_table(validate, 'outputs')
+        self.inputs = python_table(validate, 'inputs')
+
+    def check_group(self, ids):
+        rules = {r['id']: r for r in self.manifest['rules']}
+        for rule_id in ids:
+            rule = rules[rule_id]
+            native = rule['native'].get('python')
+            self.assertIsNotNone(native, f'{rule_id} has no python native')
+            self.assertIn(native['symbol'], self.symbols, rule_id)
+            self.assertEqual(compact(self.symbols[native['symbol']]), compact(native['signature']), rule_id)
+            params, ret = python_parts(native['signature'])
+            self.assertEqual(ret, self.outputs[rule['output']], f'{rule_id} return type')
+            self.assertEqual(params, self.inputs[','.join(rule['inputs'])], f'{rule_id} parameters')
+
+    def test_files_parse_emit_render_introspect_group(self):
+        self.check_group(self.GROUPS['files_parse_emit_render_introspect'])
+
+
 if __name__ == '__main__':
     unittest.main()
