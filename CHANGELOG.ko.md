@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18-2: `for_mysql`, `for_postgres`, `mysql_conversions`, `postgres_loaders`는 공개 이름을 유지하고 `contracts/symbols/python.json`에 등록합니다. T43.7-18-1의 private 이름 변경은 되돌렸습니다.
 - T43.7-18-1: Python client의 helper `_for_mysql`, `_for_postgres`, `_mysql_conversions`, `_postgres_loaders`가 private 이름이 되어, client의 public 이름이 `contracts/symbols/python.json`과 같습니다.
 - T43.6-3-2: conformance 검사는 한 언어가 실패해도 database의 모든 언어와 모든 database를 실행하고, 오류에 실패한 database와 언어를 모두 적습니다. 첫 실패 언어에서 멈추지 않습니다.
 - T43.6-1: CI의 python group이 `requires-python`의 최저 release인 Python 3.11에서도 matrix leg로 실행됩니다. 이 leg는 `.python-version` leg와 별도이며, report와 artifact 이름에 `_py311`을 써서 두 leg가 이름을 공유하지 않습니다.
