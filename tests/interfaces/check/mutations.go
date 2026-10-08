@@ -78,6 +78,28 @@ class Query {
 			{"class Query", "class Other"},
 			{"private binding: Binding;", "private binding: Binding; private controller: string;"},
 		}, [2]string{"gets()", "multiStatement(value: boolean)"}, "function attempted(q: Query) { q.multiStatement(true); }"},
+		"python": {"py", `class Binding:
+    pass
+
+
+class Row:
+    pass
+
+
+class Query:
+    binding: Binding
+
+    def gets(self) -> list[Row]:
+        return []
+`, [][2]string{
+			{"def gets(self)", "def missing(self)"},
+			{"def gets(self)", "def gets(self, db: Binding)"},
+			{"-> list[Row]", "-> Row"},
+			{"binding: Binding", "binding: Row"},
+			{"def gets", "def _gets"},
+			{"class Query", "class Other"},
+			{"binding: Binding", "binding: Binding\n    controller: str"},
+		}, [2]string{"def gets(self)", "def multi_statement(self, value: bool)"}, "q.multi_statement(True)"},
 	}
 	f := fixtures[lang]
 	dir, err := os.MkdirTemp("", "orm-interface-mutation-")
@@ -157,6 +179,7 @@ var prohibitedCallPatterns = map[string]*regexp.Regexp{
 	"php":        regexp.MustCompile(`(?:->|::)\s*multi_statement\s*\(`),
 	"rust":       regexp.MustCompile(`(?:\.|::)\s*multi_statement\s*\(`),
 	"typescript": regexp.MustCompile(`\.\s*multiStatement\s*\(`),
+	"python":     regexp.MustCompile(`\.\s*multi_statement\s*\(`),
 }
 
 func checkProhibitedCalls(lang, source string) []string {
@@ -171,7 +194,7 @@ func checkProhibitedCalls(lang, source string) []string {
 }
 
 func checkCallsInRoots(root, lang string, roots []string) ([]string, error) {
-	ext := map[string]string{"go": ".go", "php": ".php", "rust": ".rs", "typescript": ".ts"}[lang]
+	ext := map[string]string{"go": ".go", "php": ".php", "rust": ".rs", "typescript": ".ts", "python": ".py"}[lang]
 	if ext == "" {
 		return nil, fmt.Errorf("unsupported language %s", lang)
 	}

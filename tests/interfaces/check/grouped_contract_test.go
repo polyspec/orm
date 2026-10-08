@@ -26,7 +26,7 @@ func TestGetsCountUsesDedicatedGroupedRowsInEveryClient(t *testing.T) {
 		if rule.Output != "GroupRows" {
 			t.Fatalf("getsCount common output = %q, want GroupRows", rule.Output)
 		}
-		for _, language := range []string{"go", "php", "rust", "typescript"} {
+		for _, language := range []string{"go", "php", "rust", "typescript", "python"} {
 			native, ok := rule.Native[language]
 			if !ok {
 				t.Errorf("getsCount has no %s native signature", language)

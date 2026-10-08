@@ -28,8 +28,8 @@ func TestLogicalContractRejectsNativeDrift(t *testing.T) {
 			_ = json.Unmarshal(source, &d)
 			r := find(&d, "Model.gets")
 			n := r.Native[lang]
-			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Polyspec\\Orm\\Collection", "rust": "polyspec_orm::Collection<Self>", "typescript": "Collection<this>"}[lang]
-			n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number"}[lang], 1)
+			old := map[string]string{"go": "*orm.Collection[*{Entity}Model]", "php": "Polyspec\\Orm\\Collection", "rust": "polyspec_orm::Collection<Self>", "typescript": "Collection<this>", "python": "Collection[Self]"}[lang]
+			n.Signature = strings.Replace(n.Signature, old, map[string]string{"go": "int64", "php": "int", "rust": "i64", "typescript": "number", "python": "int"}[lang], 1)
 			r.Native[lang] = n
 			if validateRules(d) == nil {
 				t.Fatal("a matching native snapshot could silently change Collection to scalar")

@@ -233,9 +233,9 @@ func run() (code int) {
 	generate := flag.Bool("generate", false, "regenerate the component diagram from the manifest")
 	var results resultDirectories
 	flag.Var(&results, "results", "also check the state traces of a conformance output directory of this run, repeatable")
-	language := flag.String("language", "", "check one language or extension; empty checks all four languages and every extension")
+	language := flag.String("language", "", "check one language or extension; empty checks all five languages and every extension")
 	flag.Parse()
-	languages := []string{"go", "php", "rust", "typescript"}
+	languages := []string{"go", "php", "rust", "typescript", "python"}
 	// extensions가 nil이면 manifest의 모든 extension을 확인한다.
 	var extensions []string
 	if *language != "" {
@@ -249,7 +249,7 @@ func run() (code int) {
 		default:
 			fatal("unsupported language " + *language)
 		}
-		fmt.Printf("diagnostic scope: %s only; the full interface check requires all four languages and every extension\n", *language)
+		fmt.Printf("diagnostic scope: %s only; the full interface check requires all five languages and every extension\n", *language)
 	}
 	abs, err := filepath.Abs(*root)
 	must(err)
@@ -257,7 +257,7 @@ func run() (code int) {
 	var s *runtimemodel.Model
 	if err := testcase.Run("interfaces/manifest", manifestDeadline, func(*testcase.Case) error {
 		readJSON(filepath.Join(abs, "contracts/interfaces.json"), &m)
-		if m.Version != 1 || len(m.Languages) != 4 || len(m.SymbolHashes) != 4 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
+		if m.Version != 1 || len(m.Languages) != 5 || len(m.SymbolHashes) != 5 || len(m.ProhibitedSymbols) == 0 || len(m.Components) == 0 || len(m.Sequences) == 0 {
 			return errors.New("invalid interface manifest")
 		}
 		if err := validateProhibitions(m.ProhibitedSymbols); err != nil {
@@ -629,6 +629,8 @@ func extract(ctx context.Context, root, lang string, roots []string, rust, toolR
 		cmd = exec.CommandContext(ctx, "php", append([]string{filepath.Join(toolRoot, "tests/interfaces/php.php"), root}, roots...)...)
 	} else if lang == "typescript" {
 		cmd = exec.CommandContext(ctx, "node", append([]string{filepath.Join(toolRoot, "tests/interfaces/typescript.mjs"), root}, roots...)...)
+	} else if lang == "python" {
+		cmd = exec.CommandContext(ctx, "python3", append([]string{filepath.Join(toolRoot, "tests/interfaces/python.py"), root}, roots...)...)
 	} else {
 		cmd = exec.CommandContext(ctx, rust, append([]string{root}, roots...)...)
 	}
