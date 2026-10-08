@@ -750,6 +750,17 @@ caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript
     'scripts/stop-process.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'tools/x.rb is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
   ]);
+  // the Python exemption is exactly the five places of scripts/repo/scripts.mjs; nothing else is exempt
+  assert.deepEqual(toolingLanguageErrors(['clients/python/src/polyspec/orm/core.py', 'tests/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
+    'tests/conformance/runner_python.py', 'tests/dbspec/compare/python.py']), []);
+  assert.deepEqual(toolingLanguageErrors(['tests/interfaces/helper.py', 'tests/conformance/vectors.py', 'tests/dbspec/compare/other.py',
+    'scripts/python_tool.py', 'clients/python-old/x.py']), [
+    'tests/interfaces/helper.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+    'tests/conformance/vectors.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+    'tests/dbspec/compare/other.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+    'scripts/python_tool.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+    'clients/python-old/x.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+  ]);
 });
 
 // start_logged case는 test-servers.sh의 start_logged를 그대로 꺼내 가짜 서버로 실행한다. 서버 시작은 장기
