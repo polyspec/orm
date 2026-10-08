@@ -242,6 +242,22 @@ class Model:
         from polyspec.orm.model_exec import create as create_row
         return create_row(self.core)
 
+    def update(self, optimistic: bool = False):
+        """바뀐 column을 쓴다; update(True)는 update time이 바뀌지 않았음을 요구한다."""
+        from polyspec.orm.model_exec import update as update_row
+        update_row(self.core, optimistic)
+        return self
+
+    def save(self):
+        """primary key를 알면 update하고, 아니면 create한다."""
+        from polyspec.orm.model_exec import save as save_row
+        return save_row(self.core)
+
+    def delete(self, recursive: bool = False):
+        """row를 지운다; delete(True)는 읽은 관련 row부터 지운다."""
+        from polyspec.orm.model_exec import delete_row
+        delete_row(self.core, recursive)
+
     def to_array(self) -> dict:
         """선택된 column과 relation의 값."""
         core = self.core
