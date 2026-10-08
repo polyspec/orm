@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T44.1: the six client packages moved from `clients/<directory>` to `packages/orm-<kind>` (`orm-go`, `orm-npm` for TypeScript, `orm-php`, `orm-php-extension`, `orm-python`, `orm-rust`); the Makefile, the workflows, the scripts, the tests, `contracts/` and the documents name the new directories, `scripts/features/packages.mjs` maps a client language to its directory, and the regenerated symbol snapshots hold the declarations of the old snapshots under the new paths. The Go module `github.com/polyspec/orm` stays at the repository root; its client packages are `github.com/polyspec/orm/packages/orm-go/...`.
 - T43.7-18-2: the row names the check `symbol snapshot check` instead of a word that `make docs-rules-check` rejects, so `make docs-rules-check` passes on the checklist.
 - T9: the PHP extension `orm_dbspec`, written in C, provides every public method of the PHP client's `Dbspec` and the classes of its results, and the Rust extension is gone (T9.1 to T9.13).
 - T43.6-3-4: the run-languages test of the conformance check starts its case with `testcase.Start`, as every Go test of the check does.

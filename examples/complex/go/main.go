@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/polyspec/orm/clients/go/model"
-	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/packages/orm-go/model"
+	"github.com/polyspec/orm/packages/orm-go/orm"
 )
 
 // main은 run의 종료 코드로 끝난다. os.Exit는 defer를 실행하지 않으므로 run 안에서는 부르지 않는다: 실패한

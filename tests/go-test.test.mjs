@@ -13,8 +13,8 @@ import { caseTest, COMPUTE, PROCESS } from './testcase.mjs';
 caseTest('the build step keeps packages and build flags and runs no test', COMPUTE, () => {
   assert.deepEqual(buildArguments(['-v', '-timeout', '0', '-tags', 'physical', './tests/dialects', '-run', '^(TestA|TestB)$', '-count=1']),
     ['-tags', 'physical', './tests/dialects', '-run', '^$', '-count=1']);
-  assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './clients/go/...', '-run=X']), ['-race', './clients/go/...', '-run', '^$', '-count=1']);
-  assert.equal(packages(['-v', './clients/go/orm', './clients/go/orm/pg', '-run', 'X']), 'clients/go/orm,clients/go/orm/pg');
+  assert.deepEqual(buildArguments(['-v', '-timeout=0', '-count', '1', '-race', './packages/orm-go/...', '-run=X']), ['-race', './packages/orm-go/...', '-run', '^$', '-count=1']);
+  assert.equal(packages(['-v', './packages/orm-go/orm', './packages/orm-go/orm/pg', '-run', 'X']), 'packages/orm-go/orm,packages/orm-go/orm/pg');
   assert.equal(packages(['-v']), '.');
 });
 

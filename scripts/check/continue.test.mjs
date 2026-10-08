@@ -33,8 +33,8 @@ caseTest('the PHP lane of client-db-test runs every test after a failed one and 
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran();
     assert.equal(ran.length, 11, ran.join('\n'));
-    assert.deepEqual([ran[0], ran.at(-1)], ['php clients/php/tests/model_test.php', 'php clients/php/tests/mysql_tls.php']);
-    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php clients\/php\/tests\/model_test\.php \(exit 3\)/);
+    assert.deepEqual([ran[0], ran.at(-1)], ['php packages/orm-php/tests/model_test.php', 'php packages/orm-php/tests/mysql_tls.php']);
+    assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php packages\/orm-php\/tests\/model_test\.php \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }
@@ -47,8 +47,8 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran();
     assert.equal(ran.length, 10, ran.join('\n'));
-    assert.deepEqual([ran[1], ran.at(-1)], ['node clients/typescript/tests/model.mjs', 'node clients/typescript/tests/mysql_tls.mjs']);
-    assert.match(result.stderr, /sqlite-test: failed:\n {2}node clients\/typescript\/tests\/model\.mjs \(exit 3\)/);
+    assert.deepEqual([ran[1], ran.at(-1)], ['node packages/orm-npm/tests/model.mjs', 'node packages/orm-npm/tests/mysql_tls.mjs']);
+    assert.match(result.stderr, /sqlite-test: failed:\n {2}node packages\/orm-npm\/tests\/model\.mjs \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
   }
@@ -62,7 +62,7 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
     const result = f.run(['scripts/client-db-test.sh'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'php,typescript', ORM_CLIENT_DB_LANES: '' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     const ran = f.ran();
-    assert.ok(ran.includes('node clients/typescript/tests/model.mjs'), ran.join('\n'));
+    assert.ok(ran.includes('node packages/orm-npm/tests/model.mjs'), ran.join('\n'));
     assert.match(result.stderr, /client-db-test: failed lanes: php\n/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });

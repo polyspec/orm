@@ -90,7 +90,7 @@ export const stepCondition = id => STEP_OUTPUT[id]
 // SETUP_NEEDS는 runner의 setup 단계가 마련하는 need마다 그 단계 자신이 필요로 하는 need다. databases는 setup 단계
 // servers와 databases/create(scripts/check/databases.sh)가 마련한다: server는 make test-servers가 server-programs의
 // program으로 시작하고, databases.sh는 bench database를 Go program으로(scripts/bench-db.sh), decimal database를
-// scripts/decimal-db-setup.php로 설치하며, 그 PHP는 clients/php의 Composer autoload(vendor)를 읽는다. 그래서 databases가
+// scripts/decimal-db-setup.php로 설치하며, 그 PHP는 packages/orm-php의 Composer autoload(vendor)를 읽는다. 그래서 databases가
 // 필요한 target은 이 need도 필요하다(expandNeeds).
 export const SETUP_NEEDS = { databases: ['go', 'php', 'composer', 'server-programs'] };
 

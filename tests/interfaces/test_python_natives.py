@@ -133,10 +133,10 @@ class DbspecRuleNativesTest(unittest.TestCase):
 
 class RecordNativesTest(unittest.TestCase):
     """The python native of each record of contracts/interfaces.json is a TypedDict of
-    clients/python/src/polyspec/orm/ir.py, and its #wire symbol of the snapshot carries the fields of the
+    packages/orm-python/src/polyspec/orm/ir.py, and its #wire symbol of the snapshot carries the fields of the
     record, with the fields of its base expanded (the @flatten of the extractor)."""
 
-    PREFIX = 'clients/python/src/polyspec/orm/ir.py::'
+    PREFIX = 'packages/orm-python/src/polyspec/orm/ir.py::'
 
     def setUp(self):
         self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))

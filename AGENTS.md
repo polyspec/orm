@@ -13,7 +13,7 @@
   excluded by `.gitignore` that exist only in that worktree and are still needed. Then remove the
   worktree and local branch immediately.
   Preserve unintegrated or active work.
-- Each checkout builds Rust into its own target directory, `clients/rust/target` of that checkout,
+- Each checkout builds Rust into its own target directory, `packages/orm-rust/target` of that checkout,
   and no checkout points `CARGO_TARGET_DIR` at the target directory of another; `make` stops when a
   command line names one outside the checkout. Cargo decides that an artifact is fresh from the
   paths of its sources relative to the package and their modification times, and records no
@@ -187,11 +187,11 @@
 - Go, PHP, Rust, and TypeScript share one behavior contract. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
 - Record a conformance expectation only when the Go, PHP, Rust, and TypeScript outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
 - Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
-- Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `clients/<language>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
+- Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/orm-<package>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
 - Feature coverage evidence comes from commands executed in the current check, with exact case IDs and two equal result and database-state runs. A named test file or saved output is not execution evidence. The coverage checker runs in `make feature-coverage`, and its mutation tests run in `make feature-unit-check`. `make check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs the three.
 - The coverage checker invokes declared native test files and exact case filters itself, and derives success from process exit and observed test events. Test output cannot supply a success report or database-state digest. For database cases the checker reads the declared database state before and after each run with its own state reader.
 - A coverage case ID names shared behavior. Go and Rust commands map that ID to the exact native test symbol in their owning file; the checker accepts the ID only after that symbol passes. The checker supplies the selected database and DSN to the native process for database cases.
-- An owning client executes its own behavior cases from tests located under `clients/<language>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
+- An owning client executes its own behavior cases from tests located under `packages/orm-<package>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
 - Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links or alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
 - Develop one `0.0.4` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
 - Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. The four clients execute the same accepted and rejected schema cases.
@@ -222,7 +222,7 @@
   `make release-publish` (the release with the notes of that section; a section over 125000
   characters, the limit of a GitHub release body, becomes one line that links the section `#XYZ`
   of CHANGELOG.md at the tag). The tests do not run again.
-- The Python client (`clients/python/pyproject.toml`) is consumed by its git tag and has no release
+- The Python client (`packages/orm-python/pyproject.toml`) is consumed by its git tag and has no release
   archive. The version-bump pull request sets its `version` with the other manifests, `make version-check`
   reads that version, and `make release-versions` and `make release-assets` do not handle it (it is in
   `NOT_RELEASED` of `scripts/release/release.mjs`).

@@ -42,22 +42,22 @@ finish() {
 }
 
 go_lane() {
-  keep node tests/go-test.mjs -v -timeout 0 -count=1 ./clients/go/...
-  keep node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./clients/go/orm
+  keep node tests/go-test.mjs -v -timeout 0 -count=1 ./packages/orm-go/...
+  keep node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./packages/orm-go/orm
   finish go
 }
 php_lane() {
-  keep php clients/php/tests/model_test.php
-  keep php clients/php/tests/aes_json_test.php
-  keep php clients/php/tests/runtime_db_test.php
-  keep php clients/php/tests/audit_external_sets_test.php
-  keep php clients/php/tests/sqlite_concurrency_test.php
-  keep php clients/php/tests/schema_set_test.php
-  keep php clients/php/tests/add_tables_and_columns_test.php
-  keep php clients/php/tests/clock_test.php
-  keep php clients/php/tests/driver_error_test.php
-  keep php clients/php/tests/rollback_test.php
-  keep php clients/php/tests/mysql_tls.php
+  keep php packages/orm-php/tests/model_test.php
+  keep php packages/orm-php/tests/aes_json_test.php
+  keep php packages/orm-php/tests/runtime_db_test.php
+  keep php packages/orm-php/tests/audit_external_sets_test.php
+  keep php packages/orm-php/tests/sqlite_concurrency_test.php
+  keep php packages/orm-php/tests/schema_set_test.php
+  keep php packages/orm-php/tests/add_tables_and_columns_test.php
+  keep php packages/orm-php/tests/clock_test.php
+  keep php packages/orm-php/tests/driver_error_test.php
+  keep php packages/orm-php/tests/rollback_test.php
+  keep php packages/orm-php/tests/mysql_tls.php
   finish php
 }
 typescript_lane() {
@@ -67,13 +67,13 @@ typescript_lane() {
 rust_lane() {
   # tests/cargo-test.mjs는 test binary를 공유 target directory의 lease 아래에서 기한 없는 장기 작업으로 build해
   # 실행 하나의 directory로 복사하고, 그 복사본을 실행한다.
-  keep sh -c 'cd clients/rust && node "$0/tests/cargo-test.mjs" workspace-tests -- cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES"' "$ROOT"
+  keep sh -c 'cd packages/orm-rust && node "$0/tests/cargo-test.mjs" workspace-tests -- cargo test --locked --workspace --features "$ORM_RUST_TEST_FEATURES"' "$ROOT"
   # build는 자기 case를 보고하지 않는 장기 작업이므로 tests/run-long.mjs로 기한 없이 실행한다. 공유 Rust target
   # directory의 lease 아래에서 build하고 program을 이 실행의 directory로 복사해(scripts/cargo-build-copy.sh) 그
   # 복사본을 실행한다.
   run="$ROOT/.runtime/run/client-db-rust-$$"
   # integration program은 그 build가 통과할 때만 실행한다. build가 실패하면 그 사실을 FAILED에 쌓는다.
-  if node tests/run-long.mjs rust-build/integration --cwd clients/rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration; then
+  if node tests/run-long.mjs rust-build/integration --cwd packages/orm-rust -- "${LEASE:?LEASE is unset; run this through make}" run "${CARGO_LEASES:?CARGO_LEASES is unset; run this through make}" exclusive --wait -- sh "$ROOT/scripts/cargo-build-copy.sh" "$run" debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration; then
     keep "$run/debug/integration" "$ROOT/schema/bench.dbs"
   else
     FAILED="$FAILED

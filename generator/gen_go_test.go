@@ -142,7 +142,7 @@ func TestScanGeneratesUsedMethods(t *testing.T) {
 	write("example/example.go", `package example
 
 import (
-	"github.com/polyspec/orm/clients/go/orm"
+	"github.com/polyspec/orm/packages/orm-go/orm"
 
 	"example.com/ormexample/model"
 )

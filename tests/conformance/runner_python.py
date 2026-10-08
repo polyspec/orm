@@ -16,7 +16,7 @@ import sys
 from decimal import Decimal
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-sys.path.insert(0, os.path.join(ROOT, 'clients', 'python', 'src'))
+sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'src'))
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
 
 USAGE = 'usage: runner_python.py --models DIR --dsn URI [--vector NAME]...'

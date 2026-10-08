@@ -10,7 +10,7 @@
 // The models embed the manifest of schema/bench.dbs.
 import {
   AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
-} from '../../clients/typescript/dist/index.js';
+} from '../../packages/orm-npm/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
 const usage = 'usage: runner_typescript.mjs --dsn URI [--vector NAME]...';

@@ -124,10 +124,10 @@ for (const feature of manifest.features ?? []) {
 // covers all clients because the conformance comparator fails when one
 // language does not run the declared vectors.
 const languageTests = {
-  go: { roots: ['clients/go', 'engine', 'generator', 'cmd'], match: file => file.endsWith('_test.go') },
-  php: { roots: ['clients/php/tests', 'tests/interfaces/php.php'], match: () => true },
-  rust: { roots: ['clients/rust/orm/tests', 'clients/rust/orm-build/tests', 'clients/rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
-  typescript: { roots: ['clients/typescript', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('clients/typescript/tests/') && file.endsWith('.mjs')) },
+  go: { roots: ['packages/orm-go', 'engine', 'generator', 'cmd'], match: file => file.endsWith('_test.go') },
+  php: { roots: ['packages/orm-php/tests', 'tests/interfaces/php.php'], match: () => true },
+  rust: { roots: ['packages/orm-rust/orm/tests', 'packages/orm-rust/orm-build/tests', 'packages/orm-rust/tests', 'tests/interfaces/rust'], match: file => file.endsWith('.rs') && !file.endsWith('build.rs') },
+  typescript: { roots: ['packages/orm-npm', 'tests/interfaces/typescript.mjs'], match: file => file.endsWith('.test.ts') || (file.startsWith('packages/orm-npm/tests/') && file.endsWith('.mjs')) },
 };
 const skipDirectories = new Set(['node_modules', 'target', 'dist']);
 const walk = async directory => {

@@ -6,16 +6,17 @@ import { chmod, mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { packageDirectory } from './packages.mjs';
 import { checkCoverage, databases, executeCoverage, languages, selectFeatures } from './coverage.mjs';
 
 // sample crate는 orm workspace가 아니므로 Makefile이 정한 orm workspace의 test feature를 쓰지 않는다.
 delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests = {
-  go: 'clients/go/orm/dsn_test.go', php: 'clients/php/tests/dsn.php',
-  rust: 'clients/rust/orm/tests/zone.rs', typescript: 'clients/typescript/tests/typecheck.ts',
+  go: 'packages/orm-go/orm/dsn_test.go', php: 'packages/orm-php/tests/dsn.php',
+  rust: 'packages/orm-rust/orm/tests/zone.rs', typescript: 'packages/orm-npm/tests/typecheck.ts',
 };
-const dependentTest = 'clients/go/model/model_test.go';
+const dependentTest = 'packages/orm-go/model/model_test.go';
 
 // 각 case의 기한: memory 안의 검사는 1 s, node process 몇 개를 실행하는 case는 8 s, Go test
 // binary, Rust test binary나 state reader를 build하고 실행하는 case는 120 s다.
@@ -62,15 +63,15 @@ caseTest('aggregate numeric TypeScript cases are owned by the client', 1000, asy
   const root = new URL('../..', import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('contracts/features.json', root), 'utf8'));
   const feature = manifest.features.find(item => item.id === 'model_queries');
-  assert.ok(feature.tests.includes('clients/typescript/tests/aggregate_numeric.mjs'));
+  assert.ok(feature.tests.includes('packages/orm-npm/tests/aggregate_numeric.mjs'));
   assert.ok(!feature.tests.includes('tests/typescript/aggregate_numeric.mjs'));
-  assert.ok((await stat(new URL('clients/typescript/tests/aggregate_numeric.mjs', root))).isFile());
+  assert.ok((await stat(new URL('packages/orm-npm/tests/aggregate_numeric.mjs', root))).isFile());
 });
 
 caseTest('TypeScript behavior tests stay in their client directory', 1000, async () => {
   const root = new URL('../..', import.meta.url);
   const expected = ['codec-vector', 'dsn', 'engine', 'generate', 'model', 'sqlite-concurrency'];
-  const entries = await readdir(new URL('clients/typescript/tests/', root));
+  const entries = await readdir(new URL('packages/orm-npm/tests/', root));
   for (const name of expected) assert.ok(entries.includes(`${name}.mjs`), `${name}.mjs missing from owner`);
   await assert.rejects(readdir(new URL('tests/typescript/', root)), { code: 'ENOENT' });
 });
@@ -79,9 +80,9 @@ function contract(kind = 'database') {
   return { features: [{ id: 'sample', status: 'implemented',
     clients: Object.fromEntries(languages.map(language => [language, 'pass'])),
     coverage: { kind, cases: ['first', 'second'],
-      owners: Object.fromEntries(languages.map(language => [language, { part: `clients/${language}`,
+      owners: Object.fromEntries(languages.map(language => [language, { part: packageDirectory[language],
         tests: [ownerTests[language]], commands: {} }])),
-      dependents: [{ id: 'service', language: 'go', part: 'clients/go/model',
+      dependents: [{ id: 'service', language: 'go', part: 'packages/orm-go/model',
         tests: [dependentTest], cases: ['first'], commands: {} }] } }] };
 }
 
@@ -95,8 +96,8 @@ function complete(kind = 'database') {
     return [structuredClone(report), structuredClone(report)];
   };
   for (const language of languages) for (const database of kind === 'database' ? databases : ['none']) {
-    reports[`sample/owner/${language}/${database}`] = make('owner', `clients/${language}`, [ownerTests[language]], language, database, ['first', 'second']);
-    if (language === 'go') reports[`sample/dependent/service/go/${database}`] = make('dependent', 'clients/go/model', [dependentTest], language, database, ['first'], 'service');
+    reports[`sample/owner/${language}/${database}`] = make('owner', packageDirectory[language], [ownerTests[language]], language, database, ['first', 'second']);
+    if (language === 'go') reports[`sample/dependent/service/go/${database}`] = make('dependent', 'packages/orm-go/model', [dependentTest], language, database, ['first'], 'service');
   }
   return reports;
 }
@@ -118,7 +119,7 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
   assert.match(mutation((_, r) => { delete r['sample/owner/php/mysql']; }), /sample\/owner\/php\/mysql: no executed report/);
   assert.match(mutation((_, r) => { delete r['sample/dependent/service/go/mysql']; }), /sample\/dependent\/service\/go\/mysql: no executed report/);
   assert.match(mutation((m) => { delete m.features[0].coverage.dependents; }), /missing dependents declaration/);
-  assert.match(mutation((m) => { m.features[0].coverage.dependents[0].part = 'clients/go'; }), /invalid dependent part/);
+  assert.match(mutation((m) => { m.features[0].coverage.dependents[0].part = 'packages/orm-go'; }), /invalid dependent part/);
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].cases = []; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.owners.rust.tests = ['tests/conformance/check/main_test.go']; }), /tests must reside in owning part/);
   assert.match(mutation((m) => { m.features[0].coverage.owners.typescript.tests = ['tests/typescript/aggregate_numeric.mjs']; }), /tests must reside in owning part/);
@@ -126,14 +127,14 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].tests = [ownerTests.go]; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
   assert.match(mutation((m) => { m.features[0].coverage.dependents[0].part = 'tests/conformance'; m.features[0].coverage.dependents[0].tests = ['tests/conformance/check/main_test.go']; }), /invalid dependent part, tests, or cases/);
-  assert.match(mutation((m) => { m.features[0].coverage.owners.python = { part: 'clients/python', tests: [], commands: {} }; }), /undeclared owning client/);
+  assert.match(mutation((m) => { m.features[0].coverage.owners.python = { part: 'packages/orm-python', tests: [], commands: {} }; }), /undeclared owning client/);
   assert.match(mutation((_, r) => { r['sample/dependent/service/go/sqlite'][0].cases = []; }), /executed case IDs differ/);
   assert.match(mutation((_, r) => { r['sample/owner/typescript/postgres'].pop(); }), /exactly two executions required/);
 });
 
 caseTest('identity, result, state, and unknown report mutations are RED', 1000, () => {
   assert.match(mutation((m) => { m.features[0].clients.rust = 'planned'; }), /lacks a passing client/);
-  assert.match(mutation((_, r) => { r['sample/owner/go/mysql'][0].part = 'clients/php'; }), /report identity differs/);
+  assert.match(mutation((_, r) => { r['sample/owner/go/mysql'][0].part = 'packages/orm-php'; }), /report identity differs/);
   assert.match(mutation((_, r) => { r['sample/dependent/service/go/mysql'][0].role = 'owner'; }), /report identity differs/);
   assert.match(mutation((_, r) => { r['sample/dependent/service/go/mysql'][0].tests = [ownerTests.go]; }), /executed test paths differ/);
   assert.match(mutation((_, r) => { r['sample/owner/go/mysql'][0].success = false; }), /execution failed/);
@@ -147,17 +148,17 @@ caseTest('identity, result, state, and unknown report mutations are RED', 1000, 
 
 caseTest('native owner and dependent files execute twice from their own parts', 8000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-')));
-  const owner = 'clients/typescript/tests/owner.mjs';
-  const dependent = 'clients/typescript/use/dependent.mjs';
+  const owner = 'packages/orm-npm/tests/owner.mjs';
+  const dependent = 'packages/orm-npm/use/dependent.mjs';
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
     coverage: { kind: 'independent', cases: ['first', 'second'],
-      owners: { typescript: { part: 'clients/typescript', tests: [owner],
+      owners: { typescript: { part: 'packages/orm-npm', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first', 'second'] }] } } },
-      dependents: [{ id: 'use', language: 'typescript', part: 'clients/typescript/use',
+      dependents: [{ id: 'use', language: 'typescript', part: 'packages/orm-npm/use',
         tests: [dependent], cases: ['first'], commands: { none: [{ runner: 'node', test: dependent, cases: ['first'] }] } }] } }] };
   try {
-    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
-    await mkdir(join(root, 'clients/typescript/use'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-npm/tests'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-npm/use'), { recursive: true });
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { if (!['first', 'second'].includes(id)) process.exit(2); console.log(`CASE ${id} PASS`); }\n");
     await writeFile(join(root, dependent), "for (const id of process.argv.slice(2)) { if (id !== 'first') process.exit(2); console.log(`CASE ${id} PASS`); }\n");
     assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
@@ -174,15 +175,15 @@ caseTest('native owner and dependent files execute twice from their own parts', 
 // test process를 실제로 실행해 directory를 하나씩 남기는지 확인한다.
 caseTest('every Go execution runs the test instead of reading the test cache', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-go-')));
-  const owner = 'clients/go/sample/sample_test.go';
+  const owner = 'packages/orm-go/sample/sample_test.go';
   const runs = join(root, 'runs');
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
     coverage: { kind: 'independent', cases: ['first'],
-      owners: { go: { part: 'clients/go/sample', tests: [owner],
+      owners: { go: { part: 'packages/orm-go/sample', tests: [owner],
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
       dependents: [] } }] };
   try {
-    await mkdir(join(root, 'clients/go/sample'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-go/sample'), { recursive: true });
     await mkdir(runs);
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
     await writeFile(join(root, owner), `//go:build featurecoverage
@@ -210,10 +211,10 @@ func TestFirst(t *testing.T) {
 // test2json build와 test binary build가 각각 1.5초 이상 걸리고, 두 build와 두 실행이 모두 통과한다.
 caseTest('a slow but healthy coverage build runs to its end without a deadline', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-slow-')));
-  const owner = 'clients/go/sample/sample_test.go';
+  const owner = 'packages/orm-go/sample/sample_test.go';
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { go: 'partial' },
     coverage: { kind: 'independent', cases: ['first'],
-      owners: { go: { part: 'clients/go/sample', tests: [owner],
+      owners: { go: { part: 'packages/orm-go/sample', tests: [owner],
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
       dependents: [] } }] };
   const path = process.env.PATH;
@@ -222,7 +223,7 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
     await mkdir(join(root, 'bin'), { recursive: true });
     await writeFile(join(root, 'bin/go'), `#!/bin/sh\nsleep 1.5\nexec ${JSON.stringify(realGo)} "$@"\n`);
     await chmod(join(root, 'bin/go'), 0o755);
-    await mkdir(join(root, 'clients/go/sample'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-go/sample'), { recursive: true });
     await writeFile(join(root, 'go.mod'), 'module sample\n\ngo 1.22\n');
     await writeFile(join(root, owner), '//go:build featurecoverage\n\npackage sample\n\nimport "testing"\n\nfunc TestFirst(t *testing.T) {}\n');
     process.env.PATH = `${join(root, 'bin')}:${path}`;
@@ -241,14 +242,14 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
 // case가 서로를 기다려 case의 기한에 실패한다.
 caseTest('coverage runs without cargo proceed while the Rust test build runs', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-overlap-')));
-  const rustFile = 'clients/rust/orm/src/lib.rs';
-  const phpFile = 'clients/php/tests/owner.php';
+  const rustFile = 'packages/orm-rust/orm/src/lib.rs';
+  const phpFile = 'packages/orm-php/tests/owner.php';
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial', php: 'partial' },
     coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
-      rust: { part: 'clients/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'], symbols: { first: 'tests::first' } }] } },
-      php: { part: 'clients/php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'] }] } },
+      rust: { part: 'packages/orm-rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'], symbols: { first: 'tests::first' } }] } },
+      php: { part: 'packages/orm-php/tests', tests: [phpFile], commands: { none: [{ runner: 'php', test: phpFile, cases: ['first'] }] } },
     } } }] };
   const path = process.env.PATH;
   try {
@@ -258,7 +259,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     await writeFile(join(root, 'bin/cargo'), `#!/bin/sh\ncase " $* " in *" test "*"--no-run "*) read gate < ${JSON.stringify(fifo)} ;; esac\nexec ${JSON.stringify(realCargo)} "$@"\n`);
     await chmod(join(root, 'bin/cargo'), 0o755);
     for (const file of [rustFile, phpFile]) await mkdir(join(root, file, '..'), { recursive: true });
-    await writeFile(join(root, 'clients/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
+    await writeFile(join(root, 'packages/orm-rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
     await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
     // 첫 실행만 FIFO에 쓴다. 쓰기는 cargo가 FIFO를 읽으려고 열 때까지 기다린다.
     await writeFile(join(root, phpFile), `<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\nif (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\necho "CASE first PASS\\n";\n`);
@@ -277,27 +278,27 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
     results: cases.map(id => ({ id, value_json: 'true' })), ...(dependent ? { dependent } : {}),
   });
   for (const language of languages) manifest.features[0].coverage.owners[language].commands.none =
-    `node -e 'process.stdout.write(${JSON.stringify(report('owner', `clients/${language}`, [ownerTests[language]], language, ['first', 'second']))})'`;
+    `node -e 'process.stdout.write(${JSON.stringify(report('owner', packageDirectory[language], [ownerTests[language]], language, ['first', 'second']))})'`;
   manifest.features[0].coverage.dependents[0].commands.none =
-    `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'clients/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
+    `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'packages/orm-go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
   assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, 1000)).join('\n'),
     /invalid native test command/);
 });
 
 caseTest('checker reads physical database state around each native test run', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
-  const owner = 'clients/typescript/tests/owner.mjs';
+  const owner = 'packages/orm-npm/tests/owner.mjs';
   const databasePath = join(root, 'state.sqlite');
   const dsn = `sqlite://${databasePath}`;
   const previous = process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
   process.env.ORM_COVERAGE_TEST_SQLITE_DSN = dsn;
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
     coverage: { kind: 'database', cases: ['first'], dependents: [], owners: {
-      typescript: { part: 'clients/typescript', tests: [owner], commands: Object.fromEntries(databases.map(database =>
+      typescript: { part: 'packages/orm-npm', tests: [owner], commands: Object.fromEntries(databases.map(database =>
         [database, [{ runner: 'node', test: owner, cases: ['first'], dsn_env: 'ORM_COVERAGE_TEST_SQLITE_DSN' }]])) },
     } } }] };
   try {
-    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-npm/tests'), { recursive: true });
     const db = new DatabaseSync(databasePath);
     db.exec('CREATE TABLE state (id INTEGER PRIMARY KEY AUTOINCREMENT, value INTEGER NOT NULL); INSERT INTO state (value) VALUES (1)');
     db.close();
@@ -324,16 +325,16 @@ caseTest('checker reads physical database state around each native test run', 12
 caseTest('Go, PHP, and Rust native cases execute through their owning files', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases = [
-    { language: 'go', part: 'clients/go/orm', file: 'clients/go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
-    { language: 'php', part: 'clients/php/tests', file: 'clients/php/tests/owner.php', runner: 'php', id: 'first' },
-    { language: 'rust', part: 'clients/rust/orm', file: 'clients/rust/orm/src/lib.rs', runner: 'cargo', symbol: 'tests::first' },
+    { language: 'go', part: 'packages/orm-go/orm', file: 'packages/orm-go/orm/owner_test.go', runner: 'go', symbol: 'TestFirst' },
+    { language: 'php', part: 'packages/orm-php/tests', file: 'packages/orm-php/tests/owner.php', runner: 'php', id: 'first' },
+    { language: 'rust', part: 'packages/orm-rust/orm', file: 'packages/orm-rust/orm/src/lib.rs', runner: 'cargo', symbol: 'tests::first' },
   ];
   try {
     for (const item of cases) await mkdir(join(root, item.file, '..'), { recursive: true });
-    await writeFile(join(root, 'clients/go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
+    await writeFile(join(root, 'packages/orm-go/orm/go.mod'), 'module example.com/coverage\n\ngo 1.22\n');
     await writeFile(join(root, cases[0].file), 'package orm\nimport "testing"\nfunc TestFirst(t *testing.T) {}\n');
     await writeFile(join(root, cases[1].file), '<?php\nif ($argv !== [$argv[0], "first"]) exit(2);\necho "CASE first PASS\\n";\n');
-    await writeFile(join(root, 'clients/rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
+    await writeFile(join(root, 'packages/orm-rust/orm/Cargo.toml'), '[package]\nname = "coverage_probe"\nversion = "0.0.1"\nedition = "2021"\n');
     // cargo test처럼 실행 시점의 CARGO_MANIFEST_DIR가 test file을 소유하는 package directory다.
     await writeFile(join(root, cases[2].file), '#[cfg(test)] mod tests { #[test] fn first() { ' +
       'assert_eq!(std::env::var("CARGO_MANIFEST_DIR").as_deref(), Ok(env!("CARGO_MANIFEST_DIR"))); } }\n');
@@ -362,11 +363,11 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
     }
     // 선언된 Rust test file을 compile하는 test binary가 없으면 같은 symbol이 다른 file에 있어도
     // 실행 증거가 아니다.
-    const unused = 'clients/rust/orm/src/unused.rs';
+    const unused = 'packages/orm-rust/orm/src/unused.rs';
     await writeFile(join(root, unused), '#[test] fn first() {}\n');
     const uncompiled = { features: [{ id: 'sample', status: 'partial', clients: { rust: 'partial' },
       coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
-        rust: { part: 'clients/rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused,
+        rust: { part: 'packages/orm-rust/orm', tests: [unused], commands: { none: [{ runner: 'cargo', test: unused,
           cases: ['first'], symbols: { first: 'tests::first' } }] } },
       } } }] };
     assert.match((await executeCoverage(uncompiled, root, 30000)).join('\n'), /no test binary compiles .*unused\.rs/);
@@ -385,16 +386,16 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
 // 실행 중에 출력한다. 실패한 실행은 FAIL 줄에 이유를 담는다.
 caseTest('every native run reports its start, steps, result and elapsed time', 8000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-report-')));
-  const owner = 'clients/typescript/tests/owner.mjs';
+  const owner = 'packages/orm-npm/tests/owner.mjs';
   const manifest = { features: [{ id: 'sample', status: 'partial', clients: { typescript: 'partial' },
     coverage: { kind: 'independent', cases: ['first'], dependents: [],
-      owners: { typescript: { part: 'clients/typescript', tests: [owner],
+      owners: { typescript: { part: 'packages/orm-npm', tests: [owner],
         commands: { none: [{ runner: 'node', test: owner, cases: ['first'] }] } } } } }] };
   const lines = [];
   const log = console.log;
   console.log = (...args) => lines.push(args.join(' '));
   try {
-    await mkdir(join(root, 'clients/typescript/tests'), { recursive: true });
+    await mkdir(join(root, 'packages/orm-npm/tests'), { recursive: true });
     await writeFile(join(root, owner), "console.log('CASE first PASS');\n");
     assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
     await writeFile(join(root, owner), 'process.exit(3);\n');

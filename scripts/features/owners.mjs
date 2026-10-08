@@ -28,7 +28,7 @@ import { runStep } from '../check/step.mjs';
 import { missingDownloads } from '../check/downloads.mjs';
 
 // fixture text 안의 repository path다. 확장자가 있는 상대 path만 본다.
-const pathPattern = /(?:contracts|tests|schema|clients|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
+const pathPattern = /(?:contracts|tests|schema|packages|engine)\/[A-Za-z0-9_./-]+\.[A-Za-z0-9]+/g;
 
 // namedPaths는 선언한 fixture file이 적는 repository path다. 없는 path는 버린다.
 async function namedPaths(root, fixture) {

@@ -34,29 +34,29 @@ export const GO_MODULE = 'github.com/polyspec/orm';
 // RELEASED는 root tag `vX.Y.Z`가 release하는 manifest다. kind는 version을 읽고 asset을 만드는 방법이다: npm과 composer는
 // asset을 가지고, cargo는 version만 확인하며(asset 없음), go는 module path만 확인한다.
 export const RELEASED = [
-  { path: 'clients/typescript/package.json', kind: 'npm' },
-  { path: 'clients/php/composer.json', kind: 'composer' },
-  { path: 'clients/php-extension/composer.json', kind: 'composer' },
-  { path: 'clients/rust/orm-schema/Cargo.toml', kind: 'cargo' },
-  { path: 'clients/rust/orm/Cargo.toml', kind: 'cargo' },
-  { path: 'clients/rust/orm-build/Cargo.toml', kind: 'cargo' },
+  { path: 'packages/orm-npm/package.json', kind: 'npm' },
+  { path: 'packages/orm-php/composer.json', kind: 'composer' },
+  { path: 'packages/orm-php-extension/composer.json', kind: 'composer' },
+  { path: 'packages/orm-rust/orm-schema/Cargo.toml', kind: 'cargo' },
+  { path: 'packages/orm-rust/orm/Cargo.toml', kind: 'cargo' },
+  { path: 'packages/orm-rust/orm-build/Cargo.toml', kind: 'cargo' },
   { path: 'go.mod', kind: 'go' },
 ];
 
 // NOT_RELEASED는 release하지 않는 추적된 manifest와 그 이유다. 추적된 manifest는 모두 RELEASED나 여기에 있다(release-check).
 export const NOT_RELEASED = {
-  'package.json': 'the private npm workspace root: it installs clients/typescript as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides',
-  'composer.json': 'the private Composer root: it installs clients/php as a path repository and takes polyspec/ordered-json from its GitHub release zip',
-  'clients/rust/Cargo.toml': 'the Cargo workspace of the Rust crates, no package of its own',
-  'clients/rust/case-clock/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
-  'clients/rust/case-database/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
-  'clients/rust/testcase/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
-  'clients/rust/tests/Cargo.toml': 'the integration tests of the Rust client (publish = false)',
+  'package.json': 'the private npm workspace root: it installs packages/orm-npm as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides',
+  'composer.json': 'the private Composer root: it installs packages/orm-php as a path repository and takes polyspec/ordered-json from its GitHub release zip',
+  'packages/orm-rust/Cargo.toml': 'the Cargo workspace of the Rust crates, no package of its own',
+  'packages/orm-rust/case-clock/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
+  'packages/orm-rust/case-database/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
+  'packages/orm-rust/testcase/Cargo.toml': 'a test support crate of the Rust client (publish = false)',
+  'packages/orm-rust/tests/Cargo.toml': 'the integration tests of the Rust client (publish = false)',
   'bench/rust/Cargo.toml': 'the benchmark crate of the Rust client',
   'tests/release-install/npm/package.json': 'the npm project of the release asset install check (scripts/release/install-check.mjs)',
   'tests/release-install/composer/composer.json': 'the Composer project of the release asset install check (scripts/release/install-check.mjs)',
   'tests/interfaces/rust/Cargo.toml': 'the interface check crate of the Rust client',
-  'clients/python/pyproject.toml': 'the Python client package: it is consumed by its git tag and has no release archive, as the Rust crates have none',
+  'packages/orm-python/pyproject.toml': 'the Python client package: it is consumed by its git tag and has no release archive, as the Rust crates have none',
 };
 
 // MANIFESTS는 manifest file의 이름이다. 추적된 이 이름의 file은 RELEASED나 NOT_RELEASED에 있어야 한다.

@@ -39,11 +39,11 @@
 
 ## Python client release
 
-Python client인 `clients/python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
+Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
 
 ## 개발 배치
 
-release하는 manifest는 clients/typescript/package.json, clients/php/composer.json, clients/php-extension/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
+release하는 manifest는 packages/orm-npm/package.json, packages/orm-php/composer.json, packages/orm-php-extension/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
 
-- 저장소 root의 package.json은 `workspaces`에 clients/typescript를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL에서 받는다. URL이 release tag를 적는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
-- 저장소 root의 composer.json은 clients/php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.
+- 저장소 root의 package.json은 `workspaces`에 packages/orm-npm를 두고, 그 `overrides`는 `@polyspec/ordered-json`을 GitHub Release의 tarball URL에서 받는다. URL이 release tag를 적는다. root의 `npm ci`가 workspace를 설치하고. root의 package-lock.json이 유일한 npm lockfile이다.
+- 저장소 root의 composer.json은 packages/orm-php를 `path` repository에서, polyspec/ordered-json을 `dist`가 GitHub Release의 zip URL과 그 shasum인 `package` repository에서 설치한다. URL이 release tag를 적는다. 그 `vendor-dir`은 vendor-php다. root의 vendor는 Go module의 vendor directory이기 때문이다. root의 composer.lock이 유일한 Composer lockfile이고, PHP test는 vendor-php/autoload.php를 load한다.

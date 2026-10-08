@@ -20,7 +20,7 @@ import { DATABASE, PROCESS, runCase, runGroup, stepLines } from '../tests/testca
 import { cargoTarget } from '../tests/cargo-target.mjs';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const require = createRequire(resolve(root, 'clients/typescript/package.json'));
+const require = createRequire(resolve(root, 'packages/orm-npm/package.json'));
 const mysqlDsn = process.env.ORM_TEST_MYSQL_DSN;
 const postgresDsn = process.env.ORM_TEST_POSTGRES_DSN;
 if (!mysqlDsn) throw new Error('ORM_TEST_MYSQL_DSN is required; database checks never skip; run the test through its make target, which reads the environment of make test-servers');
@@ -32,10 +32,10 @@ const leftover = `orm_leftover_${process.pid}`;
 // 공유 database를 읽는 case를 고친 뒤에도 그 database를 빈 것으로 여기는 case가 있으면 이 명령들이
 // 실패한다. 각 명령은 자기 case를 RUN/STEP/PASS/FAIL로 보고하므로 묶음(group)으로 실행한다.
 const commands = [
-  ['go/schema-empty', 'go', ['test', '-v', '-timeout', '0', '-count=1', './clients/go/orm', '-run', '^TestSchemaEmpty$']],
-  ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './clients/go/model']],
-  ['php/model', 'php', ['clients/php/tests/model_test.php']],
-  ['typescript/model', 'node', ['clients/typescript/tests/model.mjs']],
+  ['go/schema-empty', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/orm-go/orm', '-run', '^TestSchemaEmpty$']],
+  ['go/model', 'go', ['test', '-v', '-timeout', '0', '-count=1', './packages/orm-go/model']],
+  ['php/model', 'php', ['packages/orm-php/tests/model_test.php']],
+  ['typescript/model', 'node', ['packages/orm-npm/tests/model.mjs']],
   ['rust/integration', join(cargoTarget(), 'debug/integration'), [resolve(root, 'schema/bench.dbs')]],
 ];
 

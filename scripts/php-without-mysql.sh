@@ -1,6 +1,6 @@
 #!/bin/sh
 # MySQL driver(mysqlnd, pdo_mysql, mysqli)를 load하지 않은 PHP로
-# clients/php/tests/sqlite_without_mysql.php를 실행한다(N17). `php -n`은 ini가 load하는 shared
+# packages/orm-php/tests/sqlite_without_mysql.php를 실행한다(N17). `php -n`은 ini가 load하는 shared
 # module을 모두 빼고, 이 script는 client가 SQLite에서 쓰는 확장(EXTENSIONS) 가운데 compile되어
 # 있지 않은 것만 `-d extension=`으로 명시해 load한다. MySQL driver가 PHP에 compile되어 있으면
 # `-n`으로 뺄 수 없으므로 이유를 출력하고 실패한다: 이 검사는 driver가 shared module인 선언된
@@ -28,4 +28,4 @@ for extension in $EXTENSIONS; do
   compiled "$extension" || set -- "$@" -d "extension=$extension"
 done
 echo "php $(php -n -r 'echo PHP_VERSION;') -n $*"
-exec php -n "$@" "$ROOT/clients/php/tests/sqlite_without_mysql.php"
+exec php -n "$@" "$ROOT/packages/orm-php/tests/sqlite_without_mysql.php"

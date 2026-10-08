@@ -17,15 +17,15 @@ keep() {
   "$@" || FAILED="$FAILED
   $* (exit $?)"
 }
-keep node clients/typescript/tests/model.mjs
-keep node --test clients/typescript/tests/dbspec_runtime_db.mjs
-keep node clients/typescript/tests/sqlite-concurrency.mjs
-keep node clients/typescript/tests/schema-set.mjs
-keep node clients/typescript/tests/add-tables-and-columns.mjs
-keep node clients/typescript/tests/clock.mjs
-keep node clients/typescript/tests/driver-error.mjs
-keep node --conditions=orm-test clients/typescript/tests/rollback.mjs
-keep node clients/typescript/tests/mysql_tls.mjs
+keep node packages/orm-npm/tests/model.mjs
+keep node --test packages/orm-npm/tests/dbspec_runtime_db.mjs
+keep node packages/orm-npm/tests/sqlite-concurrency.mjs
+keep node packages/orm-npm/tests/schema-set.mjs
+keep node packages/orm-npm/tests/add-tables-and-columns.mjs
+keep node packages/orm-npm/tests/clock.mjs
+keep node packages/orm-npm/tests/driver-error.mjs
+keep node --conditions=orm-test packages/orm-npm/tests/rollback.mjs
+keep node packages/orm-npm/tests/mysql_tls.mjs
 if [ -n "$FAILED" ]; then
   printf 'sqlite-test: failed:%s\n' "$FAILED" >&2
   exit 1

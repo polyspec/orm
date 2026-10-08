@@ -5,10 +5,10 @@
 
 // runtimeSource는 client runtime의 source file이다. test와 dbspec introspection, 생성 code는 뺀다.
 export const runtimeSource = path =>
-  (/^clients\/go\/orm\/(?:[^/]+|sqlite\/[^/]+|pg\/[^/]+)\.go$/.test(path) && !path.endsWith('_test.go')) ||
-  /^clients\/php\/src\/[^/]+\.php$/.test(path) ||
-  /^clients\/typescript\/src\/[^/]+\.ts$/.test(path) ||
-  (/^clients\/rust\/orm\/src\/[^/]+\.rs$/.test(path) && !path.endsWith('_tests.rs'));
+  (/^packages\/orm-go\/orm\/(?:[^/]+|sqlite\/[^/]+|pg\/[^/]+)\.go$/.test(path) && !path.endsWith('_test.go')) ||
+  /^packages\/orm-php\/src\/[^/]+\.php$/.test(path) ||
+  /^packages\/orm-npm\/src\/[^/]+\.ts$/.test(path) ||
+  (/^packages\/orm-rust\/orm\/src\/[^/]+\.rs$/.test(path) && !path.endsWith('_tests.rs'));
 
 // connectProbeErrors는 files({path: text})의 runtime source가 연결 probe statement를 적는 줄마다 오류
 // 하나를 돌려준다: SQL `sqlite_version()`과 TypeScript의 `'SELECT 1'`. 주석 줄은 제외한다.
@@ -19,7 +19,7 @@ export function connectProbeErrors(files) {
     text.split('\n').forEach((line, index) => {
       if (/^\s*(\/\/|#|\*|\/\*)/.test(line)) return;
       if (/sqlite_version\(\)/i.test(line)) errors.push(`${path}:${index + 1} asks the server for the SQLite version; read the library version from the driver`);
-      else if (path.startsWith('clients/typescript/src/') && /['"`]SELECT 1['"`]/.test(line)) errors.push(`${path}:${index + 1} sends SELECT 1 to check the connection; open a connection without a statement`);
+      else if (path.startsWith('packages/orm-npm/src/') && /['"`]SELECT 1['"`]/.test(line)) errors.push(`${path}:${index + 1} sends SELECT 1 to check the connection; open a connection without a statement`);
     });
   }
   return errors;

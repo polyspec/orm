@@ -51,13 +51,13 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 ```sh
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
-(cd clients/go/model && go generate)                                # Go models
-php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
-(cd clients/typescript && npm run build)                            # TypeScript models and library
-(cd clients/rust && cargo build --release)                          # build.rs generates the Rust models
+(cd packages/orm-go/model && go generate)                                # Go models
+php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
+(cd packages/orm-npm && npm run build)                            # TypeScript models and library
+(cd packages/orm-rust && cargo build --release)                          # build.rs generates the Rust models
 go test ./...
 npm run typescript:test
-(cd clients/rust && cargo test --workspace)
+(cd packages/orm-rust && cargo test --workspace)
 go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the four clients
 ```
 

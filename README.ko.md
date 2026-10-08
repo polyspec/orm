@@ -51,13 +51,13 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 ```sh
 make test-servers                                                   # 서버, database, bench schema와 10만 행
 . .runtime/servers/env                                              # 테스트의 DSN 변수
-(cd clients/go/model && go generate)                                # Go 모델
-php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
-(cd clients/typescript && npm run build)                            # TypeScript 모델과 라이브러리
-(cd clients/rust && cargo build --release)                          # build.rs가 Rust 모델을 생성한다
+(cd packages/orm-go/model && go generate)                                # Go 모델
+php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
+(cd packages/orm-npm && npm run build)                            # TypeScript 모델과 라이브러리
+(cd packages/orm-rust && cargo build --release)                          # build.rs가 Rust 모델을 생성한다
 go test ./...
 npm run typescript:test
-(cd clients/rust && cargo test --workspace)
+(cd packages/orm-rust && cargo test --workspace)
 go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # 네 클라이언트를 비교한다
 ```
 

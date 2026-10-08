@@ -8,10 +8,10 @@
 // Usage: node tests/dbspec/apply/typescript.mjs <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
-import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans } from '../../../clients/typescript/dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, parsePlan, recoverPlans, rollbackPlans } from '../../../packages/orm-npm/dist/dbspec/index.js';
 import { readInput } from '../input.mjs';
 
-const require = createRequire(new URL('../../../clients/typescript/package.json', import.meta.url));
+const require = createRequire(new URL('../../../packages/orm-npm/package.json', import.meta.url));
 const mysql = require('mysql2/promise');
 const pg = require('pg');
 

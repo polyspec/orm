@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { endGroup } from '../check/step.mjs';
+import { packageDirectory } from './packages.mjs';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, extname, join, relative, resolve } from 'node:path';
@@ -37,7 +38,7 @@ function requirements(feature, errors) {
   for (const language of languages) {
     if (!['pass', 'partial'].includes(feature.clients?.[language])) continue;
     const owner = coverage.owners?.[language];
-    if (!owner || !validPart(owner.part) || !owner.part.startsWith(`clients/${language}/`) && owner.part !== `clients/${language}`) {
+    if (!owner || !validPart(owner.part) || !owner.part.startsWith(`${packageDirectory[language]}/`) && owner.part !== packageDirectory[language]) {
       errors.push(`${feature.id}/owner/${language}: missing owning client part`);
       continue;
     }

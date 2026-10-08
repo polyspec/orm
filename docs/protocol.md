@@ -172,9 +172,9 @@ Every client validates and plans requests in the calling process. No compiler se
 | Client | Validation, planning, dialects, and DDL |
 |---|---|
 | Go | `engine/ir`, `engine/planner`, `engine/dialect`, `engine/dbspec` DDL |
-| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
-| Rust | `clients/rust/orm/src/engine/`, `clients/rust/orm-schema/src/dbspec/` DDL |
-| TypeScript | `clients/typescript/src/engine/`, `clients/typescript/src/dbspec/` DDL |
+| PHP | `packages/orm-php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| Rust | `packages/orm-rust/orm/src/engine/`, `packages/orm-rust/orm-schema/src/dbspec/` DDL |
+| TypeScript | `packages/orm-npm/src/engine/`, `packages/orm-npm/src/dbspec/` DDL |
 
 Generated code carries the manifest text of its document set and its `manifestHash`. The client builds the runtime model from that text once and rejects text whose hash differs from the declared one (`SCHEMA_HASH_MISMATCH`). The plan cache key is the manifest hash and the request shape. Parameter values are not part of the key.
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T44.1: 여섯 client package를 `clients/<directory>`에서 `packages/orm-<kind>`(`orm-go`, TypeScript는 `orm-npm`, `orm-php`, `orm-php-extension`, `orm-python`, `orm-rust`)로 옮겼다. Makefile, workflow, script, test, `contracts/`, 문서가 새 directory를 쓰고, `scripts/features/packages.mjs`가 client 언어를 그 directory에 대응시키며, 다시 만든 symbol snapshot은 이전 snapshot의 선언을 새 경로로 담는다. Go module `github.com/polyspec/orm`은 저장소 root에 남고, 그 client package는 `github.com/polyspec/orm/packages/orm-go/...`이다.
 - T43.7-18-2: 항목이 `make docs-rules-check`가 거부하는 단어 대신 `symbol snapshot 검사`와 `공개 이름 목록`을 써서 checklist가 `make docs-rules-check`를 통과한다.
 - T9: C로 쓴 PHP extension `orm_dbspec`이 PHP client `Dbspec`의 모든 public method와 그 결과 class를 제공하고, Rust extension은 없습니다(T9.1~T9.13).
 - T43.6-3-4: conformance check의 run-languages test가 모든 Go test와 같이 `testcase.Start`로 case를 시작합니다.

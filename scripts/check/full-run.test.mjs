@@ -724,10 +724,10 @@ caseTest('the failure lines of a case that passed are not the first failure line
     ...sample,
     'PASS a sample of every client runs through its owning file elapsed=2.1s',
     'RUN every tracked file selects a behaviour test or declares its scope deadline=1m0s',
-    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: clients/rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
+    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: packages/orm-rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
   ]) found.line(line);
   assert.deepEqual(found.lines(), [
-    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: clients/rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
+    "FAIL every tracked file selects a behaviour test or declares its scope elapsed=75ms: packages/orm-rust/orm-build/tests/unit/row_insert_lock.rs selects no behaviour test",
   ]);
 });
 
@@ -916,7 +916,7 @@ caseTest('a run without servers runs the targets that need no database and repor
     const code = await runChecks({ root, servers: null, targets: ['docs-a', 'db-b'], run, needs: { 'docs-a': [], 'db-b': ['databases'] },
       id: '77-1-docs', snapshot: () => ({ text: 'stub\n', places: { '/': 1 } }), ciSetup: '',
       // 빠진 crate는 이 실행의 target이 필요로 하지 않으므로 downloads 단계를 실패시키지 않는다.
-      downloads: () => [{ need: 'rust', message: 'the crates of clients/rust/Cargo.lock are not downloaded; run make install, which downloads it' }] });
+      downloads: () => [{ need: 'rust', message: 'the crates of packages/orm-rust/Cargo.lock are not downloaded; run make install, which downloads it' }] });
     assert.equal(code, 1);
     assert.deepEqual(ran, ['docs-a']);
     const report = join(root, '.runtime/check/ci_77_1_docs/report');

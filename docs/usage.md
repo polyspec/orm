@@ -471,7 +471,7 @@ make test-servers                                        # MySQL, PostgreSQL, th
 . .runtime/servers/env                                   # the DSN variables of the tests
 go test ./...                                            # engine, generator, and Go client
 npm run typescript:test                                  # TypeScript client
-(cd clients/rust && cargo test --workspace)              # Rust client
+(cd packages/orm-rust && cargo test --workspace)              # Rust client
 go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # four clients, identical results on MySQL
 go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```

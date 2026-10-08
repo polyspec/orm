@@ -17,19 +17,19 @@ const cargoToml = text => [
 ];
 const cargoLock = text => [...text.matchAll(/^name = "([^"]+)"\nversion = "([^"]+)"$/gm)]
   .filter(m => RUST_PACKAGES.includes(m[1])).map(m => m[2]);
-// 저장소 root의 package-lock.json에서 orm version은 workspace clients/typescript의 항목이다(root는 version이 없는 private
+// 저장소 root의 package-lock.json에서 orm version은 workspace packages/orm-npm의 항목이다(root는 version이 없는 private
 // workspace다).
-const packageLock = text => [JSON.parse(text).packages?.['clients/typescript']?.version].filter(Boolean);
+const packageLock = text => [JSON.parse(text).packages?.['packages/orm-npm']?.version].filter(Boolean);
 
 // 각 선언의 파일과 그 파일에서 orm version을 읽는 방법.
 export const DECLARATIONS = [
-  ...['clients/rust/orm', 'clients/rust/orm-schema', 'clients/rust/orm-build', 'clients/rust/case-clock', 'clients/rust/case-database',
-    'clients/rust/testcase', 'clients/rust/tests', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
-  ...['clients/rust', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
-  { file: 'clients/php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'clients/php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'clients/typescript/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'clients/python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
+  ...['packages/orm-rust/orm', 'packages/orm-rust/orm-schema', 'packages/orm-rust/orm-build', 'packages/orm-rust/case-clock', 'packages/orm-rust/case-database',
+    'packages/orm-rust/testcase', 'packages/orm-rust/tests', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
+  ...['packages/orm-rust', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
+  { file: 'packages/orm-php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/orm-php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/orm-npm/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/orm-python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
   { file: 'package-lock.json', read: packageLock },
   // release asset 설치 검사의 소비자 fixture는 release의 asset 이름과 version을 적는다(make install-release-fixtures가 lock을 만든다).
   { file: 'tests/release-install/npm/package.json', read: text => [/^file:polyspec-orm-(.+)\.tgz$/.exec(JSON.parse(text).dependencies['@polyspec/orm'])?.[1]].filter(Boolean) },
@@ -39,7 +39,7 @@ export const DECLARATIONS = [
   { file: 'contracts/features.json', read: text => [JSON.parse(text).contract_version].filter(Boolean) },
   { file: 'README.md', read: first(/^# orm (\S+)$/gm) },
   { file: 'README.ko.md', read: first(/^# orm (\S+)$/gm) },
-  { file: 'clients/php/README.md', read: first(/Version (\d+\.\d+\.\d+)\./g) },
+  { file: 'packages/orm-php/README.md', read: first(/Version (\d+\.\d+\.\d+)\./g) },
   { file: 'SECURITY.md', read: first(/development version is `([^`]+)`/g) },
   { file: 'SECURITY.ko.md', read: first(/개발 version은 `([^`]+)`/g) },
   { file: 'AGENTS.md', read: first(/Develop one `([^`]+)` version/g) },

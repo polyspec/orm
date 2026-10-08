@@ -16,7 +16,7 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
-const tracked = ['scripts/docs/rules.mjs', 'clients/typescript/package.json', 'scripts/typescript/sqlite-test.sh'];
+const tracked = ['scripts/docs/rules.mjs', 'packages/orm-npm/package.json', 'scripts/typescript/sqlite-test.sh'];
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mjs' }, tracked), [
@@ -26,7 +26,7 @@ caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
     scriptPathErrors(
       {
         'docs:rules-check': 'node scripts/docs/rules.mjs',
-        'typescript:build': 'npm --prefix clients/typescript run build',
+        'typescript:build': 'npm --prefix packages/orm-npm run build',
         'typescript:test': 'npm run typescript:build && ./scripts/typescript/sqlite-test.sh',
         'docs:dev': 'vitepress dev docs',
       },
@@ -156,8 +156,8 @@ const lockOf = resolved => JSON.stringify({ lockfileVersion: 3, packages: { '': 
 
 caseTest('npm dependencies from a release archive and the registry pass', COMPUTE, () => {
   assert.deepEqual(npmGitSourceErrors({
-    'clients/typescript/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
-    'clients/typescript/package-lock.json': lockOf(archive),
+    'packages/orm-npm/package.json': JSON.stringify({ dependencies: { '@polyspec/ordered-json': archive, pg: '^8.23.0' }, devDependencies: { '@types/node': '22.20.2' } }),
+    'packages/orm-npm/package-lock.json': lockOf(archive),
   }), []);
 });
 
@@ -170,8 +170,8 @@ caseTest('a package.json dependency from git fails', COMPUTE, () => {
 
 caseTest('a package-lock.json entry resolved from git fails', COMPUTE, () => {
   for (const resolved of ['git+ssh://git@github.com/polyspec/ordered-json.git#f491200d3179c36afe29255b0f3ee964f6e83570', 'git://github.com/polyspec/ordered-json.git', 'ssh://git@github.com/polyspec/ordered-json.git', 'github:polyspec/ordered-json'])
-    assert.deepEqual(npmGitSourceErrors({ 'clients/typescript/package-lock.json': lockOf(resolved) }), [
-      `clients/typescript/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
+    assert.deepEqual(npmGitSourceErrors({ 'packages/orm-npm/package-lock.json': lockOf(resolved) }), [
+      `packages/orm-npm/package-lock.json resolves node_modules/@polyspec/ordered-json from ${resolved}, a git source; use the release archive URL of the GitHub tag`,
     ]);
 });
 
@@ -230,7 +230,7 @@ const runningPhp = execFileSync('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())[1];
 
 caseTest('the checks and every workflow run the PHP of .php-version and the Rust of rust-toolchain.toml', COMPUTE, () => {
-  const composer = JSON.parse(text('clients/php/composer.json'));
+  const composer = JSON.parse(text('packages/orm-php/composer.json'));
   assert.deepEqual(phpVersionErrors(text('.php-version'), composer.require.php, workflows, runningPhp), []);
   assert.deepEqual(rustToolchainErrors(text('rust-toolchain.toml'), text('Makefile'), workflows, runningRustc), []);
 });
@@ -244,7 +244,7 @@ const php = [
   '          php-version-file: .php-version',
   '          extensions: pdo_sqlite',
   '          coverage: none',
-  '      - run: composer install --working-dir=clients/php',
+  '      - run: composer install --working-dir=packages/orm-php',
   '',
 ].join('\n');
 
@@ -271,9 +271,9 @@ caseTest('a workflow that sets up PHP with a coverage driver fails', COMPUTE, ()
 
 caseTest('a PHP other than .php-version or below composer.json fails', COMPUTE, () => {
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', {}, '8.4'), ['PHP 8.4 runs the checks; .php-version declares 8.5']);
-  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}, '8.3'), ['.php-version 8.3 is below clients/php/composer.json require.php >=8.4']);
+  assert.deepEqual(phpVersionErrors('8.3\n', '>=8.4', {}, '8.3'), ['.php-version 8.3 is below packages/orm-php/composer.json require.php >=8.4']);
   assert.deepEqual(phpVersionErrors('8.5.10\n', '>=8.4', {}, '8.5'), ['.php-version must hold one release x.y and a newline, found "8.5.10\\n"']);
-  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}, '8.5'), ['clients/php/composer.json require.php must be ">=x.y", found "^8.4"']);
+  assert.deepEqual(phpVersionErrors('8.5\n', '^8.4', {}, '8.5'), ['packages/orm-php/composer.json require.php must be ">=x.y", found "^8.4"']);
 });
 
 const toolchain = '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy", "rustfmt"]\nprofile = "minimal"\n';
@@ -285,7 +285,7 @@ const rust = [
   '      - name: Rust toolchain',
   '        run: rustup toolchain install',
   '      - uses: Swatinem/rust-cache@v2',
-  '      - run: (cd clients/rust && cargo test --locked)',
+  '      - run: (cd packages/orm-rust && cargo test --locked)',
   '',
 ].join('\n');
 
@@ -391,7 +391,7 @@ caseTest('every CI group uploads the report directory that the runner writes', C
 // Python matrix case(T43.6-1)는 python group이 requires-python의 최저 release(3.11)에서도 실행되는 matrix 항목 하나를 가지고,
 // 그 항목의 보고서 directory와 artifact 이름이 기본 항목(.python-version)과 다르며, 기본 항목은 .python-version을 읽는지 본다.
 caseTest('the python group runs on Python 3.11 and on .python-version', COMPUTE, () => {
-  const minimum = /^requires-python = ">=(\d+\.\d+)"$/m.exec(text('clients/python/pyproject.toml'))?.[1];
+  const minimum = /^requires-python = ">=(\d+\.\d+)"$/m.exec(text('packages/orm-python/pyproject.toml'))?.[1];
   assert.equal(minimum, '3.11');
   assert.deepEqual(matrixIncludes(workflow), [{ group: 'python', leg: '_py311', 'python-version': minimum }]);
   assert.match(workflow, /python-version: \$\{\{ matrix\.python-version \}\}/);
@@ -496,7 +496,7 @@ caseTest('a workflow that runs a verification command of feature-check again fai
   const commands = featureCommands({ features: [{ verification: [
     { id: 'interfaces', command: 'PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test' },
     { id: 'perf', command: './scripts/perf-test.sh' },
-    { id: 'elsewhere', command: 'php tests/codec/check.php', cwd: 'clients/php' },
+    { id: 'elsewhere', command: 'php tests/codec/check.php', cwd: 'packages/orm-php' },
   ] }] });
   assert.deepEqual(commands, ['PATH="$HOME/.cargo/bin:$PATH" go run ./tests/interfaces/check --self-test', './scripts/perf-test.sh']);
   const twice = steps.replace('make repo-check', 'make check\n          make interface-check fuzz-check\n          ./scripts/perf-test.sh\n          php tests/codec/check.php');
@@ -584,7 +584,7 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
     '        with:',
     '          php-version-file: .php-version',
     '          coverage: none',
-    '      - run: composer install --working-dir=clients/php',
+    '      - run: composer install --working-dir=packages/orm-php',
     '',
   ].join('\n');
   assert.deepEqual(phpVersionErrors('8.5\n', '>=8.4', { 'ci.yml': minimum }, '8.5'), []);
@@ -641,10 +641,10 @@ caseTest('the Makefile runs no program from the shared Rust target directory and
   const makefile = [
     'DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs',
     'run:',
-    '\t$(RUN_LONG) rust-build/x --cwd clients/rust -- cargo build --locked --example x',
+    '\t$(RUN_LONG) rust-build/x --cwd packages/orm-rust -- cargo build --locked --example x',
     '\tX=$(CARGO_TARGET_DIR)/debug/examples/x go test ./a',
     'copied:',
-    '\t$(RUN_LONG) rust-build/y --cwd clients/rust -- $(CARGO_COPY) debug/y -- cargo build --locked --bin y',
+    '\t$(RUN_LONG) rust-build/y --cwd packages/orm-rust -- $(CARGO_COPY) debug/y -- cargo build --locked --bin y',
     '\t$(RUN_LONG) rust-build/z -- $(CARGO_LEASED) cargo test --no-run --locked',
     '\t# $(CARGO_TARGET_DIR)/debug/y in a comment',
     '',
@@ -652,7 +652,7 @@ caseTest('the Makefile runs no program from the shared Rust target directory and
   assert.deepEqual(sharedTargetErrors(makefile), [
     'Makefile:1 uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): DOCUMENT = $(CARGO_TARGET_DIR)/dbspec/stress.dbs',
     'Makefile:4 uses a path in the shared Rust target directory; run the copy in $(RUN_TARGET) and write run files into $(RUN_DIR): X=$(CARGO_TARGET_DIR)/debug/examples/x go test ./a',
-    'Makefile run builds into the shared Rust target directory without its lease; run the build under $(CARGO_LEASED) or $(CARGO_COPY): $(RUN_LONG) rust-build/x --cwd clients/rust -- cargo build --locked --example x',
+    'Makefile run builds into the shared Rust target directory without its lease; run the build under $(CARGO_LEASED) or $(CARGO_COPY): $(RUN_LONG) rust-build/x --cwd packages/orm-rust -- cargo build --locked --example x',
   ]);
 });
 
@@ -704,8 +704,8 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
   const files = new Set(trackedFiles('*'));
   assert.deepEqual(typescriptReaderErrors(text('Makefile'), path => files.has(path) ? text(path) : undefined), []);
   const sources = {
-    'scripts/reads.mjs': "const run = ['node', ['clients/typescript/tests/db.mjs']];\n",
-    'clients/typescript/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'scripts/reads.mjs': "const run = ['node', ['packages/orm-npm/tests/db.mjs']];\n",
+    'packages/orm-npm/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/quoted.mjs': "const fixture = \"import { Db } from '../dist/index.js';\";\n",
   };
   const makefile = 'reader:\n\tnode scripts/reads.mjs\nheld:\n\t$(READ_TYPESCRIPT)\n\tnode scripts/reads.mjs\nquoted:\n\tnode --test scripts/quoted.mjs\n';
@@ -719,19 +719,19 @@ caseTest('a target that runs code using the TypeScript build output holds it', C
 // 문자열)은 여전히 읽는 것으로 세며, 여러 줄에 걸친 import도 읽는 것으로 세는지 확인한다.
 caseTest('a test that only names a TypeScript test path does not read the build output', COMPUTE, () => {
   const sources = {
-    'clients/typescript/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
+    'packages/orm-npm/tests/db.mjs': "const { Db } = await import('../dist/index.js');\n",
     'scripts/names.test.mjs': [
-      "assert.deepEqual(ran, ['node clients/typescript/tests/db.mjs']);",
-      "assert.match(stderr, /node clients\\/typescript\\/tests\\/db\\.mjs \\(exit 3\\)/);",
-      "const stub = `#!/bin/sh\\necho \"node $*\" >> log # node clients/typescript/tests/db.mjs`;",
+      "assert.deepEqual(ran, ['node packages/orm-npm/tests/db.mjs']);",
+      "assert.match(stderr, /node packages\\/orm-npm\\/tests\\/db\\.mjs \\(exit 3\\)/);",
+      "const stub = `#!/bin/sh\\necho \"node $*\" >> log # node packages/orm-npm/tests/db.mjs`;",
       '',
     ].join('\n'),
-    'scripts/array.mjs': "const run = ['node', ['clients/typescript/tests/db.mjs']];\n",
-    'scripts/exec-path.mjs': "spawnSync(process.execPath, ['clients/typescript/tests/db.mjs', '--x']);\n",
-    'scripts/shell.mjs': "execSync('node --conditions=orm-test clients/typescript/tests/db.mjs');\n",
+    'scripts/array.mjs': "const run = ['node', ['packages/orm-npm/tests/db.mjs']];\n",
+    'scripts/exec-path.mjs': "spawnSync(process.execPath, ['packages/orm-npm/tests/db.mjs', '--x']);\n",
+    'scripts/shell.mjs': "execSync('node --conditions=orm-test packages/orm-npm/tests/db.mjs');\n",
     // 여러 줄의 import는 읽는 것이다. 함수 본문 뒤 주석에 적은 import 예시는 아니다.
-    'clients/typescript/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
-    'scripts/multi.mjs': "const run = ['node', ['clients/typescript/tests/multi.mjs']];\n",
+    'packages/orm-npm/tests/multi.mjs': "import {\n  Db,\n  OrmError as Failure,\n} from '../dist/index.js';\n",
+    'scripts/multi.mjs': "const run = ['node', ['packages/orm-npm/tests/multi.mjs']];\n",
     'scripts/comment.mjs': "export function f(a) {\n  // an import may span lines: `import {\\n  a,\\n} from '../dist/index.js'`\n}\n",
   };
   const makefile = 'names:\n\tnode --test scripts/names.test.mjs\narray:\n\tnode scripts/array.mjs\nexec-path:\n\tnode scripts/exec-path.mjs\nshell:\n\tnode scripts/shell.mjs\nmulti:\n\tnode scripts/multi.mjs\ncomment:\n\tnode scripts/comment.mjs\n';
@@ -756,20 +756,20 @@ caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
 // 언어 case는 저장소의 tracked file과 최소 목록을 검사한다.
 caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', COMPUTE, () => {
   assert.deepEqual(toolingLanguageErrors(trackedFiles('*')), []);
-  assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'clients/php/src/Db.php']), [
+  assert.deepEqual(toolingLanguageErrors(['scripts/stop-process.py', 'tests/stop-process/main.go', 'scripts/a.sh', 'tools/x.rb', 'packages/orm-php/src/Db.php']), [
     'scripts/stop-process.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'tools/x.rb is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
   ]);
   // the Python exemption is exactly the five places of scripts/repo/scripts.mjs; nothing else is exempt
-  assert.deepEqual(toolingLanguageErrors(['clients/python/src/polyspec/orm/core.py', 'tests/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
+  assert.deepEqual(toolingLanguageErrors(['packages/orm-python/src/polyspec/orm/core.py', 'tests/interfaces/python.py', 'tests/interfaces/test_schema_utils.py',
     'tests/conformance/runner_python.py', 'tests/dbspec/compare/python.py']), []);
   assert.deepEqual(toolingLanguageErrors(['tests/interfaces/helper.py', 'tests/conformance/vectors.py', 'tests/dbspec/compare/other.py',
-    'scripts/python_tool.py', 'clients/python-old/x.py']), [
+    'scripts/python_tool.py', 'packages/orm-python-old/x.py']), [
     'tests/interfaces/helper.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'tests/conformance/vectors.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'tests/dbspec/compare/other.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
     'scripts/python_tool.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
-    'clients/python-old/x.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
+    'packages/orm-python-old/x.py is a program in a language outside Go, PHP, Rust and TypeScript; write the tool in one of them',
   ]);
 });
 
@@ -889,59 +889,59 @@ caseTest('a workflow step runs a program that reads the lease variables only thr
   ]);
 });
 
-// target case는 실행 명령이 clients/rust/target/를 직접 적으면 거부한다.
+// target case는 실행 명령이 packages/orm-rust/target/를 직접 적으면 거부한다.
 caseTest('a run command names the Rust target directory through CARGO_TARGET_DIR', COMPUTE, () => {
   assert.deepEqual(targetPathErrors({
-    Makefile: '# measured clients/rust/target 10 GiB\nexport CARGO_TARGET_DIR := $(abspath clients/rust/target)\nx:\n\t$(CARGO_TARGET_DIR)/debug/integration\n',
+    Makefile: '# measured packages/orm-rust/target 10 GiB\nexport CARGO_TARGET_DIR := $(abspath packages/orm-rust/target)\nx:\n\t$(CARGO_TARGET_DIR)/debug/integration\n',
     'scripts/a.sh': '"${CARGO_TARGET_DIR:?}/debug/integration"\n',
   }), []);
   assert.deepEqual(targetPathErrors({
-    Makefile: 'x:\n\tclients/rust/target/debug/integration\n',
-    'scripts/a.mjs': "resolve(root, 'clients/rust/target/debug/integration')\n",
-    'tests/b/main.go': '\t\ttarget = filepath.Join(root, "clients", "rust", "target")\n',
+    Makefile: 'x:\n\tpackages/orm-rust/target/debug/integration\n',
+    'scripts/a.mjs': "resolve(root, 'packages/orm-rust/target/debug/integration')\n",
+    'tests/b/main.go': '\t\ttarget = filepath.Join(root, "packages", "orm-rust", "target")\n',
   }), [
-    'Makefile:2 names clients/rust/target instead of CARGO_TARGET_DIR',
-    'scripts/a.mjs:1 names clients/rust/target instead of CARGO_TARGET_DIR',
-    'tests/b/main.go:1 names clients/rust/target instead of CARGO_TARGET_DIR',
+    'Makefile:2 names packages/orm-rust/target instead of CARGO_TARGET_DIR',
+    'scripts/a.mjs:1 names packages/orm-rust/target instead of CARGO_TARGET_DIR',
+    'tests/b/main.go:1 names packages/orm-rust/target instead of CARGO_TARGET_DIR',
   ]);
-  assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into clients/rust/target by default\n' }), []);
+  assert.deepEqual(targetPathErrors({ 'tests/x/main.go': '\t// cargo builds into packages/orm-rust/target by default\n' }), []);
   assert.ok(runFile('contracts/features.json') && runFile('tests/dbspec/compare/runners.mjs'));
-  assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('clients/rust/README.md') && !runFile('scripts/repo/target.mjs'));
+  assert.ok(!runFile('examples/complex/rust/main.rs') && !runFile('packages/orm-rust/README.md') && !runFile('scripts/repo/target.mjs'));
 });
 
 // manifest directory case는 Rust source가 package directory를 compile 시점의 env!로 읽으면 거부한다.
 caseTest('Rust source reads the package directory when the program runs', COMPUTE, () => {
   assert.deepEqual(manifestDirErrors({
-    'clients/rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
+    'packages/orm-rust/orm/tests/a.rs': 'let dir = polyspec_orm_testcase::manifest_dir();\n// env!("CARGO_MANIFEST_DIR") was the old form\n',
     'bench/rust/tests/b.rs': 'let program = env!("CARGO_BIN_EXE_native");\ninclude!(concat!(env!("OUT_DIR"), "/m.rs"));\n',
   }), []);
   assert.deepEqual(manifestDirErrors({
-    'clients/rust/orm/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
-    'clients/rust/orm/src/codec.rs': '        let root = concat!(env!( "CARGO_MANIFEST_DIR" ), "/../../../tests/codec");\n',
+    'packages/orm-rust/orm/tests/a.rs': 'use std::path::PathBuf;\nlet root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");\n',
+    'packages/orm-rust/orm/src/codec.rs': '        let root = concat!(env!( "CARGO_MANIFEST_DIR" ), "/../../../tests/codec");\n',
   }), [
-    'clients/rust/orm/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
-    'clients/rust/orm/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+    'packages/orm-rust/orm/tests/a.rs:2 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
+    'packages/orm-rust/orm/src/codec.rs:1 reads CARGO_MANIFEST_DIR at compile time; read it when the test runs',
   ]);
 });
 
 // 연결 probe case는 client runtime이 연결할 때 server에 묻는 statement를 거부한다.
 caseTest('a client connects without a probe statement', COMPUTE, () => {
   assert.deepEqual(connectProbeErrors({
-    'clients/go/orm/db.go': '\tversion := sqliteVersion\n',
-    'clients/typescript/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
-    'clients/go/orm/cancel_test.go': '\tc.Raw("", "SELECT sqlite_version()", nil)\n',
-    'clients/php/src/Dbspec/SqliteCatalog.php': "SELECT sqlite_version()\n",
+    'packages/orm-go/orm/db.go': '\tversion := sqliteVersion\n',
+    'packages/orm-npm/src/database.ts': "    try { (await pool.reserve()).release(false); } catch (error) { throw error; }\n",
+    'packages/orm-go/orm/cancel_test.go': '\tc.Raw("", "SELECT sqlite_version()", nil)\n',
+    'packages/orm-php/src/Dbspec/SqliteCatalog.php': "SELECT sqlite_version()\n",
   }), []);
   assert.deepEqual(connectProbeErrors({
-    'clients/go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
-    'clients/php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
-    'clients/typescript/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
-    'clients/rust/orm/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
+    'packages/orm-go/orm/db.go': '\tif err := s.QueryRowContext(ctx, "SELECT sqlite_version()").Scan(&version); err != nil {\n',
+    'packages/orm-php/src/Orm.php': "                    $version = (string) $pdo->query('SELECT sqlite_version()')->fetchColumn();\n",
+    'packages/orm-npm/src/database.ts': "    try { await pool.execute('SELECT 1', [], undefined, unobserved); } catch (error) { throw error; }\n",
+    'packages/orm-rust/orm/src/db.rs': '                let version: String = sqlx::query_scalar("SELECT sqlite_version()").fetch_one(&pool).await?;\n',
   }), [
-    'clients/go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
-    'clients/php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
-    'clients/typescript/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
-    'clients/rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
+    'packages/orm-go/orm/db.go:1 asks the server for the SQLite version; read the library version from the driver',
+    'packages/orm-php/src/Orm.php:1 asks the server for the SQLite version; read the library version from the driver',
+    'packages/orm-npm/src/database.ts:1 sends SELECT 1 to check the connection; open a connection without a statement',
+    'packages/orm-rust/orm/src/db.rs:1 asks the server for the SQLite version; read the library version from the driver',
   ]);
 });
 
@@ -1013,8 +1013,8 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
     '}',
     '',
   ].join('\n');
-  assert.deepEqual(goTestCaseErrors({ 'clients/go/orm/a_test.go': go, 'internal/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
-    'clients/go/orm/a_test.go: TestBare does not start its case with internal/testcase, so it runs without a deadline or RUN line',
+  assert.deepEqual(goTestCaseErrors({ 'packages/orm-go/orm/a_test.go': go, 'internal/testcase/testcase_test.go': 'func TestBare(t *testing.T) {\n}\n' }), [
+    'packages/orm-go/orm/a_test.go: TestBare does not start its case with internal/testcase, so it runs without a deadline or RUN line',
   ]);
   const rust = [
     '#[tokio::test]',
@@ -1027,8 +1027,8 @@ caseTest('a Go or Rust test without a case of its own fails', COMPUTE, () => {
     '}',
     '',
   ].join('\n');
-  assert.deepEqual(rustTestCaseErrors({ 'clients/rust/orm/tests/a.rs': rust }), [
-    'clients/rust/orm/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
+  assert.deepEqual(rustTestCaseErrors({ 'packages/orm-rust/orm/tests/a.rs': rust }), [
+    'packages/orm-rust/orm/tests/a.rs: bare does not start its case with polyspec_orm_testcase, so it runs without a deadline or RUN line',
   ]);
 });
 
@@ -1041,32 +1041,32 @@ caseTest('every PHP and TypeScript test that a check runs reports its cases', CO
     ...Object.values(JSON.parse(text('package.json')).scripts).map(command => ({ source: 'package.json', command })),
   ];
   const files = new Set(trackedFiles('*'));
-  assert.ok(commands.some(({ command }) => testEntries(command).includes('clients/php/tests/decimal_model_db.php')));
+  assert.ok(commands.some(({ command }) => testEntries(command).includes('packages/orm-php/tests/decimal_model_db.php')));
   assert.deepEqual(reportingScriptErrors(commands, path => files.has(path) ? text(path) : undefined), []);
 });
 
 caseTest('a PHP or TypeScript test without the shared case report fails', COMPUTE, () => {
   const files = {
-    'clients/php/tests/bare.php': "<?php\nrequire __DIR__ . '/autoload.php';\necho 'PASS';\n",
-    'clients/php/tests/autoload.php': '<?php\n',
-    'clients/php/tests/helped.php': "<?php\nrequire_once __DIR__ . '/case_helper.php';\n",
-    'clients/php/tests/case_helper.php': "<?php\nrequire_once dirname(__DIR__, 3) . '/tests/testcase.php';\n",
-    'clients/typescript/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
-    'clients/typescript/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mjs';\n",
+    'packages/orm-php/tests/bare.php': "<?php\nrequire __DIR__ . '/autoload.php';\necho 'PASS';\n",
+    'packages/orm-php/tests/autoload.php': '<?php\n',
+    'packages/orm-php/tests/helped.php': "<?php\nrequire_once __DIR__ . '/case_helper.php';\n",
+    'packages/orm-php/tests/case_helper.php': "<?php\nrequire_once dirname(__DIR__, 3) . '/tests/testcase.php';\n",
+    'packages/orm-npm/tests/bare.mjs': "import { Db } from '../dist/index.js';\n",
+    'packages/orm-npm/tests/cased.mjs': "import { cases } from '../../../tests/testcase.mjs';\n",
     'tests/testcase.php': '<?php\n',
     'tests/testcase.mjs': '',
   };
   const read = path => files[path];
-  assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test clients/typescript/tests/bare.mjs --dialect mysql'), ['clients/typescript/tests/bare.mjs']);
+  assert.deepEqual(testEntries('. "$DECIMAL_ENV" && node --conditions=orm-test packages/orm-npm/tests/bare.mjs --dialect mysql'), ['packages/orm-npm/tests/bare.mjs']);
   assert.deepEqual(reportingScriptErrors([
-    { source: 'Makefile', command: 'php clients/php/tests/bare.php && php clients/php/tests/helped.php' },
-    { source: 'contracts/features.json', command: 'node --test clients/typescript/tests/bare.mjs clients/typescript/tests/cased.mjs' },
-    { source: 'scripts/x.sh', command: 'php clients/php/tests/missing.php' },
+    { source: 'Makefile', command: 'php packages/orm-php/tests/bare.php && php packages/orm-php/tests/helped.php' },
+    { source: 'contracts/features.json', command: 'node --test packages/orm-npm/tests/bare.mjs packages/orm-npm/tests/cased.mjs' },
+    { source: 'scripts/x.sh', command: 'php packages/orm-php/tests/missing.php' },
     { source: 'scripts/y.sh', command: 'php scripts/setup.php' },
   ], read), [
-    'Makefile runs clients/php/tests/bare.php, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
-    'contracts/features.json runs clients/typescript/tests/bare.mjs, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
-    'scripts/x.sh runs clients/php/tests/missing.php, which is not a tracked file',
+    'Makefile runs packages/orm-php/tests/bare.php, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
+    'contracts/features.json runs packages/orm-npm/tests/bare.mjs, which reports no case through tests/testcase.php or tests/testcase.mjs, so it runs without a deadline or RUN line',
+    'scripts/x.sh runs packages/orm-php/tests/missing.php, which is not a tracked file',
   ]);
 });
 
@@ -1089,27 +1089,27 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
   const outside = (name, tool, segment) => `${name} runs ${tool} outside tests/run-long.mjs, so it has no RUN line or step log: ${segment}`;
   const timed = (name, tool, form, segment) => `${name} runs ${tool} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unwrappedToolErrors([
-    unit('tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
-    unit('generate', 'go test ./generator && cd clients/go/model && go generate ./'),
+    unit('tsc', 'node packages/orm-npm/node_modules/typescript/bin/tsc -p packages/orm-npm/tsconfig.json --noEmit'),
+    unit('generate', 'go test ./generator && cd packages/orm-go/model && go generate ./'),
     unit('vet', 'go vet ./tests/conformance/check'),
     unit('build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration && ./integration'),
     unit('npm', 'npm run typescript:build >/dev/null'),
     unit('later', 'node tests/run-long.mjs a -- go vet ./a && go vet ./b'),
-    unit('wrapped', 'node tests/run-long.mjs go-generate --cwd clients/go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
-    unit('make', '$(RUN_LONG) rust-build/x --cwd clients/rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked'),
+    unit('wrapped', 'node tests/run-long.mjs go-generate --cwd packages/orm-go/model -- sh -c \'go generate ./ && git diff --exit-code -- .\''),
+    unit('make', '$(RUN_LONG) rust-build/x --cwd packages/orm-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked'),
     unit('tsc-build', '$(TSC_BUILD)'),
-    unit('run-case', 'node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc --noEmit'),
-    unit('make-case', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked'),
+    unit('run-case', 'node tests/run-case.mjs typescript-types 5m -- node packages/orm-npm/node_modules/typescript/bin/tsc --noEmit'),
+    unit('make-case', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd packages/orm-rust -- cargo build --locked'),
     unit('timeout', 'node tests/run-long.mjs vet -- timeout 300 go vet ./...'),
   ]), [
-    outside('tsc', 'tsc', 'node clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit'),
+    outside('tsc', 'tsc', 'node packages/orm-npm/node_modules/typescript/bin/tsc -p packages/orm-npm/tsconfig.json --noEmit'),
     outside('generate', 'go generate', 'go generate ./'),
     outside('vet', 'go vet', 'go vet ./tests/conformance/check'),
     outside('build', 'cargo build', 'PATH="$HOME/.cargo/bin:$PATH" cargo build --locked -p polyspec-orm-tests --bin integration'),
     outside('npm', 'a TypeScript build', 'npm run typescript:build >/dev/null'),
     outside('later', 'go vet', 'go vet ./b'),
-    timed('run-case', 'tsc', 'run-case.mjs', 'node tests/run-case.mjs typescript-types 5m -- node clients/typescript/node_modules/typescript/bin/tsc --noEmit'),
-    timed('make-case', 'cargo build', '$(RUN_CASE)', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd clients/rust -- cargo build --locked'),
+    timed('run-case', 'tsc', 'run-case.mjs', 'node tests/run-case.mjs typescript-types 5m -- node packages/orm-npm/node_modules/typescript/bin/tsc --noEmit'),
+    timed('make-case', 'cargo build', '$(RUN_CASE)', '$(RUN_CASE) rust-build/x $(BUILD_DEADLINE) --cwd packages/orm-rust -- cargo build --locked'),
     timed('timeout', 'go vet', 'timeout 300', 'node tests/run-long.mjs vet -- timeout 300 go vet ./...'),
   ]);
 });
@@ -1135,9 +1135,9 @@ caseTest('a cargo test run outside cargo-test.mjs, or a build under a deadline, 
   const message = (name, args) => `${name} runs cargo test ${args} outside tests/cargo-test.mjs, so it runs the test binaries of the shared Rust target directory`;
   const timed = (name, args, form, segment) => `${name} runs the build cargo test --no-run ${args} under a deadline (${form}); a long operation gets step logs and no deadline: ${segment}`;
   assert.deepEqual(unbuiltCargoTestErrors([
-    { name: 'bare', commands: ['$(WITH_TEST_ENV) cd clients/rust && cargo +$(T) test --locked --test a -- --nocapture'] },
-    { name: 'built', commands: ['$(RUN_LONG) b --cwd clients/rust -- $(CARGO_LEASED) cargo +$(T) test --no-run --locked --test a', 'cd clients/rust && cargo +$(T) test --locked --test a'] },
-    { name: 'copied', commands: ['cd clients/rust && $(CARGO_TEST) c -- cargo +$(T) test --locked --test a -- --nocapture', 'node tests/cargo-test.mjs d -- cargo test --locked --lib'] },
+    { name: 'bare', commands: ['$(WITH_TEST_ENV) cd packages/orm-rust && cargo +$(T) test --locked --test a -- --nocapture'] },
+    { name: 'built', commands: ['$(RUN_LONG) b --cwd packages/orm-rust -- $(CARGO_LEASED) cargo +$(T) test --no-run --locked --test a', 'cd packages/orm-rust && cargo +$(T) test --locked --test a'] },
+    { name: 'copied', commands: ['cd packages/orm-rust && $(CARGO_TEST) c -- cargo +$(T) test --locked --test a -- --nocapture', 'node tests/cargo-test.mjs d -- cargo test --locked --lib'] },
     { name: 'timed', commands: ['node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a'] },
   ]), [message('bare', '--locked --test a'), message('built', '--locked --test a'),
     timed('timed', '--locked --test a', 'run-case.mjs', 'node tests/run-case.mjs b 8m -- cargo test --no-run --locked --test a')]);
@@ -1167,14 +1167,14 @@ caseTest('a workflow that runs a test runner after make check fails by identity'
     'fuzz-check:',
     "\t$(GO_TEST) ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s",
     'vet-again:',
-    '\t$(GO_TEST) ./clients/go/orm -run TestCodec',
+    '\t$(GO_TEST) ./packages/orm-go/orm -run TestCodec',
     '',
   ].join('\n');
   const again = steps.replace('make repo-check', [
     'make check',
     '          make fuzz-check vet-again',
     '          go vet ./... && go test -v -timeout 0 ./...',
-    '          (cd clients/rust && cargo test --locked -p polyspec-orm codec)',
+    '          (cd packages/orm-rust && cargo test --locked -p polyspec-orm codec)',
     '          php tests/codec/check.php',
     '          node --test scripts/x.test.mjs',
     '          go run ./tests/interfaces/check --results tests/conformance/out',
@@ -1200,14 +1200,14 @@ caseTest('make check runs each go generate once', COMPUTE, () => {
 });
 
 caseTest('a go generate that make check runs twice fails', COMPUTE, () => {
-  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'`), ['clients/go/model']);
-  assert.deepEqual(generateRuns(`go test ./generator && node tests/run-long.mjs g --cwd clients/go/model -- sh -c 'go generate ./ && git diff'`), ['clients/go/model']);
-  assert.deepEqual(generateRuns('cd clients/go/other && go generate ./'), ['clients/go/other']);
+  assert.deepEqual(generateRuns(`$(RUN_LONG) go-model -- sh -c 'cd packages/orm-go/model && go generate ./ && git diff --exit-code -- .'`), ['packages/orm-go/model']);
+  assert.deepEqual(generateRuns(`go test ./generator && node tests/run-long.mjs g --cwd packages/orm-go/model -- sh -c 'go generate ./ && git diff'`), ['packages/orm-go/model']);
+  assert.deepEqual(generateRuns('cd packages/orm-go/other && go generate ./'), ['packages/orm-go/other']);
   assert.deepEqual(repeatedGenerateErrors([
-    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd clients/go/model && go generate ./ && git diff --exit-code -- .'`] },
-    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mjs g --cwd clients/go/model -- sh -c 'go generate ./ && git diff'`] },
-    { name: 'other', commands: ['cd clients/go/other && go generate ./'] },
-  ]), ['go generate of clients/go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
+    { name: 'Makefile go-model-check', commands: [`$(RUN_LONG) go-model -- sh -c 'cd packages/orm-go/model && go generate ./ && git diff --exit-code -- .'`] },
+    { name: 'contracts/features.json model_generation/generation-go', commands: [`node tests/run-long.mjs g --cwd packages/orm-go/model -- sh -c 'go generate ./ && git diff'`] },
+    { name: 'other', commands: ['cd packages/orm-go/other && go generate ./'] },
+  ]), ['go generate of packages/orm-go/model runs 2 times in make check: Makefile go-model-check, contracts/features.json model_generation/generation-go']);
 });
 
 // go test case는 저장소의 Makefile(변수를 푼), 검증 명령, script와 최소 단위를 검사한다.
@@ -1223,13 +1223,13 @@ caseTest('a go test without its build step, or under a deadline, fails', COMPUTE
   const message = (name, segment) => `${name} runs go test outside tests/go-test.mjs, so its compile has no RUN line or step log: ${segment}`;
   const fuzz = "$(RUN_CASE) fuzz/ir 8m -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s";
   assert.deepEqual(rawGoTestErrors([
-    { name: 'raw', commands: ['go test -v -timeout 0 ./clients/go/orm -run X -count=1'] },
-    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./clients/go/bench'] },
+    { name: 'raw', commands: ['go test -v -timeout 0 ./packages/orm-go/orm -run X -count=1'] },
+    { name: 'env', commands: ['ORM_RUN_PERF_GATE=1 go test -v ./packages/orm-go/bench'] },
     { name: 'wrapped', commands: ['node tests/go-test.mjs -v -timeout 0 ./engine -count=1'] },
     { name: 'fuzz', commands: ["$(RUN_LONG) fuzz/ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s"] },
     { name: 'build', commands: ['node tests/run-long.mjs go-build -- go test -c -o x ./engine/dbspec'] },
     { name: 'timed', commands: [fuzz] },
-  ]), [message('raw', 'go test -v -timeout 0 ./clients/go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./clients/go/bench'),
+  ]), [message('raw', 'go test -v -timeout 0 ./packages/orm-go/orm -run X -count=1'), message('env', 'ORM_RUN_PERF_GATE=1 go test -v ./packages/orm-go/bench'),
     `timed runs go test under a deadline ($(RUN_CASE)); a long operation gets step logs and no deadline: ${fuzz}`]);
 });
 
@@ -1323,14 +1323,14 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
 caseTest('a recipe or a command that runs independent tests in sequence is refused', COMPUTE, () => {
   const makefile = [
     'GO_TEST = node tests/go-test.mjs -v -timeout 0',
-    'two:', "\t$(GO_TEST) ./a -count=1", '\tphp clients/php/tests/b_test.php',
-    'again:', '\tphp clients/php/tests/b_test.php', '\tphp clients/php/tests/b_test.php',
-    'built:', '\tnode tests/dbspec/stress.mjs > out.dbs', '\tgo test -c -o x ./engine', '\tnode clients/typescript/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
+    'two:', "\t$(GO_TEST) ./a -count=1", '\tphp packages/orm-php/tests/b_test.php',
+    'again:', '\tphp packages/orm-php/tests/b_test.php', '\tphp packages/orm-php/tests/b_test.php',
+    'built:', '\tnode tests/dbspec/stress.mjs > out.dbs', '\tgo test -c -o x ./engine', '\tnode packages/orm-npm/node_modules/typescript/bin/tsc -p x', '\tnode --test tests/x.test.mjs',
     'linted:', '\tcargo +$(shell sed -n \'s/x/\\1/p\' f) clippy -p polyspec-orm -- -D warnings', '\tnode $(abspath tests/cargo-test.mjs) y -- cargo test -p polyspec-orm',
-    'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp clients/php/tests/b_test.php',
+    'parts: parts/a parts/b', 'parts/a:', "\t$(GO_TEST) ./a -count=1", 'parts/b:', '\tphp packages/orm-php/tests/b_test.php',
   ].join('\n');
   assert.deepEqual(independentTestErrors(makefile).map(error => error.split(' runs ')[0]), ['Makefile two', 'Makefile linted']);
-  assert.deepEqual(chainedCommandErrors({ features: [{ id: 'f', verification: [{ id: 'chained', command: 'node clients/typescript/tests/a.mjs && node clients/typescript/tests/b.mjs' }, { id: 'built', command: 'npm run typescript:build && node clients/typescript/tests/a.mjs' }] }], helpers: [] }).map(error => error.split(' chains ')[0]),
+  assert.deepEqual(chainedCommandErrors({ features: [{ id: 'f', verification: [{ id: 'chained', command: 'node packages/orm-npm/tests/a.mjs && node packages/orm-npm/tests/b.mjs' }, { id: 'built', command: 'npm run typescript:build && node packages/orm-npm/tests/a.mjs' }] }], helpers: [] }).map(error => error.split(' chains ')[0]),
     ['contracts/features.json f/chained']);
   const root = new URL('../..', import.meta.url).pathname;
   assert.deepEqual(independentTestErrors(readFileSync(join(root, 'Makefile'), 'utf8')), []);
@@ -1544,8 +1544,8 @@ caseTest('a Makefile build output is published through a temporary file', COMPUT
     '\tnode tests/dbspec/stress.mjs > $(DOC)',
     '\t$(PUBLISH) $(DOC) node tests/dbspec/stress.mjs',
     '\ttest -f x || { echo "x is missing" >&2; exit 1; }',
-    '\tnode clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.build.json',
-    '\tnode clients/typescript/node_modules/typescript/bin/tsc -p clients/typescript/tsconfig.json --noEmit',
+    '\tnode packages/orm-npm/node_modules/typescript/bin/tsc -p packages/orm-npm/tsconfig.build.json',
+    '\tnode packages/orm-npm/node_modules/typescript/bin/tsc -p packages/orm-npm/tsconfig.json --noEmit',
     '# go build -o $(LEASE) in a comment',
   ].join('\n');
   assert.deepEqual(unpublishedOutputErrors(makefile).map(error => error.split(', so ')[0]), [

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { caseTest } from '../testcase.mjs';
 import { parse } from '@polyspec/ordered-json';
-import { StyledValue } from '../../clients/typescript/dist/index.js';
+import { StyledValue } from '../../packages/orm-npm/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
 // 각 case의 기한 1 s: case는 memory 안에서 result 값 몇 개를 쓰고 비교한다.

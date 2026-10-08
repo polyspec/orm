@@ -1,19 +1,19 @@
 /bin/
 /dist/
-/clients/typescript/dist/
+/packages/orm-npm/dist/
 /target/
 /bench/rust/target/
-/clients/rust/target/
+/packages/orm-rust/target/
 *.test
 /docs/perf-raw/
 /tests/interfaces/rust/target/
 
 /node_modules/
-/clients/typescript/node_modules/
+/packages/orm-npm/node_modules/
 /vendor-php/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /.runtime/
-/clients/python/.venv/
+/packages/orm-python/.venv/
 __pycache__/
 *.pyc

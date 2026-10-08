@@ -172,7 +172,7 @@ failures.push(...npmGitSourceErrors(Object.fromEntries(tracked.filter(path => /(
 // version은 repository root에서 PATH의 php와 rustc가 보고한 것이다.
 const text = path => existsSync(join(root, path)) ? readFileSync(join(root, path), 'utf8') : '';
 const reported = (program, args) => execFileSync(program, args, { cwd: root }).toString().trim();
-const composer = JSON.parse(readFileSync(join(root, 'clients/php/composer.json'), 'utf8'));
+const composer = JSON.parse(readFileSync(join(root, 'packages/orm-php/composer.json'), 'utf8'));
 const php = reported('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']);
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, php));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';

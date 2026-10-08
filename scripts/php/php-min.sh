@@ -1,13 +1,13 @@
 #!/bin/sh
-# Prints the program path of the lowest PHP release that clients/php/composer.json
+# Prints the program path of the lowest PHP release that packages/orm-php/composer.json
 # declares in require.php (">=x.y"), or that release with --version. The
 # program is php<x.y> on PATH, as the Debian packages install it, or the
 # Homebrew php@<x.y> keg; its PHP_MAJOR_VERSION.PHP_MINOR_VERSION must be x.y.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-VERSION=$(sed -n 's/.*"php": *">=\([0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' "$ROOT/clients/php/composer.json" | head -n 1)
-[ -n "$VERSION" ] || { echo "clients/php/composer.json declares no require.php >=x.y" >&2; exit 2; }
+VERSION=$(sed -n 's/.*"php": *">=\([0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' "$ROOT/packages/orm-php/composer.json" | head -n 1)
+[ -n "$VERSION" ] || { echo "packages/orm-php/composer.json declares no require.php >=x.y" >&2; exit 2; }
 if [ "${1:-}" = --version ]; then echo "$VERSION"; exit 0; fi
 
 PROGRAM=$(command -v "php$VERSION" || true)
