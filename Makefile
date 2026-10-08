@@ -833,9 +833,9 @@ conformance-result-check/go:
 conformance-result-check/python: python-venv-check
 	$(PYTHON_VENV)/bin/python tests/conformance/result_python.py
 
-conformance-result-physical-check: lease-tool
+conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
 conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
