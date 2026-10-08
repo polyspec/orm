@@ -1,10 +1,15 @@
 package contracts
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
+)
 
 // A Python native signature has self as its receiver and "->" before its return type. pythonParts
 // reads it as the parameter list and the return type of the other clients: self is no parameter.
 func TestPythonSignatureReadsLikeTheOtherClients(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, test := range []struct {
 		name, got, ret, wantGot, wantRet string
 	}{

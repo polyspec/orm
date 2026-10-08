@@ -58,7 +58,8 @@
     "feature-helper-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
-    "go-test-check": {"scope": "suite", "needs": ["go", "databases"]}
+    "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
+    "python-check": {"scope": "owner", "needs": ["python"], "inputs": [".python-version", "clients/python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},
