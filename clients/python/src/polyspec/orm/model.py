@@ -367,7 +367,7 @@ class Model:
             return add_func
 
         def add_sub(fn):
-            core.add_column_sub(rest, fn)
+            core.add_column_sub(snake(rest), fn)
             return self
         if column_name(core.ent.model.runtime, core.ent.entity, rest) != '':
             raise AttributeError(name)
