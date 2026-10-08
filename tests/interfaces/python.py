@@ -25,7 +25,9 @@ def signature(fn) -> str:
 def wire_type(node) -> str:
     """The wire type of a field annotation of a TypedDict record, as the TypeScript extractor writes it:
     int as integer, str as text, bool as bool, list[X] as list<X>, dict[K, X] as map<X>, a record name as
-    itself; a NotRequired or an optional X | None reads as X."""
+    itself; a NotRequired or an optional X | None reads as X; a string annotation is a forward reference."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return wire_type(ast.parse(node.value, mode='eval').body)
     if isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name) and node.value.id in ('NotRequired', 'Required'):
         return wire_type(node.slice)
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
@@ -58,6 +60,19 @@ def typed_dict_wire(node: ast.ClassDef) -> dict:
         if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name) and public(stmt.target.id):
             wire[stmt.target.id] = wire_type(stmt.annotation)
     return wire
+
+
+def is_functional_typed_dict(node: ast.Assign) -> bool:
+    """NAME = TypedDict('NAME', {...}), the form of a record with a field name that is a keyword."""
+    call = node.value
+    return (len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+            and isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == 'TypedDict')
+
+
+def functional_typed_dict_wire(node: ast.Assign) -> dict:
+    """The record of NAME = TypedDict('NAME', {...}): each key of the dict is a field with its wire type."""
+    fields = node.value.args[1]
+    return {key.value: wire_type(value) for key, value in zip(fields.keys, fields.values)}
 
 
 def class_header(node: ast.ClassDef) -> str:
@@ -101,6 +116,11 @@ def extract(root: str, roots: list) -> dict:
                 if is_typed_dict(node, typed_names):
                     typed_names.add(node.name)
                     symbols[f'{key}#wire'] = json.dumps(typed_dict_wire(node), ensure_ascii=False, separators=(',', ':'))
+            elif isinstance(node, ast.Assign) and is_functional_typed_dict(node) and public(node.targets[0].id):
+                key = f'{path}::{node.targets[0].id}'
+                symbols[key] = f'{node.targets[0].id} = TypedDict'
+                typed_names.add(node.targets[0].id)
+                symbols[f'{key}#wire'] = json.dumps(functional_typed_dict_wire(node), ensure_ascii=False, separators=(',', ':'))
     return symbols
 
 
