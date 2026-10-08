@@ -151,6 +151,29 @@ export function matrixGroups(job) {
   return list === undefined ? null : list.split(',').map(item => item.trim()).filter(Boolean);
 }
 
+// matrixIncludes는 workflow의 matrix `include:` 항목마다 flow mapping 하나를 {key: value} 객체로 돌려준다. 항목은
+// `- { group: python, leg: _py311, python-version: '3.11' }` 모양이고, 값의 따옴표는 벗긴다. 항목이 없으면 []다.
+export function matrixIncludes(workflow) {
+  const lines = workflow.split('\n');
+  const legs = [];
+  lines.forEach((line, index) => {
+    const head = /^(\s*)include:\s*$/.exec(line);
+    if (!head) return;
+    const indent = head[1].length;
+    for (const item of lines.slice(index + 1)) {
+      if (item.trim() === '') continue;
+      if (/^\s*/.exec(item)[0].length <= indent) break;
+      const match = /^\s*-\s*\{(.*)\}\s*$/.exec(item);
+      if (!match) continue;
+      legs.push(Object.fromEntries(match[1].split(',').map(pair => {
+        const at = pair.indexOf(':');
+        return [pair.slice(0, at).trim(), pair.slice(at + 1).trim().replace(/^'(.*)'$/, '$1')];
+      })));
+    }
+  });
+  return legs;
+}
+
 // ciGroupErrors는 CI group이 CHECK_TARGETS를 나누지 않는 곳마다 오류 하나를 돌려준다. GROUP_CHECK를 실행하는 job의
 // matrix group은 CI_GROUPS와 같고, CI group마다 CI_TARGETS_<group>이 있으며, 모든 group의 target을 합하면 CHECK_TARGETS와
 // 같고 어느 target도 두 group에 있지 않다. 그래서 job들이 함께 make check의 모든 target을 한 번씩 실행한다.
@@ -192,11 +215,14 @@ export function ciReportPathErrors(workflow, makefile) {
     const runId = /^\s*ORM_CHECK_RUN_ID:\s*(.+)$/m.exec(job)?.[1].trim();
     const path = /^\s*path:\s*(\.runtime\/check\/.+)$/m.exec(job)?.[1].trim();
     if (!runId || !path) continue;
-    const fill = (text, group) => text.replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1').replaceAll('${{ matrix.group }}', group);
-    for (const group of runId.includes('matrix.group') ? groups : ['']) {
-      const want = `.runtime/check/${runName(fill(runId, group))}/report/`;
-      const have = fill(path, group);
-      if (have !== want) errors.push(`ci.yml job ${id}${group ? ` group ${group}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, group)} to ${want}; name the group with lowercase letters, digits and _ only`);
+    // A leg of the matrix fills ${{ matrix.<key> }} with its value: group, and leg (the suffix that tells an include leg
+    // of the same group apart, such as _py311 of the Python 3.11 leg).
+    const fill = (text, leg) => Object.entries(leg).reduce((out, [key, value]) => out.replaceAll(`\${{ matrix.${key} }}`, value), text.replaceAll('${{ github.run_id }}', '1').replaceAll('${{ github.run_attempt }}', '1'));
+    const legs = runId.includes('matrix.group') ? [...groups.map(group => ({ group, leg: '' })), ...matrixIncludes(job)] : [{ group: '', leg: '' }];
+    for (const leg of legs) {
+      const want = `.runtime/check/${runName(fill(runId, leg))}/report/`;
+      const have = fill(path, leg);
+      if (have !== want) errors.push(`ci.yml job ${id}${leg.group ? ` group ${leg.group}${leg.leg}` : ''} uploads ${have}, but the runner writes the report of ORM_CHECK_RUN_ID ${fill(runId, leg)} to ${want}; name the group with lowercase letters, digits and _ only`);
     }
   }
   return errors;

@@ -75,6 +75,8 @@ export const STEP_OUTPUT = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
+  // python은 두 leg를 가진다: .python-version(기본 leg)과 최저 release인 3.11(ci.yml의 matrix include leg _py311).
+  // 두 leg는 같은 setup 단계로 Python을 설치하고, leg의 python-version 입력이 어느 release인지 정한다.
   python: 'python',
   'install-python': 'python',
   'ordered-json': 'python',
