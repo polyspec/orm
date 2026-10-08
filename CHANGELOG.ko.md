@@ -27,6 +27,7 @@
 - T43.5-3-5-1: interfaces.json의 owner 16개가 필드를 가진 Python class 또는 TypedDict와, 그것을 지정하는 python native를 갖는다.
 - T43.5-3-5-1-3: 차이, 이름 변경, unsupported, apply owner 7개(DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError)가 Python 코드가 쓰는 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
 - T43.5-3-5-1-2: plan와 진단 owner 7개(DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange)가 Python dict 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
+- T43.5-3: interface 정의가 python을 선언한다: 추출기, 규칙·record·owner native, manifest와 검사기.
 - T43.5-4: features, version 선언, check 입력, CI group이 python을 선언한다.
 - T43.5-4-2: version 검사, check 입력, CI group이 python을 선언한다.
 - T43.5-2-2: Python conformance 런너가 run 디렉터리의 생성 model을 import하고, 벡터 26개의 SQLite 출력이 Go 출력과 바이트 단위로 같다.
