@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "composerPlatforms": [],
+  "pythonManifests": [
+    "packages/orm-python/pyproject.toml"
+  ],
+  "exceptions": [
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "@polyspec/ordered-json",
+      "reason": "@polyspec/ordered-json is not on the npm registry; the root package.json takes it from the tarball of its GitHub release through overrides, and the package declares the exact version of that release.",
+      "removalCondition": "ordered-json publishes @polyspec/ordered-json to the npm registry, or the pin moves to the tarball of its newer release (checklist rows T43.5-5, T43.6-1, T43.6-3, T43.7-5 and G5.90).",
+      "verification": [
+        "make typescript-build",
+        "make dbspec-ts-check",
+        "make ts-check/types"
+      ]
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "typescript",
+      "reason": "typescript 7 is the native compiler and has no JavaScript API, while packages/orm-npm/src/generate/scan.ts reads the syntax tree with the API of the typescript package; typescript 6.0.3 is the latest release with that API.",
+      "removalCondition": "the scanner of packages/orm-npm/src/generate/scan.ts reads the syntax tree through an API that typescript 7 provides.",
+      "verification": [
+        "make ts-check/types",
+        "make typescript-build",
+        "make ts-model-check",
+        "make dbspec-ts-check"
+      ]
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "@types/node",
+      "reason": "The types of @types/node follow the Node.js major release, and packages/orm-npm declares engines.node >=22.16.0, so the types of the lowest supported major release keep the package from using an API that the minimum Node.js lacks.",
+      "removalCondition": "engines.node of packages/orm-npm/package.json is raised to a release of the major release of the latest @types/node.",
+      "verification": [
+        "make ts-check/types",
+        "make typescript-build",
+        "make ts-min-check"
+      ]
+    }
+  ]
+}

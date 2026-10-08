@@ -103,6 +103,13 @@
   `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), only the install targets resolve
   versions, through `$(ONLINE)`, and a missing download fails with `run make install`, never with a
   retry online.
+- A dependency is raised to its latest stable release, or kept by an exception of
+  `config/dependency-policy.json` that states a reproducible reason, the condition that removes it and
+  the commands that verify it. `make dependency-review UPDATE=1 RECORD=1` (online; it needs
+  `cargoAudit` and `govulncheck` of `config/toolchain.json`, which `make install-tools` installs)
+  asks the registries and the advisory databases and writes `config/dependency-review.json`;
+  `make dependency-policy-check` and `make dependency-policy-mutation-check` read that record and
+  the manifests and locks and query no registry.
 - Every toolchain the checks use is pinned in one declaration and checked: `.node-version`,
   `.go-version`, `.composer-version` and `rust-toolchain.toml` hold exact releases, `.php-version`
   and the PostgreSQL major release are as exact as their installers allow, CI installs what they

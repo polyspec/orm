@@ -43,6 +43,9 @@
     ],
     "config": {
         "vendor-dir": "vendor-php",
-        "optimize-autoloader": true
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.4.0"
+        }
     }
 }

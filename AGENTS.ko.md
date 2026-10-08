@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: d23f2ab58deb6b228001dd8259a17ee2eb1df7ce7723ec47885743f43d038e75 -->
+<!-- source-sha256: c1989f0d2cabad4ced6756bde83ebb468a9ebde25069a65acca5b4aec027e0a0 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -81,6 +81,12 @@
   실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
   `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
   실패한다.
+- dependency는 최신 stable release로 올리거나, 재현 가능한 이유, 그것을 없애는 조건, 확인하는 명령을 적은
+  `config/dependency-policy.json`의 예외로 둔다. `make dependency-review UPDATE=1 RECORD=1`(online이며
+  `make install-tools`가 설치하는 `config/toolchain.json`의 `cargoAudit`와 `govulncheck`가 필요하다)은
+  registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
+  `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
+  registry에 묻지 않는다.
 - 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `.go-version`,
   `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
