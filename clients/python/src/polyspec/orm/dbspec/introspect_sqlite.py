@@ -1,5 +1,6 @@
 # SQLite의 main database를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 # sqlite_master와 table-valued pragma를 join해 모든 table을 한 번에 읽는다.
+import json
 import re
 
 from polyspec.orm.dbspec.introspect_catalog import Catalog, CatalogRow, \
@@ -119,7 +120,7 @@ def read_sqlite(query) -> Catalog:
             read = _sqlite_type(renderer, declared, name, check)
             if read is None:
                 c.report('column', table, name,
-                         f'declared type {declared} with CHECK {check!r} has no '
+                         f'declared type {declared} with CHECK {json.dumps(check if check is not None else "")} has no '
                          f'dbspec type')
                 continue
             type_ = read
