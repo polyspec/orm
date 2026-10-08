@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T9: the PHP extension `orm_dbspec`, written in C, provides every public method of the PHP client's `Dbspec` and the classes of its results, and the Rust extension is gone (T9.1 to T9.13).
 - T43.6-3-4: the run-languages test of the conformance check starts its case with `testcase.Start`, as every Go test of the check does.
 - T43.6-1-1: the run id, report path and artifact name of a matrix group carry `${{ matrix.leg }}`, so the Python 3.11 leg and the other leg of the group write different reports; the declared forms in `scripts/repo/ci.mjs` and their tests name it.
 - T43.7-18-3: the symbol hash of the Python client in `contracts/interfaces.json` names the current `contracts/symbols/python.json`.
