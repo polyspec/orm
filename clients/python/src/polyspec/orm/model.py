@@ -215,8 +215,9 @@ class Model:
         keys = parse_chain(model, core.ent.entity, rest)
 
         def run(*args):
-            runner = core.subject()
-            runner.where_chain('', keys, args)
+            # the terminal runs on a copy, so the query it was called on keeps its own conditions
+            runner = core.clone().subject()
+            runner.where_chain('and' if runner.where.items else '', keys, args)
             from polyspec.orm.model_exec import execute_query
             return execute_query(runner, kind)
         return run
