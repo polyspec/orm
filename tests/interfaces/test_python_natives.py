@@ -131,5 +131,43 @@ class DbspecRuleNativesTest(unittest.TestCase):
         self.check_group(self.GROUPS['apply_recovery_rollback_finalize_mermaid'])
 
 
+class RecordNativesTest(unittest.TestCase):
+    """The python native of each record of contracts/interfaces.json is a TypedDict of
+    clients/python/src/polyspec/orm/ir.py, and its #wire symbol of the snapshot carries the fields of the
+    record, with the fields of its base expanded (the @flatten of the extractor)."""
+
+    PREFIX = 'clients/python/src/polyspec/orm/ir.py::'
+
+    def setUp(self):
+        self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
+        self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
+        self.records = {record['id']: record for record in self.manifest['records']}
+
+    def expected(self, record: dict) -> dict:
+        fields = dict(self.expected(self.records[record['extends']])) if record.get('extends') else {}
+        fields.update(record['fields'])
+        return fields
+
+    def actual(self, record: dict) -> dict:
+        wire = json.loads(self.symbols[record['native']['python'] + '#wire'])
+        base = wire.pop('@flatten', None)
+        fields = dict(self.actual(self.records[base])) if base else {}
+        fields.update(wire)
+        return fields
+
+    def test_every_record_names_a_typed_dict_of_the_snapshot(self):
+        self.assertEqual(len(self.records), 19)
+        for record in self.manifest['records']:
+            native = record['native'].get('python')
+            self.assertIsNotNone(native, f"{record['id']} has no python native")
+            self.assertEqual(native, self.PREFIX + record['id'], record['id'])
+            self.assertIn(native, self.symbols, record['id'])
+            self.assertIn(native + '#wire', self.symbols, record['id'])
+
+    def test_every_record_wire_matches_its_fields(self):
+        for record in self.manifest['records']:
+            self.assertEqual(self.actual(record), self.expected(record), record['id'])
+
+
 if __name__ == '__main__':
     unittest.main()

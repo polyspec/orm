@@ -2779,7 +2779,8 @@
         "go": "engine/ir/ir.go::Request",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
         "rust": "clients/rust/orm/src/ir.rs::Request",
-        "typescript": "clients/typescript/src/ir.ts::Request"
+        "typescript": "clients/typescript/src/ir.ts::Request",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRRequest"
       },
       "fields": {
         "ir_version": "integer",
@@ -2807,7 +2808,8 @@
         "go": "engine/ir/ir.go::Query",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
         "rust": "clients/rust/orm/src/ir.rs::Query",
-        "typescript": "clients/typescript/src/ir.ts::RequestQuery"
+        "typescript": "clients/typescript/src/ir.ts::RequestQuery",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRQuery"
       },
       "fields": {
         "entity": "text",
@@ -2851,7 +2853,8 @@
         "go": "engine/ir/ir.go::Columns",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
         "rust": "clients/rust/orm/src/ir.rs::Columns",
-        "typescript": "clients/typescript/src/ir.ts::Projection"
+        "typescript": "clients/typescript/src/ir.ts::Projection",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRColumns"
       },
       "fields": {
         "mode": "text",
@@ -2874,7 +2877,8 @@
         "go": "engine/ir/ir.go::Join",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
         "rust": "clients/rust/orm/src/ir.rs::Join",
-        "typescript": "clients/typescript/src/ir.ts::Join"
+        "typescript": "clients/typescript/src/ir.ts::Join",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRJoin"
       },
       "fields": {
         "rel": "text",
@@ -2894,7 +2898,8 @@
         "go": "engine/ir/ir.go::Relation",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
         "rust": "clients/rust/orm/src/ir.rs::Relation",
-        "typescript": "clients/typescript/src/ir.ts::Relation"
+        "typescript": "clients/typescript/src/ir.ts::Relation",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRRelation"
       },
       "fields": {
         "rel": "text",
@@ -2912,7 +2917,8 @@
         "go": "engine/ir/ir.go::KeyPair",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
         "rust": "clients/rust/orm/src/ir.rs::KeyPair",
-        "typescript": "clients/typescript/src/ir.ts::KeyPair"
+        "typescript": "clients/typescript/src/ir.ts::KeyPair",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRKeyPair"
       },
       "fields": {
         "left": "text",
@@ -2925,7 +2931,8 @@
         "go": "engine/ir/ir.go::Group",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
         "rust": "clients/rust/orm/src/ir.rs::Group",
-        "typescript": "clients/typescript/src/ir.ts::Group"
+        "typescript": "clients/typescript/src/ir.ts::Group",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRGroup"
       },
       "fields": {
         "conn": "text",
@@ -2943,7 +2950,8 @@
         "go": "engine/ir/ir.go::Item",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
         "rust": "clients/rust/orm/src/ir.rs::Item",
-        "typescript": "clients/typescript/src/ir.ts::Item"
+        "typescript": "clients/typescript/src/ir.ts::Item",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRItem"
       },
       "fields": {
         "pred": "IRPred",
@@ -2963,7 +2971,8 @@
         "go": "engine/ir/ir.go::Pred",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
         "rust": "clients/rust/orm/src/ir.rs::Pred",
-        "typescript": "clients/typescript/src/ir.ts::Predicate"
+        "typescript": "clients/typescript/src/ir.ts::Predicate",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRPred"
       },
       "fields": {
         "conn": "text",
@@ -2996,7 +3005,8 @@
         "go": "engine/ir/ir.go::ColRef",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
         "rust": "clients/rust/orm/src/ir.rs::ColRef",
-        "typescript": "clients/typescript/src/ir.ts::ColumnReferenceIR"
+        "typescript": "clients/typescript/src/ir.ts::ColumnReferenceIR",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRColRef"
       },
       "fields": {
         "path": "text",
@@ -3012,7 +3022,8 @@
         "go": "engine/ir/ir.go::Func",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
         "rust": "clients/rust/orm/src/ir.rs::Func",
-        "typescript": "clients/typescript/src/ir.ts::OrmFunction"
+        "typescript": "clients/typescript/src/ir.ts::OrmFunction",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRFunc"
       },
       "fields": {
         "name": "text",
@@ -3028,7 +3039,8 @@
         "go": "engine/ir/ir.go::ColFunc",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
         "rust": "clients/rust/orm/src/ir.rs::ColFunc",
-        "typescript": "clients/typescript/src/ir.ts::ColumnFunction"
+        "typescript": "clients/typescript/src/ir.ts::ColumnFunction",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRColFunc"
       },
       "fields": {
         "column": "text",
@@ -3042,7 +3054,8 @@
         "go": "engine/ir/ir.go::Sub",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
         "rust": "clients/rust/orm/src/ir.rs::Sub",
-        "typescript": "clients/typescript/src/ir.ts::Subquery"
+        "typescript": "clients/typescript/src/ir.ts::Subquery",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRSub"
       },
       "fields": {
         "query": "IRQuery",
@@ -3059,7 +3072,8 @@
         "go": "engine/ir/ir.go::JoinedRef",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
         "rust": "clients/rust/orm/src/ir.rs::JoinedRef",
-        "typescript": "clients/typescript/src/ir.ts::JoinedReference"
+        "typescript": "clients/typescript/src/ir.ts::JoinedReference",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRJoinedRef"
       },
       "fields": {
         "conn": "text",
@@ -3075,7 +3089,8 @@
         "go": "engine/ir/ir.go::Order",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
         "rust": "clients/rust/orm/src/ir.rs::Order",
-        "typescript": "clients/typescript/src/ir.ts::Order"
+        "typescript": "clients/typescript/src/ir.ts::Order",
+        "python": "clients/python/src/polyspec/orm/ir.py::IROrder"
       },
       "fields": {
         "column": "text",
@@ -3096,7 +3111,8 @@
         "go": "engine/ir/ir.go::Limit",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
         "rust": "clients/rust/orm/src/ir.rs::Limit",
-        "typescript": "clients/typescript/src/ir.ts::Limit"
+        "typescript": "clients/typescript/src/ir.ts::Limit",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRLimit"
       },
       "fields": {
         "offset": "integer",
@@ -3110,7 +3126,8 @@
         "go": "engine/ir/ir.go::IfParent",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
         "rust": "clients/rust/orm/src/ir.rs::IfParent",
-        "typescript": "clients/typescript/src/ir.ts::IfParent"
+        "typescript": "clients/typescript/src/ir.ts::IfParent",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRIfParent"
       },
       "fields": {
         "column": "text",
@@ -3124,7 +3141,8 @@
         "go": "engine/ir/ir.go::Assign",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
         "rust": "clients/rust/orm/src/ir.rs::Assign",
-        "typescript": "clients/typescript/src/ir.ts::Assignment"
+        "typescript": "clients/typescript/src/ir.ts::Assignment",
+        "python": "clients/python/src/polyspec/orm/ir.py::IRAssign"
       },
       "fields": {
         "column": "text",
@@ -3146,7 +3164,8 @@
         "go": "engine/ir/ir.go::Optimist",
         "php": "clients/php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
         "rust": "clients/rust/orm/src/ir.rs::Optimist",
-        "typescript": "clients/typescript/src/ir.ts::Optimistic"
+        "typescript": "clients/typescript/src/ir.ts::Optimistic",
+        "python": "clients/python/src/polyspec/orm/ir.py::IROptimist"
       },
       "fields": {
         "column": "text",
