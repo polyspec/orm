@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-12: `scripts/check/ci-setup.mjs`가 ordered-json checkout 단계를 python group의 필요 조건으로 선언하여, 다른 group에서 check runner가 이 단계로 중단하지 않습니다.
 - T43.7-11: CI의 python group이 polyspec/ordered-json을 릴리스 v0.0.4로 `../ordered-json`에 checkout하여, Python 검사가 `polyspec.ordered_json`을 import합니다.
 - T43.7-5: Python client의 ordered-json 의존성을 우회 행으로 기록한다. `clients/python/pyproject.toml`의 고정 버전은 tag `v0.0.4`로 그대로 두며, ordered-json의 tag에는 아직 그 tag가 없다. 재시도 조건은 `python/` directory가 있는 그 tag다.
 - T43.7-4: `AGENTS.md`(Releases)와 `docs/packaging.md`가 Python client는 git tag로 소비되고 release archive가 없으며, version을 올리는 pull request가 `clients/python/pyproject.toml`의 `version`을 설정하고 `make version-check`가 그 version을 읽는다고 적는다.

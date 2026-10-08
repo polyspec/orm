@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-12: `scripts/check/ci-setup.mjs` declares the ordered-json checkout step as a need of the python group, so the check runner does not stop on it in other groups.
 - T43.7-11: the python group of CI checks out polyspec/ordered-json at its release v0.0.4 into `../ordered-json`, so the Python checks import `polyspec.ordered_json`.
 - T43.7-5: the ordered-json dependency of the Python client is recorded as a bypass row. The pin of `clients/python/pyproject.toml` stays at tag `v0.0.4`, which the tags of ordered-json do not include yet; its retry condition is that tag with its `python/` directory.
 - T43.7-4: `AGENTS.md` (Releases) and `docs/packaging.md` state that the Python client is consumed by its git tag and has no release archive, and that the version-bump pull request sets the `version` of `clients/python/pyproject.toml`, which `make version-check` reads.
