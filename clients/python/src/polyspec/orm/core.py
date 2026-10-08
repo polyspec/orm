@@ -423,6 +423,17 @@ class Core:
             return self.alias
         return f'{self.ent.entity.name}_{"models" if many else "model"}'
 
+    def build(self, kind: str) -> 'BuiltRequest':
+        """chain이 만든 상태를 request로 만든다."""
+        request = BuiltRequest(kind, self.ent.model.runtime.manifest_hash)
+        if self.error:
+            request.fail(self.error)
+            return request
+        q = request.query(self, Frame(self, None), '')
+        if q is not None:
+            request.ir.update(q)
+        return request
+
 
 class Frame:
     """statement 안의 각 Core의 path."""
@@ -698,15 +709,3 @@ class BuiltRequest:
             return None
         del q['columns']
         return sub
-
-    def build(self, kind: str) -> BuiltRequest:
-        """chain이 만든 상태를 request로 만든다."""
-        request = BuiltRequest(kind, self.ent.model.runtime.manifest_hash)
-        if self.error:
-            request.fail(self.error)
-            return request
-        q = request.query(self, Frame(self, None), '')
-        if q is not None:
-            self_ir = request.ir
-            self_ir.update(q)
-        return request

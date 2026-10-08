@@ -46,22 +46,62 @@ def register_model(manifest_text: str, manifest_hash: str, external_text: str = 
 
 
 class Collection:
-    """생성 model들의 목록."""
+    """primary key, key column이나 key callback으로 묶은 순서 있는 row 집합."""
 
-    def __init__(self, items):
-        self._items = list(items)
+    def __init__(self, items=None):
+        self._items = {}
+        for item in items or ():
+            if isinstance(item, dict):
+                self._items[item['key']] = item
+            else:
+                self._items[len(self._items)] = {'key': len(self._items), 'value': item}
+
+    def put(self, key, value, fetched=None) -> None:
+        from polyspec.orm.database import key_text
+        self._items[key_text(key)] = {'key': key, 'value': value, 'fetched': fetched}
+
+    def get(self, key):
+        return self._items.get(key_text(key), {}).get('value')
+
+    def has(self, key) -> bool:
+        from polyspec.orm.database import key_text
+        return key_text(key) in self._items
+
+    def first(self):
+        for item in self._items.values():
+            return item['value']
+        return None
+
+    @property
+    def length(self) -> int:
+        return len(self._items)
+
+    def keys(self) -> list:
+        return [item['key'] for item in self._items.values()]
+
+    def values(self) -> list:
+        return [item['value'] for item in self._items.values()]
+
+    def entries(self) -> list:
+        return [(item['key'], item['value']) for item in self._items.values()]
+
+    def fetched(self, key):
+        return self._items.get(key_text(key), {}).get('fetched')
+
+    def fetched_values(self) -> list:
+        return [item.get('fetched') for item in self._items.values()]
 
     def __len__(self):
         return len(self._items)
 
     def __iter__(self):
-        return iter(self._items)
+        return iter(self.values())
 
     def __getitem__(self, index):
-        return self._items[index]
+        return self.values()[index]
 
-    def values(self) -> list:
-        return list(self._items)
+    def to_array(self) -> list:
+        return [row.to_array() for row in self.values()]
 
 
 def _pascal_of(name: str) -> str:
@@ -155,6 +195,68 @@ class Model:
             from polyspec.orm.model_exec import execute_query
             return execute_query(runner, kind)
         return run
+
+    # 실행 method.
+    def get(self):
+        """조건에 맞는 첫 row; 없으면 NO_ROWS다."""
+        from polyspec.orm.model_exec import load
+        rows = load(self.core, 'one')
+        row = rows.first()
+        if row is None:
+            raise OrmError('NO_ROWS', 'query matched no rows')
+        return row
+
+    def gets(self) -> Collection:
+        """조건에 맞는 row들."""
+        from polyspec.orm.model_exec import load
+        return load(self.core, 'all')
+
+    def get_count(self) -> int:
+        from polyspec.orm.model_exec import scalar_of
+        return int(scalar_of(self.core, 'count'))
+
+    def get_sum(self) -> float:
+        from polyspec.orm.model_exec import scalar_of
+        if self.core.agg_fn != 'sum':
+            raise OrmError('CONFIG', 'get_sum requires sum_<col>()')
+        return float(scalar_of(self.core, 'sum', self.core.agg))
+
+    def get_avg(self) -> float:
+        from polyspec.orm.model_exec import scalar_of
+        if self.core.agg_fn != 'avg':
+            raise OrmError('CONFIG', 'get_avg requires avg_<col>()')
+        return float(scalar_of(self.core, 'avg', self.core.agg))
+
+    def get_query(self) -> dict:
+        """gets()의 statement를 실행 없이 돌려준다."""
+        from polyspec.orm.model_exec import _terminal
+        from polyspec.orm.database import statement as make_statement
+        ex = _terminal(self.core)
+        request = self.core.build('all')
+        if request.error is not None:
+            raise request.error
+        return make_statement(ex, request.finish(), request.params)
+
+    def create(self):
+        """row를 insert하고 만들어진 row를 돌려준다."""
+        from polyspec.orm.model_exec import create as create_row
+        return create_row(self.core)
+
+    def to_array(self) -> dict:
+        """선택된 column과 relation의 값."""
+        core = self.core
+        out = {}
+        for name in core.row.names if core.row is not None else []:
+            if name in core.row.hidden:
+                continue
+            if name in core.row.related:
+                out[name] = core.row.related[name]
+                continue
+            value = core.values.get(name, core.row.extra.get(name))
+            if isinstance(value, StyledValue):
+                value = value.to_json()
+            out[name] = value
+        return out
 
     def _order_method(self, rest: str, name: str):
         core = self.core
