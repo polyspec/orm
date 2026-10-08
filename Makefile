@@ -465,9 +465,13 @@ dbspec-compare-check/unit:
 PYTHON_VENV = $(abspath clients/python/.venv)
 .PHONY: python-install
 python-install:
-	python3 -m venv $(PYTHON_VENV)
-	$(PYTHON_VENV)/bin/python -m pip install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
-dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-install
+	$(ONLINE) python3 -m venv $(PYTHON_VENV)
+	$(ONLINE) $(PYTHON_VENV)/bin/python -m pip install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
+# python-venv-check는 python-install이 만든 interpreter가 있는지 확인한다. 없으면 내려받지 않고 실패한다.
+.PHONY: python-venv-check
+python-venv-check:
+	@test -x $(PYTHON_VENV)/bin/python || { echo "python-venv-check: $(PYTHON_VENV)/bin/python is missing; run make install, which creates it"; exit 1; }
+dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES)
@@ -1009,7 +1013,7 @@ rust-check/clippy-test-faults: lease-tool
 
 .PHONY: docs-ci
 .PHONY: install install-release-fixtures install-node install-php install-rust install-go install-node-min install-server-programs install-php-extension-tools ci-php-min-version ci-php-sqlite downloads-check cargo-downloads-check
-install: install-node install-php install-rust install-go install-node-min install-php-extension-tools
+install: install-node install-php install-rust install-go install-node-min install-php-extension-tools python-install
 install-node:
 	$(ONLINE) npm ci
 # install-release-fixtures는 tests/release-install의 소비자 fixture lock을 다시 만든다(scripts/release/install-check.mjs lock):
