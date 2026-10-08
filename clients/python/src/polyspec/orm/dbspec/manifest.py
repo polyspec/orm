@@ -1,5 +1,7 @@
 # dbspec 문서 집합의 manifest와 hash (docs/dbspec.md "Manifest and hashes").
 # 기준은 Go 엔진(engine/dbspec)이다.
+from __future__ import annotations
+
 import hashlib
 
 from polyspec.orm.dbspec.emit import emit_document, MANIFEST, SCHEMA, type_text
@@ -85,7 +87,7 @@ def _external_document(document: DbspecDocument, tables):
     return DbspecDocument(document.name, (), tuple(kept), (), (), document.external)
 
 
-def dbspec_manifest(documents):
+def dbspec_manifest(documents: list[DbspecDocument]) -> tuple[DbspecManifestResult, tuple]:
     """문서 집합의 manifest (문서 이름 순서) 또는 잘못된 집합의 진단. manifest text는
     소유한 문서를, external text는 각 외부 문서에서 소유한 문서가 쓰는 table을,
     schema text는 소유한 모든 table을 이름 순서로 담은 문서 하나를 담고,
@@ -126,7 +128,7 @@ def dbspec_manifest(documents):
                                 _text_hash(schema_text)), ()
 
 
-def external_differences(live: DbspecDocument, documents) -> list:
+def external_differences(live: DbspecDocument, documents: list[DbspecDocument]) -> list[str]:
     """문서 집합이 외부 문서에서 쓰는 table을 database(docs/dbspec.md "External
     documents")와 비교한다. `live`는 introspect한 database다. 쓰는 table마다 이름
     순서로 차이를 돌려준다: 없는 table, 외부 문서의 column마다 없는 column·다른

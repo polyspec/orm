@@ -1666,6 +1666,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile",
           "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/file.py::read_dbspec_file",
+          "signature": "def read_dbspec_file(path: str) -> tuple[str | None, list[DbspecDiagnostic]]"
         }
       }
     },
@@ -1698,6 +1702,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes",
           "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/file.py::read_dbspec_bytes",
+          "signature": "def read_dbspec_bytes(name: str, data: bytes) -> tuple[str | None, list[DbspecDiagnostic]]"
         }
       }
     },
@@ -1730,6 +1738,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse",
           "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/parse.py::parse_dbspec",
+          "signature": "def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[DbspecDocument | None, list[DbspecDiagnostic]]"
         }
       }
     },
@@ -1762,6 +1774,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit",
           "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Native\\Document $document): string"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/__init__.py::emit_dbspec",
+          "signature": "def emit_dbspec(document: DbspecDocument) -> str"
         }
       }
     },
@@ -1794,6 +1810,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest",
           "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/manifest.py::dbspec_manifest",
+          "signature": "def dbspec_manifest(documents: list[DbspecDocument]) -> tuple[DbspecManifestResult, tuple]"
         }
       }
     },
@@ -1826,6 +1846,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render",
           "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/render.py::render_dbspec",
+          "signature": "def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict"
         }
       }
     },
@@ -1858,6 +1882,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect",
           "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec",
+          "signature": "def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict"
         }
       }
     },
@@ -1890,6 +1918,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
           "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $documents): array"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/manifest.py::external_differences",
+          "signature": "def external_differences(live: DbspecDocument, documents: list[DbspecDocument]) -> list[str]"
         }
       }
     },

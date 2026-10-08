@@ -1,6 +1,8 @@
 # dbspec parse와 검사 (docs/dbspec.md). 문서를 줄마다 token으로 읽어 모든 token
 # 위치를 지닌 내부 형태를 만들고, 문서 전체를 검사한다. 모든 진단을 모아 원본
 # 순서로 보고하고, encoding, header, limit 오류는 parse를 멈춘다.
+from __future__ import annotations
+
 import re
 
 from polyspec.orm.dbspec.emit import type_text
@@ -2094,7 +2096,7 @@ def parse_document(text: str, documents):
     return parsed.parser.build(), ()
 
 
-def parse_dbspec(text: str, documents):
+def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[DbspecDocument | None, list[DbspecDiagnostic]]:
     """dbspec 문서를 parse하고 검사한다. `documents`는 use 줄을 위한 문서 집합의
     다른 문서 이름과 text다."""
     if not isinstance(text, str):

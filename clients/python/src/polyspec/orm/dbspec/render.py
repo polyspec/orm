@@ -1,6 +1,8 @@
 # dbspec 문서 집합을 한 dialect의 문장으로 쓴다 (docs/dialects.md "Rendered
 # statements"). 문장의 바이트는 tests/dbspec/ddl.json과 다른 client의 render와
 # 같다.
+from __future__ import annotations
+
 from polyspec.orm.dbspec.audit import audit_records
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.manifest import check_set
@@ -327,7 +329,7 @@ def _operand_type(t: DbspecTable, a: dict, b):
     return None
 
 
-def render_dbspec(documents, dialect: str) -> dict:
+def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict:
     """parse된 문서 집합의 table을 만드는 문장을 한 dialect로 쓴다 (docs/dialects.md
     "Rendered statements"): 문서는 `use` 순서, table은 문서 순서다. 검사가 실패하면
     그 진단을, dialect를 모르면 TypeError를 던진다."""
