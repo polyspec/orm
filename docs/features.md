@@ -4,24 +4,24 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 | ID | Feature | Status | Client support |
 |---|---|---|---|
-| dsn_connection | DSN URI connection | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| model_queries | Model queries | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| model_writes | Model writes | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| transactions | Transactions | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| statement_events | Statement events | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| model_generation | Model generation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| schema_install | Schema installation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| planner | In-process planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| authenticated_encryption | Authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| parameter_chunking | Parameter chunking | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| constraints_and_relations | Constraints and relations | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| audit_triggers | Audit triggers | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| interface_contract | Common interface verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| performance_gate | Hot-path performance standard | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned |
-| conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass |
-| catalog_connection | Rust catalog connection | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported |
+| dsn_connection | DSN URI connection | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| model_queries | Model queries | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| model_writes | Model writes | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| transactions | Transactions | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| statement_events | Statement events | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| model_generation | Model generation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| schema_definition | Schema definition and migration | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| schema_install | Schema installation | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| planner | In-process planner | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| composite_keys | Composite keys | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| authenticated_encryption | Authenticated encryption | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| parameter_chunking | Parameter chunking | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| constraints_and_relations | Constraints and relations | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| audit_triggers | Audit triggers | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| interface_contract | Common interface verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| performance_gate | Hot-path performance standard | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned<br>python: planned |
+| conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
+| catalog_connection | Rust catalog connection | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported<br>python: planned |
 
 ## Current behavior
 

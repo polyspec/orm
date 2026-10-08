@@ -8,7 +8,7 @@ log.begin(process.argv.includes('--check') ? 'feature-docs-check' : 'feature-doc
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const manifest = JSON.parse(await readFile(resolve(root, 'contracts/features.json'), 'utf8'));
-const clients = ['go', 'php', 'rust', 'typescript'];
+const clients = ['go', 'php', 'rust', 'typescript', 'python'];
 const table = (ko) => manifest.features.map(feature => `| ${feature.id} | ${ko ? feature.title_ko : feature.title} | ${feature.status} | ${clients.map(client => `${client}: ${feature.clients[client]}`).join('<br>')} |`).join('\n');
 const descriptions = (ko) => manifest.features.map(feature => `- \`${feature.id}\`: ${ko ? feature.description_ko : feature.description}`).join('\n');
 const body = `# Feature definitions\n\nThe executable source is the repository feature manifest. Read the manifest, then its \`source.read_order\` paths and every path listed by the selected feature. Each entry defines inputs, outputs, state transitions, errors, client support, fixtures, tests, paired documentation, and executable verification commands.\n\n| ID | Feature | Status | Client support |\n|---|---|---|---|\n${table(false)}\n\n## Current behavior\n\n${descriptions(false)}\n\nRun make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.\n`;
