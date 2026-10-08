@@ -222,3 +222,7 @@
   `make release-publish` (the release with the notes of that section; a section over 125000
   characters, the limit of a GitHub release body, becomes one line that links the section `#XYZ`
   of CHANGELOG.md at the tag). The tests do not run again.
+- The Python client (`clients/python/pyproject.toml`) is consumed by its git tag and has no release
+  archive. The version-bump pull request sets its `version` with the other manifests, `make version-check`
+  reads that version, and `make release-versions` and `make release-assets` do not handle it (it is in
+  `NOT_RELEASED` of `scripts/release/release.mjs`).

@@ -37,6 +37,10 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
 
   `polyspec/orm-dbspec` has the type `php-ext`: PIE builds and installs it, and Composer does not.
 
+## Python client release
+
+The Python client, `clients/python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump pull request sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
+
 ## Development layout
 
 The released manifests are clients/typescript/package.json, clients/php/composer.json and clients/php-extension/composer.json. They take the polyspec packages of other repositories by exact version and declare no repository. Two private root manifests, which are never released, resolve those versions in this repository:

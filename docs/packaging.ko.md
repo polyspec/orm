@@ -37,6 +37,10 @@
 
   `polyspec/orm-dbspec`는 type `php-ext`다: PIE가 build하고 설치하며, Composer는 설치하지 않는다.
 
+## Python client release
+
+Python client인 `clients/python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
+
 ## 개발 배치
 
 release하는 manifest는 clients/typescript/package.json, clients/php/composer.json, clients/php-extension/composer.json이다. 그것들은 다른 저장소의 polyspec package를 정확한 version으로 받고 repository를 선언하지 않는다. release하지 않는 두 private root manifest가 이 저장소에서 그 version을 푼다:
