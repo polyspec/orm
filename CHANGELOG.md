@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-2: `scripts/release/release.mjs` lists `clients/python/pyproject.toml` in `NOT_RELEASED`, because the Python client is consumed by its git tag and has no release archive, so every tracked manifest is released or listed.
 - T43.7-6: the Korean row T43.7-3 of `docs/checklist.ko.md` states its facts without the word that the docs-rules check rejects, so `node scripts/docs/rules.mjs` passes.
 - T43.7-1: the package-data key of `clients/python/pyproject.toml` is `polyspec.orm` (it was `orm`, which names no package), so the wheel of `polyspec.orm` includes `py.typed`; `clients/python/tests/test_packaging.py` checks that every key names a package under `src` and that `polyspec.orm` lists `py.typed`.
 - T43.5-1-1: `make install` creates the Python client interpreter (`clients/python/.venv`) with the pinned dependencies, and the dbspec comparison checks that it exists instead of downloading it.
