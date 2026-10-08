@@ -32,6 +32,7 @@ export const CI_SETUP = {
   servers: 'databases',
   python: 'python',
   'python-install': 'python',
+  'ordered-json': 'python',
 };
 
 // RUNNER_STEPS는 runner 자신이 필요한 step이다: repository와 Node가 없으면 make check도 summary도 실행되지 않으므로,
@@ -76,6 +77,7 @@ export const STEP_OUTPUT = {
   servers: 'databases',
   python: 'python',
   'python-install': 'python',
+  'ordered-json': 'python',
 };
 
 // stepCondition은 CI group job에서 setup step id가 가지는 `if:` 조건이다.
