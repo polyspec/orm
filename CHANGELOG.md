@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-16: every command that sets `ORM_PYTHON` also sets `PYTHONPATH` to `PYTHON_PATH`, so the Python interpreter imports `polyspec.ordered_json` and the client in the conformance and dbspec comparison runs.
 - T43.7-15: the row of T43.7-14 names the database subtests `DB` instead of the angle-bracket placeholder, which the documentation build read as an HTML element.
 - T43.7-14: `conformance-result-physical-check` depends on `conformance-python-models` and passes `ORM_PYTHON` and `ORM_PYTHON_MODELS`, so the physical result check of the Python runner has its interpreter and models.
 - T43.7-8: the physical result runner list of `tests/conformance/check/result_physical_test.go` names python, as `requiredLanguages` does, so the list matches the languages whose runner result file exists.
