@@ -1224,6 +1224,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.connect",
           "signature": "public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/database.py::Db.connect",
+          "signature": "@staticmethod def connect(dsn: str, options: dict | None=None) -> Db"
         }
       }
     },
@@ -1255,6 +1259,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.connectSchema",
           "signature": "public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/database.py::Db.connect_schema",
+          "signature": "@staticmethod def connect_schema(dsn: str, schema: Schema, options: dict | None=None) -> Db"
         }
       }
     },
@@ -1287,6 +1295,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.transaction",
           "signature": "public async transaction<T>(callback: () => Promise<T> | T, options: TransactionOptions = {}): Promise<T>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/database.py::Db.transaction",
+          "signature": "def transaction(self, callback: Callable[[], T], options: dict | None=None) -> T"
         }
       }
     },
@@ -1313,6 +1325,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.utils",
           "signature": "public utils(): Utils"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/database.py::Db.utils",
+          "signature": "def utils(self) -> Utils"
         }
       }
     },
@@ -1341,6 +1357,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/database.ts::Db.subscribe",
           "signature": "public subscribe(subscriber: (event: StatementEvent) => void): () => void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/database.py::Db.subscribe",
+          "signature": "def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]"
         }
       }
     },
@@ -1372,6 +1392,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::Utils.lock",
           "signature": "public async lock(key: string): Promise<void>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::Utils.lock",
+          "signature": "def lock(self, key: str) -> None"
         }
       }
     },
@@ -1398,6 +1422,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::Utils.schema",
           "signature": "public schema(): SchemaUtils"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::Utils.schema",
+          "signature": "def schema(self) -> SchemaUtils"
         }
       }
     },
@@ -1429,6 +1457,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.register",
           "signature": "public register(schema: Schema): void"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::SchemaUtils.register",
+          "signature": "def register(self, schema: Schema) -> None"
         }
       }
     },
@@ -1461,6 +1493,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.install",
           "signature": "public async install(schema: Schema): Promise<void>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::SchemaUtils.install",
+          "signature": "def install(self, schema: Schema) -> None"
         }
       }
     },
@@ -1494,6 +1530,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::SchemaUtils.addTablesAndColumns",
           "signature": "public async addTablesAndColumns(schema: Schema): Promise<string[]>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::SchemaUtils.add_tables_and_columns",
+          "signature": "def add_tables_and_columns(self, schema: Schema) -> list[str]"
         }
       }
     },
@@ -1520,6 +1560,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::Utils.aes",
           "signature": "public aes(): AesUtils"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::Utils.aes",
+          "signature": "def aes(self) -> AesUtils"
         }
       }
     },
@@ -1551,6 +1595,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::AesUtils.status",
           "signature": "public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::AesUtils.status",
+          "signature": "def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus"
         }
       }
     },
@@ -1582,6 +1630,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::AesUtils.rotate",
           "signature": "public async rotate(model: unknown, keyring: AesKeyring): Promise<number>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::AesUtils.rotate",
+          "signature": "def rotate(self, model: Model, keyring: AesKeyring) -> int"
         }
       }
     },

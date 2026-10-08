@@ -1,5 +1,7 @@
 # Db: DSN URI 하나로 database를 고르는 연결과 plan cache, transaction
 # (docs/config.md, docs/usage.md). 실행은 동기다.
+from __future__ import annotations
+
 import json
 import re
 import sqlite3
@@ -15,10 +17,14 @@ from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, fi
 from polyspec.orm.engine.planner import Planner
 from polyspec.orm.engine.validate import IR_VERSION, validate
 from polyspec.orm.errors import OrmError, rollback_failed
-from polyspec.orm.events import Subscribers, statement_kind
+from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.schema import Schema
+from typing import Callable, TypeVar
+
+T = TypeVar('T')
 from polyspec.orm.styled_value import StyledValue
+from polyspec.orm.utils import Utils
 
 __all__ = ['Db', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
            'parse_dsn', 'read_time', 'row_key', 'scalar_key', 'time_value']
@@ -528,17 +534,17 @@ class Db:
         self._row_lock_ready = False
         self._connection = self._open()
 
-    def utils(self):
+    def utils(self) -> Utils:
         """The transaction tools of this connection (lock, transaction-local values, AES status)."""
         from polyspec.orm.utils import Utils
         return Utils(self)
 
     @staticmethod
-    def connect(dsn: str, options: dict | None = None) -> 'Db':
+    def connect(dsn: str, options: dict | None = None) -> Db:
         return Db(dsn, options)
 
     @staticmethod
-    def connect_schema(dsn: str, schema: Schema, options: dict | None = None) -> 'Db':
+    def connect_schema(dsn: str, schema: Schema, options: dict | None = None) -> Db:
         db = Db(dsn, options)
         db.register(schema)
         return db
@@ -562,7 +568,7 @@ class Db:
     def closed(self) -> bool:
         return self._closed
 
-    def subscribe(self, subscriber):
+    def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]:
         """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
         subscriber를 등록한다 (docs/usage.md "Statement events"). subscriber는
         등록 순서로 statement가 끝난 뒤, 작업이 계속되기 전에 불리고, 던지면
@@ -672,7 +678,7 @@ class Db:
 
     # --- transaction ---
 
-    def transaction(self, callback, options: dict | None = None):
+    def transaction(self, callback: Callable[[], T], options: dict | None = None) -> T:
         """callback을 한 transaction에서 실행한다. 오류이면 rollback하고, 아니면
         commit하고 callback 결과를 돌려준다. connect 없는 model은 이 transaction을
         쓴다. 활성 transaction의 같은 연결 transaction은 savepoint를 만든다."""
