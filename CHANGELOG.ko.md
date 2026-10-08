@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.2: Python client가 `orm`의 값 함수, `StyledValue`, codec 단계(`encode`, `decode`, `hostEncode`, `hostDecode`, `blindIndex`, `CodecError`), `AesKeyring`을 구현한다; 공유 codec vector와 AES vector가 Python에서 통과한다.
 - G5.143: TypeScript client clock(`wallMicros`)은 `Date.now()`의 밀리초 안에 있고 wall clock이 뒤로 가지 않는 동안 뒤로 가지 않아, insert 뒤에 읽은 SQLite `now` 조건이 삽입한 row와 맞는다.
 - G5.142: npm workspace는 기본 hoisted 배치로 설치되고, TypeScript build, package 선언 검사, conformance 결과 helper와 `decimal-typescript-types` 명령은 module을 package specifier로 찾는다.
 
