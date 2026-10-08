@@ -460,7 +460,14 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
 	node --test tests/dbspec/compare/check.test.mjs
-dbspec-compare-check/prepare: cargo-downloads-check lease-tool
+# PYTHON_VENV는 python-install이 만드는 virtual environment다. Python client의 의존성(pyproject.toml의 cryptography,
+# PyMySQL, psycopg, PyYAML)을 고정 버전으로 설치하며, 검사는 이 interpreter를 ORM_PYTHON으로 받는다.
+PYTHON_VENV = $(abspath clients/python/.venv)
+.PHONY: python-install
+python-install:
+	python3 -m venv $(PYTHON_VENV)
+	$(PYTHON_VENV)/bin/python -m pip install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
+dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-install
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES)
@@ -469,11 +476,11 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool
 	$(RUN_LONG) rust-build/dbspec_apply --cwd clients/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh clients/php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
