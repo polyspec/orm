@@ -121,6 +121,8 @@ def extract(root: str, roots: list) -> dict:
                 symbols[key] = f'{node.targets[0].id} = TypedDict'
                 typed_names.add(node.targets[0].id)
                 symbols[f'{key}#wire'] = json.dumps(functional_typed_dict_wire(node), ensure_ascii=False, separators=(',', ':'))
+                for field_key, field_value in zip(node.value.args[1].keys, node.value.args[1].values):
+                    symbols[f'{key}#field.{field_key.value}'] = ast.unparse(field_value)
     return symbols
 
 

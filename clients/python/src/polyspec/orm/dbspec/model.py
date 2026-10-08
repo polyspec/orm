@@ -1,7 +1,10 @@
 # parse된 dbspec 문서의 데이터 모델 (docs/dbspec.md). 모든 값은 불변으로 다룬다.
 # 주석 줄(`#`에서 줄 끝까지)은 그 다음 줄에 붙고, `closing_comments`는 block의
 # 닫는 brace나 문서 끝에 붙는다.
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TypedDict
 
 __all__ = ['DbspecColumn', 'DbspecCheck', 'DbspecDefault', 'DbspecDiagnostic', 'DbspecDiagram',
            'DbspecDocument', 'DbspecForeignKey', 'DbspecIndex', 'DbspecIndexColumn',
@@ -176,6 +179,40 @@ class DbspecDocument:
 
 
 # A plan is the header and the steps of a dict, and an unsupported object is the dict of its kind, table,
-# name and reason, as the introspection writes it.
-DbspecPlan = dict
+# name and reason, as the introspection writes it. `from` is a keyword, so the plan uses the functional form.
+DbspecPlan = TypedDict('DbspecPlan', {'name': str, 'from': str, 'to': str, 'schema': DbspecDocument,
+                                      'rename_tables': list, 'rename_columns': list,
+                                      'drop_tables': list, 'drop_columns': list})
+
+
+class DbspecEffect(TypedDict):
+    kind: str
+    table: str
+    name: str
+    present: bool
+
+
+class DbspecNullCheck(TypedDict):
+    table: str
+    column: str
+    default: str | None
+
+
+class DbspecChange(TypedDict):
+    kind: str
+    table: str
+    name: str
+
+
+class DbspecPlanStep(TypedDict):
+    statement: str
+    rollback: str
+    irreversible: str
+    effect: DbspecEffect
+    restore: str
+    rollback_restore: str
+    restore_if: DbspecEffect | None
+    null_checks: list[DbspecNullCheck]
+    finalize: bool
+
 Unsupported = dict

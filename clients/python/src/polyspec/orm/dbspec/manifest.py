@@ -14,6 +14,11 @@ _HEADER_NAME_COLUMN = len('dbspec 1 ') + 1
 
 
 class DbspecManifestResult:
+    manifest_text: str
+    external_text: str
+    schema_text: str
+    manifest_hash: str
+    schema_hash: str
     __slots__ = ('manifest_text', 'external_text', 'schema_text', 'manifest_hash',
                  'schema_hash')
 
