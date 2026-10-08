@@ -1,13 +1,17 @@
 # abstract model: 생성된 model이 상속하는 chain 표면. 고정 column method는
 # orm-gen이 생성하고, chain 문법 이름의 method는 이름에서 런타임에 해석한다
 # (docs/dsl.md).
+from __future__ import annotations
+
+from typing import Self
+
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError
 from polyspec.orm.names import parse_chain, parse_order, snake, split_pair
 from polyspec.orm.styled_value import StyledValue
 
-__all__ = ['Collection', 'EntityDef', 'Model', 'register_model']
+__all__ = ['Collection', 'EntityDef', 'Model', 'Page', 'register_model']
 
 
 class EntityDef:
@@ -44,6 +48,10 @@ def register_model(manifest_text: str, manifest_hash: str, external_text: str = 
         -> _RegisteredModel:
     """생성 code가 담은 manifest text와 hash로 runtime model을 만든다."""
     return _RegisteredModel(model_of_manifest(manifest_text, manifest_hash, external_text))
+
+
+class Page(dict):
+    """One page of rows: items, page, perPage, totalCount and totalPages."""
 
 
 class Collection:
@@ -101,7 +109,7 @@ class Collection:
     def __getitem__(self, index):
         return self.values()[index]
 
-    def connect(self, db):
+    def connect(self, db: Db) -> Self:
         """모든 row의 connection을 바꾼다."""
         for row in self.values():
             row.connect(db)
@@ -234,7 +242,7 @@ class Model:
         return run
 
     # 실행 method.
-    def get(self):
+    def get(self) -> Self:
         """조건에 맞는 첫 row; 없으면 NO_ROWS다."""
         from polyspec.orm.model_exec import load
         rows = load(self.core, 'one')
@@ -243,7 +251,7 @@ class Model:
             raise OrmError('NO_ROWS', 'query matched no rows')
         return row
 
-    def gets(self) -> Collection:
+    def gets(self) -> Collection[Self]:
         """조건에 맞는 row들."""
         from polyspec.orm.model_exec import load
         return load(self.core, 'all')
@@ -264,15 +272,15 @@ class Model:
             raise OrmError('CONFIG', 'get_avg requires avg_<col>()')
         return float(scalar_of(self.core, 'avg', self.core.agg))
 
-    def gets_count(self):
+    def gets_count(self) -> GroupRows:
         """group 값들과 검사된 row 수를, 불완전한 model row 없이 돌려준다."""
         from polyspec.orm.model_exec import gets_count
         return gets_count(self.core)
 
-    def gets_page(self, page: int, per_page: int) -> dict:
+    def gets_page(self, page: int, per_page: int) -> Page[Self]:
         """matching row의 한 page와 총 개수를 돌려준다."""
         from polyspec.orm.model_exec import page_of
-        return page_of(self.core, page, per_page)
+        return Page(page_of(self.core, page, per_page))
 
     def get_query(self) -> dict:
         """gets()의 statement를 실행 없이 돌려준다."""
@@ -284,33 +292,33 @@ class Model:
             raise request.error
         return make_statement(ex, request.finish(), request.params)
 
-    def create(self):
+    def create(self) -> Self:
         """row를 insert하고 만들어진 row를 돌려준다."""
         from polyspec.orm.model_exec import create as create_row
         return create_row(self.core)
 
-    def creates(self, rows) -> int:
+    def creates(self, rows: list[Self]) -> int:
         """여러 row를 한 transaction에 insert하고 row 수를 센다."""
         from polyspec.orm.model_exec import creates as creates_rows
         return creates_rows(self.core, rows)
 
-    def update(self, optimistic: bool = False):
+    def update(self, optimistic: bool = False) -> Self:
         """바뀐 column을 쓴다; update(True)는 update time이 바뀌지 않았음을 요구한다."""
         from polyspec.orm.model_exec import update as update_row
         update_row(self.core, optimistic)
         return self
 
-    def save(self):
+    def save(self) -> Self:
         """primary key를 알면 update하고, 아니면 create한다."""
         from polyspec.orm.model_exec import save as save_row
         return save_row(self.core)
 
-    def delete(self, recursive: bool = False):
+    def delete(self, recursive: bool = False) -> None:
         """row를 지운다; delete(True)는 읽은 관련 row부터 지운다."""
         from polyspec.orm.model_exec import delete_row
         delete_row(self.core, recursive)
 
-    def restore(self):
+    def restore(self) -> Self:
         """soft delete 한 행을 되돌리고 그 행을 읽어 돌려준다."""
         from polyspec.orm.model_exec import restore as restore_row
         return restore_row(self.core)
@@ -393,7 +401,7 @@ class Model:
         return add_sub
 
     # 기본 chain method.
-    def connect(self, db):
+    def connect(self, db: Db) -> Self:
         self.core.connect(db)
         return self
 
@@ -413,11 +421,11 @@ class Model:
         self.core.lock = 'share_nowait'
         return self
 
-    def and_(self, *args):
+    def and_(self, *args) -> Self:
         self.core.connector('and', args)
         return self
 
-    def or_(self, *args):
+    def or_(self, *args) -> Self:
         self.core.connector('or', args)
         return self
 
@@ -437,15 +445,15 @@ class Model:
         self.core.set_on(fn)
         return self
 
-    def relation(self, child):
+    def relation(self, child: Model) -> Self:
         self.core.relation(False, child)
         return self
 
-    def relations(self, child):
+    def relations(self, child: Model) -> Self:
         self.core.relation(True, child)
         return self
 
-    def limit(self, offset: int, count: int):
+    def limit(self, offset: int, count: int) -> Self:
         self.core.set_limit(offset, count)
         return self
 
@@ -481,7 +489,7 @@ class Model:
         self.core.fetch_value = fn
         return self
 
-    def duplication(self, model):
+    def duplication(self, model: Self) -> Self:
         self.core.set_duplication(model)
         return self
 

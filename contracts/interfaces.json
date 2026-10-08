@@ -472,6 +472,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.connect",
           "signature": "public connect(db: Db): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.connect",
+          "signature": "def connect(self, db: Db) -> Self"
         }
       }
     },
@@ -500,6 +504,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.and",
           "signature": "public and(arg?: ((q: this) => unknown) | Model): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.and_",
+          "signature": "def and_(self, *args) -> Self"
         }
       }
     },
@@ -528,6 +536,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.or",
           "signature": "public or(arg?: ((q: this) => unknown) | Model): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.or_",
+          "signature": "def or_(self, *args) -> Self"
         }
       }
     },
@@ -556,6 +568,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.relation",
           "signature": "public relation(child: Model): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.relation",
+          "signature": "def relation(self, child: Model) -> Self"
         }
       }
     },
@@ -584,6 +600,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.relations",
           "signature": "public relations(child: Model): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.relations",
+          "signature": "def relations(self, child: Model) -> Self"
         }
       }
     },
@@ -612,6 +632,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.limit",
           "signature": "public limit(offset: number, count: number): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.limit",
+          "signature": "def limit(self, offset: int, count: int) -> Self"
         }
       }
     },
@@ -640,6 +664,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.duplication",
           "signature": "public duplication(model: this): this"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.duplication",
+          "signature": "def duplication(self, model: Self) -> Self"
         }
       }
     },
@@ -671,6 +699,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.get",
           "signature": "public async get(): Promise<this>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.get",
+          "signature": "def get(self) -> Self"
         }
       }
     },
@@ -701,6 +733,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.gets",
           "signature": "public async gets(): Promise<Collection<this>>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.gets",
+          "signature": "def gets(self) -> Collection[Self]"
         }
       }
     },
@@ -731,6 +767,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getsCount",
           "signature": "public async getsCount(): Promise<GroupRows>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.gets_count",
+          "signature": "def gets_count(self) -> GroupRows"
         }
       }
     },
@@ -761,6 +801,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getCount",
           "signature": "public async getCount(): Promise<number>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.get_count",
+          "signature": "def get_count(self) -> int"
         }
       }
     },
@@ -791,6 +835,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getSum",
           "signature": "public async getSum(): Promise<number>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.get_sum",
+          "signature": "def get_sum(self) -> float"
         }
       }
     },
@@ -821,6 +869,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getAvg",
           "signature": "public async getAvg(): Promise<number>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.get_avg",
+          "signature": "def get_avg(self) -> float"
         }
       }
     },
@@ -853,6 +905,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getsPage",
           "signature": "public async getsPage(page: number, perPage: number): Promise<Page<this>>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.gets_page",
+          "signature": "def gets_page(self, page: int, per_page: int) -> Page[Self]"
         }
       }
     },
@@ -883,6 +939,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.getQuery",
           "signature": "public async getQuery(): Promise<{ sql: string; binds: unknown[]; }>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.get_query",
+          "signature": "def get_query(self) -> dict"
         }
       }
     },
@@ -915,6 +975,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.create",
           "signature": "public async create(): Promise<this>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.create",
+          "signature": "def create(self) -> Self"
         }
       }
     },
@@ -949,6 +1013,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.creates",
           "signature": "public async creates(rows: readonly this[]): Promise<number>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.creates",
+          "signature": "def creates(self, rows: list[Self]) -> int"
         }
       }
     },
@@ -982,6 +1050,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.update",
           "signature": "public async update(optimistic = false): Promise<this>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.update",
+          "signature": "def update(self, optimistic: bool=False) -> Self"
         }
       }
     },
@@ -1014,6 +1086,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.save",
           "signature": "public async save(): Promise<this>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.save",
+          "signature": "def save(self) -> Self"
         }
       }
     },
@@ -1047,6 +1123,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.delete",
           "signature": "public async delete(recursive = false): Promise<void>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.delete",
+          "signature": "def delete(self, recursive: bool=False) -> None"
         }
       }
     },
@@ -1078,6 +1158,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.restore",
           "signature": "public async restore(): Promise<this>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.restore",
+          "signature": "def restore(self) -> Self"
         }
       }
     },
@@ -1104,6 +1188,10 @@
         "typescript": {
           "symbol": "clients/typescript/src/model.ts::Model.toArray",
           "signature": "public toArray(): Record<string, unknown>"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Model.to_array",
+          "signature": "def to_array(self) -> dict"
         }
       }
     },
