@@ -3,8 +3,10 @@ schema of the set, as clients/typescript/src/dbspec/add_tables_and_columns.ts li
 tables that the set declares are compared; an object the introspection could not read in such a
 table is a difference by itself, and then the table is not compared (docs/schema.md "Schema
 installation")."""
+from __future__ import annotations
+
 from polyspec.orm.dbspec.compare import compare_schemas
-from polyspec.orm.dbspec.model import DbspecDocument
+from polyspec.orm.dbspec.model import DbspecDocument, Unsupported
 
 
 def qualified(table: str, name: str) -> str:
@@ -32,7 +34,7 @@ def compare_set(live: DbspecDocument, unsupported, target: DbspecDocument):
     return declared, source, comparison, differences
 
 
-def installed_differences(live: DbspecDocument, unsupported, target: DbspecDocument) -> list:
+def installed_differences(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument) -> list[str]:
     """The differences of the installed set `live` (its introspected document and the objects it
     could not read) from the set's `target` schema text, as "<kind> <table>[.<name>]" lines."""
     _, _, comparison, differences = compare_set(live, unsupported, target)

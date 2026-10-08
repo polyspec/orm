@@ -1,9 +1,11 @@
 # plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). 기준은 다른 client의
 # plan steps이며 statement, rollback, 효과는 같은 바이트다.
+from __future__ import annotations
+
 import dataclasses
 
 from polyspec.orm.dbspec.check import read_check
-from polyspec.orm.dbspec.model import DbspecColumn, DbspecForeignKey, DbspecIndex, \
+from polyspec.orm.dbspec.model import DbspecColumn, DbspecDocument, DbspecForeignKey, DbspecIndex, DbspecPlan, \
     DbspecPrimaryKey, DbspecUnique
 from polyspec.orm.dbspec.plan import sorted_by
 from polyspec.orm.dbspec.plan_diff import column_of, plan_diff, same_default, \
@@ -58,7 +60,7 @@ def _precision_grows(from_, to) -> bool:
         and to.precision > from_.precision
 
 
-def plan_steps(source, plan: dict, dialect: str) -> dict:
+def plan_steps(source: DbspecDocument | None, plan: DbspecPlan, dialect: str) -> dict:
     """plan의 step을 한 dialect로 쓴다 (docs/plans.md "Steps"). source는 plan이
     시작하는 schema이고 None이면 빈 database다."""
     if dialect not in DIALECTS:
