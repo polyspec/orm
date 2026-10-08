@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-6: the Korean row T43.7-3 of `docs/checklist.ko.md` states its facts without the word that the docs-rules check rejects, so `node scripts/docs/rules.mjs` passes.
 - T43.7-1: the package-data key of `clients/python/pyproject.toml` is `polyspec.orm` (it was `orm`, which names no package), so the wheel of `polyspec.orm` includes `py.typed`; `clients/python/tests/test_packaging.py` checks that every key names a package under `src` and that `polyspec.orm` lists `py.typed`.
 - T43.5-1-1: `make install` creates the Python client interpreter (`clients/python/.venv`) with the pinned dependencies, and the dbspec comparison checks that it exists instead of downloading it.
 - T43.5-2-1: `scripts/bench-db.sh` takes the dialects to seed by name (`mysql`, `postgres`, `sqlite`); with no argument it seeds all three as before, and `sqlite` seeds the SQLite bench file alone without the MySQL and PostgreSQL servers.

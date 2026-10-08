@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-6: `docs/checklist.ko.md`의 T43.7-3 행이 docs-rules 검사가 거부하는 낱말 없이 같은 사실을 적으며, 그래서 `node scripts/docs/rules.mjs`가 통과한다.
 - T43.7-1: `clients/python/pyproject.toml`의 package-data 키가 `polyspec.orm`이다(이전에는 어떤 package도 가리키지 않는 `orm`). 그래서 `polyspec.orm`의 wheel에 `py.typed`가 들어간다. `clients/python/tests/test_packaging.py`가 모든 키가 `src` 아래 package를 가리키고 `polyspec.orm`이 `py.typed`를 담는지 확인한다.
 - T43.5-1-1: `make install`이 고정 버전 의존성을 담은 Python client interpreter(`clients/python/.venv`)를 만들고, dbspec 비교는 그것을 내려받지 않고 있는지만 확인한다.
 - T43.5-2-1: `scripts/bench-db.sh`가 시딩할 방언을 인수로 받는다(`mysql`, `postgres`, `sqlite`). 인수가 없으면 이전처럼 세 DB를 모두 시딩하고, `sqlite`는 MySQL과 PostgreSQL 서버 없이 SQLite bench file만 시딩한다.
