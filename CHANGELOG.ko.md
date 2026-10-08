@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18: Python client가 드라이버별로 엔진 marker를 바꿉니다. MySQL은 `?`를 `%s`로, PostgreSQL은 `$n`을 `%(pn)s`로 바꾸며, 따옴표 문자열과 주석 밖에서만 바꾸고 모든 `%`를 이스케이프합니다. 값이 없는 문장은 그대로 넘깁니다.
 - T43.7-17: `dbspec-compare-check`의 inputs 단위 실행이 `PYTHONPATH`와 `ORM_PYTHON`을 받아, Python runner가 변수 누락 때문에 실패하지 않고 case를 거부합니다.
 - T43.7-16: `ORM_PYTHON`을 설정하는 모든 명령이 `PYTHON_PATH`를 `PYTHONPATH`로도 넘겨, conformance와 dbspec 비교 실행에서 Python interpreter가 `polyspec.ordered_json`과 client를 import합니다.
 - T43.7-15: T43.7-14 행이 데이터베이스 subtest를 꺾쇠 괄호 자리표시자 대신 `DB`로 적습니다. 꺾쇠 괄호 자리표시자는 문서 build가 HTML 요소로 읽었습니다.
