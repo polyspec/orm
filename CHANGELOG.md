@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.6-3-2: the conformance check runs every language of a database and every database after one fails, and its error names each failed database and language, instead of stopping at the first failed language.
 - T43.6-1: the python group of CI runs on Python 3.11, the minimum release of `requires-python`, as a matrix leg of its own next to the leg of `.python-version`; the leg names its report and artifact with `_py311`, so the two legs of the group do not share a name.
 - T43.7-19: the Python drivers return DECIMAL and NUMERIC cells as their exact text (PyMySQL conversions and the psycopg text loader), as the TypeScript and PHP clients do, instead of decimal.Decimal.
 - T43.7-18: the Python client translates the engine markers for its drivers: `?` to `%s` for MySQL and `$n` to `%(pn)s` for PostgreSQL, outside quoted text and comments, with every `%` escaped; a statement without values is passed unchanged.
