@@ -418,6 +418,42 @@ class Core:
             return self.fail('duplication requires a model')
         self.duplication = model.core
 
+    def clone(self) -> 'Core':
+        """builder 상태를 복사한다; 복사는 새 model을 소유한다."""
+        import copy
+        out = Core(self.ent)
+        for name in ('conn', 'error', 'group', 'target', 'index', 'lock', 'agg', 'agg_fn',
+                     'alias', 'parent_node', 'possible', 'group_limit', 'delete_lock',
+                     'key_name', 'fetch_key', 'fetch_value', 'duplication', 'values'):
+            setattr(out, name, getattr(self, name))
+        out.where = CondGroup([dict(item) for item in self.where.items])
+        out.where.pending = self.where.pending
+        out.joins = list(self.joins)
+        out.relations = list(self.relations)
+        out.matches = list(self.matches)
+        out.columns_mode = self.columns_mode
+        out.columns_add = list(self.columns_add)
+        out.columns_remove = list(self.columns_remove)
+        out.columns_funcs = dict(self.columns_funcs)
+        out.columns_subs = dict(self.columns_subs)
+        out.columns_order = list(self.columns_order)
+        out.order = list(self.order)
+        out.group_by = list(self.group_by)
+        out.limit = dict(self.limit) if self.limit is not None else None
+        out.sets = list(self.sets)
+        out.news = list(self.news)
+        out.new_values = dict(self.new_values)
+        out.on = self.on
+        out.self = self.ent.create(out)
+        return out
+
+    def by(self, keys, args) -> 'Core':
+        """get_by/gets_by/get_count_by chain을 복사본에 적용한다; chain은 이미 있는
+        조건과 AND로 이어진다."""
+        out = self.clone()
+        out.where_chain('and' if out.where.items else '', keys, args)
+        return out
+
     def result_name(self, many: bool) -> str:
         if self.alias != '':
             return self.alias

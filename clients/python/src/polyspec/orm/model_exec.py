@@ -278,3 +278,171 @@ def create(c: Core):
     c.sets = []
     c.duplication = None
     return core.self
+
+
+def _key_values(c: Core, schema: Entity) -> dict:
+    keys: dict = {}
+    for pk in schema.primary_key:
+        if c.row is not None and c.row.loaded:
+            keys[pk] = c.row.original.get(pk)
+            continue
+        spec = next((s for s in c.sets if s.column == pk and not s.plus and not s.minus
+                     and not s.null), None)
+        if spec is None:
+            raise OrmError('CONFIG', f'{schema.name} requires a loaded row or set primary '
+                                     f'key {pk}')
+        keys[pk] = spec.value
+    return keys
+
+
+def _key_where(r: dict, schema: Entity, keys: dict) -> None:
+    r['ir']['where'] = {'items': []}
+    for i, pk in enumerate(schema.primary_key):
+        pred = {'column': pk, 'op': 'eq', 'p': len(r['params'])}
+        r['params'].append(keys.get(pk))
+        if i > 0:
+            pred['conn'] = 'and'
+        r['ir']['where']['items'].append({'pred': pred})
+
+
+def _with_aes_columns(c: Core, schema: Entity) -> list:
+    """읽은 row의 한 AES column이 바뀌면 나머지 AES column도 함께 쓴다."""
+    if schema.aes_version == '':
+        return c.sets
+
+    def is_aes(name: str) -> bool:
+        field = field_of(schema, name)
+        return field is not None and 'aes' in field.stages
+
+    if not any(is_aes(s.column) for s in c.sets):
+        return c.sets
+    out = list(c.sets)
+    for field in schema.fields:
+        if not is_aes(field.name) or any(s.column == field.name for s in c.sets):
+            continue
+        if c.row is None or field.name not in c.row.names:
+            raise OrmError('CONFIG', f'changing an AES column of {schema.name} requires '
+                                     f'a row loaded with {field.name}')
+        value = c.values.get(field.name)
+        out.append(SetSpec(field.name, null=True) if value is None
+                   else SetSpec(field.name, value=value))
+    return out
+
+
+def update(c: Core, optimistic: bool = False) -> None:
+    """바뀐 column을 쓴다; update(True)는 update time이 바뀌지 않았음을 요구한다."""
+    ex = _terminal(c)
+    schema = c.ent.entity
+    r = _write_request(c, 'update')
+    keys = _key_values(c, schema)
+    loaded = c.row is not None and c.row.loaded
+    sets = [s for s in _with_aes_columns(c, schema)
+            if loaded or s.column not in schema.primary_key]
+    if not sets:
+        return
+    r['ir']['set'] = [_assign(r, schema, s) for s in sets]
+    _key_where(r, schema, keys)
+    column = schema.updated
+    if optimistic:
+        version = c.row.original.get(column) if loaded and column != '' else None
+        if version is None:
+            raise OrmError('CONFIG', 'update(true) requires a row loaded with its update '
+                                     'time column')
+        r['ir']['optimistic'] = {'column': column, 'p': len(r['params'])}
+        r['params'].append(version)
+    r['ir']['n_params'] = len(r['params'])
+    write(ex, r['ir'], r['params'])
+    if loaded:
+        for s in c.sets:
+            if s.column in schema.primary_key and not s.plus and not s.minus:
+                c.row.original[s.column] = s.value
+        c.row.original.pop(column, None)
+    c.sets = []
+
+
+def save(c: Core):
+    """primary key를 알면 update하고, 아니면 create한다."""
+    _terminal(c)
+    try:
+        _key_values(c, c.ent.entity)
+        known = True
+    except OrmError:
+        known = False
+    if known:
+        update(c, False)
+        return c.self
+    return create(c)
+
+
+def delete_row(c: Core, recursive: bool = False) -> None:
+    _terminal(c)
+    if recursive:
+        _in_transaction(c.conn, lambda: _delete_one(c, True))
+        return
+    _delete_one(c, False)
+
+
+def _delete_one(c: Core, recursive: bool) -> None:
+    ex = _terminal(c)
+    if recursive and c.row is not None:
+        for name, value in c.row.related.items():
+            if not c.row.cascade.get(name):
+                continue
+            if isinstance(value, Collection):
+                for row in value.values():
+                    _delete_one(row.core, True)
+            elif isinstance(value, Model):
+                _delete_one(value.core, True)
+    schema = c.ent.entity
+    r = _write_request(c, 'delete')
+    _key_where(r, schema, _key_values(c, schema))
+    r['ir']['n_params'] = len(r['params'])
+    write(ex, r['ir'], r['params'])
+
+
+def restore(c: Core):
+    """soft delete 한 행을 되돌린다(soft delete column을 NULL로 쓰는 update)그리고
+    그 행을 읽어 돌려준다."""
+    ex = _terminal(c)
+    schema = c.ent.entity
+    values: dict = {}
+    for s in c.sets:
+        if not s.null and not s.plus and not s.minus:
+            values[s.column] = s.value
+
+    def covered(columns) -> bool:
+        return all(column in values for column in columns)
+
+    # unique key는 이름 순서로 고른다.
+    uniques = sorted(({'name': schema.indexes[i], 'columns': list(columns)}
+                      for i, columns in enumerate(schema.uniques)),
+                     key=lambda u: u['name'])
+    key = list(schema.primary_key) if covered(schema.primary_key) \
+        else next((u['columns'] for u in uniques if covered(u['columns'])), None)
+    if key is None:
+        raise OrmError('CONFIG', f'restore requires the set values of the primary key or '
+                                 f'a unique key of {schema.name}')
+    q = _new_model(c.ent)
+    q.conn = c.conn
+    q.where_chain('', [type('Key', (), {'conn': '' if i == 0 else 'and', 'op': '',
+                                        'column': column, 'columns': (),
+                                        'compare': ''})()
+                       for i, column in enumerate(key)],
+                  [values.get(column) for column in key])
+    request = q.build('restore')
+    if request.error is not None:
+        raise request.error
+    request.ir['set'] = [_assign(request, schema, s) for s in c.sets
+                         if s.column not in key]
+    if not request.ir['set']:
+        del request.ir['set']
+    request.ir['n_params'] = len(request.params)
+    write(ex, request.ir, request.params)
+    return q.self.get()
+
+
+def _in_transaction(conn, fn):
+    """transaction 안에서 fn을 실행한다; 연결이 없으면 그냥 실행한다."""
+    if conn is None:
+        return fn()
+    return conn.transaction(fn, {'retry': 0})
