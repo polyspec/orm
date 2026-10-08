@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.6-3-3: Python client의 PostgreSQL utility 문장이 엔진이 쓰는 $n marker를 씁니다. advisory lock과 set_config 문장은 `test_utils_statements.py`가 검사하는 상수입니다.
 - T43.7-18-2: `for_mysql`, `for_postgres`, `mysql_conversions`, `postgres_loaders`는 공개 이름을 유지하고 `contracts/symbols/python.json`에 등록합니다. T43.7-18-1의 private 이름 변경은 되돌렸습니다.
 - T43.7-18-1: Python client의 helper `_for_mysql`, `_for_postgres`, `_mysql_conversions`, `_postgres_loaders`가 private 이름이 되어, client의 public 이름이 `contracts/symbols/python.json`과 같습니다.
 - T43.6-3-2: conformance 검사는 한 언어가 실패해도 database의 모든 언어와 모든 database를 실행하고, 오류에 실패한 database와 언어를 모두 적습니다. 첫 실패 언어에서 멈추지 않습니다.

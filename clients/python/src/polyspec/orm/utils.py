@@ -11,6 +11,10 @@ from polyspec.orm.errors import OrmError
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
 
+# PostgreSQL statements of the utilities, with the $n markers that the engine writes for PostgreSQL.
+POSTGRES_ADVISORY_LOCK = 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))'
+POSTGRES_SET_LOCAL = 'SELECT set_config($1, $2, true)'
+
 # validKey accepts a key of at most 64 characters: letters, digits, '_' and '.', not starting with '.'.
 _KEY = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.]{0,63}$')
 
@@ -50,7 +54,7 @@ class Utils:
                 raise OrmError('DEADLOCK', f'lock {key} was not acquired')
             frame.locks.append(key)
         elif driver == 'postgres':
-            frame.run('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [key], 'utility')
+            frame.run(POSTGRES_ADVISORY_LOCK, [key], 'utility')
         else:
             self.db.row_lock(frame, 'update')
 
@@ -59,7 +63,7 @@ class Utils:
         if not valid_key(key):
             raise OrmError('CONFIG', f'local key {key!r} is invalid')
         if self.db.driver == 'postgres':
-            frame.run('SELECT set_config(?, ?, true)', [key, value], 'utility')
+            frame.run(POSTGRES_SET_LOCAL, [key, value], 'utility')
         elif self.db.driver == 'mysql':
             frame.run('SET @`orm.' + key + '` = ?', [value], 'utility')
         frame.locals[key] = value
