@@ -422,3 +422,291 @@ class Core:
         if self.alias != '':
             return self.alias
         return f'{self.ent.entity.name}_{"models" if many else "model"}'
+
+
+class Frame:
+    """statement 안의 각 Core의 path."""
+
+    def __init__(self, root: 'Core', outer):
+        self.paths = {id(root): ''}
+        self.parent = {id(root): None}
+        self.root = root
+        self.outer = outer
+        self.placed: set = set()
+        self._register(root, '')
+
+    def _register(self, core: 'Core', prefix: str) -> None:
+        for join in core.joins:
+            path = prefix + join['child'].result_name(False)
+            self.paths[id(join['child'])] = path
+            self.parent[id(join['child'])] = core
+            self._register(join['child'], f'{path}/')
+
+    def path_of(self, core: 'Core') -> str:
+        path = self.paths.get(id(core))
+        if path is not None:
+            return path
+        if self.outer is not None and core is self.outer:
+            return '^'
+        raise OrmError('CONFIG', f'{core.ent.entity.name} is not part of the statement')
+
+
+def _pad(values):
+    n = 1
+    while n < len(values):
+        n <<= 1
+    out = list(values)
+    while len(out) < n:
+        out.append(values[-1])
+    return out
+
+
+class BuiltRequest:
+    """만들어지는 request: 값 없는 IR과 값들."""
+
+    def __init__(self, kind: str, hash_: str):
+        self.ir: dict = {'ir_version': 1, 'manifest_hash': hash_, 'kind': kind,
+                         'entity': '', 'n_params': 0}
+        self.params: list = []
+        self.error = None
+        self.join_paths: set = set()
+        # 자기 connection을 가진 relation들, parent model마다.
+        self.external: dict = {}
+
+    def param(self, value) -> int:
+        self.params.append(value)
+        return len(self.params) - 1
+
+    def fail(self, error) -> None:
+        if self.error is None:
+            self.error = error if isinstance(error, OrmError) else OrmError('CONFIG', str(error))
+
+    def finish(self) -> dict:
+        self.ir['n_params'] = len(self.params)
+        return self.ir
+
+    def query(self, c: 'Core', f: Frame, path: str):
+        if c.error:
+            self.fail(c.error)
+            return None
+        if c.where.pending != '':
+            self.fail(OrmError('CONFIG', f'connector {c.where.pending} without a following condition'))
+            return None
+        q: dict = {'entity': c.ent.entity.name}
+        if c.index != '':
+            q['force_index'] = c.index
+        if c.lock != '':
+            q['lock'] = c.lock
+        if c.limit is not None:
+            q['limit'] = dict(c.limit)
+        columns = self._columns(c)
+        if self.error is not None:
+            return None
+        if columns is not None:
+            q['columns'] = columns
+        for join in c.joins:
+            child_path = f.path_of(join['child'])
+            name = child_path[child_path.rfind('/') + 1:]
+            if child_path in self.join_paths:
+                self.fail(OrmError('CONFIG', f'join result name {name} is used twice'))
+                return None
+            self.join_paths.add(child_path)
+            child = self.query(join['child'], f, child_path)
+            if child is None:
+                return None
+            if join['child'].on is not None:
+                child['on'] = self._group(join['child'].on, join['child'], f)
+            q.setdefault('joins', []).append({'rel': name, 'kind': join['kind'],
+                                              'query': child, 'left': join['left'],
+                                              'right': join['right']})
+        if c.where.items:
+            q['where'] = self._group(c.where, c, f)
+        for relation in c.relations:
+            child_core = relation['child']
+            if child_core.conn is not None:
+                if child_core.limit is not None:
+                    self.fail(OrmError('LIMIT_IN_RELATION',
+                                       f'{child_core.ent.entity.name} relation uses limit; '
+                                       f'use groupLimit'))
+                    return None
+                self.external.setdefault(id(c), []).append(relation)
+                continue
+            child = self._relation(relation)
+            if child is None:
+                return None
+            q.setdefault('relations', []).append(child)
+        for o in c.order:
+            item: dict = {}
+            if o.get('random'):
+                item['random'] = True
+            else:
+                item['column'] = o['column']
+                if o.get('desc'):
+                    item['desc'] = True
+                if o.get('fn'):
+                    item['fn'] = o['fn'].ir(lambda v: self.param(v))
+            q.setdefault('order', []).append(item)
+        if c.group_by:
+            q['group_by'] = list(c.group_by)
+        return q
+
+    def _relation(self, relation) -> dict | None:
+        ch = relation['child']
+        q = self.query(ch, Frame(ch, None), '')
+        if q is None:
+            return None
+        if ch.limit is not None:
+            self.fail(OrmError('LIMIT_IN_RELATION',
+                               f'{ch.ent.entity.name} relation uses limit; use groupLimit'))
+            return None
+        if ch.parent_node:
+            q['flatten'] = True
+        if ch.group_limit > 0:
+            q['limit_per_parent'] = ch.group_limit
+        if ch.delete_lock:
+            q['no_cascade_delete'] = True
+        if ch.key_name != '':
+            q['key_by'] = ch.key_name
+        if ch.possible is not None:
+            q['if_parent'] = {'column': ch.possible['column'],
+                              'p': self.param(ch.possible['value'])}
+        return {'rel': ch.result_name(relation['many']),
+                'kind': 'many' if relation['many'] else 'one',
+                'keys': [dict(k) for k in ch.matches], 'query': q}
+
+    def _columns(self, c: 'Core'):
+        spec = c
+        out: dict = {}
+        if c.columns_mode != '':
+            out['mode'] = c.columns_mode
+        if c.columns_add:
+            out['add'] = list(c.columns_add)
+        if c.columns_remove:
+            out['remove'] = list(c.columns_remove)
+        for name in c.columns_order:
+            function = c.columns_funcs.get(name)
+            if function is not None:
+                out.setdefault('fn', {})[name] = {
+                    'column': function['column'],
+                    'fn': function['fn'].ir(lambda v: self.param(v))}
+            sub = c.columns_subs.get(name)
+            if sub is not None:
+                built = self._subquery(sub(c.self), c, True)
+                if built is None:
+                    return None
+                out.setdefault('sub', {})[name] = built
+        return out if out else None
+
+    def _group(self, group: CondGroup, owner: 'Core', f: Frame) -> dict:
+        out: dict = {'items': []}
+        for node in group.items:
+            item: dict = {}
+            if node.get('pred') is not None:
+                pred = self._pred(node['pred'], owner, f)
+                if node.get('conn'):
+                    pred['conn'] = node['conn']
+                item['pred'] = pred
+            elif node.get('group') is not None:
+                item['group'] = self._group(node['group'], owner, f)
+                if node.get('conn'):
+                    item['group']['conn'] = node['conn']
+                if node['group'].not_:
+                    item['group']['not'] = True
+            elif node.get('joined') is not None:
+                child = node['joined']
+                path = f.paths.get(id(child))
+                if path is None or child is f.root:
+                    self.fail(OrmError('CONFIG', f'{child.ent.entity.name} is not joined '
+                                                 f'in the statement'))
+                    return out
+                if f.parent.get(id(child)) is not owner.subject():
+                    self.fail(OrmError('CONFIG', f'{child.ent.entity.name} conditions must '
+                                                 f'be placed in the model it is joined to'))
+                    return out
+                if id(child) in f.placed:
+                    self.fail(OrmError('CONFIG', f'{child.ent.entity.name} conditions are '
+                                                 f'placed twice'))
+                    return out
+                f.placed.add(id(child))
+                if not child.where.items:
+                    self.fail(OrmError('CONFIG', f'{child.ent.entity.name} has no condition '
+                                                 f'to place'))
+                    return out
+                item['joined'] = {'join': path[path.rfind('/') + 1:]}
+                if node.get('conn'):
+                    item['joined']['conn'] = node['conn']
+            out['items'].append(item)
+        return out
+
+    def _pred(self, p: dict, owner: 'Core', f: Frame) -> dict:
+        out: dict = {'column': p['column'], 'op': p['op']}
+        kind = p['kind']
+        if kind == 'tuple':
+            del out['column']
+            out['cols'] = list(p['cols'])
+            out['ps'] = [self.param(value) for row in p['value'] for value in row]
+        elif kind == 'between':
+            out['ps'] = [self.param(value) for value in p['value']]
+        elif kind == 'list':
+            out['ps'] = [self.param(value) for value in _pad(p['value'])]
+        elif kind == 'null':
+            pass
+        elif kind == 'ref':
+            try:
+                out['ref'] = {'path': f.path_of(p['ref'].subject()), 'column': p['ref_col']}
+            except OrmError as error:
+                self.fail(error)
+                return out
+        elif kind == 'sub':
+            sub = self._subquery(p['sub'].self, owner.subject(), False)
+            if sub is None:
+                return out
+            out['sub'] = sub
+        elif kind == 'column_fn':
+            out['fn'] = p['fn'].ir(lambda v: self.param(v))
+            out['p'] = self.param(p['value'])
+        elif kind == 'value_fn':
+            out['value'] = p['fn'].ir(lambda v: self.param(v))
+        else:
+            out['p'] = self.param(p['value'])
+        return out
+
+    def _subquery(self, model, outer: 'Core', scalar: bool):
+        from polyspec.orm.model import Model
+        if not isinstance(model, Model):
+            self.fail(OrmError('CONFIG', 'subquery callback returned no model'))
+            return None
+        c = model.core
+        if c.conn is not None:
+            self.fail(OrmError('CONFIG', 'a subquery model cannot have its own connection'))
+            return None
+        if c.relations:
+            self.fail(OrmError('CONFIG', 'a subquery model cannot load relations'))
+            return None
+        q = self.query(c, Frame(c, outer), '')
+        if q is None:
+            return None
+        sub: dict = {'query': q}
+        if scalar and c.agg != '':
+            sub['agg'] = c.agg_fn
+            sub['column'] = c.agg
+        elif len(c.columns_add) == 1:
+            sub['column'] = c.columns_add[0]
+        else:
+            self.fail(OrmError('CONFIG', 'a subquery model must add exactly one column '
+                                         'with addColumn<Col>()'))
+            return None
+        del q['columns']
+        return sub
+
+    def build(self, kind: str) -> BuiltRequest:
+        """chain이 만든 상태를 request로 만든다."""
+        request = BuiltRequest(kind, self.ent.model.runtime.manifest_hash)
+        if self.error:
+            request.fail(self.error)
+            return request
+        q = request.query(self, Frame(self, None), '')
+        if q is not None:
+            self_ir = request.ir
+            self_ir.update(q)
+        return request
