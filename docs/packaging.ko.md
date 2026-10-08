@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: d960706aaff05be7bb0439c5bbadfceb098b8e18600b30e3df83815c92b74261 -->
+<!-- source-sha256: e789d58ca4b11ef4a28ed327c342e43480b81693f093657404cef51c74172e7a -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -41,7 +41,7 @@
 
 ## Python client release
 
-Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 commit이 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
+Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 commit이 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.7`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
 
 ## 개발 배치
 

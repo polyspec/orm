@@ -1478,7 +1478,7 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   ]);
   const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
-    ".github/workflows/push-gate.yml is missing; it runs on push:",
+    ".github/workflows/push-gate.yml is missing; it runs on push: branches: ['**']",
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);

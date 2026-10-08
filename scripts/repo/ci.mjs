@@ -762,7 +762,7 @@ export function ciMakeErrors(workflows) {
 // `<dir>/vX.Y.Z`)의 push에서 GitHub Release를 만든다. 다른 workflow는 push, pull_request, merge_group으로 실행하지 않는다.
 export const WORKFLOW_TRIGGERS = {
   '.github/workflows/ci.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
-  '.github/workflows/push-gate.yml': ['on:', '  push:'],
+  '.github/workflows/push-gate.yml': ['on:', '  push:', "    branches: ['**']"],
   '.github/workflows/docs-pages.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
   '.github/workflows/release.yml': ['on:', '  push:', "    tags: ['v*', '**/v*']"],
 };

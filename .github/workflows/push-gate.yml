@@ -2,6 +2,7 @@ name: push-gate
 
 on:
   push:
+    branches: ['**']
 
 permissions:
   contents: read

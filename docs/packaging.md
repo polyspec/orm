@@ -40,7 +40,7 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
 
 ## Python client release
 
-The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump commit sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
+The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump commit sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.7` of ordered-json, so an install needs that tag to exist.
 
 ## Development layout
 
