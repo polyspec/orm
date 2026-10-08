@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-17: `dbspec-compare-check`의 inputs 단위 실행이 `PYTHONPATH`와 `ORM_PYTHON`을 받아, Python runner가 변수 누락 때문에 실패하지 않고 case를 거부합니다.
 - T43.7-16: `ORM_PYTHON`을 설정하는 모든 명령이 `PYTHON_PATH`를 `PYTHONPATH`로도 넘겨, conformance와 dbspec 비교 실행에서 Python interpreter가 `polyspec.ordered_json`과 client를 import합니다.
 - T43.7-15: T43.7-14 행이 데이터베이스 subtest를 꺾쇠 괄호 자리표시자 대신 `DB`로 적습니다. 꺾쇠 괄호 자리표시자는 문서 build가 HTML 요소로 읽었습니다.
 - T43.7-14: `conformance-result-physical-check`가 `conformance-python-models`에 의존하고 `ORM_PYTHON`, `ORM_PYTHON_MODELS`를 넘겨, Python runner의 physical result 검사가 interpreter와 model을 갖습니다.
