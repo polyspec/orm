@@ -2,11 +2,25 @@
   "schema": 1,
   "repositoryUrl": "https://github.com/polyspec/orm",
   "changelog": "CHANGELOG.md",
-  "changelogTranslations": ["CHANGELOG.ko.md"],
+  "changelogTranslations": [
+    "CHANGELOG.ko.md"
+  ],
   "packages": [
-    { "kind": "npm", "directory": "packages/orm-npm", "name": "@polyspec/orm" },
-    { "kind": "composer", "directory": "packages/orm-php", "name": "polyspec/orm" },
-    { "kind": "composer", "directory": "packages/orm-php-extension", "name": "polyspec/orm-dbspec" }
+    {
+      "kind": "npm",
+      "directory": "packages/orm-npm",
+      "name": "@polyspec/orm"
+    },
+    {
+      "kind": "composer",
+      "directory": "packages/orm-php",
+      "name": "polyspec/orm"
+    },
+    {
+      "kind": "composer",
+      "directory": "packages/orm-php-extension",
+      "name": "polyspec/orm-dbspec"
+    }
   ],
   "manifests": {
     "VERSION": "version",
@@ -27,17 +41,71 @@
     "packages/orm-rust/testcase/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/orm-rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
     "bench/rust/Cargo.toml": "the benchmark crate of the Rust client",
-    "tests/interfaces/rust/Cargo.toml": "the interface check crate of the Rust client"
+    "tests/interfaces/rust/Cargo.toml": "the interface check crate of the Rust client",
+    "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
+    "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives"
   },
   "goModules": {
     ".": "github.com/polyspec/orm"
   },
+  "consumers": {
+    "npm": {
+      "directory": "tests/release-consumer/npm",
+      "smoke": {
+        "@polyspec/orm": [
+          "node",
+          "--input-type=module",
+          "-e",
+          "const m = await import('@polyspec/orm'); if (Object.keys(m).length === 0) throw new Error('the package exports nothing');"
+        ]
+      }
+    },
+    "composer": {
+      "directory": "tests/release-consumer/composer",
+      "smoke": {
+        "polyspec/orm": [
+          "php",
+          "-r",
+          "require 'vendor/autoload.php'; if (!class_exists('Polyspec\\\\Orm\\\\Db')) { exit(1); }"
+        ]
+      }
+    }
+  },
   "proof": {
     "gitTag": {
-      "packages/orm-python/pyproject.toml": { "kind": "python", "name": "polyspec-orm", "smoke": ["python", "-c", "import polyspec.orm"] },
-      "packages/orm-rust/orm-schema/Cargo.toml": { "kind": "rust", "name": "polyspec-orm-schema", "smoke": ["cargo", "check"] },
-      "packages/orm-rust/orm/Cargo.toml": { "kind": "rust", "name": "polyspec-orm", "smoke": ["cargo", "check"] },
-      "packages/orm-rust/orm-build/Cargo.toml": { "kind": "rust", "name": "polyspec-orm-build", "smoke": ["cargo", "check"] }
+      "packages/orm-python/pyproject.toml": {
+        "kind": "python",
+        "name": "polyspec-orm",
+        "smoke": [
+          "python",
+          "-c",
+          "import polyspec.orm"
+        ]
+      },
+      "packages/orm-rust/orm-schema/Cargo.toml": {
+        "kind": "rust",
+        "name": "polyspec-orm-schema",
+        "smoke": [
+          "cargo",
+          "check"
+        ]
+      },
+      "packages/orm-rust/orm/Cargo.toml": {
+        "kind": "rust",
+        "name": "polyspec-orm",
+        "smoke": [
+          "cargo",
+          "check"
+        ]
+      },
+      "packages/orm-rust/orm-build/Cargo.toml": {
+        "kind": "rust",
+        "name": "polyspec-orm-build",
+        "smoke": [
+          "cargo",
+          "check"
+        ]
+      }
     }
   }
 }

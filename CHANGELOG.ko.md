@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ca7b95a0dbda2fefa9f49711b740530006fff5f2f47966a86c7dd16cd39361de -->
+<!-- source-sha256: 298c9c7a43dbd6da1583eb933565986290b4ec23c0496a7bff2a9ffe22a679ec -->
 # 변경 이력
 
 ## Unreleased
 
+- T43.5-5–T43.7-19, T43, T43.5, T43.6, T44.4: Python client와 kit 도입의 열린 행을 소유 unit 검사(`make dbspec-compare-check`, `make python-check`, `make repo-check`, `make runner-check`, `make interface-check`, `go test ./tests/conformance/check`)로 닫았다. Rust catalog case `native_updates_lock_compare_verify_and_rollback`의 `tokio::select!`은 `biased`여서 probe event가 먼저 온다. `config/release.json`이 `consumers`를 선언하고 `tests/release-consumer`가 그 manifest를 담는다. database server를 읽는 행은 push 뒤 CI가 확인한다.
 - G5.90, T43.7-5: ordered-json을 release v0.0.7로 쓴다. go.mod는 `github.com/polyspec/ordered-json/packages/ordered-json-go v0.0.7`을 요구하고, root package.json과 composer.json은 release의 `polyspec-ordered-json-npm-0.0.7.tgz`와 `polyspec-ordered-json-php-0.0.7.zip`을 받으며, Rust crate와 `Cargo.lock`은 tag `v0.0.7`을 가리키고, Python client, Makefile, ci.yml, Python test는 `packages/ordered-json-python`을 읽는다.
 - T44.2-1, T44.3: vendored kit은 v0.0.9이며, `siteLinks`가 설정되면 VitePress heading anchor와 `{#id}`를 읽고, root `overrides`가 URL에서 받는 package를 registry review에서 건너뛰며, root composer.json을 받아들인다. `config/dependency-policy.json`이 root composer.json(PHP 8.4.0)을 선언하고, root composer.json은 `polyspec/orm`을 `0.0.4`로 요구하며, `config/dependency-review.json`이 review를 기록하고, `make documents-check`, `make dependency-policy-check`, `make dependency-policy-mutation-check`가 통과하며 `CHECK_TARGETS`의 target이다.
 - T44.3: `config/dependency-policy.json`이 client의 Python manifest, `@polyspec/ordered-json`, typescript 6, `@types/node` 22의 예외를 선언하고, `config/toolchain.json`이 `cargoAudit` 0.22.2와 `govulncheck` 1.8.0을 선언한다. dependency는 최신 stable release(mermaid 12.1.0, mysql2, pg, typescript 6.0.3, Go module sys, tools, sqlite, text, mod, sync, libc)로 올렸고, root package.json은 workspace를 `packages/*`로 적고 `overrides`로 vitepress에 vite 7을 받아서 어떤 lock도 moderate 이상 advisory를 갖지 않으며, root composer.json은 `config.platform.php`를 8.4.0으로 두고 그 lock은 그것으로 푼다. `@polyspec/ordered-json` 질의가 404로 답하는 동안 `make dependency-review RECORD=1`은 아직 기록을 쓰지 않는다(T44.3).

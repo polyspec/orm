@@ -1,0 +1,41 @@
+{
+    "name": "polyspec/orm-release-consumer",
+    "description": "A project that installs polyspec/orm from the release zips",
+    "type": "project",
+    "require": {
+        "polyspec/orm": "0.0.4",
+        "polyspec/ordered-json": "0.0.7"
+    },
+    "repositories": [
+        {
+            "type": "artifact",
+            "url": "artifacts"
+        },
+        {
+            "type": "package",
+            "package": {
+                "name": "polyspec/ordered-json",
+                "version": "0.0.7",
+                "type": "library",
+                "require": {
+                    "php": ">=8.2",
+                    "ext-json": "*",
+                    "ext-pcre": "*"
+                },
+                "suggest": {
+                    "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
+                },
+                "autoload": {
+                    "files": [
+                        "src/OrderedJson.php"
+                    ]
+                },
+                "dist": {
+                    "type": "zip",
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.7/polyspec-ordered-json-php-0.0.7.zip",
+                    "shasum": "ba76343b5d6a2ce7db53fc88bc71b0706fa5fd4a"
+                }
+            }
+        }
+    ]
+}

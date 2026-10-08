@@ -295,9 +295,12 @@ async fn check() {
         });
         let changes = vec![("n".into(), P::I(31))];
         let mut pending = Box::pin(catalog.update_row(&inserted_baseline, &changes, Arc::new(AtomicBool::new(false)), observe, std::sync::Arc::new(|| Ok(()))));
+        // `biased` polls the probe first: when the probe event and the end of the commit are ready together, the probe is the
+        // first event, so the order does not depend on which branch select! would pick at random.
         tokio::select! {
-            result=&mut pending=>panic!("commit completed before detached-owner probe: {}",result.is_ok()),
+            biased;
             ready=received=>ready.unwrap(),
+            result=&mut pending=>panic!("commit completed before detached-owner probe: {}",result.is_ok()),
         }
         drop(pending);
         assert_eq!(completion.await.unwrap(), MutationPhase::Committed);
