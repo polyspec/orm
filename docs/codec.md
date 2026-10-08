@@ -40,7 +40,7 @@ The keys come from the connection configuration: `AESKey`, `AESVersion`, and `AE
 
 | style | write (value → stored bytes) | read (stored bytes → value) | reference |
 |---|---|---|---|
-| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | ordered-json `0.0.3` of its tag `v0.0.3`; Go uses the module `github.com/polyspec/ordered-json/go` at the version go.mod requires (`v0.0.3`), Rust the package of `rust/Cargo.toml` at the tag, and PHP and TypeScript the version `0.0.3`, which the root composer.json and package.json of the repository take from the Composer zip and npm archive of the GitHub release `v0.0.3` |
+| `json`, `jsons` | ordered-json text from the common value model | ordered-json parse | ordered-json `0.0.7` of its tag `v0.0.7`; Go uses the module `github.com/polyspec/ordered-json/packages/ordered-json-go` at the version go.mod requires (`v0.0.7`), Rust the package of `packages/ordered-json-rust/Cargo.toml` at the tag, and PHP and TypeScript the version `0.0.7`, which the root composer.json and package.json of the repository take from the Composer zip and npm archive of the GitHub release `v0.0.7` |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | same |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |

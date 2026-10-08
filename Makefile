@@ -427,8 +427,8 @@ dbspec-compare-check/unit:
 # PYTHON_VENV는 install-python이 만드는 virtual environment다. Python client의 의존성(pyproject.toml의 cryptography,
 # PyMySQL, psycopg, PyYAML)을 고정 버전으로 설치하며, 검사는 이 interpreter를 ORM_PYTHON으로 받는다.
 PYTHON_VENV = $(abspath packages/orm-python/.venv)
-# ORDERED_JSON is the checkout of polyspec/ordered-json whose python/src the Python client imports. The sibling
-# checkout serves local work; CI checks the release v0.0.4 out inside the workspace (ci.yml sets ORDERED_JSON).
+# ORDERED_JSON is the checkout of polyspec/ordered-json whose packages/ordered-json-python/src the Python client imports. The sibling
+# checkout serves local work; CI checks the release v0.0.7 out inside the workspace (ci.yml sets ORDERED_JSON).
 ORDERED_JSON ?= $(abspath ..)/ordered-json
 .PHONY: install-python
 install-python:
@@ -441,7 +441,7 @@ python-venv-check:
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. PYTHONPATH names the sibling ordered-json source that the client imports.
-PYTHON_PATH = $(ORDERED_JSON)/python/src:$(abspath packages/orm-python/src)
+PYTHON_PATH = $(ORDERED_JSON)/packages/ordered-json-python/src:$(abspath packages/orm-python/src)
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
@@ -826,16 +826,16 @@ case-database-check: lease-tool
 PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	PYTHONPATH=$(ORDERED_JSON)/python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
+	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
 
 # CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
-# 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은 tag가 나오기 전까지
-# sibling checkout의 python/src에서 읽는다(docs/plans/execution-checklist.md T43.5-1).
+# 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은
+# sibling checkout의 packages/ordered-json-python/src에서 읽는다(docs/plans/execution-checklist.md T43.5-1).
 CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 .PHONY: conformance-python-models
 conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS).tmp
-	PYTHONPATH=$(ORDERED_JSON)/python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --schema schema/bench.dbs --out $(CONFORMANCE_PY_MODELS).tmp
+	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --schema schema/bench.dbs --out $(CONFORMANCE_PY_MODELS).tmp
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID

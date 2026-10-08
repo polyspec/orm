@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	orderedjson "github.com/polyspec/ordered-json/go"
+	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
 
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/engine/runtimemodel"
