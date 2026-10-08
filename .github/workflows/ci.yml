@@ -31,6 +31,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ORDERED_JSON names the ordered-json checkout of the python group (Makefile, ORDERED_JSON).
+env:
+  ORDERED_JSON: ${{ github.workspace }}/ordered-json
+
 jobs:
   test:
     # .github/runner declares the runner of every job; make repo-check
@@ -111,24 +115,24 @@ jobs:
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
-      # The Python checks import the ordered-json client of its release v0.0.4 from the
-      # sibling directory ../ordered-json (PYTHONPATH of the python checks).
+      # The Python checks import the ordered-json client of its release v0.0.4 from ORDERED_JSON,
+      # which names this directory inside the workspace.
       - uses: actions/checkout@v5
         id: ordered-json
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
         with:
           repository: polyspec/ordered-json
           ref: v0.0.4
-          path: ../ordered-json
+          path: ordered-json
       - uses: actions/setup-python@v5
         id: python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
         # .python-version declares the Python release of the Python checks; the client requires 3.11 or later.
         with: { python-version-file: .python-version }
       - name: Python client dependencies
-        id: python-install
+        id: install-python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
-        run: make python-install
+        run: make install-python
       - name: lowest PHP release of the PHP client
         # make php-min-check runs the PHP client unit tests on the lowest release
         # of require.php in clients/php/composer.json; setup-php installs it

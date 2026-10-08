@@ -21,10 +21,10 @@ function phpExtension() {
 }
 
 // pythonCommand는 Python client의 의존성(cryptography, PyYAML)이 설치된 interpreter다. make dbspec-compare-check가
-// make python-install이 만든 clients/python/.venv의 interpreter를 ORM_PYTHON으로 준다.
+// make install-python이 만든 clients/python/.venv의 interpreter를 ORM_PYTHON으로 준다.
 function pythonCommand() {
   const path = process.env.ORM_PYTHON;
-  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make python-install, which creates clients/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
+  if (!path) throw new Error('ORM_PYTHON names no Python interpreter with the client dependencies; run make install-python, which creates clients/python/.venv, and run make dbspec-compare-check, which sets ORM_PYTHON');
   return path;
 }
 
