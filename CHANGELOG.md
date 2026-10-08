@@ -29,6 +29,7 @@
 - T43.5-3-5-1-2: the seven plan and diagnostic owners (DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange) have python natives whose fields are the Python dict keys, checked against the snapshot.
 - T43.5-2: the Python conformance runner runs the 26 SQLite vectors and matches the Go output byte for byte; the checker registers python.
 - T43.5-3: the interface contracts declare python: the extractor, the rule, record and owner natives, the manifest and the checker.
+- T43.6-2: the Python runner runs the 26 SQLite vectors with the generated models, and its output is byte-identical to the Go output.
 - T43.5-4: the features, the version declarations, the check inputs and the CI group declare python.
 - T43.5-4-2: the version check, the check inputs and the CI group declare python.
 - T43.5-2-2: the Python conformance runner imports the generated models from the run directory, and its SQLite output over the 26 vectors is byte-identical to the Go output.
