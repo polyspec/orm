@@ -362,7 +362,7 @@ class Model:
             def add_func(fn):
                 core.add_column_func(column_name(core.ent.model.runtime,
                                                  core.ent.entity, rest[:index]),
-                                     rest[index + 5:], fn)
+                                     snake(rest[index + 5:]), fn)
                 return self
             return add_func
 
