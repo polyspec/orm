@@ -306,6 +306,7 @@ func TestDifferenceNamesStatementsAndResult(t *testing.T) {
 // TestRunLanguagesRunsEveryLanguageAfterAFailure checks that a failed language does not stop the other languages of
 // the database: every language runs, and the error names each language that failed.
 func TestRunLanguagesRunsEveryLanguageAfterAFailure(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	var ran []string
 	err := runLanguages([]string{"go", "php", "rust", "typescript", "python"}, func(language string) error {
 		ran = append(ran, language)
