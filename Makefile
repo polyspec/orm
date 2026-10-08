@@ -854,6 +854,13 @@ case-database-check: lease-tool
 # 실행이 남긴 output을 읽지 않는다. interfaces checker는 Rust 추출기를 target lease 아래에서 build한다.
 # conformance-check의 부분은 서로 독립이다: counter, result, physical result 검사가 실패해도 conformance 실행(run)은
 # 실행된다(make -k).
+# PYTHON_MODELS_DIR는 schema/bench.dbs에서 orm-gen이 쓰고 커밋하는 Python model directory다.
+# python-model-check는 orm-gen gen --check로 그 directory가 생성 결과와 같은지 확인한다(network 없음).
+PYTHON_MODELS_DIR = clients/python/src/polyspec/orm/models
+.PHONY: python-model-check
+python-model-check: python-venv-check
+	PYTHONPATH=$(abspath ..)/ordered-json/python/src $(PYTHON_VENV)/bin/python clients/python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
+
 # CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
 # 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은 tag가 나오기 전까지
 # sibling checkout의 python/src에서 읽는다(docs/checklist.md T43.5-1).
