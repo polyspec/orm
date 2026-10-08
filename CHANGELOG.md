@@ -23,6 +23,7 @@
 - T43.5-3-2: the outputs and inputs tables of contracts/validate.go give a python type to every entry; the language list gains python with the rule natives in T43.5-3-6.
 - T43.5-3-7: `db.utils().schema()` returns the SchemaUtils object of the connection.
 - T43.5-3-8: `SchemaUtils.register` checks that the manifest text hashes to its declared hash (CONFIG and nothing registered otherwise), and registering a set that is registered already changes nothing.
+- T43.5-3-4: every record of contracts/interfaces.json has a python native that names a Python TypedDict of polyspec/orm/ir.py.
 - T43.5-3-4-2: `polyspec/orm/ir.py` declares the 19 IR records as TypedDicts, and each record of interfaces.json has a python native whose wire fields equal the record's fields, with the base expanded.
 - T43.5-3-4-1: the interface extractor reads a TypedDict record: its `#wire` symbol gives the wire type of each field and `@flatten` for its base, and a class that derives from a record of the same module is a record too.
 - T43.5-3-11: `installed_differences` returns the differences of an installed set from its target schema, as the TypeScript client does for the same inputs.

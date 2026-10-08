@@ -23,6 +23,7 @@
 - T43.5-3-2: contracts/validate.go의 outputs와 inputs 표가 모든 항목에 python 형을 준다. 언어 목록에 python을 넣는 일은 규칙의 native 항목과 함께 T43.5-3-6에서 한다.
 - T43.5-3-7: `db.utils().schema()`가 연결의 SchemaUtils 객체를 돌려준다.
 - T43.5-3-8: `SchemaUtils.register`는 manifest text가 선언된 hash로 해시되는지 확인한다(아니면 CONFIG이고 아무것도 등록하지 않음). 이미 등록된 set을 다시 등록해도 아무것도 바뀌지 않는다.
+- T43.5-3-4: interfaces.json의 record마다 polyspec/orm/ir.py의 Python TypedDict를 가리키는 python native가 있다.
 - T43.5-3-4-2: `polyspec/orm/ir.py`가 IR record 19개를 TypedDict로 선언하고, interfaces.json의 record마다 wire 필드가 record의 필드와 같은 python native를 갖는다(base는 펼쳐서 비교).
 - T43.5-3-4-1: interface 추출기가 TypedDict record를 읽는다. `#wire` symbol이 필드마다 wire 형과 base에 대한 `@flatten`을 주고, 같은 모듈의 record를 상속하는 class도 record이다.
 - T43.5-3-11: `installed_differences`가 설치된 set과 그 대상 schema의 차이를 돌려준다. 같은 입력에서 TypeScript client와 같다.
