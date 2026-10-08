@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 124ff78a8fcb31fd1e860249cd4a7d71674e2b2fb9073e7e47dceafb73615a18 -->
+<!-- source-sha256: 25490723fd005cac1196843ab948faf86fb40636b5fc47a549cafebcef8c05d7 -->
 # orm — PHP 클라이언트
 
 PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가
@@ -88,8 +88,7 @@ DSN scheme(`mysql://`, `postgres://`, `sqlite:///abs/path`)이 PDO driver를 고
 `SCHEMA_HASH_MISMATCH`로 실패한다.
 
 `$db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`는 연결이 보내는 모든 문장의
-subscriber를 등록하고, 그것을 제거하는 closure를 돌려준다([statement
-event](../../docs/usage.ko.md#statement-events)). event는 `sql`, `binds`, `kind`, `tables`, 초 단위
+subscriber를 등록하고, 그것을 제거하는 closure를 돌려준다([statement event](../../docs/usage.ko.md#statement-events)). event는 `sql`, `binds`, `kind`, `tables`, 초 단위
 `elapsed`, `transaction`(`?int`), `error`(`?OrmException`)를 가진다. secret bind는
 `"$SECRET"`로, SQLite clock bind는 `"$NOW"`로 읽힌다. clock bind는 client의 wall clock이며 UTC이고
 소수부 여섯 자리이며, 문장마다 한 번 읽는다. SQLite에서는 insert가 생략한 기본값 `now` 컬럼에도

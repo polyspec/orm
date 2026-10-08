@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
+  "reviewed": "2026-10-08T22:41:31.479Z",
+  "locks": [
+    {
+      "lock": "package-lock.json",
+      "sha256": "bf38be2d09e3e92971d71fa4a519299c7972372e2c24a9341c6b3701f8171d63",
+      "advisories": []
+    },
+    {
+      "lock": "composer.lock",
+      "sha256": "6ef3eac8476eab666d82a0d0d70e483d61c6a1c545017afd4c3b2f90f670de10",
+      "advisories": []
+    },
+    {
+      "lock": "go.sum",
+      "sha256": "b546a70930b05f8645b4d2d3d5f259b63b98be3fa2cb39c2267b5ac91a723649",
+      "advisories": []
+    },
+    {
+      "lock": "bench/rust/Cargo.lock",
+      "sha256": "a4a79be6573c7d650214a3f69410e0716eebe5f2d03c1af4567cbfd49340fe91",
+      "advisories": []
+    },
+    {
+      "lock": "packages/orm-rust/Cargo.lock",
+      "sha256": "88593fe53e690e3885fb320c4ff6fd07755aabe70f09e673e45663bc0b8e15bc",
+      "advisories": []
+    },
+    {
+      "lock": "tests/interfaces/rust/Cargo.lock",
+      "sha256": "3674f86a4d7464c3d7d1c15e894e426c67584637ebd91ae75ccc1021651d9ff3",
+      "advisories": []
+    }
+  ],
+  "dependencies": [
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "mermaid",
+      "version": "12.1.0",
+      "latest": "12.1.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "package.json",
+      "package": "vitepress",
+      "version": "1.6.4",
+      "latest": "1.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "mysql2",
+      "version": "3.24.5",
+      "latest": "3.24.5"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "pg",
+      "version": "8.23.1",
+      "latest": "8.23.1"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "typescript",
+      "version": "6.0.3",
+      "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "yaml",
+      "version": "2.9.1",
+      "latest": "2.9.1"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "@types/node",
+      "version": "22.20.5",
+      "latest": "26.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "@types/pg",
+      "version": "8.23.1",
+      "latest": "8.23.1"
+    },
+    {
+      "ecosystem": "pypi",
+      "manifest": "packages/orm-python/pyproject.toml",
+      "package": "setuptools",
+      "version": "84.0.0",
+      "latest": "84.0.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "github.com/go-sql-driver/mysql",
+      "version": "v1.10.1",
+      "latest": "v1.10.1"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "github.com/jackc/pgx/v5",
+      "version": "v5.11.0",
+      "latest": "v5.11.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "github.com/polyspec/ordered-json/go",
+      "version": "v0.0.3",
+      "latest": "v0.0.3"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "go.yaml.in/yaml/v3",
+      "version": "v3.0.5",
+      "latest": "v3.0.5"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "golang.org/x/sys",
+      "version": "v0.48.0",
+      "latest": "v0.48.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "golang.org/x/tools",
+      "version": "v0.51.0",
+      "latest": "v0.51.0"
+    },
+    {
+      "ecosystem": "go",
+      "manifest": "go.mod",
+      "package": "modernc.org/sqlite",
+      "version": "v1.60.1",
+      "latest": "v1.60.1"
+    }
+  ]
+}
