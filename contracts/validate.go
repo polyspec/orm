@@ -16,7 +16,7 @@ func compact(s string) string {
 	}, s)
 }
 
-var languages = []string{"go", "php", "rust", "typescript"}
+var languages = []string{"go", "php", "rust", "typescript", "python"}
 
 // outputs maps a common result to the native return type of each language and
 // of each extension (an implementation of part of the contract, declared under

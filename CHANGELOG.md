@@ -27,6 +27,7 @@
 - T43.5-3-5-1: the 16 owners of contracts/interfaces.json have Python classes or TypedDicts with their fields, and python natives naming them.
 - T43.5-3-5-1-3: the seven difference, rename, unsupported and apply owners (DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError) have python natives whose fields are the keys the Python code writes, checked against the snapshot.
 - T43.5-3-5-1-2: the seven plan and diagnostic owners (DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange) have python natives whose fields are the Python dict keys, checked against the snapshot.
+- T43.5-3-6: the interface manifest lists python (clients/python/src, contracts/symbols/python.json and its hash); the checker requires five languages, runs the Python extractor, and checks the Python fixtures and prohibited calls.
 - T43.5-3-5-1-1: Page and AESRotationStatus are Python owners: Page declares its fields as class annotations, and both owners have python natives checked against the snapshot.
 - T43.5-3-4: every record of contracts/interfaces.json has a python native that names a Python TypedDict of polyspec/orm/ir.py.
 - T43.5-3-4-2: `polyspec/orm/ir.py` declares the 19 IR records as TypedDicts, and each record of interfaces.json has a python native whose wire fields equal the record's fields, with the base expanded.
