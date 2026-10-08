@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.1: the Python package `polyspec.orm` parses, validates and emits dbspec documents, builds the runtime model of a document set, and `orm-gen gen` writes the model modules of a document set with the manifest hash of the other clients.
 - T43.2: the Python client implements the value functions of `orm`, `StyledValue`, the codec stages (`encode`, `decode`, `hostEncode`, `hostDecode`, `blindIndex`, `CodecError`) and `AesKeyring`; the shared codec vectors and the AES vectors pass in Python.
 - G5.143: the TypeScript client clock (`wallMicros`) stays within the millisecond of `Date.now()` and does not go back while the wall clock does not, so a SQLite `now` condition read after an insert matches the inserted row.
 - G5.142: the npm workspace installs with the default hoisted layout, and the TypeScript build, the package declaration check, the conformance result helpers and the `decimal-typescript-types` commands resolve their modules by package name.
