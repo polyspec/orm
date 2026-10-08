@@ -115,6 +115,11 @@ class DbspecApplyError(Exception):
     ''이며, `step`은 failed, interrupted, irreversible, nulls와 step 앞의 session
     error의 step 번호다."""
 
+    code: str
+    plan: str
+    step: int
+    detail: str
+
     def __init__(self, code: str, plan: str, step: int, detail: str, cause=None):
         message = code
         if plan != '':

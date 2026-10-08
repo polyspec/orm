@@ -3797,6 +3797,14 @@
             "name",
             "table"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecDifference",
+          "fields": [
+            "kind",
+            "name",
+            "table"
+          ]
         }
       }
     },
@@ -3848,6 +3856,15 @@
             "reason",
             "table"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecUnsupported",
+          "fields": [
+            "kind",
+            "name",
+            "reason",
+            "table"
+          ]
         }
       }
     },
@@ -3885,6 +3902,13 @@
         },
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename",
+          "fields": [
+            "new",
+            "old"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecTableRename",
           "fields": [
             "new",
             "old"
@@ -3935,6 +3959,14 @@
             "old",
             "table"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecColumnRename",
+          "fields": [
+            "table",
+            "old",
+            "new"
+          ]
         }
       }
     },
@@ -3975,6 +4007,13 @@
           "fields": [
             "name",
             "table"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecColumnName",
+          "fields": [
+            "table",
+            "name"
           ]
         }
       }
@@ -4022,6 +4061,16 @@
             "step",
             "steps"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecApplyEvent",
+          "fields": [
+            "kind",
+            "plan",
+            "statement",
+            "step",
+            "steps"
+          ]
         }
       }
     },
@@ -4054,6 +4103,15 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/dbspec/apply.ts::DbspecApplyError",
+          "fields": [
+            "code",
+            "detail",
+            "plan",
+            "step"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/apply.py::DbspecApplyError",
           "fields": [
             "code",
             "detail",

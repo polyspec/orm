@@ -215,4 +215,41 @@ class DbspecPlanStep(TypedDict):
     null_checks: list[DbspecNullCheck]
     finalize: bool
 
-Unsupported = dict
+class DbspecUnsupported(TypedDict):
+    kind: str
+    table: str
+    name: str
+    reason: str
+
+
+Unsupported = DbspecUnsupported
+
+
+class DbspecDifference(TypedDict):
+    kind: str
+    name: str
+    table: str
+
+
+class DbspecTableRename(TypedDict):
+    old: str
+    new: str
+
+
+class DbspecColumnRename(TypedDict):
+    table: str
+    old: str
+    new: str
+
+
+class DbspecColumnName(TypedDict):
+    table: str
+    name: str
+
+
+class DbspecApplyEvent(TypedDict):
+    kind: str
+    plan: str
+    step: int
+    steps: int
+    statement: str
