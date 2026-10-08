@@ -474,13 +474,13 @@ class TxFrame:
         self.locals: dict = {}
         self.connection = None
 
-    def run(self, sql: str, values=None, kind: str = 'utility', binds=None):
+    def run(self, sql: str, values=None, kind: str = 'utility', binds=None, tables=()):
         """statement를 실행하고 그 event를 남긴다; kind는 이 statement의
         종류다."""
         if self.connection is None:
             raise OrmError('CONFIG', 'transaction already finished')
         values = values if values is not None else []
-        return self.db.events.send(kind, (), self.number,
+        return self.db.events.send(kind, tables, self.number,
                                    list(values) if binds is None else binds, sql,
                                    lambda: self.connection.execute(sql, values))
 
@@ -827,8 +827,8 @@ class Db:
             return
         no_wait = mode.endswith('_nowait')
 
-        def run(sql: str, values=None):
-            return frame.run(sql, values, 'utility')
+        def run(sql: str, values=None, tables=()):
+            return frame.run(sql, values, 'utility', tables=tables)
 
         previous = 0
         if no_wait:
@@ -836,7 +836,7 @@ class Db:
         try:
             if no_wait:
                 run('PRAGMA busy_timeout=0')
-            run(ROW_LOCK_TAKE)
+            run(ROW_LOCK_TAKE, tables=ROW_LOCK_TABLES)
         except Exception as error:  # noqa: BLE001
             if no_wait and _sqlite_busy(error):
                 raise OrmError('LOCK_NOT_AVAILABLE', str(error), error) from None
