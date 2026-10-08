@@ -734,4 +734,4 @@
   - [ ] T43.7-12 scripts/check/ci-setup.mjs에 ordered-json checkout 단계를 python 필요 조건과 함께 선언합니다. 이 선언이 없으면 다른 group에서 단계가 실패할 때 check runner가 "CI step ordered-json failed and declares no need"로 중단합니다. 검증: CI (`test (static)`).
   - [ ] T43.7-13 ordered-json checkout을 workspace 안에 둡니다. Actions는 workspace 밖 checkout 경로(`../ordered-json`)를 거부하므로, checkout 경로는 `ordered-json`이고 변수 ORDERED_JSON이 이를 가리킵니다(ci.yml이 설정하며, Makefile 기본값은 sibling checkout). 검증: CI python group (`test (python)`).
   - [ ] T43.7-14 physical result 검사에 Python interpreter와 읽을 model을 줍니다. TestPhysicalResultRunners/DB/python이 "ORM_PYTHON and ORM_PYTHON_MODELS are unset"으로 실패합니다. conformance-result-physical-check가 이 변수를 설정하지 않고 model도 만들지 않기 때문입니다. target이 conformance-python-models에 의존하고, conformance-check처럼 ORM_PYTHON과 ORM_PYTHON_MODELS를 넘깁니다. 검증: CI (`test (conformance)`).
-  - [ ] T43.7-15 T43.7-14 행의 데이터베이스 subtest를 `<db>` 대신 `DB`로 적습니다. 문서 build가 `<db>`를 HTML 요소로 읽어 "Element is missing end tag"로 실패합니다. 검증: CI (`docs`).
+  - [ ] T43.7-15 T43.7-14 행의 데이터베이스 subtest를 꺾쇠 괄호 자리표시자 대신 `DB`로 적습니다. 문서 build가 꺾쇠 괄호 자리표시자를 HTML 요소로 읽어 "Element is missing end tag"로 실패합니다. 검증: CI (`docs`).
