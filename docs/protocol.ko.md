@@ -172,9 +172,9 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | 클라이언트 | 검증, 계획, 방언, DDL |
 |---|---|
 | Go | `engine/ir`, `engine/planner`, `engine/dialect`, `engine/dbspec` DDL |
-| PHP | `clients/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
-| Rust | `clients/rust/orm/src/engine/`, `clients/rust/orm-schema/src/dbspec/` DDL |
-| TypeScript | `clients/typescript/src/engine/`, `clients/typescript/src/dbspec/` DDL |
+| PHP | `packages/orm-php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| Rust | `packages/orm-rust/orm/src/engine/`, `packages/orm-rust/orm-schema/src/dbspec/` DDL |
+| TypeScript | `packages/orm-npm/src/engine/`, `packages/orm-npm/src/dbspec/` DDL |
 
 generated code는 document set의 manifest text와 `manifestHash`를 가진다. 클라이언트는 그 text로 runtime model을 한 번 만들고, 선언한 hash와 text의 hash가 다르면 거부한다(`SCHEMA_HASH_MISMATCH`). plan 캐시 키는 manifest hash와 요청 형태다. 매개변수 값은 키에 포함하지 않는다.
 

@@ -24,12 +24,12 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
-**Go driver package.** `clients/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
+**Go driver package.** `packages/orm-go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
 
 ```go
 import (
-    _ "github.com/polyspec/orm/clients/go/orm/pg"      // driver "postgres"
-    _ "github.com/polyspec/orm/clients/go/orm/sqlite"  // driver "sqlite"
+    _ "github.com/polyspec/orm/packages/orm-go/orm/pg"      // driver "postgres"
+    _ "github.com/polyspec/orm/packages/orm-go/orm/sqlite"  // driver "sqlite"
 )
 ```
 
@@ -70,7 +70,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 | SQLite, PHP client | PHP 8.5.10의 `pdo_sqlite`, `select sqlite_version()` 결과 3.53.4 |
 | SQLite, TypeScript client | Node 26.8.1의 `node:sqlite`, `select sqlite_version()` 결과 3.53.4. `package.json`은 Node 22.16.0 이상을 허용하며 그 bundled version은 측정하지 않았다 |
 | SQLite 파일 이름 | DSN query가 남아 있는 파일 이름은 PHP PDO, `node:sqlite`, `sqlite3` shell이 그대로 열어 `bench.sqlite?_pragma=…`를 만든다. `modernc.org/sqlite`는 query를 해석한다(`TestSQLiteFileNameWithQuery`의 `sqlite.filename.*` case). 클라이언트는 파일 이름을 정하기 전에 query를 제거한다 |
-| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`clients/rust/Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
+| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`packages/orm-rust/Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
 
 ### Types
 

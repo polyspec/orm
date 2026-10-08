@@ -9,7 +9,7 @@ The checker verifies these requirements:
 - Owner rules reject undeclared fields of `Page` and `AESRotationStatus`.
 - Record rules compare every field and nested type of the 20 request records in Go, PHP, Rust, and TypeScript. PHP record declarations come from `Validator::RECORDS`.
 - Native symbol snapshots report public and internal declaration changes. SHA-256 values in the manifest prevent an unchecked snapshot replacement.
-- An extension of `extensions` in the manifest implements part of the contract outside the four clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`clients/php-extension/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
+- An extension of `extensions` in the manifest implements part of the contract outside the four clients: the PHP extension `php-extension` implements the `Dbspec` rules and the `DbspecDiagnostic` and `DbspecManifest` owners. Its declarations are read from its stub (`packages/orm-php-extension/stubs`) with the PHP parser and compared with its own snapshot `contracts/symbols/php-extension.json` and hash; a rule or owner that the extension does not list must not have its adapter. `make dbspec-php-extension-check` checks that the loaded extension declares what the stub declares.
 - Sequence rules compare the results and statement counts of conformance vectors.
 - Error labels in method rules and the recorded `errors` sequence must match the codes in `docs/errors.yaml`. Native driver error categories remain explicit.
 - Prohibited symbols reject removed or unsupported operations such as cancellation and cursor pages.
@@ -35,8 +35,8 @@ A sequence lists the kinds of the statements it sends, in order, except utility 
 Regenerate the contract outputs after an interface change:
 
 ```sh
-(cd clients/go/model && go generate ./)
-php clients/php/bin/orm-gen gen --out clients/php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
+(cd packages/orm-go/model && go generate ./)
+php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```

@@ -1,6 +1,7 @@
 // Run PHP and TypeScript grouped-result owners twice on each database.
 import { spawn } from 'node:child_process';
 import { endGroup } from './check/step.mjs';
+import { packageDirectory } from './features/packages.mjs';
 import { runCase } from '../tests/testcase.mjs';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
@@ -60,7 +61,7 @@ for (const database of databases) {
   });
   for (const language of ['php', 'typescript']) {
     const program = language === 'php' ? 'php' : 'node';
-    const path = `clients/${language}/tests/group_rows_db.${language === 'php' ? 'php' : 'mjs'}`;
+    const path = `${packageDirectory[language]}/tests/group_rows_db.${language === 'php' ? 'php' : 'mjs'}`;
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`group-rows/${database}/${language}/${attempt}`, 2 * timeoutMs, async ({ step: progress }) => {
         let output;

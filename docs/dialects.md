@@ -27,13 +27,13 @@ Executor consequences: a `$n` renumbering step when expanding relation IN lists 
 PostgreSQL, host-side AES/inet codecs where the table says "client-side", one DSN/driver per database
 (Go: `pgx` stdlib / `modernc.org/sqlite`; Rust: sqlx features; PHP: `pdo_pgsql` / `pdo_sqlite`).
 
-**Go driver packages.** `clients/go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
+**Go driver packages.** `packages/orm-go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
 imports the matching package for its side effect, as it would a `database/sql` driver:
 
 ```go
 import (
-    _ "github.com/polyspec/orm/clients/go/orm/pg"      // driver "postgres"
-    _ "github.com/polyspec/orm/clients/go/orm/sqlite"  // driver "sqlite"
+    _ "github.com/polyspec/orm/packages/orm-go/orm/pg"      // driver "postgres"
+    _ "github.com/polyspec/orm/packages/orm-go/orm/sqlite"  // driver "sqlite"
 )
 ```
 
@@ -76,7 +76,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 | SQLite, PHP client | `pdo_sqlite` of PHP 8.5.10: 3.53.4 from `select sqlite_version()` |
 | SQLite, TypeScript client | `node:sqlite` of Node 26.8.1: 3.53.4 from `select sqlite_version()`; `package.json` accepts Node 22.16.0 and later, whose bundled versions were not measured |
 | SQLite file name | A file name that still carries the DSN query is opened literally by PHP PDO, `node:sqlite` and the `sqlite3` shell, which create `bench.sqlite?_pragma=…`; `modernc.org/sqlite` parses the query (`sqlite.filename.*` cases of `TestSQLiteFileNameWithQuery`). A client removes the query before it names the file |
-| SQLite, Rust client | sqlx 0.9 `sqlite` feature enables `sqlite-bundled`; `libsqlite3-sys` 0.37.0 (`clients/rust/Cargo.lock`) bundles 3.51.3, read from `sqlite3_libversion()` of a build of that crate and feature. The probes did not run on 3.51.3 |
+| SQLite, Rust client | sqlx 0.9 `sqlite` feature enables `sqlite-bundled`; `libsqlite3-sys` 0.37.0 (`packages/orm-rust/Cargo.lock`) bundles 3.51.3, read from `sqlite3_libversion()` of a build of that crate and feature. The probes did not run on 3.51.3 |
 
 ### Types
 

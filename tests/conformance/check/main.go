@@ -437,7 +437,7 @@ func buildRustRunner(c *testcase.Case, root, directory string) error {
 		return fmt.Errorf("LEASE and CARGO_LEASES are unset; run this through make, which exports them")
 	}
 	if err := runCommand(c, root, "", 0, lease, "run", leases, "exclusive", "--wait", "--", "sh", filepath.Join(root, "scripts", "cargo-build-copy.sh"), directory, "debug/conformance", "--",
-		"cargo", "build", "--locked", "--manifest-path", "clients/rust/Cargo.toml", "-p", "polyspec-orm-tests", "--bin", "conformance"); err != nil {
+		"cargo", "build", "--locked", "--manifest-path", "packages/orm-rust/Cargo.toml", "-p", "polyspec-orm-tests", "--bin", "conformance"); err != nil {
 		return err
 	}
 	rustRunner = filepath.Join(directory, "debug", "conformance")
@@ -450,7 +450,7 @@ func buildRunners(c *testcase.Case, root, directory string) error {
 	if err := buildRustRunner(c, root, directory); err != nil {
 		return err
 	}
-	if err := runCommand(c, root, "", 0, "npm", "run", "build", "--prefix", "clients/typescript"); err != nil {
+	if err := runCommand(c, root, "", 0, "npm", "run", "build", "--prefix", "packages/orm-npm"); err != nil {
 		return err
 	}
 	binary := filepath.Join(directory, "runner_go")

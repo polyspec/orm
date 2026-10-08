@@ -6,7 +6,7 @@
     "node": ">=22.16.0"
   },
   "workspaces": [
-    "clients/typescript"
+    "packages/orm-npm"
   ],
   "scripts": {
     "docs:dev": "vitepress dev docs",
@@ -15,9 +15,9 @@
     "docs:check": "npm run docs:build && node scripts/docs/check.mjs",
     "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
     "docs:rules-check": "node scripts/docs/rules.mjs",
-    "typescript:check": "npm exec --workspace clients/typescript -- tsc -p tsconfig.json --noEmit",
-    "typescript:build": "npm --prefix clients/typescript run build",
-    "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node clients/typescript/tests/dsn.mjs && node clients/typescript/tests/idle-connection-end.mjs && node clients/typescript/tests/engine.mjs && node clients/typescript/tests/generate.mjs && node clients/typescript/tests/generate-scan.mjs && node clients/typescript/tests/codec-vector.mjs && node clients/typescript/tests/styled-value.mjs && node clients/typescript/tests/dbspec.mjs && node clients/typescript/tests/dbspec-rules.mjs && node clients/typescript/tests/package-declarations.mjs && ./scripts/typescript/sqlite-test.sh"
+    "typescript:check": "npm exec --workspace packages/orm-npm -- tsc -p tsconfig.json --noEmit",
+    "typescript:build": "npm --prefix packages/orm-npm run build",
+    "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/orm-npm/tests/dsn.mjs && node packages/orm-npm/tests/idle-connection-end.mjs && node packages/orm-npm/tests/engine.mjs && node packages/orm-npm/tests/generate.mjs && node packages/orm-npm/tests/generate-scan.mjs && node packages/orm-npm/tests/codec-vector.mjs && node packages/orm-npm/tests/styled-value.mjs && node packages/orm-npm/tests/dbspec.mjs && node packages/orm-npm/tests/dbspec-rules.mjs && node packages/orm-npm/tests/package-declarations.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
     "mermaid": "11.17.2",

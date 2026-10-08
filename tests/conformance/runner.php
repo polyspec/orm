@@ -4,7 +4,7 @@
 // --vector는 반복할 수 있고, 주어지면 이름이 같은 vector만 실행한다. 모르는 이름은 오류다.
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
+require dirname(__DIR__, 2) . '/packages/orm-php/tests/autoload.php';
 require __DIR__ . '/result_php_helpers.php';
 
 use Polyspec\Orm\Tests\Model\Author;

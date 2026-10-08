@@ -10,7 +10,7 @@
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
   그런 다음 워크트리와 로컬 브랜치를 즉시 제거한다.
   미통합 작업이나 진행 중인 작업은 보존한다.
-- 각 checkout은 Rust를 자기 target directory(그 checkout의 `clients/rust/target`)에 build하고, 어떤 checkout도
+- 각 checkout은 Rust를 자기 target directory(그 checkout의 `packages/orm-rust/target`)에 build하고, 어떤 checkout도
   `CARGO_TARGET_DIR`을 다른 checkout의 target directory로 정하지 않는다. command line이 checkout 밖의 것을
   정하면 `make`가 멈춘다. cargo는 artifact가 fresh인지를 package 기준 source 경로와 그 수정 시각으로 판단하고
   어느 checkout이 build했는지는 기록하지 않으므로, source가 다른 checkout의 build보다 오래된 checkout은 그
@@ -150,11 +150,11 @@
 - Go, PHP, Rust, TypeScript는 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
 - Go, PHP, Rust, TypeScript 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
-- 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `clients/<language>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
+- 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/orm-<package>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
 - 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
 - coverage 검사기는 선언된 각 언어의 테스트 파일과 정확한 사례 필터를 직접 실행하고 종료 코드와 관찰한 테스트 이벤트에서 성공을 판단한다. 테스트 출력은 성공 보고서나 데이터베이스 상태 digest를 제공할 수 없다. 데이터베이스 사례에서는 검사기 자체 상태 판독기로 매 실행 전후의 선언된 데이터베이스 상태를 읽는다.
 - coverage 사례 ID는 언어에 공통인 동작을 가리킨다. Go와 Rust 명령은 해당 ID를 소유 파일의 정확한 실제 테스트 심볼에 연결하며, 검사기는 그 심볼의 통과를 확인한 뒤에만 ID를 수용한다. 데이터베이스 사례에서 검사기는 선택한 데이터베이스와 DSN을 실제 테스트 프로세스에 전달한다.
-- 소유 client는 `clients/<language>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
+- 소유 client는 `packages/orm-<package>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
 - 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 심볼릭 링크나 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
 - 하나의 `0.0.4` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
 - 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 네 클라이언트는 동일한 허용·거부 스키마 사례를 실행한다.
@@ -182,7 +182,7 @@
   manifest가 X.Y.Z를 가지고 변경 이력에 그 section이 있다), `make release-assets`(npm tarball과 Composer zip),
   `make release-publish`(그 section의 notes로 만든 release이며, GitHub release 본문의 한도인 125000자를
   넘는 section은 tag의 CHANGELOG.md에서 그 section `#XYZ`를 가리키는 한 줄이 된다)다. test는 다시 실행하지 않는다.
-- Python client(`clients/python/pyproject.toml`)는 git tag로 소비되고 release archive가 없다. version을 올리는
+- Python client(`packages/orm-python/pyproject.toml`)는 git tag로 소비되고 release archive가 없다. version을 올리는
   pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽으며,
   `make release-versions`와 `make release-assets`는 그것을 다루지 않는다(`scripts/release/release.mjs`의
   `NOT_RELEASED`에 있다).

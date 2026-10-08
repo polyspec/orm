@@ -35,14 +35,14 @@ caseTest('the npm and Composer packages of a lock file must be installed at thei
 caseTest('a crate or Go module that is not downloaded names make install, never a retry online', COMPUTE, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
-    write(join(root, 'clients/rust/Cargo.toml'), '');
+    write(join(root, 'packages/orm-rust/Cargo.toml'), '');
     write(join(root, 'go.mod'), 'module x\n');
     const run = program => program === 'cargo'
       ? { status: 101, stderr: 'error: failed to download `serde v1.0.0`\n\nCaused by:\n  attempting to make an HTTP request, but --offline was specified\nhelp: retry without the offline flag\n' }
       : { status: 1, stderr: 'go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off\n' };
     const missing = missingDownloads(root, { run });
     assert.deepEqual(missing.map(entry => entry.need), ['rust', 'go']);
-    assert.equal(missing[0].message, 'the crates of clients/rust/Cargo.lock are not downloaded (error: failed to download `serde v1.0.0`); run make install, which downloads it');
+    assert.equal(missing[0].message, 'the crates of packages/orm-rust/Cargo.lock are not downloaded (error: failed to download `serde v1.0.0`); run make install, which downloads it');
     assert.equal(missing[1].message, 'the Go modules of go.mod are not downloaded (go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off); run make install, which downloads it');
     for (const { message } of missing) assert.doesNotMatch(message, /retry/i);
   } finally {

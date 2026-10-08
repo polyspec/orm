@@ -1,6 +1,6 @@
 #!/bin/sh
 # make install-php-extension-tools installs what the build and the checks of the PHP extension orm_dbspec
-# (clients/php-extension, C built with phpize) need besides the PHP of .php-version: it checks that phpize and
+# (packages/orm-php-extension, C built with phpize) need besides the PHP of .php-version: it checks that phpize and
 # php-config belong to the PHP on PATH, and it copies gen_stub.php of that PHP with its PHP-Parser into
 # .runtime/bin/gen-stub, which make php-extension-arginfo and the arginfo check of make dbspec-php-extension-check
 # run offline. gen_stub.php downloads its PHP-Parser when its directory has none, so this install step does that once.

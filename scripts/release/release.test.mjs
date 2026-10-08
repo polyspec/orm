@@ -16,12 +16,12 @@ function fixture(version = '0.0.2', overrides = {}) {
   const files = {
     VERSION: `${version}\n`,
     'go.mod': 'module github.com/polyspec/orm\n\ngo 1.27\n',
-    'clients/typescript/package.json': JSON.stringify({ name: '@polyspec/orm', version, dependencies: { '@polyspec/ordered-json': '0.0.2', yaml: '2.9.1' } }),
-    'clients/php/composer.json': JSON.stringify({ name: 'polyspec/orm', type: 'library', version, require: { php: '>=8.4', 'polyspec/ordered-json': '0.0.2' } }),
-    'clients/php-extension/composer.json': JSON.stringify({ name: 'polyspec/orm-dbspec', type: 'php-ext', version }),
-    'clients/rust/orm-schema/Cargo.toml': `[package]\nname = "polyspec-orm-schema"\nversion = "${version}"\n`,
-    'clients/rust/orm/Cargo.toml': `[package]\nname = "polyspec-orm"\nversion = "${version}"\n\n[dependencies]\npolyspec-orm-schema = { version = "=${version}", path = "../orm-schema" }\n`,
-    'clients/rust/orm-build/Cargo.toml': `[package]\nname = "polyspec-orm-build"\nversion = "${version}"\n`,
+    'packages/orm-npm/package.json': JSON.stringify({ name: '@polyspec/orm', version, dependencies: { '@polyspec/ordered-json': '0.0.2', yaml: '2.9.1' } }),
+    'packages/orm-php/composer.json': JSON.stringify({ name: 'polyspec/orm', type: 'library', version, require: { php: '>=8.4', 'polyspec/ordered-json': '0.0.2' } }),
+    'packages/orm-php-extension/composer.json': JSON.stringify({ name: 'polyspec/orm-dbspec', type: 'php-ext', version }),
+    'packages/orm-rust/orm-schema/Cargo.toml': `[package]\nname = "polyspec-orm-schema"\nversion = "${version}"\n`,
+    'packages/orm-rust/orm/Cargo.toml': `[package]\nname = "polyspec-orm"\nversion = "${version}"\n\n[dependencies]\npolyspec-orm-schema = { version = "=${version}", path = "../orm-schema" }\n`,
+    'packages/orm-rust/orm-build/Cargo.toml': `[package]\nname = "polyspec-orm-build"\nversion = "${version}"\n`,
     'CHANGELOG.md': `# Changelog\n\n## Unreleased\n\n## ${version}\n\n- G1: a change.\n\n## 0.0.1\n\n- G0: the start.\n`,
     'CHANGELOG.ko.md': `# 변경 이력\n\n## Unreleased\n\n## ${version}\n\n- G1: 변경.\n\n## 0.0.1\n\n- G0: 시작.\n`,
     ...overrides,
@@ -91,18 +91,18 @@ caseTest('every tracked manifest is released or listed as not released with a re
 caseTest('a manifest version that differs from the tag is refused with the file and both values', COMPUTE, () => {
   withFixture(root => assert.deepEqual(versionErrors(parseTag('v0.0.2'), read(root)), [
     'VERSION declares 0.0.1, the tag declares 0.0.2',
-    'clients/php/composer.json declares 0.0.3, the tag declares 0.0.2',
-    'clients/rust/orm/Cargo.toml declares 0.0.4, the tag declares 0.0.2',
+    'packages/orm-php/composer.json declares 0.0.3, the tag declares 0.0.2',
+    'packages/orm-rust/orm/Cargo.toml declares 0.0.4, the tag declares 0.0.2',
     'go.mod declares the module github.com/polyspec/other, not github.com/polyspec/orm, so go get does not resolve the tag',
   ]), '0.0.2', {
     VERSION: '0.0.1\n',
-    'clients/php/composer.json': JSON.stringify({ name: 'polyspec/orm', version: '0.0.3' }),
-    'clients/rust/orm/Cargo.toml': '[package]\nname = "polyspec-orm"\nversion = "0.0.4"\n',
+    'packages/orm-php/composer.json': JSON.stringify({ name: 'polyspec/orm', version: '0.0.3' }),
+    'packages/orm-rust/orm/Cargo.toml': '[package]\nname = "polyspec-orm"\nversion = "0.0.4"\n',
     'go.mod': 'module github.com/polyspec/other\n',
   });
   withFixture(root => assert.deepEqual(versionErrors(parseTag('v0.0.2'), read(root)), []));
-  withFixture(root => assert.deepEqual(versionErrors(parseTag('v0.0.2'), read(root)), ['clients/php-extension/composer.json declares no version, the tag declares 0.0.2']),
-    '0.0.2', { 'clients/php-extension/composer.json': JSON.stringify({ name: 'polyspec/orm-dbspec', type: 'php-ext' }) });
+  withFixture(root => assert.deepEqual(versionErrors(parseTag('v0.0.2'), read(root)), ['packages/orm-php-extension/composer.json declares no version, the tag declares 0.0.2']),
+    '0.0.2', { 'packages/orm-php-extension/composer.json': JSON.stringify({ name: 'polyspec/orm-dbspec', type: 'php-ext' }) });
 });
 
 caseTest('a tag without its changelog section is refused', COMPUTE, () => {
@@ -152,7 +152,7 @@ caseTest('the four steps verify, check the versions, build the npm and Composer 
     for (const asset of assets) assert.ok(existsSync(join(directory, 'assets', asset)), asset);
     assert.ok(calls.includes('make --no-print-directory typescript-build'), calls.join('\n'));
     const zip = join(directory, 'assets', 'polyspec-orm-0.0.2.zip');
-    assert.ok(calls.includes(`git archive --format=zip -o ${zip} ${SHA}:clients/php`), calls.join('\n'));
+    assert.ok(calls.includes(`git archive --format=zip -o ${zip} ${SHA}:packages/orm-php`), calls.join('\n'));
     assert.ok(calls.includes(`tar -xzOf ${join(directory, 'assets', 'polyspec-orm-0.0.2.tgz')} package/package.json`) && calls.includes(`unzip -p ${zip} composer.json`), calls.join('\n'));
     assert.ok(!calls.some(call => /cargo|crate/.test(call)), calls.join('\n'));
     assert.deepEqual(step({ action: 'publish', tag: 'v0.0.2', root, exec, log: quiet }), assets);
@@ -212,10 +212,10 @@ caseTest('the assets step refuses a packed manifest that differs from the tree o
     assert.throws(() => step({ action: 'assets', tag: 'v0.0.2', root, exec, log: quiet }), {
       message: [
         'release 0.0.2 assets refused:',
-        '  polyspec-orm-0.0.2.tgz packs a manifest that differs from clients/typescript/package.json; publish the manifest of the tree unchanged',
-        '  polyspec-orm-0.0.2.zip packs a manifest that differs from clients/php/composer.json; publish the manifest of the tree unchanged',
+        '  polyspec-orm-0.0.2.tgz packs a manifest that differs from packages/orm-npm/package.json; publish the manifest of the tree unchanged',
+        '  polyspec-orm-0.0.2.zip packs a manifest that differs from packages/orm-php/composer.json; publish the manifest of the tree unchanged',
         '  polyspec-orm-0.0.2.zip declares repositories, which Composer reads only from the root package; give them in the root composer.json',
-        '  polyspec-orm-dbspec-0.0.2.zip packs a manifest that differs from clients/php-extension/composer.json; publish the manifest of the tree unchanged',
+        '  polyspec-orm-dbspec-0.0.2.zip packs a manifest that differs from packages/orm-php-extension/composer.json; publish the manifest of the tree unchanged',
         '  polyspec-orm-dbspec-0.0.2.zip declares repositories, which Composer reads only from the root package; give them in the root composer.json',
       ].join('\n'),
     });
@@ -230,8 +230,8 @@ caseTest('the assets step refuses a packed manifest that differs from the tree o
       ].join('\n'),
     });
   }, '0.0.2', {
-    'clients/typescript/package.json': JSON.stringify({ name: '@polyspec/orm', version: '0.0.2', dependencies: { '@polyspec/ordered-json': 'file:../ordered-json' } }),
-    'clients/php/composer.json': JSON.stringify({ name: 'polyspec/orm', version: '0.0.2', require: { 'polyspec/ordered-json': '@dev' } }),
+    'packages/orm-npm/package.json': JSON.stringify({ name: '@polyspec/orm', version: '0.0.2', dependencies: { '@polyspec/ordered-json': 'file:../ordered-json' } }),
+    'packages/orm-php/composer.json': JSON.stringify({ name: 'polyspec/orm', version: '0.0.2', require: { 'polyspec/ordered-json': '@dev' } }),
   });
 });
 

@@ -22,13 +22,13 @@ caseTest('cargo-test splits options, name filters and test binary arguments', CO
 
 caseTest('cargo-test reads the test binaries and their package directories from cargo messages', COMPUTE, () => {
   const lines = [
-    JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/zone-1', manifest_path: '/r/clients/rust/orm/Cargo.toml', target: { name: 'zone' } }),
+    JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: '/t/debug/deps/zone-1', manifest_path: '/r/packages/orm-rust/orm/Cargo.toml', target: { name: 'zone' } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: false }, executable: '/t/debug/integration', manifest_path: '/r/x/Cargo.toml', target: { name: 'integration' } }),
     JSON.stringify({ reason: 'compiler-artifact', profile: { test: true }, executable: null, manifest_path: '/r/y/Cargo.toml', target: { name: 'lib' } }),
     JSON.stringify({ reason: 'build-finished', success: true }),
     'not json',
   ];
-  assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/clients/rust/orm', target: 'zone' }]);
+  assert.deepEqual(executables(lines.join('\n')), [{ executable: '/t/debug/deps/zone-1', manifestDir: '/r/packages/orm-rust/orm', target: 'zone' }]);
 });
 
 caseTest('cargo-test reads the package programs and names their variables', COMPUTE, () => {
@@ -108,7 +108,7 @@ caseTest('cargo reuses what another checkout built into a shared target, and a t
 caseTest('make refuses a Rust target directory outside its checkout', PROCESS, () => {
   const repo = fileURLToPath(new URL('..', import.meta.url));
   const make = target => spawnSync('make', ['-n', '--no-print-directory', 'version-check', ...(target ? [`CARGO_TARGET_DIR=${target}`] : [])], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment() });
-  const other = make(join(tmpdir(), 'another-checkout', 'clients', 'rust', 'target'));
+  const other = make(join(tmpdir(), 'another-checkout', 'packages', 'orm-rust', 'target'));
   assert.notEqual(other.status, 0, 'make ran with the target directory of another checkout');
   assert.match(other.stderr, /CARGO_TARGET_DIR=\S+ is outside this checkout \S+; each checkout builds Rust into its own target directory/);
   assert.equal(make('').status, 0, make('').stderr);

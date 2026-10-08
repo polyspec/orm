@@ -86,7 +86,7 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 - 문자열 길이는 바이트 길이를 쓴다. 압축 바이트는 구현마다 다를 수 있으므로 `gz`는 왕복한 값이 같음을 보장한다.
 
 ## 벡터 (`tests/codec`)
-`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node clients/typescript/tests/codec-vector.mjs`로 실행한다. 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다.
+`vectors.json`은 `php tests/codec/gen.php`로 생성한다. 각 러너는 저장 바이트를 읽어 정규화한 JSON을 비교한 뒤, 다시 인코딩한 serialize 계열 바이트와 JSON/gz 왕복 값을 비교한다. TypeScript는 같은 파일을 `node packages/orm-npm/tests/codec-vector.mjs`로 실행한다. 데이터베이스 왕복은 `tests/conformance`의 `codec_roundtrip`이 검사한다.
 
 ## 생성 코드
 - 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.

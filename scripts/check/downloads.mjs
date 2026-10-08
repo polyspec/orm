@@ -10,10 +10,10 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 // CARGO_LOCKS는 check가 build하는 crate의 Cargo.lock이 있는 manifest다.
-export const CARGO_MANIFESTS = ['clients/rust/Cargo.toml', 'bench/rust/Cargo.toml', 'tests/interfaces/rust/Cargo.toml'];
-// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 clients/typescript를 workspace로 함께 설치한다.
+export const CARGO_MANIFESTS = ['packages/orm-rust/Cargo.toml', 'bench/rust/Cargo.toml', 'tests/interfaces/rust/Cargo.toml'];
+// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/orm-npm를 workspace로 함께 설치한다.
 export const NPM_ROOTS = ['.'];
-// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 clients/php를 path
+// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 packages/orm-php를 path
 // repository로 설치한다.
 export const COMPOSER_ROOTS = ['.'];
 

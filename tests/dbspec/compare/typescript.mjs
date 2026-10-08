@@ -22,7 +22,7 @@ import {
   readDbspecBytes,
   readDbspecFile,
   renderDbspec,
-} from '../../../clients/typescript/dist/dbspec/index.js';
+} from '../../../packages/orm-npm/dist/dbspec/index.js';
 
 const [casesPath, stressPath, ddlPath, plansPath, mermaidPath] = process.argv.slice(2);
 if (casesPath === undefined || stressPath === undefined || ddlPath === undefined || plansPath === undefined || mermaidPath === undefined) {

@@ -4,7 +4,7 @@
 // examples, client의 test)이고, 실패를 내는 줄(throw, t.Fatal, panic, expect, stderr로의 출력, errors.New,
 // fmt.Errorf, shell의 :?)에서 "is required", "is unset", "is not set", "is not installed"를 적은 줄이다.
 
-export const MESSAGE_SCOPE = /^(scripts|tests|bench|examples)\/|\/tests\/|_test\.go$|^Makefile$|^clients\/rust\/tests\//;
+export const MESSAGE_SCOPE = /^(scripts|tests|bench|examples)\/|\/tests\/|_test\.go$|^Makefile$|^packages\/orm-rust\/tests\//;
 const MESSAGE_FILE = /\.(mjs|js|sh|php|go|rs|ts)$|^Makefile$/;
 const ERROR_CALL = /throw new \w*(?:Error|Exception)|t\.Fatalf?|panic!?\(|\.expect\(|eprintln!|fmt\.Fprintln\(os\.Stderr|fwrite\(STDERR|errors\.New|fmt\.Errorf|Err\(|>&2|:\?|console\.error|unwrap_or_else/;
 const CONDITION = /is required|is unset|is not set|is not installed/;

@@ -116,7 +116,7 @@ jobs:
         if: ${{ !cancelled() && steps.group-needs.outputs.rust == 'true' }}
         with:
           workspaces: |
-            clients/rust -> target
+            packages/orm-rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
       # The Python checks import the ordered-json client of its release v0.0.4 from ORDERED_JSON,
@@ -142,7 +142,7 @@ jobs:
         run: make install-python
       - name: lowest PHP release of the PHP client
         # make php-min-check runs the PHP client unit tests on the lowest release
-        # of require.php in clients/php/composer.json; setup-php installs it
+        # of require.php in packages/orm-php/composer.json; setup-php installs it
         # first, and the PHP of .php-version after it becomes php on PATH.
         id: php-min
         if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}

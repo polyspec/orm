@@ -11,12 +11,12 @@ foreach ($dirs as $dir) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", FilesystemIterator::SKIP_DOTS));
     foreach ($it as $file) {
         $path = $file->getRealPath();
-        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/clients/php/src/Proto/")) { $files[] = $path; }
+        if ($file->getExtension() === 'php' && !str_starts_with($path, "$root/packages/orm-php/src/Proto/")) { $files[] = $path; }
     }
 }
 sort($files);
 // Load the runtime before generated subclasses. Top-level bootstrap only registers names.
-$autoload = "$root/clients/php/tests/autoload.php";
+$autoload = "$root/packages/orm-php/tests/autoload.php";
 if (is_file($autoload)) { require_once $autoload; }
 foreach ($files as $file) { require_once $file; }
 $out = [];

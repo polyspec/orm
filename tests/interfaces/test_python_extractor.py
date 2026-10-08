@@ -26,7 +26,7 @@ class PythonExtractorTest(unittest.TestCase):
         # The contract contracts/symbols/python.json lists the public surface of the Python client. A module-level
         # helper that another module of the package imports is internal, so its name starts with `_`.
         root = Path(__file__).resolve().parents[2]
-        result = subprocess.run([sys.executable, str(EXTRACTOR), str(root), 'clients/python/src'],
+        result = subprocess.run([sys.executable, str(EXTRACTOR), str(root), 'packages/orm-python/src'],
                                 capture_output=True, text=True, check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         got = set(json.loads(result.stdout))

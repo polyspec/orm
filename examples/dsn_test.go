@@ -1,6 +1,6 @@
 // Package examples_test는 Go와 PHP 예제 프로그램이 ORM_BENCH_MYSQL_DSN 없이
 // 연결하지 않고 그 변수 이름을 출력하며 실패하는지 확인한다. Rust 예제는
-// clients/rust/tests/tests/example_dsn.rs가 확인한다.
+// packages/orm-rust/tests/tests/example_dsn.rs가 확인한다.
 package examples_test
 
 import (

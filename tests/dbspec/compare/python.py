@@ -7,7 +7,7 @@ import os
 import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
-sys.path.insert(0, os.path.join(ROOT, 'clients', 'python', 'src'))
+sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'src'))
 # ordered-json 배포 tag가 나오기 전까지 sibling checkout에서 import한다(docs/checklist.md T43.5-1).
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
 
@@ -22,7 +22,7 @@ try:
     from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 except ImportError as error:
     print(f'{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make install-python '
-          'and set ORM_PYTHON to the interpreter it creates (clients/python/.venv/bin/python)', file=sys.stderr)
+          'and set ORM_PYTHON to the interpreter it creates (packages/orm-python/.venv/bin/python)', file=sys.stderr)
     sys.exit(1)
 
 if len(sys.argv) != 6:

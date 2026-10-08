@@ -1,6 +1,6 @@
 //! A complex statement in every client language, one JSON document. Run:
 //!
-//!   clients/rust/target/debug/complex
+//!   packages/orm-rust/target/debug/complex
 polyspec_orm::models!();
 
 use model::{Author, Service, ServiceMember, User};

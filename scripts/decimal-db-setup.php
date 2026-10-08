@@ -5,7 +5,7 @@ declare(strict_types=1);
 // ORM_DECIMAL_DATABASE는 MySQL과 PostgreSQL에 만드는 database 이름이다. scripts/check/databases.sh가
 // 실행마다 자기 file과 이름을 준다.
 $root = dirname(__DIR__);
-require "$root/clients/php/tests/autoload.php";
+require "$root/packages/orm-php/tests/autoload.php";
 $envFile = getenv('DECIMAL_ENV');
 $name = getenv('ORM_DECIMAL_DATABASE');
 if (!is_string($envFile) || !str_starts_with($envFile, '/')) {

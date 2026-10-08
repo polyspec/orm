@@ -39,11 +39,11 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
 
 ## Python client release
 
-The Python client, `clients/python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump pull request sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
+The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump pull request sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
 
 ## Development layout
 
-The released manifests are clients/typescript/package.json, clients/php/composer.json and clients/php-extension/composer.json. They take the polyspec packages of other repositories by exact version and declare no repository. Two private root manifests, which are never released, resolve those versions in this repository:
+The released manifests are packages/orm-npm/package.json, packages/orm-php/composer.json and packages/orm-php-extension/composer.json. They take the polyspec packages of other repositories by exact version and declare no repository. Two private root manifests, which are never released, resolve those versions in this repository:
 
-- package.json at the repository root lists clients/typescript under `workspaces`, and its `overrides` take `@polyspec/ordered-json` from the tarball URL of its GitHub Release; the URL names the release tag. `npm ci` at the root installs the workspace. package-lock.json at the root is the one npm lockfile.
-- composer.json at the repository root installs clients/php from a `path` repository and polyspec/ordered-json from a `package` repository whose `dist` is the zip URL of its GitHub Release with its shasum; the URL names the release tag. Its `vendor-dir` is vendor-php, because vendor at the root is the vendor directory of the Go module. composer.lock at the root is the one Composer lockfile, and the PHP tests load vendor-php/autoload.php.
+- package.json at the repository root lists packages/orm-npm under `workspaces`, and its `overrides` take `@polyspec/ordered-json` from the tarball URL of its GitHub Release; the URL names the release tag. `npm ci` at the root installs the workspace. package-lock.json at the root is the one npm lockfile.
+- composer.json at the repository root installs packages/orm-php from a `path` repository and polyspec/ordered-json from a `package` repository whose `dist` is the zip URL of its GitHub Release with its shasum; the URL names the release tag. Its `vendor-dir` is vendor-php, because vendor at the root is the vendor directory of the Go module. composer.lock at the root is the one Composer lockfile, and the PHP tests load vendor-php/autoload.php.

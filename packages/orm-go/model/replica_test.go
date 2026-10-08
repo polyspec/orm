@@ -1,0 +1,179 @@
+package model_test
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/polyspec/orm/internal/testcase"
+	"github.com/polyspec/orm/internal/testdb"
+	"github.com/polyspec/orm/packages/orm-go/model"
+	"github.com/polyspec/orm/packages/orm-go/orm"
+)
+
+// replicaTargets returns the primary and replica DSN of MySQL and
+// PostgreSQL; the test fails when one is unset. A case opens its own database
+// on the primary server and the same database on the replica.
+func replicaTargets(t *testing.T) map[string][2]string {
+	t.Helper()
+	out := map[string][2]string{}
+	for driver, env := range map[string]string{"mysql": "MYSQL", "postgres": "POSTGRES"} {
+		primary, replica := os.Getenv("ORM_TEST_"+env+"_DSN"), os.Getenv("ORM_TEST_"+env+"_REPLICA_DSN")
+		if primary == "" || replica == "" {
+			t.Fatalf("ORM_TEST_%s_DSN and ORM_TEST_%s_REPLICA_DSN are required; database tests never skip", env, env)
+		}
+		out[driver] = [2]string{primary, replica}
+	}
+	return out
+}
+
+// awaitReplica returns after the replica has applied every change the
+// primary committed before the call. On PostgreSQL a transaction with
+// synchronous_commit=remote_apply that writes WAL, here a transactional
+// logical message, commits after the standby has applied it; a transaction
+// that writes no WAL besides its commit record does not wait. On MySQL
+// SOURCE_POS_WAIT on the replica waits for the binary log position of the
+// primary. SOURCE_POS_WAIT runs on a connection to replicaServer, the
+// replica's own test database: the case database exists on the replica only
+// after the replica has applied its creation.
+func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
+	t.Helper()
+	source := openNative(t, driver, primary)
+	defer source.Close()
+	if driver == "postgres" {
+		tx, err := source.Begin()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec("SET LOCAL synchronous_commit = remote_apply"); err != nil {
+			t.Fatal(err)
+		}
+		var mode, lsn string
+		if err := tx.QueryRow("SELECT current_setting('synchronous_commit'), pg_logical_emit_message(true, 'orm-test-barrier', '')::text").Scan(&mode, &lsn); err != nil {
+			t.Fatal(err)
+		}
+		if mode != "remote_apply" {
+			t.Fatalf("synchronous_commit of the barrier transaction is %s", mode)
+		}
+		if err := tx.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	var file string
+	var position int64
+	var ignored [3]any
+	if err := source.QueryRow("SHOW BINARY LOG STATUS").Scan(&file, &position, &ignored[0], &ignored[1], &ignored[2]); err != nil {
+		t.Fatal(err)
+	}
+	target := openNative(t, driver, replicaServer)
+	defer target.Close()
+	var waited *int64
+	// 기한은 60초다: replica는 병렬로 실행하는 모든 client의 쓰기를 차례로 적용하므로, 4 vCPU Linux
+	// runner에서 10초 안에 primary 위치에 닿지 못했다.
+	if err := target.QueryRow("SELECT SOURCE_POS_WAIT(?, ?, 60)", file, position).Scan(&waited); err != nil {
+		t.Fatal(err)
+	}
+	if waited == nil || *waited < 0 {
+		t.Fatalf("the replica did not reach %s:%d", file, position)
+	}
+}
+
+// TestPrimaryAndReplica opens a connection to the primary and one to its
+// replica side by side. A model uses the connection it is connected to and
+// no other, and a model without a connection inside a transaction uses the
+// transaction.
+func TestPrimaryAndReplica(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	manifest := model.Schema
+	for driver, dsns := range replicaTargets(t) {
+		t.Run(driver, func(t *testing.T) {
+			// primary에 case database를 만들고 replica에서는 복제된 같은 이름의 database를 연다.
+			primary := testdb.New(t, driver)
+			replica := testdb.Retarget(t, dsns[1], testdb.DatabaseOf(t, primary))
+			master, err := model.Connect(primary, orm.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer master.Close()
+			if err := master.Utils().Schema().Install(manifest); err != nil {
+				t.Fatal(err)
+			}
+			name := fmt.Sprintf("replica-%d", time.Now().UnixNano())
+			must(model.User().Connect(master).SetName(name).Create())
+			awaitReplica(t, driver, primary, dsns[1])
+			slave1, err := model.Connect(replica, orm.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer slave1.Close()
+
+			if n := must(model.User().Connect(slave1).Name(name).GetCount()); n != 1 {
+				t.Fatalf("the replica reads %d rows written through the primary", n)
+			}
+			if _, err := model.User().Connect(slave1).SetName(name + "-replica").Create(); orm.ErrorCode(err) != orm.CodeReadOnly {
+				t.Fatalf("a write through the replica connection: %v, want READ_ONLY", err)
+			}
+			if n := must(model.User().Connect(master).Name(name + "-replica").GetCount()); n != 0 {
+				t.Fatalf("a write through the replica connection reached the primary: %d rows", n)
+			}
+
+			// A row read through the replica is written through the primary.
+			row := must(model.User().Connect(slave1).Name(name).Get())
+			must(row.Connect(master).SetName(name + "-renamed").Update())
+
+			err = master.Transaction(func() error {
+				must(model.User().SetName(name + "-tx").Create())
+				if n := must(model.User().Connect(master).Name(name + "-tx").GetCount()); n != 1 {
+					return fmt.Errorf("the primary connection inside its transaction reads %d rows", n)
+				}
+				if n := must(model.User().Connect(slave1).Name(name + "-tx").GetCount()); n != 0 {
+					return fmt.Errorf("the replica connection reads %d uncommitted rows", n)
+				}
+				return nil
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			awaitReplica(t, driver, primary, dsns[1])
+			if n := must(model.User().Connect(slave1).Name([]string{name + "-renamed", name + "-tx"}).GetCount()); n != 2 {
+				t.Fatalf("the replica reads %d of the 2 committed rows", n)
+			}
+		})
+	}
+}
+
+// TestReadOnlySQLite writes through a connection to a SQLite database file
+// that the process may only read: SQLite opens it read-only, reads succeed,
+// and a write returns READ_ONLY.
+func TestReadOnlySQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	manifest := model.Schema
+	path := filepath.Join(t.TempDir(), "read-only.sqlite")
+	dsn := "sqlite://" + path
+	writable, err := model.Connect(dsn, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writable.Utils().Schema().Install(manifest); err != nil {
+		t.Fatal(err)
+	}
+	must(model.User().Connect(writable).SetName("read-only").Create())
+	writable.Close()
+	if err := os.Chmod(path, 0o444); err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := model.Connect(dsn, orm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer readOnly.Close()
+	if n := must(model.User().Connect(readOnly).Name("read-only").GetCount()); n != 1 {
+		t.Fatalf("the read-only database reads %d rows", n)
+	}
+	if _, err := model.User().Connect(readOnly).SetName("rejected").Create(); orm.ErrorCode(err) != orm.CodeReadOnly {
+		t.Fatalf("a write to the read-only database: %v, want READ_ONLY", err)
+	}
+}

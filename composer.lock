@@ -34,7 +34,7 @@
             "version": "0.0.4",
             "dist": {
                 "type": "path",
-                "url": "clients/php",
+                "url": "packages/orm-php",
                 "reference": "0c8941ce378fd78dfc4121287102936473142a2f"
             },
             "require": {
@@ -47,7 +47,7 @@
             },
             "suggest": {
                 "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
-                "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (clients/php-extension)",
+                "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/orm-php-extension)",
                 "ext-pdo_mysql": "mysql:// DSNs",
                 "ext-pdo_pgsql": "postgres:// DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs"

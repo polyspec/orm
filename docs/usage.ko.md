@@ -471,7 +471,7 @@ make test-servers                                        # MySQL, PostgreSQL, �
 . .runtime/servers/env                                   # 테스트의 DSN 변수
 go test ./...                                            # 엔진, 생성기, Go 클라이언트
 npm run typescript:test                                  # TypeScript 클라이언트
-(cd clients/rust && cargo test --workspace)              # Rust 클라이언트
+(cd packages/orm-rust && cargo test --workspace)              # Rust 클라이언트
 go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # 네 클라이언트의 같은 결과 (MySQL)
 go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```

@@ -101,15 +101,15 @@ caseTest('rust: the stress test passes while preempted', TIMEOUT, async ({ step 
 
 caseTest('rust: the polyspec-orm-schema vector tests pass while preempted', TIMEOUT, async ({ step }) => {
   const tests = ['dbspec', 'dbspec_rules', 'dbspec_manifest', 'dbspec_render', 'dbspec_runtime', 'dbspec_plan', 'dbspec_mermaid'];
-  await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}clients/rust`);
+  await passesPreempted(step, 'cargo', ['test', '--locked', '--offline', '-p', 'polyspec-orm-schema', ...tests.flatMap((name) => ['--test', name])], `${root}packages/orm-rust`);
 });
 
 for (const script of ['dbspec_test', 'dbspec_rules_test', 'dbspec_manifest_test', 'dbspec_render_test', 'dbspec_mermaid_test', 'dbspec_plan_test', 'dbspec_stress_test']) {
   caseTest(`php: ${script} passes while preempted`, TIMEOUT, async ({ step }) => {
-    await passesPreempted(step, 'php', [`clients/php/tests/${script}.php`]);
+    await passesPreempted(step, 'php', [`packages/orm-php/tests/${script}.php`]);
   });
 }
 
 caseTest('typescript: the stress test passes while preempted', TIMEOUT, async ({ step }) => {
-  await passesPreempted(step, process.execPath, ['--test', 'clients/typescript/tests/dbspec-stress.mjs']);
+  await passesPreempted(step, process.execPath, ['--test', 'packages/orm-npm/tests/dbspec-stress.mjs']);
 });

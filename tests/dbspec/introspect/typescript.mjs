@@ -5,9 +5,9 @@
 // Usage: node tests/dbspec/introspect/typescript.mjs <mysql|postgres|sqlite> <uri>
 import { DatabaseSync } from 'node:sqlite';
 import { createRequire } from 'node:module';
-import { emitDbspec, introspectDbspec } from '../../../clients/typescript/dist/index.js';
+import { emitDbspec, introspectDbspec } from '../../../packages/orm-npm/dist/index.js';
 
-const require = createRequire(new URL('../../../clients/typescript/package.json', import.meta.url));
+const require = createRequire(new URL('../../../packages/orm-npm/package.json', import.meta.url));
 const mysql = require('mysql2/promise');
 const pg = require('pg');
 

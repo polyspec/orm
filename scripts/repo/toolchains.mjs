@@ -1,7 +1,7 @@
 // 개발 PHP와 Rust version 검사. Node(node.mjs)처럼 검사를 실행하는 PHP와 Rust는 각각 한 file이
 // 한 번 선언한 것 하나이고, 로컬 검사와 모든 workflow가 그것으로 실행한다.
 //   - PHP: `.php-version`의 x.y. setup-php와 Homebrew의 php는 x.y의 patch release를 고르므로 선언은
-//     x.y다. clients/php/composer.json의 require.php(">=x.y")는 PHP client가 지원하는 최저
+//     x.y다. packages/orm-php/composer.json의 require.php(">=x.y")는 PHP client가 지원하는 최저
 //     release이며 make php-min-check가 실행한다.
 //   - Rust: rust-toolchain.toml의 channel x.y.z. Makefile은 그 channel을 읽고, workflow는
 //     인자 없는 `rustup toolchain install`로 그 file의 toolchain을 설치한다.
@@ -31,9 +31,9 @@ export function phpVersionErrors(declared, minimum, workflows, running) {
   const exact = /^\d+\.\d+$/.test(declared.trim()) && declared === `${declared.trim()}\n`;
   if (!exact) errors.push(`.php-version must hold one release x.y and a newline, found ${JSON.stringify(declared)}`);
   const lowest = /^>=(\d+\.\d+)$/.exec(minimum ?? '')?.[1];
-  if (!lowest) errors.push(`clients/php/composer.json require.php must be ">=x.y", found ${JSON.stringify(minimum)}`);
+  if (!lowest) errors.push(`packages/orm-php/composer.json require.php must be ">=x.y", found ${JSON.stringify(minimum)}`);
   if (exact && lowest && below(declared.trim(), lowest))
-    errors.push(`.php-version ${declared.trim()} is below clients/php/composer.json require.php ${minimum}`);
+    errors.push(`.php-version ${declared.trim()} is below packages/orm-php/composer.json require.php ${minimum}`);
   for (const [path, workflow] of Object.entries(workflows)) {
     const steps = actionSteps(workflow, 'shivammathur/setup-php');
     if (runs(workflow, /(^|[\s;&|(])(php|composer)\s/m) && steps.length === 0)

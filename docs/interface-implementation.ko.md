@@ -40,10 +40,10 @@ PostgreSQL·MySQL·SQLite 사례가 이 호출을 실행하고, pooler 사례는
 
 | 클라이언트 | Planner와 생성 모델 소유 위치 | 실행 소유 테스트 | 사용 부분·공유 검사 |
 |---|---|---|---|
-| Go | `engine/*`을 `clients/go/orm`이 직접 호출하며 생성 모델은 `clients/go/model`에 있다 | `clients/go/orm/*_test.go`, `clients/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
-| PHP | `clients/php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `clients/php/gen`에 있다 | `clients/php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
-| Rust | `clients/rust/orm`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `clients/rust/tests/src`, `clients/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
-| TypeScript | `clients/typescript/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `clients/typescript/src/models`에 있다 | `clients/typescript/tests` | `tests/conformance/runner_typescript.mjs`, `tests/interfaces/typescript.mjs` |
+| Go | `engine/*`을 `packages/orm-go/orm`이 직접 호출하며 생성 모델은 `packages/orm-go/model`에 있다 | `packages/orm-go/orm/*_test.go`, `packages/orm-go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
+| PHP | `packages/orm-php/src`가 PDO를 통해 계획·실행하며 생성 모델은 `packages/orm-php/gen`에 있다 | `packages/orm-php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
+| Rust | `packages/orm-rust/orm`이 sqlx를 통해 계획·실행하며 `polyspec-orm-build`가 모델을 생성한다 | `packages/orm-rust/tests/src`, `packages/orm-rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
+| TypeScript | `packages/orm-npm/src`가 네이티브 driver를 통해 계획·실행하며 생성 모델은 `packages/orm-npm/src/models`에 있다 | `packages/orm-npm/tests` | `tests/conformance/runner_typescript.mjs`, `tests/interfaces/typescript.mjs` |
 
 각 owner 테스트는 해당 client 디렉터리에 둔다. Conformance는 네 결과를 비교하며 owner 테스트를 대체하지 않고, `tests/interfaces/check`가 공통 선언과 생성물을 검사한다.
 

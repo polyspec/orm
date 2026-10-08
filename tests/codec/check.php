@@ -4,7 +4,7 @@
 // Usage: php tests/codec/check.php
 declare(strict_types=1);
 
-require dirname(__DIR__, 2) . '/clients/php/tests/autoload.php';
+require dirname(__DIR__, 2) . '/packages/orm-php/tests/autoload.php';
 require_once dirname(__DIR__) . '/testcase.php';
 
 use Polyspec\Orm\Codec;
