@@ -177,11 +177,72 @@ class AesRotationStatus:
     versions: dict = field(default_factory=dict)
 
 
+class _AesColumn:
+    """An encrypted column of an entity and its host styles, as the rotation reads it."""
+
+    def __init__(self, name: str, styles: list):
+        self.name = name
+        self.styles = styles
+
+
 class AesUtils:
     """The AES key version tools of one connection."""
 
     def __init__(self, utils: Utils):
         self.utils = utils
+
+    def rotate(self, model, keyring) -> int:
+        """Encrypts again, with the current key of the keyring, every row of the model whose key version
+        is not the current one, and gives the row the current version; returns the number of rows. The
+        rows are read 1000 at a time until none is left, in one transaction (docs/schema.md "AES key
+        rotation")."""
+        from polyspec.orm.errors import OrmError
+        entity = model.entity_def.entity
+        if not entity.aes_version:
+            raise OrmError('CONFIG', f'entity {entity.name} has no AES columns with a key version')
+        columns = [_AesColumn(f.name, [st for st in f.stages if st in ('aes', 'hex')])
+                   for f in entity.fields if 'aes' in f.stages]
+        if not columns:
+            raise OrmError('CONFIG', f'entity {entity.name} has no AES columns with a key version')
+        db = self.utils.db
+        driver = db.driver
+
+        def q(name: str) -> str:
+            return _quote(driver, name)
+
+        def ph(n: int) -> str:
+            return f'${n}' if driver == 'postgres' else '?'
+        keys = list(entity.primary_key)
+        version = entity.aes_version
+        select = (f'SELECT {", ".join([q(k) for k in keys] + [q(version)] + [q(c.name) for c in columns])} '
+                  f'FROM {q(entity.table)} WHERE {q(version)} <> {ph(1)} '
+                  f'ORDER BY {", ".join(q(k) for k in keys)} LIMIT 1000')
+        sets = [f'{q(c.name)} = {ph(i + 1)}' for i, c in enumerate(columns)] + [f'{q(version)} = {ph(len(columns) + 1)}']
+        where = [f'{q(k)} = {ph(len(columns) + 2 + i)}' for i, k in enumerate(keys)] \
+            + [f'{q(version)} = {ph(len(columns) + 2 + len(keys))}']
+        update = f'UPDATE {q(entity.table)} SET {", ".join(sets)} WHERE {" AND ".join(where)}'
+
+        def body() -> int:
+            frame = _frame_of(db)
+            rotated = 0
+            while True:
+                rows = frame.run(select, [keyring.current_version], 'utility', tables=(entity.table,))['rows']
+                if not rows:
+                    return rotated
+                for values in rows:
+                    before = {k: values[i] for i, k in enumerate(keys)}
+                    row_version = int(values[len(keys)])
+                    before[version] = row_version
+                    for i, c in enumerate(columns):
+                        before[c.name] = values[len(keys) + 1 + i]
+                    after = keyring.rotate_row(before, version, columns, keyring.current_version)
+                    params = [after[c.name] for c in columns] + [keyring.current_version] \
+                        + [before[k] for k in keys] + [row_version]
+                    result = frame.run(update, params, 'utility', tables=(entity.table,))
+                    if result['affected'] != 1:
+                        raise OrmError('DEADLOCK', f'aes rotation of {entity.table} changed {result["affected"]} rows')
+                    rotated += 1
+        return db.transaction(body, {'retry': 0})
 
     def status(self, model, keyring) -> AesRotationStatus:
         entity = model.entity_def.entity
