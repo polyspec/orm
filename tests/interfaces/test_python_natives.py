@@ -93,6 +93,10 @@ class DbspecRuleNativesTest(unittest.TestCase):
         'files_parse_emit_render_introspect': [
             'Dbspec.readFile', 'Dbspec.readBytes', 'Dbspec.parse', 'Dbspec.emit',
             'Dbspec.manifest', 'Dbspec.render', 'Dbspec.introspect', 'Dbspec.externalDifferences'],
+        'plans_comparison_upgrade': [
+            'Dbspec.parsePlan', 'Dbspec.emitPlan', 'Dbspec.chain', 'Dbspec.diff',
+            'Dbspec.compareSchemas', 'Dbspec.installedDifferences', 'Dbspec.addTablesAndColumnsSteps',
+            'Dbspec.planSteps'],
     }
 
     def setUp(self):
@@ -116,6 +120,9 @@ class DbspecRuleNativesTest(unittest.TestCase):
 
     def test_files_parse_emit_render_introspect_group(self):
         self.check_group(self.GROUPS['files_parse_emit_render_introspect'])
+
+    def test_plans_comparison_upgrade_group(self):
+        self.check_group(self.GROUPS['plans_comparison_upgrade'])
 
 
 if __name__ == '__main__':

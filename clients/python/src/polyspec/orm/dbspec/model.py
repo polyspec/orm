@@ -173,3 +173,9 @@ class DbspecDocument:
     # 문서가 다른 set에 속한다: set의 문서가 그 table을 쓰지만 set이 소유하지는
     # 않는다. parse와 검사는 하지만 render, install, compare, 생성의 대상이 아니다.
     external: bool = False
+
+
+# A plan is the header and the steps of a dict, and an unsupported object is the dict of its kind, table,
+# name and reason, as the introspection writes it.
+DbspecPlan = dict
+Unsupported = dict

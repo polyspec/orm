@@ -1,7 +1,9 @@
 # plan의 source와 target schema를 비교한다 (docs/plans.md "Diff").
 # 기준은 다른 client의 plan diff이며 diagnostic message는 같은 바이트다.
+from __future__ import annotations
+
 from polyspec.orm.dbspec.emit import type_text
-from polyspec.orm.dbspec.model import DbspecDiagnostic
+from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecPlan
 
 __all__ = ['append', 'column_of', 'diff_plan', 'plan_diff', 'renamed_or',
            'same_default', 'same_type', 'sorted_keys', 'widens']
@@ -237,7 +239,7 @@ def plan_diff(source, p: dict) -> dict:
     return {'diff': d, 'diagnostics': []}
 
 
-def diff_plan(source, plan: dict) -> dict:
+def diff_plan(source: DbspecDocument | None, plan: DbspecPlan) -> dict:
     """source schema(None이면 빈 schema)에서 plan의 대상까지의 변경을 돌려준다
     (docs/plans.md "Diff"). schemaHash가 plan의 `from`과 다른 source는
     diagnostic이다."""

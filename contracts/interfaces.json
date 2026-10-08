@@ -1954,6 +1954,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan",
           "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/plan.py::parse_plan",
+          "signature": "def parse_plan(text: str) -> dict"
         }
       }
     },
@@ -1986,6 +1990,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan",
           "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): string"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/plan.py::emit_plan",
+          "signature": "def emit_plan(plan: DbspecPlan) -> str"
         }
       }
     },
@@ -2018,6 +2026,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain",
           "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/plan.py::chain_plans",
+          "signature": "def chain_plans(plans: list[DbspecPlan]) -> dict"
         }
       }
     },
@@ -2050,6 +2062,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff",
           "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/plan_diff.py::diff_plan",
+          "signature": "def diff_plan(source: DbspecDocument | None, plan: DbspecPlan) -> dict"
         }
       }
     },
@@ -2082,6 +2098,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
           "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Document $target): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/compare.py::compare_schemas",
+          "signature": "def compare_schemas(source: DbspecDocument, target: DbspecDocument) -> dict"
         }
       }
     },
@@ -2114,6 +2134,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
           "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target): array"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/installed.py::installed_differences",
+          "signature": "def installed_differences(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument) -> list[str]"
         }
       }
     },
@@ -2146,6 +2170,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
           "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/add_tables.py::add_tables_and_columns_steps",
+          "signature": "def add_tables_and_columns_steps(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument, dialect: str) -> dict"
         }
       }
     },
@@ -2178,6 +2206,10 @@
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps",
           "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/plan_steps.py::plan_steps",
+          "signature": "def plan_steps(source: DbspecDocument | None, plan: DbspecPlan, dialect: str) -> dict"
         }
       }
     },

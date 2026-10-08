@@ -1,11 +1,13 @@
 # schema plan 문서와 plan chain (docs/plans.md "Plan document", "Chain").
 # 기준은 다른 client의 plan이며 diagnostic message는 같은 바이트다.
+from __future__ import annotations
+
 import hashlib
 import re
 
 from polyspec.orm.dbspec.compare import is_schema_text
 from polyspec.orm.dbspec.emit import emit_document, CANONICAL
-from polyspec.orm.dbspec.model import DbspecDiagnostic
+from polyspec.orm.dbspec.model import DbspecPlan, DbspecDiagnostic
 from polyspec.orm.dbspec.parse import RESERVED, parse_dbspec
 
 __all__ = ['chain_plans', 'emit_plan', 'parse_plan', 'plan_diagnostic',
@@ -166,7 +168,7 @@ def plan_schema_text(schema) -> str:
     return emit_document(schema, CANONICAL)
 
 
-def emit_plan(plan) -> str:
+def emit_plan(plan: DbspecPlan) -> str:
     """plan을 canonical 문서로 쓴다: header 줄은 rename table, rename column,
     allow drop table, allow drop column 순서로, 각각 이름 순서다."""
     out = f'dbplan 1 {plan["name"]}\n'
@@ -182,7 +184,7 @@ def emit_plan(plan) -> str:
     return out + '\n' + plan_schema_text(plan['schema'])
 
 
-def chain_plans(plans) -> dict:
+def chain_plans(plans: list[DbspecPlan]) -> dict:
     """plan들을 `from empty`인 plan에서 하나의 chain으로 잇는다 (docs/plans.md
     "Chain"). 못 잇는 경우 plan 이름을 말하는 `chain` diagnostic을 준다."""
     if not isinstance(plans, (list, tuple)):

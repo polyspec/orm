@@ -1,7 +1,9 @@
 # plan 없이 두 schema의 모든 차이를 나열한다 (docs/plans.md "Comparison").
 # 기준은 다른 client의 compare이며 diagnostic message는 같은 바이트다.
+from __future__ import annotations
+
 from polyspec.orm.dbspec.audit import audit_records
-from polyspec.orm.dbspec.model import DbspecDiagnostic
+from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument
 from polyspec.orm.dbspec.plan_objects import foreign_key_def, index_def
 from polyspec.orm.dbspec.plan_diff import column_of, same_default, same_type, \
     sorted_keys, widens
@@ -18,7 +20,7 @@ _KINDS = [
 ]
 
 
-def compare_schemas(source, target) -> dict:
+def compare_schemas(source: DbspecDocument, target: DbspecDocument) -> dict:
     """plan 없이 source에서 target까지의 모든 차이를 돌려준다. rename은 없고
     table과 column은 이름으로만 맞춘다. 두 문서는 schema text여야 하며, 아닌
     쪽마다 compare diagnostic을 source, target 순으로 돌려준다."""

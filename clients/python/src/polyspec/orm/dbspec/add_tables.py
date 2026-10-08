@@ -2,14 +2,17 @@
 version, as clients/typescript/src/dbspec/add_tables_and_columns.ts computes them. Tables are created
 and columns and indexes added; anything else is a difference and no step (docs/schema.md "Adding
 tables and columns")."""
+from __future__ import annotations
+
 from polyspec.orm.dbspec.emit import CANONICAL, emit_document
+from polyspec.orm.dbspec.model import DbspecDocument, Unsupported
 from polyspec.orm.dbspec.installed import compare_set, qualified
 from polyspec.orm.dbspec.manifest import dbspec_manifest
 from polyspec.orm.dbspec.plan import plan_to
 from polyspec.orm.dbspec.plan_steps import plan_steps
 
 
-def add_tables_and_columns_steps(live, unsupported, target, dialect: str) -> dict:
+def add_tables_and_columns_steps(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument, dialect: str) -> dict:
     """The names added (tables, then their added columns and indexes in order), the steps that add
     them, and the differences that refuse the upgrade (the steps are empty then)."""
     declared, source, comparison, differences = compare_set(live, unsupported, target)
