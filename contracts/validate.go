@@ -153,6 +153,8 @@ func validateRules(d document) error {
 			switch lang {
 			case "php", "typescript":
 				ret = strings.TrimPrefix(ret, ":")
+			case "python":
+				got, ret = pythonParts(got, ret)
 			case "rust":
 				ret = strings.TrimPrefix(ret, "->")
 				receiver, rest, _ := strings.Cut(got, ",")
@@ -227,6 +229,17 @@ func validateExtensionRule(d document, r rule, want, args map[string]string) err
 // receiverOf is the Rust receiver of a model method: chain methods take the
 // model by value, writes that store the result borrow it mutably, and every
 // other execution borrows it.
+// pythonParts reads a Python native signature as the parameter list and the return type that the
+// other clients have: self is the receiver of a method and is no parameter, and "->" precedes the
+// return type.
+func pythonParts(got, ret string) (string, string) {
+	ret = strings.TrimPrefix(ret, "->")
+	if got == "self" {
+		return "", ret
+	}
+	return strings.TrimPrefix(got, "self,"), ret
+}
+
 func receiverOf(r rule) string {
 	switch {
 	case r.For != "entity" || len(r.Errors) == 0 && r.Output != "Chain":
