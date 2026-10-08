@@ -1,3 +1,5 @@
+<!-- doc-id: agents -->
+<!-- source-sha256: d23f2ab58deb6b228001dd8259a17ee2eb1df7ce7723ec47885743f43d038e75 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -5,6 +7,20 @@
 - 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
 - 기본은 `main`에서 바로 작업한다. 에이전트나 병렬 작업에 필요할 때 브랜치와 워크트리를 쓴다. merge 뒤 남은
   브랜치나 워크트리는 디스크를 차지하고 폴더를 흩뜨리며 merge 여부를 헷갈리게 한다.
+- 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그
+  unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고 그 push의 작업이 끝났을 때 한 번 push한다. 그
+  push의 CI(`push-gate`와 `.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
+  만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
+  asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`).
+- 공유 도구는 `polyspec/kit`의 vendored 사본이다: `scripts/kit`, `tests/kit`, `kit.json`, `.kit/kit.lock.json`은 kit에서만
+  바꾸고 `make kit-sync KIT_TAG=<tag>`로 이 저장소에 들어온다. `make kit-check`는 그것을 lock과 비교하고
+  `make kit-test`는 그 test를 실행한다. 이 저장소는 `config/*.json`과 자체 product code(`scripts/check`,
+  `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다. kit에 없거나 잘못된
+  도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 vendored file을 읽지 않는다.
+- package는 `packages/orm-<kind>`이고 kind는 `go`, `npm`(TypeScript client), `php`, `php-extension`, `python`, `rust`다.
+  다른 저장소는 `packages/<repository>-<kind>`를 쓴다. Go module `github.com/polyspec/orm`(`go.mod`, `engine/`,
+  `generator/`, `cmd/`, `internal/`, `contracts/`)은 저장소 root에 남으며, 이것이 그 배치의 유일한 예외다.
+  이유: 새 module path는 그 module의 모든 import를 깬다. 제거 조건: 새 module path를 받는 major release.
 - 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
   이름 짓는다. 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
@@ -20,16 +36,16 @@
 - `main`에 통합할 수 없는 테스트 전용 브랜치의 의미 있는 커밋은 관련 기능을 커밋하기 전에 체리픽하고,
   나머지 테스트 전용 변경은 폐기한 뒤 워크트리와 브랜치를 제거한다. 제거할 수 없다면 먼저 소유
   체크리스트에 번호가 붙은 하위 항목을 추가하고 원인과 정확한 제거 조건을 기록한다.
-- `docs/checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make checklist-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make checklist-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
+- `docs/plans/execution-checklist.md`가 유일한 작업 목록이다. 한국어 문서의 항목 ID와 상태는 같다. 항목 상태를 변경하기 전에 `make documents-check`를 실행한다. 체크리스트에는 항목만 둔다: 상태 표시는 항목이나 하위 항목 맨 앞의 상태로만 쓰고 범례, 제목, 항목의 글에는 쓰지 않으며, `make documents-check`는 그 밖의 표시를 file, 줄, 열과 함께 실패로 본다.
 - `[ ]`는 대기, `[~]`는 진행 중, `[o]`는 구현·테스트·기록을 함께 커밋했을 때만 완료, `[!]`는 미완료 항목을 우회해야 다음으로 진행할 수 있을 때만 쓴다. `[!]` 항목에는 `원인:`과 `재시도:`를 적는다. 재시도 조건이 충족되면 재개하며 우회는 완료가 아니다.
 - `[o]` 표시는 변경 기록 항목도 같은 커밋에서 CHANGELOG.md와 CHANGELOG.ko.md 맨 위의 `## Unreleased` 아래에 남기며
   (`make version-check`), 커밋되지 않은 변경은 항목 하나만 다룬다.
   받은 지시는 먼저 분류한다: 지시가 명시적이고 긴급하지 않으면 진행 중 항목을 완료하고, 새 작업은
   우선순위에 따라 배치한 뒤 시작한다.
-- 저장소의 전체 테스트 묶음(`make check`)은 push 뒤 GitHub CI에서 실행한다: push한 branch의 pull request와 그 merge
-  group에서 실행한다. CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
-  하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check GROUP=<group>`을 실행한다. group들은 함께
-  `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make check`는 모든 target을 실행한다.
+- 저장소의 전체 테스트 묶음은 `main`으로의 push 뒤 GitHub CI에서 실행한다: 수동 실행에서도 실행한다.
+  CI는 그것을 Makefile의 CI group(`CI_GROUPS`, `CI_TARGETS_<group>`)으로 나눈다: group마다 job
+  하나가 모두 동시에, 그 target이 필요로 하는 setup step만 실행한 뒤 `make check-run GROUP=<group>`을 실행한다. group들은 함께
+  `CHECK_TARGETS`의 모든 target을 정확히 한 번 실행하고(`make repo-check`), 로컬 `make check`는 guard를 거쳐 모든 target을 실행한다.
   CI 실행 한 번은 다음 CI 실행 전에
   그 실행이 찾은 모든 실패를 고칠 수 있을 만큼의 정보를 모아야 한다. 실행은 실패에서 멈추지 않는다: 필요한
   setup 단계가 실패한 target은 그 단계와 첫 실패 줄과 함께 `not-run`으로 기록하고 나머지 target은 모두
@@ -43,7 +59,7 @@
   수 있게 하며, 실패한 case는 무엇이, 어디서, 왜 실패했는지 적는다. 실행은 모든 target의 상태, 시간, 첫 실패
   줄을 담은 summary로 끝나고, CI는 그것을 job summary로 내고 그 실행 id의 보고서와 함께 올리며, target이
   실패하거나 실행되지 않으면 job은 실패한다.
-- test 단계는 아무것도 남기지 않는다. check runner와 `make owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
+- test 단계는 아무것도 남기지 않는다. check runner와 `make feature-owner-check`는 단계마다 자기 임시 directory(`TMPDIR`)와
   자기 process group에서 실행한다. 통과한 단계가 그 directory의 entry, `.runtime/run`의 실행 directory, group의
   process를 남기면 그 단계는 남긴 것을 적고 실패하며, 실패한 단계가 남긴 것은 보고서에 들어간다. 어느 쪽이든
   runner는 그 뒤 남은 것을 지우고 process를 끝낸다. code는 실패를 포함한 모든 경로에서 자기 임시 file을 지운다.
@@ -64,8 +80,7 @@
   허용한다. `make install`이 검사가 읽는 것을 download하고, Makefile은 cargo, go, npm, Composer를 offline으로
   실행하며(`CARGO_NET_OFFLINE`, `GOPROXY=off`, `npm_config_offline`, `COMPOSER_DISABLE_NETWORK`), install target만
   `$(ONLINE)`으로 version을 푼다. 빠진 download는 online으로 다시 시도하라는 말이 아니라 `run make install`과 함께
-  실패한다. `make package-check`의 release asset 설치 검사는 tests/release-install의 commit한 lock에서 빈 cache로
-  `npm ci`와 `composer install`을 실행하고, `make install-release-fixtures`가 그 lock을 쓴다.
+  실패한다.
 - 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `.go-version`,
   `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
@@ -85,37 +100,30 @@
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
-  때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/check/push-gate.mjs)를 실행하고, gate는 push하는
-  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push, pull request와
-  merge group에서 그 commit을 다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make owner-check`와 전체 묶음의 guard는
+  때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/kit/push-gate.mjs)를 실행하고, gate는 push하는
+  commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push에서 그 commit을
+  다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make hooks-check`와 전체 묶음의 guard는
   hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
-- 모든 변경은 pull request와 merge queue로 `main`에 들어가며, 이 저장소의 어떤 명령도 `main`을 push하지 않는다.
-  branch는 GitHub의 표준 명령이나 GitHub UI로 게시한다: `git push origin HEAD:refs/heads/<branch>`,
-  `gh pr create --base main --head <branch> --fill`, `gh pr merge <branch> --auto --rebase`. `.github/ruleset.json`의
-  GitHub ruleset `main`은 pull request(승인 없음), merge 방식 `REBASE`의 merge queue, 선형 history, 그리고 모든 pull
-  request와 merge group에서 실행되는 GitHub Actions check `push-gate`(`.github/workflows/push-gate.yml`)와
-  `ci-passed`를 요구한다. `ci-passed`는 `.github/workflows/ci.yml`의 마지막 job으로, job `test`(CI group마다 job 하나)와
-  `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만 통과한다. ci.yml이 저장소의 모든 검사를 가지고,
-  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다. ruleset은 `main`의 force-push와 삭제를 거부하며 bypass actor가 없다.
-  그래서 GitHub는 관리자의 것을 포함해 `main`에 대한 직접 push를 거부한다. `make github-ruleset`은 ruleset과 선언한
-  저장소 설정(`allow_rebase_merge`, `allow_auto_merge`, `delete_branch_on_merge`)을 적용하고, `make
-  github-ruleset-check`는 그것이 선언과 다르면 각 field를 밝히며 실패한다.
-- `make check`는 어떤 단계보다 먼저, 체크리스트 항목(하위 항목 포함)이 `[~]`인 동안, 추적하는 file에 commit하지
-  않은 변경이 있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부한다.
-  `make rerun-failed`는 기록된 commit이나 그 후손 commit에서, 통과하지 못한 target과 그 commit 뒤에 바뀐
-  path가 고르는 owner target만 다시 실행한다: 원인이 tree 밖(환경이나 machine 자원)에 있는 실패와, 전체 실행
-  뒤에 체크리스트 항목으로 고친 code의 실패에 쓴다. 기록된 commit의 후손이 아닌 commit은 새 전체 묶음을
-  받고, 그것은 활성 항목이 모두 완료되었을 때 한 번 실행한다. 다시 실행하려고 기록을 지우거나 고치지 않는다. 새
-  checkout에는 기록이 없으므로 CI는 push마다 `make check`를 실행한다.
+- `.github/workflows/ci.yml`이 저장소의 모든 검사를 가지고 `main`으로의 push와 수동 실행에서 실행된다. 마지막 job
+  `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
+  통과한다(`make ci-passed`). `.github/workflows/push-gate.yml`은 모든 push에서 push gate를 실행하고,
+  `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
+- `make check`는 어떤 단계보다 먼저 `scripts/kit/full-run.mjs`의 guard를 실행한다: 체크리스트 항목(하위 항목 포함)이
+  `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
+  `var/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부하며, 그렇지 않으면 target `check-run`을 실행하고
+  결과를 기록한다. `make rerun-failed`는 같은 tree에서 그 기록의 통과하지 못한 target을 다시 실행한다: 원인이 tree
+  밖(환경이나 machine 자원)에 있는 실패에 쓴다. 다시 실행하려고 기록을 지우거나 고치지 않는다. 새 checkout에는 기록이
+  없으므로 CI는 guard가 없는 `make check-run GROUP=<group>`을 실행한다.
 - 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
   추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
-  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. CI에서 `git-check`는 pull request나 merge group의 제목을
-  읽고, workflow가 그 범위를 make check에 `ORM_GIT_RANGE`로 준다. 그것이 없으면 HEAD를 읽는다. 추적하는 file은
-  commit id를 기록하지 않는다.
+  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. `make commits-check`(`scripts/kit/check-commits.mjs`, `config/commits.json`)는
+  `RANGE`(`<base>..<head>`)의 message를, 없으면 HEAD의 message를 검사한다. type과 한도는 `config/commits.json`의 data다.
+  추적하는 file은 commit id를 기록하지 않는다.
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
-  도구다. CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
+  도구다(`config/owner-checks.json`이 path를 `make feature-owner-check`에 넘기고, 그것이
+  `scripts/features/owners.mjs`로 검사를 고른다). CI가 push 뒤에 전체 묶음을 실행하므로, commit이나 push 전에 그것을 요구하는 규칙은 없다.
   `contracts/features.json`의 모든 검증 명령은 `inputs`를, coverage 단위(owner client와 사용 부분)는
   `tests`와 선택적 `inputs`를 선언한다. 이 명령은 바뀐 file이 그 입력이거나 선언한 fixture data가 그 file을
   적는 명령과 단위, 그리고 `contracts/features.json`의 자기 항목이 바뀐 기능의 명령과 단위만 실행한다.
@@ -172,17 +180,20 @@
 
 ## Release
 
-- release는 version을 올리는 pull request `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다:
-  그것은 VERSION과 모든 package file을 X.Y.Z로 바꾸고(`make version-check`), CHANGELOG.md와 CHANGELOG.ko.md에서
-  `## Unreleased`를 새 빈 `## Unreleased` 아래의 `## X.Y.Z`로 바꾼다.
-- 그것이 merge되면 maintainer가 `main`의 merge된 commit에 `vX.Y.Z`(하위 directory의 Go module은 `<dir>/vX.Y.Z`)를
-  tag한다. tag는 pull request로 올리지 않으며, tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
+- release는 version을 올리는 commit `chore(release): Release X.Y.Z (#<체크리스트 ID>)`로 시작한다. 그 commit은 작업을 담은
+  commit의 CI가 성공한 뒤 `main`에 둔다: VERSION과 `config/release.json`의 `manifests`가 이름을 적은 모든 package file을
+  X.Y.Z로 바꾸고(`make version-check`), CHANGELOG.md와 CHANGELOG.ko.md에서 `## Unreleased`를 새 빈 `## Unreleased`
+  아래의 `## X.Y.Z`로 바꾼다.
+- 그 commit의 CI(`push-gate`와 `ci-passed`)가 성공한 뒤 maintainer가 그 commit에 `vX.Y.Z`를 tag하고 push한다. 그 tag는
+  저장소 root의 Go module `github.com/polyspec/orm`도 release한다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이다.
 - tag의 push는 `.github/workflows/release.yml`을 실행하고, 그것이 GitHub Release를 게시한다: `make release-verify`
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
-  manifest가 X.Y.Z를 가지고 변경 이력에 그 section이 있다), `make release-assets`(npm tarball과 Composer zip),
-  `make release-publish`(그 section의 notes로 만든 release이며, GitHub release 본문의 한도인 125000자를
-  넘는 section은 tag의 CHANGELOG.md에서 그 section `#XYZ`를 가리키는 한 줄이 된다)다. test는 다시 실행하지 않는다.
-- Python client(`packages/orm-python/pyproject.toml`)는 git tag로 소비되고 release archive가 없다. version을 올리는
-  pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽으며,
-  `make release-versions`와 `make release-assets`는 그것을 다루지 않는다(`scripts/release/release.mjs`의
-  `NOT_RELEASED`에 있다).
+  manifest가 X.Y.Z를 가지고, `go.mod`의 module path가 `github.com/polyspec/orm`이며, 변경 이력에 그 section이 있다),
+  `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
+  `polyspec/orm-dbspec`의 `polyspec-orm-dbspec-php-X.Y.Z.zip`), `make release-publish`(그 section의 notes로 만든
+  release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
+  된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
+  분류되어 있기를 요구한다.
+- Python client(`packages/orm-python/pyproject.toml`)와 Rust crate `orm`, `orm-schema`, `orm-build`는 git tag로 소비되고
+  release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
+  `version`을 설정한다.

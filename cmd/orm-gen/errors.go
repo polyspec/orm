@@ -1,5 +1,5 @@
 // orm-gen errors: docs/errors.yaml → one constants file per language, so every client names the
-// same codes (docs/checklist.md T5.2). The yaml is a flat list; no YAML library is needed.
+// same codes (docs/plans/execution-checklist.md T5.2). The yaml is a flat list; no YAML library is needed.
 //
 //	orm-gen errors --lang go --out packages/orm-go/orm/codes.go
 //	orm-gen errors --lang php --out packages/orm-php/src/Code.php

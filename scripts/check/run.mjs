@@ -1,4 +1,4 @@
-// make check, make rerun-failed, make bench와 make run-databases의 runner다. 실행마다 자기 bench
+// make check-run, make bench와 make run-databases의 runner다. 실행마다 자기 bench
 // database와 decimal database를 만들어(scripts/check/databases.sh) 모든 target이 그것을 쓰게 하고,
 // target을 하나씩 `make <target>`으로 실행한 뒤 database를 지운다. 공유 database에 다른 실행이나
 // session이 남긴 상태에 기대지 않기 위해서다.
@@ -14,13 +14,11 @@
 // 실행하지 않은 target이 있으면 1로 끝난다. 실행의 id는 ORM_CHECK_RUN_ID(CI는 run id와 attempt를 준다)이거나
 // 실행마다 새로 만든 이름이며, 보고서는 .runtime/check/<id>/report에 있다.
 //
-// `--full-run`(make check)과 `--rerun-failed`(make rerun-failed)는 전체 suite의 guard
-// (scripts/check/full-run.mjs)가 어떤 단계보다 먼저 실행을 허용해야 시작하고, 거부되면 2로 끝난다.
-// 허용된 실행은 database 만들기와 지우기, 각 target의 시작과 결과를 .runtime/full-run.json에
-// 기록한다. `--rerun-failed`는 target을 인자로 받지 않고 그 기록에서 통과하지 못한 target을 실행한다.
+// 실행은 database 만들기와 지우기, 각 target의 시작과 결과를 .runtime/check/<id>/record.json에
+// 기록한다(scripts/check/record.mjs). 전체 suite의 guard(진행 중 항목, commit하지 않은 변경, tree마다 한 번)는
+// scripts/kit의 `make check`가 이 runner 앞에서 맡는다.
 //
-// Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--full-run] <servers env | -> <target>...
-//        node scripts/check/run.mjs --rerun-failed <servers env>
+// Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--job-summary] <servers env | -> <target>...
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
@@ -29,13 +27,11 @@ import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
 import { duration, runGroup } from '../../tests/testcase.mjs';
 import { expandNeeds, failedCiSetup, SETUP_NEEDS } from './ci-setup.mjs';
-import { claim, ENTRIES, printRefusal } from './full-run.mjs';
+import { startRecord } from './record.mjs';
 import { runStep } from './step.mjs';
 import { monitor } from './resources.mjs';
 import { missingDownloads } from './downloads.mjs';
 
-// setupLabel은 runner의 setup 단계(downloads, servers, databases/create, databases/drop)와 CI setup step(ci/<id>)이다.
-const setupLabel = label => ['downloads', 'servers', 'databases/create', 'databases/drop'].includes(label) || label.startsWith('ci/');
 import { cappedLog, diskSnapshot, failures, keepFile, keepRunDirectory, npmErrors, NPM_LOG, publish, spaceCause, reportDirectory, reportWriter, runName, summary, writeEnvironment } from './report.mjs';
 
 // command는 program을 단계 하나로 실행하고(runStep: 자기 임시 directory와 process group) 출력 줄을 단계로 내보낸다.
@@ -88,27 +84,16 @@ function targetInputs(root, target) {
   return JSON.parse(readFileSync(path, 'utf8')).targets[target]?.inputs ?? [];
 }
 
-// runChecks는 실행 하나를 하고 종료 상태를 돌려준다: 거부 2, 실패 1, 통과 0. mode는 'check'(전체 suite),
-// 'rerun-failed'나 undefined(make bench, make run-databases: guard와 기록이 없다)다. run은
+// runChecks는 실행 하나를 하고 종료 상태를 돌려준다: 실패 1, 통과 0. run은
 // command(root)와 같은 모양의 함수다. needs는 target마다 필요한 setup 단계('databases')이고, id는 실행의 이름이며,
 // snapshot은 공간 기록(diskSnapshot과 같은 모양)이다.
-export async function runChecks({ root, mode, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP, downloads = missingDownloads }) {
+export async function runChecks({ root, jobSummary = false, servers, targets: declared, run, needs = declaredNeeds(root), id = process.env.ORM_CHECK_RUN_ID, snapshot = diskSnapshot, ciSetup = process.env.ORM_CI_SETUP, downloads = missingDownloads }) {
   // 실행의 이름은 주어진 id이거나 process id와 임의의 값이다. 같은 이름의 database가 있으면 그것은 이 실행이 만든
   // 것이 아니므로 bench-db.sh가 지우지 않도록 이름이 겹치지 않아야 한다.
   const runId = id ? runName(id) : `orm_check_${process.pid}_${randomBytes(4).toString('hex')}`;
   const name = runId;
-  let targets = declared;
-  let recorder;
-  let recorded;
-  let current;
-  if (mode) {
-    const claimed = claim(root, mode, declared, runId);
-    if (claimed.refused) {
-      printRefusal(ENTRIES[mode], claimed.refused);
-      return 2;
-    }
-    ({ targets, recorder, record: recorded, run: current } = claimed);
-  }
+  const targets = declared;
+  const { recorder, record: current } = startRecord(root, runId, targets);
   // directory는 이 실행의 database 파일(env, decimal-env, SQLite)이고 databases.sh drop이 통째로 지운다. 보고서는 그
   // 옆의 report다: drop이 보고서를 지우지 않는다.
   const directory = resolve(root, '.runtime/check', runId, 'databases');
@@ -137,7 +122,7 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
   const results = [];
   // record는 단계 하나를 실행한다. 출력은 target log에 쓰고 실패 줄을 모은다.
   const record = async (label, kind, body) => {
-    const step = recorder?.begin(label, kind);
+    const step = recorder.begin(label, kind);
     const started = performance.now();
     const log = join(report, 'targets', `${label.replaceAll('/', '-')}.log`);
     const found = failures();
@@ -205,12 +190,12 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     // 이 단계 동안 실패한 보고서 쓰기는 그 단계의 기록에 남는다.
     const reportErrors = writer.failed.slice(written);
     if (reportErrors.length) details.reportErrors = reportErrors;
-    if (step) recorder.end(step, passed, details);
+    recorder.end(step, passed, details);
     results.push({ label, passed, elapsed, ...details });
     return passed;
   };
   const skip = (target, reason) => {
-    recorder?.notRun(target, reason);
+    recorder.notRun(target, reason);
     results.push({ label: target, passed: false, notRun: reason, elapsed: 0 });
     console.log(`NOT-RUN check/${target}: ${reason}`);
   };
@@ -303,21 +288,16 @@ export async function runChecks({ root, mode, servers, targets: declared, run, n
     console.log(`check: ${notRun ? 'NOT-RUN' : passed ? 'PASS' : 'FAIL'} ${label} elapsed=${duration(elapsed)}${notRun ? `: ${notRun}` : ''}`);
   // 단계 밖에서 실패한 보고서 쓰기와 기록 쓰기도 실행의 기록과 summary에 남는다.
   const stepErrors = new Set(results.flatMap(result => result.reportErrors ?? []));
-  const runErrors = [...writer.failed.filter(error => !stepErrors.has(error)), ...(recorder?.writeErrors ?? [])];
+  const runErrors = [...writer.failed.filter(error => !stepErrors.has(error)), ...recorder.writeErrors];
   if (current && runErrors.length) current.reportErrors = runErrors;
-  const finished = recorder?.finish();
+  const finished = recorder.finish();
   const failed = results.filter(result => !result.passed);
-  const writeFailures = writer.failed.length + (recorder?.writeErrors.length ?? 0);
-  if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...(recorder?.writeErrors ?? [])].join('\n')}`);
+  const writeFailures = writer.failed.length + recorder.writeErrors.length;
+  if (writeFailures) console.log(`check: ${writeFailures} report or record write(s) failed:\n${[...writer.failed, ...recorder.writeErrors].join('\n')}`);
   if (failed.length) console.log(`check: ${failed.length} of ${results.length} step(s) failed or did not run; report ${relative(root, report)}`);
-  // summary는 기록에서 만든다. 기록이 없는 실행(make bench, make run-databases)은 이 실행의 결과로 만든다.
-  // 기록이 없는 실행(make run-databases, ci.yml의 job docs가 실행하는 make docs-ci)은 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다. 기록이
-  // 있는 make check는 summary 단계(scripts/check/summary.mjs)가 쓴다.
-  writer.run(join(report, 'summary.md'), () => publish(summary(finished ?? {
-    commit: '', tree: '', started: '', ended: new Date().toISOString(), result: failed.length ? 'failed' : 'passed',
-    setup: results.filter(result => setupLabel(result.label)).map(toStep),
-    targets: results.filter(result => !setupLabel(result.label)).map(toStep),
-  }, { run: current, report: relative(root, report) }), report, { step: !finished }));
+  // summary는 기록에서 만든다. jobSummary인 실행(make run-databases, make bench, ci.yml의 job docs가 실행하는 make docs-ci)은
+  // 그 summary를 GITHUB_STEP_SUMMARY에도 쓴다: 그 실행 뒤에는 summary 단계(scripts/check/summary.mjs)가 없다.
+  writer.run(join(report, 'summary.md'), () => publish(summary(finished, { run: current, report: relative(root, report) }), report, { step: jobSummary }));
   active = null;
   return failed.length || writeFailures ? 1 : 0;
 }
@@ -339,21 +319,19 @@ export function crash(error) {
   if (!active) return;
   const { recorder, writer, report, root, current } = active;
   active = null;
-  const record = recorder?.crash(reason);
+  const record = recorder.crash(reason);
   if (record) writer.run(join(report, 'summary.md'), () => publish(summary(record, { run: current, report: relative(root, report), crashed: reason }), report));
 }
 
-const toStep = result => ({ name: result.label, status: result.notRun ? 'not-run' : result.passed ? 'passed' : 'failed', elapsed: result.elapsed, reason: result.notRun, failures: result.failures, warnings: result.warnings, log: result.log });
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const mode = { '--full-run': 'check', '--rerun-failed': 'rerun-failed' }[args[0]];
-  if (mode) args.shift();
+  const jobSummary = args[0] === '--job-summary';
+  if (jobSummary) args.shift();
   const [serversArgument, ...targets] = args;
-  const valid = serversArgument && targets.every(target => /^[a-z0-9-]+$/.test(target))
-    && (mode === 'rerun-failed' ? targets.length === 0 : targets.length > 0);
+  const valid = serversArgument && targets.length > 0 && targets.every(target => /^[a-z0-9-]+$/.test(target));
   if (!valid) {
-    console.error('usage: node scripts/check/run.mjs [--full-run] <servers env> <target>...\n       node scripts/check/run.mjs --rerun-failed <servers env>');
+    console.error('usage: node scripts/check/run.mjs [--job-summary] <servers env | -> <target>...');
     process.exit(2);
   }
   const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -361,6 +339,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   // 30초마다 memory, disk, RSS가 큰 process, 보낸 group signal을 stdout에 쓴다(scripts/check/resources.mjs).
   const stopMonitor = monitor();
   // servers `-`는 server 없는 실행이다.
-  process.exitCode = await runChecks({ root, mode, servers: serversArgument === '-' ? null : resolve(serversArgument), targets, run: command(root) });
+  process.exitCode = await runChecks({ root, jobSummary, servers: serversArgument === '-' ? null : resolve(serversArgument), targets, run: command(root) });
   stopMonitor();
 }

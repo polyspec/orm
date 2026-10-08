@@ -1,3 +1,4 @@
+<!-- doc-id: security -->
 # Security policy
 
 ## Reporting

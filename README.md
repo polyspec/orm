@@ -1,3 +1,4 @@
+<!-- doc-id: readme -->
 # orm 0.0.4
 
 A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.4. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
@@ -74,7 +75,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 
 `examples/thin-slice` · `examples/complex` · `docs/dsl.md` grammar · `docs/dbspec.md` schema language · `docs/schema.md` schema tools · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` column styles · `docs/dialects.md` MySQL/PostgreSQL/SQLite ·
-`docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/checklist.md` work plan.
+`docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/plans/execution-checklist.md` work plan.
 
 ## Tooling
 `orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `polyspec-orm-build` (Rust),

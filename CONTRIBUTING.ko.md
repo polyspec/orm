@@ -1,3 +1,5 @@
+<!-- doc-id: contributing -->
+<!-- source-sha256: 66c4574fd33f21c812e830eb98d19efdb46f9f54a6c52f5509dd9050a084f93a -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -10,12 +12,12 @@
 4. 영문과 한글 paired document를 함께 갱신한다.
 5. 바뀐 것의 unit test, 곧 그 Red/Green case를 실행하고 필요하면 commit 설명에 결과를 기록한다. end-to-end
    실행, `make owner-check`, 전체 묶음은 push 뒤 CI에서 실행하며, push 전에 필요한 로컬 검사는 없다.
-6. 전체 묶음 `make check`는 모든 pull request와 merge group에서 CI가 실행한다. 어떤 단계보다 먼저,
-   `docs/checklist.md`의 항목이 `[~]`인 동안(각 ID와 제목을 적는다), 추적하는 file에 commit하지 않은 변경이
-   있는 동안, 그리고 `.runtime/full-run.json`이 같은 tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 기록하고
-   있을 때 이유와 종료 상태 2로 거부한다. 기록은 tree, commit, 결과, 통과하지 못한 target과 모든 단계의 시각을
-   담고, 첫 단계 전과 각 단계마다 쓰이므로 강제 종료된 실행은 `incomplete`로 남는다. `make rerun-failed`는 현재
-   tree의 기록에서 통과하지 못한 target만 실행하며, 그런 기록이 없으면 거부된다.
+6. 전체 묶음은 `main`으로의 push 뒤 CI가 실행한다(`make check-run GROUP=<group>`). 로컬 `make check`는 먼저
+   `scripts/kit/full-run.mjs`의 guard를 실행한다: `docs/plans/execution-checklist.md`의 항목이 `[~]`인 동안(각 ID와
+   제목을 적는다), 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
+   `var/full-run.json`이 같은 tree(`git rev-parse HEAD^{tree}`)의 전체 실행을 기록하고 있을 때 이유와 종료 상태 1로
+   거부한다. guard는 첫 단계 전과 각 단계마다 기록을 쓴다. `make rerun-failed`는 현재 tree의 기록에서 통과하지 못한
+   target만 실행하며, 그런 기록이 없으면 거부된다.
 
 ## Test database server
 
@@ -46,7 +48,7 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 여러 checkout의 실행과 다른 도구가 같은 서버를 동시에 쓸 수 있으므로 그 사용은 lease(`tests/lease`)로 다룬다. `TEST_ENV`를 읽는 make 줄은 그 줄이 끝날 때까지 `ORM_TEST_SERVERS_LEASES`의 shared lease를 가진다. `make test-servers-stop`, 새로 하는 `make test-servers`, MySQL migration은 exclusive lease를 가지며, lease가 하나라도 있으면 보유자마다 checkout, process id, 시작 시각, 명령을 적고 거부된다. make 밖의 도구는 `.runtime/bin/lease hold <ORM_TEST_SERVERS_LEASES> shared --pid <pid>`로 자기 process가 끝날 때까지 shared lease를 가진다. 보유한 lease는 보유자와, 보유자가 끝나면 그것을 지우는 releaser를 적는다. 보유자는 끝났지만 releaser가 실행 중인 lease는 풀리는 중이므로 기다리는 요청은 그것을 기다린다. 보유자와 releaser가 모두 끝난 lease는 보유자 없는 lease이고 아무도 막지 않는다. 보유자 없는 shared lease는 어느 요청이든, 보유자 없는 exclusive lease는 다음 exclusive 요청이 가져가며 그 요청이 자원을 다시 만든다. 보유자 없는 exclusive lease가 남아 있는 동안 shared 요청은 거부된다. 그 보유자가 자원을 만들다 끝났을 수 있기 때문이다. 가져갈 때마다 그것을 적는다. `make test-servers-leases`는 lease를 적고, `make test-servers-leases-clear`는 보유자 없는 lease를 지우며 그것을 적는다.
 
-함께 쓰는 bench나 decimal database는 없다. `make check`, `make owner-check`, `make run-databases TARGETS="<target>..."`는 `scripts/check/databases.sh`로 자기 실행의 bench와 decimal database를 만들어 seed하고, `TEST_ENV`(`BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`, `ORM_BENCH_MYSQL_DSN`)와 `DECIMAL_ENV`로 모든 target에 주며, 끝에 지운다. 그것을 읽는 target은 server 환경만으로 실행하면 실패하므로 `make run-databases`로 실행한다.
+함께 쓰는 bench나 decimal database는 없다. `make check-run`, `make feature-owner-check`, `make run-databases TARGETS="<target>..."`는 `scripts/check/databases.sh`로 자기 실행의 bench와 decimal database를 만들어 seed하고, `TEST_ENV`(`BENCH_MYSQL_DSN`, `BENCH_POSTGRES_DSN`, `BENCH_SQLITE_DSN`, `ORM_BENCH_MYSQL_DSN`)와 `DECIMAL_ENV`로 모든 target에 주며, 끝에 지운다. 그것을 읽는 target은 server 환경만으로 실행하면 실패하므로 `make run-databases`로 실행한다.
 
 `make check`, `feature-check`, `ts-check`, `ts-min-check`, `client-db-check`, `client-pooler-check`, `case-database-check`, `conformance-check`, `db-test`, `perf-check`는 `.runtime/servers/env`를 읽고, 파일이 없으면 실패한다. `client-pooler-check`는 `ORM_TEST_POSTGRES_DSN`을 PgBouncer DSN으로, `ORM_TEST_MYSQL_DSN`을 ProxySQL DSN으로 바꾸어 클라이언트 데이터베이스 테스트를 실행한다. 이 target들은 환경 파일의 서버 DSN을 `ORM_TEST_MYSQL_SERVER_DSN`과 `ORM_TEST_POSTGRES_SERVER_DSN`으로도 export하며, pooler check는 이 둘을 바꾸지 않는다. rollback 실패 case는 이 DSN으로 transaction의 서버 session을 종료한다. ProxySQL은 text protocol의 `KILL`을 자기 client session에 대한 명령으로 받기 때문이다.
 
@@ -60,6 +62,6 @@ ProxySQL 사용자는 `orm`, 비밀번호는 `orm`이다. PgBouncer는 primary�
 
 동작을 나타내는 짧은 영문 명령형 제목을 사용한다. 예: `Implement root IN chunking`. 하나의 commit에는 하나의 변경 범위만 둔다.
 
-## Pull request
+## 변경
 
-동작 변경, 영향받은 client와 database, 실행한 test, 알려진 제한을 작성한다. credential, 운영 data, repository generator가 생성하지 않는 generated file은 포함하지 않는다.
+동작 변경, 영향받은 client와 database, 실행한 test, 알려진 제한을 commit message와 changelog 항목에 작성한다. credential, 운영 data, repository generator가 생성하지 않는 generated file은 포함하지 않는다.

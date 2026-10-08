@@ -23,6 +23,7 @@ features:
     details: MySQL, PostgreSQL, and SQLite preserve query semantics. SQL differences and supported features are documented by dialect.
     link: /dialects
 ---
+<!-- doc-id: index -->
 
 ## One query in four clients
 
@@ -56,6 +57,6 @@ Go `model.Author()` returns `*model.AuthorModel`. Rust and TypeScript use asynch
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](interface-implementation.md) and the [checklist](checklist.md) for verification scope and remaining work.
+The implemented clients are **Go, PHP, Rust, and TypeScript**. All four clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](interface-implementation.md) and the [checklist](plans/execution-checklist.md) for verification scope and remaining work.
 
 [DSL](dsl.md) · [Schema](schema.md) · [IR / Plan](protocol.md) · [Complex query example](examples/complex-query.md) · [Documentation build and deployment](docs-development.md) · [한국어 문서](index.ko.md)

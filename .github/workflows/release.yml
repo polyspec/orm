@@ -1,15 +1,13 @@
-# Release: the maintainer tags a commit of main with vX.Y.Z (or <dir>/vX.Y.Z
-# for a Go module in a subdirectory, at any depth), and this workflow creates
-# the GitHub Release of that tag in four make steps (scripts/release/release.mjs).
-# Every commit of main reached it through the merge queue with the required
-# checks, so the tests are not run again: release-verify checks that the tagged
-# commit is on main and that the latest runs of its checks push-gate and
-# ci-passed succeeded; release-versions checks that every released manifest
-# declares the version of the tag and that CHANGELOG.md and CHANGELOG.ko.md
-# have its section; release-assets builds the npm tarball and the Composer zips
-# (a Go module tag builds nothing); release-publish creates the release with
-# them and the notes of that section. No step or job has timeout-minutes
-# (make repo-check).
+# Release: the maintainer tags a commit of main with vX.Y.Z after its CI
+# succeeded, and this workflow creates the GitHub Release of that tag in four
+# make steps (scripts/kit/release.mjs, config/release.json). The tests are not
+# run again: release-verify checks that the tagged commit is on main and that
+# the latest runs of its checks push-gate and ci-passed succeeded;
+# release-versions checks that every released manifest declares the version of
+# the tag, that go.mod declares the module path, and that CHANGELOG.md and
+# CHANGELOG.ko.md have its section; release-assets builds the npm tarball and
+# the Composer zips; release-publish creates the release with them and the
+# notes of that section. No step or job has timeout-minutes (make repo-check).
 name: release
 
 on:

@@ -1,3 +1,5 @@
+<!-- doc-id: dsl -->
+<!-- source-sha256: 43ed9edef78b0341f15c01c2aec9b1561296021055f4a106fd6e550bde59027f -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -273,7 +275,7 @@ rows, err := model.Product().Connect(slave1).
 ```php
 $item = (new CartItem)->connect($master)
     ->setProductSeq(5)->setQuantity(2)
-    ->newAmount(24000)          // INSERT 문장에 포함하지 않음
+    ->newAmount(24000)          // not part of the INSERT statement
     ->create();
 $item->getAmount();             // 24000
 ```

@@ -3,12 +3,12 @@
 # interfaces and the hot-path regression check of the feature verification, the decoder
 # fuzz checks and the common state contracts of the conformance results, split
 # into the CI groups of the Makefile (CI_GROUPS): one job per group, all at
-# once, each running make check GROUP=<group> on the targets CI_TARGETS_<group>;
+# once, each running make check-run GROUP=<group> on the targets CI_TARGETS_<group>;
 # the groups together run every target of CHECK_TARGETS once. The job docs runs
 # the documentation checks of the published site, and the last job ci-passed,
-# the check that the ruleset of main requires, passes only when every other
-# job succeeded. This is where the full suite
-# runs: on every pull request and merge group, never stopping at a failure, and
+# the check that the release of a tag requires (make release-verify), passes
+# only when every other job succeeded. This is where the full suite
+# runs: on every push to main and on a manual run, never stopping at a failure, and
 # recording enough to fix every failure before the next run. A check it lacks
 # belongs in a target of CHECK_TARGETS, and make repo-check fails a step after
 # make check other than the summary and the report upload, and a group set that
@@ -21,8 +21,8 @@
 # deadline. make repo-check fails a workflow with timeout-minutes.
 name: ci
 on:
-  pull_request:
-  merge_group:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 # A new run cancels the run before it on the same ref: the runners are few, and only the run of the newest head
@@ -63,9 +63,8 @@ jobs:
     # and every other target runs. A failed step fails the job. The checkout
     # and Node are what the runner itself needs.
     steps:
-      # git-check reads the commits of the pull request or the merge group
-      # (ORM_GIT_RANGE of make check), so the checkout carries the full commit
-      # graph.
+      # commits-check reads the message of HEAD and the kit tools read the
+      # commit graph, so the checkout carries the full commit graph.
       - uses: actions/checkout@v5
         id: checkout
         with:
@@ -213,10 +212,7 @@ jobs:
         env:
           ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}
           ORM_CI_SETUP: ${{ toJSON(steps) }}
-          # The commits git-check reads: the pull request or the merge group; a
-          # manual run gives none, and git-check reads HEAD.
-          ORM_GIT_RANGE: ${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}
-        run: make check GROUP=${{ matrix.group }}
+        run: make check-run GROUP=${{ matrix.group }}
       # The summary of the run, also of a runner that did not finish, as the job
       # summary and in the report, with the run record and the server logs; then
       # the report of this run id alone, so no file of an earlier run is
@@ -293,5 +289,5 @@ jobs:
       - name: every job passed
         if: ${{ !cancelled() }}
         env:
-          CI_NEEDS: ${{ toJSON(needs) }}
+          RESULTS: ${{ toJSON(needs) }}
         run: make ci-passed

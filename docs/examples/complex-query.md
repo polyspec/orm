@@ -1,3 +1,4 @@
+<!-- doc-id: examples-complex-query -->
 # Complex query example — product search list
 
 This example uses the syntax in [dsl.md](../dsl.md). It combines several relation and condition patterns:

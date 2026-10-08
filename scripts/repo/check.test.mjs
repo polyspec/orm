@@ -16,6 +16,10 @@ import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { callerEnvironmentErrors, generateRuns, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, testEntries, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 
+// The files of polyspec/kit (kit.json lists the vendored directories) are checked by make kit-check and make kit-test, and they are
+// never edited here, so the rules of this repository do not read them.
+const vendored = JSON.parse(readFileSync(new URL('../../kit.json', import.meta.url), 'utf8')).vendored.map(directory => `${directory}/`);
+const notVendored = path => !vendored.some(directory => path.startsWith(directory));
 const tracked = ['scripts/docs/rules.mjs', 'packages/orm-npm/package.json', 'scripts/typescript/sqlite-test.sh'];
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
@@ -345,12 +349,12 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   const { groups, targets } = ciGroups(makefile);
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   assert.deepEqual(groups.flatMap(group => targets[group]).sort(), [...checkTargets(makefile)].sort());
-  assert.ok(workflow.includes('        run: make check GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check for the group of its matrix');
+  assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
 });
 
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
-  const grouped = (matrix = '[one, two]') => `jobs:\n  test:\n    strategy:\n      matrix:\n        group: ${matrix}\n    steps:\n      - name: make check\n        run: make check GROUP=\${{ matrix.group }}\n`;
+  const grouped = (matrix = '[one, two]') => `jobs:\n  test:\n    strategy:\n      matrix:\n        group: ${matrix}\n    steps:\n      - name: make check\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
   const make = groups => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
   assert.deepEqual(ciCheckTargetErrors(grouped(), good), []);
@@ -368,9 +372,9 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
     'Makefile CI group two declares no CI_TARGETS_two',
     'Makefile declares CI_TARGETS_three, but three is not in CI_GROUPS',
   ]);
-  assert.deepEqual(ciCheckTargetErrors(grouped(), make([])), ['ci.yml runs make check GROUP=${{ matrix.group }}, but the Makefile declares no CI_GROUPS']);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), make([])), ['ci.yml runs make check-run GROUP=${{ matrix.group }}, but the Makefile declares no CI_GROUPS']);
   assert.deepEqual(ciCheckTargetErrors(grouped().replace('    strategy:\n      matrix:\n        group: [one, two]\n', ''), good), [
-    'ci.yml job test runs make check GROUP=${{ matrix.group }} without a matrix group: [...] of CI_GROUPS',
+    'ci.yml job test runs make check-run GROUP=${{ matrix.group }} without a matrix group: [...] of CI_GROUPS',
   ]);
   // group job도 CHECK_TARGETS의 target을 따로 실행하면 두 번 실행한다.
   assert.deepEqual(ciCheckTargetErrors(grouped().replace('GROUP=${{ matrix.group }}\n', 'GROUP=${{ matrix.group }}\n      - name: again\n        run: make b-check\n'), good), [
@@ -433,7 +437,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
   const runner = ['checkout'];
-  const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\${{ matrix.leg }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check GROUP=\${{ matrix.group }}\n`;
+  const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\${{ matrix.leg }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check-run GROUP=\${{ matrix.group }}\n`;
   const after = AFTER_GROUP_CHECK.map(lines => lines.map((line, index) => `${index === 0 ? '      ' : '        '}${line.startsWith('ORM_') || line.startsWith('name: check') || line.startsWith('path:') || line.startsWith('if-no') ? '  ' : ''}${line}`).join('\n')).join('\n') + '\n';
   const job = (needs, composer) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - name: setup of the CI group\n        id: group-needs\n        if: \${{ !cancelled() }}\n        run: ${needs}\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: install PHP dependencies\n        id: composer\n        if: ${composer}\n        run: make install-php\n      - name: database servers\n        id: servers\n        if: ${stepCondition('servers')}\n        run: make test-servers\n${check}${after}`;
   const good = job(GROUP_NEEDS, stepCondition('composer'));
@@ -860,7 +864,7 @@ caseTest('no workflow step or job has timeout-minutes', COMPUTE, () => {
 // step이 그런 program(Go checker, Node script, shell script)을 직접 실행하면 거부하는지 확인한다. make target과
 // lease를 읽지 않는 program은 허용한다.
 caseTest('a workflow step runs a program that reads the lease variables only through make', COMPUTE, () => {
-  const all = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean);
+  const all = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
   const read = path => all.includes(path) ? text(path) : undefined;
   assert.deepEqual(ciLeaseErrors(workflows, all, read), []);
   const files = {
@@ -956,7 +960,7 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
 });
 
 // test 선언 case는 저장소의 JavaScript file과 최소 file을 검사한다.
-const trackedFiles = pattern => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean);
+const trackedFiles = pattern => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
 const trackedTexts = paths => Object.fromEntries(paths.map(path => [path, text(path)]));
 
 caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
@@ -1285,13 +1289,13 @@ caseTest('AGENTS states that the full suite runs on CI after a push', COMPUTE, (
 });
 
 // CI setup case(G5.52)는 workflow의 setup step이 실패해도 뒤의 step과 make check가 실행되고 그 실패를 runner에 넘기는지
-// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP이나 ORM_GIT_RANGE 없는 make check는 오류다.
+// 본다. main의 workflow처럼 id 없는 install step, 조건 없는 step, continue-on-error, ORM_CI_SETUP 없는 make check는 오류다.
 caseTest('a workflow runs every setup step and make check after a failed setup step and passes the results on', COMPUTE, () => {
   const setup = { go: 'go', rust: 'rust' };
   const runner = ['checkout'];
   const workflow = (steps, check) => `jobs:\n  test:\n    steps:\n${steps}${check}`;
   const good = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: rust\n        id: rust\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
-    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check\n`);
+    `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n        run: make check\n`);
   assert.deepEqual(ciSetupErrors({ 'ci.yml': good }, { setup, runner }), []);
   const bad = workflow(`      - uses: actions/checkout@v5\n        id: checkout\n      - uses: actions/setup-go@v6\n        with: { go-version: "1.27" }\n      - name: rust\n        id: rustup\n        continue-on-error: true\n        if: \${{ !cancelled() }}\n        run: rustup toolchain install\n`,
     `      - name: make check\n        run: make check\n`);
@@ -1304,7 +1308,6 @@ caseTest('a workflow runs every setup step and make check after a failed setup s
     'ci.yml has no setup step with the id rust of scripts/check/ci-setup.mjs',
     'ci.yml step "make check" does not run after a failed setup step; give it if: ${{ !cancelled() }}',
     'ci.yml step "make check" gives make check no ORM_CI_SETUP: ${{ toJSON(steps) }}, which tells the runner the failed setup steps',
-    'ci.yml step "make check" gives make check no ORM_GIT_RANGE of the pull request and the merge group, the commits whose subjects git-check reads',
   ]);
   // job마다 runner가 따로이므로 make check job 뒤의 docs job은 make check의 setup이나 그 뒤의 step이 아니다(G5.98).
   const docs = `  docs:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - id: node-modules\n        if: \${{ !cancelled() }}\n        run: make install-node\n      - name: documentation checks\n        id: docs\n        if: \${{ !cancelled() }}\n        run: make docs-ci\n`;
@@ -1403,7 +1406,7 @@ func fail(err error) {
     'a/main.go:8: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
     'b/main.go:6: main calls os.Exit after a defer, which then never runs; return the exit code to main and end it with os.Exit(run())',
   ]);
-  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(deferredExitErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });
 
@@ -1413,7 +1416,7 @@ caseTest('Go code does not find its files through runtime.Caller', COMPUTE, () =
   assert.deepEqual(callerPathErrors({ 'p/root_test.go': caller, 'p/doc.go': comment }), [
     'p/root_test.go:4: runtime.Caller gives the path the binary was compiled at, not the checkout that runs it; find files from the working directory (os.Getwd), which go test sets to the package directory',
   ]);
-  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files', '*.go'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(callerPathErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });
 
@@ -1424,7 +1427,7 @@ caseTest('a script that starts a process group of its own checks that group afte
     'c.mjs': "const child = spawn('go', ['test']);",
   }), ['a.mjs starts a process in a group of its own (detached: true) and never checks that group after it ends; check it with endGroup of scripts/check/step.mjs and fail on what it left']);
   const root = new URL('../..', import.meta.url).pathname;
-  const tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs'], { cwd: root }).toString().split('\n').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs'], { cwd: root }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(detachedGroupErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(join(root, path), 'utf8')]))), []);
 });
 
@@ -1467,15 +1470,15 @@ caseTest('every workflow runs on its declared events only', COMPUTE, () => {
   const text = on => `name: x\n${on.join('\n')}\n\njobs:\n  a:\n    runs-on: ubuntu\n`;
   const declared = Object.fromEntries(Object.entries(WORKFLOW_TRIGGERS).map(([path, on]) => [path, text(on)]));
   assert.deepEqual(workflowTriggerErrors(declared), []);
-  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  push:', '  pull_request:', '  merge_group:', '  workflow_dispatch:']) }), [
-    '.github/workflows/ci.yml has the triggers on: push: pull_request: merge_group: workflow_dispatch: instead of on: pull_request: merge_group: workflow_dispatch:',
+  assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/ci.yml': text(['on:', '  pull_request:', '  push:', '    branches: [main]', '  workflow_dispatch:']) }), [
+    '.github/workflows/ci.yml has the triggers on: pull_request: push: branches: [main] workflow_dispatch: instead of on: push: branches: [main] workflow_dispatch:',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/docs-pages.yml': text(['on:', '  push:', '    branches: [main]', '  pull_request:', '  workflow_dispatch:']) }), [
     '.github/workflows/docs-pages.yml has the triggers on: push: branches: [main] pull_request: workflow_dispatch: instead of on: push: branches: [main] workflow_dispatch:',
   ]);
   const { ['.github/workflows/push-gate.yml']: _, ...withoutGate } = declared;
   assert.deepEqual(workflowTriggerErrors({ ...withoutGate, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  pull_request:']) }), [
-    ".github/workflows/push-gate.yml is missing; it runs on push: branches-ignore: ['gh-readonly-queue/**'] pull_request: merge_group:",
+    ".github/workflows/push-gate.yml is missing; it runs on push:",
     '.github/workflows/review.yml runs on pull_request; only ci.yml, push-gate.yml, docs-pages.yml and release.yml run on these events',
   ]);
   assert.deepEqual(workflowTriggerErrors({ ...declared, '.github/workflows/review.yml': text(['on:', '  schedule:', "    - cron: '0 3 * * 1'", '  workflow_dispatch:']) }), []);
@@ -1516,7 +1519,7 @@ caseTest('the checks and every workflow run the Go of .go-version', COMPUTE, () 
 // Go module path case(G5.113-5)는 저장소의 모든 go.mod가 자기 directory의 module path를 선언하는지 보고, 최소 file에서 다른
 // path를 선언한 root와 하위 directory의 go.mod를 거부한다.
 caseTest('every go.mod declares the module path of its directory', COMPUTE, () => {
-  const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path));
+  const paths = execFileSync('git', ['ls-files', '-z'], { cwd: repository }).toString().split('\0').filter(path => /(?:^|\/)go\.mod$/.test(path) && notVendored(path));
   assert.ok(paths.includes('go.mod'), paths.join(' '));
   assert.deepEqual(goModulePathErrors(Object.fromEntries(paths.map(path => [path, text(path)]))), []);
   assert.deepEqual(goModulePathErrors({ 'go.mod': 'module github.com/polyspec/orm\n', 'tools/gen/go.mod': 'module github.com/polyspec/orm/tools/gen\n', 'README.md': '' }), []);
@@ -1572,6 +1575,6 @@ caseTest('no Makefile or script fixes a TCP port of the test servers', COMPUTE, 
   assert.deepEqual(fixedPortErrors({ Makefile: makefile, 'scripts/a.sh': 'export PGPORT=5432\nport=$(node scripts/free-ports.mjs 1)\n' }).map(error => error.split(' fixes ')[0]), [
     'Makefile:1', 'Makefile:4', 'scripts/a.sh:1',
   ]);
-  const tracked = execFileSync('git', ['ls-files', 'Makefile', '*.sh'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files', 'Makefile', '*.sh'], { cwd: new URL('../..', import.meta.url).pathname }).toString().split('\n').filter(Boolean).filter(notVendored);
   assert.deepEqual(fixedPortErrors(Object.fromEntries(tracked.map(path => [path, readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')]))), []);
 });

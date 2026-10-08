@@ -1,3 +1,5 @@
+<!-- doc-id: readme -->
+<!-- source-sha256: 7d7bc1a792d7e1259322818e00c283ebffc55536f7dfc8c3a9bb829c64247c3b -->
 # orm 0.0.4
 
 **Go, PHP, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 버전은 0.0.4이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -49,16 +51,16 @@ const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7,
 
 ## 빠른 시작 (MySQL 8.4와 PostgreSQL 17)
 ```sh
-make test-servers                                                   # 서버, database, bench schema와 10만 행
-. .runtime/servers/env                                              # 테스트의 DSN 변수
-(cd packages/orm-go/model && go generate)                                # Go 모델
+make test-servers                                                   # servers, databases, bench schema + 100k rows
+. .runtime/servers/env                                              # the DSN variables of the tests
+(cd packages/orm-go/model && go generate)                                # Go models
 php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
-(cd packages/orm-npm && npm run build)                            # TypeScript 모델과 라이브러리
-(cd packages/orm-rust && cargo build --release)                          # build.rs가 Rust 모델을 생성한다
+(cd packages/orm-npm && npm run build)                            # TypeScript models and library
+(cd packages/orm-rust && cargo build --release)                          # build.rs generates the Rust models
 go test ./...
 npm run typescript:test
 (cd packages/orm-rust && cargo test --workspace)
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # 네 클라이언트를 비교한다
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the four clients
 ```
 
 ## 문서
@@ -74,7 +76,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # 네 클라
 
 `examples/thin-slice` · `examples/complex` · `docs/dsl.md` 문법 · `docs/dbspec.md` 스키마 언어 · `docs/schema.md` 스키마 도구 · `docs/protocol.md` IR/Plan ·
 `docs/codec.md` 컬럼 스타일 · `docs/dialects.md` MySQL/PostgreSQL/SQLite ·
-`docs/errors.yaml` 오류 코드 · `docs/perf.md` 측정과 성능 검사 · `docs/checklist.md` 작업 계획.
+`docs/errors.yaml` 오류 코드 · `docs/perf.md` 측정과 성능 검사 · `docs/plans/execution-checklist.md` 작업 계획.
 
 ## 도구
 `orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), `polyspec-orm-build`(Rust),

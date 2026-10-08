@@ -1,3 +1,4 @@
+<!-- doc-id: tests-conformance-readme -->
 # Conformance vectors
 
 One document, four runners. Every vector is the same chain written in Go,

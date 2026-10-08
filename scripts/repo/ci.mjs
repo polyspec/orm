@@ -130,11 +130,11 @@ export function checkTargets(makefile) {
   return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1].trim().split(/\s+/) ?? [];
 }
 
-// GROUP_CHECK는 CI group의 job이 make check를 실행하는 줄이다: matrix의 group 하나의 target(CI_TARGETS_<group>)을 실행한다.
-export const GROUP_CHECK = 'make check GROUP=${{ matrix.group }}';
+// GROUP_CHECK는 CI group의 job이 runner(make check-run)를 실행하는 줄이다: matrix의 group 하나의 target(CI_TARGETS_<group>)을 실행한다.
+export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
 
-// runsCheck는 명령 조각이 make check를 실행하는지다: 모든 target(`make check`)이거나 CI group 하나(GROUP_CHECK)다.
-export const runsCheck = segment => /^make\s+check\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
+// runsCheck는 명령 조각이 전체 suite를 실행하는지다: 모든 target(`make check`, `make check-run`)이거나 CI group 하나(GROUP_CHECK)다.
+export const runsCheck = segment => /^make\s+check(?:-run)?\s*$/.test(segment.trim()) || segment.trim() === GROUP_CHECK;
 const checkStep = step => step.run.split('\n').flatMap(segments).some(runsCheck);
 const groupStep = step => step.run.split('\n').flatMap(segments).some(segment => segment.trim() === GROUP_CHECK);
 
@@ -231,7 +231,7 @@ export function ciReportPathErrors(workflow, makefile) {
 // ciCheckTargetErrors는 CI workflow가 make check의 target(CHECK_TARGETS)을 빠뜨리거나 두 번
 // 실행하는 곳마다 오류 하나를 돌려준다. step의 run text에서 줄 머리의 `make`가 실행하는 target을
 // 읽는다. `make check`는 모든 CHECK_TARGETS를 make check의 runner(scripts/check/run.mjs)로 실행하므로
-// 그 target을 따로 실행하면 두 번 실행한다. `make check GROUP=...`은 CI group 하나를 실행하므로 group들이
+// 그 target을 따로 실행하면 두 번 실행한다. `make check-run GROUP=...`은 CI group 하나를 실행하므로 group들이
 // CHECK_TARGETS를 정확히 나눠야 한다(ciGroupErrors). `make check`가 없으면 각 target이 어느 step에 있어야 한다.
 export function ciCheckTargetErrors(workflow, makefile) {
   const targets = checkTargets(makefile);
@@ -247,7 +247,7 @@ export function ciCheckTargetErrors(workflow, makefile) {
       }
     }
   }
-  if (ran.has('check'))
+  if (ran.has('check') || ran.has('check-run'))
     return [...targets.filter(target => ran.has(target)).map(target =>
       `ci.yml step "${ran.get(target)}" runs ${target}, which make check runs`),
     ...(workflowSteps(workflow).some(groupStep) ? ciGroupErrors(workflow, makefile) : [])];
@@ -614,8 +614,7 @@ export function fullSuiteRuleErrors(documents) {
 // 돌려준다. make check를 실행하는 job에서 make check 앞의 step은 모두 id를 가지고, 그 id는 runner가 필요로 하는
 // step(RUNNER_STEPS)이거나 scripts/check/ci-setup.mjs의 CI_SETUP이 그 step이 마련하는 것을 적은 step이다. 표의 step은
 // 모두 workflow에 있다. 첫 step 뒤의 step과 make check는 `if: ${{ !cancelled() }}`로 앞의 step이 실패해도 실행되고,
-// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로, git-check가 읽는 commit 범위를 pull request와 merge
-// group의 ORM_GIT_RANGE로 받는다. 다른 job의 `run:` step도 같은 job의 앞 step이
+// make check는 step 결과를 ORM_CI_SETUP: ${{ toJSON(steps) }}로 받는다. 다른 job의 `run:` step도 같은 job의 앞 step이
 // 실패해도 실행되는 조건(`if: ${{ !cancelled()`로 시작)을 가진다. continue-on-error는 실패를 job에서 지우므로 어디에도
 // 없다.
 // GROUP_NEEDS는 CI group job의 step group-needs가 실행하는 줄이다.
@@ -656,7 +655,6 @@ export function ciSetupErrors(workflows, { setup, runner }) {
       for (const id of [...runner, ...Object.keys(setup)]) if (!ids.has(id)) errors.push(`${path} has no setup step with the id ${id} of scripts/check/ci-setup.mjs`);
       if (!guarded(check)) errors.push(`${path} step "${steps[check].name}" does not run after a failed setup step; give it if: \${{ !cancelled() }}`);
       if (!texts[check].includes('ORM_CI_SETUP: ${{ toJSON(steps) }}')) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_CI_SETUP: \${{ toJSON(steps) }}, which tells the runner the failed setup steps`);
-      if (!texts[check].some(line => /^ORM_GIT_RANGE: \$\{\{ .*github\.event\.pull_request\.base\.sha.*github\.event\.merge_group\.base_sha.* \}\}$/.test(line))) errors.push(`${path} step "${steps[check].name}" gives make check no ORM_GIT_RANGE of the pull request and the merge group, the commits whose subjects git-check reads`);
     }
   }
   return errors;
@@ -758,13 +756,13 @@ export function ciMakeErrors(workflows) {
   return errors;
 }
 
-// WORKFLOW_TRIGGERS는 workflow마다 그 `on:` block이다. ci.yml은 모든 검사 job을 pull request, merge group과 수동 실행에서,
-// push-gate.yml은 push gate를 push(merge queue의 임시 branch 제외), pull request와 merge group에서 실행하고,
+// WORKFLOW_TRIGGERS는 workflow마다 그 `on:` block이다. ci.yml은 모든 검사 job을 main의 push와 수동 실행에서,
+// push-gate.yml은 push gate를 모든 push에서 실행하고,
 // docs-pages.yml은 main의 push와 수동 실행에서 공개 site를 build하고 deploy하며, release.yml은 version tag(`vX.Y.Z`,
 // `<dir>/vX.Y.Z`)의 push에서 GitHub Release를 만든다. 다른 workflow는 push, pull_request, merge_group으로 실행하지 않는다.
 export const WORKFLOW_TRIGGERS = {
-  '.github/workflows/ci.yml': ['on:', '  pull_request:', '  merge_group:', '  workflow_dispatch:'],
-  '.github/workflows/push-gate.yml': ['on:', '  push:', "    branches-ignore: ['gh-readonly-queue/**']", '  pull_request:', '  merge_group:'],
+  '.github/workflows/ci.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
+  '.github/workflows/push-gate.yml': ['on:', '  push:'],
   '.github/workflows/docs-pages.yml': ['on:', '  push:', '    branches: [main]', '  workflow_dispatch:'],
   '.github/workflows/release.yml': ['on:', '  push:', "    tags: ['v*', '**/v*']"],
 };
@@ -816,11 +814,11 @@ export function concurrencyErrors(workflows) {
   return errors;
 }
 
-// CI_PASSED_STEPS는 ci.yml의 마지막 job ci-passed의 step이다. ruleset이 요구하는 ci.yml의 check는 이 job 하나다: `if: always()`로
+// CI_PASSED_STEPS는 ci.yml의 마지막 job ci-passed의 step이다. release의 verify 단계가 요구하는 ci.yml의 check는 이 job 하나다: `if: always()`로
 // 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이 success일 때만 make ci-passed가
-// 통과한다. make ci-passed는 저장소의 Makefile과 scripts/check/ci-passed.mjs를 node로 실행하므로, 그 앞에 checkout과
+// 통과한다. make ci-passed는 저장소의 Makefile과 scripts/kit/ci-passed.mjs를 node로 실행하므로, 그 앞에 checkout과
 // .node-version의 node 설치가 있다.
-export const CI_PASSED_STEP = ['- name: every job passed', 'if: ${{ !cancelled() }}', 'env:', 'CI_NEEDS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
+export const CI_PASSED_STEP = ['- name: every job passed', 'if: ${{ !cancelled() }}', 'env:', 'RESULTS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
 export const CI_PASSED_STEPS = [
   ['- uses: actions/checkout@v5'],
   ['- uses: actions/setup-node@v7', 'with:', 'node-version-file: .node-version'],

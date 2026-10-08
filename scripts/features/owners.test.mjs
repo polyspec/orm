@@ -63,7 +63,7 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
 });
 
 caseTest('a path that no unit declares selects nothing', 5000, async () => {
-  assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/checklist.md']), []);
+  assert.deepEqual(await selectOwners(manifest, root, ['README.md', 'docs/plans/execution-checklist.md']), []);
   assert.deepEqual(await helperIds(['README.md']), []);
 });
 
@@ -92,8 +92,8 @@ const inputs = JSON.parse(await readFile(new URL('contracts/check-inputs.json', 
 const targets = selected => selected.map(item => item.target);
 
 caseTest('a changed document selects the documentation checks', 5000, async () => {
-  const selected = targets(selectTargets(inputs, ['docs/checklist.md']));
-  for (const target of ['checklist-check', 'docs-rules-check', 'docs-check', 'docs-verify-idempotent'])
+  const selected = targets(selectTargets(inputs, ['docs/plans/execution-checklist.md']));
+  for (const target of ['documents-check', 'docs-rules-check', 'docs-check', 'docs-verify-idempotent'])
     assert.ok(selected.includes(target), `selected ${selected}`);
   assert.ok(!selected.includes('rust-check'), `selected ${selected}`);
 });

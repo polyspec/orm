@@ -1,3 +1,4 @@
+<!-- doc-id: packaging -->
 # Packaging decisions
 
 | decision | choice | reason | what would reverse it |
@@ -13,14 +14,14 @@
 
 ## Installing from release assets
 
-Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip` and `polyspec-orm-dbspec-<version>.zip`. Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make package-check` installs the assets of the current commit this way in a directory outside the repository: `npm ci` and `composer install` with empty caches from the consumer projects of tests/release-install, whose locks `make install-release-fixtures` writes.
+Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip` and `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
   ```json
   {
     "dependencies": {
-      "@polyspec/orm": "file:vendor/polyspec-orm-<version>.tgz",
+      "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
       "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-0.0.3.tgz"
     }
   }
@@ -39,7 +40,7 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
 
 ## Python client release
 
-The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump pull request sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
+The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump commit sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.4` of ordered-json, so an install needs that tag to exist.
 
 ## Development layout
 

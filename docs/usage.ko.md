@@ -1,3 +1,5 @@
+<!-- doc-id: usage -->
+<!-- source-sha256: d88024a9653986353d8c1aa50191d8d58ecb1ac73f8629ce5f5ad9babe49e747 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -209,9 +211,9 @@ const rows = await new Author().connect(slave1)
 ### 집계와 그룹
 
 ```php
-(new Author)->connect($slave1)->serviceSeq(7)->groupByUserSeq()->getsCount();   // 사용자별 row_count 행
-(new Author)->connect($slave1)->serviceSeq(7)->sumLikeCount()->getSum();       // like_count 합계
-(new Author)->connect($slave1)->serviceSeq(7)->avgPrice()->getAvg();           // price 평균
+(new Author)->connect($slave1)->serviceSeq(7)->groupByUserSeq()->getsCount();   // rows per user with row_count
+(new Author)->connect($slave1)->serviceSeq(7)->sumLikeCount()->getSum();       // sum of like_count
+(new Author)->connect($slave1)->serviceSeq(7)->avgPrice()->getAvg();           // average price
 ```
 부정 묶음, 컬럼 함수 출력, 서브쿼리 컬럼, ORM 함수 값은 [dsl.md](dsl.md)에서 정의한다.
 Rust `gets_count()`는 일부 필드만 채운 모델 대신 선택한 그룹 값과 검증한 `row_count`만 담은 `GroupRows`를 반환한다.
@@ -256,17 +258,17 @@ $rows = (new Author)->connect($slave1)->serviceSeq(7)->limit(0, 20)
 ## 7. 쓰기
 
 ```php
-$row = (new Author)->connect($master)->setName('x')->setUserSeq(1)->…->create();   // 생성 키를 포함한 행 반환
-$row->setName('y')->update();                                                     // 바뀐 컬럼만 UPDATE
-$row->setName('z')->update(true);                                                 // updated_ts 불일치 → OPTIMISTIC_LOCK
+$row = (new Author)->connect($master)->setName('x')->setUserSeq(1)->…->create();   // returns the row with its generated key
+$row->setName('y')->update();                                                     // updates changed columns only
+$row->setName('z')->update(true);                                                 // updated_ts mismatch → OPTIMISTIC_LOCK
 $row->delete();
-$row->delete(true);                                                               // deleteLock()을 제외한 조회 관계부터 삭제
+$row->delete(true);                                                               // loaded relations first, except deleteLock()
 
-$replicaRow->connect($master)->plusReadCount(1)->update();                        // 복제본에서 읽고 기본 연결로 쓰기
+$replicaRow->connect($master)->plusReadCount(1)->update();                        // read on a replica, write on the primary
 
 (new Author)->connect($master)->setUuid($u)->setName('x')->…
     ->duplication((new Author)->setName('x')->plusReadCount(1))->create();        // UPSERT
-$row->newIsMember(true);                                                          // SQL에 포함하지 않는 추가 값
+$row->newIsMember(true);                                                          // attached value, not part of SQL
 ```
 
 - `update`는 방언 간 값을 맞추기 위해 `updated_ts`를 항상 명시적으로 기록한다.
@@ -371,7 +373,7 @@ PostgreSQL·SQLite 실행기는 같은 바이트를 만든다([codec.md](codec.m
 
 ```php
 $b->setJsonSetting(['a' => 1])->connect($master)->update();
-$b = (new Author)->connect($slave1)->addColumnJsonSetting()->getBySeq(42);   // 기본 SELECT에서 제외된 컬럼
+$b = (new Author)->connect($slave1)->addColumnJsonSetting()->getBySeq(42);   // excluded from the default SELECT
 $b->getJsonSetting()['a'];
 ```
 
@@ -467,12 +469,12 @@ client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를
 ## 12. 확인
 
 ```sh
-make test-servers                                        # MySQL, PostgreSQL, 각 replica, ProxySQL, PgBouncer, 시드한 벤치 데이터베이스
-. .runtime/servers/env                                   # 테스트의 DSN 변수
-go test ./...                                            # 엔진, 생성기, Go 클라이언트
-npm run typescript:test                                  # TypeScript 클라이언트
-(cd packages/orm-rust && cargo test --workspace)              # Rust 클라이언트
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # 네 클라이언트의 같은 결과 (MySQL)
+make test-servers                                        # MySQL, PostgreSQL, their replicas, ProxySQL, PgBouncer, and the seeded bench databases
+. .runtime/servers/env                                   # the DSN variables of the tests
+go test ./...                                            # engine, generator, and Go client
+npm run typescript:test                                  # TypeScript client
+(cd packages/orm-rust && cargo test --workspace)              # Rust client
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"   # four clients, identical results on MySQL
 go run ./tests/conformance/check run -driver postgres -dsn "$BENCH_POSTGRES_DSN"
 ```
 

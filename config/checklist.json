@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "hooks": ["pre-push", "commit-msg"],
+  "trackers": [
+    {
+      "path": "docs/plans/execution-checklist.md",
+      "translation": "docs/plans/execution-checklist.ko.md",
+      "format": "list",
+      "idPattern": "[A-Z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)*",
+      "states": ["[ ]", "[~]", "[o]", "[!]"],
+      "active": "[~]"
+    }
+  ]
+}

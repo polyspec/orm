@@ -122,25 +122,15 @@
     },
     {
       "id": "status.evidence",
-      "source": "docs/checklist.md",
-      "checker": "checklist-check",
+      "source": "docs/plans/execution-checklist.md",
+      "checker": "documents-check",
       "failure": "a checklist item is marked complete without implementation, test, documentation, and publication evidence"
     },
     {
       "id": "git.subject-format",
-      "source": "git history",
-      "checker": "git-check",
-      "failure": "a commit subject of the checked range (the pull request or the merge group in CI, otherwise HEAD) does not use type(scope): Subject (#id)",
-      "types": [
-        "feat",
-        "fix",
-        "docs",
-        "style",
-        "refactor",
-        "test",
-        "chore"
-      ],
-      "subject_max": 50
+      "source": "config/commits.json",
+      "checker": "commits-check",
+      "failure": "a commit of the checked range (RANGE, otherwise HEAD) does not use type(scope): Subject (#id) with a body, or breaks the limits of config/commits.json"
     }
   ]
 }

@@ -2,7 +2,7 @@
 // directory의 lock file과 설치 기록, 가짜 cargo와 go로 실행하고 network는 쓰지 않는다.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,17 +32,21 @@ caseTest('the npm and Composer packages of a lock file must be installed at thei
   }
 });
 
-caseTest('a crate or Go module that is not downloaded names make install, never a retry online', COMPUTE, () => {
+caseTest('a crate or Go module that is not downloaded names make install, never a retry online', PROCESS, () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-downloads-'));
   try {
+    const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    git('init', '-q');
     write(join(root, 'packages/orm-rust/Cargo.toml'), '');
+    write(join(root, 'packages/orm-rust/Cargo.lock'), '');
     write(join(root, 'go.mod'), 'module x\n');
-    const run = program => program === 'cargo'
-      ? { status: 101, stderr: 'error: failed to download `serde v1.0.0`\n\nCaused by:\n  attempting to make an HTTP request, but --offline was specified\nhelp: retry without the offline flag\n' }
-      : { status: 1, stderr: 'go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off\n' };
-    const missing = missingDownloads(root, { run });
+    // A cargo that answers as an offline cargo does for a crate that is not in the registry.
+    write(join(root, 'bin/cargo'), "#!/bin/sh\necho 'error: failed to download `serde v1.0.0`' >&2\necho 'help: retry without the offline flag' >&2\nexit 101\n");
+    chmodSync(join(root, 'bin/cargo'), 0o755);
+    const run = () => ({ status: 1, stderr: 'go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off\n' });
+    const missing = missingDownloads(root, { run, cargo: join(root, 'bin/cargo') });
     assert.deepEqual(missing.map(entry => entry.need), ['rust', 'go']);
-    assert.equal(missing[0].message, 'the crates of packages/orm-rust/Cargo.lock are not downloaded (error: failed to download `serde v1.0.0`); run make install, which downloads it');
+    assert.equal(missing[0].message, 'the crates are not downloaded (packages/orm-rust/Cargo.lock: error: failed to download `serde v1.0.0`); run make install, which downloads it');
     assert.equal(missing[1].message, 'the Go modules of go.mod are not downloaded (go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off); run make install, which downloads it');
     for (const { message } of missing) assert.doesNotMatch(message, /retry/i);
   } finally {

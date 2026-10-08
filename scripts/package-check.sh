@@ -11,7 +11,7 @@ TMP_GO=$(mktemp -d)
 TMP_RUST=$(mktemp -d)
 trap 'rm -f "$PACK_JSON"; rm -rf "$TMP_GO" "$TMP_RUST"' EXIT
 
-# 다섯 package 검사는 서로 독립이다. 검사마다 자기 subshell(set -e)에서 실행하고, 실패한 검사 뒤에도 나머지를
+# 네 package 검사는 서로 독립이다. 검사마다 자기 subshell(set -e)에서 실행하고, 실패한 검사 뒤에도 나머지를
 # 실행하며, 끝에 실패한 검사를 모두 적고 1로 끝난다.
 FAILED=
 keep() {
@@ -88,8 +88,6 @@ keep 'typescript package' typescript_package
 keep 'php package' php_package
 keep 'rust package' rust_package
 keep 'go package' go_package
-# release asset은 저장소 밖에서 그 asset과 의존하는 polyspec release asset만으로 설치된다(scripts/release/install-check.mjs).
-keep 'release assets' node "$ROOT/scripts/release/install-check.mjs"
 if [ -n "$FAILED" ]; then
   printf 'package-check: failed:%s\n' "$FAILED" >&2
   exit 1

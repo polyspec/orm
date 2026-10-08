@@ -1,3 +1,5 @@
+<!-- doc-id: features -->
+<!-- source-sha256: 40d26a9b5638e22f1fe1fa2a2384df43363818788d92fc5531a4c4dbfb3c7ade -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.

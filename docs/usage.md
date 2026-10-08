@@ -1,3 +1,4 @@
+<!-- doc-id: usage -->
 # Usage
 
 Generate Go, PHP, Rust, and TypeScript clients from one dbspec document set and execute the same statement as the same SQL in each client.

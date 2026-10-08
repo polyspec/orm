@@ -1,3 +1,4 @@
+<!-- doc-id: feature-coverage -->
 # Feature coverage verification
 
 Each feature in `contracts/features.json` declares `coverage.kind`, distinct `coverage.cases`, `coverage.owners`, and `coverage.dependents`. Use `database` when behavior reads or changes a database and `independent` otherwise. Every `pass` or `partial` client declares an owner under `packages/orm-<package>` with `part`, `tests`, and native test commands for each required database (`mysql`, `postgres`, `sqlite`) or the single `none` slot. Each dependent part declares separate cases and tests in its own directory. Missing declarations and paths outside the declared part fail `make feature-check`.

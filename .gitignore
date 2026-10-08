@@ -17,3 +17,4 @@
 /packages/orm-python/.venv/
 __pycache__/
 *.pyc
+/var/

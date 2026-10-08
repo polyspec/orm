@@ -1,3 +1,4 @@
+<!-- doc-id: examples-complex-readme -->
 # Complex statement demo
 
 One statement with the main parts of the grammar, in three languages, printing the **same compact JSON bytes**:

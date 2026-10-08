@@ -1,3 +1,4 @@
+<!-- doc-id: mermaid -->
 # Mermaid diagrams
 
 dbspec documents are the schema source; a Mermaid `erDiagram` is a view for other tools. Export writes a standard `erDiagram` from a dbspec document; import reads a standard `erDiagram` into a dbspec document and lists everything it does not carry over. `tests/dbspec/mermaid.json` holds the shared cases.

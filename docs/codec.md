@@ -1,3 +1,4 @@
+<!-- doc-id: codec -->
 # Codecs — reading and writing column styles (S2)
 
 Go database value conversion returns `CODEC_DECODE` for malformed, null, overflowing, non-finite, or unsupported values. Host encoding returns `CODEC_ENCODE` for a missing stage or a value other than text or bytes. Generated model assignment reports a conversion error with the column name. Row assembly returns the error to the caller, and insert validates assigned fields before writing. An empty byte slice remains distinct from SQL NULL. Scalar aggregate conversion accepts a valid decimal as its nearest finite binary64 value.

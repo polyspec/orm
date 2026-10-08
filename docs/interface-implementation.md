@@ -1,3 +1,4 @@
+<!-- doc-id: interface-implementation -->
 # Common interface implementation matrix
 
 Reference: [Common interface v1](interfaces.md), [machine specification](../contracts/interfaces.json), and [generated model](interfaces-model.md). Reproduction commands and check coverage are in the [verification guide](../tests/interfaces/README.md).
@@ -48,4 +49,4 @@ Structure checks compare the common methods and stored fields first, then report
 
 Each owner test is kept in its client directory. Conformance compares the four outputs and does not replace owner tests; `tests/interfaces/check` verifies the shared declarations and generated artifacts.
 
-These results verify the listed interfaces and scenarios. They do not prove equivalence of every function body or every possible input. Overall progress is tracked in the [checklist](checklist.md).
+These results verify the listed interfaces and scenarios. They do not prove equivalence of every function body or every possible input. Overall progress is tracked in the [checklist](plans/execution-checklist.md).

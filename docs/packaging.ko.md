@@ -1,3 +1,5 @@
+<!-- doc-id: packaging -->
+<!-- source-sha256: 1f649521e8181ee59e9795e669125aeda70f065f45a074390437473348fabb9f -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -13,14 +15,14 @@
 
 ## release asset에서 설치
 
-0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-<version>.tgz`, `polyspec-orm-<version>.zip`, `polyspec-orm-dbspec-<version>.zip`이 있다. 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make package-check`는 현재 commit의 asset을 저장소 밖의 directory에서 이렇게 설치한다: tests/release-install의 소비자 project에서 빈 cache로 `npm ci`와 `composer install`을 실행하며, 그 lock은 `make install-release-fixtures`가 쓴다.
+0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`이 있다(`<package>-<language>-<version>.<ext>`). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
 
 - npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 
   ```json
   {
     "dependencies": {
-      "@polyspec/orm": "file:vendor/polyspec-orm-<version>.tgz",
+      "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
       "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-0.0.3.tgz"
     }
   }
@@ -39,7 +41,7 @@
 
 ## Python client release
 
-Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 pull request가 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
+Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 commit이 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.4`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
 
 ## 개발 배치
 

@@ -1,3 +1,4 @@
+<!-- doc-id: perf -->
 # Performance
 
 Every client plans statements in the calling process and executes them through its native driver. The current client overhead check is measured by `make perf-check` for the Go and PHP hot paths below; the command fails when the required database environment is missing.

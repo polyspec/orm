@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "php": ["8.5"],
+  "python": "3.14",
+  "composer": { "version": "2.10.3" },
+  "go": { "mod": "go.mod", "versionFile": ".go-version" }
+}

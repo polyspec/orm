@@ -65,7 +65,7 @@ export default defineConfig({
       ] },
       { text: 'Development and verification', items: [
         { text: 'Implementation matrix', link: '/interface-implementation' },
-        { text: 'Checklist', link: '/checklist' },
+        { text: 'Checklist', link: '/plans/execution-checklist' },
         { text: 'Performance', link: '/perf' },
         { text: 'Packaging', link: '/packaging' },
         { text: 'Documentation build and deployment', link: '/docs-development' },

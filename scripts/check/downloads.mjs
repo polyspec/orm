@@ -8,9 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { cargoDownloads } from '../kit/check-cargo-downloads.mjs';
 
-// CARGO_LOCKS는 check가 build하는 crate의 Cargo.lock이 있는 manifest다.
-export const CARGO_MANIFESTS = ['packages/orm-rust/Cargo.toml', 'bench/rust/Cargo.toml', 'tests/interfaces/rust/Cargo.toml'];
 // NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/orm-npm를 workspace로 함께 설치한다.
 export const NPM_ROOTS = ['.'];
 // COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 packages/orm-php를 path
@@ -53,7 +52,7 @@ export function composerMissing(root, directory) {
 }
 
 // missingDownloads는 빠진 download를 need마다 적는다. run은 spawnSync와 같은 모양이다(test가 바꾼다).
-export function missingDownloads(root, { run = spawnSync, env = process.env } = {}) {
+export function missingDownloads(root, { run = spawnSync, env = process.env, cargo = 'cargo' } = {}) {
   const out = [];
   const tool = (need, what, program, args, cwd = root) => {
     const result = run(program, args, { cwd, encoding: 'utf8', env: { ...env, ...offline, PATH: `${join(homedir(), '.cargo', 'bin')}:${env.PATH ?? ''}` } });
@@ -62,8 +61,9 @@ export function missingDownloads(root, { run = spawnSync, env = process.env } = 
       out.push({ need, message: `${what} are not downloaded (${reason.trim()}); ${fix}` });
     }
   };
-  for (const manifest of CARGO_MANIFESTS)
-    if (existsSync(join(root, manifest))) tool('rust', `the crates of ${manifest.replace(/Cargo\.toml$/, 'Cargo.lock')}`, 'cargo', ['fetch', '--locked', '--offline', '--manifest-path', manifest]);
+  // 모든 Cargo.lock의 crate는 kit의 확인이 본다(scripts/kit/check-cargo-downloads.mjs).
+  for (const failure of cargoDownloads({ root, cargo, env: { ...env, ...offline, PATH: `${join(homedir(), '.cargo', 'bin')}:${env.PATH ?? ''}` } }).failures)
+    out.push({ need: 'rust', message: `the crates are not downloaded (${failure}); ${fix}` });
   if (existsSync(join(root, 'go.mod'))) tool('go', 'the Go modules of go.mod', 'go', ['mod', 'download']);
   for (const directory of NPM_ROOTS) {
     const missing = npmMissing(root, directory);
@@ -77,12 +77,9 @@ export function missingDownloads(root, { run = spawnSync, env = process.env } = 
 }
 
 if (process.argv[1] && new URL(import.meta.url).pathname === process.argv[1]) {
-  // `--need <need>`는 그 need의 download만 본다. 그 밖의 인자는 확인할 checkout이고, 없으면 이 file의 checkout이다.
-  const args = process.argv.slice(2);
-  const at = args.indexOf('--need');
-  const need = at >= 0 ? args.splice(at, 2)[1] : null;
-  const root = args[0] ?? new URL('../..', import.meta.url).pathname;
-  const missing = missingDownloads(root).filter(entry => !need || entry.need === need);
+  // 인자는 확인할 checkout이고, 없으면 이 file의 checkout이다.
+  const root = process.argv[2] ?? new URL('../..', import.meta.url).pathname;
+  const missing = missingDownloads(root);
   for (const { message } of missing) console.error(`downloads: ${message}`);
   if (missing.length) process.exit(1);
   console.log('downloads: every download of the checks is present');

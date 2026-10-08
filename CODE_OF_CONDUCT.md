@@ -1,3 +1,4 @@
+<!-- doc-id: code-of-conduct -->
 # Code of conduct
 
 Contributors must communicate clearly, treat participants respectfully, and focus review comments on the code and its evidence. Harassment, discrimination, threats, doxxing, and deliberate disruption are not accepted.
