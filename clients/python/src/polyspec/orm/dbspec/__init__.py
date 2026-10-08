@@ -7,6 +7,7 @@ from polyspec.orm.dbspec.emit import CANONICAL, MANIFEST, SCHEMA, default_text, 
 from polyspec.orm.dbspec.render import UUID_PATTERN, Renderer, render_dbspec, \
     render_dbspec_statements
 from polyspec.orm.dbspec.installed import installed_differences
+from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.file import DBSPEC_SIGNATURE, read_dbspec_bytes, read_dbspec_file
 from polyspec.orm.dbspec.manifest import check_set, dbspec_manifest, external_differences
 from polyspec.orm.dbspec.model import DbspecColumn, DbspecDefault, DbspecDiagnostic, \
@@ -14,7 +15,7 @@ from polyspec.orm.dbspec.model import DbspecColumn, DbspecDefault, DbspecDiagnos
 from polyspec.orm.dbspec.parse import RESERVED, parse_document, parse_dbspec, valid_name, \
     well_formed
 
-__all__ = ['CANONICAL', 'installed_differences', 'DBSPEC_SIGNATURE', 'MANIFEST', 'RESERVED', 'SCHEMA',
+__all__ = ['CANONICAL', 'add_tables_and_columns_steps', 'installed_differences', 'DBSPEC_SIGNATURE', 'MANIFEST', 'RESERVED', 'SCHEMA',
            'UUID_PATTERN', 'DbspecColumn', 'DbspecDefault', 'DbspecDiagnostic',
            'DbspecDocument', 'DbspecTable', 'DbspecType', 'Renderer', 'check_set',
            'default_text', 'dbspec_manifest', 'emit_dbspec', 'emit_document',
