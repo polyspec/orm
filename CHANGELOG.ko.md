@@ -24,6 +24,7 @@
 - T43.5-3-7: `db.utils().schema()`가 연결의 SchemaUtils 객체를 돌려준다.
 - T43.5-3-8: `SchemaUtils.register`는 manifest text가 선언된 hash로 해시되는지 확인한다(아니면 CONFIG이고 아무것도 등록하지 않음). 이미 등록된 set을 다시 등록해도 아무것도 바뀌지 않는다.
 - T43.5-3-11: `installed_differences`가 설치된 set과 그 대상 schema의 차이를 돌려준다. 같은 입력에서 TypeScript client와 같다.
+- T43.5-3-9-1: SQLite의 지원하지 않는 column 메시지는 TypeScript client처럼 CHECK 문장을 적고, 없는 check는 빈 문자열로 적는다.
 - T43.5-1: Python client가 공유 dbspec 비교에 참여한다(`tests/dbspec/compare/python.py`, `runners.mjs`에 `python`으로 등록). 공유 case와 stress 문서에서 출력이 Go runner 출력과 byte 단위로 같으며, `make python-install`이 client 의존성의 interpreter를 만든다.
 - T43.4: Python client가 문서 집합의 문장을 세 dialect로 쓰고(공유 ddl 사례 131 문장 일치), 살아 있는 database를 미지원 객체와 함께 문서로 introspect하고(공유 introspection 사례의 sqlite 사례 일치), plan 문서를 parse하고 plan을 잇고 schema를 비교하며 plan의 step을 쓴다(공유 plans 사례 50건 일치), plan 묶음을 SQLite connection에 적용하고(sqlite 4 시나리오 일치), 문서를 Mermaid로 쓰고 Mermaid에서 읽는다(공유 mermaid 사례 13건 일치).
 - T43.3: Python model chain이 `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, group의 `getsCount`, `getsPage`로 쓰고 읽는다; join이 column을 조립하고 relation이 step을 읽으며, 자기 connection을 가진 relation이 main row 뒤에 붙고, `Db`가 모든 subscriber에게 statement event를 publish하고 transaction에 번호를 매기며, `forUpdate`의 SQLite row lock을 잡고, `auditSource`로 transaction의 audit 기록을 삽입한다.
