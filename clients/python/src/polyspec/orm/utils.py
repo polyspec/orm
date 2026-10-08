@@ -83,6 +83,28 @@ class SchemaUtils:
     def db(self):
         return self.utils.db
 
+    def register(self, schema) -> None:
+        """Registers the generated set on this connection. A text that does not hash to its declared
+        hash fails with CONFIG before anything is registered; a set that is registered already changes
+        nothing (docs/schema.md "Schema registration")."""
+        from polyspec.orm.engine.model import model_of_manifest
+        from polyspec.orm.errors import OrmError
+        from polyspec.orm.schema import Schema
+        if not isinstance(schema, Schema) or not isinstance(schema.manifest_text, str) \
+                or not isinstance(schema.manifest_hash, str) or not isinstance(schema.external_text, str):
+            raise OrmError('CONFIG', 'a schema is the manifest_text, manifest_hash and external_text of generated code')
+        if schema.manifest_hash in self.db.engines:
+            return
+        try:
+            model = model_of_manifest(schema.manifest_text, schema.manifest_hash, schema.external_text)
+        except OrmError as error:
+            if error.code == 'SCHEMA_HASH_MISMATCH':
+                raise OrmError('CONFIG', f'invalid schema manifest: the manifest text does not hash to its declared '
+                                         f'manifest_hash {schema.manifest_hash}') from None
+            raise
+        from polyspec.orm.engine.planner import Planner
+        self.db.engines[schema.manifest_hash] = Planner(model, self.db.dialect)
+
 
 class AesRotationStatus:
     current: int
