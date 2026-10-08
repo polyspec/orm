@@ -164,19 +164,20 @@ func TestCompleteLanguageEvidence(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
 	all := []string{}
-	for _, name := range []string{"go", "php", "rust", "typescript"} {
+	for _, name := range requiredLanguages {
 		all = append(all, filepath.Join(dir, name+".json"))
 	}
 	if err := validateOutputFiles(all); err != nil {
 		t.Fatal(err)
 	}
+	last := len(all) - 1
 	for _, test := range []struct {
 		name  string
 		files []string
 	}{
-		{"missing client", all[:3]},
+		{"missing client", all[:last]},
 		{"duplicate client", append(append([]string{}, all...), all[0])},
-		{"unknown client", append(append([]string{}, all[:3]...), filepath.Join(dir, "other.json"))},
+		{"unknown client", append(append([]string{}, all[:last]...), filepath.Join(dir, "other.json"))},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if err := validateOutputFiles(test.files); err == nil {

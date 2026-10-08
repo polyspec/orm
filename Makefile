@@ -806,8 +806,8 @@ conformance-counter-check:
 
 # conformance-result-check는 TypeScript client를 build하고 PHP, TypeScript, Go conformance result
 # test를 실행한다. 각 runner가 자기 case를 기한과 함께 보고한다.
-conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go
-.PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go
+conformance-result-check: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
+.PHONY: conformance-result-check/php conformance-result-check/typescript conformance-result-check/go conformance-result-check/python
 conformance-result-check/php:
 	php tests/conformance/result_php.php
 conformance-result-check/typescript: lease-tool
@@ -816,6 +816,8 @@ conformance-result-check/typescript: lease-tool
 	node --test tests/conformance/result_typescript.test.mjs
 conformance-result-check/go:
 	$(GO_TEST) ./tests/conformance/runner_go -count=1
+conformance-result-check/python: python-venv-check
+	$(PYTHON_VENV)/bin/python tests/conformance/result_python.py
 
 conformance-result-physical-check: lease-tool
 	$(HOLD_TYPESCRIPT)
@@ -865,10 +867,10 @@ conformance-python-models: python-venv-check
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 .PHONY: conformance-check/run
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run
-conformance-check/run: lease-tool
+conformance-check/run: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
