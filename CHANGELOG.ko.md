@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18-3: `contracts/interfaces.json`의 Python client symbol hash가 현재 `contracts/symbols/python.json`을 가리킵니다.
 - T43.6-3-3: Python client의 PostgreSQL utility 문장이 엔진이 쓰는 $n marker를 씁니다. advisory lock과 set_config 문장은 `test_utils_statements.py`가 검사하는 상수입니다.
 - T43.7-18-2: `for_mysql`, `for_postgres`, `mysql_conversions`, `postgres_loaders`는 공개 이름을 유지하고 `contracts/symbols/python.json`에 등록합니다. T43.7-18-1의 private 이름 변경은 되돌렸습니다.
 - T43.7-18-1: Python client의 helper `_for_mysql`, `_for_postgres`, `_mysql_conversions`, `_postgres_loaders`가 private 이름이 되어, client의 public 이름이 `contracts/symbols/python.json`과 같습니다.

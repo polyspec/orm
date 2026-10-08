@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18-3: the symbol hash of the Python client in `contracts/interfaces.json` names the current `contracts/symbols/python.json`.
 - T43.6-3-3: the utility statements of the Python client for PostgreSQL use the $n markers, as the engine writes them; the advisory lock and set_config statements are constants checked by `test_utils_statements.py`.
 - T43.7-18-2: the helpers `for_mysql`, `for_postgres`, `mysql_conversions` and `postgres_loaders` keep their public names and are declared in `contracts/symbols/python.json`; the private names of T43.7-18-1 are reverted.
 - T43.7-18-1: the helpers `_for_mysql`, `_for_postgres`, `_mysql_conversions` and `_postgres_loaders` of the Python client are private names, so the public names of the client equal `contracts/symbols/python.json`.
