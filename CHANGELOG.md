@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.6-3-4: the run-languages test of the conformance check starts its case with `testcase.Start`, as every Go test of the check does.
 - T43.6-1-1: the run id, report path and artifact name of a matrix group carry `${{ matrix.leg }}`, so the Python 3.11 leg and the other leg of the group write different reports; the declared forms in `scripts/repo/ci.mjs` and their tests name it.
 - T43.7-18-3: the symbol hash of the Python client in `contracts/interfaces.json` names the current `contracts/symbols/python.json`.
 - T43.6-3-3: the utility statements of the Python client for PostgreSQL use the $n markers, as the engine writes them; the advisory lock and set_config statements are constants checked by `test_utils_statements.py`.

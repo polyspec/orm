@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.6-3-4: conformance check의 run-languages test가 모든 Go test와 같이 `testcase.Start`로 case를 시작합니다.
 - T43.6-1-1: matrix group의 run id, 보고서 path, artifact 이름에 `${{ matrix.leg }}`가 붙어, Python 3.11 leg와 같은 group의 다른 leg가 서로 다른 보고서를 씁니다. `scripts/repo/ci.mjs`의 선언과 그 test가 이를 명시합니다.
 - T43.7-18-3: `contracts/interfaces.json`의 Python client symbol hash가 현재 `contracts/symbols/python.json`을 가리킵니다.
 - T43.6-3-3: Python client의 PostgreSQL utility 문장이 엔진이 쓰는 $n marker를 씁니다. advisory lock과 set_config 문장은 `test_utils_statements.py`가 검사하는 상수입니다.
