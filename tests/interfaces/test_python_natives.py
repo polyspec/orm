@@ -175,6 +175,8 @@ class OwnerNativesTest(unittest.TestCase):
 
     GROUPS = {
         'page_and_aes_rotation_status': ('Page', 'AESRotationStatus'),
+        'diagnostic_manifest_and_plan': ('DbspecDiagnostic', 'DbspecManifest', 'DbspecPlan', 'DbspecPlanStep',
+                                         'DbspecEffect', 'DbspecNullCheck', 'DbspecChange'),
     }
 
     def setUp(self):
@@ -194,6 +196,9 @@ class OwnerNativesTest(unittest.TestCase):
 
     def test_page_and_aes_rotation_status_group(self):
         self.check_group(self.GROUPS['page_and_aes_rotation_status'])
+
+    def test_diagnostic_manifest_and_plan_group(self):
+        self.check_group(self.GROUPS['diagnostic_manifest_and_plan'])
 
 
 if __name__ == '__main__':

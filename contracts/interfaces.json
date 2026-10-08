@@ -3331,6 +3331,15 @@
             "column",
             "message"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecDiagnostic",
+          "fields": [
+            "rule",
+            "line",
+            "column",
+            "message"
+          ]
         }
       }
     },
@@ -3386,6 +3395,16 @@
             "manifestHash",
             "schemaHash",
             "externalText"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/manifest.py::DbspecManifestResult",
+          "fields": [
+            "manifest_text",
+            "external_text",
+            "schema_text",
+            "manifest_hash",
+            "schema_hash"
           ]
         }
       }
@@ -3457,6 +3476,19 @@
             "name",
             "renameColumns",
             "renameTables",
+            "schema",
+            "to"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecPlan",
+          "fields": [
+            "drop_columns",
+            "drop_tables",
+            "from",
+            "name",
+            "rename_columns",
+            "rename_tables",
             "schema",
             "to"
           ]
@@ -3536,6 +3568,20 @@
             "rollbackRestore",
             "statement"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecPlanStep",
+          "fields": [
+            "effect",
+            "finalize",
+            "irreversible",
+            "null_checks",
+            "restore",
+            "restore_if",
+            "rollback",
+            "rollback_restore",
+            "statement"
+          ]
         }
       }
     },
@@ -3581,6 +3627,15 @@
         },
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect",
+          "fields": [
+            "kind",
+            "name",
+            "present",
+            "table"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecEffect",
           "fields": [
             "kind",
             "name",
@@ -3634,6 +3689,14 @@
             "default",
             "table"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecNullCheck",
+          "fields": [
+            "column",
+            "default",
+            "table"
+          ]
         }
       }
     },
@@ -3675,6 +3738,14 @@
         },
         "php-extension": {
           "symbol": "clients/php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change",
+          "fields": [
+            "kind",
+            "name",
+            "table"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/dbspec/model.py::DbspecChange",
           "fields": [
             "kind",
             "name",
