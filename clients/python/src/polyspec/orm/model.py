@@ -126,6 +126,17 @@ def _pascal_of(name: str) -> str:
     return ''.join(part[:1].upper() + part[1:] for part in name.split('_'))
 
 
+def _related_output(value):
+    """A related model is written as its own row output, a collection as a list of them."""
+    if value is None:
+        return None
+    if isinstance(value, Collection):
+        return [row.to_array() for row in value.values()]
+    if isinstance(value, Model):
+        return value.to_array()
+    return value
+
+
 class Model:
     """abstract model. method chain이 Core를 채우고, 실행 method가 질의를 낸다."""
 
@@ -308,11 +319,14 @@ class Model:
         """선택된 column과 relation의 값."""
         core = self.core
         out = {}
-        for name in core.row.names if core.row is not None else []:
+        if core.row is None:
+            return out
+        names = list(core.row.names) + [n for n in core.row.related if n not in core.row.names]
+        for name in names:
             if name in core.row.hidden:
                 continue
             if name in core.row.related:
-                out[name] = core.row.related[name]
+                out[name] = _related_output(core.row.related[name])
                 continue
             value = core.values.get(name, core.row.extra.get(name))
             if isinstance(value, StyledValue):
