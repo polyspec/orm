@@ -644,7 +644,7 @@ class Db:
             elif source == 'secret':
                 if slot['name'] != 'aes' or self.aes_key == '':
                     raise OrmError('CONFIG', f'secret {slot["name"]} is not configured')
-                push(self.aes_key, '<secret>')
+                push(self.aes_key, '$SECRET')
             elif source == 'config':
                 if slot['name'] != 'aes_version':
                     raise OrmError('CONFIG', f'config value {slot["name"]} is not configured')
@@ -656,7 +656,7 @@ class Db:
                 # 한 statement는 clock을 한 번만 읽으므로 그 clock column들은 같다.
                 if clock is None:
                     clock = wall_micros()
-                push(self.now(clock, slot.get('precision') or 6), '<now>')
+                push(self.now(clock, slot.get('precision') or 6), '$NOW')
             else:
                 raise OrmError('INTERNAL', f'bind from {source}')
         return {'values': values, 'masked': masked}
