@@ -188,12 +188,17 @@ func run() (code int) {
 		must(testcase.RunLong("conformance/build", func(c *testcase.Case) error {
 			return buildRunners(c, root, binaries)
 		}))
+		// A failed database does not stop the others: every database runs, and the run fails naming each one that failed.
+		var failures []error
 		for index := range drivers {
 			driver, dsn = drivers[index], dsns[index]
-			runDatabase(root)
+			if err := runDatabase(root); err != nil {
+				failures = append(failures, fmt.Errorf("%s: %w", driver, err))
+			}
 		}
 		must(os.RemoveAll(binaries))
 		must(releaseLocks())
+		must(errors.Join(failures...))
 	case "compare":
 		return compare(root, fs.Args())
 	case "record":
@@ -217,37 +222,71 @@ func newOutputDirectory(path string) error {
 
 // runDatabase는 driver와 dsn의 database에서 네 runner를 두 번씩 실행해 state를 확인하고,
 // output을 vector 기대값과 비교한 뒤 검증된 output을 outRoot(MySQL)나 outRoot/<driver>에 남긴다.
-func runDatabase(root string) {
+func runDatabase(root string) error {
 	out := filepath.Join(outRoot, driverDir())
-	must(os.MkdirAll(out, 0o755))
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return err
+	}
 	pending, err := os.MkdirTemp(out, ".run-")
-	must(err)
+	if err != nil {
+		return err
+	}
 	stateDB, err := openStateDatabase(driver, dsn)
-	must(err)
-	for _, language := range requiredLanguages {
+	if err != nil {
+		return err
+	}
+	// Every language runs on this database, also after one failed: the comparison needs all of them, and the
+	// failures name each language that failed.
+	languageErr := runLanguages(requiredLanguages, func(language string) error {
 		first := filepath.Join(pending, language+".json")
 		repeated := filepath.Join(pending, language+".repeat.json")
-		must(testcase.Run("conformance/"+driver+"/"+language, languageDeadline, func(c *testcase.Case) error {
+		if err := testcase.Run("conformance/"+driver+"/"+language, languageDeadline, func(c *testcase.Case) error {
 			return runLanguage(c, stateDB, root, language, first, repeated)
-		}))
-		must(os.Remove(repeated))
+		}); err != nil {
+			return err
+		}
+		return os.Remove(repeated)
+	})
+	if err := stateDB.Close(); err != nil {
+		return err
 	}
-	must(stateDB.Close())
+	if languageErr != nil {
+		return errors.Join(languageErr, os.RemoveAll(pending))
+	}
 	var files []string
 	for _, l := range requiredLanguages {
 		files = append(files, filepath.Join(pending, l+".json"))
 	}
-	must(testcase.Run("conformance/"+driver+"/compare", compareDeadline, func(*testcase.Case) error {
+	if err := testcase.Run("conformance/"+driver+"/compare", compareDeadline, func(*testcase.Case) error {
 		if compare(root, files) != 0 {
 			return fmt.Errorf("conformance comparison failed; output retained in %s", pending)
 		}
 		return nil
-	}))
-	for _, language := range requiredLanguages {
-		must(os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")))
+	}); err != nil {
+		return err
 	}
-	must(os.Remove(pending))
+	for _, language := range requiredLanguages {
+		if err := os.Rename(filepath.Join(pending, language+".json"), filepath.Join(out, language+".json")); err != nil {
+			return err
+		}
+	}
+	if err := os.Remove(pending); err != nil {
+		return err
+	}
 	fmt.Printf("conformance: verified outputs saved in %s\n", out)
+	return nil
+}
+
+// runLanguages runs run for each language in order, also after a language failed, and returns one error that names
+// each language that failed, or nil when every language passed.
+func runLanguages(languages []string, run func(language string) error) error {
+	var failures []error
+	for _, language := range languages {
+		if err := run(language); err != nil {
+			failures = append(failures, fmt.Errorf("%s: %w", language, err))
+		}
+	}
+	return errors.Join(failures...)
 }
 
 func runAndCheckState(db *sql.DB, database, language, phase string, run func() error) error {

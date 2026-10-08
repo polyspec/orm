@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -299,5 +300,32 @@ func TestDifferenceNamesStatementsAndResult(t *testing.T) {
 	}
 	if !reflect.DeepEqual(lines, expected) {
 		t.Fatalf("difference %q, want %q", lines, expected)
+	}
+}
+
+// TestRunLanguagesRunsEveryLanguageAfterAFailure checks that a failed language does not stop the other languages of
+// the database: every language runs, and the error names each language that failed.
+func TestRunLanguagesRunsEveryLanguageAfterAFailure(t *testing.T) {
+	var ran []string
+	err := runLanguages([]string{"go", "php", "rust", "typescript", "python"}, func(language string) error {
+		ran = append(ran, language)
+		if language == "php" || language == "python" {
+			return errors.New("runner failed")
+		}
+		return nil
+	})
+	if want := []string{"go", "php", "rust", "typescript", "python"}; !reflect.DeepEqual(ran, want) {
+		t.Fatalf("ran %v, want every language %v", ran, want)
+	}
+	if err == nil {
+		t.Fatal("runLanguages returned nil, want an error naming php and python")
+	}
+	for _, name := range []string{"php", "python"} {
+		if !strings.Contains(err.Error(), name+": runner failed") {
+			t.Fatalf("error %q does not name the failed language %s", err, name)
+		}
+	}
+	if strings.Contains(err.Error(), "go:") || strings.Contains(err.Error(), "rust:") || strings.Contains(err.Error(), "typescript:") {
+		t.Fatalf("error %q names a language that passed", err)
 	}
 }
