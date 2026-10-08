@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18-2: 항목이 `make docs-rules-check`가 거부하는 단어 대신 `symbol snapshot 검사`와 `공개 이름 목록`을 써서 checklist가 `make docs-rules-check`를 통과한다.
 - T9: C로 쓴 PHP extension `orm_dbspec`이 PHP client `Dbspec`의 모든 public method와 그 결과 class를 제공하고, Rust extension은 없습니다(T9.1~T9.13).
 - T43.6-3-4: conformance check의 run-languages test가 모든 Go test와 같이 `testcase.Start`로 case를 시작합니다.
 - T43.6-1-1: matrix group의 run id, 보고서 path, artifact 이름에 `${{ matrix.leg }}`가 붙어, Python 3.11 leg와 같은 group의 다른 leg가 서로 다른 보고서를 씁니다. `scripts/repo/ci.mjs`의 선언과 그 test가 이를 명시합니다.
