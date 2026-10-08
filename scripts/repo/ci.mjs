@@ -526,7 +526,7 @@ export function ciLeaseErrors(workflows, tracked, read) {
 // AFTER_GROUP_CHECK은 CI group job의 같은 두 step이다: 실행 id, artifact 이름과 보고서 directory가 matrix의 group을 가지므로
 // group들의 보고서가 서로 겹치지 않는다.
 export const RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}';
-export const GROUP_RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}';
+export const GROUP_RUN_ID = 'ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}';
 export const AFTER_CHECK = [
   ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', RUN_ID, 'run: node scripts/check/summary.mjs'],
   ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ github.run_id }}-${{ github.run_attempt }}',
@@ -534,8 +534,8 @@ export const AFTER_CHECK = [
 ];
 export const AFTER_GROUP_CHECK = [
   ['- name: summary', 'if: ${{ !cancelled() }}', 'env:', GROUP_RUN_ID, 'run: node scripts/check/summary.mjs'],
-  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}',
-    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/', 'if-no-files-found: error'],
+  ['- name: report', 'if: ${{ !cancelled() }}', 'uses: actions/upload-artifact@v4', 'with:', 'name: check-${{ matrix.group }}${{ matrix.leg }}-${{ github.run_id }}-${{ github.run_attempt }}',
+    'path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}${{ matrix.leg }}/report/', 'if-no-files-found: error'],
 ];
 
 // stepText는 workflow의 step마다 주석과 빈 줄을 뺀 줄을 앞뒤 공백 없이 돌려준다.

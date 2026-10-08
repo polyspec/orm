@@ -433,7 +433,7 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
   const runner = ['checkout'];
-  const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check GROUP=\${{ matrix.group }}\n`;
+  const check = `      - name: make check\n        if: \${{ !cancelled() }}\n        env:\n          ORM_CHECK_RUN_ID: \${{ github.run_id }}-\${{ github.run_attempt }}-\${{ matrix.group }}\${{ matrix.leg }}\n          ORM_CI_SETUP: \${{ toJSON(steps) }}\n          ORM_GIT_RANGE: \${{ github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || github.event_name == 'merge_group' && format('{0}..{1}', github.event.merge_group.base_sha, github.event.merge_group.head_sha) || '' }}\n        run: make check GROUP=\${{ matrix.group }}\n`;
   const after = AFTER_GROUP_CHECK.map(lines => lines.map((line, index) => `${index === 0 ? '      ' : '        '}${line.startsWith('ORM_') || line.startsWith('name: check') || line.startsWith('path:') || line.startsWith('if-no') ? '  ' : ''}${line}`).join('\n')).join('\n') + '\n';
   const job = (needs, composer) => `jobs:\n  test:\n    steps:\n      - uses: actions/checkout@v5\n        id: checkout\n      - name: setup of the CI group\n        id: group-needs\n        if: \${{ !cancelled() }}\n        run: ${needs}\n      - uses: actions/setup-go@v6\n        id: go\n        if: \${{ !cancelled() }}\n      - name: install PHP dependencies\n        id: composer\n        if: ${composer}\n        run: make install-php\n      - name: database servers\n        id: servers\n        if: ${stepCondition('servers')}\n        run: make test-servers\n${check}${after}`;
   const good = job(GROUP_NEEDS, stepCondition('composer'));
@@ -446,10 +446,10 @@ caseTest('a CI group job runs each setup step under its declared condition and r
     `ci.yml step "setup of the CI group" runs make ci-group-needs GROUP=static >> "$GITHUB_OUTPUT" instead of ${GROUP_NEEDS}, which writes the setup of the CI group as step outputs`,
   ]);
   // group마다의 보고서가 아닌 report step과 group 없는 실행 id는 group의 보고서를 서로 덮는다.
-  const shared = good.replace('name: check-${{ matrix.group }}-', 'name: check-');
+  const shared = good.replace('name: check-${{ matrix.group }}${{ matrix.leg }}-', 'name: check-');
   assert.match(ciAfterCheckErrors({ 'ci.yml': shared })[0], /^ci\.yml step "report" after make check is not the declared report step: /);
-  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good.replace('${{ github.run_attempt }}-${{ matrix.group }}\n          ORM_CI_SETUP', '${{ github.run_attempt }}\n          ORM_CI_SETUP') }), [
-    'ci.yml step "make check" gives make check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}, which names the report of the run',
+  assert.deepEqual(ciAfterCheckErrors({ 'ci.yml': good.replace('${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}\n          ORM_CI_SETUP', '${{ github.run_attempt }}\n          ORM_CI_SETUP') }), [
+    'ci.yml step "make check" gives make check no ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}, which names the report of the run',
   ]);
 });
 
