@@ -3219,6 +3219,16 @@
             "page",
             "perPage"
           ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/model.py::Page",
+          "fields": [
+            "items",
+            "totalCount",
+            "totalPages",
+            "page",
+            "perPage"
+          ]
         }
       }
     },
@@ -3255,6 +3265,15 @@
         },
         "typescript": {
           "symbol": "clients/typescript/src/utils.ts::AesRotationStatus",
+          "fields": [
+            "current",
+            "total",
+            "pending",
+            "versions"
+          ]
+        },
+        "python": {
+          "symbol": "clients/python/src/polyspec/orm/utils.py::AesRotationStatus",
           "fields": [
             "current",
             "total",

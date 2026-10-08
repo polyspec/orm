@@ -53,6 +53,12 @@ def register_model(manifest_text: str, manifest_hash: str, external_text: str = 
 class Page(dict):
     """One page of rows: items, page, perPage, totalCount and totalPages."""
 
+    items: list
+    totalCount: int
+    totalPages: int
+    page: int
+    perPage: int
+
 
 class Collection:
     """primary key, key column이나 key callback으로 묶은 순서 있는 row 집합."""

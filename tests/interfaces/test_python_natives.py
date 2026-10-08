@@ -169,5 +169,32 @@ class RecordNativesTest(unittest.TestCase):
             self.assertEqual(self.actual(record), self.expected(record), record['id'])
 
 
+class OwnerNativesTest(unittest.TestCase):
+    """The python native of each owner of contracts/interfaces.json names a Python class of the snapshot,
+    and its fields equal the #field symbols of that class in the snapshot."""
+
+    GROUPS = {
+        'page_and_aes_rotation_status': ('Page', 'AESRotationStatus'),
+    }
+
+    def setUp(self):
+        self.manifest = json.loads((ROOT / 'contracts' / 'interfaces.json').read_text(encoding='utf-8'))
+        self.symbols = json.loads((ROOT / 'contracts' / 'symbols' / 'python.json').read_text(encoding='utf-8'))
+        self.owners = {owner['id']: owner for owner in self.manifest['owners']}
+
+    def check_group(self, ids):
+        for owner_id in ids:
+            native = self.owners[owner_id]['native'].get('python')
+            self.assertIsNotNone(native, f'{owner_id} has no python native')
+            symbol = native['symbol']
+            self.assertIn(symbol, self.symbols, owner_id)
+            prefix = symbol + '#field.'
+            actual = sorted(key[len(prefix):] for key in self.symbols if key.startswith(prefix))
+            self.assertEqual(actual, sorted(native['fields']), owner_id)
+
+    def test_page_and_aes_rotation_status_group(self):
+        self.check_group(self.GROUPS['page_and_aes_rotation_status'])
+
+
 if __name__ == '__main__':
     unittest.main()
