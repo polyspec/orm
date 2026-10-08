@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.4: Python client가 문서 집합의 문장을 세 dialect로 쓰고(공유 ddl 사례 131 문장 일치), 살아 있는 database를 미지원 객체와 함께 문서로 introspect하고(공유 introspection 사례의 sqlite 사례 일치), plan 문서를 parse하고 plan을 잇고 schema를 비교하며 plan의 step을 쓴다(공유 plans 사례 50건 일치).
 - T43.3: Python model chain이 `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, group의 `getsCount`, `getsPage`로 쓰고 읽는다; join이 column을 조립하고 relation이 step을 읽으며, 자기 connection을 가진 relation이 main row 뒤에 붙고, `Db`가 모든 subscriber에게 statement event를 publish하고 transaction에 번호를 매기며, `forUpdate`의 SQLite row lock을 잡고, `auditSource`로 transaction의 audit 기록을 삽입한다.
 - T43.1: Python package `polyspec.orm`가 dbspec 문서를 parse·검사·출력하고 document set의 runtime model을 만들며, `orm-gen gen`이 다른 client와 같은 manifest hash로 document set의 model module을 쓴다.
 - T43.2: Python client가 `orm`의 값 함수, `StyledValue`, codec 단계(`encode`, `decode`, `hostEncode`, `hostDecode`, `blindIndex`, `CodecError`), `AesKeyring`을 구현한다; 공유 codec vector와 AES vector가 Python에서 통과한다.

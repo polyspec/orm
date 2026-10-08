@@ -4,6 +4,8 @@
 # manifest text, schema text와 그 hash를 낸다.
 from polyspec.orm.dbspec.emit import CANONICAL, MANIFEST, SCHEMA, default_text, emit_document, \
     type_text
+from polyspec.orm.dbspec.render import UUID_PATTERN, Renderer, render_dbspec, \
+    render_dbspec_statements
 from polyspec.orm.dbspec.file import DBSPEC_SIGNATURE, read_dbspec_bytes, read_dbspec_file
 from polyspec.orm.dbspec.manifest import check_set, dbspec_manifest, external_differences
 from polyspec.orm.dbspec.model import DbspecColumn, DbspecDefault, DbspecDiagnostic, \
@@ -12,11 +14,12 @@ from polyspec.orm.dbspec.parse import RESERVED, parse_document, parse_dbspec, va
     well_formed
 
 __all__ = ['CANONICAL', 'DBSPEC_SIGNATURE', 'MANIFEST', 'RESERVED', 'SCHEMA',
-           'DbspecColumn', 'DbspecDefault', 'DbspecDiagnostic', 'DbspecDocument',
-           'DbspecTable', 'DbspecType', 'check_set', 'default_text', 'dbspec_manifest',
-           'emit_dbspec', 'emit_document', 'external_differences', 'parse_document',
-           'parse_dbspec', 'read_dbspec_bytes', 'read_dbspec_file', 'type_text',
-           'valid_name', 'well_formed']
+           'UUID_PATTERN', 'DbspecColumn', 'DbspecDefault', 'DbspecDiagnostic',
+           'DbspecDocument', 'DbspecTable', 'DbspecType', 'Renderer', 'check_set',
+           'default_text', 'dbspec_manifest', 'emit_dbspec', 'emit_document',
+           'external_differences', 'parse_document', 'parse_dbspec',
+           'read_dbspec_bytes', 'read_dbspec_file', 'render_dbspec',
+           'render_dbspec_statements', 'type_text', 'valid_name', 'well_formed']
 
 
 def emit_dbspec(document: DbspecDocument) -> str:
