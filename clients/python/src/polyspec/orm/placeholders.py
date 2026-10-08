@@ -57,7 +57,7 @@ def _scan(sql, quotes, mysql, marker):
     return ''.join(out), found
 
 
-def for_mysql(sql, values):
+def _for_mysql(sql, values):
     """Returns the statement for PyMySQL with its arguments tuple, or None when the statement has no values."""
     if not values:
         text, found = _scan(sql, MYSQL_QUOTES, True, lambda index: '?')
@@ -70,7 +70,7 @@ def for_mysql(sql, values):
     return text, tuple(values)
 
 
-def for_postgres(sql, values):
+def _for_postgres(sql, values):
     """Returns the statement for psycopg with its named arguments, or None when the statement has no values."""
     if not values:
         text, found = _scan(sql, POSTGRES_QUOTES, False, lambda index: '$%d' % index)

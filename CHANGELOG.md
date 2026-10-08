@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-18-1: the helpers `_for_mysql`, `_for_postgres`, `_mysql_conversions` and `_postgres_loaders` of the Python client are private names, so the public names of the client equal `contracts/symbols/python.json`.
 - T43.6-3-2: the conformance check runs every language of a database and every database after one fails, and its error names each failed database and language, instead of stopping at the first failed language.
 - T43.6-1: the python group of CI runs on Python 3.11, the minimum release of `requires-python`, as a matrix leg of its own next to the leg of `.python-version`; the leg names its report and artifact with `_py311`, so the two legs of the group do not share a name.
 - T43.7-19: the Python drivers return DECIMAL and NUMERIC cells as their exact text (PyMySQL conversions and the psycopg text loader), as the TypeScript and PHP clients do, instead of decimal.Decimal.

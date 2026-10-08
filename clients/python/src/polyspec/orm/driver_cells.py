@@ -9,7 +9,7 @@ def _text(value):
     return value.decode('ascii') if isinstance(value, (bytes, bytearray)) else value
 
 
-def mysql_conversions():
+def _mysql_conversions():
     """Returns the PyMySQL conversions with DECIMAL and NEWDECIMAL cells as text."""
     from pymysql.constants import FIELD_TYPE
     from pymysql.converters import conversions
@@ -23,7 +23,7 @@ def mysql_conversions():
 NUMERIC_OID = 1700
 
 
-def postgres_loaders(adapters):
+def _postgres_loaders(adapters):
     """Registers the psycopg text loader for NUMERIC cells on the adapters of a connection."""
     from psycopg.postgres import types
     from psycopg.types.string import TextLoader
