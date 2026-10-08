@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-11: CI의 python group이 polyspec/ordered-json을 릴리스 v0.0.4로 `../ordered-json`에 checkout하여, Python 검사가 `polyspec.ordered_json`을 import합니다.
 - T43.7-5: Python client의 ordered-json 의존성을 우회 행으로 기록한다. `clients/python/pyproject.toml`의 고정 버전은 tag `v0.0.4`로 그대로 두며, ordered-json의 tag에는 아직 그 tag가 없다. 재시도 조건은 `python/` directory가 있는 그 tag다.
 - T43.7-4: `AGENTS.md`(Releases)와 `docs/packaging.md`가 Python client는 git tag로 소비되고 release archive가 없으며, version을 올리는 pull request가 `clients/python/pyproject.toml`의 `version`을 설정하고 `make version-check`가 그 version을 읽는다고 적는다.
 - T43.7-3: 막힌 T43 행의 우회 상태를 현재 상태대로 기록한다. commit "Mark the blocked T43 rows as bypassed" 전에는 T43, T43.5, T43.6-1이 진행 중이었고, 그 commit이 이 셋을 우회 상태로 바꿨다. 그 commit message는 T43.5-5와 T43.6도 적지만 두 행의 우회 표시는 앞선 commit들이 정했고, T43.6-3은 적지 않는다. T43.6은 "Block T43.6 on the ordered-json checkout"이, T43.6-3은 "Block T43.6-3 on the ordered-json checkout"이, T43.5-5는 "Bypass T43.5-5 until the PHP extension runs"가 우회 상태로 바꿨다. checklist는 T43, T43.5, T43.5-5, T43.6, T43.6-1, T43.6-3의 우회 상태를 유지한다.
