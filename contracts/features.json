@@ -58,7 +58,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "clients/go/orm/test_helpers_test.go",
@@ -547,7 +548,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1099,7 +1101,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1567,7 +1570,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "clients/php/tests/deadlock_child.php",
@@ -1971,7 +1975,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
@@ -2289,7 +2294,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "clients/go/model/coverage_helpers_test.go",
@@ -2516,7 +2522,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "schema/bench.dbs",
@@ -2901,7 +2908,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "clients/go/model/coverage_helpers_test.go",
@@ -3335,7 +3343,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "contracts/fixtures/planner.json",
@@ -3649,7 +3658,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -3904,7 +3914,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -4180,7 +4191,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "clients/go/model/coverage_helpers_test.go",
@@ -4481,7 +4493,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "schema/bench.dbs",
@@ -4799,7 +4812,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "contracts/fixtures/audit.dbs",
@@ -5191,7 +5205,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "contracts/interfaces.json",
@@ -5394,7 +5409,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "partial",
-        "typescript": "planned"
+        "typescript": "planned",
+        "python": "planned"
       },
       "fixtures": [
         "docs/perf-raw-go-native.txt",
@@ -5571,7 +5587,8 @@
         "go": "pass",
         "php": "pass",
         "rust": "pass",
-        "typescript": "pass"
+        "typescript": "pass",
+        "python": "planned"
       },
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -5894,7 +5911,8 @@
         "go": "unsupported",
         "php": "unsupported",
         "rust": "pass",
-        "typescript": "unsupported"
+        "typescript": "unsupported",
+        "python": "planned"
       },
       "fixtures": [
         "clients/rust/tests/tests/common/mod.rs"

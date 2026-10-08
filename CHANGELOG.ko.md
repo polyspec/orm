@@ -27,6 +27,7 @@
 - T43.5-3-5-1: interfaces.json의 owner 16개가 필드를 가진 Python class 또는 TypedDict와, 그것을 지정하는 python native를 갖는다.
 - T43.5-3-5-1-3: 차이, 이름 변경, unsupported, apply owner 7개(DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError)가 Python 코드가 쓰는 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
 - T43.5-3-5-1-2: plan와 진단 owner 7개(DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange)가 Python dict 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
+- T43.5-4-1: contracts/features.json은 기능 18개마다 python을 planned로 선언하고, 생성기가 python을 나열하므로 docs/features.md와 docs/features.ko.md가 Python client를 나열한다. T43.6이 벡터를 실행하기 전까지 python이 통과한다고 주장하는 기능은 없다.
 - T43.5-3-6: interface manifest가 python을 나열한다(clients/python/src, contracts/symbols/python.json과 그 hash). 검사기는 언어 5개를 요구하고, Python 추출기를 실행하며, Python 픽스처와 금지 호출을 확인한다.
 - T43.5-3-5-1-1: Page와 AESRotationStatus가 Python owner다. Page는 필드를 클래스 annotation으로 선언하고, 두 owner는 스냅샷으로 확인되는 python native를 갖는다.
 - T43.5-3-4: interfaces.json의 record마다 polyspec/orm/ir.py의 Python TypedDict를 가리키는 python native가 있다.
