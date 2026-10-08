@@ -29,6 +29,7 @@
 - T43.5-3-5-1-2: plan와 진단 owner 7개(DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange)가 Python dict 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
 - T43.5-4: features, version 선언, check 입력, CI group이 python을 선언한다.
 - T43.5-4-2: version 검사, check 입력, CI group이 python을 선언한다.
+- T43.5-2-2: Python conformance 런너가 run 디렉터리의 생성 model을 import하고, 벡터 26개의 SQLite 출력이 Go 출력과 바이트 단위로 같다.
 - T43.5-4-2-2: Python client에 python-check target이 있고 contracts/check-inputs.json에 선언되며, .python-version으로 Python을 준비하는 CI group python이 있다. 도구 언어 규칙은 Python client의 runner를 면제한다.
 - T43.5-4-2-1: make version-check가 Python client version(clients/python/pyproject.toml)을 읽으며, 선언 31개가 0.0.4로 일치한다.
 - T43.5-4-1: contracts/features.json은 기능 18개마다 python을 planned로 선언하고, 생성기가 python을 나열하므로 docs/features.md와 docs/features.ko.md가 Python client를 나열한다. T43.6이 벡터를 실행하기 전까지 python이 통과한다고 주장하는 기능은 없다.
