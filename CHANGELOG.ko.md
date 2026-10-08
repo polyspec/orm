@@ -13,6 +13,7 @@
 - T43.5-2-3-3: 집계 model을 돌려주는 callback의 하위 쿼리 열은 columns key 없이 만들어지고, 열 이름은 snake_case(`read_total`)이다. 그래서 vector `subqueries`가 Go 출력과 같다.
 - T43.5-2-3-4: 다른 조건 뒤의 terminal-by 메서드는 자기 조건을 AND로 잇고 쿼리의 복사본에서 실행한다. 그래서 vector `terminal_reuse`가 Go 출력과 같다.
 - T43.5-2-3-5: 조인되거나 관계된 model은 관계 이름으로 행 출력에 들어가며, 자기 행 출력이거나 그 목록으로 쓰인다. 그래서 vector `joins`와 `relations`가 Go 출력과 같다.
+- T43.5-2-3-6: statement event는 실행기 시각 bind를 `$NOW`로, 바인드된 비밀을 `$SECRET`으로 보인다(docs/usage.md 규격). 그래서 vector `functions`가 Go 출력과 같다.
 - T43.5-1: Python client가 공유 dbspec 비교에 참여한다(`tests/dbspec/compare/python.py`, `runners.mjs`에 `python`으로 등록). 공유 case와 stress 문서에서 출력이 Go runner 출력과 byte 단위로 같으며, `make python-install`이 client 의존성의 interpreter를 만든다.
 - T43.4: Python client가 문서 집합의 문장을 세 dialect로 쓰고(공유 ddl 사례 131 문장 일치), 살아 있는 database를 미지원 객체와 함께 문서로 introspect하고(공유 introspection 사례의 sqlite 사례 일치), plan 문서를 parse하고 plan을 잇고 schema를 비교하며 plan의 step을 쓴다(공유 plans 사례 50건 일치), plan 묶음을 SQLite connection에 적용하고(sqlite 4 시나리오 일치), 문서를 Mermaid로 쓰고 Mermaid에서 읽는다(공유 mermaid 사례 13건 일치).
 - T43.3: Python model chain이 `create`, `creates`, `save`, `update(true)`, `delete(true)`, `restore`, group의 `getsCount`, `getsPage`로 쓰고 읽는다; join이 column을 조립하고 relation이 step을 읽으며, 자기 connection을 가진 relation이 main row 뒤에 붙고, `Db`가 모든 subscriber에게 statement event를 publish하고 transaction에 번호를 매기며, `forUpdate`의 SQLite row lock을 잡고, `auditSource`로 transaction의 audit 기록을 삽입한다.
