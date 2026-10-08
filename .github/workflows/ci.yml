@@ -47,6 +47,10 @@ jobs:
       fail-fast: false
       matrix:
         group: [static, clients_db, clients_pooler, conformance, dbspec, dbspec_apply, feature_coverage, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite, python]
+        # The python group runs also on the minimum release of requires-python (3.11), as a leg of its own:
+        # leg names its report and artifact, and the python group's leg of .python-version has no leg.
+        include:
+          - { group: python, leg: _py311, python-version: '3.11' }
     # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
     # one failed install never hides another. The step group-needs writes the
@@ -128,7 +132,10 @@ jobs:
         id: python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
         # .python-version declares the Python release of the Python checks; the client requires 3.11 or later.
-        with: { python-version-file: .python-version }
+        # The leg of the matrix include sets python-version; the other legs read .python-version.
+        with:
+          python-version: ${{ matrix.python-version }}
+          python-version-file: .python-version
       - name: Python client dependencies
         id: install-python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
@@ -204,7 +211,7 @@ jobs:
         # report of the run is .runtime/check/ci_<run id>_<attempt>_<group>/report.
         if: ${{ !cancelled() }}
         env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}
           ORM_CI_SETUP: ${{ toJSON(steps) }}
           # The commits git-check reads: the pull request or the merge group; a
           # manual run gives none, and git-check reads HEAD.
@@ -218,14 +225,14 @@ jobs:
       - name: summary
         if: ${{ !cancelled() }}
         env:
-          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
+          ORM_CHECK_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}${{ matrix.leg }}
         run: node scripts/check/summary.mjs
       - name: report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: check-${{ matrix.group }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}/report/
+          name: check-${{ matrix.group }}${{ matrix.leg }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .runtime/check/ci_${{ github.run_id }}_${{ github.run_attempt }}_${{ matrix.group }}${{ matrix.leg }}/report/
           if-no-files-found: error
 
   docs:

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, matrixIncludes, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -386,6 +386,16 @@ caseTest('every CI group uploads the report directory that the runner writes', C
   assert.deepEqual(ciReportPathErrors(workflow, make), [
     'ci.yml job test group stress-x uploads .runtime/check/ci_1_1_stress-x/report/, but the runner writes the report of ORM_CHECK_RUN_ID 1-1-stress-x to .runtime/check/ci_1_1_stress_x/report/; name the group with lowercase letters, digits and _ only',
   ]);
+});
+
+// Python matrix case(T43.6-1)는 python group이 requires-python의 최저 release(3.11)에서도 실행되는 matrix 항목 하나를 가지고,
+// 그 항목의 보고서 directory와 artifact 이름이 기본 항목(.python-version)과 다르며, 기본 항목은 .python-version을 읽는지 본다.
+caseTest('the python group runs on Python 3.11 and on .python-version', COMPUTE, () => {
+  const minimum = /^requires-python = ">=(\d+\.\d+)"$/m.exec(text('clients/python/pyproject.toml'))?.[1];
+  assert.equal(minimum, '3.11');
+  assert.deepEqual(matrixIncludes(workflow), [{ group: 'python', leg: '_py311', 'python-version': minimum }]);
+  assert.match(workflow, /python-version: \$\{\{ matrix\.python-version \}\}/);
+  assert.match(workflow, /python-version-file: \.python-version/);
 });
 
 // group setup case(G5.127)는 CI_GROUPS의 모든 group이 그 target의 need와, 그 need의 setup 단계가 필요로 하는 need의 setup step을
