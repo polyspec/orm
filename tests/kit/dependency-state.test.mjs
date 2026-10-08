@@ -49,12 +49,36 @@ test('the gate fails when a workspace package has another version than its lock 
 
 test('the gate fails when a tagged package has another version than its tag, and prints the fix of the policy', (t) => {
   const root = fixture(t);
-  edit(root, 'vendor/tagged/js/package.json', (manifest) => { manifest.version = '9.9.9'; });
+  edit(root, 'external/tagged/js/package.json', (manifest) => { manifest.version = '9.9.9'; });
   const result = gate(root);
   assert.equal(result.status, 1);
   const line = findings(result).find(item => item.includes('tagged-lib'));
   assert.ok(line, result.stderr);
-  assert.match(line, /vendor\/tagged\/js has version 9\.9\.9, the tag v1\.2\.3 has version 1\.2\.3\. Rule: .+\. Fix: make install-tagged\.$/);
+  assert.match(line, /external\/tagged\/js has version 9\.9\.9, the tag v1\.2\.3 has version 1\.2\.3\. Rule: .+\. Fix: make install-tagged\.$/);
+});
+
+test('a package that npm installed as a copy (install-links) is a package of the repository, read by its file: lock entry', (t) => {
+  const root = fixture(t);
+  edit(root, 'package-lock.json', (lock) => {
+    lock.packages['node_modules/tagged-lib'] = { version: '1.2.3', resolved: 'file:external/tagged/js' };
+  });
+  // The lock changed after its review, which is the only finding; the copy is read, so no finding names the package.
+  assert.deepEqual(findings(gate(root)).filter(line => line.includes('tagged-lib')), []);
+  edit(root, 'package-lock.json', (lock) => { lock.packages['node_modules/tagged-lib'].version = '1.2.4'; });
+  const failed = findings(gate(root)).filter(line => line.includes('tagged-lib'));
+  assert.equal(failed.length, 1, failed.join('\n'));
+});
+
+test('a package required as file:<directory> is the package of that directory, and another directory fails', (t) => {
+  const root = fixture(t);
+  const require = (spec) => {
+    edit(root, 'packages/fixture-app/package.json', (manifest) => { manifest.dependencies['fixture-lib'] = spec; });
+    edit(root, 'package-lock.json', (lock) => { lock.packages['packages/fixture-app'].dependencies['fixture-lib'] = spec; });
+    return findings(gate(root)).filter(line => line.includes('fixture-lib'));
+  };
+  assert.deepEqual(require('file:packages/fixture-lib'), []);
+  const other = require('file:packages/other');
+  assert.ok(other.some(line => line.includes('requires file:packages/other')), other.join('\n'));
 });
 
 test('the gate fails when the Composer platform of a manifest is not the policy minimum', (t) => {

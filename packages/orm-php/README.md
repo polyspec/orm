@@ -89,8 +89,7 @@ model class, and a request whose set is not registered on its connection fails w
 `SCHEMA_HASH_MISMATCH` before execution, also when another connection installed the set.
 
 `$db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })` registers a subscriber for every
-statement the connection sends and returns a closure that removes it ([statement
-events](../../docs/usage.md#statement-events)). The event has `sql`, `binds`, `kind`, `tables`,
+statement the connection sends and returns a closure that removes it ([statement events](../../docs/usage.md#statement-events)). The event has `sql`, `binds`, `kind`, `tables`,
 `elapsed` in seconds, `transaction` (`?int`) and `error` (`?OrmException`). Secret binds read
 `"$SECRET"` and the SQLite clock bind reads `"$NOW"`. The clock bind is the client wall clock in
 UTC with six fraction digits, read once per statement. On SQLite it is also bound for a column

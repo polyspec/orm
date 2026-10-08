@@ -1,22 +1,15 @@
 {
   "schema": 1,
-  "composerPlatforms": [],
+  "composerPlatforms": [
+    {
+      "manifest": "composer.json",
+      "php": "8.4.0"
+    }
+  ],
   "pythonManifests": [
     "packages/orm-python/pyproject.toml"
   ],
   "exceptions": [
-    {
-      "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
-      "package": "@polyspec/ordered-json",
-      "reason": "@polyspec/ordered-json is not on the npm registry; the root package.json takes it from the tarball of its GitHub release through overrides, and the package declares the exact version of that release.",
-      "removalCondition": "ordered-json publishes @polyspec/ordered-json to the npm registry, or the pin moves to the tarball of its newer release (checklist rows T43.5-5, T43.6-1, T43.6-3, T43.7-5 and G5.90).",
-      "verification": [
-        "make typescript-build",
-        "make dbspec-ts-check",
-        "make ts-check/types"
-      ]
-    },
     {
       "ecosystem": "npm",
       "manifest": "packages/orm-npm/package.json",

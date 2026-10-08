@@ -75,7 +75,7 @@ function linkFindings(root, config, file, link, read) {
   if (!fragment) return [];
   if (statSync(resolved).isDirectory() || !resolved.endsWith('.md')) return [at(`the link ${target} has an anchor, but ${path.relative(root, resolved)} is not a Markdown file`)];
   const text = read(path.relative(root, resolved));
-  if (anchors(text).includes(fragment) || headingAnchors(text).includes(fragment.toLowerCase())) return [];
+  if (anchors(text).includes(fragment) || headingAnchors(text, { site: Boolean(config.siteLinks) }).includes(fragment.toLowerCase())) return [];
   return [at(`the link ${target} names the anchor #${fragment}, which ${path.relative(root, resolved)} does not define`)];
 }
 

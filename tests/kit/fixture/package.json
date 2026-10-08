@@ -4,6 +4,6 @@
   "workspaces": ["packages/*"],
   "devDependencies": {
     "is-number": "7.0.0",
-    "tagged-lib": "file:vendor/tagged/js"
+    "tagged-lib": "file:external/tagged/js"
   }
 }

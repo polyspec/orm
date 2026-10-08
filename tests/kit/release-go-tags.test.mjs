@@ -2,7 +2,7 @@
 // <directory>/vX.Y.Z of every declared Go module at the same commit, because a Go proxy resolves a module from that tag only.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { Stop } from '../../scripts/kit/process.mjs';
@@ -120,4 +120,13 @@ test('make release-go-tags takes the tag of the environment', (t) => {
   const result = make('release-go-tags', 'TAG=v0.0.1');
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /every Go module has its tag at the commit of v0\.0\.1/);
+});
+
+test('a TAG with shell syntax reaches release.mjs as one argument and runs no command', (t) => {
+  const box = releaseSandbox(t);
+  box.release('0.0.1');
+  const marker = path.join(box.root, 'injected');
+  const result = spawnSync('make', ['-f', 'scripts/kit/kit.mk', 'release-go-tags', `TAG=v0.0.1; touch ${marker}`], { cwd: box.root, env: box.env, encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.equal(existsSync(marker), false, 'the shell ran the text after the semicolon');
 });

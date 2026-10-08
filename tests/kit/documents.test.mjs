@@ -277,3 +277,13 @@ test('config/documents.json is validated against its schema', (t) => {
   hasPart(found, '$.statusTables[0].cells is 0, the schema requires at least 1');
   hasPart(found, '$.extra is not in the schema');
 });
+
+test('link: a site reads the VitePress slug and the {#id} of a heading, a repository only the GitHub slug', (t) => {
+  const target = '## 1.5 Restore\n\n## External documents {#external-docs}\n\n## Query, `Plan` & more\n';
+  const links = '[a](b.md#_1-5-restore) [b](b.md#external-docs) [c](b.md#query-plan-more) [d](b.md#15-restore)\n';
+  const root = tree(t, { ...pair('a.md', 'alpha', links), ...pair('b.md', 'bee', target) });
+  const plain = run(root).filter(line => line.includes('does not define'));
+  assert.deepEqual([...new Set(plain.map(line => /#[\w-]+/.exec(line)[0]))], ['#_1-5-restore', '#external-docs', '#query-plan-more']);
+  const site = run(root, { ...CONFIG, siteLinks: true }).filter(line => line.includes('does not define'));
+  assert.deepEqual(site, [], site.join('\n'));
+});

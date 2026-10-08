@@ -27,8 +27,8 @@ cargo-downloads-fetch: ## Download the crates of every Cargo.lock
 # toolchain-check compares the running tools with the declarations and fails with the expected and the running version.
 .PHONY: install-tools toolchain-check
 
-install-tools: ## Install the toolchains that the checkout declares into var/tools; ONLINE
-	$(ONLINE) node scripts/kit/install-tools.mjs
+install-tools: ## Install the toolchains that the checkout declares into var/tools; TOOLS limits the tools; ONLINE
+	$(ONLINE) node scripts/kit/install-tools.mjs $(TOOLS)
 
 toolchain-check: ## Check that the running tools are the declared versions; TOOLS limits the tools; offline
 	node scripts/kit/check-toolchain.mjs $(TOOLS)
@@ -64,6 +64,11 @@ rerun-failed: ## Rerun the targets of the last full run of this tree that did no
 documents-check: ## Check the documents declared in config/documents.json: translation pairs, revisions, links, and the checklists of config/checklist.json; offline
 	node scripts/kit/check-documents.mjs
 
+.PHONY: documents-stamp
+
+documents-stamp: ## Write the source-sha256 of each English document into its Korean twin; run it after the translation matches
+	node scripts/kit/documents-stamp.mjs
+
 .PHONY: owner-check owner-validate
 
 owner-check: ## Run the checks that own the changed paths (config/owner-checks.json); PATHS="a b" or BASE=<revision> selects the paths
@@ -94,27 +99,27 @@ commits-check: ## Check the commit messages of RANGE (<base>..<head>, default HE
 .PHONY: release-verify release-versions release-assets release-publish release-coverage release-go-tags
 
 release-verify: ## Require the commit of TAG on origin/main with its check runs succeeded; reads GITHUB_REPOSITORY
-	@test -n "$(TAG)" || { echo "release-verify: TAG is required, for example make release-verify TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release.mjs verify $(TAG)
+	@test -n "$$TAG" || { echo "release-verify: TAG is required, for example make release-verify TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs verify "$$TAG"
 
 release-versions: ## Require the version of TAG in every manifest, the Go module path and the change log section; offline
-	@test -n "$(TAG)" || { echo "release-versions: TAG is required, for example make release-versions TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release.mjs versions $(TAG)
+	@test -n "$$TAG" || { echo "release-versions: TAG is required, for example make release-versions TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs versions "$$TAG"
 
 release-assets: ## Build the archive of every package of TAG into var/release/assets
-	@test -n "$(TAG)" || { echo "release-assets: TAG is required, for example make release-assets TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release.mjs assets $(TAG)
+	@test -n "$$TAG" || { echo "release-assets: TAG is required, for example make release-assets TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs assets "$$TAG"
 
 release-publish: ## Create the GitHub Release of TAG with the notes and the archives of release-assets
-	@test -n "$(TAG)" || { echo "release-publish: TAG is required, for example make release-publish TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release.mjs publish $(TAG)
+	@test -n "$$TAG" || { echo "release-publish: TAG is required, for example make release-publish TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs publish "$$TAG"
 
 release-coverage: ## Require every package file of the checkout to be classified in config/release.json; offline
 	node scripts/kit/release.mjs coverage
 
 release-go-tags: ## Require the tag <directory>/vX.Y.Z of every Go module at the commit of TAG; offline
-	@test -n "$(TAG)" || { echo "release-go-tags: TAG is required, for example make release-go-tags TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release.mjs go-tags $(TAG)
+	@test -n "$$TAG" || { echo "release-go-tags: TAG is required, for example make release-go-tags TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs go-tags "$$TAG"
 
 # --- lint-python: ruff check and ruff format --check of the Python package that config/toolchain.json ruff.pyproject names.
 .PHONY: lint-python
@@ -131,16 +136,16 @@ lint-python: ## Lint and format-check the Python package with the ruff of var/to
 .PHONY: release-consumer release-consumer-lock release-proof
 
 release-consumer: ## Install the archives of TAG in var/release/assets in clean npm and Composer projects and run the smoke commands
-	@test -n "$(TAG)" || { echo "release-consumer: TAG is required, for example make release-consumer TAG=v0.0.1"; exit 1; }
-	node scripts/kit/release-consumer.mjs install $(TAG)
+	@test -n "$$TAG" || { echo "release-consumer: TAG is required, for example make release-consumer TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release-consumer.mjs install "$$TAG"
 
 release-consumer-lock: ## Write the consumer manifests and locks of TAG from the archives in var/release/assets; ONLINE
-	@test -n "$(TAG)" || { echo "release-consumer-lock: TAG is required, for example make release-consumer-lock TAG=v0.0.1"; exit 1; }
-	$(ONLINE) node scripts/kit/release-consumer.mjs lock $(TAG)
+	@test -n "$$TAG" || { echo "release-consumer-lock: TAG is required, for example make release-consumer-lock TAG=v0.0.1"; exit 1; }
+	$(ONLINE) node scripts/kit/release-consumer.mjs lock "$$TAG"
 
 release-proof: ## Prove the released TAG from outside the checkout: release assets, consumer installs, git-tag installs, Go modules; ONLINE
-	@test -n "$(TAG)" || { echo "release-proof: TAG is required, for example make release-proof TAG=v0.0.1"; exit 1; }
-	$(ONLINE) node scripts/kit/release-proof.mjs $(TAG)
+	@test -n "$$TAG" || { echo "release-proof: TAG is required, for example make release-proof TAG=v0.0.1"; exit 1; }
+	$(ONLINE) node scripts/kit/release-proof.mjs "$$TAG"
 
 # --- dependencies: the gate reads the manifests, the locks and the review record; the review asks the registries.
 .PHONY: dependency-policy-check dependency-policy-mutation-check dependency-review

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ec1ca8a1e733130dc498ee7e7c3aba18",
+    "content-hash": "534ccde6dd4021fcf907d83294dec2cd",
     "packages": [
         {
             "name": "polyspec/ordered-json",

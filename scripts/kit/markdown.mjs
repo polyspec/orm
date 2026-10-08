@@ -86,18 +86,34 @@ export function anchors(text) {
   return found;
 }
 
-/** The heading anchors of `text` as GitHub writes them: lower case, punctuation removed, spaces as hyphens, repeats numbered. */
-export function headingAnchors(text) {
+// The slug of VitePress (markdown-it-anchor): combining marks and control characters removed, each run of separators and
+// punctuation one hyphen, a leading digit prefixed with an underscore.
+const vitepressSlug = text => text.normalize('NFKD').replace(/[\u0300-\u036F]/g, '').replace(/[\u0000-\u001f]/g, '')
+  .replace(/[\s~`!@#$%^&*()\-_+=[\]{}|\\;:"'\u201c\u201d\u2018\u2019<>,.?/]+/g, '-').replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '').replace(/^(\d)/, '_$1').toLowerCase();
+
+/**
+ * The heading anchors of `text` as GitHub writes them: lower case, punctuation removed, spaces as hyphens, repeats numbered.
+ * With `site` (a VitePress site) a heading also has its VitePress slug, and a heading that ends with `{#id}` has that id.
+ */
+export function headingAnchors(text, { site = false } = {}) {
   const { fenced } = scanFences(text);
   const seen = new Map();
+  const seenSite = new Map();
   const result = [];
+  const numbered = (counts, base) => {
+    const count = counts.get(base) ?? 0;
+    counts.set(base, count + 1);
+    return count ? `${base}-${count}` : base;
+  };
   text.split('\n').forEach((line, index) => {
     const heading = fenced[index] ? null : /^#{1,6}\s+(.+?)\s*#*\s*$/.exec(line);
     if (!heading) return;
-    const base = heading[1].replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replaceAll('`', '').toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().replace(/\s/g, '-');
-    const count = seen.get(base) ?? 0;
-    seen.set(base, count + 1);
-    result.push(count ? `${base}-${count}` : base);
+    const custom = site ? /\s*\{#([^}\s]+)\}$/.exec(heading[1]) : null;
+    const title = custom ? heading[1].slice(0, custom.index) : heading[1];
+    const plain = title.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replaceAll('`', '');
+    result.push(numbered(seen, plain.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').trim().replace(/\s/g, '-')));
+    if (custom) result.push(custom[1].toLowerCase());
+    else if (site) result.push(numbered(seenSite, vitepressSlug(plain)));
   });
   return result;
 }

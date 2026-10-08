@@ -32,7 +32,7 @@
     "packages/fixture-python/pyproject.toml": "git-tag"
   },
   "notReleased": {
-    "vendor/tagged/js/package.json": "the vendored copy of a tagged package",
+    "external/tagged/js/package.json": "the vendored copy of a tagged package",
     "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
     "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives"
   },

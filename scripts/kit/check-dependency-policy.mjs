@@ -94,7 +94,7 @@ export function check(root, { composer = 'composer' } = {}) {
     if (item.ecosystem === 'npm') {
       if (item.directory === null) add('local', subject, `${NPM_LOCK} links it to no package of this repository`, 'run npm install');
       else if (item.name !== item.package) add('local', subject, `${item.directory} is the package ${item.name ?? 'without a name'}`, 'run npm install');
-      else if (item.spec !== item.version) add('local', subject, `the manifest requires ${item.spec}, ${item.directory} has version ${item.version}`, `require ${item.version} and run npm install`);
+      else if (item.spec !== item.version && item.spec !== `file:${item.directory}`) add('local', subject, `the manifest requires ${item.spec}, ${item.directory} has version ${item.version}`, `require ${item.version} and run npm install`);
       else if (item.lockVersion !== item.version) add('local', subject, `${NPM_LOCK} records version ${item.lockVersion ?? 'none'}, ${item.directory} has version ${item.version}`, 'run npm install');
     } else if (item.lockVersion !== item.version) {
       add('local', subject, `the lock records version ${item.lockVersion}, the manifest requires ${item.version}`, `run composer update --lock in ${path.posix.dirname(item.manifest)}`);

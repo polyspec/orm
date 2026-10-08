@@ -437,7 +437,7 @@ test('make runs each release step with the tag of the environment and fails with
   }
   let result = make('release-versions', 'TAG=v0.0.1');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /node scripts\/kit\/release\.mjs versions v0\.0\.1/);
+  assert.match(result.stdout, /node scripts\/kit\/release\.mjs versions "\$TAG"\n\[release\] v0\.0\.1: /);
   result = make('release-verify', 'TAG=v0.0.1');
   assert.equal(result.status, 0, result.stderr);
   result = make('release-coverage');

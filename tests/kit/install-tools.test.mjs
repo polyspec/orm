@@ -12,7 +12,7 @@ import { toolchainCheckout } from './toolchain-checkout.mjs';
 import { toolchainStubs } from './toolchain-stubs.mjs';
 
 const MODULE = goToolchainModule('1.27.1');
-const install = (root, env) => spawnSync(process.execPath, ['scripts/kit/install-tools.mjs'], { cwd: root, env, encoding: 'utf8' });
+const install = (root, env, ...tools) => spawnSync(process.execPath, ['scripts/kit/install-tools.mjs', ...tools], { cwd: root, env, encoding: 'utf8' });
 const config = value => JSON.stringify({ schema: 1, ...value });
 const walk = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry => (entry.isDirectory() ? walk(path.join(directory, entry.name)) : [path.join(directory, entry.name)]));
 const noSymlinks = (root) => {
@@ -252,6 +252,25 @@ test('only the declared tools are installed and a repository that declares none 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, '');
   assert.deepEqual(stubs.calls(), []);
+});
+
+test('the named tools are installed alone, and an unknown or an undeclared name fails before any install', (t) => {
+  const root = toolchainCheckout(t, {
+    'package.json': '{ "packageManager": "npm@12.2.0" }',
+    'pyproject.toml': 'dev = ["ruff==0.16.10"]\n',
+    'config/toolchain.json': config({ python: '3.14', ruff: { pyproject: 'pyproject.toml' } }),
+  });
+  const stubs = toolchainStubs(t);
+  const named = install(root, stubs.env, 'npm');
+  assert.equal(named.status, 0, named.stderr);
+  assert.deepEqual(readdirSync(path.join(root, 'var/tools/bin')).sort(), ['npm', 'npx']);
+  assert.ok(stubs.calls().every(line => !line.startsWith('python3.14')), 'ruff was not installed');
+  const unknown = install(root, stubs.env, 'make');
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stderr, /unknown tool make; the tools are npm, go, ruff, composer, cargoAudit, govulncheck/);
+  const undeclared = install(root, stubs.env, 'go');
+  assert.equal(undeclared.status, 1);
+  assert.match(undeclared.stderr, /go is not declared; declare it in config\/toolchain\.json or in its file, or leave it out of the tools to install/);
 });
 
 test('an undeclared or malformed declaration fails before any install', (t) => {
