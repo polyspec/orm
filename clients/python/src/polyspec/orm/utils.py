@@ -92,6 +92,45 @@ class SchemaUtils:
             return
         self.db.engines[schema.manifest_hash] = Planner(model, self.db.dialect)
 
+    def add_tables_and_columns(self, schema) -> list:
+        """Takes an installed set to a newer schema version by adding its tables and the columns that
+        are null or have a default, with the steps of the plan. Other differences are SCHEMA_DIFFERS
+        before any statement. PostgreSQL runs in a transaction; SQLite rebuilds tables with foreign keys
+        off, so it runs outside a transaction with them off; MySQL commits schema statements implicitly
+        and runs outside a transaction too (docs/schema.md "Adding tables and columns")."""
+        from polyspec.orm.dbspec import add_tables_and_columns_steps, installed_differences
+        from polyspec.orm.errors import OrmError
+        model = _schema_model(schema)
+        target = _schema_target(model)
+        driver = self.db.driver
+
+        def apply(run) -> list:
+            live = _introspect_set(run, driver, model)
+            result = add_tables_and_columns_steps(live.document, live.unsupported, target, driver)
+            if result['differences']:
+                raise OrmError('SCHEMA_DIFFERS', 'the existing tables of the document set differ beyond missing '
+                                                 'tables, missing columns that are null or have a default and '
+                                                 'missing indexes: ' + '; '.join(result['differences']))
+            for step in result['steps']:
+                table = step['effect']['table']
+                run('schema', [] if table == '' else [table], step['statement'], [])
+            if result['steps']:
+                live = _introspect_set(run, driver, model)
+            differences = installed_differences(live.document, live.unsupported, target)
+            if differences:
+                raise OrmError('CONFIG', 'the database differs from the document set: ' + '; '.join(differences))
+            return list(result['added'])
+
+        if driver == 'postgres':
+            return self.db.transaction(lambda: apply(_frame_runner(self.db)), {'retry': 0})
+        if _frame_of(self.db) is not None:
+            raise OrmError('CONFIG', f'{driver} adds tables and columns outside a transaction: MySQL commits '
+                                     'schema statements implicitly and SQLite turns foreign keys off to rebuild '
+                                     'a table')
+        if driver == 'mysql':
+            return apply(_session_runner(self.db))
+        return _sqlite_without_foreign_keys(self.db, apply)
+
     def install(self, schema) -> None:
         """Installs the set's tables on this connection and then registers the set. The statements
         run in the active transaction or a new one; MySQL commits schema statements implicitly, so it
@@ -248,3 +287,29 @@ def _session_runner(db):
     def run(kind, tables, sql, values):
         return db._connection.execute(sql, list(values))['rows']
     return run
+
+
+def _sqlite_without_foreign_keys(db, apply):
+    """Runs apply with foreign keys off in one BEGIN IMMEDIATE transaction; the rebuilt tables must
+    break no foreign key, and foreign keys are turned on again after it (CONFIG or INTERNAL otherwise)."""
+    from polyspec.orm.errors import OrmError
+
+    def outside(sql: str):
+        return db._connection.execute(sql, [])['rows']
+    outside('PRAGMA foreign_keys = OFF')
+    try:
+        db._connection.execute('BEGIN IMMEDIATE', [])
+        try:
+            result = apply(_session_runner(db))
+            broken = db._connection.execute('SELECT COUNT(*) FROM pragma_foreign_key_check', [])['rows'][0][0]
+            if int(broken) != 0:
+                raise OrmError('INTERNAL', f'the rebuilt tables break {broken} foreign keys')
+            db._connection.execute('COMMIT', [])
+        except BaseException:
+            db._connection.execute('ROLLBACK', [])
+            raise
+    except BaseException:
+        outside('PRAGMA foreign_keys = ON')
+        raise
+    outside('PRAGMA foreign_keys = ON')
+    return result
