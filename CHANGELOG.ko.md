@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-8: `tests/conformance/check/result_physical_test.go`의 physical result runner 목록에 python을 넣어, `requiredLanguages`와 같게 했습니다(runner result 파일이 있는 언어와 일치).
 - T43.7-9: `conformance-check`와 `feature-verify-other`가 `contracts/check-inputs.json`에 `python` need를 선언해, 이 target이 쓰는 Python client interpreter를 CI group이 설치합니다.
 - T43.7-7 및 T43.7-13: `python-install`을 `install-python`으로 바꿔 내려받기가 허용되는 install target 이름 규칙에 맞췄고, ordered-json checkout은 workspace 안에 있으며 `ORDERED_JSON`이 이를 가리킵니다.
 - T43.7-12: `scripts/check/ci-setup.mjs`가 ordered-json checkout 단계를 python group의 필요 조건으로 선언하여, 다른 group에서 check runner가 이 단계로 중단하지 않습니다.
