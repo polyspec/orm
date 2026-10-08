@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-1: the package-data key of `clients/python/pyproject.toml` is `polyspec.orm` (it was `orm`, which names no package), so the wheel of `polyspec.orm` includes `py.typed`; `clients/python/tests/test_packaging.py` checks that every key names a package under `src` and that `polyspec.orm` lists `py.typed`.
 - T43.5-1-1: `make install` creates the Python client interpreter (`clients/python/.venv`) with the pinned dependencies, and the dbspec comparison checks that it exists instead of downloading it.
 - T43.5-2-1: `scripts/bench-db.sh` takes the dialects to seed by name (`mysql`, `postgres`, `sqlite`); with no argument it seeds all three as before, and `sqlite` seeds the SQLite bench file alone without the MySQL and PostgreSQL servers.
 - T43.5-6: the Python tests remove their temporary directories and files: `test_orm_gen.py` and `test_sqlite.py` clean up with `addClassCleanup`, and `dbspec_apply.py` writes its databases into one `TemporaryDirectory`; one run leaves no entry in TMPDIR.
