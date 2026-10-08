@@ -19,6 +19,7 @@ from polyspec.orm.engine.validate import IR_VERSION, validate
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.model import Model, register_model
+from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.schema import Schema
 from typing import Callable, TypeVar
 
@@ -412,7 +413,8 @@ class _MysqlConnection:
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()
-        cursor.execute(sql, tuple(values))
+        text, args = for_mysql(sql, values)
+        cursor.execute(text, args)
         rows = [list(row) for row in cursor.fetchall()]
         insert_id = cursor.lastrowid
         affected = cursor.rowcount
@@ -446,7 +448,8 @@ class _PostgresConnection:
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()
-        cursor.execute(sql, tuple(values))
+        text, args = for_postgres(sql, values)
+        cursor.execute(text, args)
         rows = [list(row) for row in cursor.fetchall()] if cursor.description else []
         insert_id = None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
