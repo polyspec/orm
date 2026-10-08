@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- T43.7-19: Python 드라이버가 DECIMAL과 NUMERIC cell을 decimal.Decimal이 아니라 정확한 문자열로 돌려줍니다(PyMySQL 변환과 psycopg text loader). TypeScript와 PHP 클라이언트와 같은 방식입니다.
 - T43.7-18: Python client가 드라이버별로 엔진 marker를 바꿉니다. MySQL은 `?`를 `%s`로, PostgreSQL은 `$n`을 `%(pn)s`로 바꾸며, 따옴표 문자열과 주석 밖에서만 바꾸고 모든 `%`를 이스케이프합니다. 값이 없는 문장은 그대로 넘깁니다.
 - T43.7-17: `dbspec-compare-check`의 inputs 단위 실행이 `PYTHONPATH`와 `ORM_PYTHON`을 받아, Python runner가 변수 누락 때문에 실패하지 않고 case를 거부합니다.
 - T43.7-16: `ORM_PYTHON`을 설정하는 모든 명령이 `PYTHON_PATH`를 `PYTHONPATH`로도 넘겨, conformance와 dbspec 비교 실행에서 Python interpreter가 `polyspec.ordered_json`과 client를 import합니다.

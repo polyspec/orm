@@ -20,6 +20,7 @@ from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.placeholders import for_mysql, for_postgres
+from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
 from polyspec.orm.schema import Schema
 from typing import Callable, TypeVar
 
@@ -408,7 +409,7 @@ class _MysqlConnection:
             user=_unquote(url.username or ''),
             password=_unquote(url.password or ''),
             database=_unquote(url.path.lstrip('/')),
-            charset='utf8mb4', autocommit=True)
+            charset='utf8mb4', autocommit=True, conv=mysql_conversions())
         self.execute("SET time_zone = '+00:00'", [])
 
     def execute(self, sql: str, values):
@@ -444,6 +445,7 @@ class _PostgresConnection:
                                           password=_unquote(url.password or ''),
                                           dbname=name,
                                           options='-c TimeZone=UTC')
+        postgres_loaders(self.connection.adapters)
         self.connection.autocommit = True
 
     def execute(self, sql: str, values):
