@@ -22,12 +22,12 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
   {
     "dependencies": {
       "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
-      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-0.0.3.tgz"
+      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.7.tgz"
     }
   }
   ```
 
-- Composer: an `artifact` repository is a directory of the downloaded zips, and Composer reads the name, version and requirements of each zip from its `composer.json`. The artifact repository holds the orm zip and the zip of each polyspec package that it requires (`polyspec-ordered-json-0.0.3.zip`).
+- Composer: an `artifact` repository is a directory of the downloaded zips, and Composer reads the name, version and requirements of each zip from its `composer.json`. The artifact repository holds the orm zip and the zip of each polyspec package that it requires (`polyspec-ordered-json-php-0.0.7.zip`).
 
   ```json
   {

@@ -118,14 +118,14 @@ jobs:
             packages/orm-rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
-      # The Python checks import the ordered-json client of its release v0.0.4 from ORDERED_JSON,
+      # The Python checks import the ordered-json client of its release v0.0.7 from ORDERED_JSON,
       # which names this directory inside the workspace.
       - uses: actions/checkout@v5
         id: ordered-json
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
         with:
           repository: polyspec/ordered-json
-          ref: v0.0.4
+          ref: v0.0.7
           path: ordered-json
       - uses: actions/setup-python@v5
         id: python

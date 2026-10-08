@@ -1,31 +1,31 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-08T22:41:31.479Z",
+  "reviewed": "2026-10-08T22:55:46.729Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "bf38be2d09e3e92971d71fa4a519299c7972372e2c24a9341c6b3701f8171d63",
+      "sha256": "3907909625a5ef0ef4cfd5baa5f870875e518fc98aa8e1f2eb2bb4829bdfe938",
       "advisories": []
     },
     {
       "lock": "composer.lock",
-      "sha256": "6ef3eac8476eab666d82a0d0d70e483d61c6a1c545017afd4c3b2f90f670de10",
+      "sha256": "831e261ecb3163938e29f07669c7f095c3f7f902bb17611df94388956c56d7ac",
       "advisories": []
     },
     {
       "lock": "go.sum",
-      "sha256": "b546a70930b05f8645b4d2d3d5f259b63b98be3fa2cb39c2267b5ac91a723649",
+      "sha256": "eeab44d38b5f03b02d8647d6f474ff5375abfcb1c598be4c6ba3cf601fc68919",
       "advisories": []
     },
     {
       "lock": "bench/rust/Cargo.lock",
-      "sha256": "a4a79be6573c7d650214a3f69410e0716eebe5f2d03c1af4567cbfd49340fe91",
+      "sha256": "d11dd5c0da472d6507fc66004cff2350dad9bfc1d2ab73907fa40f3ac1407c37",
       "advisories": []
     },
     {
       "lock": "packages/orm-rust/Cargo.lock",
-      "sha256": "88593fe53e690e3885fb320c4ff6fd07755aabe70f09e673e45663bc0b8e15bc",
+      "sha256": "7cec97339356c8ee833d64e14056be204f3067749ba654aad959ff7ae23fc27d",
       "advisories": []
     },
     {
@@ -115,9 +115,9 @@
     {
       "ecosystem": "go",
       "manifest": "go.mod",
-      "package": "github.com/polyspec/ordered-json/go",
-      "version": "v0.0.3",
-      "latest": "v0.0.3"
+      "package": "github.com/polyspec/ordered-json/packages/ordered-json-go",
+      "version": "v0.0.7",
+      "latest": "v0.0.7"
     },
     {
       "ecosystem": "go",

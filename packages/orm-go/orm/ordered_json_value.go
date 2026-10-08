@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	orderedjson "github.com/polyspec/ordered-json/go"
+	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
 )
 
 // orderedJSONValue converts the portable ORM value model to ordered-json.

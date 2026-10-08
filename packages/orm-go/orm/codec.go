@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	orderedjson "github.com/polyspec/ordered-json/go"
+	orderedjson "github.com/polyspec/ordered-json/packages/ordered-json-go"
 	"github.com/polyspec/orm/engine/ir"
 	"github.com/polyspec/orm/engine/plan"
 	goyaml "go.yaml.in/yaml/v3"

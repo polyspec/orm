@@ -8,7 +8,7 @@ import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
 sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'src'))
-# ordered-json 배포 tag가 나오기 전까지 sibling checkout에서 import한다(docs/plans/execution-checklist.md T43.5-1).
+# ordered-json의 Python 배포를 sibling checkout에서 import한다(docs/plans/execution-checklist.md T43.5-1).
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
 
 try:

@@ -9,8 +9,8 @@ description = "Python ORM: model generator and native SQL assembly for MySQL, Po
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    # ordered-json의 Python 배포. tag v0.0.4가 생기기 전에는 sibling checkout에서 import한다.
-    "polyspec-ordered-json @ git+https://github.com/polyspec/ordered-json@v0.0.4#subdirectory=python",
+    # ordered-json의 Python 배포(release v0.0.7).
+    "polyspec-ordered-json @ git+https://github.com/polyspec/ordered-json@v0.0.7#subdirectory=packages/ordered-json-python",
     "cryptography==50.0.2",
     "PyMySQL==1.2.3",
     "psycopg[binary]==3.3.6",

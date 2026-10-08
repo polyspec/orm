@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: ca42502f169a820d25cacb269d74672b41b3c34ca668a89dbb5d07afb3fa14c3 -->
+<!-- source-sha256: be202db088d162f71a8ae9e249b5e77fb0eb879d2bffd1021e2f8c9655773d64 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -42,7 +42,7 @@ table service_config {
 
 | 스타일 | 쓰기(값 → 저장 바이트) | 읽기(저장 바이트 → 값) | 기준 |
 |---|---|---|---|
-| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | tag `v0.0.3`의 ordered-json `0.0.3`; Go는 go.mod가 요구하는 version(`v0.0.3`)의 module `github.com/polyspec/ordered-json/go`를, Rust는 그 tag의 `rust/Cargo.toml` package를 사용하고, PHP와 TypeScript는 version `0.0.3`를 선언하며 저장소 root의 composer.json과 package.json이 그것을 GitHub release `v0.0.3`의 Composer zip과 npm archive에서 받는다 |
+| `json`, `jsons` | 공통 값 모델의 ordered-json 텍스트 | ordered-json 파싱 | tag `v0.0.7`의 ordered-json `0.0.7`; Go는 go.mod가 요구하는 version(`v0.0.7`)의 module `github.com/polyspec/ordered-json/packages/ordered-json-go`를, Rust는 그 tag의 `packages/ordered-json-rust/Cargo.toml` package를 사용하고, PHP와 TypeScript는 version `0.0.7`를 선언하며 저장소 root의 composer.json과 package.json이 그것을 GitHub release `v0.0.7`의 Composer zip과 npm archive에서 받는다 |
 | `serialize` | PHP serialize | PHP unserialize | `serialize` / `unserialize` |
 | `base64` | base64(serialize(v)) | unserialize(base64_decode) | 동일 |
 | `gz` | zlib(serialize(v), level 9) | unserialize(zlib inflate) | `gzcompress(…, 9)` / `gzuncompress` |
