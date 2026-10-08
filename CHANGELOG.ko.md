@@ -23,6 +23,7 @@
 - T43.5-3-2: contracts/validate.go의 outputs와 inputs 표가 모든 항목에 python 형을 준다. 언어 목록에 python을 넣는 일은 규칙의 native 항목과 함께 T43.5-3-6에서 한다.
 - T43.5-3-7: `db.utils().schema()`가 연결의 SchemaUtils 객체를 돌려준다.
 - T43.5-3-8: `SchemaUtils.register`는 manifest text가 선언된 hash로 해시되는지 확인한다(아니면 CONFIG이고 아무것도 등록하지 않음). 이미 등록된 set을 다시 등록해도 아무것도 바뀌지 않는다.
+- T43.5-3-5-1-3: 차이, 이름 변경, unsupported, apply owner 7개(DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError)가 Python 코드가 쓰는 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
 - T43.5-3-5-1-2: plan와 진단 owner 7개(DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange)가 Python dict 키를 필드로 하는 python native를 갖고, 스냅샷으로 확인된다.
 - T43.5-3-5-1-1: Page와 AESRotationStatus가 Python owner다. Page는 필드를 클래스 annotation으로 선언하고, 두 owner는 스냅샷으로 확인되는 python native를 갖는다.
 - T43.5-3-4: interfaces.json의 record마다 polyspec/orm/ir.py의 Python TypedDict를 가리키는 python native가 있다.

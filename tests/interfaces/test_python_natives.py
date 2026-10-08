@@ -177,6 +177,9 @@ class OwnerNativesTest(unittest.TestCase):
         'page_and_aes_rotation_status': ('Page', 'AESRotationStatus'),
         'diagnostic_manifest_and_plan': ('DbspecDiagnostic', 'DbspecManifest', 'DbspecPlan', 'DbspecPlanStep',
                                          'DbspecEffect', 'DbspecNullCheck', 'DbspecChange'),
+        'differences_renames_and_apply': ('DbspecDifference', 'DbspecUnsupported', 'DbspecTableRename',
+                                          'DbspecColumnRename', 'DbspecColumnName', 'DbspecApplyEvent',
+                                          'DbspecApplyError'),
     }
 
     def setUp(self):
@@ -199,6 +202,9 @@ class OwnerNativesTest(unittest.TestCase):
 
     def test_diagnostic_manifest_and_plan_group(self):
         self.check_group(self.GROUPS['diagnostic_manifest_and_plan'])
+
+    def test_differences_renames_and_apply_group(self):
+        self.check_group(self.GROUPS['differences_renames_and_apply'])
 
 
 if __name__ == '__main__':
