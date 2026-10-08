@@ -167,8 +167,8 @@ caseTest('a target without a scope declaration fails the selection', 5000, async
 // CI setup step이 마련하는 것(scripts/check/ci-setup.mjs)이다.
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ a: { scope: 'suite' }, b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['a', 'b', 'c'], []), [
-    'contracts/check-inputs.json declares no needs of a; declare [] or the setup it needs (databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs)',
-    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs',
+    'contracts/check-inputs.json declares no needs of a; declare [] or the setup it needs (databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs, python)',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs, python',
   ]);
 });
 

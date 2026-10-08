@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [static, clients_db, clients_pooler, conformance, dbspec, dbspec_apply, feature_coverage, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite]
+        group: [static, clients_db, clients_pooler, conformance, dbspec, dbspec_apply, feature_coverage, feature_verify_rust, feature_verify_other, feature_helpers, stress_mysql, stress_pg_sqlite, python]
     # Every setup step has an id that scripts/check/ci-setup.mjs maps to what it
     # installs, and runs whatever the earlier steps did (if: !cancelled()), so
     # one failed install never hides another. The step group-needs writes the
@@ -111,6 +111,15 @@ jobs:
             clients/rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
+      - uses: actions/setup-python@v5
+        id: python
+        if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
+        # .python-version declares the Python release of the Python checks; the client requires 3.11 or later.
+        with: { python-version-file: .python-version }
+      - name: Python client dependencies
+        id: python-install
+        if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
+        run: make python-install
       - name: lowest PHP release of the PHP client
         # make php-min-check runs the PHP client unit tests on the lowest release
         # of require.php in clients/php/composer.json; setup-php installs it

@@ -30,6 +30,8 @@ export const CI_SETUP = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
+  python: 'python',
+  'python-install': 'python',
 };
 
 // RUNNER_STEPS는 runner 자신이 필요한 step이다: repository와 Node가 없으면 make check도 summary도 실행되지 않으므로,
@@ -51,6 +53,7 @@ export const GROUP_OUTPUTS = {
   'php-extension-tools': ['php-extension-tools'],
   'server-programs': ['server-programs', 'databases'],
   databases: ['databases'],
+  python: ['python'],
 };
 
 // STEP_OUTPUT은 setup step마다 그 step을 실행하게 하는 group-needs의 output이다. null인 step은 모든 group에서 실행한다:
@@ -71,6 +74,8 @@ export const STEP_OUTPUT = {
   'php-extension-tools': 'php-extension-tools',
   'server-programs': 'server-programs',
   servers: 'databases',
+  python: 'python',
+  'python-install': 'python',
 };
 
 // stepCondition은 CI group job에서 setup step id가 가지는 `if:` 조건이다.

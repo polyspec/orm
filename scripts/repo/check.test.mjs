@@ -417,9 +417,9 @@ caseTest('a CI group job runs each setup step under its declared condition and r
   assert.equal(stepCondition('composer'), "${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}");
   assert.equal(stepCondition('servers'), "${{ !cancelled() && steps.group-needs.outputs.databases == 'true' }}");
   assert.deepEqual(groupOutputs(['a', 'b'], { a: ['go', 'composer'], b: ['databases'] }),
-    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true });
+    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false });
   assert.deepEqual(groupOutputs(['b'], { b: ['databases'] }),
-    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true });
+    { 'node-modules': false, rust: false, php: true, 'php-extension-tools': false, 'server-programs': true, databases: true, python: false });
   assert.throws(() => groupOutputs(['x'], {}), /target x declares no needs in contracts\/check-inputs\.json; declare its scope and needs there/);
   const setup = { 'group-needs': null, go: 'go', composer: 'composer', servers: 'databases' };
   const runner = ['checkout'];
