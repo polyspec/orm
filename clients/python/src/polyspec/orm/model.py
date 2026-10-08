@@ -322,11 +322,15 @@ class Model:
         if core.row is None:
             return out
         names = list(core.row.names) + [n for n in core.row.related if n not in core.row.names]
+        names += [n for n in core.news if n not in names]
         for name in names:
             if name in core.row.hidden:
                 continue
             if name in core.row.related:
                 out[name] = _related_output(core.row.related[name])
+                continue
+            if name in core.news and name not in core.row.names:
+                out[name] = core.new_values[name]
                 continue
             value = core.values.get(name, core.row.extra.get(name))
             if isinstance(value, StyledValue):
