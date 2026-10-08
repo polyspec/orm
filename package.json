@@ -6,7 +6,7 @@
     "node": ">=22.16.0"
   },
   "workspaces": [
-    "packages/orm-npm"
+    "packages/*"
   ],
   "scripts": {
     "docs:dev": "vitepress dev docs",
@@ -20,10 +20,11 @@
     "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/orm-npm/tests/dsn.mjs && node packages/orm-npm/tests/idle-connection-end.mjs && node packages/orm-npm/tests/engine.mjs && node packages/orm-npm/tests/generate.mjs && node packages/orm-npm/tests/generate-scan.mjs && node packages/orm-npm/tests/codec-vector.mjs && node packages/orm-npm/tests/styled-value.mjs && node packages/orm-npm/tests/dbspec.mjs && node packages/orm-npm/tests/dbspec-rules.mjs && node packages/orm-npm/tests/package-declarations.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
-    "mermaid": "11.17.2",
+    "mermaid": "12.1.0",
     "vitepress": "1.6.4"
   },
   "overrides": {
-    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.3/polyspec-ordered-json-0.0.3.tgz"
+    "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.3/polyspec-ordered-json-0.0.3.tgz",
+    "vite": "^7.0.0"
   }
 }
