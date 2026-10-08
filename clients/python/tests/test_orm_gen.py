@@ -1,5 +1,6 @@
 # orm-gen 생성기 검사: schema/bench.dbs 문서 집합에서 models.py를 만들고,
 # 생성 module이 chain 문법을 해석하는지 확인한다 (unittest).
+import os
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,10 @@ if _ORDERED_JSON.is_dir():
     sys.path.insert(0, str(_ORDERED_JSON))
 
 ORM_GEN = [sys.executable, str(ROOT / 'clients' / 'python' / 'bin' / 'orm-gen')]
+# orm-gen은 하위 프로세스이므로 이 test의 sys.path를 받지 못한다. sibling ordered-json을 PYTHONPATH로
+# 넘긴다(docs/checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
+ORM_GEN_ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
+    p for p in [str(_ORDERED_JSON), os.environ.get('PYTHONPATH', '')] if p))
 
 
 class OrmGenTest(unittest.TestCase):
@@ -21,7 +26,7 @@ class OrmGenTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-gen-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        result = subprocess.run(ORM_GEN + ['gen', '--schema',
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
                                            str(ROOT / 'schema' / 'bench.dbs'),
                                            '--out', cls.out],
                                 capture_output=True, text=True, check=True)
@@ -88,7 +93,7 @@ class OrmGenTest(unittest.TestCase):
         source.write_text('from models import Author\n'
                           'author = Author()\n'
                           'author.not_a_model_method()\n', encoding='utf-8')
-        result = subprocess.run(ORM_GEN + ['gen', '--schema',
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
                                            str(ROOT / 'schema' / 'bench.dbs'),
                                            '--out', self.out, '--scan', str(source)],
                                 capture_output=True, text=True)
@@ -98,13 +103,13 @@ class OrmGenTest(unittest.TestCase):
 
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix='orm-gen-missing-') as missing:
-            result = subprocess.run(ORM_GEN + ['gen', '--schema',
+            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
                                                str(ROOT / 'schema' / 'bench.dbs'),
                                                '--out', missing, '--check'],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn('missing:', result.stdout)
-        result = subprocess.run(ORM_GEN + ['gen', '--schema',
+        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema',
                                            str(ROOT / 'schema' / 'bench.dbs'),
                                            '--out', self.out, '--check'],
                                 capture_output=True, text=True)

@@ -1,6 +1,7 @@
 # SQLite e2e: 생성된 model로 row를 만들고 읽고 고치고 지운다 (docs/usage.md).
 # conformance runner가 세 database를 검사하므로 여기서는 SQLite만 확인한다.
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,10 @@ if _ORDERED_JSON.is_dir():
     sys.path.insert(0, str(_ORDERED_JSON))
 
 ORM_GEN = [sys.executable, str(ROOT / 'clients' / 'python' / 'bin' / 'orm-gen')]
+# orm-gen은 하위 프로세스이므로 이 test의 sys.path를 받지 못한다. sibling ordered-json을 PYTHONPATH로
+# 넘긴다(docs/checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
+ORM_GEN_ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
+    p for p in [str(_ORDERED_JSON), os.environ.get('PYTHONPATH', '')] if p))
 
 # bench.dbs와 같은 모양의 최소 DDL. render가 Python에 오면(T43.4) 이 표를 대신한다.
 DDL = """
@@ -82,7 +87,7 @@ table audited_row {
 
 
 def generate(out: str, schema: Path):
-    subprocess.run(ORM_GEN + ['gen', '--schema', str(schema), '--out', out],
+    subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--schema', str(schema), '--out', out],
                    capture_output=True, text=True, check=True)
     spec = importlib.util.spec_from_file_location(f'orm_models_{Path(out).name}',
                                                   str(Path(out) / 'models.py'))
