@@ -27,6 +27,7 @@
 - T43.5-3-5-1: the 16 owners of contracts/interfaces.json have Python classes or TypedDicts with their fields, and python natives naming them.
 - T43.5-3-5-1-3: the seven difference, rename, unsupported and apply owners (DbspecDifference, DbspecUnsupported, DbspecTableRename, DbspecColumnRename, DbspecColumnName, DbspecApplyEvent, DbspecApplyError) have python natives whose fields are the keys the Python code writes, checked against the snapshot.
 - T43.5-3-5-1-2: the seven plan and diagnostic owners (DbspecDiagnostic, DbspecManifest, DbspecPlan, DbspecPlanStep, DbspecEffect, DbspecNullCheck, DbspecChange) have python natives whose fields are the Python dict keys, checked against the snapshot.
+- T43.5-3: the interface contracts declare python: the extractor, the rule, record and owner natives, the manifest and the checker.
 - T43.5-4: the features, the version declarations, the check inputs and the CI group declare python.
 - T43.5-4-2: the version check, the check inputs and the CI group declare python.
 - T43.5-2-2: the Python conformance runner imports the generated models from the run directory, and its SQLite output over the 26 vectors is byte-identical to the Go output.
