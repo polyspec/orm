@@ -1,12 +1,14 @@
 # dbspec 문서를 표준 Mermaid erDiagram으로 쓰고 읽는다 (docs/mermaid.md).
 # 기준은 다른 client의 mermaid이며 text, 문서, 뺀 객체와 diagnostic은 같은
 # 바이트다. 정규식의 공백은 [\t\n\f\r ]로 쓴다.
+from __future__ import annotations
+
 import json
 import re
 
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.introspect_catalog import Catalog
-from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecType
+from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecType
 from polyspec.orm.dbspec.parse import valid_name
 from polyspec.orm.dbspec.plan import sorted_by
 
@@ -30,7 +32,7 @@ def _mermaid_type(t: DbspecType) -> str:
         else type_text(t)
 
 
-def export_mermaid(document) -> dict:
+def export_mermaid(document: DbspecDocument) -> dict:
     """문서 하나를 표준 Mermaid erDiagram으로 쓰고, diagram이 담지 못하는 것을
     [kind, table, name] 순서로 남긴다 (docs/mermaid.md "Export")."""
     if document is None or not isinstance(document.tables, (list, tuple)):

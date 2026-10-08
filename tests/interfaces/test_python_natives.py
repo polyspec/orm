@@ -97,6 +97,9 @@ class DbspecRuleNativesTest(unittest.TestCase):
             'Dbspec.parsePlan', 'Dbspec.emitPlan', 'Dbspec.chain', 'Dbspec.diff',
             'Dbspec.compareSchemas', 'Dbspec.installedDifferences', 'Dbspec.addTablesAndColumnsSteps',
             'Dbspec.planSteps'],
+        'apply_recovery_rollback_finalize_mermaid': [
+            'Dbspec.apply', 'Dbspec.recover', 'Dbspec.rollback', 'Dbspec.finalize',
+            'Dbspec.exportMermaid', 'Dbspec.importMermaid'],
     }
 
     def setUp(self):
@@ -123,6 +126,9 @@ class DbspecRuleNativesTest(unittest.TestCase):
 
     def test_plans_comparison_upgrade_group(self):
         self.check_group(self.GROUPS['plans_comparison_upgrade'])
+
+    def test_apply_recovery_rollback_finalize_mermaid_group(self):
+        self.check_group(self.GROUPS['apply_recovery_rollback_finalize_mermaid'])
 
 
 if __name__ == '__main__':

@@ -2,14 +2,21 @@
 # 되돌리고, 적용한 plan을 finalize한다 (docs/plans.md "Apply"). 기준은 다른
 # client의 apply이며 lock, session 설정, history table, step, 검증과 효과 query는
 # 같은 바이트다. 실행은 동기다.
+from __future__ import annotations
+
 import datetime
 import re
+from typing import Callable
 
 from polyspec.orm.dbspec.introspect import introspect_dbspec
+from polyspec.orm.dbspec.model import DbspecPlan
 from polyspec.orm.dbspec.manifest import dbspec_manifest
 from polyspec.orm.dbspec.plan import chain_plans
 from polyspec.orm.dbspec.plan_steps import effect_text, plan_steps
 from polyspec.orm.dbspec.render import Renderer
+
+# The handler of a statement event of the apply: it receives the dict of one event, as the TypeScript client does.
+DbspecApplyHandler = Callable[[dict], None]
 
 __all__ = ['DbspecApplyError', 'apply_plans', 'finalize_plans', 'recover_plans',
            'rollback_plans']
@@ -688,7 +695,7 @@ def _new_applier(connection, dialect: str, plans, now, events) -> _Applier:
     return _Applier(connection, dialect, chained['plans'], now, events)
 
 
-def apply_plans(connection, dialect: str, plans, now, events=None) -> None:
+def apply_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None = None) -> None:
     """적용하지 않은 plan을 chain 순서로, step 하나씩, finalize step까지 dialect의
     lock 아래 한 연결에 적용한다 (docs/plans.md "Apply"). chain 전부를 적용한
     database는 그대로 둔다. `now`는 applied_at에 기록할 epoch microsecond
@@ -703,7 +710,7 @@ def apply_plans(connection, dialect: str, plans, now, events=None) -> None:
     a.session(run)
 
 
-def recover_plans(connection, dialect: str, plans, now, events=None) -> None:
+def recover_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None = None) -> None:
     """중단된 plan을 기록한 step 뒤의 catalog 효과에서 앞으로 이어 간다 (docs/
     plans.md "Apply"). 중단된 plan이 없으면 아무것도 바뀌지 않는다."""
     a = _new_applier(connection, dialect, plans, now, events)
@@ -728,7 +735,7 @@ def recover_plans(connection, dialect: str, plans, now, events=None) -> None:
     a.session(run)
 
 
-def rollback_plans(connection, dialect: str, plans, now, events=None) -> None:
+def rollback_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None = None) -> None:
     """history의 마지막 plan을 그 rollback 문장으로 첫 step까지 되돌리고 row를
     지운다 (docs/plans.md "Apply"). 적용된 plan은 먼저 drift와 NULL row를 검사하고,
     rollback이 없는 step은 irreversible DbspecApplyError로 멈춘다."""
@@ -787,7 +794,7 @@ def rollback_plans(connection, dialect: str, plans, now, events=None) -> None:
     a.session(run)
 
 
-def finalize_plans(connection, dialect: str, plans, now, events=None) -> None:
+def finalize_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None = None) -> None:
     """적용된 모든 plan의 finalize step을 chain 순서로 실행해 숨긴 table과 column을
     지우고, plan을 done으로 기록한다 (docs/plans.md "Apply")."""
     a = _new_applier(connection, dialect, plans, now, events)
