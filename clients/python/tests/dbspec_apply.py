@@ -3,6 +3,7 @@
 # plan의 statement 1 뒤에 멈추고 이어 가고, 마지막 plan을 되돌린다. MySQL과
 # PostgreSQL은 conformance가 검사한다.
 import json
+import os
 import sqlite3
 import sys
 import tempfile
@@ -56,26 +57,31 @@ def history(conn: Conn) -> list:
 
 
 def main() -> None:
+    with tempfile.TemporaryDirectory(prefix='dbspec-apply-') as tmp:
+        scenarios(tmp)
+
+
+def scenarios(tmp: str) -> None:
     plans = chain()
     sources = [None, plans[0]['schema']]
     steps = [len(plan_steps(source, p, 'sqlite')['steps'])
              for p, source in zip(plans, sources)]
     # 첫 plan만 적용한다.
-    conn = Conn(tempfile.mktemp(suffix='.sqlite3'))
+    conn = Conn(os.path.join(tmp, 'first.sqlite3'))
     apply_plans(conn, 'sqlite', plans[:1], lambda: NOW)
     assert history(conn) == [('create_from_empty', 'applied', steps[0])], \
         history(conn)
     assert conn.value('SELECT COUNT(*) FROM "users"') == 0
     conn.close()
     # chain 전체를 적용한다.
-    conn = Conn(tempfile.mktemp(suffix='.sqlite3'))
+    conn = Conn(os.path.join(tmp, 'chain.sqlite3'))
     apply_plans(conn, 'sqlite', plans, lambda: NOW)
     assert history(conn) == [('create_from_empty', 'applied', steps[0]),
                              ('rename_table_and_column', 'applied',
                               steps[1])], history(conn)
     conn.close()
     # 둘째 plan의 statement 1 뒤에 멈추고 recover로 끝낸다.
-    conn = Conn(tempfile.mktemp(suffix='.sqlite3'))
+    conn = Conn(os.path.join(tmp, 'stopped.sqlite3'))
     stopped = []
 
     def stop(event):

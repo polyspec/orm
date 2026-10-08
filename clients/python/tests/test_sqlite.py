@@ -102,7 +102,9 @@ def run_script(db, text: str) -> None:
 class SqliteEndToEndTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.out = tempfile.mkdtemp(prefix='orm-sqlite-')
+        tmp = tempfile.TemporaryDirectory(prefix='orm-sqlite-')
+        cls.addClassCleanup(tmp.cleanup)
+        cls.out = tmp.name
         cls.models = generate(cls.out, ROOT / 'schema' / 'bench.dbs')
         cls.db = cls.models.connect(f'sqlite://{cls.out}/bench.sqlite3')
         run_script(cls.db, DDL)
@@ -288,7 +290,9 @@ class SqliteEndToEndTest(unittest.TestCase):
 class SqliteAuditTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.out = tempfile.mkdtemp(prefix='orm-audit-')
+        tmp = tempfile.TemporaryDirectory(prefix='orm-audit-')
+        cls.addClassCleanup(tmp.cleanup)
+        cls.out = tmp.name
         document = Path(cls.out) / 'audit.dbs'
         document.write_text(AUDIT_DOCS)
         cls.models = generate(cls.out, document)

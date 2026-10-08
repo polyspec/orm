@@ -18,13 +18,15 @@ ORM_GEN = [sys.executable, str(ROOT / 'clients' / 'python' / 'bin' / 'orm-gen')]
 class OrmGenTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.out = tempfile.mkdtemp(prefix='orm-gen-')
+        tmp = tempfile.TemporaryDirectory(prefix='orm-gen-')
+        cls.addClassCleanup(tmp.cleanup)
+        cls.out = tmp.name
         result = subprocess.run(ORM_GEN + ['gen', '--schema',
                                            str(ROOT / 'schema' / 'bench.dbs'),
                                            '--out', cls.out],
                                 capture_output=True, text=True, check=True)
-        cls.models = str(Path(cls.out).parent)
         sys.path.insert(0, cls.out)
+        cls.addClassCleanup(sys.path.remove, cls.out)
 
     def test_generated_module_imports_and_builds_the_model(self):
         import models
@@ -95,13 +97,13 @@ class OrmGenTest(unittest.TestCase):
         self.assertIn('Author.not_a_model_method', result.stderr)
 
     def test_check_reports_a_missing_or_differing_file(self):
-        missing = tempfile.mkdtemp(prefix='orm-gen-missing-')
-        result = subprocess.run(ORM_GEN + ['gen', '--schema',
-                                           str(ROOT / 'schema' / 'bench.dbs'),
-                                           '--out', missing, '--check'],
-                                capture_output=True, text=True)
-        self.assertEqual(result.returncode, 1)
-        self.assertIn('missing:', result.stdout)
+        with tempfile.TemporaryDirectory(prefix='orm-gen-missing-') as missing:
+            result = subprocess.run(ORM_GEN + ['gen', '--schema',
+                                               str(ROOT / 'schema' / 'bench.dbs'),
+                                               '--out', missing, '--check'],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn('missing:', result.stdout)
         result = subprocess.run(ORM_GEN + ['gen', '--schema',
                                            str(ROOT / 'schema' / 'bench.dbs'),
                                            '--out', self.out, '--check'],
