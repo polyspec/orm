@@ -1,33 +1,55 @@
-# 공유 mermaid 사례(tests/dbspec/mermaid.json): 문서의 Mermaid 출력과 뺀 객체,
-# Mermaid text의 문서 읽기와 뺀 객체, 오류 줄, bench.dbs의 왕복이 다른 client와
-# 같은지 확인한다.
+# dbspec Mermaid diagrams (tests/dbspec/mermaid.json, docs/mermaid.md): the same checks as
+# clients/typescript/tests/dbspec-mermaid.mjs. Every export case writes exactly its Mermaid
+# text (with the trailing line end) and dropped objects; every import case reads its Mermaid
+# lines into exactly its document (with the trailing line end) and dropped objects; every
+# invalid case has no document and reports exactly its diagnostics; every round trip case
+# exports its document and imports the export with exactly its dropped objects and gets back
+# its tables, columns, primary keys and foreign keys.
+#
+# A failed check raises CheckFailed. The checks do not use assert, which python -O removes.
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+_ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'python' / 'src'
+if _ORDERED_JSON.is_dir():
+    sys.path.insert(0, str(_ORDERED_JSON))
 
-from polyspec.orm.dbspec import emit_dbspec, parse_dbspec  # noqa: E402
+from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402
 
 
-def _parse(case, field, others_field='documents'):
-    others = {name: '\n'.join(text) for name, text in case.get(others_field,
-                                                               {}).items()}
-    document, diagnostics = parse_dbspec('\n'.join(case[field]) + '\n', others)
-    assert document is not None, (case['id'], diagnostics[:1])
-    return document
+class CheckFailed(Exception):
+    pass
 
 
-def _dropped(listed) -> list:
-    return [[u['kind'], u['table'], u['name']] for u in listed]
+def check(condition: bool, what: str) -> None:
+    if not condition:
+        raise CheckFailed(what)
 
 
-# Mermaid가 옮기는 table, column, primary key, foreign key만 table 이름 순서의
-# 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다. 타입은 kind와
-# 크기 필드의 튜플로 비교한다(같은 언어 안의 두 문서 비교이므로 의미가 같으면 된다).
-def _skeleton(document) -> list:
+def equal(actual, expected, what: str) -> None:
+    if actual != expected:
+        raise CheckFailed(f'{what}: expected {expected!r}, got {actual!r}')
+
+
+def text(lines) -> str:
+    return '\n'.join(lines) + '\n'
+
+
+def drops(dropped) -> list:
+    return [[u['kind'], u['table'], u['name']] for u in dropped]
+
+
+def diagnostic_triples(diagnostics) -> list:
+    return [[d.rule, d.line, d.column] for d in diagnostics]
+
+
+# skeleton은 Mermaid가 옮기는 table, column, primary key, foreign key를 table 이름 순서의
+# 줄로 쓴다. foreign key action은 Mermaid가 옮기지 않으므로 뺀다.
+def skeleton(document) -> list:
     out = []
     for t in sorted(document.tables, key=lambda t: t.name):
         out.append(f'table {t.name}')
@@ -44,45 +66,66 @@ def _skeleton(document) -> list:
     return out
 
 
+def run_export(c) -> None:
+    documents = {name: text(lines) for name, lines in c['documents'].items()}
+    document, diagnostics = parse_dbspec(text(c['document']), documents)
+    equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
+    result = export_mermaid(document)
+    equal(result['mermaid'], text(c['mermaid']), 'mermaid text')
+    equal(drops(result['dropped']), c['dropped'], 'dropped')
+
+
+def run_import(c) -> None:
+    result = import_mermaid(text(c['mermaid']), 'imported')
+    equal(diagnostic_triples(result['diagnostics']), [], 'diagnostics')
+    equal(emit_dbspec(result['document']), text(c['document']), 'document')
+    equal(drops(result['dropped']), c['dropped'], 'dropped')
+
+
+def run_invalid(c) -> None:
+    result = import_mermaid(text(c['mermaid']), 'imported')
+    equal(result['document'], None, 'document of an invalid diagram')
+    equal(diagnostic_triples(result['diagnostics']), c['errors'], 'diagnostics')
+
+
+def run_round_trip(c) -> None:
+    text_read, diagnostics = read_dbspec_file(str(ROOT / c['path']))
+    equal(diagnostic_triples(diagnostics), [], 'file diagnostics')
+    document, diagnostics = parse_dbspec(text_read, {})
+    equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
+    exported = export_mermaid(document)
+    equal(drops(exported['dropped']), c['dropped'], 'export dropped')
+    imported = import_mermaid(exported['mermaid'], document.name)
+    equal(diagnostic_triples(imported['diagnostics']), [], 'import diagnostics')
+    equal(drops(imported['dropped']), c['imported'], 'import dropped')
+    equal(skeleton(imported['document']), skeleton(document),
+          'tables, columns, primary keys and foreign keys')
+    print(f'round_trip {c["id"]}: exported={len(exported["dropped"])} '
+          f'imported={len(imported["dropped"])}')
+
+
 def main() -> None:
-    data = json.loads((ROOT / 'tests' / 'dbspec' / 'mermaid.json').read_text())
-    cases = 0
-    for case in data['export']:
-        result = export_mermaid(_parse(case, 'document'))
-        assert result['mermaid'].splitlines() == case['mermaid'], \
-            f'{case["id"]}: mermaid text differs'
-        assert _dropped(result['dropped']) == case['dropped'], \
-            f'{case["id"]}: dropped objects differ'
-        cases += 1
-    for case in data['import']:
-        result = import_mermaid('\n'.join(case['mermaid']) + '\n', 'imported')
-        assert result['diagnostics'] == [], (case['id'], result['diagnostics'])
-        assert emit_dbspec(result['document']).splitlines() == case['document'], \
-            f'{case["id"]}: imported document differs'
-        assert _dropped(result['dropped']) == case['dropped'], \
-            f'{case["id"]}: dropped objects differ'
-        cases += 1
-    for case in data['invalid']:
-        result = import_mermaid('\n'.join(case['mermaid']) + '\n', 'imported')
-        assert [[d.rule, d.line, d.column] for d in
-                result['diagnostics']] == case['errors'], \
-            f'{case["id"]}: diagnostics differ'
-        cases += 1
-    for case in data['round_trip']:
-        document, diagnostics = parse_dbspec(
-            (ROOT / case['path']).read_text(), {})
-        assert not diagnostics, (case['id'], diagnostics)
-        exported = export_mermaid(document)
-        assert _dropped(exported['dropped']) == case['dropped'], \
-            f'{case["id"]}: export dropped objects differ'
-        imported = import_mermaid(exported['mermaid'], document.name)
-        assert imported['diagnostics'] == [], (case['id'], imported['diagnostics'])
-        assert _dropped(imported['dropped']) == case['imported'], \
-            f'{case["id"]}: import dropped objects differ'
-        assert _skeleton(imported['document']) == _skeleton(document), \
-            f'{case["id"]}: tables, columns, primary keys and foreign keys differ'
-        cases += 1
-    print(f'mermaid: {cases} cases agree')
+    vectors = json.loads((ROOT / 'tests' / 'dbspec' / 'mermaid.json').read_text(encoding='utf-8'))
+    equal(vectors['version'], 1, 'mermaid vectors version')
+    check(all(vectors[kind] for kind in ('export', 'import', 'invalid', 'round_trip')),
+          'mermaid vectors have export, import, invalid and round trip cases')
+    runs = 0
+    for c in vectors['export']:
+        run_export(c)
+        runs += 1
+    for c in vectors['import']:
+        run_import(c)
+        runs += 1
+    for c in vectors['invalid']:
+        run_invalid(c)
+        runs += 1
+    for c in vectors['round_trip']:
+        run_round_trip(c)
+        runs += 1
+    cases = sum(len(vectors[kind]) for kind in ('export', 'import', 'invalid', 'round_trip'))
+    equal(runs, cases, 'every mermaid case runs')
+    print(f'mermaid cases: {runs} ({len(vectors["export"])} export, {len(vectors["import"])} import, '
+          f'{len(vectors["invalid"])} invalid, {len(vectors["round_trip"])} round trip)')
 
 
 if __name__ == '__main__':
