@@ -743,5 +743,5 @@ class BuiltRequest:
             self.fail(OrmError('CONFIG', 'a subquery model must add exactly one column '
                                          'with addColumn<Col>()'))
             return None
-        del q['columns']
+        q.pop('columns', None)
         return sub
