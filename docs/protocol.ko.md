@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 190eaf3987580beb411148be8060c0a482d40930e906af3f40899959e9f46f56 -->
+<!-- source-sha256: 868b63ac682073e4991123aa64b9ba150f38e05452d632381d8833577dc44149 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -152,7 +152,7 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 
 ## 3. 오류
 
-오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`). `ROLLBACK` 오류는 재시도하지 않는다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
+오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`, Python: `cause`와 `rollback`). `ROLLBACK` 오류는 재시도하지 않는다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
 ### 3.1 Test faults
 
@@ -166,6 +166,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | Rust | `polyspec_orm::testing::fail_next_rollback(&db)` | cargo feature `test-faults`가 있을 때만 module을 compile하며, 어떤 default feature도 이를 켜지 않는다. `[dev-dependencies]`에서 켠다 |
 | TypeScript | `@polyspec/orm/testing`의 `failNextRollback(db)` | package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다 |
 | PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
+| Python | `polyspec.orm.testing.fail_next_rollback(db)` | `packages/orm-python/pyproject.toml`의 `[tool.setuptools.packages.find]`가 package `polyspec.orm.testing`을 배포에서 빼므로, 설치된 `polyspec-orm`은 이것을 담지 않는다. process는 source tree `packages/orm-python/src`를 path에 둘 때만 이것을 import하며, package entry point `polyspec.orm`은 이 함수를 export하지 않는다 |
 
 ## 4. 클라이언트 안의 계획
 

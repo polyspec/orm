@@ -1385,6 +1385,7 @@
   "packages/orm-python/src/polyspec/orm/styled_value.py::StyledValue.sql_null": "@staticmethod def sql_null() -\u003e 'StyledValue'",
   "packages/orm-python/src/polyspec/orm/styled_value.py::StyledValue.to_json": "def to_json(self) -\u003e dict",
   "packages/orm-python/src/polyspec/orm/styled_value.py::StyledValue.value": "@staticmethod def value(value: Any) -\u003e 'StyledValue'",
+  "packages/orm-python/src/polyspec/orm/testing/__init__.py::fail_next_rollback": "def fail_next_rollback(db: Db) -\u003e None",
   "packages/orm-python/src/polyspec/orm/utils.py::AesRotationStatus": "class AesRotationStatus",
   "packages/orm-python/src/polyspec/orm/utils.py::AesRotationStatus#field.current": "int",
   "packages/orm-python/src/polyspec/orm/utils.py::AesRotationStatus#field.pending": "int",
