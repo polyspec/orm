@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b23b96a92c2a827e2caa57accc052aa0977f737369617ef4c1be48f5a364fb3e -->
+<!-- source-sha256: 39f59bb34dd102f379e357fdc1a7a0c1e09bbc1973d31578e712fd60c5c6c6a4 -->
 # 변경 이력
 
 ## Unreleased
+
+- T49.1: Python client가 문서에 `use` 줄이 있는 문서 집합을 install합니다. `is_schema_text`는 plain 문서의 use 줄을 TypeScript client의 `isSchemaText`처럼 `DbspecUse` 값으로 만들며, 더는 `utils().schema().install(schema)`를 `AttributeError: 'dict' object has no attribute 'document'`로 실패하게 한 dict로 만들지 않습니다.
 
 ## 0.0.5
 

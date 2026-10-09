@@ -61,12 +61,12 @@ def is_schema_text(document) -> bool:
     문서의 use 줄은 문서 이름 순, 그 table은 이름 순이어야 한다. 외부 문서 자체는
     필요 없다."""
     from polyspec.orm.dbspec.emit import CANONICAL, SCHEMA, emit_document
-    from polyspec.orm.dbspec.model import DbspecDocument
+    from polyspec.orm.dbspec.model import DbspecDocument, DbspecUse
     if document.name != 'schema':
         return False
     tables = sorted(document.tables, key=lambda t: t.name)
-    uses = [{'comments': (), 'document': u.document,
-             'tables': tuple(sorted(set(u.tables)))} for u in document.uses]
+    # use 줄도 emit_document가 읽는 DbspecUse로 만든다(TypeScript isSchemaText와 같은 field).
+    uses = [DbspecUse((), u.document, tuple(sorted(set(u.tables)))) for u in document.uses]
     plain = DbspecDocument(document.name, tuple(uses), tuple(tables), (),
                            document.closing_comments, document.external)
     return emit_document(document, CANONICAL) == emit_document(plain, SCHEMA)
