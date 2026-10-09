@@ -92,6 +92,7 @@ class Subscribers:
                 raise _subscriber_error(failure) from None
 
 
-def _subscriber_error(failure) -> OrmError:
-    message = failure.message if isinstance(failure, OrmError) else str(failure)
-    return OrmError('SUBSCRIBER', f'statement event subscriber failed: {message}')
+def _subscriber_error(failure: Exception) -> OrmError:
+    """subscriber 오류의 text를 message에 담고 그 오류를 cause로 둔 SUBSCRIBER 오류다. OrmError의 text는
+    `<code>: <message>`이며, TypeScript client가 `error.message`로 쓰는 text와 같다."""
+    return OrmError('SUBSCRIBER', f'statement event subscriber failed: {failure}', failure)
