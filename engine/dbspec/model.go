@@ -177,7 +177,14 @@ type Settings struct {
 	Immutable       *ImmutableSetting
 	Audit           *AuditSetting
 	StateMachine    *StateMachineSetting
+	Marks           []MarkSetting
 	ClosingComments []string
+}
+
+// MarkSetting은 `markdown <column>`이다: 산문 column의 manifest 전용 표시다.
+type MarkSetting struct {
+	Comments []string
+	Column   string
 }
 
 // StateMachineSetting은 한 column의 상태 기계다. 줄은 선언 순서를 유지한다.

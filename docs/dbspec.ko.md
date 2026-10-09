@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 929987df2adce8d5ce7f17d388ccd7a5952ef824a6eff6e87f734f4f5a999838 -->
+<!-- source-sha256: 02a215eb6ab21376b5cc17e30aa41b9793fbbae86c3531baaa956e644f6f9ddf -->
 # dbspec
 
 [English](dbspec.md)
@@ -163,6 +163,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `blind_index <aes column> <index column>` | executor가 AES column 평문의 HMAC을 index column에 쓰고 같음 조건에 쓴다 | manifest |
 | `navigation <foreign key> <child name> <parent name>` | 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 | manifest |
 | `state_machine <column> <from> -> <to> [require (<column>, ...)]`, `state_machine <column> terminal <state> [require (<column>, ...)]` | non-null varchar 또는 text column 하나의 row 상태 기계다. 각 줄은 하나의 전환이거나 하나의 terminal 상태이고, table마다 한 column에서 순서와 섞임에 제한 없이 쓴다. `require`는 전환이나 terminal이 기록하는 column을 명명하고, terminal 상태를 벗어나는 전환은 거부한다. database는 기계를 강제하지 않고 row를 소유한 executor가 강제한다 | manifest |
+| `markdown <column>` | column이 markdown 산문을 담는다. column마다 반복 가능하고 임의의 nullability varchar 또는 text column에 쓴다. database는 이를 위해 아무것도 render하지 않고 문서를 소유한 도구가 읽는다 | manifest |
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
 | `audit into <history table> column <column> references <table> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
 
