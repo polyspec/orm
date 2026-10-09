@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f5c6d2be6404e6e7369065bd5b817c845173806c73470ad30e0ce8945a2623f4 -->
+<!-- source-sha256: d510630b795520bcad9e83344bcb9abd3fb55c08ad709ca139f8e8d1db299c41 -->
 # 변경 이력
 
 ## Unreleased
 
+## 0.0.6
+
+- T52: release 0.0.6: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.6을 선언하고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.6 archive의 lock을 담는다.
 - T51.1: Python test entry point의 한국어 기록이 `make docs-rules-check`의 writing-style 규칙을 통과합니다.
 - T51: Python client의 배포가 test entry point `polyspec.orm.testing`을 담고 `polyspec.orm`의 어느 module도 이것을 import하지 않으므로, 소비자의 test가 설치된 `polyspec-orm`에서 이것을 import합니다. PHP package가 `testing/Faults.php`를 담는 것과 같습니다.
 - T50: Python client의 statement event subscriber가 던지면 statement는 `SUBSCRIBER: statement event subscriber failed: <오류의 text>`와 그 오류를 `cause`로 실패합니다. TypeScript client와 같습니다. subscriber의 `OrmError`는 더 이상 `AttributeError`로 끝나지 않습니다.
