@@ -1070,5 +1070,11 @@ typescript-build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 
+# npm 12.2.0 installs no URL dependency by default: the consumer projects of a release read the tarball of
+# @polyspec/ordered-json by its URL, which their locks pin, so the consumer install and the proof run with
+# allow-remote=root; a lock pins every registry package by its integrity, so the install downloads are
+# installation and no remote package enters the tree (the same setting as hyper, H13.5-14 of hyper).
+release-consumer release-proof: export npm_config_allow_remote := root
+
 # The archive of the npm package holds the build of the TypeScript client (scripts/kit/release.mjs packs the tree as it is).
 release-assets: typescript-build
