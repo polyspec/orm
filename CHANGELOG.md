@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T55: Python models and row sets have `to_json_text()`, which writes the same JSON text as TypeScript `toJSONText()`: the members in row order, a styled value column as its tagged value with the stored ordered-json text, and every other value as `JSON.stringify` writes it; a value that JSON cannot write fails with `CODEC_ENCODE`. `to_array()` takes the row order of the TypeScript and PHP clients.
 - T54: the Python client reads SQL NULL of a styled value column as `StyledValue.sql_null()` in the root row, a joined row and a related row, as the TypeScript client returns `StyledValue.sqlNull()`, so a value read from a row writes back; the getter returned `None` and a setter given it failed with `CODEC_ENCODE`.
 
 ## 0.0.6

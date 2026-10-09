@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 6d8c531a78b76a168335b5d6d540698fa87cf641ba76b21a1cc1bed3296c61d0 -->
+<!-- source-sha256: 892d2db7b965e624531a04fd515a0e13860d8f374825f1fa92fb9d200a2d8d43 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -51,7 +51,7 @@ table service_config {
 ## 값 모델 {#value-model}
 `json`과 `jsons` 단계는 텍스트를 `jsontext` 컬럼에 저장한다. 이 컬럼은 세 데이터베이스에서 모두 텍스트이므로 저장한 텍스트를 적은 그대로 읽는다. `json aes` 단계는 암호화한 텍스트를 blob 컬럼에 저장한다([암호화한 JSON 값](#encrypted-json-value) 참고). 데이터베이스 안에서 질의하는 데이터는 컬럼이나 자식 테이블로 만들며, ORM에는 JSON 경로 조건과 JSON 인덱스가 없다.
 
-스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 값 스타일 컬럼의 바깥 표현 안에 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
+스타일 컬럼의 타입은 "JSON형 값"이다: null · bool · 정수(i64) · 실수(f64) · 문자열 · 리스트 · 문자열 키 맵. `json`·`jsons` 단계는 모든 클라이언트에서 ordered-json 값으로 읽으며, 이 값은 객체 멤버 순서와 숫자 텍스트를 보존하고 빈 객체와 빈 배열을 구분한다. 쓰기는 이 값을 받아 텍스트를 그대로 저장한다. 모든 클라이언트에서 모델의 JSON 출력은 각 ordered-json 값을 값 스타일 컬럼의 바깥 표현 안에 저장한 텍스트로 쓰며 멤버 순서와 숫자 텍스트를 바꾸지 않는다. 언어의 JSON 인코더가 저장한 텍스트를 쓸 수 없으면 클라이언트는 자체 메서드로 출력을 쓰고 인코더는 실패한다. PHP `json_encode`는 ordered-json 값을 가진 행에서 `CODEC_ENCODE`로 실패하고 `toJson()`이 출력을 쓴다. TypeScript `toJSON`은 저장한 멤버 순서로 값을 다시 만들고 각 스칼라를 저장한 텍스트의 `JSON.rawJSON`으로 반환한다. JavaScript가 `"1"` 같은 멤버 키의 순서를 바꾸거나 저장한 키 텍스트가 키의 `JSON.stringify`와 다르면 `CODEC_ENCODE`로 실패하며, `toJSONText()`는 모든 경우에 정확한 텍스트를 쓴다. Rust serde 직렬화는 출력을 serde_json raw value로 쓰며 serde_json serializer는 이를 그대로 쓴다. Python `json.dumps`는 모델을 인코딩할 수 없어 `TypeError`로 실패한다. 모델과 `Collection`의 `to_json_text()`가 출력을 쓰며, 멤버는 `to_array()`의 행 순서를 따르고 다른 값은 `JSON.stringify`가 쓰는 대로 쓰므로, 같은 행에 대해 TypeScript `toJSONText()`와 같은 텍스트를 쓴다. `bytes`나 유한하지 않은 수처럼 JSON으로 쓸 수 없는 값은 `CODEC_ENCODE`로 실패한다. 배열 출력은 표에 적었다. 다른 스타일은 공통 값 모델을 사용한다.
 
 Go JSON codec의 `Decode`는 `orm.StyledValue`를 반환하며 value 변형 안에 `*orderedjson.Value`를 담는다. `Encode`는 `orm.StyledValue`를 입력으로 받는다. `orm.SqlNull()`은 SQL NULL을 선택하고 `orm.Value(v)`는 `v == nil`을 포함한 저장 값을 선택한다. `Kind()`는 `sql-null` 또는 `value`를 반환하고 `Data()`는 value 변형의 저장 값만 반환한다. 생성 setter는 `(*Model, error)`를 반환하고 모델을 바꾸기 전에 값을 검증한다. getter는 `(orm.StyledValue, error)`를 반환하며 컬럼을 조회하지 않았으면 `COLUMN_UNSELECTED`로 실패한다. 사용자 값에는 Go의 `encoding/json`을 사용하지 않는다. portable scalar/list/map 값, named scalar type, `json` field tag가 있는 Go 구조체는 ordered-json으로 명시적으로 변환하며, 파싱한 ordered-json 값은 원래 순서와 노드 종류를 유지한다. `jsontext.Value`와 `json.RawMessage`는 이미 인코딩된 raw JSON 값일 때만 받아 즉시 ordered-json으로 파싱한다. 지원하지 않는 Go kind, 문자열이 아닌 map key, `[]byte`, 유한하지 않은 수는 `CODEC_ENCODE`를 반환한다.
 
@@ -64,12 +64,12 @@ TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 �
 `json.Marshaler`를 구현한 Go 값은 `MarshalJSON` 결과를 즉시 ordered-json으로 파싱한다. 반환 바이트는 유효한 JSON이어야 하므로 custom marshaler도 ordered-json 모델에서 노드 종류 검사를 거치며 이를 우회할 수 없다.
 
 Go `[]byte`는 공통 JSON 값이 아니므로 JSON encoding에서 `CODEC_ENCODE`로 거부한다. Go의 base64 JSON 문자열 표현으로 조용히 변환하지 않으며, JSON column에 대입하기 전에 byte를 공통 값 모델로 decode해야 한다.
-| | Go | Rust | PHP | TypeScript |
-|---|---|---|---|---|
-| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<polyspec_orm::ordered_json::Value>` | `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` |
-| 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Polyspec\Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 |
-| 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 |
-| 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 |
+| | Go | Rust | PHP | TypeScript | Python |
+|---|---|---|---|---|---|
+| `json`·`jsons` 컬럼 getter | `orm.StyledValue` containing `*orderedjson.Value` | `StyledValue<polyspec_orm::ordered_json::Value>` | `Polyspec\OrderedJson\Value`를 담은 `Polyspec\Orm\StyledValue` | `ordered-json`의 `StyledValue<Value>` | `polyspec.ordered_json.Value`를 담은 `polyspec.orm.StyledValue` |
+| 값 스타일 컬럼 setter 입력 | portable 값이나 ordered-json 값을 담은 `orm.StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `Polyspec\Orm\StyledValue` | `StyledValue<T>`; `T`는 스타일 값 | 스타일 값을 담은 `polyspec.orm.StyledValue` |
+| 모델 JSON 출력 | `json.Marshal(model)`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `to_json()`과 serde 직렬화: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현 | `toJson()`: 값 스타일 컬럼의 바깥 표현, `json_encode`는 `CODEC_ENCODE`로 실패 | `JSON.stringify(model)`과 `toJSONText()`: 값 스타일 컬럼의 바깥 표현 | `to_json_text()`: 저장된 문서 텍스트를 포함한 값 스타일 컬럼의 바깥 표현, `json.dumps`는 `TypeError`로 실패 |
+| 배열 출력 | `ToArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 serde_json 바깥 표현을 반환하며 `1e400`처럼 문서를 표현할 수 없으면 `CODEC_ENCODE` | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `toArray()`는 값 스타일 컬럼의 바깥 표현을 반환 | `to_array()`는 값 스타일 컬럼의 바깥 표현을 반환 |
 
 PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 리스트로 읽고, 그 밖의 키는 맵으로 읽는다. serialize 계열 codec은 키 표현을 보존한다. Go와 Rust는 JSON 맵 키를 정렬하고 PHP는 삽입 순서를 유지하므로, 값이 같아도 바이트는 다를 수 있다.
 
