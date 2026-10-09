@@ -660,6 +660,8 @@ class Db:
         self.events = Subscribers()
         self._closed = False
         self._row_lock_ready = False
+        # test entry point의 fail_next_rollback이 설정하는 test fault다.
+        self._rollback_fault = False
         self._connection = self._open()
 
     def utils(self) -> Utils:
@@ -858,6 +860,12 @@ class Db:
                 self._finish(frame, False)
             except OrmError as cleanup:
                 raise rollback_failed(error, cleanup) from None
+            # 설정된 test fault는 실행된 rollback을 실패로 보고하고 소비된다.
+            if self._rollback_fault:
+                self._rollback_fault = False
+                raise rollback_failed(error, OrmError(
+                    'FAULT', 'test fault: the rollback of the transaction ran and is '
+                             'reported as failed')) from None
             raise
         del _ACTIVE[id(self)]
         if previous is not None:
@@ -1152,6 +1160,12 @@ def _guarded(ex: Executor, work):
 def _check_lock(ex: Executor, request: dict) -> None:
     if request.get('lock') and ex.frame is None:
         raise OrmError('CONFIG', 'row locks are allowed only inside a transaction')
+
+
+def _arm_rollback_fault(db: Db) -> None:
+    """connection의 rollback fault를 설정한다. test entry point polyspec.orm.testing만
+    부르며 package entry point는 export하지 않는다."""
+    db._rollback_fault = True
 
 
 def _subscriber_error(error) -> bool:

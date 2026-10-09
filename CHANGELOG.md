@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T49, T49.3: the Python client has the rollback fault test entry point `polyspec.orm.testing.fail_next_rollback(db)` of docs/protocol.md "Test faults": the next transaction whose callback fails rolls back and raises one `ROLLBACK` error with the callback error as `cause` and a `FAULT` error as `rollback`, a commit and a savepoint rollback leave the fault armed, and the distribution excludes the package `polyspec.orm.testing`; with T49.2 a rollback that fails reports both the callback error and the rollback error instead of the raw rollback error.
 - T49.2: the Python client returns every driver error of a statement or a connect as an `OrmError`: the SQLite extended result code, the MySQL error number and the PostgreSQL SQLSTATE select `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `DEADLOCK`, `LOCK_NOT_AVAILABLE`, `CANCELED`, `READ_ONLY` or `CONNECTION_LOST` with the table of the TypeScript client, every other driver error is `DRIVER`, and each has the message `<driver>: <driver message>` and the driver error as its `cause`; a `sqlite3.IntegrityError`, a PyMySQL error or a psycopg error no longer escapes raw.
 - T49.1: the Python client installs a document set whose document has `use` lines: `is_schema_text` builds the use lines of the plain document as `DbspecUse` values, as `isSchemaText` of the TypeScript client does, instead of dicts that made `utils().schema().install(schema)` fail with `AttributeError: 'dict' object has no attribute 'document'`.
 

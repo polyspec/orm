@@ -26,6 +26,8 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
+# polyspec.orm.testing은 test entry point다(docs/protocol.md "Test faults"). 배포는 그것을 담지 않는다.
+exclude = ["polyspec.orm.testing", "polyspec.orm.testing.*"]
 
 [tool.setuptools.package-data]
 "polyspec.orm" = ["py.typed"]
