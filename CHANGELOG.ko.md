@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1b5f8a06790c61dbb9e0c6dcdcff13b3a1f3d21f3d316206d5781df403881853 -->
+<!-- source-sha256: f2a7d573901325fe30a6cd39400e1965470bc5e69aa40ac81aaed7882bb30d4d -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.5
 
+- T47: stress case `TestApplyStressPlan`은 고정된 총 12분 대신 plan의 step 수에서 기한을 정하고(`stressCaseBudget`: step당 250 ms와 1분), 2분 안에 step을 하나도 적용하지 못하는 database를 실패시킵니다(`newStallGuard`). 22000 step의 MySQL plan은 느린 runner에서 10분 21초, 빠른 runner에서 7분 54초가 걸렸고, 고정 기한은 느린 실행을 `context deadline exceeded`로 실패시켰습니다. plan의 step은 그대로입니다.
 - T46: release 0.0.5: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.5를 선언하고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.5 archive의 lock을 담고, `push-gate.yml`은 branch의 push에서만(`branches: ['**']`) 돌며 tag의 push에서는 돌지 않는다.
 - T45.1: vendored kit은 v0.0.10이며, 그 test가 npm stub의 `stub-npm-*` folder를 지우므로 `kit-test`는 runner의 개별 `TMPDIR`에 임시 항목을 남기지 않는다.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck`가 Go client를 `packages/orm-go/model`에서 복사하고 `TestCIRequiresGeneratedChecks`가 `ci.yml`에서 `run: make check-run GROUP=${{ matrix.group }}`를 요구한다. T44.1과 T44.2가 옮긴 대로이다. T45.1은 kit이 npm stub의 임시 folder를 지우기를 기다린다.

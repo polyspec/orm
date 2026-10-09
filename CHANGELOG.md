@@ -5,6 +5,7 @@
 
 ## 0.0.5
 
+- T47: the stress case `TestApplyStressPlan` takes its deadline from the number of steps of the plan (`stressCaseBudget`: 250 ms a step and one minute) and fails a database that applies no step within two minutes (`newStallGuard`), not at a fixed total of 12 minutes; the MySQL plan of 22000 steps took 10 minutes 21 seconds on a slow runner and 7 minutes 54 seconds on a fast one, and the fixed deadline failed the slow run with `context deadline exceeded`. The plan keeps all its steps.
 - T46: release 0.0.5: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.5, the dependency review is recorded again `tests/release-consumer` holds the locks of the archives of 0.0.5, and `push-gate.yml` runs on pushes to branches only (`branches: ['**']`), not on tag pushes.
 - T45.1: the vendored kit is v0.0.10, whose tests remove the `stub-npm-*` folders of the npm stub, so `kit-test` leaves no temporary entry under the private `TMPDIR` of the runner.
 - T45.2, T45.3: `TestCoverageModelGenerationCheck` copies the Go client from `packages/orm-go/model` and `TestCIRequiresGeneratedChecks` requires `run: make check-run GROUP=${{ matrix.group }}` in `ci.yml`, as T44.1 and T44.2 moved them; T45.1 waits for kit to remove the temporary folders of its npm stub.
