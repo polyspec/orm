@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T49.1: the Python client installs a document set whose document has `use` lines: `is_schema_text` builds the use lines of the plain document as `DbspecUse` values, as `isSchemaText` of the TypeScript client does, instead of dicts that made `utils().schema().install(schema)` fail with `AttributeError: 'dict' object has no attribute 'document'`.
+
 ## 0.0.5
 
 - T48: the budget and stall guard of the stress case are `StepBudget` and `StallGuard` in `internal/testcase`, which `testcase-check` owns, and their tests run there; T47 had put them in `tests/dialects/stress_budget.go` and its test, which no check selected, so `feature-unit-check` failed with `every tracked file selects a behaviour test or declares its scope`.
