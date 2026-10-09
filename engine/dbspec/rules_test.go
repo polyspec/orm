@@ -363,3 +363,74 @@ func TestParseReturnsModel(t *testing.T) {
 		return nil
 	})
 }
+
+// state_machine: the clean machine of the checklist application.
+func TestStateMachineRules(t *testing.T) {
+	cases := []ruleCase{
+		{id: "state-machine-column-type", lines: with(block(
+			"table jobs {", "  id i64 identity", "  status i32", "  primary key (id)",
+			"  settings {", "    state_machine status waiting -> doing", "  }", "}",
+		)), errors: errs(8, 19, RuleSetting)},
+		{id: "state-machine-terminal-exit", lines: with(block(
+			"table jobs {", "  id i64 identity", "  status varchar(16)", "  primary key (id)",
+			"  settings {",
+			"    state_machine status waiting -> doing",
+			"    state_machine status terminal done",
+			"    state_machine status done -> waiting",
+			"  }", "}",
+		)), errors: errs(10, 5, RuleSetting)},
+		{id: "state-machine-require-column", lines: with(block(
+			"table jobs {", "  id i64 identity", "  status varchar(16)", "  primary key (id)",
+			"  settings {", "    state_machine status waiting -> doing require (nope)", "  }", "}",
+		)), errors: errs(8, 52, RuleSetting)},
+		{id: "state-machine-two-columns", lines: with(block(
+			"table jobs {", "  id i64 identity", "  status varchar(16)", "  phase varchar(16)", "  primary key (id)",
+			"  settings {",
+			"    state_machine status waiting -> doing",
+			"    state_machine phase ready -> running",
+			"  }", "}",
+		)), errors: errs(10, 19, RuleSetting)},
+	}
+	testcase.Start(t, testcase.Compute)
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
+				return expectDiagnostics(joinLines(c.lines, false), nil, c.errors)
+			})
+		})
+	}
+}
+
+func TestStateMachineSetting(t *testing.T) {
+	cases := []ruleCase{
+		{id: "setting-state-machine", lines: with(block(
+			"table jobs {",
+			"  id i64 identity",
+			"  status varchar(16)",
+			"  evidence text null",
+			"  primary key (id)",
+			"  settings {",
+			"    state_machine status waiting -> doing",
+			"    state_machine status doing -> done require (evidence)",
+			"    state_machine status terminal done require (evidence)",
+			"  }",
+			"}",
+		))},
+	}
+	testcase.Start(t, testcase.Compute)
+	text := joinLines(cases[0].lines, false)
+	document, diagnostics := Parse(text, nil)
+	if document == nil || len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+	if got, err := emitStable(text, nil); err != nil || got != text {
+		t.Fatalf("emission: %v\n%s", err, got)
+	}
+	machine := document.Tables[0].Settings.StateMachine
+	if machine == nil || machine.Column != "status" || len(machine.Lines) != 3 ||
+		machine.Lines[1].From != "doing" || machine.Lines[1].To != "done" ||
+		len(machine.Lines[1].Requires) != 1 || machine.Lines[1].Requires[0] != "evidence" ||
+		!machine.Lines[2].Terminal || machine.Lines[2].State != "done" {
+		t.Fatalf("machine: %+v", machine)
+	}
+}

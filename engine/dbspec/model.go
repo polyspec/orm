@@ -176,7 +176,25 @@ type Settings struct {
 	Navigations     []NavigationSetting
 	Immutable       *ImmutableSetting
 	Audit           *AuditSetting
+	StateMachine    *StateMachineSetting
 	ClosingComments []string
+}
+
+// StateMachineSetting은 한 column의 상태 기계다. 줄은 선언 순서를 유지한다.
+type StateMachineSetting struct {
+	Comments []string
+	Column   string
+	Lines    []StateLineSetting
+}
+
+// StateLineSetting은 전환 줄이거나 terminal 선언 줄이다.
+type StateLineSetting struct {
+	Comments []string
+	Terminal bool
+	From     string
+	To       string
+	State    string
+	Requires []string
 }
 
 // EntitySetting is `entity <name>`.

@@ -1797,3 +1797,4 @@ Prefix generated MySQL CHECK constraint names with their table name so distinct 
 - Add SQLite support to the adapter-neutral `SchemaInstalled` transaction operation for namespaced physical table names.
 - Add adapter-neutral database-emptiness inspection for safe initial-schema preflight on PostgreSQL and SQLite.
 - Exclude PostgreSQL system namespaces such as `pg_toast` from empty-database preflight detection.
+- T59: dbspec gains the state_machine setting: `state_machine <column> <from> -> <to> [require (<column>, ...)]` and `state_machine <column> terminal <state> [require (<column>, ...)]` on one non-null varchar or text column per table, in any mix and order. The validator checks the column, the require columns, one machine per table and no transition that leaves a terminal state; the emitter writes the canonical lines, and the settings model carries the machine. The database does not enforce the machine; the executor that owns the rows does.
