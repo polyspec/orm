@@ -1,7 +1,7 @@
 <!-- doc-id: readme -->
-# orm 0.0.7
+# orm
 
-A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.7. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
+A schema-driven model query grammar for **Go, PHP, Python, Rust, and TypeScript**. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
@@ -23,7 +23,12 @@ const authors = await new Author().connect(slave1).serviceSeq(7).andIsClose(fals
     .and(q => q.isDisplay(true).or().isAllday(true))
     .relation(new User().matchUserSeqWithSeq()).orderBySeqDesc().limit(0, 20).gets();
 ```
-The four chains produce the same SQL, binds, and results. `tests/conformance` checks the common vectors on MySQL, PostgreSQL, and SQLite.
+```python
+authors = Author().connect(slave1).service_seq(7).and_is_close(False) \
+    .and_(lambda q: q.is_display(True).or_().is_allday(True)) \
+    .relation(User().match_user_seq_with_seq()).order_by_seq_desc().limit(0, 20).gets()
+```
+The five chains produce the same SQL, binds, and results. `tests/conformance` checks the common vectors on MySQL, PostgreSQL, and SQLite.
 
 Finders accept any column chain after `By`:
 
@@ -39,14 +44,17 @@ let authors = Author::new().connect(&slave1).gets_by_service_seq_and_is_close(7,
 ```typescript
 const authors = await new Author().connect(slave1).getsByServiceSeqAndIsClose(7, false);
 ```
+```python
+authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
+```
 `get` returns one row and returns `NO_ROWS` when no row matches, `gets` returns a collection, and `getCount` returns a count. A model receives its database connection through `connect`; inside `connection.transaction(fn)`, a model without `connect` uses the active transaction. Relation children use the parent connection unless they call `connect`. A model without a connection outside a transaction returns `CONFIG`.
 
 ## How it works
 - **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
-- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), and the `polyspec-orm-build` crate in `build.rs` (Rust).
+- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), `packages/orm-python/bin/orm-gen` (Python), and the `polyspec-orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
-- **Equality**: `tests/conformance` runs the same vectors in the four clients and compares the SQL, binds, and results.
+- **Equality**: `tests/conformance` runs the same vectors in the five clients and compares the SQL, binds, and results.
 
 ## Quick start (MySQL 8.4 and PostgreSQL 17)
 ```sh
@@ -56,10 +64,11 @@ make test-servers                                                   # servers, d
 php packages/orm-php/bin/orm-gen gen --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model' schema/bench.dbs
 (cd packages/orm-npm && npm run build)                            # TypeScript models and library
 (cd packages/orm-rust && cargo build --release)                          # build.rs generates the Rust models
+make python-check                                                     # Python client: unit, interfaces, models
 go test ./...
 npm run typescript:test
 (cd packages/orm-rust && cargo test --workspace)
-go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the four clients
+go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the five clients
 ```
 
 ## Documents
@@ -78,7 +87,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/plans/execution-checklist.md` work plan.
 
 ## Tooling
-`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `polyspec-orm-build` (Rust),
+`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `packages/orm-python/bin/orm-gen gen` (Python), `polyspec-orm-build` (Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License
