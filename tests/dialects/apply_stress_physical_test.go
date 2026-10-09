@@ -13,10 +13,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/internal/testcase"
 )
+
+// stressStallLimit는 step이 하나도 적용되지 않은 채 지날 수 있는 시간이다. step마다 statement 하나와 그 commit이므로
+// 동작하는 database에서는 한 step이 몇 분 걸리지 않는다.
+const stressStallLimit = 2 * time.Minute
 
 // TestApplyStressPlan은 tests/dbspec/stress.mjs의 2000 table 문서를 첫 plan으로 세
 // database에 적용한다(docs/plans.md "Verification"). PostgreSQL은 기본 lock 설정
@@ -44,9 +49,9 @@ func TestApplyStressPlan(t *testing.T) {
 	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
 	for _, db := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(db, func(t *testing.T) {
-			// 한 case의 기한은 plan의 step 수에서 정한다(stressCaseBudget). 멈춘 step은 stall guard가 먼저 찾는다.
+			// 한 case의 기한은 plan의 step 수에서 정한다(testcase.StepBudget). 멈춘 step은 stall guard가 먼저 찾는다.
 			steps := planSteps(t, []*dbspec.Plan{plan}, 0, db)
-			c := testcase.Start(t, stressCaseBudget(len(steps)))
+			c := testcase.Start(t, testcase.StepBudget(len(steps)))
 			name := "dbspec_stress_" + token + "_" + db
 			c.Step("%d steps on %s", len(steps), name)
 			uri, cleanup := compareDatabase(t, db, name, mysqlDSN, postgresDSN)
@@ -56,7 +61,7 @@ func TestApplyStressPlan(t *testing.T) {
 			}()
 			pool := openURI(t, db, uri)
 			defer pool.Close()
-			ctx, progressed, stopGuard := newStallGuard(c.Context(), stressStallLimit)
+			ctx, progressed, stopGuard := testcase.StallGuard(c.Context(), stressStallLimit)
 			defer stopGuard()
 			conn, err := pool.Conn(ctx)
 			if err != nil {
