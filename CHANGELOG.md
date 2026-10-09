@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T54: the Python client reads SQL NULL of a styled value column as `StyledValue.sql_null()` in the root row, a joined row and a related row, as the TypeScript client returns `StyledValue.sqlNull()`, so a value read from a row writes back; the getter returned `None` and a setter given it failed with `CODEC_ENCODE`.
+
 ## 0.0.6
 
 - T52: release 0.0.6: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.6, the dependency review is recorded again and `tests/release-consumer` holds the locks of the archives of 0.0.6.
