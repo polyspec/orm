@@ -167,6 +167,8 @@ type settingNode struct {
 	// lists는 audit의 exclude와 include 목록이다. 둘 다 쓴 setting은 검사가
 	// 거부한다.
 	lists []columnList
+	// terminal은 state_machine의 terminal 줄임을 표시한다.
+	terminal bool
 }
 
 // columnList는 `exclude (<column>, ...)`나 `include (<column>, ...)`다.
@@ -400,6 +402,15 @@ func (c *cursor) punct(text string) bool {
 		return true
 	}
 	return c.fail("'" + text + "'")
+}
+
+// arrow consumes `->`, which the lexer writes as two operator tokens.
+func (c *cursor) arrow() bool {
+	if c.peekIs(tokenOperator, "-") && c.i+1 < len(c.tokens) && c.tokens[c.i+1].is(tokenOperator, ">") {
+		c.i += 2
+		return true
+	}
+	return c.fail("'->'")
 }
 
 // optional consumes the keyword text when it comes next.
@@ -929,6 +940,24 @@ func (p *parser) settingsLine(c *cursor) {
 	case "navigation":
 		ok = arg("a foreign key name") && arg("the child relation name") && arg("the parent relation name")
 	case "immutable":
+	case "state_machine":
+		ok = arg("the state column")
+		if ok && c.peekIs(tokenWord, "terminal") {
+			c.next()
+			line.terminal = true
+			ok = arg("a state name")
+		} else if ok {
+			ok = arg("the from state") && c.arrow() && arg("the to state")
+		}
+		if ok && c.peekIs(tokenWord, "require") {
+			require := c.next()
+			list := columnList{keyword: require}
+			list.columns, _, ok = c.names(false)
+			line.lists = append(line.lists, list)
+		}
+		if ok && c.more() && c.lexErr == nil {
+			ok = c.fail("the end of the line")
+		}
 	case "audit":
 		ok = c.keyword("into") && arg("the history table") &&
 			c.keyword("column") && arg("the audit column") &&

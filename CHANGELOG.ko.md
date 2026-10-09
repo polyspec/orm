@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 33801abaae61c57d3fe48d21b4b8383b3e849275564b4ff60aa6267814310981 -->
+<!-- source-sha256: 18e6cb954dafdaa31fac73a78be4e7964948e543b5904474a9f152348e14a3c8 -->
 # 변경 이력
 
 ## Unreleased
@@ -1694,3 +1694,4 @@ Go `get`이 일치하는 행이 없을 때 `(nil, nil)` 대신 adapter 중립 `N
 - namespace를 보존한 물리 table 이름을 처리하도록 어댑터 독립 `SchemaInstalled` transaction 연산에 SQLite 지원을 추가한다.
 - PostgreSQL·SQLite에서 안전한 초기 schema preflight를 수행할 수 있도록 어댑터 독립 database-empty 검사를 추가한다.
 - 빈 database preflight가 `pg_toast` 같은 PostgreSQL system namespace를 사용자 객체로 세지 않도록 수정한다.
+- T59: dbspec이 state_machine setting을 얻는다: non-null varchar 또는 text column 하나에서 `state_machine <column> <from> -> <to> [require (<column>, ...)]`과 `state_machine <column> terminal <state> [require (<column>, ...)]`을 순서와 섞임에 제한 없이 쓴다. validator가 column, require column, table당 machine 하나, terminal 상태를 벗어나는 전환 없음을 검사하고 emitter가 canonical line을 쓰며 settings model이 기계를 운반한다. database는 기계를 강제하지 않고 row를 소유한 executor가 강제한다.

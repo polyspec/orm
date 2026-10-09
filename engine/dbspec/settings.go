@@ -33,7 +33,8 @@ func (v *validator) settings(t *tableNode) {
 				continue
 			}
 			seen[s.args[0].text] = true
-		} else {
+		} else if kind != "state_machine" {
+			// state_machine은 한 column에 여러 줄로 쓰므로 once 검사에서 뺀다.
 			if once[kind] {
 				v.add(RuleSetting, s.keyword, "setting %s repeats", kind)
 				continue
@@ -55,6 +56,7 @@ func (v *validator) settings(t *tableNode) {
 	for _, s := range accepted {
 		v.setting(t, s, aesColumns)
 	}
+	v.stateMachineConsistency(t)
 	if aesVersion := byKind["aes_version"]; aesVersion == nil {
 		for _, s := range aesCodecs {
 			v.add(RuleSetting, s.keyword, "a column with the aes stage requires an aes_version setting")
@@ -119,6 +121,51 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 	case "audit":
 		v.audit(t, s)
 		v.generatedName(s.keyword, t.name.text+"$audit_insert")
+	case "state_machine":
+		v.stateMachine(t, s)
+	}
+}
+
+// stateMachine checks one `state_machine <column> ...` line: the column is a
+// non-null varchar or text column of the table and the require list names
+// columns of the table (docs/dbspec.md "Settings").
+func (v *validator) stateMachine(t *tableNode, s *settingNode) {
+	columnRef := s.args[0]
+	column := v.columnRef(t, columnRef, RuleSetting)
+	if column != nil && ((column.typ.valid && column.typ.typ.Kind != TypeVarchar && column.typ.typ.Kind != TypeText) || column.null != nil) {
+		v.add(RuleSetting, columnRef, "state_machine needs a non-null varchar or text column")
+	}
+	for _, list := range s.lists {
+		for _, ref := range list.columns {
+			v.columnRef(t, ref, RuleSetting)
+		}
+	}
+}
+
+// stateMachineConsistency checks the machine across its lines: one column per
+// table and no transition that leaves a terminal state.
+func (v *validator) stateMachineConsistency(t *tableNode) {
+	column := ""
+	terminals := map[string]bool{}
+	var lines []*settingNode
+	for _, s := range t.settings.lines {
+		if s.keyword.text != "state_machine" {
+			continue
+		}
+		if column == "" {
+			column = s.args[0].text
+		} else if s.args[0].text != column {
+			v.add(RuleSetting, s.args[0], "state_machine repeats for %q; a table holds one machine", s.args[0].text)
+		}
+		lines = append(lines, s)
+		if s.terminal {
+			terminals[s.args[1].text] = true
+		}
+	}
+	for _, s := range lines {
+		if !s.terminal && terminals[s.args[1].text] {
+			v.add(RuleSetting, s.keyword, "a transition leaves the terminal state %q", s.args[1].text)
+		}
 	}
 }
 

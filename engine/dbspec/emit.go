@@ -107,6 +107,20 @@ func (s *settingsNode) model() *Settings {
 					out.Audit.Include = tokenTexts(list.columns)
 				}
 			}
+		case "state_machine":
+			if out.StateMachine == nil {
+				out.StateMachine = &StateMachineSetting{Comments: line.comments, Column: args[0]}
+			}
+			stateLine := StateLineSetting{Comments: line.comments, Terminal: line.terminal}
+			if line.terminal {
+				stateLine.State = args[1]
+			} else {
+				stateLine.From, stateLine.To = args[1], args[2]
+			}
+			for _, list := range line.lists {
+				stateLine.Requires = tokenTexts(list.columns)
+			}
+			out.StateMachine.Lines = append(out.StateMachine.Lines, stateLine)
 		}
 	}
 	return out
@@ -245,7 +259,7 @@ func (e *emitter) table(t *Table) {
 func (s *Settings) empty() bool {
 	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
 		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
-		s.Immutable == nil && s.Audit == nil
+		s.Immutable == nil && s.Audit == nil && s.StateMachine == nil
 }
 
 func (e *emitter) settings(t *Table, s *Settings) {
@@ -297,5 +311,19 @@ func (e *emitter) mappingSettings(s *Settings) {
 	}
 	for _, n := range sortedBy(s.Navigations, func(n NavigationSetting) string { return n.ForeignKey }) {
 		e.line(2, n.Comments, "navigation "+n.ForeignKey+" "+n.ChildName+" "+n.ParentName)
+	}
+	if m := s.StateMachine; m != nil {
+		for _, line := range m.Lines {
+			text := "state_machine " + m.Column + " "
+			if line.Terminal {
+				text += "terminal " + line.State
+			} else {
+				text += line.From + " -> " + line.To
+			}
+			if len(line.Requires) > 0 {
+				text += " require (" + strings.Join(line.Requires, ", ") + ")"
+			}
+			e.line(2, line.Comments, text)
+		}
 	}
 }
