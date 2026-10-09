@@ -3,7 +3,12 @@
 # (docs/dsl.md).
 from __future__ import annotations
 
+import decimal
+import json
+import math
 from typing import Self
+
+from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
 
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
@@ -135,6 +140,10 @@ class Collection:
     def to_array(self) -> list:
         return [row.to_array() for row in self.values()]
 
+    def to_json_text(self) -> str:
+        """row들의 JSON text; Model.to_json_text를 본다."""
+        return '[' + ','.join(row.to_json_text() for row in self.values()) + ']'
+
 
 def _pascal_of(name: str) -> str:
     return ''.join(part[:1].upper() + part[1:] for part in name.split('_'))
@@ -149,6 +158,98 @@ def _related_output(value):
     if isinstance(value, Model):
         return value.to_array()
     return value
+
+
+def _pairs(core: Core) -> list:
+    """행 출력의 (이름, 값) 목록. TypeScript와 PHP의 pairs처럼 선택된 column, new 값,
+    relation, flatten된 relation의 column 순서이고 먼저 나온 이름이 이긴다."""
+    out: list = []
+    seen: set = set()
+
+    def add(name: str, value) -> None:
+        if name in seen:
+            return
+        seen.add(name)
+        out.append((name, value))
+    row = core.row
+    if row is None:
+        names, hidden, extra, related, flat = [s.column for s in core.sets], set(), {}, {}, []
+    else:
+        names, hidden, extra, related, flat = row.names, row.hidden, row.extra, row.related, row.flat
+    for name in names:
+        if name in hidden:
+            continue
+        add(name, core.values[name] if name in core.values else extra.get(name))
+    for name in core.news:
+        add(name, core.new_values.get(name))
+    for name, value in related.items():
+        add(name, value)
+    for name in flat:
+        value = related.get(name)
+        if isinstance(value, Model):
+            for pair in _pairs(value.core):
+                add(*pair)
+    return out
+
+
+def _string_text(value: str) -> str:
+    # JSON.stringify와 같이 따옴표, 역슬래시, 제어 문자만 escape한다.
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _number_text(value: float) -> str:
+    """JavaScript Number::toString의 텍스트. repr과 JavaScript는 모두 가장 짧은 왕복
+    자릿수를 쓰므로 자릿수는 같고, 소수점과 지수의 위치만 ECMAScript 규칙으로 정한다."""
+    if not math.isfinite(value):
+        raise OrmError('CODEC_ENCODE', f'JSON output cannot write the number {value!r}')
+    if value == 0:
+        return '0'
+    sign = '-' if value < 0 else ''
+    _, digits, exponent = decimal.Decimal(repr(abs(value))).normalize().as_tuple()
+    text = ''.join(str(d) for d in digits)
+    k = len(text)
+    n = k + exponent
+    if k <= n <= 21:
+        return sign + text + '0' * (n - k)
+    if 0 < n <= 21:
+        return sign + text[:n] + '.' + text[n:]
+    if -6 < n <= 0:
+        return sign + '0.' + '0' * -n + text
+    e = n - 1
+    mantissa = text[0] + ('.' + text[1:] if k > 1 else '')
+    return f'{sign}{mantissa}e{"+" if e >= 0 else "-"}{abs(e)}'
+
+
+def _json_text(value) -> str:
+    """출력 값 하나의 JSON text: ordered-json 값은 저장 텍스트 그대로다."""
+    if isinstance(value, StyledValue):
+        if value.kind == 'sql-null':
+            return '{"kind":"sql-null"}'
+        return '{"kind":"value","value":' + _json_text(value.payload()) + '}'
+    if isinstance(value, OrderedJson):
+        return ordered_json_stringify(value)
+    if isinstance(value, (Model, Collection)):
+        return value.to_json_text()
+    if value is None:
+        return 'null'
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return _number_text(value)
+    if isinstance(value, str):
+        return _string_text(value)
+    if isinstance(value, (list, tuple)):
+        return '[' + ','.join(_json_text(item) for item in value) + ']'
+    if isinstance(value, dict):
+        for name in value:
+            if not isinstance(name, str):
+                raise OrmError('CODEC_ENCODE', f'JSON output cannot write the member key '
+                                               f'{name!r}')
+        return '{' + ','.join(f'{_string_text(name)}:{_json_text(item)}'
+                              for name, item in value.items()) + '}'
+    raise OrmError('CODEC_ENCODE', f'JSON output cannot write {type(value).__name__}')
 
 
 class Model:
@@ -330,27 +431,22 @@ class Model:
         return restore_row(self.core)
 
     def to_array(self) -> dict:
-        """선택된 column과 relation의 값."""
-        core = self.core
+        """선택된 column, new 값, relation의 값을 행 순서로 담는다."""
         out = {}
-        if core.row is None:
-            return out
-        names = list(core.row.names) + [n for n in core.row.related if n not in core.row.names]
-        names += [n for n in core.news if n not in names]
-        for name in names:
-            if name in core.row.hidden:
-                continue
-            if name in core.row.related:
-                out[name] = _related_output(core.row.related[name])
-                continue
-            if name in core.news and name not in core.row.names:
-                out[name] = core.new_values[name]
-                continue
-            value = core.values.get(name, core.row.extra.get(name))
+        for name, value in _pairs(self.core):
             if isinstance(value, StyledValue):
                 value = value.to_json()
+            else:
+                value = _related_output(value)
             out[name] = value
         return out
+
+    def to_json_text(self) -> str:
+        """row의 JSON text. 멤버는 to_array()의 행 순서이고, ordered-json 값은 저장 텍스트
+        그대로, 다른 값은 JSON.stringify가 쓰는 대로 쓴다 (docs/codec.md "Value model").
+        TypeScript toJSONText()와 같은 텍스트다."""
+        return '{' + ','.join(f'{_string_text(name)}:{_json_text(value)}'
+                              for name, value in _pairs(self.core)) + '}'
 
     def _order_method(self, rest: str, name: str):
         core = self.core
