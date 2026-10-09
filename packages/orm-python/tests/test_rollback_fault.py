@@ -5,6 +5,7 @@
 import importlib
 import os
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -151,15 +152,20 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertNotIn('fail_next_rollback', polyspec.orm.__all__)
         self.assertTrue(callable(importlib.import_module('polyspec.orm.testing').fail_next_rollback))
 
-    def test_the_distribution_excludes_the_test_entry_point(self):
-        # 배포는 setuptools의 package 찾기가 고른 package만 담는다. testing은 package이므로 exclude가 그것을
-        # wheel에서 뺀다.
+    def test_the_distribution_holds_the_test_entry_point_that_no_import_loads(self):
+        # PHP의 testing/Faults.php처럼 배포는 test entry point를 담고, package entry point는 그것을 load하지
+        # 않는다. 소비자의 test만 그 이름으로 import해서 fault를 건다.
         with (PACKAGE / 'pyproject.toml').open('rb') as file:
             find = tomllib.load(file)['tool']['setuptools']['packages']['find']
-        self.assertIn('polyspec.orm.testing', find.get('exclude', []))
-        self.assertIn('polyspec.orm.testing.*', find.get('exclude', []))
+        self.assertNotIn('polyspec.orm.testing', find.get('exclude', []))
+        self.assertNotIn('polyspec.orm.testing.*', find.get('exclude', []))
         self.assertTrue((PACKAGE / 'src' / 'polyspec' / 'orm' / 'testing' / '__init__.py').is_file())
-
+        loaded = subprocess.run([sys.executable, '-c', 'import sys, polyspec.orm, polyspec.orm.database; '
+                                 'print("polyspec.orm.testing" in sys.modules)'],
+                                capture_output=True, text=True, env={**os.environ, 'PYTHONPATH': str(PACKAGE / 'src')
+                                                                     + os.pathsep + os.environ.get('PYTHONPATH', '')})
+        self.assertEqual(loaded.returncode, 0, loaded.stderr)
+        self.assertEqual(loaded.stdout.strip(), 'False')
 
 if __name__ == '__main__':
     unittest.main()
