@@ -11,6 +11,7 @@ A query starts with a model. A model is created in the language form and receive
 |---|---|---|---|
 | PHP | `new Product` | `(new Product)->connect($slave1)` | `$row->connect($master)` |
 | Go | `model.Product()` | `model.Product().Connect(slave1)` | `row.Connect(master)` |
+| Python | `Product()` | `Product().connect(slave1)` | `row.connect(master)` |
 | Rust | `Product::new()` | `Product::new().connect(&slave1)` | `row.connect(&master)` |
 | TypeScript | `new Product()` | `new Product().connect(slave1)` | `row.connect(master)` |
 
@@ -84,14 +85,15 @@ Key   = [Operator] Column
 | `FulltextBoolean` | full-text match in boolean mode |
 
 - `<ColA><Op><ColB>(model)` compares column `ColA` of the calling model with column `ColB` of `model` in the same statement. `(new Product)->priceGtMinPrice($brand)` renders `a.price > b.min_price`. `Op` is `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, or `Le`. Inside `on(fn)` the calling model is the join child.
-- `tuple<ColA>With<ColB>(list)` compares several columns with a list of value groups, such as `tupleTenantIdWithAccountId([[1, 10], [2, 10]])` for `(tenant_id, account_id) IN ((1, 10), (2, 10))`. `Ne` produces `NOT IN`. Go uses the generated value group struct `model.<Model><ColA>With<ColB>` with one field per column, Rust uses tuples, and TypeScript uses typed tuples. SQLite renders the list as `IN (VALUES …)`.
+- `tuple<ColA>With<ColB>(list)` compares several columns with a list of value groups, such as `tupleTenantIdWithAccountId([[1, 10], [2, 10]])` for `(tenant_id, account_id) IN ((1, 10), (2, 10))`. `Ne` produces `NOT IN`. Go uses the generated value group struct `model.<Model><ColA>With<ColB>` with one field per column, Rust uses tuples, TypeScript uses typed tuples, and Python uses tuples. SQLite renders the list as `IN (VALUES …)`.
 - `getsByServiceSeqAndIsClose(7, 0)` and `serviceSeq(7)->andIsClose(0)->gets()` produce the same condition.
-- A chain can combine any columns. PHP resolves chains at call time. Go, Rust, and TypeScript generate the chain methods that the scanned source code calls and reject an unknown column, operator, or argument count during generation.
+- A chain can combine any columns. PHP and Python resolve chains at call time. Go, Rust, and TypeScript generate the chain methods that the scanned source code calls and reject an unknown column, operator, or argument count during generation; the scan of Python reports a model method that no column, chain, or operator matches during generation.
 - Each language generates with its own build tool:
   - Go scans the packages named by `--scan` and repeats until the calls type-check: `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...` in a `//go:generate` line. Files that the default build excludes with a `//go:build` constraint are loaded with the tags, GOOS, and GOARCH their constraint needs, so a tagged test is covered without `GOFLAGS=-tags`.
   - TypeScript scans the files named by `--scan` with the TypeScript compiler API and writes exact method signatures: `orm-gen gen --schema schema/example.dbs --out src/models --scan src` in the `build` script before `tsc`.
   - Rust scans the sources named by `scan` with `syn` in `build.rs`: `polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`, and `polyspec_orm::models!()` includes the result as the module `model`.
   - PHP writes the model classes with column metadata and typed getters and setters: `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`.
+  - Python writes the model classes with typed getters and setters and reports the model methods of the scanned sources that no rule matches: `orm-gen gen --schema schema/example.dbs --out model --scan src` of `packages/orm-python/bin/orm-gen`.
 
 ### 2.3 Value shapes
 
@@ -118,13 +120,17 @@ Key   = [Operator] Column
 .andPhotoUrl('a.png').andPhotoUrl(['a', 'b']).andPhotoUrl(null).andNeSeq([1, 2])
 ```
 
-- Null is accepted only for nullable columns. Go, Rust, and TypeScript reject null for a non-null column at compile time; PHP returns `CONFIG`.
+```python
+.and_photo_url('a.png').and_photo_url(['a', 'b']).and_photo_url(None).and_ne_seq([1, 2])
+```
+
+- Null is accepted only for nullable columns. Go, Rust, and TypeScript reject null for a non-null column at compile time; PHP and Python return `CONFIG`.
 - Lists are accepted only without an operator, with `Eq`, and with `Ne`. Other operators reject lists and null.
-- PHP and TypeScript use the language null value. Go uses `orm.Null` and Rust uses `Null`.
+- PHP, TypeScript and Python use the language null value. Go uses `orm.Null` and Rust uses `Null`.
 - Go methods use generic type parameters with the allowed value types of each column. Integer columns accept `int`, `int32`, `int64`, and slices of those types.
 - An unexecuted model as the value renders `IN (SELECT …)`, or `NOT IN` with `Ne`. The model must add exactly one column with `addColumn<Col>()`; otherwise `CONFIG` is returned.
 - An ORM function value applies a function from section 10. A column function wraps the column, and the compared value is the second method argument, for example `andLeLocation(Orm::distance(129.16, 35.16), 2000)`. A value function is the compared value, for example `andGtCreatedTs(Orm::daysAgo(7))`.
-- `Between` takes a fixed two-value array: PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, and TypeScript `[1, 10]` typed as `[number, number]`. Go, Rust, and TypeScript reject another length at compile time; PHP returns `CONFIG`.
+- `Between` takes a fixed two-value array: PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, TypeScript `[1, 10]` typed as `[number, number]`, and Python `[1, 10]`. Go, Rust, and TypeScript reject another length at compile time; PHP and Python return `CONFIG`.
 
 ## 3. Reads
 
@@ -320,7 +326,7 @@ await master.transaction(async () => {
 - A transaction on the same connection inside an active transaction creates a savepoint.
 - Two transactions that must be open at the same time need two connections, because a second transaction on one connection becomes a savepoint of the first. Lock contention is written that way: one connection holds the row and another waits for it.
 - Concurrent use of one transaction connection returns an error.
-- The execution flow is the goroutine in Go, the request in PHP, the tokio task in Rust, and the `AsyncLocalStorage` context in TypeScript. A goroutine or spawned Rust task started inside the callback has no active transaction; a Go subtest is such a goroutine, so a transaction opened in one is a separate transaction that waits for the connection held outside it. In TypeScript, asynchronous work started inside the callback shares the callback's context and therefore the transaction; a statement that overlaps another statement on it returns `CONFIG`.
+- The execution flow is the goroutine in Go, the request in PHP, the tokio task in Rust, the `AsyncLocalStorage` context in TypeScript, and the thread of the request in Python: a transaction is active on the connection that opened it, and every execution flow holds its own connection. A goroutine or spawned Rust task started inside the callback has no active transaction; a Go subtest is such a goroutine, so a transaction opened in one is a separate transaction that waits for the connection held outside it. In TypeScript, asynchronous work started inside the callback shares the callback's context and therefore the transaction; a statement that overlaps another statement on it returns `CONFIG`.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, and `forShareNoWait()` are allowed only inside a transaction.
 - Begin, commit, and rollback are not public.
 

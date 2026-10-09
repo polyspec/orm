@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1b83716f11e2f4789b0af61d7076f73ab296561e63a376321b301d1e2bfcb145 -->
+<!-- source-sha256: 33801abaae61c57d3fe48d21b4b8383b3e849275564b4ff60aa6267814310981 -->
 # 변경 이력
 
 ## Unreleased
+- T57-1: version check가 root README의 version 선언을 읽지 않는다. 제목은 version을 적지 않는다. README 변경의 CI가 그로 인해 실패했다.
 - `make release-consumer TAG=v0.0.7`이 npm 12.2.0과 PHP 8.5, Composer 2.10.3이 있는 machine에서 통과했다. release를 만든 machine이 설치하지 못한 Composer project도 통과했다. Makefile이 `release-consumer`와 `release-proof`에 `npm_config_allow_remote=root`를 export한다. npm 12은 기본으로 URL 의존성을 설치하지 않기 때문이다(T56).
 - README가 Python client를 밝힌다. 제목은 version을 적지 않고, 소개·예·models 항목·quick start·도구 줄이 다섯 client를 적는다(T57).
 
