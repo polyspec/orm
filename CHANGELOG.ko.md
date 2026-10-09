@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 568f67d25449a04765a4f00d55de0d930084a958697711cabd1db9d0bdfaa9b0 -->
+<!-- source-sha256: 11bdd8d311a9b663bc24f23299e206c4a47301982b1ca33bf4ccd32b7cadebc8 -->
 # 변경 이력
 
 ## Unreleased
 
+## 0.0.7
+
+- T56: 0.0.7 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.7을 밝히고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.7 archive의 lock을 가진다.
 - T55: Python model과 row 집합이 TypeScript `toJSONText()`와 같은 JSON 텍스트를 쓰는 `to_json_text()`를 가집니다. 멤버는 행 순서이고, 값 스타일 컬럼은 저장된 ordered-json 텍스트를 담은 바깥 표현이며, 다른 값은 `JSON.stringify`가 쓰는 대로 씁니다. JSON으로 쓸 수 없는 값은 `CODEC_ENCODE`로 실패합니다. `to_array()`는 TypeScript와 PHP client의 행 순서를 따릅니다.
 - T54: Python client가 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 `StyledValue.sql_null()`로 읽습니다. TypeScript client가 `StyledValue.sqlNull()`을 돌려주는 것과 같으며, 행에서 읽은 값을 다시 쓸 수 있습니다. 이전에는 getter가 `None`을 돌려주었고 그 값을 받은 setter가 `CODEC_ENCODE`로 실패했습니다.
 

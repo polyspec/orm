@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+## 0.0.7
+
+- T56: release 0.0.7: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.7, the dependency review is recorded again and `tests/release-consumer` holds the locks of the archives of 0.0.7.
 - T55: Python models and row sets have `to_json_text()`, which writes the same JSON text as TypeScript `toJSONText()`: the members in row order, a styled value column as its tagged value with the stored ordered-json text, and every other value as `JSON.stringify` writes it; a value that JSON cannot write fails with `CODEC_ENCODE`. `to_array()` takes the row order of the TypeScript and PHP clients.
 - T54: the Python client reads SQL NULL of a styled value column as `StyledValue.sql_null()` in the root row, a joined row and a related row, as the TypeScript client returns `StyledValue.sqlNull()`, so a value read from a row writes back; the getter returned `None` and a setter given it failed with `CODEC_ENCODE`.
 

@@ -1,7 +1,7 @@
 <!-- doc-id: readme -->
-# orm 0.0.6
+# orm 0.0.7
 
-A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.6. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
+A schema-driven model query grammar for **Go, PHP, Rust, and TypeScript**. Version 0.0.7. The target syntax is specified in [docs/dsl.md](docs/dsl.md) and the work order in [docs/plan.md](docs/plan.md).
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)

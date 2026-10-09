@@ -1,8 +1,8 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: a87290dd2c525e89bd1f067c432263fb7592ac014af8cd201f0532fa7a5146a1 -->
-# orm 0.0.6
+<!-- source-sha256: a126d1cf38082c5221f3f0d5ffe511726c1e846ad1eeccebc850d69c45bc88b6 -->
+# orm 0.0.7
 
-**Go, PHP, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 버전은 0.0.6이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
+**Go, PHP, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 버전은 0.0.7이다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
