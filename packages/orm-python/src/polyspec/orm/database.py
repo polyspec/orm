@@ -1223,7 +1223,9 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
             version = int(at)
     for column in assemble['columns']:
         value = row[column['index']]
-        if value is None or not column['styles']:
+        # SQL NULL도 client codec 단계를 거쳐 StyledValue.sql_null()이 된다 (docs/codec.md
+        # "Value model"). host 단계만 가진 column의 NULL은 None으로 남는다.
+        if not column['styles']:
             continue
         host = [s for s in column['styles'] if s in ('aes', 'hex', 'ip')]
         client = [s for s in column['styles'] if s not in ('aes', 'hex', 'ip')]

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d510630b795520bcad9e83344bcb9abd3fb55c08ad709ca139f8e8d1db299c41 -->
+<!-- source-sha256: de5c872fca804d4007612bfb0fba2e7bf58cd433a179eb6d424509dc7192e40e -->
 # 변경 이력
 
 ## Unreleased
+
+- T54: Python client가 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 `StyledValue.sql_null()`로 읽습니다. TypeScript client가 `StyledValue.sqlNull()`을 돌려주는 것과 같으며, 행에서 읽은 값을 다시 쓸 수 있습니다. 이전에는 getter가 `None`을 돌려주었고 그 값을 받은 setter가 `CODEC_ENCODE`로 실패했습니다.
 
 ## 0.0.6
 
