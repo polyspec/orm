@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 5664ee2dfe9a9a02f2faebc3bcd03d2de6e08098bd9cbc1bebcc3f7d55b25633 -->
+<!-- source-sha256: b254dd57d86394d343de8b2a88649ce73b217ebe4aefeaa0da66d31f3c0d1c73 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -797,3 +797,4 @@
 - [o] T58 docs/dsl.md와 docs/dsl.ko.md가 Python client를 밝힌다. 원인: DSL 문서가 Go, PHP, Rust, TypeScript를 비교한다. 언어 차이를 말하는 모든 문장을 Python client와 대조 검증하고 다섯 언어로 확장한다. model 표, tuple과 chain 규칙, 생성과 scan, null과 between 규칙, 실행 흐름이 대상이다. |. Verification: `make documents-check` passes.
 - [o] T57-1 version check가 root README의 version 선언을 읽지 않게 한다. 원인: T57이 README.md와 README.ko.md의 제목에서 version을 지웠는데 scripts/version/check.mjs의 `version-check`가 두 file의 제목을 version 선언으로 읽어서, push의 CI job `test (static)`이 `README.ko.md: no version declaration found (VERSION is 0.0.7)`로 실패했다. manifest와 `VERSION`, 본문에 version을 적는 문서는 여전히 그것을 선언한다. 확인: `make version-check`가 일치하는 선언 25개를 보고하고 `node --test scripts/version/check.test.mjs`가 case 5개를 통과한다.
 - [o] T59 dbspec에 state_machine setting을 추가한다. 원인: flowmark markdown executor가 checklist state machine을 자체 sub-grammar를 가진 manifest-level setting으로 관리하며(polyspec/flowmark의 docs/plans/design-plan.md, T5), dbspec에는 row 전환을 명명하는 setting이 없다. audit이 sub-grammar 선례다. 완료 기준: `state_machine <column> <from> -> <to> [require (<column>, ...)]`과 `state_machine <column> terminal <state> [require (<column>, ...)]`이 table마다 한 column에서 parse되고, validator가 상태 column(non-null varchar 또는 text), require column, table당 machine 하나, terminal 상태를 벗어나는 전환 없음을 검사하고, emitter가 canonical line을 써서 `emit(parse(s)) == s`가 성립하며, settings model이 machine을 운반한다. 확인: `go test ./engine/...`.
+- [o] T60 dbspec에 markdown setting을 추가한다. 원인: flowmark markdown executor가 산문 column이 markdown인 corpus 문서를 읽으며(polyspec/flowmark의 docs/plans/design-plan.md, T5), schema가 그 column을 명명하는 manifest-level trait이 필요하다. navigation이 manifest-only 선례다. 완료 기준: `markdown <column>`이 text 또는 varchar column을 markdown 산문으로 표시하고 column마다 반복 가능하다. validator가 column 종류를 검사하고 nullability는 자유롭다(없는 산문은 NULL). emitter가 canonical line을 쓰고 settings model이 trait을 운반하며 database는 이를 위해 아무것도 render하지 않는다. 확인: `go test ./engine/...`.

@@ -434,3 +434,38 @@ func TestStateMachineSetting(t *testing.T) {
 		t.Fatalf("machine: %+v", machine)
 	}
 }
+
+// markdown: the manifest trait that names a markdown prose column.
+func TestMarkdownSetting(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	text := joinLines(with(block(
+		"table pages {",
+		"  id i64 identity",
+		"  body text null",
+		"  note varchar(200)",
+		"  primary key (id)",
+		"  settings {",
+		"    markdown body",
+		"    markdown note",
+		"  }",
+		"}",
+	)), false)
+	document, diagnostics := Parse(text, nil)
+	if document == nil || len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+	if got, err := emitStable(text, nil); err != nil || got != text {
+		t.Fatalf("emission: %v\n%s", err, got)
+	}
+	trait := document.Tables[0].Settings.Marks
+	if len(trait) != 2 || trait[0].Column != "body" || trait[1].Column != "note" {
+		t.Fatalf("marks: %+v", trait)
+	}
+	bad := joinLines(with(block(
+		"table pages {", "  id i64 identity", "  n i32", "  primary key (id)",
+		"  settings {", "    markdown n", "  }", "}",
+	)), false)
+	if document, diagnostics := Parse(bad, nil); document != nil || len(diagnostics) == 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+}

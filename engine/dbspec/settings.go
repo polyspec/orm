@@ -21,7 +21,7 @@ func isInteger(t Type) bool {
 // history table shape at the history table name.
 func (v *validator) settings(t *tableNode) {
 	once := map[string]bool{}
-	repeatable := map[string]map[string]bool{"codec": {}, "navigation": {}, "blind_index": {}}
+	repeatable := map[string]map[string]bool{"codec": {}, "navigation": {}, "blind_index": {}, "markdown": {}}
 	byKind := map[string]*settingNode{}
 	var aesCodecs, accepted []*settingNode
 	aesColumns := map[string]bool{}
@@ -123,6 +123,11 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		v.generatedName(s.keyword, t.name.text+"$audit_insert")
 	case "state_machine":
 		v.stateMachine(t, s)
+	case "markdown":
+		if c := v.columnRef(t, s.args[0], RuleSetting); c != nil && c.typ.valid &&
+			c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText {
+			v.add(RuleSetting, s.args[0], "markdown needs a varchar or text column, not %s", c.typ.typ)
+		}
 	}
 }
 

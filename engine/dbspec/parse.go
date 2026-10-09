@@ -940,6 +940,8 @@ func (p *parser) settingsLine(c *cursor) {
 	case "navigation":
 		ok = arg("a foreign key name") && arg("the child relation name") && arg("the parent relation name")
 	case "immutable":
+	case "markdown":
+		ok = arg("a column name")
 	case "state_machine":
 		ok = arg("the state column")
 		if ok && c.peekIs(tokenWord, "terminal") {
