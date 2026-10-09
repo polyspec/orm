@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 43ed9edef78b0341f15c01c2aec9b1561296021055f4a106fd6e550bde59027f -->
+<!-- source-sha256: d71a30464c9348e92de323ef352235158b3a21ed4a1041d322c86f84a380df49 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -14,6 +14,7 @@
 | Go | `model.Product()` | `model.Product().Connect(slave1)` | `row.Connect(master)` |
 | Rust | `Product::new()` | `Product::new().connect(&slave1)` | `row.connect(&master)` |
 | TypeScript | `new Product()` | `new Product().connect(slave1)` | `row.connect(master)` |
+| Python | `Product()` | `Product().connect(slave1)` | `row.connect(master)` |
 
 - 연결 메서드는 `connect` 하나다. 조회한 행이나 컬렉션도 쓰기 전에 같은 메서드를 사용하므로, 복제본에서 읽은 행을 기본 연결로 쓸 수 있다.
 - PHP는 `(new Product)($slave1)`과 `$row($master)`를 `connect`의 짧은 형태로 허용한다.
@@ -85,14 +86,15 @@ Key   = [Operator] Column
 | `FulltextBoolean` | boolean 모드 전문 검색 |
 
 - `<ColA><Op><ColB>(model)`는 같은 SQL 문장 안에서 호출한 모델의 컬럼 `ColA`와 `model`의 컬럼 `ColB`를 비교한다. `(new Product)->priceGtMinPrice($brand)`는 `a.price > b.min_price`를 출력한다. `Op`는 `Eq`, `Ne`, `Gt`, `Lt`, `Ge`, `Le`다. `on(fn)` 안에서 호출한 모델은 조인 자식이다.
-- `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
+- `tuple<ColA>With<ColB>(list)`는 여러 컬럼을 값 묶음 목록과 비교한다. `tupleTenantIdWithAccountId([[1, 10], [2, 10]])`는 `(tenant_id, account_id) IN ((1, 10), (2, 10))`이다. `Ne`는 `NOT IN`을 만든다. Go는 컬럼마다 필드가 하나인 생성 값 묶음 구조체 `model.<Model><ColA>With<ColB>`, Rust는 튜플, TypeScript는 타입을 지정한 튜플, Python은 튜플을 사용한다. SQLite는 목록을 `IN (VALUES …)`로 출력한다.
 - `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
-- 체인은 모든 컬럼을 조합할 수 있다. PHP는 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다.
+- 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
 - 각 언어는 자기 빌드 도구로 생성한다.
   - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다.
   - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --schema schema/example.dbs --out src/models --scan src`를 실행한다.
   - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`를 실행한다.
+  - Python은 타입이 있는 getter·setter를 가진 모델 클래스를 작성하고, 읽은 source 중 어떤 규칙에도 맞지 않는 model method를 보고한다. `packages/orm-python/bin/orm-gen`의 `orm-gen gen --schema schema/example.dbs --out model --scan src`을 실행한다.
 
 ### 2.3 값 형태
 
@@ -119,13 +121,17 @@ Key   = [Operator] Column
 .andPhotoUrl('a.png').andPhotoUrl(['a', 'b']).andPhotoUrl(null).andNeSeq([1, 2])
 ```
 
-- null은 nullable 컬럼에서만 허용한다. Go·Rust·TypeScript는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고 PHP는 `CONFIG`를 반환한다.
+```python
+.and_photo_url('a.png').and_photo_url(['a', 'b']).and_photo_url(None).and_ne_seq([1, 2])
+```
+
+- null은 nullable 컬럼에서만 허용한다. Go·Rust·TypeScript는 NOT NULL 컬럼의 null을 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
 - 목록은 연산자가 없거나 `Eq`·`Ne`일 때만 허용한다. 다른 연산자는 목록과 null을 거부한다.
-- PHP와 TypeScript는 언어의 null 값을 사용한다. Go는 `orm.Null`, Rust는 `Null`을 사용한다.
+- PHP, TypeScript, Python은 언어의 null 값을 사용한다. Go는 `orm.Null`, Rust는 `Null`을 사용한다.
 - Go 메서드는 컬럼별 허용 값 타입을 제네릭 타입 매개변수로 제한한다. 정수 컬럼은 `int`, `int32`, `int64`와 각 타입의 슬라이스를 허용한다.
 - 실행하지 않은 모델을 값으로 넘기면 `IN (SELECT …)`, `Ne`와 함께 쓰면 `NOT IN`을 출력한다. 모델은 `addColumn<Col>()`로 컬럼 하나만 추가해야 하며 아니면 `CONFIG`를 반환한다.
 - ORM 함수 값은 10절의 함수를 적용한다. 컬럼 함수는 컬럼을 감싸며 비교 값은 메서드의 두 번째 인자다. 예: `andLeLocation(Orm::distance(129.16, 35.16), 2000)`. 값 함수는 비교 값 자체다. 예: `andGtCreatedTs(Orm::daysAgo(7))`.
-- `Between`은 길이 2 고정 배열을 받는다. PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, TypeScript `[number, number]` 타입의 `[1, 10]`이다. Go·Rust·TypeScript는 다른 길이를 컴파일 단계에서 거부하고 PHP는 `CONFIG`를 반환한다.
+- `Between`은 길이 2 고정 배열을 받는다. PHP `[1, 10]`, Go `[2]int{1, 10}`, Rust `[1, 10]`, TypeScript `[number, number]` 타입의 `[1, 10]`, Python `[1, 10]`이다. Go·Rust·TypeScript는 다른 길이를 컴파일 단계에서 거부하고 PHP와 Python은 `CONFIG`를 반환한다.
 
 ## 3. 조회
 
@@ -321,7 +327,7 @@ await master.transaction(async () => {
 - 활성 트랜잭션 안에서 같은 연결의 트랜잭션을 호출하면 savepoint를 만든다.
 - 두 트랜잭션을 동시에 열어야 하면 연결이 두 개여야 한다. 한 연결의 두 번째 트랜잭션은 첫 트랜잭션의 savepoint가 되기 때문이다. 잠금 경합도 이렇게 쓴다: 한 연결이 행을 잡고 다른 연결이 기다린다.
 - 하나의 트랜잭션 연결을 동시에 사용하면 오류를 반환한다.
-- 실행 흐름은 Go에서 goroutine, PHP에서 요청, Rust에서 tokio task, TypeScript에서 `AsyncLocalStorage` 컨텍스트다. 콜백 안에서 시작한 goroutine이나 새 Rust task에는 활성 트랜잭션이 없다. Go 하위 테스트도 이런 goroutine이므로, 그 안에서 연 트랜잭션은 바깥이 쥔 연결을 기다리는 별개 트랜잭션이 된다. TypeScript에서 콜백 안에서 시작한 비동기 작업은 콜백의 컨텍스트와 트랜잭션을 공유하며, 그 트랜잭션에서 다른 문장과 겹친 문장은 `CONFIG`를 반환한다.
+- 실행 흐름은 Go에서 goroutine, PHP에서 요청, Rust에서 tokio task, TypeScript에서 `AsyncLocalStorage` 컨텍스트, Python에서 요청의 thread다. Python은 transaction이 그 transaction을 연 connection에 활성이고 모든 실행 흐름이 자기 connection을 가진다. 콜백 안에서 시작한 goroutine이나 새 Rust task에는 활성 트랜잭션이 없다. Go 하위 테스트도 이런 goroutine이므로, 그 안에서 연 트랜잭션은 바깥이 쥔 연결을 기다리는 별개 트랜잭션이 된다. TypeScript에서 콜백 안에서 시작한 비동기 작업은 콜백의 컨텍스트와 트랜잭션을 공유하며, 그 트랜잭션에서 다른 문장과 겹친 문장은 `CONFIG`를 반환한다.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다.
 - begin, commit, rollback은 공개하지 않는다.
 

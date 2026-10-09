@@ -32,8 +32,6 @@ export const DECLARATIONS = [
   { file: 'packages/orm-python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
   { file: 'package-lock.json', read: packageLock },
   { file: 'contracts/features.json', read: text => [JSON.parse(text).contract_version].filter(Boolean) },
-  { file: 'README.md', read: first(/^# orm (\S+)$/gm) },
-  { file: 'README.ko.md', read: first(/^# orm (\S+)$/gm) },
   { file: 'packages/orm-php/README.md', read: first(/Version (\d+\.\d+\.\d+)\./g) },
   { file: 'SECURITY.md', read: first(/development version is `([^`]+)`/g) },
   { file: 'SECURITY.ko.md', read: first(/개발 version은 `([^`]+)`/g) },
