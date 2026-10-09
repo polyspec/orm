@@ -360,15 +360,110 @@ def _driver_limit(driver: str) -> int:
     return 999 if driver == 'sqlite' else 65535
 
 
+# driver 오류의 code 표다(docs/protocol.md "Errors", docs/errors.yaml). TypeScript client의 driverError
+# (packages/orm-npm/src/driver.ts)와 PHP client의 OrmException::fromDriver와 같은 조건을 쓴다. 표에 없는 driver
+# 오류는 DRIVER다. audit이나 immutable trigger가 거부한 쓰기도 DRIVER다.
+_MYSQL_CODES = {
+    # 2006(server has gone away), 2013(lost connection during query)은 client가 연결을 잃은 것이고 4031은
+    # server가 쉬던 연결을 끝낸 것이다.
+    2006: 'CONNECTION_LOST', 2013: 'CONNECTION_LOST', 4031: 'CONNECTION_LOST',
+    3572: 'LOCK_NOT_AVAILABLE',
+    1317: 'CANCELED', 3024: 'CANCELED',
+    1062: 'DUPLICATE_KEY',
+    1451: 'FOREIGN_KEY', 1452: 'FOREIGN_KEY',
+    1213: 'DEADLOCK',
+    1290: 'READ_ONLY', 1792: 'READ_ONLY',
+    3819: 'CONSTRAINT', 4025: 'CONSTRAINT',
+}
+_POSTGRES_CODES = {
+    # 57P01(admin_shutdown), 57P02(crash_shutdown), 57P05(idle_session_timeout)는 server가 session을 끝낼 때
+    # 보낸다. class 08(connection exception)은 _postgres_code가 고른다.
+    '57P01': 'CONNECTION_LOST', '57P02': 'CONNECTION_LOST', '57P05': 'CONNECTION_LOST',
+    '55P03': 'LOCK_NOT_AVAILABLE',
+    '57014': 'CANCELED',
+    '23505': 'DUPLICATE_KEY',
+    '23503': 'FOREIGN_KEY',
+    '40P01': 'DEADLOCK', '40001': 'DEADLOCK',
+    '25006': 'READ_ONLY',
+    '23514': 'CONSTRAINT',
+}
+
+
+def _sqlite_code(error: sqlite3.Error) -> str:
+    """SQLite extended result code의 ORM 오류 code다."""
+    number = getattr(error, 'sqlite_errorcode', None)
+    if not isinstance(number, int):
+        return 'DRIVER'
+    # SQLITE_BUSY와 그 extended code는 busy_timeout이 끝날 때 다른 연결이 아직 잡은 lock이고,
+    # SQLITE_INTERRUPT(9)는 끝나기 전에 멈춘 statement다.
+    if (number & 0xff) == 5 or number == 9:
+        return 'CANCELED'
+    if number in (2067, 1555):
+        return 'DUPLICATE_KEY'
+    # RESTRICT action의 FK 위반은 CONSTRAINT_TRIGGER(1811)로 온다. trigger RAISE의 1811은 DRIVER다.
+    if number == 787 or (number == 1811 and 'FOREIGN KEY constraint failed' in str(error)):
+        return 'FOREIGN_KEY'
+    if number in (6, 262):
+        return 'DEADLOCK'
+    # SQLITE_READONLY(8)와 그 extended code는 읽기 전용 연결이나 query_only가 거부한 쓰기다.
+    if (number & 0xff) == 8:
+        return 'READ_ONLY'
+    if number == 275:
+        return 'CONSTRAINT'
+    return 'DRIVER'
+
+
+def _postgres_code(sqlstate, lost: bool) -> str:
+    """psycopg 오류의 ORM 오류 code다. server의 SQLSTATE가 없는 오류는 연결이 닫혔을 때(lost)
+    연결을 잃은 오류다."""
+    if sqlstate is None:
+        return 'CONNECTION_LOST' if lost else 'DRIVER'
+    if sqlstate.startswith('08'):
+        return 'CONNECTION_LOST'
+    return _POSTGRES_CODES.get(sqlstate, 'DRIVER')
+
+
+def _driver_error(driver: str, error: BaseException, lost: bool = False) -> BaseException:
+    """driver 오류를 catalog의 code를 가진 OrmError로 바꾼다. message는 `<driver>: <driver message>`이고
+    cause는 driver 오류다. driver 오류가 아닌 오류는 그대로 돌려준다. lost는 PostgreSQL 연결이 오류 뒤에
+    닫혔는지다."""
+    if driver == 'sqlite':
+        if not isinstance(error, sqlite3.Error):
+            return error
+        return OrmError(_sqlite_code(error), f'sqlite: {error}', error)
+    if driver == 'mysql':
+        import pymysql
+        if not isinstance(error, pymysql.err.MySQLError):
+            return error
+        args = error.args
+        number = args[0] if args and isinstance(args[0], int) else None
+        message = str(args[1]) if len(args) >= 2 else str(error)
+        # PyMySQL은 이미 닫힌 연결에 보낸 statement를 InterfaceError로 알린다.
+        code = 'CONNECTION_LOST' if isinstance(error, pymysql.err.InterfaceError) \
+            else _MYSQL_CODES.get(number, 'DRIVER')
+        return OrmError(code, f'mysql: {message}', error)
+    import psycopg
+    if not isinstance(error, psycopg.Error):
+        return error
+    diag = getattr(error, 'diag', None)
+    message = (diag.message_primary if diag is not None else None) or str(error)
+    return OrmError(_postgres_code(error.sqlstate, lost), f'postgres: {message}', error)
+
+
+def _raise_driver_error(driver: str, error: Exception, lost: bool = False):
+    """except 절 안에서 부른다: driver 오류는 ORM 오류로 바꾸어 던지고, 다른 오류는 그대로 다시 던진다."""
+    mapped = _driver_error(driver, error, lost)
+    if mapped is error:
+        raise error
+    raise mapped from error
+
+
 class _SqliteConnection:
     """표준 sqlite3 연결 한 개. pool 규칙 없이 한 연결을 재사용한다."""
 
     def __init__(self, parsed: ParsedDsn):
-        self.connection = sqlite3.connect(_sqlite_path(parsed.url),
-                                          timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
-                                          isolation_level=None,
-                                          detect_types=0)
-        self.connection.execute('PRAGMA foreign_keys = ON')
+        path = _sqlite_path(parsed.url)
+        pragmas = []
         for name, value in parse_qsl(parsed.url.query, keep_blank_values=True):
             if name != '_pragma':
                 continue
@@ -376,11 +471,26 @@ class _SqliteConnection:
             if match is None or (match.group(1) == 'busy_timeout'
                                  and not match.group(2).isdigit()):
                 raise OrmError('CONFIG', f'sqlite DSN _pragma {value} is invalid')
-            self.connection.execute(f'PRAGMA {match.group(1)} = {match.group(2)}')
+            pragmas.append(f'PRAGMA {match.group(1)} = {match.group(2)}')
+        # 연결을 여는 driver 오류도 statement의 오류처럼 ORM 오류다.
+        try:
+            self.connection = sqlite3.connect(path, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000,
+                                              isolation_level=None, detect_types=0)
+        except Exception as error:
+            _raise_driver_error('sqlite', error)
+        try:
+            for statement in ['PRAGMA foreign_keys = ON', *pragmas]:
+                self.connection.execute(statement)
+        except Exception as error:
+            self.connection.close()
+            _raise_driver_error('sqlite', error)
 
     def execute(self, sql: str, values):
-        cursor = self.connection.execute(sql, tuple(values))
-        rows = cursor.fetchall()
+        try:
+            cursor = self.connection.execute(sql, tuple(values))
+            rows = cursor.fetchall()
+        except Exception as error:
+            _raise_driver_error('sqlite', error)
         insert_id = cursor.lastrowid if cursor.lastrowid is not None else None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
         cursor.close()
@@ -403,20 +513,26 @@ class _MysqlConnection:
         except ImportError as error:
             raise OrmError('CONFIG', f'the mysql driver needs PyMySQL: {error}') from None
         url = parsed.url
-        self.connection = pymysql.connect(
-            host=url.hostname or 'localhost',
-            port=int(url.port) if url.port else 3306,
-            user=_unquote(url.username or ''),
-            password=_unquote(url.password or ''),
-            database=_unquote(url.path.lstrip('/')),
-            charset='utf8mb4', autocommit=True, conv=mysql_conversions())
+        try:
+            self.connection = pymysql.connect(
+                host=url.hostname or 'localhost',
+                port=int(url.port) if url.port else 3306,
+                user=_unquote(url.username or ''),
+                password=_unquote(url.password or ''),
+                database=_unquote(url.path.lstrip('/')),
+                charset='utf8mb4', autocommit=True, conv=mysql_conversions())
+        except Exception as error:
+            _raise_driver_error('mysql', error)
         self.execute("SET time_zone = '+00:00'", [])
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()
         text, args = for_mysql(sql, values)
-        cursor.execute(text, args)
-        rows = [list(row) for row in cursor.fetchall()]
+        try:
+            cursor.execute(text, args)
+            rows = [list(row) for row in cursor.fetchall()]
+        except Exception as error:
+            _raise_driver_error('mysql', error)
         insert_id = cursor.lastrowid
         affected = cursor.rowcount
         cursor.close()
@@ -439,20 +555,27 @@ class _PostgresConnection:
             raise OrmError('CONFIG', f'the postgres driver needs psycopg: {error}') from None
         url = parsed.url
         name = _unquote(url.path.lstrip('/'))
-        self.connection = psycopg.connect(host=url.hostname or 'localhost',
-                                          port=int(url.port) if url.port else 5432,
-                                          user=_unquote(url.username or ''),
-                                          password=_unquote(url.password or ''),
-                                          dbname=name,
-                                          options='-c TimeZone=UTC')
+        try:
+            self.connection = psycopg.connect(host=url.hostname or 'localhost',
+                                              port=int(url.port) if url.port else 5432,
+                                              user=_unquote(url.username or ''),
+                                              password=_unquote(url.password or ''),
+                                              dbname=name,
+                                              options='-c TimeZone=UTC')
+        except Exception as error:
+            _raise_driver_error('postgres', error)
         postgres_loaders(self.connection.adapters)
         self.connection.autocommit = True
 
     def execute(self, sql: str, values):
         cursor = self.connection.cursor()
         text, args = for_postgres(sql, values)
-        cursor.execute(text, args)
-        rows = [list(row) for row in cursor.fetchall()] if cursor.description else []
+        try:
+            cursor.execute(text, args)
+            rows = [list(row) for row in cursor.fetchall()] if cursor.description else []
+        except Exception as error:
+            # psycopg는 server가 끝냈거나 끊긴 연결을 닫힌 연결로 표시한다.
+            _raise_driver_error('postgres', error, bool(self.connection.closed))
         insert_id = None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
         cursor.close()
@@ -848,9 +971,10 @@ class Db:
             if no_wait:
                 run('PRAGMA busy_timeout=0')
             run(ROW_LOCK_TAKE, tables=ROW_LOCK_TABLES)
-        except Exception as error:  # noqa: BLE001
-            if no_wait and _sqlite_busy(error):
-                raise OrmError('LOCK_NOT_AVAILABLE', str(error), error) from None
+        except OrmError as error:
+            # NOWAIT 요청의 SQLITE_BUSY는 CANCELED가 아니라 LOCK_NOT_AVAILABLE이다.
+            if no_wait and _sqlite_busy(error.cause):
+                raise OrmError('LOCK_NOT_AVAILABLE', str(error), error.cause) from None
             raise
         finally:
             if no_wait:

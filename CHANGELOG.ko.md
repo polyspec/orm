@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 39f59bb34dd102f379e357fdc1a7a0c1e09bbc1973d31578e712fd60c5c6c6a4 -->
+<!-- source-sha256: 22d038c1292ba4bd9f7e5ef4ea22a81352a2eeaa05b674c7261ef541aca8b8d2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T49.2: Python client가 statement나 연결 열기의 모든 driver 오류를 `OrmError`로 돌려줍니다. SQLite extended result code, MySQL 오류 번호, PostgreSQL SQLSTATE가 TypeScript client의 표로 `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `DEADLOCK`, `LOCK_NOT_AVAILABLE`, `CANCELED`, `READ_ONLY`, `CONNECTION_LOST`를 고르고, 다른 driver 오류는 `DRIVER`이며, 각 오류는 message `<driver>: <driver message>`와 `cause`인 driver 오류를 가집니다. `sqlite3.IntegrityError`, PyMySQL 오류, psycopg 오류가 더는 그대로 빠져나가지 않습니다.
 - T49.1: Python client가 문서에 `use` 줄이 있는 문서 집합을 install합니다. `is_schema_text`는 plain 문서의 use 줄을 TypeScript client의 `isSchemaText`처럼 `DbspecUse` 값으로 만들며, 더는 `utils().schema().install(schema)`를 `AttributeError: 'dict' object has no attribute 'document'`로 실패하게 한 dict로 만들지 않습니다.
 
 ## 0.0.5
