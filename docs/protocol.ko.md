@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 868b63ac682073e4991123aa64b9ba150f38e05452d632381d8833577dc44149 -->
+<!-- source-sha256: 8b8c895953e2fa2c1b7b5c931d841c464d0813b1b83ced6e66442a8178733b66 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -166,7 +166,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | Rust | `polyspec_orm::testing::fail_next_rollback(&db)` | cargo feature `test-faults`가 있을 때만 module을 compile하며, 어떤 default feature도 이를 켜지 않는다. `[dev-dependencies]`에서 켠다 |
 | TypeScript | `@polyspec/orm/testing`의 `failNextRollback(db)` | package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다 |
 | PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
-| Python | `polyspec.orm.testing.fail_next_rollback(db)` | `packages/orm-python/pyproject.toml`의 `[tool.setuptools.packages.find]`가 package `polyspec.orm.testing`을 배포에서 빼므로, 설치된 `polyspec-orm`은 이것을 담지 않는다. process는 source tree `packages/orm-python/src`를 path에 둘 때만 이것을 import하며, package entry point `polyspec.orm`은 이 함수를 export하지 않는다 |
+| Python | `polyspec.orm.testing.fail_next_rollback(db)` | PHP class가 package에 있듯 package `polyspec.orm.testing`은 배포에 있고, `polyspec.orm`의 어느 module도 이것을 import하지 않는다. process는 `polyspec.orm.testing`을 그 이름으로 import한 뒤에만 이것을 가지며, package entry point `polyspec.orm`은 이 함수를 export하지 않는다 |
 
 ## 4. 클라이언트 안의 계획
 

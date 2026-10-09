@@ -165,7 +165,7 @@ The fault exists only in the test entry point of each client. No DSN, configurat
 | Rust | `polyspec_orm::testing::fail_next_rollback(&db)` | The module is compiled only with the cargo feature `test-faults`, which no default feature enables; it is enabled in `[dev-dependencies]` |
 | TypeScript | `failNextRollback(db)` of `@polyspec/orm/testing` | The package exports the subpath only under the condition `orm-test`; without `node --conditions=orm-test` the import fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`, and the package entry point does not export the function. A type check of the test resolves the subpath with `customConditions: ["orm-test"]` |
 | PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | The class is in `testing/Faults.php` of the package, which the package autoloader does not map; a process has it only after it requires that file by its path |
-| Python | `polyspec.orm.testing.fail_next_rollback(db)` | The package `polyspec.orm.testing` is excluded from the distribution by `[tool.setuptools.packages.find]` of `packages/orm-python/pyproject.toml`, so an installed `polyspec-orm` does not contain it; a process imports it only with the source tree `packages/orm-python/src` on its path, and the package entry point `polyspec.orm` does not export the function |
+| Python | `polyspec.orm.testing.fail_next_rollback(db)` | The package `polyspec.orm.testing` is in the distribution, as the PHP class is in the package, and no module of `polyspec.orm` imports it; a process has it only after it imports `polyspec.orm.testing` by that name, and the package entry point `polyspec.orm` does not export the function |
 
 ## 4. Planning in the client
 

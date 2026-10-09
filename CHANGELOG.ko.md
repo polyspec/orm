@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a5c6f7c66980fe2bfab87e4339afcbdc30088673ae9c1ea8baddc1dfd41e976b -->
+<!-- source-sha256: 707bdd3bd502a712ba4e4764bdeb299df2965f7bacdde0d5ee7860b138f787d2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T51: Python client의 배포가 test entry point `polyspec.orm.testing`을 담고 `polyspec.orm`의 어느 module도 이것을 import하지 않으므로, 소비자의 test가 설치된 `polyspec-orm`에서 이것을 import합니다. PHP package가 `testing/Faults.php`를 담는 것과 같습니다.
 - T50: Python client의 statement event subscriber가 던지면 statement는 `SUBSCRIBER: statement event subscriber failed: <오류의 text>`와 그 오류를 `cause`로 실패합니다. TypeScript client와 같습니다. subscriber의 `OrmError`는 더 이상 `AttributeError`로 끝나지 않습니다.
 - T49, T49.3: Python client가 docs/protocol.md "Test faults"의 rollback fault test entry point `polyspec.orm.testing.fail_next_rollback(db)`를 가집니다. callback이 실패한 다음 transaction은 rollback되고 `cause`인 callback 오류와 `rollback`인 `FAULT` 오류를 가진 `ROLLBACK` 오류 하나를 던지며, commit과 savepoint rollback은 fault를 남기고, 배포는 package `polyspec.orm.testing`을 담지 않습니다. T49.2와 함께, 실패한 rollback은 rollback 오류 그대로가 아니라 callback 오류와 rollback 오류를 함께 보고합니다.
 - T49.2: Python client가 statement나 연결 열기의 모든 driver 오류를 `OrmError`로 돌려줍니다. SQLite extended result code, MySQL 오류 번호, PostgreSQL SQLSTATE가 TypeScript client의 표로 `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `DEADLOCK`, `LOCK_NOT_AVAILABLE`, `CANCELED`, `READ_ONLY`, `CONNECTION_LOST`를 고르고, 다른 driver 오류는 `DRIVER`이며, 각 오류는 message `<driver>: <driver message>`와 `cause`인 driver 오류를 가집니다. `sqlite3.IntegrityError`, PyMySQL 오류, psycopg 오류가 더는 그대로 빠져나가지 않습니다.
