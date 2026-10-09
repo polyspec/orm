@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T51.1: the Korean records of the Python test entry point pass the writing-style rule of `make docs-rules-check`.
 - T51: the distribution of the Python client holds the test entry point `polyspec.orm.testing`, which no module of `polyspec.orm` imports, so the tests of a consumer import it from an installed `polyspec-orm`, as the PHP package holds `testing/Faults.php`.
 - T50: a statement event subscriber of the Python client that raises fails the statement with `SUBSCRIBER: statement event subscriber failed: <text of the error>` and the error as `cause`, as the TypeScript client does; an `OrmError` of the subscriber no longer ends in `AttributeError`.
 - T49, T49.3: the Python client has the rollback fault test entry point `polyspec.orm.testing.fail_next_rollback(db)` of docs/protocol.md "Test faults": the next transaction whose callback fails rolls back and raises one `ROLLBACK` error with the callback error as `cause` and a `FAULT` error as `rollback`, a commit and a savepoint rollback leave the fault armed, and the distribution excludes the package `polyspec.orm.testing`; with T49.2 a rollback that fails reports both the callback error and the rollback error instead of the raw rollback error.
