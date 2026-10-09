@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 04982d22d46103daac1cf168d1bdf850bd22609d2f101ea164a40aa640d4907c -->
+<!-- source-sha256: 2e2c57ec1fa029009ce4e9a9d213096d4b4be8a7f6f894dcac091031fa6206ce -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -770,4 +770,6 @@
 
 - [o] T46 0.0.5를 release합니다. 원인: T43–T45의 작업이 `main`에 있고 그 CI가 통과했습니다. 완료 기준: `config/release.json`의 모든 manifest, lock file, `VERSION`, version을 적는 문서가 0.0.5를 선언하고, changelog의 `## Unreleased`가 새 빈 `## Unreleased` 아래의 `## 0.0.5`로 바뀌며, `config/dependency-review.json`이 review를 다시 기록하고, `tests/release-consumer`가 0.0.5 archive의 lock을 담으며, `push-gate.yml`은 branch의 push에서만 돌고 tag의 push에서는 돌지 않습니다. Evidence: `make version-check`, `make release-versions TAG=v0.0.5`, `make release-go-tags TAG=v0.0.5`, `make release-coverage`, `make release-consumer TAG=v0.0.5`, `make dependency-policy-check`, `make documents-check`가 나중에 지운 local tag로 0으로 끝납니다. maintainer는 CI가 통과한 뒤 이 commit에 tag한다.
 
-- [o] T47 Stress 기한. 원인: `TestApplyStressPlan`이 22000개의 MySQL step에 총 12분의 고정 기한을 썼고, 31% 느린 runner는 20000 step에 10분 21초가 걸려 `context deadline exceeded`로 실패했습니다(이전 실행은 7분 54초). 완료 기준: case의 기한을 step 수에서 정하고, 2분 안에 step을 적용하지 못하는 database는 그 한도를 밝히는 원인과 함께 실패하며, plan은 모든 step을 유지합니다. 증거: `go test ./tests/dialects -run 'TestStressCaseBudget|TestStallGuard'`와 `go vet -tags physical ./tests/dialects`가 0으로 끝나고, MySQL에서의 case 실행은 CI가 확인한다.
+- [o] T47 Stress 기한. 원인: `TestApplyStressPlan`이 22000개의 MySQL step에 총 12분의 고정 기한을 썼고, 31% 느린 runner는 20000 step에 10분 21초가 걸려 `context deadline exceeded`로 실패했습니다(이전 실행은 7분 54초). 완료 기준: case의 기한을 step 수에서 정하고, 2분 안에 step을 적용하지 못하는 database는 그 한도를 밝히는 원인과 함께 실패하며, plan은 모든 step을 유지합니다. 증거: `go test ./internal/testcase -run 'TestStepBudget|TestStallGuard'`와 `go vet -tags physical ./tests/dialects`가 0으로 끝나고, MySQL에서의 case 실행은 CI가 확인한다.
+
+- [o] T48 Stress helper의 소유. 원인: T47이 budget과 stall guard를 어떤 check도 고르지 않는 `tests/dialects/stress_budget.go`와 그 test에 두어 CI에서 `feature-unit-check`가 `every tracked file selects a behaviour test or declares its scope`로 실패했다. 완료 기준: 추적하는 모든 file이 check를 고르거나 scope를 선언하고, helper는 `testcase-check`가 소유하는 `internal/testcase`에 있다. 증거: `make feature-unit-check`와 `make testcase-check`가 0으로 끝난다.
