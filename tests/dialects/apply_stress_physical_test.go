@@ -13,20 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/polyspec/orm/engine/dbspec"
 	"github.com/polyspec/orm/internal/testcase"
 )
-
-// stressDeadline은 2000 table plan 하나를 한 database에 적용하는 기한이다. MySQL은
-// statement와 history step 22000개씩을 따로 commit하고, 개발 machine에서 8분 남짓 걸린다(T27
-// 측정 8m10s). database가 하는 일이므로 줄일 수 없고, 측정값의 약 1.5배다.
-const stressDeadline = 12 * time.Minute
-
-// stressCaseDeadline은 database 하나의 case 기한이다. 적용 기한에 database를 만들고 지우고
-// history를 읽는 1분을 더했다.
-const stressCaseDeadline = stressDeadline + time.Minute
 
 // TestApplyStressPlan은 tests/dbspec/stress.mjs의 2000 table 문서를 첫 plan으로 세
 // database에 적용한다(docs/plans.md "Verification"). PostgreSQL은 기본 lock 설정
@@ -54,8 +44,9 @@ func TestApplyStressPlan(t *testing.T) {
 	token := strconv.Itoa(os.Getpid()) + "_" + hex.EncodeToString(random)
 	for _, db := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(db, func(t *testing.T) {
-			c := testcase.Start(t, stressCaseDeadline)
+			// 한 case의 기한은 plan의 step 수에서 정한다(stressCaseBudget). 멈춘 step은 stall guard가 먼저 찾는다.
 			steps := planSteps(t, []*dbspec.Plan{plan}, 0, db)
+			c := testcase.Start(t, stressCaseBudget(len(steps)))
 			name := "dbspec_stress_" + token + "_" + db
 			c.Step("%d steps on %s", len(steps), name)
 			uri, cleanup := compareDatabase(t, db, name, mysqlDSN, postgresDSN)
@@ -65,8 +56,8 @@ func TestApplyStressPlan(t *testing.T) {
 			}()
 			pool := openURI(t, db, uri)
 			defer pool.Close()
-			ctx, cancel := context.WithTimeout(c.Context(), stressDeadline)
-			defer cancel()
+			ctx, progressed, stopGuard := newStallGuard(c.Context(), stressStallLimit)
+			defer stopGuard()
 			conn, err := pool.Conn(ctx)
 			if err != nil {
 				t.Fatal(err)
@@ -92,6 +83,7 @@ func TestApplyStressPlan(t *testing.T) {
 				switch ev.Kind {
 				case "applied":
 					applied++
+					progressed()
 					if applied%2000 == 0 {
 						c.Step("%d of %d steps applied", applied, ev.Steps)
 					}
@@ -101,7 +93,7 @@ func TestApplyStressPlan(t *testing.T) {
 				return nil
 			}
 			if err := dbspec.Apply(ctx, conn, dbspec.Dialect(db), []*dbspec.Plan{plan}, fixedNow, progress); err != nil {
-				t.Fatalf("apply: %v", err)
+				t.Fatalf("apply: %v (%v)", err, context.Cause(ctx))
 			}
 			var row string
 			if err := conn.QueryRowContext(ctx, "SELECT "+map[string]string{"mysql": "CONCAT(state, ' ', step)"}[db]+map[string]string{"postgres": "state || ' ' || step", "sqlite": "state || ' ' || step"}[db]+" FROM "+historyOf(db)).Scan(&row); err != nil {
