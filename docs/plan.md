@@ -14,7 +14,7 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, and TypeScript. 
 3. Every syntax is written the same way in all four languages; only language spelling and creation forms differ.
 4. Syntax without a specified rule is not used in documents, examples, or generated code.
 5. The ORM does not provide compatibility layers, fallbacks, or data conversion. A failing rule is corrected in this plan; the test is not weakened.
-6. The product version is `0.0.6`.
+6. The product version is `0.0.7`.
 
 ## 3. Syntax provided in four languages
 

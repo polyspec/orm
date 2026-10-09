@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@polyspec/orm": "file:polyspec-orm-npm-0.0.6.tgz",
+    "@polyspec/orm": "file:polyspec-orm-npm-0.0.7.tgz",
     "@polyspec/ordered-json": "https://github.com/polyspec/ordered-json/releases/download/v0.0.7/polyspec-ordered-json-npm-0.0.7.tgz"
   }
 }

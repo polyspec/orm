@@ -12,7 +12,7 @@
 #include "Zend/zend_closures.h"
 #include "orm_dbspec_arginfo.h"
 
-#define ORM_DBSPEC_VERSION "0.0.6"
+#define ORM_DBSPEC_VERSION "0.0.7"
 
 /* 메서드 하나의 arena를 둔다. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)

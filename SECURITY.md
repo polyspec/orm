@@ -7,7 +7,7 @@ Report a suspected security issue privately to the repository owner before openi
 
 ## Supported version
 
-The development version is `0.0.6`. Security fixes are evaluated against the current source tree.
+The development version is `0.0.7`. Security fixes are evaluated against the current source tree.
 
 ## Scope
 

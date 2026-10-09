@@ -1,6 +1,6 @@
 [package]
 name = "polyspec-orm-case-clock"
-version = "0.0.6"
+version = "0.0.7"
 edition = "2021"
 publish = false
 description = "Thread CPU time for the time bounds that the Rust ORM tests set on their own computation"
