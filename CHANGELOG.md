@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+## 0.0.6
+
+- T52: release 0.0.6: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.6, the dependency review is recorded again and `tests/release-consumer` holds the locks of the archives of 0.0.6.
 - T51.1: the Korean records of the Python test entry point pass the writing-style rule of `make docs-rules-check`.
 - T51: the distribution of the Python client holds the test entry point `polyspec.orm.testing`, which no module of `polyspec.orm` imports, so the tests of a consumer import it from an installed `polyspec-orm`, as the PHP package holds `testing/Faults.php`.
 - T50: a statement event subscriber of the Python client that raises fails the statement with `SUBSCRIBER: statement event subscriber failed: <text of the error>` and the error as `cause`, as the TypeScript client does; an `OrmError` of the subscriber no longer ends in `AttributeError`.

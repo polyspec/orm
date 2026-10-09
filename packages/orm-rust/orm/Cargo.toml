@@ -1,6 +1,6 @@
 [package]
 name = "polyspec-orm"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 publish = false
 description = "Rust ORM: model runtime, SQL planner, and sqlx executor"
@@ -16,7 +16,7 @@ categories = ["database"]
 test-faults = []
 
 [dependencies]
-polyspec-orm-schema = { version = "=0.0.5", path = "../orm-schema" }
+polyspec-orm-schema = { version = "=0.0.6", path = "../orm-schema" }
 ordered-json = { package = "polyspec-ordered-json", version = "=0.0.7", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.7" }
 sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
 # sqlx의 bundled SQLite library다. 연결은 그 version을 SQL로 묻지 않고 이 crate에서 읽는다.
