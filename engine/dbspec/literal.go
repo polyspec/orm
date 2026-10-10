@@ -7,6 +7,42 @@ import (
 	"unicode/utf8"
 )
 
+// CanonicalLiteral returns the canonical text of text, a literal written as
+// the default of a column of type t, or false when text is not a literal of
+// t. A literal is one token on one line with no space around it: a number
+// whose minus sign is attached, a word (true, false or now) or a quoted
+// string. A text or bytes column has no literal.
+func CanonicalLiteral(t Type, text string) (string, bool) {
+	v, ok := literalToken(text)
+	if !ok {
+		return "", false
+	}
+	canonical, ok := canonicalDefault(t, v)
+	if !ok {
+		return "", false
+	}
+	return canonical, true
+}
+
+// literalToken lexes text as one literal token. A minus sign attached to a
+// number belongs to the number, as the parser reads a default value.
+func literalToken(text string) (token, bool) {
+	if text != strings.Trim(text, " ") || strings.ContainsAny(text, "\r\n") {
+		return token{}, false
+	}
+	tokens, _, bad := lexLine(text, 1)
+	if bad != nil {
+		return token{}, false
+	}
+	switch {
+	case len(tokens) == 1 && tokens[0].kind != tokenPunct && tokens[0].kind != tokenOperator:
+		return tokens[0], true
+	case len(tokens) == 2 && tokens[0].is(tokenOperator, "-") && tokens[1].kind == tokenNumber && tokens[1].col == tokens[0].col+1:
+		return token{kind: tokenNumber, text: "-" + tokens[1].text, line: 1, col: 1}, true
+	}
+	return token{}, false
+}
+
 // canonicalDefault returns the canonical text of a default value v for a
 // column of type t, or false when v is not a literal of t. Callers handle
 // text and bytes, which have no default.
