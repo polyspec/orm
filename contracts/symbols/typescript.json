@@ -848,6 +848,7 @@
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.syntax": "private syntax(toks: Tk[], i: number, line: number, message: string): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.tableHeader": "private tableHeader(toks: Tk[], line: number, comments: string[]): ITable",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.type": "private type(tok: Tk, params: Tk[] | null): DbspecType | null",
+  "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.unclosed": "private unclosed(tok: Tk, message: string): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.use": "private use(toks: Tk[], line: number, comments: string[]): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.validate": "validate(): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.validateTable": "private validateTable(table: ITable, available: Map\u003cstring, ITable | null\u003e): void",

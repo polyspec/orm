@@ -10509,6 +10509,87 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "settings-without-brace-at-end",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "syntax"
+        },
+        {
+          "line": 6,
+          "column": 11,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "table-block-open-with-error-line-at-end",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  name varchar(64) ("
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 6,
+          "column": 20,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "diagram-block-open-with-error-line-at-end",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "diagram main {",
+          "  users at 0 0 ("
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 14,
+          "rule": "syntax"
+        },
+        {
+          "line": 9,
+          "column": 16,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [

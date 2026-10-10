@@ -219,14 +219,14 @@ final class Parser
         }
         // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
         if ($this->state === 'settings') {
-            $this->error('syntax', $this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
+            $this->unclosed($this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
             $this->state = 'table';
             $this->closeTable();
         } elseif ($this->state === 'table') {
-            $this->error('syntax', $this->blockOpen[0], $this->blockOpen[1], 'the table block is not closed');
+            $this->unclosed($this->blockOpen[0], $this->blockOpen[1], 'the table block is not closed');
             $this->closeTable();
         } elseif ($this->state === 'diagram') {
-            $this->error('syntax', $this->blockOpen[0], $this->blockOpen[1], 'the diagram block is not closed');
+            $this->unclosed($this->blockOpen[0], $this->blockOpen[1], 'the diagram block is not closed');
         }
         $this->document->trailingComments = $this->takeComments();
         $this->checkForeignKeyTargets();
@@ -2545,6 +2545,14 @@ final class Parser
     private function endColumn(): int
     {
         return mb_strlen($this->text, 'UTF-8') + 1;
+    }
+
+    /**
+     * 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다).
+     */
+    private function unclosed(int $line, int $column, string $message): void
+    {
+        $this->diagnostics[] = ['syntax', $line, $column, $message];
     }
 
     private function error(string $rule, int $line, int $column, string $message): void

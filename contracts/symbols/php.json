@@ -784,6 +784,7 @@
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::tokenize": "private function tokenize(): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::topLine": "private function topLine(): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::type": "private function type(int $i): array",
+  "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::unclosed": "private function unclosed(int $line, int $column, string $message): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::useLine": "private function useLine(): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::usedDocument": "private function usedDocument(string $name): array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::validName": "public static function validName(string $name): bool",

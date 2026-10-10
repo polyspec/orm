@@ -638,6 +638,11 @@ class DocumentParser {
     this.report(rule, tok.line, tok.s, message);
   }
 
+  /** 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
+  private unclosed(tok: Tk, message: string): void {
+    this.diagnostics.push({ rule: 'syntax', line: tok.line, column: columnOf(this.lines[tok.line - 1] ?? '', tok.s), message });
+  }
+
   /** A syntax error at a token, or after the last token of the line. */
   private syntax(toks: Tk[], i: number, line: number, message: string): void {
     const tok = toks[i];
@@ -777,9 +782,9 @@ class DocumentParser {
     }
     if (this.stopped) return;
     // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
-    if (state === 'settings') this.at('syntax', this.settingsBlock!.open, 'the settings block is not closed');
-    else if (state === 'table') this.at('syntax', table!.open, 'the table block is not closed');
-    if (state === 'diagram') this.at('syntax', diagram!.open, 'the diagram block is not closed');
+    if (state === 'settings') this.unclosed(this.settingsBlock!.open, 'the settings block is not closed');
+    else if (state === 'table') this.unclosed(table!.open, 'the table block is not closed');
+    if (state === 'diagram') this.unclosed(diagram!.open, 'the diagram block is not closed');
     this.document.closing = comments;
   }
 

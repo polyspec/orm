@@ -230,6 +230,12 @@ typedef struct parser {
     jmp_buf stop_jump;
 } parser;
 
+/* 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
+static void unclosed(parser *p, zend_long line, zend_long column, str message)
+{
+    PUSH(p->diagnostics, mkdiag(str_c("syntax"), line, column, message));
+}
+
 static void error(parser *p, const char *rule, zend_long line, zend_long column, str message)
 {
     if (strcmp(rule, "syntax") == 0) {
@@ -3054,14 +3060,14 @@ static void read_source(parser *p, str source)
     }
     /* 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다. */
     if (p->state == S_SETTINGS) {
-        error(p, "syntax", p->settings_open[0], p->settings_open[1], SL("the settings block is not closed"));
+        unclosed(p, p->settings_open[0], p->settings_open[1], SL("the settings block is not closed"));
         p->state = S_TABLE;
         close_table(p);
     } else if (p->state == S_TABLE) {
-        error(p, "syntax", p->block_open[0], p->block_open[1], SL("the table block is not closed"));
+        unclosed(p, p->block_open[0], p->block_open[1], SL("the table block is not closed"));
         close_table(p);
     } else if (p->state == S_DIAGRAM) {
-        error(p, "syntax", p->block_open[0], p->block_open[1], SL("the diagram block is not closed"));
+        unclosed(p, p->block_open[0], p->block_open[1], SL("the diagram block is not closed"));
     }
     p->doc->trailing = take_comments(p);
     check_foreign_key_targets(p);
