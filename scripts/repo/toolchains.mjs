@@ -14,6 +14,8 @@ const MINIMUM_SCRIPT = './scripts/php/php-min.sh';
 const MINIMUM_STEP = 'make --no-print-directory ci-php-min-version >> "$GITHUB_OUTPUT"';
 const runs = (workflow, pattern) => workflowSteps(workflow).some(step => pattern.test(step.run));
 const numbers = text => text.split('.').map(Number);
+// sameMajorMinor는 두 version의 major와 minor가 같은지 돌려준다. patch는 비교하지 않는다.
+const sameMajorMinor = (a, b) => a.split('.').slice(0, 2).join('.') === b.split('.').slice(0, 2).join('.');
 const below = (a, b) => (numbers(a).map((part, index) => part - (numbers(b)[index] ?? 0)).find(d => d !== 0) ?? 0) < 0;
 
 // phpVersionErrors는 PHP version 선언이 하나가 아니거나 실행 중인 PHP와 다른 곳마다 오류 하나를
@@ -111,7 +113,7 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
 //   - declared는 정확한 x.y.z 하나이고, go.mod의 `go x.y` 줄은 그 x.y다.
 //   - actions/setup-go step은 `go-version-file: .go-version`으로 읽고 `go-version`을 직접 적지 않는다. go를 실행하는
 //     workflow는 setup-go를 쓴다.
-//   - running은 declared와 같다.
+//   - running은 declared와 major.minor가 같다. patch는 상관없다: patch release는 언어와 module 동작을 바꾸지 않는다.
 export function goVersionErrors(declared, goMod, workflows, running) {
   const errors = [];
   const exact = /^(\d+)\.(\d+)\.(\d+)$/.exec(declared.trim());
@@ -130,8 +132,8 @@ export function goVersionErrors(declared, goMod, workflows, running) {
         errors.push(`${path} does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version`);
     }
   }
-  if (exact && running !== declared.trim())
-    errors.push(`Go ${running} runs the checks; .go-version declares ${declared.trim()}; install Go ${declared.trim()} or change .go-version together with the CI evidence of the new release`);
+  if (exact && !sameMajorMinor(running, declared.trim()))
+    errors.push(`Go ${running} runs the checks; .go-version declares ${declared.trim()}, so its major and minor must be ${exact[1]}.${exact[2]}; install Go ${declared.trim()} or change .go-version together with the CI evidence of the new release`);
   return errors;
 }
 
@@ -139,7 +141,7 @@ export function goVersionErrors(declared, goMod, workflows, running) {
 // declared는 `.composer-version`의 내용, workflows는 {path: text}, running은 `composer --version`의 version이다.
 //   - declared는 정확한 x.y.z 하나다.
 //   - 모든 shivammathur/setup-php step은 `tools: composer:<declared>`로 그 release를 설치한다.
-//   - running은 declared와 같다.
+//   - running은 declared와 major.minor가 같다. patch는 상관없다.
 export function composerVersionErrors(declared, workflows, running) {
   const errors = [];
   const version = declared.trim();
@@ -151,8 +153,8 @@ export function composerVersionErrors(declared, workflows, running) {
         errors.push(`${path} sets up PHP without tools: composer:${version}; setup-php installs the newest Composer otherwise, so add tools: composer:${version}`);
     }
   }
-  if (exact && running !== version)
-    errors.push(`Composer ${running} runs the checks; .composer-version declares ${version}; install Composer ${version} (composer self-update ${version}) or change .composer-version together with the CI evidence of the new release`);
+  if (exact && !sameMajorMinor(running, version))
+    errors.push(`Composer ${running} runs the checks; .composer-version declares ${version}, so its major and minor must be ${version.split('.').slice(0, 2).join('.')}; install Composer ${version} (composer self-update ${version}) or change .composer-version together with the CI evidence of the new release`);
   return errors;
 }
 

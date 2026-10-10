@@ -1509,11 +1509,23 @@ caseTest('the checks and every workflow run the Go of .go-version', COMPUTE, () 
     'ci.yml declares go-version itself; read go-version-file: .go-version in actions/setup-go',
     'ci.yml does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version',
   ]);
-  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.26\n', { 'ci.yml': '    steps:\n      - run: make check\n' }, '1.27.1'), [
+  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.26\n', { 'ci.yml': '    steps:\n      - run: make check\n' }, '1.28.0'), [
     'go.mod declares go 1.26, but .go-version declares 1.27.0; write go 1.27 in go.mod',
     'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version',
-    'Go 1.27.1 runs the checks; .go-version declares 1.27.0; install Go 1.27.0 or change .go-version together with the CI evidence of the new release',
+    'Go 1.28.0 runs the checks; .go-version declares 1.27.0, so its major and minor must be 1.27; install Go 1.27.0 or change .go-version together with the CI evidence of the new release',
   ]);
+});
+
+// T70: 실행 중인 Go는 선언한 release와 major.minor가 같으면 patch와 상관없이 받아들인다.
+caseTest('a running Go with the declared major and minor passes whatever its patch', COMPUTE, () => {
+  const goMod = 'module m\n\ngo 1.27\n';
+  for (const running of ['1.27.2', '1.27.0', '1.27.5'])
+    assert.deepEqual(goVersionErrors('1.27.2\n', goMod, { 'ci.yml': goWorkflow }, running), [], running);
+  for (const running of ['1.26.9', '1.28.0']) {
+    assert.deepEqual(goVersionErrors('1.27.2\n', goMod, { 'ci.yml': goWorkflow }, running), [
+      `Go ${running} runs the checks; .go-version declares 1.27.2, so its major and minor must be 1.27; install Go 1.27.2 or change .go-version together with the CI evidence of the new release`,
+    ], running);
+  }
 });
 
 // Go module path case(G5.113-5)는 저장소의 모든 go.mod가 자기 directory의 module path를 선언하는지 보고, 최소 file에서 다른
@@ -1533,10 +1545,21 @@ caseTest('every go.mod declares the module path of its directory', COMPUTE, () =
 caseTest('every setup-php step installs the Composer of .composer-version', COMPUTE, () => {
   const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
   assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, '2.10.3'), []);
-  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.10.4'), [
+  assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php.replace('          tools: composer:2.10.3\n', '') }, '2.11.0'), [
     'ci.yml sets up PHP without tools: composer:2.10.3; setup-php installs the newest Composer otherwise, so add tools: composer:2.10.3',
-    'Composer 2.10.4 runs the checks; .composer-version declares 2.10.3; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release',
+    'Composer 2.11.0 runs the checks; .composer-version declares 2.10.3, so its major and minor must be 2.10; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release',
   ]);
+});
+
+// T70: 실행 중인 Composer는 선언한 release와 major.minor가 같으면 patch와 상관없이 받아들인다.
+caseTest('a running Composer with the declared major and minor passes whatever its patch', COMPUTE, () => {
+  const php = '    steps:\n      - uses: shivammathur/setup-php@v2\n        with:\n          php-version-file: .php-version\n          tools: composer:2.10.3\n';
+  for (const running of ['2.10.3', '2.10.0', '2.10.9'])
+    assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, running), [], running);
+  for (const running of ['2.9.9', '2.11.0'])
+    assert.deepEqual(composerVersionErrors('2.10.3\n', { 'ci.yml': php }, running), [
+      `Composer ${running} runs the checks; .composer-version declares 2.10.3, so its major and minor must be 2.10; install Composer 2.10.3 (composer self-update 2.10.3) or change .composer-version together with the CI evidence of the new release`,
+    ], running);
 });
 
 caseTest('a Makefile build output is published through a temporary file', COMPUTE, () => {
