@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T62-4-4: the FAIL lines that `make feature-unit-check` prints for the `sample/owner/*` fixtures (typescript/none, typescript/mysql, typescript/postgres, go/none) are asserted negative samples of `scripts/features/coverage.test.mjs`, which runs them on purpose and asserts their errors; the check exits 0 and no code changes.
 - T62-3-1: `engine/dbspec/literal_test.go` belongs to the schema feature of `contracts/features.json`, as a declared test of the feature and an input of `make dbspec-go-check`, so `make feature-unit-check` no longer reports it. No dbspec behavior changes.
 - T62-4-3: the Rust dbspec sources pass `cargo clippy --all-targets -- -D warnings` (`make rust-check/clippy`): the parser drops a binding that no code read, the lexer's `is_number` uses `is_none_or`, and `validate` takes the parse result `Parsed` instead of its eight parts. No dbspec behavior changes; the Rust symbol snapshot records the new `validate` signature.
 - T62-5-3: the Rust dbspec sources `orm-schema/src/dbspec/parser.rs` and `dbspec/mod.rs` are formatted by rustfmt with the repository's `rustfmt.toml`, so `make rust-fmt-check/clients` passes. The change is layout only; no declaration or behavior changes.
