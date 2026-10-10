@@ -178,7 +178,7 @@ func renderPHP(version string, spans []span) []byte {
 	b.WriteString("<?php\n")
 	b.WriteString(comment("// ", version))
 	b.WriteString("declare(strict_types=1);\n\nnamespace Polyspec\\Orm\\Dbspec;\n\n")
-	b.WriteString("/**\n * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.\n */\n")
+	b.WriteString("/**\n * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.\n * @internal\n */\n")
 	b.WriteString("final class UnicodeWord\n{\n")
 	b.WriteString("    /** word rune의 닫힌 구간 [lo, hi]의 목록이며 오름차순이다. */\n")
 	b.WriteString("    public const RANGES = [\n")
