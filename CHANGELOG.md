@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T62: dbspec gains the markdown storage settings: `store files`, `store document list|table` and `store block <foreign key> list|table` (exactly one per table), `key_prefix '<p>'`, `title <column>`, `body <column>`, `order <column>`, `checkbox <column> <state> '<glyph>'`, and the state machine's `state_machine <column> initial <state>`, `history` and `limit` lines. The validator checks the states, glyphs, columns and the history table's shape, the emitter writes the canonical lines, and the manifest hash covers them. The TypeScript, PHP, Rust and PHP extension dbspec parsers still reject these settings as unknown, as they do the `state_machine` and `markdown` settings (T59, T60).
 - T61: the protocol has section 5, IR executors: a `markdown://` DSN selects an IR executor instead of a SQL dialect; the client validates each request with `ir.Validate` and sends `{ir_version, manifest_hash, request, params, now}`, and the control messages `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` open, end and nest a session transaction. `docs/errors.yaml` has `WRITE_CONFLICT`, which the generated Go, PHP and Rust constants carry, and `docs/dialects.md` has the capability table of the markdown executor.
 - T68: the Korean checklist states the Python client in T58 with `명시한다`, a word the writing-style rule allows, so `make docs-rules-check` passes on main.
 - T57-1: the version check reads no version declaration of the root README, whose title names no version; the CI of the README change had failed on it.
