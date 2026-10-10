@@ -88,10 +88,12 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
   const checked = new Map<string, Set<string>>();
   const clauses = new Map<string, string>();
   for (const r of await query(CHECK_CLAUSES_QUERY)) clauses.set(r.text(0), r.text(1));
+  const shown = new Map<string, Map<string, string>>();
   for (const r of await query(CHECKS_QUERY)) {
     const [table, name, enforced] = [r.text(0), r.text(1), r.text(2)];
-    const clause = clauses.get(name);
-    if (clause === undefined) throw new Error(`check ${table}.${name} has no CHECK_CLAUSE`);
+    const stored = clauses.get(name);
+    if (stored === undefined) throw new Error(`check ${table}.${name} has no CHECK_CLAUSE`);
+    const clause = hasNonAscii(stored) ? await shownCheck(query, table, name, shown) : stored;
     const t = c.table(table);
     if (t === undefined) continue;
     if (enforced !== 'YES') {
@@ -190,6 +192,57 @@ function withoutIntroducers(clause: string): string {
   // ALTER TABLE은 time(p) column과 만나는 time literal에 0으로 된 p 자리 소수도 붙이므로
   // (probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
   return clause.replace(/_[a-z0-9]+\\'/g, "\\'").replace(/\\'(\d\d:\d\d:\d\d)\.0+\\'/g, "\\'$1\\'");
+}
+
+/** CHECK_CLAUSE가 0x80 이상의 byte를 가지면 true다. MySQL 8.4는 non-ASCII literal을 두 번 인코딩해 보여 준다. */
+function hasNonAscii(clause: string): boolean {
+  return /[^\x00-\x7f]/.test(clause);
+}
+
+/**
+ * CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 읽는다. table별로
+ * SHOW CREATE TABLE을 한 번만 읽으며 shown에 모은다. 결과는 CHECK_CLAUSE 형식이다.
+ */
+async function shownCheck(
+  query: CatalogQuery,
+  table: string,
+  name: string,
+  shown: Map<string, Map<string, string>>,
+): Promise<string> {
+  let checks = shown.get(table);
+  if (checks === undefined) {
+    const rows = await query('SHOW CREATE TABLE `' + table.replace(/`/g, '``') + '`');
+    if (rows.length === 0) throw new Error(`SHOW CREATE TABLE ${table} returned no row`);
+    checks = createChecks(rows[0].text(1));
+    shown.set(table, checks);
+  }
+  const clause = checks.get(name);
+  if (clause === undefined) throw new Error(`check ${table}.${name} has no CHECK in SHOW CREATE TABLE`);
+  return clause;
+}
+
+/** SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다. */
+function createChecks(create: string): Map<string, string> {
+  const checks = new Map<string, string>();
+  const pattern = /CONSTRAINT `([^`]+)` CHECK \(/g;
+  for (let m = pattern.exec(create); m !== null; m = pattern.exec(create)) {
+    const start = m.index + m[0].length;
+    let depth = 1;
+    for (let i = start; i < create.length; i++) {
+      const c = create[i];
+      if (c === "'") {
+        for (i++; i < create.length && create[i] !== "'"; i++) {
+          if (create[i] === '\\') i++;
+        }
+      } else if (c === '(') {
+        depth++;
+      } else if (c === ')' && --depth === 0) {
+        checks.set(m[1], create.slice(start, i).replace(/[\\']/g, (ch) => (ch === '\\' ? '\\\\' : "\\'")));
+        break;
+      }
+    }
+  }
+  return checks;
 }
 
 /** renderer CHECK이 CHECK_CLAUSE에 남는 형식이다 (docs/dialects.md "Introspection", "Checks"). */

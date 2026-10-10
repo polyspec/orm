@@ -102,11 +102,13 @@ def read_mysql(query) -> Catalog:
     clauses: dict = {}
     for r in query(_CHECK_CLAUSES_QUERY):
         clauses[r.text(0)] = r.text(1)
-    for r in query(_CHECKS_QUERY):
+    shown: dict = {}
+    for r in list(query(_CHECKS_QUERY)):
         table, name, enforced = r.text(0), r.text(1), r.text(2)
-        clause = clauses.get(name)
-        if clause is None:
+        stored = clauses.get(name)
+        if stored is None:
             raise ValueError(f'check {table}.{name} has no CHECK_CLAUSE')
+        clause = _shown_check(query, table, name, shown) if _has_non_ascii(stored) else stored
         t = c.table(table)
         if t is None:
             continue
@@ -199,6 +201,56 @@ def _without_introducers(clause: str) -> str:
     # 붙이므로 그 소수도 뺀다.
     clause = _INTRODUCER.sub("\\'", clause)
     return _TIME_FRACTION.sub(r"\\'\1\\'", clause)
+
+
+_NON_ASCII = re.compile(r'[^\x00-\x7f]')
+_CREATE_CHECK = re.compile(r'CONSTRAINT `([^`]+)` CHECK \(')
+
+
+def _has_non_ascii(clause: str) -> bool:
+    """CHECK_CLAUSE가 0x80 이상의 byte를 가지면 True다. MySQL 8.4는 non-ASCII literal을 두 번
+    인코딩해 보여 준다."""
+    return _NON_ASCII.search(clause) is not None
+
+
+def _shown_check(query, table: str, name: str, shown: dict) -> str:
+    """CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 읽는다. table별로
+    SHOW CREATE TABLE을 한 번만 읽으며 shown에 모은다. 결과는 CHECK_CLAUSE 형식이다."""
+    checks = shown.get(table)
+    if checks is None:
+        rows = list(query('SHOW CREATE TABLE `' + table.replace('`', '``') + '`'))
+        if not rows:
+            raise ValueError(f'SHOW CREATE TABLE {table} returned no row')
+        checks = _create_checks(rows[0].text(1))
+        shown[table] = checks
+    clause = checks.get(name)
+    if clause is None:
+        raise ValueError(f'check {table}.{name} has no CHECK in SHOW CREATE TABLE')
+    return clause
+
+
+def _create_checks(create: str) -> dict:
+    """SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다.
+    문자열 literal은 `\\`와 `'`를 한 번 escape하므로 literal을 건너뛰고, 본문 끝은 CHECK (의
+    짝인 )다."""
+    checks = {}
+    for m in _CREATE_CHECK.finditer(create):
+        start, depth, i = m.end(), 1, m.end()
+        while i < len(create):
+            ch = create[i]
+            if ch == "'":
+                i += 1
+                while i < len(create) and create[i] != "'":
+                    i += 2 if create[i] == '\\' else 1
+            elif ch == '(':
+                depth += 1
+            elif ch == ')':
+                depth -= 1
+                if depth == 0:
+                    checks[m.group(1)] = create[start:i].replace('\\', '\\\\').replace("'", "\\'")
+                    break
+            i += 1
+    return checks
 
 
 def _renderer_check(col: dict) -> str:

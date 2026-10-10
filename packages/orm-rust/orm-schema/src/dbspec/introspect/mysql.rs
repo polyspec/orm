@@ -7,7 +7,7 @@ use super::check::decode_check;
 use super::trigger::ITrigger;
 use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results};
 use regex::Regex;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::LazyLock;
 
 const TABLES: usize = 0;
@@ -111,9 +111,21 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     for row in results.rows(CHECK_CLAUSES) {
         clauses.insert(row.text(0)?, row.text(1)?);
     }
+    // The follow-up rows are the SHOW CREATE TABLE of each table that needs them.
+    let mut shown: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    for index in QUERIES.len()..results.count() {
+        for row in results.rows(index) {
+            shown.insert(row.text(0)?, shown_checks(&row.text(1)?));
+        }
+    }
     for row in results.rows(CHECKS) {
         let (table, name, enforced) = (row.text(0)?, row.text(1)?, row.text(2)?);
-        let clause = clauses.get(&name).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK_CLAUSE"))?;
+        let stored = clauses.get(&name).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK_CLAUSE"))?;
+        let clause = if stored.is_ascii() {
+            stored
+        } else {
+            shown.get(&table).and_then(|checks| checks.get(&name)).cloned().ok_or_else(|| format!("check {table}.{name} has no CHECK in SHOW CREATE TABLE"))?
+        };
         let Some(types) = c.table(&table).map(|t| t.types()) else { continue };
         if enforced != "YES" {
             c.report("check", &table, &name, "the check is not enforced");
@@ -187,6 +199,71 @@ fn mysql_type(column_type: &str, charset: &str, collation: &str) -> Option<(Type
 
 static INTRODUCER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"_[a-z0-9]+\\'").expect("MySQL introducer pattern"));
 static TIME_FRACTION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\\'(\d\d:\d\d:\d\d)\.0+\\'").expect("MySQL time fraction pattern"));
+
+/// The `SHOW CREATE TABLE` of each table with a CHECK whose CHECK_CLAUSE holds
+/// non-ASCII text (MySQL 8.4.11 writes such a clause with its UTF-8 bytes
+/// encoded a second time, so `café` reads as `cafÃ©`; SHOW CREATE TABLE writes
+/// the literal correctly). Table names come from the first results: the rows of
+/// the CHECK_CLAUSES and CHECKS queries.
+pub(super) fn followups(results: &Results) -> Result<Vec<String>, String> {
+    let mut clauses: BTreeMap<String, String> = BTreeMap::new();
+    for row in results.rows(CHECK_CLAUSES) {
+        clauses.insert(row.text(0)?, row.text(1)?);
+    }
+    let mut tables: BTreeSet<String> = BTreeSet::new();
+    for row in results.rows(CHECKS) {
+        let (table, name) = (row.text(0)?, row.text(1)?);
+        if clauses.get(&name).is_some_and(|clause| !clause.is_ascii()) {
+            tables.insert(table);
+        }
+    }
+    Ok(tables.iter().map(|table| format!("SHOW CREATE TABLE `{}`", table.replace('`', "``"))).collect())
+}
+
+/// The CHECK bodies of a `SHOW CREATE TABLE` statement by constraint name, in
+/// CHECK_CLAUSE form: the body is escaped once more, which the reader of a
+/// CHECK_CLAUSE undoes (`unescape_mysql_clause` of check.rs).
+fn shown_checks(create: &str) -> BTreeMap<String, String> {
+    let mut checks = BTreeMap::new();
+    let mut rest = create;
+    while let Some(at) = rest.find("CONSTRAINT `") {
+        let after = &rest[at + "CONSTRAINT `".len()..];
+        let Some(close) = after.find("` CHECK (") else { break };
+        if let Some(body) = check_body(&after[close + "` CHECK (".len()..]) {
+            checks.insert(after[..close].to_owned(), body.replace('\\', "\\\\").replace('\'', "\\'"));
+        }
+        rest = after;
+    }
+    checks
+}
+
+/// The text up to the `)` that closes the `CHECK (` before `text`. A string
+/// literal of SHOW CREATE TABLE escapes `\` and `'` with a backslash.
+fn check_body(text: &str) -> Option<&str> {
+    let bytes = text.as_bytes();
+    let mut depth = 1usize;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'\'' {
+                    i += if bytes[i] == b'\\' { 2 } else { 1 };
+                }
+            }
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(&text[..i]);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
+}
 
 /// character set introducer를 뺀 CHECK_CLAUSE다. ALTER TABLE은 CHECK_CLAUSE를 다시
 /// 쓰며 introducer를 바꾸거나 빼므로(probe mysql.check.alter_rewrites_introducers)

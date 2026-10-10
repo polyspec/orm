@@ -44,7 +44,7 @@ struct Counting<'c, C> {
 }
 
 impl<C: CatalogQuerier + Send> CatalogQuerier for Counting<'_, C> {
-    async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         self.count += 1;
         self.inner.rows(query).await
     }

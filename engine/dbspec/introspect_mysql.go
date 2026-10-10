@@ -130,14 +130,29 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 	if err != nil {
 		return nil, err
 	}
+	var checks [][3]string
 	err = eachRow(ctx, q, mysqlChecksQuery, func(r scanner) error {
 		var table, name, enforced string
 		if err := r.Scan(&table, &name, &enforced); err != nil {
 			return err
 		}
+		checks = append(checks, [3]string{table, name, enforced})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	shown, err := mysqlShownChecks(ctx, q, checks, clauses)
+	if err != nil {
+		return nil, err
+	}
+	handle := func(table, name, enforced string) error {
 		clause, ok := clauses[name]
 		if !ok {
 			return fmt.Errorf("check %s.%s has no CHECK_CLAUSE", table, name)
+		}
+		if text, wide := shown[table][name]; wide {
+			clause = text
 		}
 		t := c.table(table)
 		if t == nil {
@@ -166,9 +181,11 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 		}
 		t.checks = append(t.checks, icheck{name: name, predicate: predicate})
 		return nil
-	})
-	if err != nil {
-		return nil, err
+	}
+	for _, check := range checks {
+		if err := handle(check[0], check[1], check[2]); err != nil {
+			return nil, err
+		}
 	}
 	// renderer CHECK이 있어야 하는 type은 그 CHECK이 없으면 dbspec type이 아니다.
 	for table, cols := range pending {
@@ -277,6 +294,96 @@ var mysqlTimeFraction = regexp.MustCompile(`\\'(\d\d:\d\d:\d\d)\.0+\\'`)
 // 뺀다. 이 template의 literal은 ASCII이고 0인 소수는 값을 바꾸지 않으므로 의미가 같다.
 func withoutIntroducers(clause string) string {
 	return mysqlTimeFraction.ReplaceAllString(mysqlIntroducer.ReplaceAllString(clause, `\'`), `\'$1\'`)
+}
+
+// mysqlShownChecks는 CHECK_CLAUSE가 0x80 이상의 byte를 가진 check의 본문을 SHOW CREATE
+// TABLE에서 읽는다. MySQL 8.4.11의 information_schema는 non-ASCII 문자열 literal의 UTF-8
+// bytes를 한 번 더 인코딩한 text로 보여 주지만(`café`가 `cafÃ©`), SHOW CREATE TABLE은 같은
+// 식을 바르게 쓴다. 그 CHECK_CLAUSE는 서버가 저장한 text를 그대로 읽은 것이므로 client에서
+// 되돌리지 않는다. 결과는 CHECK_CLAUSE 형식이다: 이 함수는 SHOW CREATE의 본문을
+// CHECK_CLAUSE처럼 한 번 더 escape하고, decodeCheck가 그것을 푼다. table별로 SHOW CREATE TABLE을
+// 한 번만 읽으며, rows를 닫은 뒤에만 실행한다(같은 connection에서 열린 rows 안에서 query하지 않는다).
+func mysqlShownChecks(ctx context.Context, q Querier, checks [][3]string, clauses map[string]string) (map[string]map[string]string, error) {
+	shown := map[string]map[string]string{}
+	created := map[string]string{}
+	for _, check := range checks {
+		table, name := check[0], check[1]
+		if !mysqlNonASCII(clauses[name]) {
+			continue
+		}
+		if _, ok := created[table]; !ok {
+			text, err := mysqlCreateTable(ctx, q, table)
+			if err != nil {
+				return nil, err
+			}
+			created[table] = text
+		}
+		if shown[table] == nil {
+			shown[table] = map[string]string{}
+		}
+		clause, ok := mysqlShownCheck(created[table], name)
+		if !ok {
+			return nil, fmt.Errorf("check %s.%s has no CHECK in SHOW CREATE TABLE", table, name)
+		}
+		shown[table][name] = clause
+	}
+	return shown, nil
+}
+
+// mysqlCreateTable은 SHOW CREATE TABLE의 문장이다.
+func mysqlCreateTable(ctx context.Context, q Querier, table string) (string, error) {
+	var text string
+	err := eachRow(ctx, q, "SHOW CREATE TABLE `"+strings.ReplaceAll(table, "`", "``")+"`", func(r scanner) error {
+		var name string
+		return r.Scan(&name, &text)
+	})
+	return text, err
+}
+
+// mysqlShownCheck는 SHOW CREATE TABLE 문장에서 name인 CHECK의 본문을 CHECK_CLAUSE 형식으로
+// 돌려준다. SHOW CREATE의 문자열 literal은 `\` 와 `'` 를 한 번 escape하므로 본문에서 그 literal을
+// 건너뛰고, 본문 끝은 CHECK ( 의 짝이 되는 ) 다.
+func mysqlShownCheck(create, name string) (string, bool) {
+	prefix := "CONSTRAINT `" + name + "` CHECK ("
+	at := strings.Index(create, prefix)
+	if at < 0 {
+		return "", false
+	}
+	start := at + len(prefix)
+	depth := 1
+	for i := start; i < len(create); i++ {
+		switch create[i] {
+		case '\'':
+			for i++; i < len(create) && create[i] != '\''; i++ {
+				if create[i] == '\\' {
+					i++
+				}
+			}
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return escapeMySQLClause(create[start:i]), true
+			}
+		}
+	}
+	return "", false
+}
+
+// escapeMySQLClause는 unescapeMySQLClause의 역이다: `\` 와 `'` 를 escape한다.
+func escapeMySQLClause(text string) string {
+	return strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(text)
+}
+
+// mysqlNonASCII는 CHECK_CLAUSE에 0x80 이상의 byte가 있는지 알려 준다.
+func mysqlNonASCII(clause string) bool {
+	for i := 0; i < len(clause); i++ {
+		if clause[i] >= 0x80 {
+			return true
+		}
+	}
+	return false
 }
 
 // mysqlNow는 DEFAULT_GENERATED default가 그 column의 renderer 시각 default인지

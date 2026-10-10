@@ -1646,6 +1646,155 @@
       ]
     },
     {
+      "id": "rename-column-check-non-ascii-literal",
+      "source": [
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  mail varchar(64)",
+        "  primary key (id)",
+        "  check ck_users_mail (mail <> 'café')",
+        "}"
+      ],
+      "plan": [
+        "dbplan 1 rename_column_check_non_ascii_literal",
+        "from sha256:3ca3022fd3fb725e812f8fe2cfd1c8a86ca57bdd8718922654617bd66f7a8afa",
+        "rename column users.mail email",
+        "",
+        "dbspec 1 schema",
+        "",
+        "table users {",
+        "  id i64 identity",
+        "  email varchar(64)",
+        "  primary key (id)",
+        "  check ck_users_mail (email <> 'café')",
+        "}"
+      ],
+      "changes": [
+        [
+          "drop_check",
+          "users",
+          "ck_users_mail"
+        ],
+        [
+          "rename_column",
+          "users",
+          "mail email"
+        ],
+        [
+          "add_check",
+          "users",
+          "ck_users_mail"
+        ]
+      ],
+      "steps": {
+        "mysql": [
+          {
+            "effect": "absent constraint users ck_users_mail",
+            "rollback": "ALTER TABLE `users` ADD CONSTRAINT `ck_users_mail` CHECK (`mail` <> 'café')",
+            "statement": "ALTER TABLE `users` DROP CHECK `ck_users_mail`"
+          },
+          {
+            "effect": "present column users email",
+            "rollback": "ALTER TABLE `users` RENAME COLUMN `email` TO `mail`",
+            "statement": "ALTER TABLE `users` RENAME COLUMN `mail` TO `email`"
+          },
+          {
+            "effect": "present constraint users ck_users_mail",
+            "rollback": "ALTER TABLE `users` DROP CHECK `ck_users_mail`",
+            "statement": "ALTER TABLE `users` ADD CONSTRAINT `ck_users_mail` CHECK (`email` <> 'café')"
+          }
+        ],
+        "postgres": [
+          {
+            "effect": "absent constraint users ck_users_mail",
+            "rollback": "ALTER TABLE \"users\" ADD CONSTRAINT \"ck_users_mail\" CHECK (\"mail\" <> 'café')",
+            "statement": "ALTER TABLE \"users\" DROP CONSTRAINT \"ck_users_mail\""
+          },
+          {
+            "effect": "present column users email",
+            "rollback": "ALTER TABLE \"users\" RENAME COLUMN \"email\" TO \"mail\"",
+            "statement": "ALTER TABLE \"users\" RENAME COLUMN \"mail\" TO \"email\""
+          },
+          {
+            "effect": "present constraint users ck_users_mail",
+            "rollback": "ALTER TABLE \"users\" DROP CONSTRAINT \"ck_users_mail\"",
+            "statement": "ALTER TABLE \"users\" ADD CONSTRAINT \"ck_users_mail\" CHECK (\"email\" <> 'café')"
+          }
+        ],
+        "sqlite": [
+          {
+            "effect": "present column users email",
+            "rollback": "ALTER TABLE \"users\" RENAME COLUMN \"email\" TO \"mail\"",
+            "statement": "ALTER TABLE \"users\" RENAME COLUMN \"mail\" TO \"email\""
+          },
+          {
+            "effect": "present table dbspec$rebuild",
+            "rollback": "DROP TABLE \"dbspec$rebuild\"",
+            "statement": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(64) NOT NULL, CONSTRAINT \"users$email\" CHECK (length(\"email\") <= 64), CONSTRAINT \"ck_users_mail\" CHECK (\"email\" <> 'café'))"
+          },
+          {
+            "effect": "present sequence dbspec$rebuild",
+            "rollback": "DELETE FROM sqlite_sequence WHERE name = 'dbspec$rebuild'",
+            "statement": "INSERT INTO sqlite_sequence (name, seq) SELECT 'dbspec$rebuild', seq FROM sqlite_sequence WHERE name = 'users'"
+          },
+          {
+            "effect": "present rows dbspec$rebuild",
+            "rollback": "DELETE FROM \"dbspec$rebuild\"",
+            "statement": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"email\") SELECT \"id\", \"email\" FROM \"users\""
+          },
+          {
+            "effect": "absent rows users",
+            "rollback": "INSERT INTO \"users\" (\"id\", \"email\") SELECT \"id\", \"email\" FROM \"dbspec$rebuild\"",
+            "statement": "DELETE FROM \"users\""
+          },
+          {
+            "effect": "absent sequence users",
+            "rollback": "INSERT INTO sqlite_sequence (name, seq) SELECT 'users', seq FROM sqlite_sequence WHERE name = 'dbspec$rebuild'",
+            "statement": "DELETE FROM sqlite_sequence WHERE name = 'users'"
+          },
+          {
+            "effect": "absent table users",
+            "rollback": "CREATE TABLE \"users\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(64) NOT NULL, CONSTRAINT \"users$mail\" CHECK (length(\"email\") <= 64), CONSTRAINT \"ck_users_mail\" CHECK (\"email\" <> 'café'))",
+            "statement": "DROP TABLE \"users\""
+          },
+          {
+            "effect": "present table users",
+            "rollback": "DROP TABLE \"users\"",
+            "statement": "CREATE TABLE \"users\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(64) NOT NULL, CONSTRAINT \"users$email\" CHECK (length(\"email\") <= 64), CONSTRAINT \"ck_users_mail\" CHECK (\"email\" <> 'café'))"
+          },
+          {
+            "effect": "present sequence users",
+            "rollback": "DELETE FROM sqlite_sequence WHERE name = 'users'",
+            "statement": "INSERT INTO sqlite_sequence (name, seq) SELECT 'users', seq FROM sqlite_sequence WHERE name = 'dbspec$rebuild'"
+          },
+          {
+            "effect": "present rows users",
+            "rollback": "DELETE FROM \"users\"",
+            "statement": "INSERT INTO \"users\" (\"id\", \"email\") SELECT \"id\", \"email\" FROM \"dbspec$rebuild\""
+          },
+          {
+            "effect": "absent rows dbspec$rebuild",
+            "rollback": "INSERT INTO \"dbspec$rebuild\" (\"id\", \"email\") SELECT \"id\", \"email\" FROM \"users\"",
+            "statement": "DELETE FROM \"dbspec$rebuild\""
+          },
+          {
+            "effect": "absent sequence dbspec$rebuild",
+            "rollback": "INSERT INTO sqlite_sequence (name, seq) SELECT 'dbspec$rebuild', seq FROM sqlite_sequence WHERE name = 'users'",
+            "statement": "DELETE FROM sqlite_sequence WHERE name = 'dbspec$rebuild'"
+          },
+          {
+            "effect": "absent table dbspec$rebuild",
+            "rollback": "CREATE TABLE \"dbspec$rebuild\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"email\" varchar(64) NOT NULL, CONSTRAINT \"users$email\" CHECK (length(\"email\") <= 64), CONSTRAINT \"ck_users_mail\" CHECK (\"email\" <> 'café'))",
+            "statement": "DROP TABLE \"dbspec$rebuild\""
+          }
+        ]
+      },
+      "before": [],
+      "after": []
+    },
+    {
       "id": "rename-with-renderer-checks",
       "source": [
         "dbspec 1 schema",

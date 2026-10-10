@@ -32,7 +32,7 @@ mod validate;
 pub use add_tables_and_columns::{add_tables_and_columns_steps, installed_differences, AddTablesAndColumnsSteps};
 pub use compare::{compare_schemas, Difference, RULE_COMPARE};
 pub use file::{read_bytes, read_file, ReadError, SIGNATURE};
-pub use introspect::{catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
+pub use introspect::{catalog_followups, catalog_queries, read_catalog, CatalogValue, Introspection, Unsupported};
 pub use mermaid::{export_mermaid, import_mermaid, RULE_MERMAID};
 pub use model::{Document, Type};
 pub use plan::{chain, emit_plan, parse_plan, ColumnName, ColumnRename, Plan, TableRename, RULE_CHAIN, RULE_PLAN};

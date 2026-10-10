@@ -1,8 +1,8 @@
 //! Introspection (docs/dialects.md, "Introspection"): the fixed catalog
 //! queries of each dialect and the reading of their rows into one dbspec
 //! document and the objects it cannot express. The client that owns the
-//! connection runs [`catalog_queries`] in order and passes their rows to
-//! [`read_catalog`].
+//! connection runs [`catalog_queries`] in order, then the [`catalog_followups`]
+//! of their rows, and passes all rows to [`read_catalog`].
 
 mod check;
 mod mysql;
@@ -56,14 +56,36 @@ pub fn catalog_queries(dialect: Dialect) -> &'static [&'static str] {
     }
 }
 
-/// Reads the rows of the [`catalog_queries`] of `dialect`, one result per
-/// query in order, into the document `name` and its unsupported objects. A
-/// result count that differs from the query count, a value of an unexpected
-/// type, and a document that cannot be built are errors.
-pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: &str) -> Result<Introspection, String> {
+/// The follow-up queries of `dialect`, given the rows of its [`catalog_queries`]:
+/// queries whose text depends on those rows, which the client runs after the
+/// catalog queries in this order. Their rows follow the catalog rows in the
+/// slice that [`read_catalog`] reads. MySQL reads the `SHOW CREATE TABLE` of a
+/// table whose CHECK_CLAUSE holds non-ASCII text; the other dialects have none.
+pub fn catalog_followups(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>]) -> Result<Vec<String>, String> {
     let queries = catalog_queries(dialect);
     if results.len() != queries.len() {
         return Err(format!("{} catalog results for {} queries", results.len(), queries.len()));
+    }
+    let results = Results { results };
+    match dialect {
+        Dialect::MySql => mysql::followups(&results),
+        Dialect::Postgres | Dialect::Sqlite => Ok(Vec::new()),
+    }
+}
+
+/// Reads the rows of the [`catalog_queries`] of `dialect`, one result per
+/// query in order, followed by the rows of the [`catalog_followups`] in
+/// order, into the document `name` and its unsupported objects. A result
+/// count that differs from the query and follow-up count, a value of an
+/// unexpected type, and a document that cannot be built are errors.
+pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: &str) -> Result<Introspection, String> {
+    let queries = catalog_queries(dialect);
+    if results.len() < queries.len() {
+        return Err(format!("{} catalog results for {} queries", results.len(), queries.len()));
+    }
+    let followups = catalog_followups(dialect, &results[..queries.len()])?;
+    if results.len() != queries.len() + followups.len() {
+        return Err(format!("{} catalog results for {} queries and {} follow-up queries", results.len(), queries.len(), followups.len()));
     }
     let results = Results { results };
     let catalog = match dialect {
@@ -83,6 +105,11 @@ impl<'r> Results<'r> {
     /// query index의 row들.
     fn rows(&self, query: usize) -> impl Iterator<Item = Row<'r>> {
         self.results[query].iter().map(move |values| Row { query, values })
+    }
+
+    /// 받은 결과의 수다(catalog query와 follow-up query).
+    fn count(&self) -> usize {
+        self.results.len()
     }
 }
 
