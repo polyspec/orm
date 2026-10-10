@@ -396,7 +396,9 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
         }
         let same_length = key.columns.len() == key.references.len();
-        if !failed_target && !same_length {
+        // Go는 target이 정의되어 있고 실패하지 않았을 때만 개수를 검사한다(`target != nil && !target.failed`).
+        let target_checked = target.is_some() && !failed_target;
+        if target_checked && !same_length {
             self.report(key.name.pos, "foreign_key", "the foreign key lists a different number of columns and referenced columns");
         }
         // Go의 foreignKey와 같다: 개수가 같고 참조 열이 모두 알려졌을 때만 짝과 type 검사를 한다.
