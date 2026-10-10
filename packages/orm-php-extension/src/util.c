@@ -1,5 +1,6 @@
 /* arena, 문자열, vector, map, 정렬처럼 모든 연산이 함께 쓰는 도구다. */
 #include "dbspec.h"
+#include "unicode_word.h"
 #include "ext/hash/php_hash.h"
 #include "ext/hash/php_hash_sha.h"
 #include <stdarg.h>
@@ -223,11 +224,12 @@ bool str_dotted(str s)
     if (s.n == 0) {
         return false;
     }
-    for (size_t i = 0; i < s.n; i++) {
-        unsigned char c = (unsigned char)s.s[i];
-        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.')) {
+    for (size_t i = 0; i < s.n;) {
+        size_t width = word_rune_width(s, i);
+        if (width == 0) {
             return false;
         }
+        i += width;
     }
     return true;
 }
@@ -288,6 +290,45 @@ size_t utf8_length(str s)
         }
     }
     return n;
+}
+
+static size_t utf8_width(unsigned char b)
+{
+    return b < 0x80 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
+}
+
+/* 위치 i의 올바른 UTF-8 code point 값을 돌려주고 그 byte 수를 width에 쓴다(입력은 utf8_valid_prefix가 확인했다). */
+uint32_t utf8_decode_at(str s, size_t i, size_t *width)
+{
+    unsigned char b = (unsigned char)s.s[i];
+    size_t n = utf8_width(b);
+    uint32_t cp = n == 1 ? b : n == 2 ? (b & 0x1Fu) : n == 3 ? (b & 0x0Fu) : (b & 0x07u);
+    for (size_t k = 1; k < n; k++) {
+        cp = (cp << 6) | ((unsigned char)s.s[i + k] & 0x3Fu);
+    }
+    *width = n;
+    return cp;
+}
+
+/* 위치 i에서 시작하는 글자가 Go의 isWordRune이면 그 byte 수를, 아니면 0을 돌려준다. ASCII는 [A-Za-z0-9_.]다. */
+size_t word_rune_width(str s, size_t i)
+{
+    unsigned char c = (unsigned char)s.s[i];
+    if (c < 0x80) {
+        bool ascii = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.';
+        return ascii ? 1 : 0;
+    }
+    size_t width;
+    return unicode_word_rune(utf8_decode_at(s, i, &width)) ? width : 0;
+}
+
+/* 위치 i에서 시작하는 word token이 끝나는 위치다: 글자가 Go의 isWordRune인 동안 이어진다. */
+size_t word_run_end(str s, size_t i)
+{
+    for (size_t w = i < s.n ? word_rune_width(s, i) : 0; w > 0; w = i < s.n ? word_rune_width(s, i) : 0) {
+        i += w;
+    }
+    return i;
 }
 
 zend_string *str_zend(str s)

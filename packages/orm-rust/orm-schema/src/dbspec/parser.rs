@@ -260,15 +260,17 @@ fn header<'t, 'a>(line: &'a str, tokens: &'t [Token<'a>]) -> Result<&'t Token<'a
             _ => return Err(at(index + 1, "the first line is not 'dbspec 1 <document>'")),
         }
     }
+    // Go's isHeaderNameRune: the name is a run of ASCII letters, digits and `_`, and the line ends after it.
+    let rest = &line[PREFIX.len()..];
+    let run = rest.bytes().take_while(|b| b.is_ascii_alphanumeric() || *b == b'_').count();
+    if run == 0 {
+        return Err(at(PREFIX.len() + 1, "the header has no document name"));
+    }
+    if run < rest.len() {
+        return Err(at(PREFIX.len() + run + 1, "the header has text after the document name"));
+    }
     match tokens.get(2) {
-        Some(name) if matches!(name.kind, Kind::Word | Kind::Number) && name.pos.column == PREFIX.len() + 1 => {
-            let end = name.end().column;
-            if line.chars().count() + 1 == end {
-                Ok(name)
-            } else {
-                Err(at(end, "the header has text after the document name"))
-            }
-        }
+        Some(name) if matches!(name.kind, Kind::Word | Kind::Number) && name.pos.column == PREFIX.len() + 1 => Ok(name),
         _ => Err(at(PREFIX.len() + 1, "the header has no document name")),
     }
 }

@@ -496,11 +496,14 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
-.PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup
-dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup
+.PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode
+dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode
 dbspec-rust-check/documents: cargo-downloads-check
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+# dbspec-rust-check/unicode는 Go가 쓴 Unicode word rune 표(unicode_word.rs)가 모든 code point에서 구간과 같은지 본다.
+dbspec-rust-check/unicode: cargo-downloads-check
+	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
 dbspec-rust-check/apply-cleanup: cargo-downloads-check
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
@@ -907,9 +910,14 @@ dbspec-ts-check: lease-tool
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
 # case harness, 그리고 모든 vector file의 빠지거나 type이 틀린 field를 위치와 함께 거부하는지. stress
 # 문서(TestStressDocument, build tag bench)는 make bench가 실행한다.
-.PHONY: dbspec-go-check
-dbspec-go-check:
+.PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
+dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode
+dbspec-go-check/engine:
 	$(GO_TEST) ./engine/dbspec -count=1
+# dbspec-go-check/unicode는 tests/dbspec/unicode의 생성기가 쓴 표 세 파일이 현재 Go 표와 같고, C 확장과 Python 모듈이
+# 모든 code point에서 Go와 같은 분류를 내는지 본다.
+dbspec-go-check/unicode:
+	$(GO_TEST) ./tests/dbspec/unicode -count=1
 
 docs-dev:
 	npm run docs:dev

@@ -26,6 +26,7 @@ mod plan_objects;
 mod plan_steps;
 mod render;
 mod runtime;
+mod unicode_word;
 mod validate;
 
 pub use add_tables_and_columns::{add_tables_and_columns_steps, installed_differences, AddTablesAndColumnsSteps};

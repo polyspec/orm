@@ -2628,7 +2628,11 @@
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
             "engine/dbspec/case_clock_test.go",
-            "engine/dbspec/vector_reader_test.go"
+            "engine/dbspec/vector_reader_test.go",
+            "tests/dbspec/unicode/main.go",
+            "tests/dbspec/unicode/main_test.go",
+            "packages/orm-php-extension/src/unicode_word.h",
+            "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py"
           ]
         },
         {
@@ -2670,7 +2674,8 @@
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
-            "packages/orm-rust/orm-schema/src/lib.rs"
+            "packages/orm-rust/orm-schema/src/lib.rs",
+            "packages/orm-rust/orm-schema/src/dbspec/unicode_word.rs"
           ]
         },
         {

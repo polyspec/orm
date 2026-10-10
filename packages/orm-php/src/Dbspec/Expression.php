@@ -207,7 +207,7 @@ final class Expression
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_.]+$/D', $token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
+        if ($token !== null && preg_match('/^[A-Za-z0-9_.\p{L}\p{Nd}]+$/Du', $token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
@@ -277,7 +277,7 @@ final class Expression
     /** Checks the operand types of the predicates and reports the first diagnostic in source order. */
     private function checkTypes(): void
     {
-        /** @var list<array{0:int,1:string}> $found [column, message] */
+        /** @var list<array{0:int,1:string,2?:string}> $found [column, message, rule] */
         $found = [];
         foreach ($this->predicates as $predicate) {
             switch ($predicate[0]) {
@@ -309,7 +309,7 @@ final class Expression
                 $first = $candidate;
             }
         }
-        $this->errors[] = ['check', $this->line, $first[0], $first[1]];
+        $this->errors[] = [$first[2] ?? 'check', $this->line, $first[0], $first[1]];
     }
 
     /** A bool column or a `true` or `false` literal. */
@@ -323,7 +323,7 @@ final class Expression
      * Records an unknown column, a column of a `cascade` or `set_null` foreign
      * key and a bytes column; a column whose own line failed reports nothing.
      *
-     * @param list<array{0:int,1:string}> $found
+     * @param list<array{0:int,1:string,2?:string}> $found
      */
     private function usable(array $operand, array &$found): bool
     {
@@ -332,7 +332,14 @@ final class Expression
         }
         [, $name, $at, $column] = $operand;
         if ($column === null) {
-            $found[] = [$at, "`$name` is not a column of the table"];
+            // Go's ref: a malformed reference reports its name rule and is not resolved.
+            if (Parser::validName($name)) {
+                $found[] = [$at, "`$name` is not a column of the table"];
+            } elseif (preg_match('/^[a-z][a-z0-9_]*$/D', $name) === 1 && !in_array($name, Parser::RESERVED, true)) {
+                $found[] = [$at, "name `$name` is longer than 63 bytes", 'name.length'];
+            } else {
+                $found[] = [$at, "name `$name` does not match [a-z][a-z0-9_]* or is a reserved word", 'name.format'];
+            }
             return false;
         }
         if (isset($this->actionColumns[$name])) {
@@ -351,7 +358,7 @@ final class Expression
      * of the column's type, and then takes that default's canonical form.
      * The later operand carries a column mismatch; the literal carries a literal one.
      *
-     * @param list<array{0:int,1:string}> $found
+     * @param list<array{0:int,1:string,2?:string}> $found
      */
     private function meet(array $left, array $right, array &$found): void
     {

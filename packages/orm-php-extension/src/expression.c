@@ -45,6 +45,7 @@ typedef struct {
 typedef struct {
     zend_long at;
     str message;
+    const char *rule; /* NULL이면 check */
 } found;
 
 typedef VEC(found) foundv;
@@ -328,16 +329,23 @@ static bool usable(xparser *p, const operand *o, foundv *f)
         return true;
     }
     if (o->col == NULL) {
-        PUSH(*f, ((found){o->column, fmt("`%S` is not a column of the table", o->text)}));
+        /* Go의 ref: 형식이 틀린 참조는 그 이름 규칙을 보고하고 풀리지 않는다. */
+        const char *rule;
+        str message;
+        if (name_rule(o->text, &rule, &message)) {
+            PUSH(*f, ((found){o->column, message, rule}));
+        } else {
+            PUSH(*f, ((found){o->column, fmt("`%S` is not a column of the table", o->text), NULL}));
+        }
         return false;
     }
     str *fk = smap_get(p->action, o->text);
     if (fk != NULL) {
-        PUSH(*f, ((found){o->column, fmt("`%S` is a column of foreign key `%S` with cascade or set_null", o->text, *fk)}));
+        PUSH(*f, ((found){o->column, fmt("`%S` is a column of foreign key `%S` with cascade or set_null", o->text, *fk), NULL}));
         return false;
     }
     if (str_eqc(o->col->type->name, "bytes")) {
-        PUSH(*f, ((found){o->column, fmt("`%S` is a bytes column, which a check cannot use", o->text)}));
+        PUSH(*f, ((found){o->column, fmt("`%S` is a bytes column, which a check cannot use", o->text), NULL}));
         return false;
     }
     return !str_eqc(o->col->type->name, "invalid");
@@ -371,7 +379,7 @@ static void meet(xparser *p, const operand *left, const operand *right, foundv *
     if (left->kind == OP_COLUMN && right->kind == OP_COLUMN) {
         const ctype *a = left->col->type, *b = right->col->type;
         if (!columns_meet(a, b)) {
-            PUSH(*f, ((found){right->column, fmt("`%S` of %S does not meet `%S` of %S", right->text, ctype_text(b), left->text, ctype_text(a))}));
+            PUSH(*f, ((found){right->column, fmt("`%S` of %S does not meet `%S` of %S", right->text, ctype_text(b), left->text, ctype_text(a)), NULL}));
         }
         return;
     }
@@ -383,7 +391,7 @@ static void meet(xparser *p, const operand *left, const operand *right, foundv *
     const ctype *literal_type = str_eqc(type->name, "text") ? ctype_new(SL("varchar"), &unlimited, 1) : type;
     str canonical, problem;
     if (!literal_column_default(literal_type, lit->text, &canonical, &problem)) {
-        PUSH(*f, ((found){lit->column, fmt("`%S` does not meet `%S` of %S: %S", lit->text, col->text, ctype_text(type), problem)}));
+        PUSH(*f, ((found){lit->column, fmt("`%S` does not meet `%S` of %S: %S", lit->text, col->text, ctype_text(type), problem), NULL}));
         return;
     }
     p->literals.v[lit->literal] = canonical;
@@ -397,7 +405,7 @@ static void check_types(xparser *p)
         switch (n->kind) {
             case N_COMPARE:
                 if (ordering(n->op) && (is_bool(&n->left) || is_bool(&n->right))) {
-                    PUSH(f, ((found){n->op_at, fmt("a bool operand takes only =, <> and in, found `%S`", n->op)}));
+                    PUSH(f, ((found){n->op_at, fmt("a bool operand takes only =, <> and in, found `%S`", n->op), NULL}));
                 }
                 meet(p, &n->left, &n->right, &f);
                 break;
@@ -422,7 +430,7 @@ static void check_types(xparser *p)
             first = f.v[i];
         }
     }
-    PUSH(*p->errors, mkdiag(SL("check"), p->line, first.at, first.message));
+    PUSH(*p->errors, mkdiag(first.rule != NULL ? str_c(first.rule) : SL("check"), p->line, first.at, first.message));
 }
 
 bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors)

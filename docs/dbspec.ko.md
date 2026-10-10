@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: bba292d14f836b5da51f16024c7350559e9ff3ba4df8f66ed4a1b1613b8ef636 -->
+<!-- source-sha256: 6910b8128b9cd90a10b3565ceff0d1563d6403ec85466c880b48daba73e9e3fc -->
 # dbspec
 
 [English](dbspec.md)
@@ -40,7 +40,7 @@ diagram main {
 }
 ```
 
-문서는 byte order mark 없는 UTF-8 text다. 줄 끝은 LF 또는 CRLF이며 한 문서에 둘이 섞일 수 있고, 마지막 줄에는 줄 끝이 없어도 된다. 단독 CR은 `encoding` error다. parse는 text를 받는다. 파일을 읽는 도구는 UTF-8이 아닌 bytes를 parse 전에 `encoding` error로 보고한다. token 사이 구분은 공백 문자만 쓰며 tab은 `syntax` error다. 첫 줄은 header `dbspec 1 <document>`로, 언어 version과 문서 이름이다. 그 앞에는 빈 줄이나 comment 줄이 올 수 없다. header 뒤에는 빈 줄을 어디에나 둘 수 있다. 첫 공백 아닌 문자가 `#`인 줄은 comment다. comment는 의미를 바꾸지 않으며 canonical 출력은 그 자리를 유지한다([Canonical form](#canonical-form) 참조).
+문서는 byte order mark 없는 UTF-8 text다. 줄 끝은 LF 또는 CRLF이며 한 문서에 둘이 섞일 수 있고, 마지막 줄에는 줄 끝이 없어도 된다. 단독 CR은 `encoding` error다. parse는 text를 받는다. 파일을 읽는 도구는 UTF-8이 아닌 bytes를 parse 전에 `encoding` error로 보고한다. token 사이 구분은 공백 문자만 쓰며 tab은 `syntax` error다. 단어는 ASCII 글자, 숫자, `_`, `.`과 Go의 `unicode.IsLetter` 또는 `unicode.IsDigit`이 받는 그 밖의 문자(Unicode 17.0.0)가 이어진 것이다. 공백이 아니면서 그 밖의 문자, 예를 들어 `€`나 결합 기호는 놓인 곳에서 `syntax` error다. 첫 줄은 header `dbspec 1 <document>`로, 언어 version과 문서 이름이다. 그 앞에는 빈 줄이나 comment 줄이 올 수 없다. header 뒤에는 빈 줄을 어디에나 둘 수 있다. 첫 공백 아닌 문자가 `#`인 줄은 comment다. comment는 의미를 바꾸지 않으며 canonical 출력은 그 자리를 유지한다([Canonical form](#canonical-form) 참조).
 
 header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 온다.
 
