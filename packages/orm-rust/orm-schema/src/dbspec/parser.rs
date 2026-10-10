@@ -632,10 +632,7 @@ impl Parser {
             self.close_table();
             return;
         }
-        // 표 block 안의 `table` 줄은 Go처럼 열 줄이다(block을 열지 않는다). 그 줄의 구문 오류는 열 줄의 구문으로 본다.
-        if !tokens[0].is("table") && self.unclosed(tokens) {
-            return;
-        }
+        // 표 block 안의 `table`과 `diagram` 줄은 Go처럼 열 줄이다(block을 열지 않고 닫지도 않는다). 그 줄의 구문 오류는 열 줄의 구문으로 본다.
         let first = &tokens[0];
         let kind = if first.kind == Kind::Word { line_kind(first) } else { None };
         let phase = match kind {
