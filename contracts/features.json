@@ -2576,6 +2576,7 @@
         "packages/orm-npm/tests/dbspec_runtime_db.mjs",
         "engine/dbspec/apply_test.go",
         "engine/dbspec/harness_test.go",
+        "engine/dbspec/literal_test.go",
         "engine/dbspec/manifest_test.go",
         "engine/dbspec/mermaid_test.go",
         "engine/dbspec/plan_test.go",
@@ -2616,6 +2617,7 @@
           "inputs": [
             "engine/dbspec/apply_test.go",
             "engine/dbspec/harness_test.go",
+            "engine/dbspec/literal_test.go",
             "engine/dbspec/manifest_test.go",
             "engine/dbspec/mermaid_test.go",
             "engine/dbspec/plan_test.go",
