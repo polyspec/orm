@@ -1199,6 +1199,7 @@
   "packages/orm-npm/src/dbspec/render.ts::useOrder": "function useOrder(documents: readonly DbspecDocument[]): DbspecDocument[]",
   "packages/orm-npm/src/dbspec/set.ts::checkSet": "export function checkSet(documents: readonly DbspecDocument[]): { readonly ordered: readonly DbspecDocument[]; readonly diagnostics: readonly DbspecDiagnostic[]; }",
   "packages/orm-npm/src/dbspec/set.ts::compare": "function compare(a: string, b: string): number",
+  "packages/orm-npm/src/dbspec/unicode_word.ts::containsWordRune": "export function containsWordRune(cp: number): boolean",
   "packages/orm-npm/src/decimal.ts::decimalFromScaled": "export function decimalFromScaled(raw: unknown, precision: number, scale: number): string",
   "packages/orm-npm/src/decimal.ts::decimalScaled": "export function decimalScaled(input: string, precision: number, scale: number): bigint",
   "packages/orm-npm/src/decimal.ts::normalizeDecimal": "export function normalizeDecimal(input: string, precision: number, scale: number): string",

@@ -1,6 +1,7 @@
 // Command unicode는 dbspec lexer가 Unicode 글자와 숫자를 분류하는 표를 쓴다. 표는 Go의 unicode 패키지가 담은
 // Unicode 버전의 자료에서 나온다: engine/dbspec의 isWordRune과 같이 unicode.IsLetter 또는 unicode.IsDigit이 참인
-// code point가 word rune이다. C 확장, Rust, Python은 이 표를 읽으며, 각자 Unicode 자료를 가진 runtime에 기대지 않는다.
+// code point가 word rune이다. C 확장, PHP, TypeScript, Rust, Python은 이 표를 읽으며, 각자 Unicode 자료를 가진
+// runtime에 기대지 않는다.
 //
 // Usage: go run ./tests/dbspec/unicode [-write]
 // -write가 없으면 세 생성 파일이 표와 같은지 확인하고 다르면 실패한다. 표를 고치지 않고 생성기를 고친다.
@@ -32,6 +33,8 @@ var outputs = []output{
 	{"packages/orm-php-extension/src/unicode_word.h", renderC},
 	{"packages/orm-rust/orm-schema/src/dbspec/unicode_word.rs", renderRust},
 	{"packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py", renderPython},
+	{"packages/orm-php/src/Dbspec/UnicodeWord.php", renderPHP},
+	{"packages/orm-npm/src/dbspec/unicode_word.ts", renderTS},
 }
 
 func main() { os.Exit(run()) }
@@ -166,5 +169,50 @@ func renderPython(version string, spans []span) []byte {
 	b.WriteString("    \"\"\"cp가 Go의 isWordRune과 같이 Unicode 글자나 숫자이면 참이다.\"\"\"\n")
 	b.WriteString("    i = bisect.bisect_right(_STARTS, cp) - 1\n")
 	b.WriteString("    return i >= 0 and cp <= WORD_RANGES[i][1]\n")
+	return []byte(b.String())
+}
+
+// renderPHP는 PHP client의 UnicodeWord class를 쓴다. contains는 표에 든 code point를 이진 탐색으로 찾는다.
+func renderPHP(version string, spans []span) []byte {
+	var b strings.Builder
+	b.WriteString("<?php\n")
+	b.WriteString(comment("// ", version))
+	b.WriteString("declare(strict_types=1);\n\nnamespace Polyspec\\Orm\\Dbspec;\n\n")
+	b.WriteString("/**\n * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.\n */\n")
+	b.WriteString("final class UnicodeWord\n{\n")
+	b.WriteString("    /** word rune의 닫힌 구간 [lo, hi]의 목록이며 오름차순이다. */\n")
+	b.WriteString("    public const RANGES = [\n")
+	for _, s := range spans {
+		fmt.Fprintf(&b, "        [0x%04X, 0x%04X],\n", s.lo, s.hi)
+	}
+	b.WriteString("    ];\n\n")
+	b.WriteString("    /** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 Parser가 따로 본다. */\n")
+	b.WriteString("    public static function contains(int $cp): bool\n    {\n")
+	b.WriteString("        $lo = 0;\n        $hi = count(self::RANGES);\n")
+	b.WriteString("        while ($lo < $hi) {\n            $mid = intdiv($lo + $hi, 2);\n")
+	b.WriteString("            [$first, $last] = self::RANGES[$mid];\n")
+	b.WriteString("            if ($cp < $first) {\n                $hi = $mid;\n")
+	b.WriteString("            } elseif ($cp > $last) {\n                $lo = $mid + 1;\n")
+	b.WriteString("            } else {\n                return true;\n            }\n        }\n        return false;\n    }\n}\n")
+	return []byte(b.String())
+}
+
+// renderTS는 TypeScript client의 unicode_word.ts를 쓴다. containsWordRune은 표에 든 code point를 이진 탐색으로 찾는다.
+func renderTS(version string, spans []span) []byte {
+	var b strings.Builder
+	b.WriteString(comment("// ", version))
+	b.WriteString("\n/** Go의 unicode 표가 담은 word rune의 닫힌 구간 [lo, hi]이며 오름차순이다. */\n")
+	b.WriteString("export const WORD_RANGES: ReadonlyArray<readonly [number, number]> = [\n")
+	for _, s := range spans {
+		fmt.Fprintf(&b, "  [0x%04X, 0x%04X],\n", s.lo, s.hi)
+	}
+	b.WriteString("];\n\n")
+	b.WriteString("/** cp가 표의 word rune이면 참이다. `_`와 `.`은 표에 없으며 parse.ts가 따로 본다. */\n")
+	b.WriteString("export function containsWordRune(cp: number): boolean {\n")
+	b.WriteString("  let lo = 0;\n  let hi = WORD_RANGES.length;\n")
+	b.WriteString("  while (lo < hi) {\n    const mid = (lo + hi) >>> 1;\n")
+	b.WriteString("    const [first, last] = WORD_RANGES[mid]!;\n")
+	b.WriteString("    if (cp < first) hi = mid;\n    else if (cp > last) lo = mid + 1;\n    else return true;\n  }\n")
+	b.WriteString("  return false;\n}\n")
 	return []byte(b.String())
 }

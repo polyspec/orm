@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2f19055c0268af6b861b05c02cac33af9ed9167bd3116938030e1f7452328360 -->
+<!-- source-sha256: c180066513bbd326629287d4cfcc31d0ea83c0f80a1e70f2e040802b156b2c04 -->
 # 변경 이력
 
 ## Unreleased
+- T62-4-1: PHP과 TypeScript dbspec lexer는 단어 글자를 runtime의 Unicode 자료가 아니라 Go `unicode` 패키지에서 생성된 Unicode 표로 분류한다. `go run ./tests/dbspec/unicode -write`가 `packages/orm-php/src/Dbspec/UnicodeWord.php`와 `packages/orm-npm/src/dbspec/unicode_word.ts`도 쓰고, 최신성 test가 두 파일을 덮으며, 두 표의 모든 code point test가 `make dbspec-php-check`와 `make dbspec-ts-check`에서 실행된다. dbspec 동작은 바뀌지 않는다. PHP와 TypeScript symbol snapshot에는 새 `UnicodeWord` class, public `Parser::isWord`, `containsWordRune`이 기록된다.
 - T62-4-4: `make feature-unit-check`가 `sample/owner/*` fixture(typescript/none, typescript/mysql, typescript/postgres, go/none)의 FAIL 줄을 출력하는 것은 `scripts/features/coverage.test.mjs`가 일부러 실행하고 그 오류를 검사하는 부정 sample이기 때문이다. 검사는 0으로 끝나며 코드는 바뀌지 않았다.
 - T62-3-1: `engine/dbspec/literal_test.go`가 `contracts/features.json`의 schema feature에 속한다. feature의 test로 선언되고 `make dbspec-go-check`의 입력이므로 `make feature-unit-check`가 더 이상 그것을 보고하지 않는다. dbspec 동작은 바뀌지 않는다.
 - T62-4-3: Rust dbspec 원천이 `cargo clippy --all-targets -- -D warnings`(`make rust-check/clippy`)를 통과한다. parser는 읽는 곳이 없던 바인딩을 없앴고, lexer의 `is_number`는 `is_none_or`를 쓰며, `validate`는 여덟 부분 대신 parse 결과 `Parsed`를 받는다. dbspec 동작은 바뀌지 않으며, Rust symbol snapshot이 새 `validate` 선언을 기록한다.

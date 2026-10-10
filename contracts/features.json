@@ -2589,6 +2589,8 @@
         "engine/dbspec/vector_reader_test.go",
         "packages/orm-rust/orm/tests/dbspec_apply_cleanup.rs",
         "packages/orm-npm/tests/dbspec-apply-cleanup.mjs",
+        "packages/orm-npm/tests/dbspec-unicode.mjs",
+        "packages/orm-php/tests/dbspec_unicode_test.php",
         "packages/orm-go/orm/coverage_schema_definition_test.go",
         "packages/orm-php/tests/coverage_schema_definition.php",
         "packages/orm-rust/orm-schema/tests/coverage_schema_definition.rs",
@@ -2634,7 +2636,9 @@
             "tests/dbspec/unicode/main.go",
             "tests/dbspec/unicode/main_test.go",
             "packages/orm-php-extension/src/unicode_word.h",
-            "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py"
+            "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py",
+            "packages/orm-php/src/Dbspec/UnicodeWord.php",
+            "packages/orm-npm/src/dbspec/unicode_word.ts"
           ]
         },
         {
@@ -2651,6 +2655,8 @@
             "packages/orm-php/tests/dbspec_plan_test.php",
             "packages/orm-php/tests/dbspec_mermaid_test.php",
             "packages/orm-php/tests/dbspec_apply_cleanup_test.php",
+            "packages/orm-php/tests/dbspec_unicode_test.php",
+            "packages/orm-php/src/Dbspec/UnicodeWord.php",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
@@ -2691,6 +2697,8 @@
             "packages/orm-npm/tests/dbspec-plan.mjs",
             "packages/orm-npm/tests/dbspec-mermaid.mjs",
             "packages/orm-npm/tests/dbspec-apply-cleanup.mjs",
+            "packages/orm-npm/tests/dbspec-unicode.mjs",
+            "packages/orm-npm/src/dbspec/unicode_word.ts",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",

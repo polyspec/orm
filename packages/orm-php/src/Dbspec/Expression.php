@@ -207,7 +207,7 @@ final class Expression
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_.\p{L}\p{Nd}]+$/Du', $token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
+        if ($token !== null && Parser::isWord($token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }

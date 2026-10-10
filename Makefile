@@ -526,8 +526,8 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
 # 실행한다.
-dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup
-.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode
+.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode
 dbspec-php-check/documents:
 	php packages/orm-php/tests/dbspec_test.php
 	php packages/orm-php/tests/dbspec_test.php
@@ -549,6 +549,10 @@ dbspec-php-check/mermaid:
 dbspec-php-check/apply-cleanup:
 	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
 	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
+# dbspec-php-check/unicode는 PHP UnicodeWord의 표가 모든 code point에서 그 구간과 같은지 본다(표 자체는 dbspec-go-check/unicode가 Go와 맞춘다).
+dbspec-php-check/unicode:
+	php packages/orm-php/tests/dbspec_unicode_test.php
+	php packages/orm-php/tests/dbspec_unicode_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/orm-php-extension, PHP client의 dbspec 표면을 C로 구현한
@@ -898,13 +902,13 @@ ts-min-check: lease-tool
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
 # dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, plan vector, Mermaid
-# vector, apply 정리 error, 그것들이 아직 다루지 않는 rule을 실행한다. stress 문서는 make bench가
-# 실행한다.
+# vector, apply 정리 error, 그것들이 아직 다루지 않는 rule, Unicode word 표가 모든 code point에서 그 구간과
+# 같은지를 실행한다. stress 문서는 make bench가 실행한다.
 .PHONY: dbspec-ts-check
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs
+	node --test packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs
 
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
