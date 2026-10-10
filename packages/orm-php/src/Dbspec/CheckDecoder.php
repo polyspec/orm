@@ -97,9 +97,9 @@ final class CheckDecoder
                 }
                 $out[] = ['number', substr($text, $i, $j - $i)];
                 $i = $j;
-            } elseif ($ch === '_' || ctype_alpha($ch)) {
+            } elseif ($ch === '_' || self::isAsciiLetter($ch)) {
                 $j = $i;
-                while ($j < $n && ($text[$j] === '_' || ctype_alnum($text[$j]))) {
+                while ($j < $n && ($text[$j] === '_' || self::isAsciiLetter($text[$j]) || ctype_digit($text[$j]))) {
                     $j++;
                 }
                 $word = substr($text, $i, $j - $i);
@@ -124,6 +124,16 @@ final class CheckDecoder
             }
         }
         return $out;
+    }
+
+    /**
+     * ASCII 영문자 한 바이트인지 본다. Go 의 checkTokens 와 같은 범위다. ctype_alpha 와
+     * ctype_alnum 은 LC_CTYPE 과 libc 에 따라 0x80 이상의 바이트도 글자로 보므로 쓰지 않는다.
+     */
+    private static function isAsciiLetter(string $ch): bool
+    {
+        $o = ord($ch);
+        return ($o >= 0x61 && $o <= 0x7A) || ($o >= 0x41 && $o <= 0x5A);
     }
 
     /**
