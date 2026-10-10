@@ -10420,6 +10420,40 @@
       ]
     },
     {
+      "id": "foreign-key-invalid-child-set-null",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id nosuch",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (team_id) references teams (id) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 10,
+          "column": 11,
+          "rule": "type"
+        },
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
       "id": "foreign-key-unknown-child-unknown-reference",
       "documents": {
         "shop": [
