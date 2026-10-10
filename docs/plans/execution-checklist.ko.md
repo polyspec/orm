@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 46b43b0dd928d19537e5f5a18e98f48ad135be5dd4d92f532d066e5a12e1bb84 -->
+<!-- source-sha256: 9f95d63443cdabdb0384c15c93bf77babaaa5fad91c4a79226b8b001e31b84b9 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -809,3 +809,4 @@
 - [ ] T66 Rust client의 `markdown` IR executor. 원인: flowmark 계획(Layering과 T12.9 단계)은 각 orm client를 Go client가 먼저 구현한 IR executor를 거쳐 flowmark에 닿게 하므로, Rust client도 같은 protocol의 자체 executor가 필요하다. 완료 기준: Rust client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 flowmark server에 연결하고, 모든 IR kind, transaction, savepoint를 그 server를 통해 실행한다. conformance는 Go client와 같은 case ID를 `tests/markdown/flowmark.version`에 고정된 flowmark build에 대해 실행하며 모든 case가 통과한다. 고정된 build가 없으면 check가 실패한다. T63이 필요하다.
 - [ ] T67 TypeScript client의 `markdown` IR executor. 원인: flowmark 계획(Layering과 T12.9 단계)은 각 orm client를 Go client가 먼저 구현한 IR executor를 거쳐 flowmark에 닿게 하므로, TypeScript client도 같은 protocol의 자체 executor가 필요하다. 완료 기준: TypeScript client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 flowmark server에 연결하고, 모든 IR kind, transaction, savepoint를 그 server를 통해 실행한다. conformance는 Go client와 같은 case ID를 `tests/markdown/flowmark.version`에 고정된 flowmark build에 대해 실행하며 모든 case가 통과한다. 고정된 build가 없으면 check가 실패한다. T63이 필요하다.
 - [o] T68 한국어 checklist에서 writing-style 금지 표현을 없앤다. 원인: writing-style 규칙(`contracts/rules.json`의 `docs.writing-style`)이 한국어 checklist의 T58 줄에 있는 `밝힌다`를 금지하므로 `make docs-rules-check`가 main에서 실패한다. 완료 기준: `make docs-rules-check`가 0으로 끝나고, 한국어 checklist가 영문 checklist와 같은 사실을 적는다(T58: docs/dsl.md와 docs/dsl.ko.md가 Python client를 명시한다). Evidence: `make docs-rules-check`가 `PASS docs-rules`를 출력하고 `make documents-check`가 통과하며, 두 명령 모두 이 tree에서 0으로 끝난다.
+- [ ] T69 Release 0.0.8. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.8의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
