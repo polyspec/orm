@@ -52,7 +52,7 @@ fn is_number(run: &str) -> bool {
     let whole = parts.next().unwrap_or("");
     let fraction = parts.next();
     let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
-    digits(whole) && parts.next().is_none() && fraction.map_or(true, digits)
+    digits(whole) && parts.next().is_none() && fraction.is_none_or(digits)
 }
 
 /// Tokenizes `line` (without its line end). Only the space separates tokens.

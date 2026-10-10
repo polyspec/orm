@@ -428,7 +428,6 @@ impl Parser {
             }
             return;
         }
-        let first = &tokens[0];
         if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid) {
             self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
             // The line keeps the kind and name that its words give.

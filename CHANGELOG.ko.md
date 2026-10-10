@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7497d1697903372217c0ddd368b099a573b205b688296ffc869c3f173fe07159 -->
+<!-- source-sha256: fc755eea9a159f4ae2a9ee4d2bdcd164ed53ca799bd971c29ff44bfe721e5006 -->
 # 변경 이력
 
 ## Unreleased
+- T62-4-3: Rust dbspec 원천이 `cargo clippy --all-targets -- -D warnings`(`make rust-check/clippy`)를 통과한다. parser는 읽는 곳이 없던 바인딩을 없앴고, lexer의 `is_number`는 `is_none_or`를 쓰며, `validate`는 여덟 부분 대신 parse 결과 `Parsed`를 받는다. dbspec 동작은 바뀌지 않으며, Rust symbol snapshot이 새 `validate` 선언을 기록한다.
 - T62-5-3: Rust dbspec 원천 `orm-schema/src/dbspec/parser.rs`와 `dbspec/mod.rs`를 저장소의 `rustfmt.toml` 설정으로 rustfmt 정리해 `make rust-fmt-check/clients`가 통과한다. 줄 배치만 바뀌며 선언과 동작은 바뀌지 않는다.
 - T62-6: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 반복된 settings 블록을 Go처럼 읽는다. 그 줄은 구문, 알 수 없는 setting, 이름 구문만 검사하고 검증하지 않으며, `order`는 header가 정확히 `settings {`일 때만 키워드에 보고한다. `{`가 없는 `settings` 줄은 Python에서 더 이상 실패하지 않고 Rust에서 열로 읽히지 않는다. `tests/dbspec/cases.json`의 열네 개 반복 및 `{` 없는 settings case가 이를 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다.
 - T62-5: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 header가 실패한 table을 Go처럼 검사한다. 그런 table의 중복 이름은 보고하지 않고, 그 table을 가리키는 외래 key는 참조 열, 개수, key, type을 검사하지 않으며, 실패한 audit history table이나 audit 기록 table은 열이나 key를 검사하지 않고, 본문의 오류는 모두 보고한다. `tests/dbspec/cases.json`의 열세 개 `failed-header-*` case가 Go가 만든 오류로 이를 고정한다.

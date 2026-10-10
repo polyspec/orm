@@ -3,7 +3,7 @@
 
 use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
-use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, MAX_NAME_BYTES};
+use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Parsed, MAX_NAME_BYTES};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -82,19 +82,11 @@ impl<'d> Scope<'d> {
     }
 }
 
-/// Validates `document`. `used` holds, for each `use` line, the used document
+/// Validates the parse `parsed` of a document. `used` holds, for each `use` line, the used document
 /// when it was found and is valid; a missing or invalid one is already reported.
 /// `literals` receives the canonical literal texts of each check that types.
-pub(crate) fn validate(
-    document: &Document,
-    unresolved: &[Vec<String>],
-    failed_keys: &[FailedKeys],
-    header_failed: &[bool],
-    defaults: &[Vec<DefaultToken>],
-    used: &[Option<&Document>],
-    diags: &mut Vec<Diag>,
-    literals: &mut Vec<CheckLiterals>,
-) {
+pub(crate) fn validate(parsed: &Parsed, used: &[Option<&Document>], diags: &mut Vec<Diag>, literals: &mut Vec<CheckLiterals>) {
+    let Parsed { document, unresolved, failed_keys, header_failed, defaults, .. } = parsed;
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
     let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
