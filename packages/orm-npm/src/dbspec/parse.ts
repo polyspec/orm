@@ -1710,15 +1710,21 @@ class DocumentParser {
       return;
     }
     const parents: IColumn[] = [];
+    let referencesKnown = true;
     for (const r of fk.refs) {
       const column = this.lookup(target, r, 'foreign_key');
       if (column === undefined || column === null) {
-        resolved = false;
+        referencesKnown = false;
         continue;
       }
       parents.push(column);
     }
     if (!resolved) return;
+    // Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
+    if (!referencesKnown) {
+      this.foreignKeyKeyChecks(table, fk, children);
+      return;
+    }
     if (children.length !== parents.length) {
       this.at('foreign_key', fk.name, 'the foreign key lists a different number of child and referenced columns');
       return;
