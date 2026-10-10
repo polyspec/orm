@@ -1700,22 +1700,22 @@ class DocumentParser {
     // Go는 참조 table이 없거나 이름이 잘못되었거나 header가 실패했어도 자식의 key 검사와 set_null 검사를 한다.
     // 열, 짝과 type 검사만 건너뛴다(validate.go의 foreignKey, target이 nil인 경우).
     if (!wellFormed(fk.table.t)) {
-      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
     if (!available.has(fk.table.t)) {
       this.at('foreign_key', fk.table, `table ${fk.table.t} is not defined or used`);
-      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
     const target = available.get(fk.table.t) ?? null;
     if (target === null) {
-      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
     // Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
     if (target.headerFailed) {
-      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
     const parents: IColumn[] = [];
@@ -1728,16 +1728,21 @@ class DocumentParser {
       }
       parents.push(column);
     }
-    if (!resolved) return;
+    // Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사는 건너뛴다.
+    // 짝과 type 검사만 건너뛴다.
+    if (!resolved) {
+      this.foreignKeyKeyChecks(table, fk, children, false);
+      return;
+    }
     // Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
     if (!referencesKnown) {
-      this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, true);
       return;
     }
     if (children.length !== parents.length) {
       this.at('foreign_key', fk.name, 'the foreign key lists a different number of child and referenced columns');
       // Go는 개수가 다를 때도 짝과 type 검사만 건너뛰고 자식의 key 검사와 set_null 검사를 한다.
-      this.foreignKeyKeyChecks(table, fk, children);
+      this.foreignKeyKeyChecks(table, fk, children, true);
       return;
     }
     const refs = fk.refs.map(r => r.t).join(',');
@@ -1752,16 +1757,19 @@ class DocumentParser {
         this.at('foreign_key', fk.name, `column ${fk.cols[i]!.t} is ${typeText(child)} but references ${typeText(parent)}`);
       }
     }
-    this.foreignKeyKeyChecks(table, fk, children);
+    this.foreignKeyKeyChecks(table, fk, children, true);
   }
 
-  /** 자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다. */
-  private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: IColumn[]): void {
+  /**
+   * 자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
+   * known이 false이면 자식 열이 알려지지 않았거나 겹치는 것이므로 색인 검사를 건너뛴다(Go의 known).
+   */
+  private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: IColumn[], known: boolean): void {
     const lead = fk.cols.map(c => c.t);
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
     );
-    if (!indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
+    if (known && !indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
     if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => !c.nullable)) {
       this.at('foreign_key', fk.name, 'set_null requires every child column to be null');
     }

@@ -368,7 +368,6 @@ const CASES: &[Case] = &[
             ("foreign_key", 16, 15),
             ("foreign_key", 17, 15),
             ("foreign_key", 17, 35),
-            ("foreign_key", 18, 15),
             ("foreign_key", 18, 21),
             ("foreign_key", 18, 42),
         ]),

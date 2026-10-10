@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f7510be9ffae505be648a88ca35507891760c7077f9e6b5d933644bb20dd405a -->
+<!-- source-sha256: 0993fc147f5e7c87625a0986c15fd1e61b31cd6013e0e05e14bef388fb83668a -->
 # 변경 이력
 
 ## Unreleased
+- T62-5-5: Rust, TypeScript, Python, PHP와 PHP 확장 dbspec parser는 외래 key의 색인 검사를 자식 열이 모두 알려지고 겹치지 않을 때만 실행하고, 자식 열이 알려지지 않아도 알려진 자식 열에 대해 set_null 검사를 Go처럼 실행한다. `tests/dbspec/cases.json`의 case 세 개가 Go의 출력을 고정하며, 모든 구현이 `make dbspec-compare-check`를 통과한다. 공개 API 선언은 바뀌지 않는다. TypeScript의 private 메서드 `foreignKeyKeyChecks`는 매개변수가 하나 늘어 snapshot을 다시 기록했다.
 - T62-5-4: TypeScript와 Python dbspec parser는 참조 table이 정의되지 않았거나 이름이 잘못되었거나 참조 열 수가 외래 key 열 수와 다를 때도 외래 key의 자식 색인 검사와 set_null 검사를 Go처럼 실행한다. 짝과 type 검사만 건너뛴다. `tests/dbspec/cases.json`의 여섯 case가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 그 밖의 dbspec 동작은 바뀌지 않는다.
 - T62-5-2: TypeScript와 Python dbspec parser는 참조 열이 알려지지 않은 외래 key의 자식 색인 검사와 set_null 검사를 Go처럼 실행하고, Python parser는 실패한 primary key 줄 뒤에서 색인 검사를 건너뛴다. `tests/dbspec/cases.json`의 다섯 case가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 그 밖의 dbspec 동작은 바뀌지 않는다.
 - T70: repository 검사는 실행 중인 Go나 Composer를 선언된 release와 major, minor로 비교한다. 그래서 선언된 version의 patch release도 `make repo-check`를 통과하며, `.go-version`, `.composer-version`과 CI workflow는 여전히 정확한 release 하나를 고정한다. 제품 동작은 바뀌지 않는다.
