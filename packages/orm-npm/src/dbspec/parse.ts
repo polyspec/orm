@@ -14,6 +14,7 @@ import type {
   DbspecStateLine,
 } from './model.js';
 import { typeText } from './emit.js';
+import { containsWordRune } from './unicode_word.js';
 
 export interface RawDiagnostic {
   readonly rule: DbspecRule;
@@ -313,10 +314,9 @@ interface Lexed {
   readonly error: { readonly index: number; readonly message: string } | null;
 }
 
-/** Go's isWordRune: an ASCII letter, digit, `_` or `.`, or a Unicode letter or digit. */
+/** Go's isWordRune: `_` or `.`, or a code point of the table of unicode_word.ts (a letter or digit of Go's unicode). */
 function isWordRune(cp: number): boolean {
-  if (cp < 128) return cp === 95 || cp === 46 || (cp >= 48 && cp <= 57) || (cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122);
-  return /^[\p{L}\p{Nd}]$/u.test(String.fromCodePoint(cp));
+  return cp === 95 || cp === 46 || containsWordRune(cp);
 }
 
 /** The character as Go's %q writes a rune. */

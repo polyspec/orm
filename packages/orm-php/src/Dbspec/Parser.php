@@ -357,10 +357,10 @@ final class Parser
         return [];
     }
 
-    /** Go's isWordRune: an ASCII letter, digit, `_` or `.`, or a Unicode letter or digit. */
+    /** Go's isWordRune: `_` or `.`, or a code point of the table of UnicodeWord (a letter or digit of Go's unicode). */
     private static function wordRune(string $c): bool
     {
-        return preg_match('/^[A-Za-z0-9_.]$/D', $c) === 1 || (strlen($c) > 1 && preg_match('/^[\p{L}\p{Nd}]$/u', $c) === 1);
+        return $c === '_' || $c === '.' || UnicodeWord::contains(mb_ord($c, 'UTF-8'));
     }
 
     /** The character as Go's %q writes a rune. */
@@ -2407,9 +2407,19 @@ final class Parser
         }
     }
 
-    private static function isWord(string $token): bool
+    /** Whether a token is a word: one or more Go word runes (wordRune). */
+    public static function isWord(string $token): bool
     {
-        return preg_match('/^[A-Za-z0-9_.\p{L}\p{Nd}]+$/Du', $token) === 1;
+        $chars = preg_split('//u', $token, -1, PREG_SPLIT_NO_EMPTY);
+        if ($chars === false || $chars === []) {
+            return false;
+        }
+        foreach ($chars as $c) {
+            if (!self::wordRune($c)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Checks a name token's format and length; returns whether it is valid. */
