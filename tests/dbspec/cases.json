@@ -10895,6 +10895,116 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "column-type-argument-unclosed",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(64 x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 19,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-type-argument-trailing-comma",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(64,) null",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 19,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-type-argument-decimal-space",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name decimal(10 2)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 19,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-type-argument-unicode-word",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(é)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "column-type-argument-unicode-decimal",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name decimal(10,é)",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 8,
+          "rule": "type"
+        }
+      ]
     }
   ],
   "hashes": [

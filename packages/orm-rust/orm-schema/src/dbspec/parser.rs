@@ -805,27 +805,50 @@ impl Parser {
         if cursor.peek_is("(") {
             cursor.next();
             let mut values = Vec::new();
+            // Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면
+            // 구문 오류다(type 오류는 줄이 구문에 맞을 때만 Go처럼 보고한다).
             loop {
-                match cursor.next() {
-                    Some(t) if t.kind == Kind::Number && !t.text.contains('.') => values.push(t.text.parse::<u32>().ok()),
-                    _ => {
+                match cursor.peek() {
+                    Some(t) if t.kind == Kind::Number && !t.text.contains('.') => {
+                        let parsed = t.text.parse::<u32>().ok();
+                        cursor.next();
+                        values.push(parsed);
+                    }
+                    Some(t) if t.kind == Kind::Number || t.kind == Kind::Word => {
+                        cursor.next();
                         malformed = true;
-                        break;
+                        values.push(None);
+                    }
+                    Some(t) if t.is("-") => {
+                        cursor.next();
+                        match cursor.peek() {
+                            Some(n) if n.kind == Kind::Number => {
+                                cursor.next();
+                                malformed = true;
+                                values.push(None);
+                            }
+                            _ => {
+                                self.syntax(cursor);
+                                return None;
+                            }
+                        }
+                    }
+                    _ => {
+                        self.syntax(cursor);
+                        return None;
                     }
                 }
-                match cursor.next() {
-                    Some(t) if t.is(",") => continue,
-                    Some(t) if t.is(")") => break,
-                    _ => {
-                        malformed = true;
+                match cursor.peek() {
+                    Some(t) if t.is(",") => {
+                        cursor.next();
+                    }
+                    Some(t) if t.is(")") => {
+                        cursor.next();
                         break;
                     }
-                }
-            }
-            if malformed {
-                while let Some(t) = cursor.next() {
-                    if t.is(")") {
-                        break;
+                    _ => {
+                        self.syntax(cursor);
+                        return None;
                     }
                 }
             }
