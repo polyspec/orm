@@ -10726,6 +10726,175 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "diagram-line-inside-open-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "diagram main {",
+          "  users at 0 0",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        },
+        {
+          "line": 5,
+          "column": 14,
+          "rule": "syntax"
+        },
+        {
+          "line": 6,
+          "column": 12,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-bad-type-argument-value",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  name varchar(abc) x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 21,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-duplicate-name-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  id i64 identity x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 19,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-duplicate-type-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  id varchar(8) x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 17,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-reserved-identity-name-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  identity varchar(8) x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 23,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-reserved-default-name-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  default i64 x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-reserved-null-name-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  null i64 x",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 12,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [
