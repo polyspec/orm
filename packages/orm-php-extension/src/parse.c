@@ -3052,11 +3052,12 @@ static void read_source(parser *p, str source)
                 break;
         }
     }
+    /* 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다. */
     if (p->state == S_SETTINGS) {
         error(p, "syntax", p->settings_open[0], p->settings_open[1], SL("the settings block is not closed"));
         p->state = S_TABLE;
-    }
-    if (p->state == S_TABLE) {
+        close_table(p);
+    } else if (p->state == S_TABLE) {
         error(p, "syntax", p->block_open[0], p->block_open[1], SL("the table block is not closed"));
         close_table(p);
     } else if (p->state == S_DIAGRAM) {

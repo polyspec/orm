@@ -101,8 +101,7 @@ invalid('syntax and order', [
   ['syntax', 17, 1],
 ]);
 invalid('unclosed block', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)'], [['syntax', 2, 13]]);
-invalid('unclosed settings and diagram blocks', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)', '  settings {'], [
-  ['syntax', 2, 13],
+invalid('unclosed settings block', ['dbspec 1 shop', 'table users {', '  id i64 identity', '  primary key (id)', '  settings {'], [
   ['syntax', 5, 12],
 ]);
 invalid('unclosed diagram', ['dbspec 1 shop', ...users, 'diagram main {', '  users at 0 0'], [['syntax', 6, 14]]);

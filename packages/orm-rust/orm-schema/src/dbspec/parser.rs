@@ -1378,13 +1378,13 @@ impl Parser {
         }
     }
 
-    /// Reports a `syntax` error at the `{` of every open block. A block whose
-    /// header line failed already has its error.
+    /// 가장 안쪽의 열린 block의 `{`에 `syntax` 오류를 한 번 보고한다(Go처럼). 열린 settings block은 자기 `{`만
+    /// 보고하고 표의 `{`는 보고하지 않는다. header 줄이 실패한 block은 이미 오류가 있다.
     fn report_open_blocks(&mut self) {
         let braces = match self.context {
             Context::Top => vec![],
             Context::Table => vec![self.table_brace],
-            Context::Settings => vec![self.table_brace, self.settings_brace],
+            Context::Settings => vec![self.settings_brace],
             Context::Diagram => vec![self.diagram_brace],
         };
         for brace in braces.into_iter().flatten() {
