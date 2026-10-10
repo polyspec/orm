@@ -146,7 +146,7 @@ static operand literal(xparser *p)
 static operand xoperand(xparser *p)
 {
     const str *token = peek(p, 0);
-    if (token != NULL && str_word(*token) && !str_digits(*token)) {
+    if (token != NULL && str_dotted(*token) && !str_digits(*token) && !str_decimal(*token)) {
         if (peek_is(p, 1, "(")) {
             fail(p, SL("a check has no functions"));
         }

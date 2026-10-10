@@ -300,6 +300,31 @@ pub enum Setting {
     AesVersion(Name),
     BlindIndex(Name, Name),
     Navigation(Name, Name, Name),
+    /// `markdown <column>`: the prose column of the manifest.
+    Markdown(Name),
+    /// `store files`, `store document <shape>` or `store block <foreign key> <shape>`. `kind` is
+    /// `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`.
+    Store {
+        kind: Name,
+        foreign: Option<Name>,
+        shape: Option<Name>,
+    },
+    /// `key_prefix '<prefix>'`. The name holds the prefix without its quotes.
+    KeyPrefix(Name),
+    Title(Name),
+    Body(Name),
+    Order(Name),
+    /// `checkbox <column> <state> '<glyph>'`. The glyph name holds the glyph without its quotes.
+    Checkbox {
+        column: Name,
+        state: Name,
+        glyph: Name,
+    },
+    /// One line of `state_machine <column> ...`.
+    StateMachine {
+        column: Name,
+        line: StateLine,
+    },
     Immutable,
     /// `lists`는 exclude와 include 목록이다. 유효한 문서는 많아야 하나를 가진다(docs/dbspec.md "Audit").
     /// `column`은 audit 기록 table `references`의 primary key를 담는 column이다.
@@ -311,6 +336,31 @@ pub enum Setting {
         previous: Name,
         lists: Vec<AuditList>,
     },
+}
+
+/// A line of a `state_machine` setting after its column.
+#[derive(Clone, Debug)]
+pub enum StateLine {
+    /// `initial <state>`.
+    Initial(Name),
+    /// `terminal <state> [require (<column>, ...)]`.
+    Terminal(Name, Vec<Name>),
+    /// `<from> -> <to> [require (<column>, ...)]`.
+    Transition { from: Name, to: Name, requires: Vec<Name> },
+    /// `history <table> row <column> from <column> to <column> at <column>`.
+    History(History),
+    /// `limit <state> <count>`. The count keeps its token text, which is a positive integer when valid.
+    Limit { state: Name, count: Name },
+}
+
+/// The history line of a state machine: the history table and its columns.
+#[derive(Clone, Debug)]
+pub struct History {
+    pub table: Name,
+    pub row: Name,
+    pub from: Name,
+    pub to: Name,
+    pub at: Name,
 }
 
 /// audit의 `exclude (<column>, ...)`나 `include (<column>, ...)` 목록. `keyword`는 `exclude`나 `include`다.
@@ -342,8 +392,18 @@ impl Setting {
             Setting::AesVersion(_) => 5,
             Setting::BlindIndex(..) => 6,
             Setting::Navigation(..) => 7,
-            Setting::Immutable => 8,
-            Setting::Audit { .. } => 9,
+            Setting::Markdown(_) => 8,
+            Setting::Store { .. } => 9,
+            Setting::KeyPrefix(_) => 10,
+            Setting::Title(_) => 11,
+            Setting::Body(_) => 12,
+            Setting::Order(_) => 13,
+            Setting::Checkbox { .. } => 14,
+            Setting::StateMachine { line: StateLine::History(_), .. } => 16,
+            Setting::StateMachine { line: StateLine::Limit { .. }, .. } => 17,
+            Setting::StateMachine { .. } => 15,
+            Setting::Immutable => 18,
+            Setting::Audit { .. } => 19,
         }
     }
 
@@ -362,11 +422,12 @@ impl Setting {
         }
     }
 
-    /// The name that orders repeated lines of one kind: the codec column or the navigation foreign key.
+    /// The name that orders repeated lines of one kind: the codec, blind index or markdown column or the navigation foreign key.
     pub fn sort_name(&self) -> &str {
         match self {
             Setting::Codec(column, _) | Setting::BlindIndex(column, _) => &column.text,
             Setting::Navigation(key, _, _) => &key.text,
+            Setting::Markdown(column) => &column.text,
             _ => "",
         }
     }

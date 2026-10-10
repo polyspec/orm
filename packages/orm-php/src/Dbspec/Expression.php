@@ -40,6 +40,8 @@ final class Expression
      * @var list<array>
      */
     private array $predicates = [];
+    /** @var list<string> 파싱한 predicate가 읽는 column 이름 */
+    private array $refs = [];
 
     /**
      * @param list<array{0:string,1:int}> $tokens [text, column]
@@ -56,7 +58,7 @@ final class Expression
     }
 
     /**
-     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>} canonical text or null, and errors
+     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>} 표준 text 또는 null, 오류, 검사가 읽는 column 이름 (실패하면 빈 목록)
      */
     public static function parse(array $tokens, int $line, int $endColumn, array $columns, array $actionColumns): array
     {
@@ -68,13 +70,13 @@ final class Expression
                 $parser->fail('a check predicate ends with its closing parenthesis');
             }
         } catch (ExpressionFailure) {
-            return [null, $parser->errors];
+            return [null, $parser->errors, []];
         }
         $parser->checkTypes();
         if ($parser->errors !== []) {
-            return [null, $parser->errors];
+            return [null, $parser->errors, []];
         }
-        return [$parser->text($tree), []];
+        return [$parser->text($tree), [], array_values(array_unique($parser->refs))];
     }
 
     private function peek(int $ahead = 0): ?string
@@ -205,12 +207,13 @@ final class Expression
     private function operand(): array
     {
         $token = $this->peek();
-        if ($token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token)) {
+        if ($token !== null && preg_match('/^[A-Za-z0-9_.]+$/D', $token) && !ctype_digit($token) && preg_match('/^[0-9]+\.[0-9]+$/D', $token) !== 1) {
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
             if (!isset(self::KEYWORDS[$token])) {
                 $operand = ['column', $token, $this->position(), $this->columns[$token] ?? null];
+                $this->refs[] = $token;
                 $this->at++;
                 return $operand;
             }

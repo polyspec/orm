@@ -143,7 +143,31 @@ typedef struct {
     bool failed_keys;
 } drecord_rec;
 
+typedef VEC(tsetting_rec *) tsettingv;
+
+/* state_machine의 history 줄을 검사하는 기록이다. 기록 table은 문서 끝에서 찾으므로 검사를 그때까지 미룬다. */
+typedef struct {
+    str owner;
+    column *state;
+    tokens args;
+    tokens requires;
+    columnv required;
+    zend_long line;
+} dstate_rec;
+
+/* default 값의 token과 그 줄이다. */
+typedef struct {
+    token value;
+    zend_long line;
+} tdefault;
+
 enum { S_TOP, S_TABLE, S_SETTINGS, S_DIAGRAM };
+
+/* 구문을 통과한 title 또는 body 설정 줄의 표 이름과 종류(Go는 once 규칙으로 버린 줄도 센다). */
+typedef struct {
+    str table;
+    str kind;
+} rawtb_rec;
 
 typedef struct parser {
     const smap *documents;
@@ -184,6 +208,20 @@ typedef struct parser {
     VEC(daudit_rec) deferred_audits;
     VEC(drecord_rec) deferred_records;
     smap failed_primary_tables;
+    /* 구문을 통과한 title과 body 줄(Go의 h.settings.lines처럼 once 규칙으로 버린 줄도 포함한다). */
+    VEC(rawtb_rec) raw_title_body;
+    /* 읽은 primary key 줄의 수(Go는 모든 줄을 보관한다)와 구문 오류가 난 column 줄의 수(Go의 failedLines)다. */
+    zend_long pk_lines;
+    zend_long failed_lines;
+    /* 줄의 첫 lex 오류: 칸과 message다. */
+    bool lex_failed;
+    zend_long lex_column;
+    str lex_message;
+    /* 실패한 column과 foreign key 줄의 이름이다(Go failedName). table마다 새로 둔다. */
+    smap failed_names;
+    /* column 이름 => tdefault, 첫 column의 default 값이다. */
+    smap defaults;
+    VEC(dstate_rec) deferred_states;
 
     jmp_buf stop_jump;
 } parser;
@@ -260,6 +298,12 @@ static bool name_tok(parser *p, const token *t)
     return name_ok(p, t->text, t->column);
 }
 
+/* 지역 제약 이름이 놓인 줄과 칸이다(constraint_names의 값; 쓰는 문서의 이름은 TRUEP). */
+typedef struct {
+    zend_long line;
+    zend_long column;
+} tpos;
+
 static void constraint_name(parser *p, const token *t)
 {
     if (!name_tok(p, t)) {
@@ -272,13 +316,16 @@ static void constraint_name(parser *p, const token *t)
     if (smap_has(&p->tables, t->text) || smap_has(&p->used_table_names, t->text)) {
         error(p, "name.duplicate", p->line, t->column, fmt("constraint name `%S` is the name of a table", t->text));
     }
-    smap_set(&p->constraint_names, t->text, TRUEP);
+    tpos *loc = dbs_alloc(sizeof *loc);
+    loc->line = p->line;
+    loc->column = t->column;
+    smap_set(&p->constraint_names, t->text, loc);
 }
 
 static const token *word_at(parser *p, size_t i)
 {
     const token *t = tok(p, i);
-    if (t == NULL || !str_word(t->text)) {
+    if (t == NULL || !str_dotted(t->text)) {
         error(p, "syntax", p->line, t != NULL ? t->column : end_column(p),
             t == NULL ? SL("expected a name") : fmt("expected a name, found `%S`", t->text));
         return NULL;
@@ -451,67 +498,92 @@ static bool wordc(char c)
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || digitc(c) || c == '_';
 }
 
-/* `[0-9]+\.[0-9]+|[A-Za-z0-9_]+|'(?:[^']|'')*+'|<=|>=|<>|[^ ]`의 token과 그 칸이다. */
-static void tokenize(parser *p)
+/* Go의 lexLine: 한 줄을 token으로 나눈다. 첫 오류는 p->lex_* 에 둔다. recover이면 오류 글자를 건너뛰며 계속 읽는다
+ * (Go의 lexRecover는 그 글자를 빈칸으로 바꾸어 다시 읽는 것과 같다). 단어 글자는 ASCII의 [A-Za-z0-9_.]와 그 밖의
+ * code point다(C에는 Unicode 글자 분류가 없다). */
+static bool dotword_ascii(unsigned char c)
+{
+    return c == '_' || c == '.' || digitc((char)c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static size_t utf8_width(unsigned char b)
+{
+    return b < 0x80 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
+}
+
+static void lex_line(parser *p, bool recover)
 {
     str s = p->text;
     p->t = (tokens){0};
+    p->lex_failed = false;
     zend_long column = 1;
     size_t i = 0;
     while (i < s.n) {
-        char c = s.s[i];
+        unsigned char c = (unsigned char)s.s[i];
         size_t len = 0;
         if (c == ' ') {
             i++;
             column++;
             continue;
         }
-        if (digitc(c)) {
-            size_t j = i;
-            while (j < s.n && digitc(s.s[j])) {
-                j++;
-            }
-            if (j < s.n && s.s[j] == '.' && j + 1 < s.n && digitc(s.s[j + 1])) {
-                j++;
-                while (j < s.n && digitc(s.s[j])) {
+        if (c == '(' || c == ')' || c == '{' || c == '}' || c == ',' || c == '=' || c == '+' || c == '-' || c == '*' || c == '/') {
+            len = 1;
+        } else if (c == '<' || c == '>') {
+            len = (i + 1 < s.n && (s.s[i + 1] == '=' || (c == '<' && s.s[i + 1] == '>'))) ? 2 : 1;
+        } else if (c == '\'') {
+            size_t j = i + 1;
+            bool closed = false;
+            while (j < s.n) {
+                if (s.s[j] == '\'') {
+                    if (j + 1 < s.n && s.s[j + 1] == '\'') {
+                        j += 2;
+                        continue;
+                    }
                     j++;
+                    closed = true;
+                    break;
                 }
-                len = j - i;
-            }
-        }
-        if (len == 0 && wordc(c)) {
-            size_t j = i;
-            while (j < s.n && wordc(s.s[j])) {
                 j++;
+            }
+            if (!closed) {
+                if (!recover) {
+                    p->lex_failed = true;
+                    p->lex_column = column;
+                    p->lex_message = SL("string is not closed on its line");
+                    return;
+                }
+                i++;
+                column++;
+                continue;
             }
             len = j - i;
-        }
-        if (len == 0 && c == '\'') {
-            /* 소유 반복이므로 '' 쌍은 되돌아가지 않는다. */
-            size_t j = i + 1;
-            for (;;) {
-                if (j < s.n && s.s[j] != '\'') {
+        } else if (dotword_ascii(c) || c >= 0x80) {
+            size_t j = i;
+            while (j < s.n) {
+                unsigned char d = (unsigned char)s.s[j];
+                if (dotword_ascii(d)) {
                     j++;
-                } else if (j + 1 < s.n && s.s[j] == '\'' && s.s[j + 1] == '\'') {
-                    j += 2;
+                } else if (d >= 0x80) {
+                    j += utf8_width(d);
                 } else {
                     break;
                 }
             }
-            if (j < s.n && s.s[j] == '\'') {
-                len = j + 1 - i;
+            if (j > s.n) {
+                j = s.n;
             }
-        }
-        if (len == 0 && i + 1 < s.n && ((c == '<' && s.s[i + 1] == '=') || (c == '>' && s.s[i + 1] == '=') || (c == '<' && s.s[i + 1] == '>'))) {
-            len = 2;
-        }
-        if (len == 0) {
-            /* code point 하나 */
-            unsigned char b = (unsigned char)c;
-            len = b < 0x80 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
-            if (i + len > s.n) {
-                len = s.n - i;
+            len = j - i;
+        } else {
+            if (!recover) {
+                p->lex_failed = true;
+                p->lex_column = column;
+                p->lex_message = c == '\t' ? SL("character '\\t' is not allowed here")
+                    : fmt("character '%S' is not allowed here", str_sub(s, i, 1));
+                return;
             }
+            i++;
+            column++;
+            continue;
         }
         str text = str_sub(s, i, len);
         PUSH(p->t, ((token){text, column}));
@@ -520,8 +592,14 @@ static void tokenize(parser *p)
     }
 }
 
+static void tokenize(parser *p)
+{
+    lex_line(p, false);
+}
+
 static void fail_column(parser *p, str name)
 {
+    smap_set(&p->failed_names, name, TRUEP);
     if (!smap_has(p->columns, name)) {
         smap_set(p->columns, name, column_new(name, ctype_new(SL("invalid"), NULL, 0), false, false, NULL));
         smap_set(&p->invalid_types, name, TRUEP);
@@ -530,42 +608,73 @@ static void fail_column(parser *p, str name)
 
 static void fail_key(parser *p, bool primary)
 {
-    p->failed_primary = p->failed_primary || primary;
-    smap_set(&p->failed_key_tables, p->table->name, TRUEP);
     if (primary) {
+        p->failed_primary = true;
         smap_set(&p->failed_primary_tables, p->table->name, TRUEP);
+        return;
+    }
+    smap_set(&p->failed_key_tables, p->table->name, TRUEP);
+}
+
+/* 줄에 syntax 오류가 있었는지 본다(error의 syntax 줄 기록과 같은 key). */
+static bool syntax_here(parser *p)
+{
+    return smap_has(&p->syntax_lines, fmt("%d", p->line));
+}
+
+/* lex 오류가 난 table 줄(}가 아닌)은 Go의 tableLine처럼 상태와 실패한 이름만 남긴다. */
+static void lexed_table_line(parser *p)
+{
+    token first = p->t.v[0];
+    str w = first.text;
+    if (str_eqc(w, "settings")) {
+        p->table_phase = 2;
+        settings *s = dbs_alloc(sizeof *s);
+        s->comments = take_comments(p);
+        if (p->table->settings == NULL) {
+            p->table->settings = s;
+        }
+        p->settings_open[0] = p->line;
+        p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
+        p->state = S_SETTINGS;
+        return;
+    }
+    if (str_eqc(w, "primary")) {
+        fail_key(p, true);
+    } else if (str_eqc(w, "unique") || str_eqc(w, "index")) {
+        fail_key(p, false);
+    } else if (str_eqc(w, "foreign")) {
+        if (p->t.n > 2 && str_dotted(p->t.v[2].text)) {
+            smap_set(&p->failed_names, p->t.v[2].text, TRUEP);
+        }
+    } else if (str_eqc(w, "check")) {
+        /* 아무것도 알지 않는다 */
+    } else {
+        p->failed_lines++;
+        if (str_dotted(w)) {
+            fail_column(p, w);
+        }
     }
 }
 
-/* tab은 구분자가 아니다: 그 줄은 syntax error이고 더 읽지 않는다. 그 줄이 선언했을 column은 실패한 것으로 둔다. */
-static bool tab_line(parser *p)
+/* lex 오류가 난 줄이 읽을 것이 있는지 본다: 닫는 } 줄이거나 맨 위 줄이면 평소 dispatch로 간다. */
+static bool lexed_line(parser *p)
 {
-    for (size_t i = 0; i < p->t.n; i++) {
-        if (!str_eqc(p->t.v[i].text, "\t")) {
-            continue;
-        }
-        error(p, "syntax", p->line, p->t.v[i].column, SL("only the space character separates tokens"));
-        str first = SL("");
-        for (size_t k = 0; k < p->t.n; k++) {
-            if (!str_eqc(p->t.v[k].text, "\t")) {
-                first = p->t.v[k].text;
-                break;
-            }
-        }
-        if (p->state == S_TABLE && str_word(first)) {
-            if (str_eqc(first, "primary")) {
-                fail_key(p, true);
-            } else if (str_eqc(first, "unique") || str_eqc(first, "index")) {
-                fail_key(p, false);
-            } else if (str_eqc(first, "foreign") || str_eqc(first, "check") || str_eqc(first, "settings")) {
-                /* 아무것도 알지 않는다 */
-            } else {
-                fail_column(p, first);
-            }
-        }
+    if (p->t.n == 0) {
         return true;
     }
-    return false;
+    if (str_eqc(p->t.v[0].text, "}")) {
+        return false;
+    }
+    switch (p->state) {
+        case S_TOP:
+            return false;
+        case S_TABLE:
+            lexed_table_line(p);
+            return true;
+        default:
+            return true;
+    }
 }
 
 /* header error는 `dbspec 1 <name>`에서 벗어난 첫 글자, 빠진 부분이면 줄 끝의 다음 칸을 가리킨다. 그 앞은 모두
@@ -737,7 +846,7 @@ static void open_table(parser *p)
     }
     const token *n = tok(p, 1);
     token name;
-    if (n == NULL || !str_word(n->text)) {
+    if (n == NULL || !str_dotted(n->text)) {
         error(p, "syntax", p->line, n != NULL ? n->column : end_column(p), SL("expected a table name"));
         name = (token){SL(""), p->t.v[0].column};
     } else {
@@ -755,7 +864,13 @@ static void open_table(parser *p)
             error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is already defined or used", name.text));
         } else {
             if (smap_has(&p->constraint_names, name.text)) {
-                error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is named like an index, key, foreign key or check", name.text));
+                /* Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리다. */
+                const tpos *loc = smap_get(&p->constraint_names, name.text);
+                if (loc != TRUEP) {
+                    error(p, "name.duplicate", loc->line, loc->column, fmt("constraint name `%S` is the name of a table", name.text));
+                } else {
+                    error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is named like an index, key, foreign key or check", name.text));
+                }
             }
             tentry *e = dbs_alloc(sizeof *e);
             e->table = t;
@@ -778,7 +893,11 @@ static void open_table(parser *p)
     p->table_settings = (typeof(p->table_settings)){0};
     p->identities = (typeof(p->identities)){0};
     p->setting_keys = (smap){0};
+    p->failed_names = (smap){0};
+    p->defaults = (smap){0};
     p->failed_primary = false;
+    p->failed_lines = 0;
+    p->pk_lines = 0;
 }
 
 static ctype *intern_type(parser *p, str name, const zend_long *params, size_t np)
@@ -975,6 +1094,12 @@ static void column_line(parser *p)
         if (type == NULL) {
             smap_set(&p->invalid_types, name->text, TRUEP);
         }
+        if (has_default && value.text.n > 0) {
+            tdefault *d = dbs_alloc(sizeof *d);
+            d->value = value;
+            d->line = p->line;
+            smap_set(&p->defaults, name->text, d);
+        }
     }
     PUSH(p->table->columns, c);
 }
@@ -1032,6 +1157,7 @@ static void primary_key_line(parser *p)
         fail_key(p, true);
         return;
     }
+    p->pk_lines++;
     if (p->table->pk != NULL) {
         error(p, "key", p->line, first.column, SL("a table has exactly one primary key"));
         return;
@@ -1096,6 +1222,9 @@ static void foreign_key_line(parser *p)
     if (name == NULL) {
         return;
     }
+    /* 줄이 syntax error로 끝나면 그 이름은 실패한 것이다(Go markFailed). 성공하면 이전 실패 표시만 남긴다. */
+    bool failed_before = smap_has(&p->failed_names, name->text);
+    smap_set(&p->failed_names, name->text, TRUEP);
     lcols children, parents;
     size_t next, after;
     if (!column_list(p, 3, false, &children, &next) || !expect_at(p, next, "references")) {
@@ -1110,20 +1239,31 @@ static void foreign_key_line(parser *p)
     }
     size_t i = after;
     str actions[2] = {SL("restrict"), SL("restrict")};
+    token unknown[2];
+    bool is_unknown[2] = {false, false};
     const char *events[2] = {"delete", "update"};
     for (int e = 0; e < 2; e++) {
         if (tok_is(p, i, "on") && tok_is(p, i + 1, events[e])) {
             const token *action = tok(p, i + 2);
-            if (action == NULL || !listed(action->text, fk_actions)) {
-                error(p, "syntax", p->line, action != NULL ? action->column : end_column(p), SL("expected `restrict`, `cascade` or `set_null`"));
+            if (action == NULL || !str_dotted(action->text)) {
+                error(p, "syntax", p->line, action != NULL ? action->column : end_column(p), SL("expected an action"));
                 return;
             }
             actions[e] = action->text;
+            if (!listed(action->text, fk_actions)) {
+                unknown[e] = *action;
+                is_unknown[e] = true;
+            }
             i += 3;
         }
     }
     if (!end_at(p, i)) {
         return;
+    }
+    for (int e = 0; e < 2; e++) {
+        if (is_unknown[e]) {
+            error(p, "foreign_key", p->line, unknown[e].column, fmt("action `%S` is not restrict, cascade or set_null", unknown[e].text));
+        }
     }
     bool resolvable = name_tok(p, target);
     constraint_name(p, name);
@@ -1163,12 +1303,20 @@ static void foreign_key_line(parser *p)
     if (resolvable) {
         PUSH(p->deferred_fks, ((dfk_rec){copy_map(p->columns), f, p->line, name->column, target->column, parents, known}));
     }
+    if (!failed_before) {
+        smap_del(&p->failed_names, name->text);
+    }
 }
 
 static void check_line(parser *p)
 {
     const token *name = word_at(p, 1);
     if (name == NULL || !expect_at(p, 2, "(")) {
+        return;
+    }
+    /* Go: the tokens after `(` end with `)`; otherwise the line fails at its end and declares no check. */
+    if (p->t.n <= 3 || !str_eqc(p->t.v[p->t.n - 1].text, ")")) {
+        error(p, "syntax", p->line, end_column(p), SL("expected ')' at the end of the check"));
         return;
     }
     constraint_name(p, name);
@@ -1203,7 +1351,7 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
         audit_list l = {keyword, {0}};
         for (;;) {
             const token *name = i < t->n ? &t->v[i] : NULL;
-            if (name == NULL || !str_word(name->text)) {
+            if (name == NULL || !str_dotted(name->text)) {
                 error(p, "syntax", p->line, name != NULL ? name->column : end_column(p), SL("expected a column name"));
                 return false;
             }
@@ -1224,6 +1372,388 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
     return true;
 }
 
+/* ----------------------------------------------- markdown과 저장, 상태 기계 설정 */
+
+/* Go의 cursor처럼 줄의 token을 차례로 읽는다. 첫 실패가 syntax error 하나이고 줄의 나머지는 읽지 않는다. */
+typedef struct {
+    parser *p;
+    const tokens *t;
+    size_t i;
+} scursor;
+
+/* name token은 word 또는 number다. */
+static bool number_text(str s)
+{
+    size_t i = 0;
+    while (i < s.n && digitc(s.s[i])) {
+        i++;
+    }
+    if (i == 0) {
+        return false;
+    }
+    if (i == s.n) {
+        return true;
+    }
+    if (s.s[i] != '.' || i + 1 == s.n) {
+        return false;
+    }
+    for (size_t k = i + 1; k < s.n; k++) {
+        if (!digitc(s.s[k])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool name_text(str s)
+{
+    return str_dotted(s) || number_text(s);
+}
+
+/* 닫힌 문자열 literal이다. 닫히지 않은 따옴표는 한 글자 token이다. */
+static bool string_text(str s)
+{
+    return s.n >= 2 && s.s[0] == '\'' && s.s[s.n - 1] == '\'';
+}
+
+/* 문자열 literal의 값이다: 양 끝 따옴표를 빼고 '' 를 '로 바꾼다. */
+static str string_value(str s)
+{
+    return str_replace(str_sub(s, 1, s.n - 2), "''", "'");
+}
+
+static bool sc_more(const scursor *c)
+{
+    return c->i < c->t->n;
+}
+
+static bool sc_is(const scursor *c, const char *text)
+{
+    return sc_more(c) && str_eqc(c->t->v[c->i].text, text);
+}
+
+/* keyword 글자가 다음에 오고 전환의 from state가 아닌지 본다: 뒤에 `-`가 오면 그 글자는 state 이름이다. */
+static bool sc_form_ahead(const scursor *c, const char *word)
+{
+    return sc_is(c, word) && !(c->i + 1 < c->t->n && str_eqc(c->t->v[c->i + 1].text, "-"));
+}
+
+static bool sc_fail(scursor *c, str expected)
+{
+    if (sc_more(c)) {
+        const token *t = &c->t->v[c->i];
+        str shown = string_text(t->text) ? fmt("string %S", t->text) : fmt("`%S`", t->text);
+        error(c->p, "syntax", c->p->line, t->column, fmt("unexpected %S, expected %S", shown, expected));
+    } else {
+        error(c->p, "syntax", c->p->line, end_column(c->p), fmt("line ends, expected %S", expected));
+    }
+    return false;
+}
+
+static bool sc_keyword(scursor *c, const char *text)
+{
+    if (sc_is(c, text)) {
+        c->i++;
+        return true;
+    }
+    return sc_fail(c, fmt("`%s`", text));
+}
+
+static bool sc_name(scursor *c, str what, token *out)
+{
+    if (sc_more(c) && name_text(c->t->v[c->i].text)) {
+        *out = c->t->v[c->i++];
+        return true;
+    }
+    return sc_fail(c, what);
+}
+
+static bool sc_quoted(scursor *c, str what, token *out)
+{
+    if (sc_more(c) && string_text(c->t->v[c->i].text)) {
+        *out = c->t->v[c->i];
+        out->text = string_value(out->text);
+        c->i++;
+        return true;
+    }
+    return sc_fail(c, what);
+}
+
+static bool sc_oneof(scursor *c, str what, const char *const *words, size_t n, token *out)
+{
+    for (size_t k = 0; sc_more(c) && k < n; k++) {
+        if (str_eqc(c->t->v[c->i].text, words[k])) {
+            *out = c->t->v[c->i++];
+            return true;
+        }
+    }
+    return sc_fail(c, what);
+}
+
+static bool sc_arrow(scursor *c)
+{
+    if (sc_is(c, "-") && c->i + 1 < c->t->n && str_eqc(c->t->v[c->i + 1].text, ">")) {
+        c->i += 2;
+        return true;
+    }
+    return sc_fail(c, SL("`->`"));
+}
+
+/* 행 수 token이다: 음수는 `-`와 number 두 token이고, 그 밖에는 name token 하나다. */
+static bool sc_count(scursor *c, token *out)
+{
+    if (sc_is(c, "-")) {
+        token minus = c->t->v[c->i];
+        if (c->i + 1 < c->t->n && number_text(c->t->v[c->i + 1].text)) {
+            c->i += 2;
+            *out = (token){fmt("-%S", c->t->v[c->i - 1].text), minus.column};
+            return true;
+        }
+        c->i++;
+        return sc_fail(c, SL("a number after `-`"));
+    }
+    return sc_name(c, SL("a row count"), out);
+}
+
+static bool sc_end(scursor *c)
+{
+    return !sc_more(c) || sc_fail(c, SL("the end of the line"));
+}
+
+static bool take_name(scursor *c, str what, tokens *args)
+{
+    token t;
+    if (!sc_name(c, what, &t)) {
+        return false;
+    }
+    PUSH(*args, t);
+    return true;
+}
+
+/* state_machine 줄의 형식 낱말이다. 검사는 이 자리의 낱말로 줄의 종류를 정한다. */
+static void take_form(tokens *args, str form)
+{
+    PUSH(*args, ((token){form, 0}));
+}
+
+/* `(name, ...)`의 require 목록을 args 뒤에 이어 쓴다. */
+static bool take_requires(scursor *c, tokens *args)
+{
+    if (!sc_is(c, "(")) {
+        return sc_fail(c, SL("`(`"));
+    }
+    c->i++;
+    for (;;) {
+        if (!take_name(c, SL("a column name"), args)) {
+            return false;
+        }
+        if (sc_is(c, ")")) {
+            c->i++;
+            return true;
+        }
+        if (!sc_is(c, ",")) {
+            return sc_fail(c, SL("`,` or `)`"));
+        }
+        c->i++;
+    }
+}
+
+/* terminal과 전환 줄은 require 목록을 쓸 수 있고, 그 뒤에 줄이 끝나야 한다. */
+static bool state_tail(scursor *c, tokens *args)
+{
+    if (sc_is(c, "require")) {
+        c->i++;
+        if (!take_requires(c, args)) {
+            return false;
+        }
+    }
+    return sc_end(c);
+}
+
+/* markdown, store, key_prefix, title, body, order, checkbox와 state_machine 줄의 인자를 Go의 settingsLine과 같은 순서로 읽는다. */
+static bool new_setting_args(scursor *c, str keyword, tokens *args)
+{
+    if (str_eqc(keyword, "markdown") || str_eqc(keyword, "title") || str_eqc(keyword, "body") || str_eqc(keyword, "order")) {
+        return take_name(c, SL("a column name"), args);
+    }
+    if (str_eqc(keyword, "store")) {
+        static const char *const kinds[] = {"files", "document", "block"};
+        static const char *const shapes[] = {"list", "table"};
+        token kind;
+        if (!sc_oneof(c, SL("`files`, `document` or `block`"), kinds, 3, &kind)) {
+            return false;
+        }
+        PUSH(*args, kind);
+        if (str_eqc(kind.text, "block") && !take_name(c, SL("a foreign key name"), args)) {
+            return false;
+        }
+        if (str_eqc(kind.text, "files")) {
+            return sc_end(c);
+        }
+        token shape;
+        if (!sc_oneof(c, SL("`list` or `table`"), shapes, 2, &shape)) {
+            return false;
+        }
+        PUSH(*args, shape);
+        return sc_end(c);
+    }
+    if (str_eqc(keyword, "key_prefix")) {
+        token prefix;
+        if (!sc_quoted(c, SL("a key prefix in quotes"), &prefix)) {
+            return false;
+        }
+        PUSH(*args, prefix);
+        return sc_end(c);
+    }
+    if (str_eqc(keyword, "checkbox")) {
+        if (!take_name(c, SL("the state column"), args) || !take_name(c, SL("a state name"), args)) {
+            return false;
+        }
+        token glyph;
+        if (!sc_quoted(c, SL("a glyph in quotes"), &glyph)) {
+            return false;
+        }
+        PUSH(*args, glyph);
+        return sc_end(c);
+    }
+    /* state_machine: column, 형식 낱말, 형식의 인자다. */
+    if (!take_name(c, SL("the state column"), args)) {
+        return false;
+    }
+    if (sc_form_ahead(c, "initial")) {
+        c->i++;
+        take_form(args, SL("initial"));
+        return take_name(c, SL("a state name"), args) && sc_end(c);
+    }
+    if (sc_form_ahead(c, "terminal")) {
+        c->i++;
+        take_form(args, SL("terminal"));
+        return take_name(c, SL("a state name"), args) && state_tail(c, args);
+    }
+    if (sc_form_ahead(c, "history")) {
+        c->i++;
+        take_form(args, SL("history"));
+        return take_name(c, SL("the history table"), args) && sc_keyword(c, "row") && take_name(c, SL("the foreign key column"), args)
+            && sc_keyword(c, "from") && take_name(c, SL("the from column"), args) && sc_keyword(c, "to")
+            && take_name(c, SL("the to column"), args) && sc_keyword(c, "at") && take_name(c, SL("the at column"), args) && sc_end(c);
+    }
+    if (sc_form_ahead(c, "limit")) {
+        c->i++;
+        take_form(args, SL("limit"));
+        if (!take_name(c, SL("a state name"), args)) {
+            return false;
+        }
+        token count;
+        if (!sc_count(c, &count)) {
+            return false;
+        }
+        PUSH(*args, count);
+        return sc_end(c);
+    }
+    take_form(args, SL("transition"));
+    return take_name(c, SL("the from state"), args) && sc_arrow(c) && take_name(c, SL("the to state"), args) && state_tail(c, args);
+}
+
+/* 정수 문자열을 strconv.ParseInt(text, 10, 64)처럼 읽는다. 부호는 하나이고 범위를 넘으면 실패다. */
+static bool parse_count(str s, zend_long *out)
+{
+    size_t i = 0;
+    bool negative = false;
+    if (i < s.n && (s.s[i] == '-' || s.s[i] == '+')) {
+        negative = s.s[i] == '-';
+        i++;
+    }
+    if (i == s.n) {
+        return false;
+    }
+    uint64_t limit = negative ? (uint64_t)INT64_MAX + 1 : (uint64_t)INT64_MAX, acc = 0;
+    for (; i < s.n; i++) {
+        if (!digitc(s.s[i])) {
+            return false;
+        }
+        uint64_t d = (uint64_t)(s.s[i] - '0');
+        if (acc > (limit - d) / 10) {
+            return false;
+        }
+        acc = acc * 10 + d;
+    }
+    *out = (zend_long)(negative ? (uint64_t)0 - acc : acc);
+    return true;
+}
+
+/* 이 줄이 한 번만 쓸 수 있는 종류의 key다. state_machine, checkbox와 markdown의 종류는 따로 본다. */
+static bool once_kind(str kind)
+{
+    return str_eqc(kind, "store") || str_eqc(kind, "key_prefix") || str_eqc(kind, "title") || str_eqc(kind, "body") || str_eqc(kind, "order");
+}
+
+static bool new_setting_kind(str keyword)
+{
+    return str_eqc(keyword, "markdown") || str_eqc(keyword, "store") || str_eqc(keyword, "key_prefix") || str_eqc(keyword, "title")
+        || str_eqc(keyword, "body") || str_eqc(keyword, "order") || str_eqc(keyword, "checkbox") || str_eqc(keyword, "state_machine");
+}
+
+/* state_machine 줄의 형식이 쓰는 token 수다(column과 형식 낱말을 포함하고 require 목록 앞까지). */
+static size_t machine_fixed(str form)
+{
+    if (str_eqc(form, "history")) {
+        return 7;
+    }
+    if (str_eqc(form, "limit") || str_eqc(form, "transition")) {
+        return 4;
+    }
+    return 3;
+}
+
+/* 새 종류의 설정 줄 하나다. args는 검사가 쓰는 token이고 setting의 인자는 그 text다(limit의 행 수는 표준 십진수). */
+static void new_setting(parser *p, token keyword)
+{
+    scursor c = {p, &p->t, 1};
+    tokens args = {0};
+    if (!new_setting_args(&c, keyword.text, &args)) {
+        return;
+    }
+    str kind = keyword.text;
+    if (str_eqc(kind, "title") || str_eqc(kind, "body")) {
+        rawtb_rec raw = {p->table->name, kind};
+        PUSH(p->raw_title_body, raw);
+    }
+    if (once_kind(kind) || str_eqc(kind, "markdown")) {
+        str key = str_eqc(kind, "markdown") ? fmt("markdown %S", args.v[0].text) : kind;
+        if (smap_has(&p->setting_keys, key)) {
+            error(p, "setting", p->line, keyword.column, str_eqc(kind, "markdown")
+                ? fmt("setting `markdown` repeats for `%S`", args.v[0].text) : fmt("setting `%S` repeats", kind));
+            return;
+        }
+        smap_set(&p->setting_keys, key, TRUEP);
+    }
+    setting *s = dbs_alloc(sizeof *s);
+    s->kind = kind;
+    s->comments = take_comments(p);
+    if (str_eqc(kind, "state_machine")) {
+        /* 설정의 인자는 column과 형식의 인자이고, 형식은 form, require 목록은 requires다(PHP client Setting). */
+        size_t fixed = machine_fixed(args.v[1].text);
+        PUSH(s->args, args.v[0].text);
+        for (size_t i = 2; i < fixed; i++) {
+            PUSH(s->args, args.v[i].text);
+        }
+        s->form = args.v[1].text;
+        if (args.n > fixed) {
+            s->requires = dbs_alloc(sizeof(strs));
+            for (size_t i = fixed; i < args.n; i++) {
+                PUSH(*s->requires, args.v[i].text);
+            }
+        }
+    } else {
+        for (size_t i = 0; i < args.n; i++) {
+            PUSH(s->args, args.v[i].text);
+        }
+    }
+    PUSH(p->table->settings->list, s);
+    audit_lists none = {0};
+    PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, keyword.column, none}));
+}
+
 static void settings_line(parser *p)
 {
     token first = p->t.v[0];
@@ -1233,6 +1763,10 @@ static void settings_line(parser *p)
         end_at(p, 1);
         p->table->settings->closing = take_comments(p);
         p->state = S_TABLE;
+        return;
+    }
+    if (new_setting_kind(keyword)) {
+        new_setting(p, first);
         return;
     }
     size_t min, max;
@@ -1265,7 +1799,7 @@ static void settings_line(parser *p)
         args.n = 10;
     }
     for (size_t i = 0; i < args.n; i++) {
-        if (!str_word(args.v[i].text)) {
+        if (!str_dotted(args.v[i].text)) {
             error(p, "syntax", p->line, args.v[i].column, fmt("unexpected `%S` in a setting", args.v[i].text));
             return;
         }
@@ -1526,6 +2060,12 @@ static void table_line(parser *p)
         error(p, "order", p->line, first.column, SL("column lines come before key, index, foreign key, check and settings lines"));
     }
     column_line(p);
+    if (syntax_here(p)) {
+        p->failed_lines++;
+        if (str_dotted(first.text)) {
+            fail_column(p, first.text);
+        }
+    }
 }
 
 /* ------------------------------------------------------------- table checks */
@@ -1578,6 +2118,399 @@ static recorder *audit_lists_check(parser *p, const audit_lists *lists, str audi
     }
     r->include = lists->n == 1 && str_eqc(lists->v[0].keyword.text, "include");
     return r;
+}
+
+/* 새 종류의 설정 검사다. 열 이름은 Go의 columnRef처럼 이름 형식을 보고, 실패한 줄의 이름이면 따로 보고하지 않는다. */
+
+/* 정상 type의 column이다. type을 읽지 못한 column은 type이 invalid다. */
+static bool col_valid(const column *c)
+{
+    return !str_eqc(c->type->name, "invalid");
+}
+
+static bool text_type(const column *c)
+{
+    return str_eqc(c->type->name, "varchar") || str_eqc(c->type->name, "text");
+}
+
+static column *column_ref(parser *p, str kind, zend_long line, const token *t)
+{
+    if (!name_tok(p, t)) {
+        return NULL;
+    }
+    column *c = smap_get(p->columns, t->text);
+    bool failed = smap_has(&p->failed_names, t->text);
+    if (c == NULL) {
+        if (!failed) {
+            error(p, "setting", line, t->column, fmt("setting `%S` names unknown column `%S`", kind, t->text));
+        }
+        return NULL;
+    }
+    return failed && !col_valid(c) ? NULL : c;
+}
+
+static void foreign_key_ref(parser *p, zend_long line, const token *t)
+{
+    if (!name_tok(p, t) || smap_has(&p->failed_names, t->text)) {
+        return;
+    }
+    bool found = false;
+    for (size_t k = 0; k < p->table->fks.n; k++) {
+        found = found || str_eq(p->table->fks.v[k]->name, t->text);
+    }
+    if (!found) {
+        error(p, "setting", line, t->column, fmt("foreign key `%S` is not a foreign key of the table", t->text));
+    }
+}
+
+static void key_prefix_check(parser *p, zend_long line, zend_long at)
+{
+    if (p->failed_primary) {
+        return;
+    }
+    table *t = p->table;
+    if (p->pk_lines != 1 || t->pk == NULL || t->pk->columns.n != 1) {
+        error(p, "setting", line, at, SL("key_prefix needs a single-column primary key"));
+        return;
+    }
+    column *c = smap_get(p->columns, t->pk->columns.v[0]);
+    if (c != NULL && col_valid(c) && !str_eqc(c->type->name, "varchar")) {
+        error(p, "setting", line, at, fmt("key_prefix needs a varchar primary key, not %S", ctype_text(c->type)));
+    }
+}
+
+/* 식 text가 이름 name의 column을 참조하는지 본다: 문자열 literal 밖의 낱말 중 같은 것이 있으면 그렇다. */
+static bool expression_mentions(str s, str name)
+{
+    size_t i = 0;
+    while (i < s.n) {
+        char c = s.s[i];
+        if (c == '\'') {
+            i++;
+            while (i < s.n && s.s[i] != '\'') {
+                i++;
+            }
+            i++;
+        } else if (wordc(c)) {
+            size_t j = i;
+            while (j < s.n && wordc(s.s[j])) {
+                j++;
+            }
+            if (str_eq(str_sub(s, i, j - i), name)) {
+                return true;
+            }
+            i = j;
+        } else {
+            i++;
+        }
+    }
+    return false;
+}
+
+/* 이름이 primary key, unique key, index, foreign key 또는 check의 column인지 본다. */
+static bool in_key_or_check(const table *t, str name)
+{
+    if (t->pk != NULL && strs_has(&t->pk->columns, name)) {
+        return true;
+    }
+    for (size_t i = 0; i < t->uniques.n; i++) {
+        if (strs_has(&t->uniques.v[i]->columns, name)) {
+            return true;
+        }
+    }
+    for (size_t i = 0; i < t->indexes.n; i++) {
+        for (size_t k = 0; k < t->indexes.v[i]->columns.n; k++) {
+            if (str_eq(t->indexes.v[i]->columns.v[k].name, name)) {
+                return true;
+            }
+        }
+    }
+    for (size_t i = 0; i < t->fks.n; i++) {
+        if (strs_has(&t->fks.v[i]->columns, name)) {
+            return true;
+        }
+    }
+    for (size_t i = 0; i < t->checks.n; i++) {
+        if (expression_mentions(t->checks.v[i]->expression, name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void order_check(parser *p, const tsetting_rec *s)
+{
+    const token *name = &s->args.v[0];
+    column *c = column_ref(p, SL("order"), s->line, name);
+    if (c == NULL) {
+        return;
+    }
+    if ((col_valid(c) && !str_eqc(c->type->name, "i32") && !str_eqc(c->type->name, "i64")) || c->nullable || c->has_default) {
+        error(p, "setting", s->line, name->column, SL("order needs a non-null i32 or i64 column with no default"));
+        return;
+    }
+    if (in_key_or_check(p->table, name->text)) {
+        error(p, "setting", s->line, name->column, fmt("order column `%S` is in a key, index or check", name->text));
+    }
+}
+
+/* title, body와 markdown의 column 검사다. markdown은 null을 허용하고 title과 body는 허용하지 않는다. */
+static void text_setting_check(parser *p, const tsetting_rec *s)
+{
+    const token *name = &s->args.v[0];
+    column *c = column_ref(p, s->kind, s->line, name);
+    if (c == NULL) {
+        return;
+    }
+    if (str_eqc(s->kind, "markdown")) {
+        if (col_valid(c) && !text_type(c)) {
+            error(p, "setting", s->line, name->column, fmt("markdown needs a varchar or text column, not %S", ctype_text(c->type)));
+        }
+        return;
+    }
+    if ((col_valid(c) && !text_type(c)) || c->nullable) {
+        error(p, "setting", s->line, name->column, fmt("%S needs a non-null varchar or text column", s->kind));
+    }
+}
+
+/* 상태 기계 줄 하나의 column과 require 목록을 검사한다. */
+static void state_line_check(parser *p, const tsetting_rec *s)
+{
+    const tokens *a = &s->args;
+    column *c = column_ref(p, SL("state_machine"), s->line, &a->v[0]);
+    if (c != NULL && ((col_valid(c) && !text_type(c)) || c->nullable)) {
+        error(p, "setting", s->line, a->v[0].column, SL("state_machine needs a non-null varchar or text column"));
+    }
+    size_t fixed = str_eqc(a->v[1].text, "transition") ? 4 : str_eqc(a->v[1].text, "terminal") ? 3 : a->n;
+    for (size_t k = fixed; k < a->n; k++) {
+        column_ref(p, SL("state_machine"), s->line, &a->v[k]);
+    }
+}
+
+static void limits_check(parser *p, const tsettingv *limits, const smap *states)
+{
+    smap seen = {0};
+    for (size_t i = 0; i < limits->n; i++) {
+        const tsetting_rec *s = limits->v[i];
+        const token *state = &s->args.v[2], *count = &s->args.v[3];
+        if (!smap_has(states, state->text)) {
+            error(p, "setting", s->line, state->column, fmt("limit names state `%S` outside the state set", state->text));
+        } else if (smap_has(&seen, state->text)) {
+            error(p, "setting", s->line, state->column, fmt("limit repeats for state `%S`", state->text));
+        }
+        smap_set(&seen, state->text, TRUEP);
+        zend_long n = 0;
+        if (!parse_count(count->text, &n) || n < 1) {
+            error(p, "setting", s->line, count->column, fmt("limit needs a positive row count, not %S", count->text));
+        }
+    }
+}
+
+static void checkboxes_check(parser *p, const tsettingv *boxes, bool has_column, str column_name, const smap *states)
+{
+    if (boxes->n == 0) {
+        return;
+    }
+    const tsetting_rec *first = boxes->v[0];
+    if (!has_column) {
+        error(p, "setting", first->line, first->args.v[0].column, fmt("checkbox needs a state_machine on column `%S`", first->args.v[0].text));
+        return;
+    }
+    smap covered = {0}, glyphs = {0};
+    for (size_t i = 0; i < boxes->n; i++) {
+        const tsetting_rec *b = boxes->v[i];
+        const token *col = &b->args.v[0], *state = &b->args.v[1], *glyph = &b->args.v[2];
+        if (column_ref(p, SL("checkbox"), b->line, col) == NULL) {
+            continue;
+        }
+        if (!str_eq(col->text, column_name)) {
+            error(p, "setting", b->line, col->column, fmt("checkbox names column `%S`, but the state_machine column is `%S`", col->text, column_name));
+            continue;
+        }
+        if (!smap_has(states, state->text)) {
+            error(p, "setting", b->line, state->column, fmt("checkbox names state `%S` outside the state set", state->text));
+        } else if (smap_has(&covered, state->text)) {
+            error(p, "setting", b->line, state->column, fmt("checkbox repeats for state `%S`", state->text));
+        }
+        smap_set(&covered, state->text, TRUEP);
+        if (utf8_length(glyph->text) != 1) {
+            error(p, "setting", b->line, glyph->column, SL("a checkbox glyph is one character"));
+        } else if (smap_has(&glyphs, glyph->text)) {
+            error(p, "setting", b->line, glyph->column, fmt("checkbox glyph `%S` repeats", glyph->text));
+        }
+        smap_set(&glyphs, glyph->text, TRUEP);
+    }
+    strs names = {0};
+    smap_keys_sorted(states, &names);
+    for (size_t k = 0; k < names.n; k++) {
+        if (!smap_has(&covered, names.v[k])) {
+            error(p, "setting", first->line, first->at, fmt("checkbox does not cover state `%S`", names.v[k]));
+        }
+    }
+}
+
+/* state_machine의 줄들을 줄 사이에서 검사한다: table마다 column 하나, initial과 전환과 terminal의 상호 일치, limit,
+ * history 기록(문서 끝에서 검사한다), state column의 default와 checkbox 줄이다. */
+static void state_machine_check(parser *p)
+{
+    bool has_column = false;
+    str column_name = SL("");
+    smap states = {0}, initials = {0}, terminals = {0};
+    tsettingv lines = {0}, limits = {0}, boxes = {0};
+    tsetting_rec *history = NULL;
+    tokens requires = {0};
+    for (size_t i = 0; i < p->table_settings.n; i++) {
+        tsetting_rec *s = &p->table_settings.v[i];
+        if (str_eqc(s->kind, "checkbox")) {
+            PUSH(boxes, s);
+            continue;
+        }
+        if (!str_eqc(s->kind, "state_machine")) {
+            continue;
+        }
+        const tokens *a = &s->args;
+        if (!has_column) {
+            has_column = true;
+            column_name = a->v[0].text;
+        } else if (!str_eq(a->v[0].text, column_name)) {
+            error(p, "setting", s->line, a->v[0].column, fmt("state_machine repeats for `%S`; a table holds one machine", a->v[0].text));
+        }
+        if (str_eqc(a->v[1].text, "history")) {
+            if (history != NULL) {
+                error(p, "setting", s->line, s->at, SL("state_machine repeats history"));
+                continue;
+            }
+            history = s;
+        } else if (str_eqc(a->v[1].text, "limit")) {
+            PUSH(limits, s);
+        } else {
+            PUSH(lines, s);
+            size_t fixed = str_eqc(a->v[1].text, "transition") ? 4 : 3;
+            for (size_t k = fixed; k < a->n; k++) {
+                PUSH(requires, a->v[k]);
+            }
+            if (str_eqc(a->v[1].text, "transition")) {
+                smap_set(&states, a->v[2].text, TRUEP);
+                smap_set(&states, a->v[3].text, TRUEP);
+            } else {
+                smap_set(&states, a->v[2].text, TRUEP);
+                if (str_eqc(a->v[1].text, "initial")) {
+                    smap_set(&initials, a->v[2].text, TRUEP);
+                } else {
+                    smap_set(&terminals, a->v[2].text, TRUEP);
+                }
+            }
+        }
+    }
+    for (size_t i = 0; i < lines.n; i++) {
+        const tsetting_rec *s = lines.v[i];
+        const token *state = &s->args.v[2];
+        if (str_eqc(s->args.v[1].text, "initial") && smap_has(&terminals, state->text)) {
+            error(p, "setting", s->line, s->at, fmt("an initial state `%S` is also terminal", state->text));
+        }
+        if (str_eqc(s->args.v[1].text, "transition") && smap_has(&terminals, state->text)) {
+            error(p, "setting", s->line, s->at, fmt("a transition leaves the terminal state `%S`", state->text));
+        }
+    }
+    limits_check(p, &limits, &states);
+    if (history != NULL) {
+        column *state = has_column ? smap_get(p->columns, column_name) : NULL;
+        dstate_rec r = {0};
+        r.owner = p->table->name;
+        r.state = state != NULL && col_valid(state) ? state : NULL;
+        r.args = history->args;
+        r.requires = requires;
+        r.line = history->line;
+        for (size_t k = 0; k < requires.n; k++) {
+            PUSH(r.required, (column *)smap_get(p->columns, requires.v[k].text));
+        }
+        PUSH(p->deferred_states, r);
+    }
+    if (has_column) {
+        tdefault *d = smap_get(&p->defaults, column_name);
+        if (d != NULL) {
+            str value = string_text(d->value.text) ? string_value(d->value.text) : d->value.text;
+            if (!smap_has(&initials, value)) {
+                error(p, "setting", d->line, d->value.column, fmt("the default `%S` of the state column is not an initial state", value));
+            }
+        }
+    }
+    checkboxes_check(p, &boxes, has_column, column_name, &states);
+}
+
+/* 문서 끝에서 history 줄의 기록 table을 검사한다. 기록 table은 이 문서나 쓴 문서의 table이다. */
+static void check_state_histories(parser *p)
+{
+    for (size_t i = 0; i < p->deferred_states.n; i++) {
+        dstate_rec *r = &p->deferred_states.v[i];
+        const token *name = &r->args.v[2], *row = &r->args.v[3];
+        if (!name_tok(p, name)) {
+            continue;
+        }
+        tentry *entry = smap_get(&p->tables, name->text);
+        if (entry == NULL) {
+            error(p, "setting", r->line, name->column, fmt("history table `%S` is not a table of this document or a used table", name->text));
+            continue;
+        }
+        if (r->state == NULL) {
+            continue;
+        }
+        table *h = entry->table;
+        smap *hcols = entry->columns;
+        bool fk = false;
+        for (size_t k = 0; k < h->fks.n; k++) {
+            const fkey *f = h->fks.v[k];
+            fk = fk || (f->columns.n == 1 && str_eq(f->columns.v[0], row->text) && str_eq(f->table, r->owner));
+        }
+        if (!fk) {
+            error(p, "setting", r->line, name->column, fmt("history table `%S` has no foreign key of `%S` to table `%S`", name->text, row->text, r->owner));
+        }
+        smap named = {0};
+        smap_set(&named, row->text, TRUEP);
+        ctype *datetime = ctype_new(SL("datetime"), (zend_long[]){6}, 1);
+        const token *typed[3] = {&r->args.v[4], &r->args.v[5], &r->args.v[6]};
+        const ctype *wants[3] = {r->state->type, r->state->type, datetime};
+        for (int k = 0; k < 3; k++) {
+            smap_set(&named, typed[k]->text, TRUEP);
+            column *c = smap_get(hcols, typed[k]->text);
+            if (c == NULL) {
+                error(p, "setting", r->line, name->column, fmt("history table `%S` has no column `%S`", name->text, typed[k]->text));
+            } else if (col_valid(c) && !ctype_same(c->type, wants[k])) {
+                error(p, "setting", r->line, name->column, fmt("history column `%S` has type %S, not %S", typed[k]->text, ctype_text(c->type), ctype_text(wants[k])));
+            }
+        }
+        for (size_t k = 0; k < r->requires.n; k++) {
+            const token *ref = &r->requires.v[k];
+            smap_set(&named, ref->text, TRUEP);
+            column *c = r->required.v[k];
+            if (c == NULL || !col_valid(c)) {
+                continue;
+            }
+            column *hc = smap_get(hcols, ref->text);
+            if (hc == NULL) {
+                error(p, "setting", r->line, name->column, fmt("history table `%S` has no column `%S` of the required column", name->text, ref->text));
+            } else if (!hc->nullable || (col_valid(hc) && !ctype_same(hc->type, c->type))) {
+                error(p, "setting", r->line, name->column, fmt("history column `%S` is not a nullable %S column", ref->text, ctype_text(c->type)));
+            }
+        }
+        if (h->pk != NULL) {
+            for (size_t k = 0; k < h->pk->columns.n; k++) {
+                smap_set(&named, h->pk->columns.v[k], TRUEP);
+            }
+        }
+        for (size_t k = 0; k < h->columns.n; k++) {
+            str column_name = h->columns.v[k]->name;
+            if (!smap_has(&named, column_name)) {
+                error(p, "setting", r->line, name->column, fmt("history table `%S` has column `%S`, which the history line does not name", name->text, column_name));
+            }
+        }
+        for (size_t k = 0; k < p->raw_title_body.n; k++) {
+            const rawtb_rec *raw = &p->raw_title_body.v[k];
+            if (str_eq(raw->table, name->text)) {
+                error(p, "setting", r->line, name->column, fmt("history table `%S` declares %S, which a history table does not", name->text, raw->kind));
+            }
+        }
+    }
 }
 
 static void check_settings(parser *p, bool changed_by_foreign_keys)
@@ -1661,19 +2594,19 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             token *source = &a->v[0], *target = &a->v[1];
             column *encrypted = setting_column(p, kind, line, source);
             if (dbs_valid_name(source->text) && smap_has(p->columns, source->text) && !smap_has(&aes, source->text)) {
-                error(p, "setting", line, source->column, fmt("setting `blind_index` needs a column with the `aes` codec, not `%S`", source->text));
+                error(p, "setting", line, at, fmt("setting `blind_index` needs a column with the `aes` codec, not `%S`", source->text));
             }
             column *index = setting_column(p, kind, line, target);
             if (index != NULL) {
                 const ctype *type = index->type;
                 if (!(str_eqc(type->name, "varchar") && type->p[0] >= 64) || (encrypted != NULL && encrypted->nullable != index->nullable)
-                    || smap_has(&aes, target->text) || !smap_has(&single, target->text)) {
+                    || smap_has(&aes, target->text) || (!smap_has(&single, target->text) && !smap_has(&p->failed_key_tables, p->table->name))) {
                     error(p, "setting", line, target->column, fmt("blind index column `%S` is a varchar(n >= 64) column with the AES column's nullability, not AES-encoded, and the only column of an index or unique key", target->text));
                 }
             }
         } else if (str_eqc(kind, "navigation")) {
             if (dbs_valid_name(a->v[0].text)) {
-                bool found = false;
+                bool found = smap_has(&p->failed_names, a->v[0].text);
                 for (size_t k = 0; k < p->table->fks.n; k++) {
                     found = found || str_eq(p->table->fks.v[k]->name, a->v[0].text);
                 }
@@ -1681,6 +2614,18 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
                     error(p, "setting", line, a->v[0].column, fmt("setting `navigation` names unknown foreign key `%S`", a->v[0].text));
                 }
             }
+        } else if (str_eqc(kind, "markdown") || str_eqc(kind, "title") || str_eqc(kind, "body")) {
+            text_setting_check(p, s);
+        } else if (str_eqc(kind, "store")) {
+            if (str_eqc(a->v[0].text, "block")) {
+                foreign_key_ref(p, line, &a->v[1]);
+            }
+        } else if (str_eqc(kind, "key_prefix")) {
+            key_prefix_check(p, line, at);
+        } else if (str_eqc(kind, "order")) {
+            order_check(p, s);
+        } else if (str_eqc(kind, "state_machine")) {
+            state_line_check(p, s);
         } else if (str_eqc(kind, "immutable")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));
@@ -1696,7 +2641,7 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             }
             recorder *recorded = audit_lists_check(p, &s->lists, a->v[1].text, line, kind);
             if (dbs_valid_name(a->v[2].text)) {
-                PUSH(p->deferred_records, ((drecord_rec){p->table, audit, *a, line, smap_has(&p->failed_key_tables, p->table->name)}));
+                PUSH(p->deferred_records, ((drecord_rec){p->table, audit, *a, line, smap_has(&p->failed_key_tables, p->table->name) || smap_has(&p->failed_primary_tables, p->table->name)}));
             }
             if (dbs_valid_name(a->v[0].text) && dbs_valid_name(a->v[3].text) && dbs_valid_name(a->v[4].text)) {
                 PUSH(p->deferred_audits, ((daudit_rec){p->table, p->columns, *a, audit != NULL ? audit->type : NULL, line, recorded}));
@@ -1704,6 +2649,7 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             generated_name(p, line, at, fmt("%S$audit_insert", p->table->name));
         }
     }
+    state_machine_check(p);
 }
 
 static bool prefix_equal(const strs *columns, const strs *fk)
@@ -1724,16 +2670,23 @@ static void close_table(parser *p)
 {
     table *t = p->table;
     pkey *primary = t->pk;
-    if (p->columns->live == 0) {
+    if (p->columns->live == 0 && p->failed_lines == 0) {
         error(p, "column", p->table_name[0], p->table_name[1], fmt("table `%S` has no column", t->name));
     }
     if (primary == NULL && !p->failed_primary) {
         error(p, "key", p->table_name[0], p->table_name[1], fmt("table `%S` has no primary key", t->name));
     }
-    for (size_t i = 0; i < p->identities.n; i++) {
+    bool resolved = primary == NULL;
+    if (primary != NULL) {
+        resolved = true;
+        for (size_t k = 0; k < primary->columns.n; k++) {
+            resolved = resolved && dbs_valid_name(primary->columns.v[k]) && !smap_has(&p->failed_names, primary->columns.v[k]);
+        }
+    }
+    for (size_t i = 0; i < p->identities.n && i < 1; i++) {
         identity_rec *r = &p->identities.v[i];
         bool only = primary != NULL && primary->columns.n == 1 && str_eq(primary->columns.v[0], r->name);
-        if (!r->rejected && !p->failed_primary && !only) {
+        if (!r->rejected && !p->failed_primary && resolved && !only) {
             error(p, "column", r->line, r->column, fmt("identity column `%S` must be the only primary key column", r->name));
         }
     }
@@ -1771,7 +2724,7 @@ static void close_table(parser *p)
         for (size_t k = 0; k < leading.n && !covered; k++) {
             covered = prefix_equal(&leading.v[k], &f->columns);
         }
-        if (!covered && !smap_has(&p->failed_key_tables, t->name)) {
+        if (!covered && !smap_has(&p->failed_key_tables, t->name) && !smap_has(&p->failed_primary_tables, t->name)) {
             error(p, "foreign_key", r->line, r->column, fmt("foreign key `%S` needs an index or key whose leading columns are its columns", f->name));
         }
         if (str_eqc(f->on_delete, "set_null") || str_eqc(f->on_update, "set_null")) {
@@ -1838,7 +2791,7 @@ static void check_foreign_key_targets(parser *p)
         for (size_t k = 0; k < tt->uniques.n && !matches; k++) {
             matches = strs_eq(&tt->uniques.v[k]->columns, &f->refs);
         }
-        if (!matches && !smap_has(&p->failed_key_tables, f->table)) {
+        if (!matches && !smap_has(&p->failed_key_tables, f->table) && !smap_has(&p->failed_primary_tables, f->table)) {
             error(p, "foreign_key", r->line, r->at, fmt("foreign key `%S` references columns that are not the primary key or a unique key of `%S`", f->name, f->table));
         }
         for (size_t k = 0; k < f->columns.n; k++) {
@@ -2032,8 +2985,13 @@ static void read_source(parser *p, str source)
             continue;
         }
         tokenize(p);
-        if (tab_line(p)) {
-            continue;
+        if (p->lex_failed) {
+            error(p, "syntax", p->line, p->lex_column, p->lex_message);
+            /* 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다. */
+            lex_line(p, true);
+            if (lexed_line(p)) {
+                continue;
+            }
         }
         switch (p->state) {
             case S_TOP:
@@ -2064,6 +3022,7 @@ static void read_source(parser *p, str source)
     check_foreign_key_targets(p);
     check_audit_records(p);
     check_audit_histories(p);
+    check_state_histories(p);
 }
 
 typedef struct {

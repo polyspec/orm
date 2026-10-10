@@ -120,6 +120,22 @@ class DbspecSetting:
     previous: str = ''
     exclude: tuple | None = None
     include: tuple | None = None
+    # markdown, store, key_prefix, title, body, order, checkbox, state_machine 전용. store의 kind는 form,
+    # state_machine의 form은 initial, terminal, transition, history, limit이다.
+    form: str = ''
+    shape: str = ''
+    prefix: str = ''
+    glyph: str = ''
+    state: str = ''
+    from_state: str = ''
+    to_state: str = ''
+    requires: tuple = ()
+    history: str = ''
+    row: str = ''
+    from_column: str = ''
+    to_column: str = ''
+    at_column: str = ''
+    count: str = ''
 
 
 @dataclass(frozen=True)

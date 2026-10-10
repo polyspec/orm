@@ -8,8 +8,12 @@ CANONICAL = 'canonical'
 MANIFEST = 'manifest'
 SCHEMA = 'schema'
 
+# settings 줄의 쓰는 순서(engine/dbspec/emit.go의 mappingSettings 다음 immutable과 audit). 같은 종류 안에서는
+# 정렬 key(codec과 blind_index는 column, navigation은 foreign key, markdown은 column)로, state_machine은
+# 줄, history, limit 순서로 나누어 쓴다.
 _SETTING_ORDER = ('entity', 'updated', 'soft_delete', 'select_explicit', 'codec',
-                  'aes_version', 'blind_index', 'navigation', 'immutable', 'audit')
+                  'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix',
+                  'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit')
 _SCHEMA_SETTINGS = frozenset({'immutable', 'audit'})
 
 
@@ -49,12 +53,22 @@ def _audit_line(setting, kind: str, columns) -> str:
     return f'{head} {kind} ({", ".join(columns)})'
 
 
-def _setting_key(setting) -> str:
-    if setting.kind in ('codec', 'blind_index'):
-        return setting.column
-    if setting.kind == 'navigation':
-        return setting.foreign_key
-    return ''
+def quote(value: str) -> str:
+    """작은따옴표 string literal이다: 안의 작은따옴표는 두 개로 쓴다."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _setting_key(setting) -> tuple:
+    if setting.kind in ('codec', 'blind_index', 'markdown'):
+        key = setting.column
+    elif setting.kind == 'navigation':
+        key = setting.foreign_key
+    else:
+        key = ''
+    part = 0
+    if setting.kind == 'state_machine':
+        part = {'history': 1, 'limit': 2}.get(setting.form, 0)
+    return key, part
 
 
 def _setting_text(setting, table: DbspecTable, view: str) -> str:
@@ -73,6 +87,34 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
         return f'navigation {setting.foreign_key} {setting.child_name} {setting.parent_name}'
     if kind == 'immutable':
         return 'immutable'
+    if kind == 'markdown':
+        return f'markdown {setting.column}'
+    if kind == 'store':
+        if setting.form == 'files':
+            return 'store files'
+        if setting.form == 'block':
+            return f'store block {setting.foreign_key} {setting.shape}'
+        return f'store document {setting.shape}'
+    if kind == 'key_prefix':
+        return f'key_prefix {quote(setting.prefix)}'
+    if kind in ('title', 'body', 'order'):
+        return f'{kind} {setting.column}'
+    if kind == 'checkbox':
+        return f'checkbox {setting.column} {setting.state} {quote(setting.glyph)}'
+    if kind == 'state_machine':
+        head = f'state_machine {setting.column} '
+        if setting.form == 'history':
+            return (f'{head}history {setting.history} row {setting.row} from {setting.from_column} '
+                    f'to {setting.to_column} at {setting.at_column}')
+        if setting.form == 'limit':
+            return f'{head}limit {setting.state} {setting.count}'
+        if setting.form in ('initial', 'terminal'):
+            text = f'{head}{setting.form} {setting.state}'
+        else:
+            text = f'{head}{setting.from_state} -> {setting.to_state}'
+        if setting.requires:
+            text += f' require ({", ".join(setting.requires)})'
+        return text
     # schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의
     # exclude 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
     if view == SCHEMA:

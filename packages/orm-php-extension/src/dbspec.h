@@ -71,6 +71,8 @@ str str_lower(str s);
 str str_upper(str s);
 bool str_digits(str s);                  /* ctype_digit: 비어 있지 않고 모두 0-9 */
 bool str_word(str s);                    /* [A-Za-z0-9_]+ */
+bool str_dotted(str s);                  /* a Go word token: [A-Za-z0-9_.]+ */
+bool str_decimal(str s);                 /* [0-9]+\.[0-9]+ */
 str str_replace(str s, const char *from, const char *to);
 str str_repeat(const char *s, size_t times);
 size_t utf8_length(str s);               /* code point 수(올바른 UTF-8) */
@@ -222,6 +224,8 @@ typedef struct {
     strs args;
     strs comments;
     strs *exclude, *include; /* NULL이면 목록이 없다 */
+    str form;                /* state_machine 줄의 형태, 다른 설정은 SNULL이다 */
+    strs *requires;          /* state_machine의 require 목록, 없으면 NULL이다 */
 } setting;
 
 typedef VEC(setting *) settingv;

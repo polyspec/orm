@@ -2,6 +2,7 @@
 //! line ends, sorted constraint and setting lines, comments before the line
 //! they are attached to.
 
+use super::literal::quote;
 use super::model::*;
 
 /// What an emission writes: the canonical text, the manifest text without
@@ -193,6 +194,31 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
         Setting::AesVersion(column) => format!("aes_version {}", column.text),
         Setting::BlindIndex(aes, target) => format!("blind_index {} {}", aes.text, target.text),
         Setting::Navigation(key, child, parent) => format!("navigation {} {} {}", key.text, child.text, parent.text),
+        Setting::Markdown(column) => format!("markdown {}", column.text),
+        Setting::Store { kind, foreign, shape } => match (kind.text.as_str(), foreign, shape) {
+            ("block", Some(foreign), Some(shape)) => format!("store block {} {}", foreign.text, shape.text),
+            ("document", _, Some(shape)) => format!("store document {}", shape.text),
+            _ => "store files".into(),
+        },
+        Setting::KeyPrefix(prefix) => format!("key_prefix {}", quote(&prefix.text)),
+        Setting::Title(column) => format!("title {}", column.text),
+        Setting::Body(column) => format!("body {}", column.text),
+        Setting::Order(column) => format!("order {}", column.text),
+        Setting::Checkbox { column, state, glyph } => format!("checkbox {} {} {}", column.text, state.text, quote(&glyph.text)),
+        Setting::StateMachine { column, line } => {
+            let head = format!("state_machine {} ", column.text);
+            let requires = |list: &[Name]| if list.is_empty() { String::new() } else { format!(" require ({})", names(list)) };
+            match line {
+                StateLine::Initial(state) => format!("{head}initial {}", state.text),
+                StateLine::Terminal(state, list) => format!("{head}terminal {}{}", state.text, requires(list)),
+                StateLine::Transition { from, to, requires: list } => format!("{head}{} -> {}{}", from.text, to.text, requires(list)),
+                StateLine::History(h) => format!("{head}history {} row {} from {} to {} at {}", h.table.text, h.row.text, h.from.text, h.to.text, h.at.text),
+                // The count of a valid document is a positive integer; its text is kept when it is not one.
+                StateLine::Limit { state, count } => {
+                    format!("{head}limit {} {}", state.text, count.text.parse::<i64>().map_or_else(|_| count.text.clone(), |n| n.to_string()))
+                }
+            }
+        }
         Setting::Immutable => "immutable".into(),
         Setting::Audit { into, column, references, action, previous, lists } => {
             // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude

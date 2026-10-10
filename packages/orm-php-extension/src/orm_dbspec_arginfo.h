@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: b627c10e0769e04883505f8d11dd9dbacc66c696 */
+ * Stub hash: 3c8d16907e44e4706977e277e53e718d997706ea */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -89,6 +89,8 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting___constr
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, comments, IS_ARRAY, 0, "[]")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, exclude, IS_ARRAY, 1, "null")
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, include, IS_ARRAY, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, form, IS_STRING, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, requires, IS_ARRAY, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Setting_records, 0, 1, _IS_BOOL, 0)
@@ -1297,6 +1299,18 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Setting(void)
 	zval property_include_default_value;
 	ZVAL_UNDEF(&property_include_default_value);
 	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_INCLUDE), &property_include_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+
+	zval property_form_default_value;
+	ZVAL_UNDEF(&property_form_default_value);
+	zend_string *property_form_name = zend_string_init("form", sizeof("form") - 1, 1);
+	zend_declare_typed_property(class_entry, property_form_name, &property_form_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_form_name);
+
+	zval property_requires_default_value;
+	ZVAL_UNDEF(&property_requires_default_value);
+	zend_string *property_requires_name = zend_string_init("requires", sizeof("requires") - 1, 1);
+	zend_declare_typed_property(class_entry, property_requires_name, &property_requires_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_requires_name);
 
 	return class_entry;
 }

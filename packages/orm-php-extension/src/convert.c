@@ -259,11 +259,22 @@ static bool in_setting(zval *v, setting **out)
     GET(v, arguments);
     GET(v, exclude);
     GET(v, include);
+    GET(v, form);
+    GET(v, requires);
     setting *s = dbs_alloc(sizeof *s);
     s->kind = str_z(Z_STR_P(kind_));
     if (!in_strs(arguments_, &s->args, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$arguments")
         || !in_comments(v, &s->comments, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$comments")) {
         return false;
+    }
+    if (Z_TYPE_P(form_) == IS_STRING) {
+        s->form = str_z(Z_STR_P(form_));
+    }
+    if (Z_TYPE_P(requires_) == IS_ARRAY) {
+        s->requires = dbs_alloc(sizeof(strs));
+        if (!in_strs(requires_, s->requires, "Polyspec\\Orm\\Dbspec\\Native\\Setting::$requires")) {
+            return false;
+        }
     }
     if (Z_TYPE_P(exclude_) == IS_ARRAY) {
         s->exclude = dbs_alloc(sizeof(strs));
@@ -526,6 +537,16 @@ static void out_setting(const setting *s, zval *out)
         obj_put_strs(out, "include", s->include);
     } else {
         obj_put_null(out, "include");
+    }
+    if (s->form.s != NULL) {
+        obj_put_str(out, "form", s->form);
+    } else {
+        obj_put_null(out, "form");
+    }
+    if (s->requires != NULL) {
+        obj_put_strs(out, "requires", s->requires);
+    } else {
+        obj_put_null(out, "requires");
     }
 }
 

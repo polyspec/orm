@@ -39,8 +39,18 @@ impl<'a> Token<'a> {
     }
 }
 
+/// Whether `c` continues a word. A `.` is a word character as in Go's isWordRune, so `a.b` is one token.
 fn word_char(c: char) -> bool {
-    c.is_ascii_alphanumeric() || c == '_' || (!c.is_ascii() && !c.is_whitespace())
+    c.is_ascii_alphanumeric() || c == '_' || c == '.' || (!c.is_ascii() && !c.is_whitespace())
+}
+
+/// Whether `run` is digits with an optional `.digits` fraction, the form of a Number token.
+fn is_number(run: &str) -> bool {
+    let mut parts = run.split('.');
+    let whole = parts.next().unwrap_or("");
+    let fraction = parts.next();
+    let digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    digits(whole) && parts.next().is_none() && fraction.map_or(true, digits)
 }
 
 /// Tokenizes `line` (without its line end). Only the space separates tokens.
@@ -67,19 +77,7 @@ pub(crate) fn tokenize(line: &str, number: usize) -> Vec<Token<'_>> {
                 }
                 j += d.len_utf8();
             }
-            let run = &line[i..j];
-            if run.bytes().all(|b| b.is_ascii_digit()) {
-                kind = Kind::Number;
-                if j + 1 < bytes.len() && bytes[j] == b'.' && bytes[j + 1].is_ascii_digit() {
-                    let mut k = j + 1;
-                    while k < bytes.len() && bytes[k].is_ascii_digit() {
-                        k += 1;
-                    }
-                    j = k;
-                }
-            } else {
-                kind = Kind::Word;
-            }
+            kind = if is_number(&line[i..j]) { Kind::Number } else { Kind::Word };
             i = j;
         } else if c == '\'' {
             let mut j = i + 1;

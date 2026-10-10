@@ -217,6 +217,42 @@ bool str_word(str s)
     return true;
 }
 
+/* 단어 token은 Go의 isWordRune처럼 `.`을 포함한다(`a.b`는 한 token이고 이름 형식 검사가 거부한다). */
+bool str_dotted(str s)
+{
+    if (s.n == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < s.n; i++) {
+        unsigned char c = (unsigned char)s.s[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* 수의 모양 `[0-9]+\.[0-9]+`인지 본다(Go의 isNumberText 중 소수부가 있는 것). */
+bool str_decimal(str s)
+{
+    size_t i = 0;
+    size_t digits = 0;
+    while (i < s.n && s.s[i] >= '0' && s.s[i] <= '9') {
+        i++;
+        digits++;
+    }
+    if (digits == 0 || i >= s.n || s.s[i] != '.') {
+        return false;
+    }
+    i++;
+    size_t fraction = 0;
+    while (i < s.n && s.s[i] >= '0' && s.s[i] <= '9') {
+        i++;
+        fraction++;
+    }
+    return fraction > 0 && i == s.n;
+}
+
 str str_replace(str s, const char *from, const char *to)
 {
     size_t fn = strlen(from);

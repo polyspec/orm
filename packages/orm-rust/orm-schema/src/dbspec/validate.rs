@@ -3,8 +3,8 @@
 
 use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
-use super::parser::{name_problem, well_formed, Diag, FailedKeys, MAX_NAME_BYTES};
-use std::collections::{HashMap, HashSet};
+use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, MAX_NAME_BYTES};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
 const MAX_KEY_VARCHAR: u32 = 640;
@@ -30,6 +30,11 @@ struct TableScope<'s, 'd> {
 }
 
 impl<'s, 'd> TableScope<'s, 'd> {
+    /// A column whose line failed, which the rules that name it report nothing about.
+    fn failed(&self, name: &str) -> bool {
+        self.unresolved.is_some_and(|u| u.contains(name))
+    }
+
     fn column(&self, name: &str) -> Lookup<'d> {
         match self.table.column(name) {
             Some(column) => Lookup::Found(column),
@@ -80,6 +85,7 @@ pub(crate) fn validate(
     document: &Document,
     unresolved: &[Vec<String>],
     failed_keys: &[FailedKeys],
+    defaults: &[Vec<DefaultToken>],
     used: &[Option<&Document>],
     diags: &mut Vec<Diag>,
     literals: &mut Vec<CheckLiterals>,
@@ -127,7 +133,8 @@ pub(crate) fn validate(
     }
     constraint_names(document, &used_documents, diags);
     for index in 0..document.tables.len() {
-        TableRules { scope: &scope, index, own: scope.own(index), diags: &mut *diags, literals: &mut *literals }.run();
+        let defaults = defaults.get(index).map_or(&[][..], Vec::as_slice);
+        TableRules { scope: &scope, index, own: scope.own(index), defaults, diags: &mut *diags, literals: &mut *literals }.run();
     }
     diagrams(document, &scope, diags);
 }
@@ -176,6 +183,19 @@ fn constraint_names(document: &Document, used: &[(&Name, &Document)], diags: &mu
     }
 }
 
+/// Whether a primary key, unique key, index, foreign key or check of `table` names `column`.
+fn in_key_or_check(table: &Table, column: &str) -> bool {
+    table.primary.iter().any(|k| k.columns.iter().any(|c| c.text == column))
+        || table.uniques.iter().any(|u| u.columns.iter().any(|c| c.text == column))
+        || table.indexes.iter().any(|i| i.columns.iter().any(|(c, _)| c.text == column))
+        || table.foreign_keys.iter().any(|f| f.columns.iter().any(|c| c.text == column))
+        || table.checks.iter().any(|ch| {
+            let mut refs = Vec::new();
+            ch.expr.columns(&mut refs);
+            refs.iter().any(|c| c.text == column)
+        })
+}
+
 fn diagrams(document: &Document, scope: &Scope, diags: &mut Vec<Diag>) {
     let mut names = HashSet::new();
     for diagram in &document.diagrams {
@@ -198,6 +218,8 @@ struct TableRules<'s, 'd> {
     scope: &'s Scope<'d>,
     index: usize,
     own: TableScope<'s, 'd>,
+    /// The `default` value tokens of this table's columns.
+    defaults: &'s [DefaultToken],
     diags: &'s mut Vec<Diag>,
     literals: &'s mut Vec<CheckLiterals>,
 }
@@ -255,9 +277,14 @@ impl<'s, 'd> TableRules<'s, 'd> {
             let Some(pos) = column.identity else { continue };
             identities += 1;
             let sole_key = table.primary.first().is_some_and(|key| key.columns.len() == 1 && key.columns[0].text == column.name.text);
+            // The identity column is checked only when every primary key column resolves.
+            let resolved = table
+                .primary
+                .first()
+                .is_none_or(|key| key.columns.iter().all(|c| well_formed(&c.text) && !self.own.unresolved.is_some_and(|u| u.contains(c.text.as_str()))));
             if identities > 1 {
                 self.report(pos, "column", "a table has at most one identity column");
-            } else if !sole_key && !self.own.failed_keys.primary {
+            } else if resolved && !sole_key && !self.own.failed_keys.primary {
                 self.report(pos, "column", "an identity column is the only primary key column");
             }
         }
@@ -359,7 +386,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             let references: Vec<&str> = key.references.iter().map(|n| n.text.as_str()).collect();
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
             let keyed = target.table.primary.first().is_some_and(|p| same(&p.columns)) || target.table.uniques.iter().any(|u| same(&u.columns));
-            if !keyed && !target.failed_keys.any {
+            if !keyed && !target.failed_keys.any && !target.failed_keys.primary {
                 self.report(key.name.pos, "foreign_key", format!("the referenced columns are not the primary key or a unique key of '{}'", key.table.text));
             }
             if children.iter().zip(&parents).any(|(c, p)| c.ty != p.ty) {
@@ -378,7 +405,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let indexed = table.primary.iter().any(|p| leads(&mut p.columns.iter().map(|n| n.text.as_str())))
             || table.uniques.iter().any(|u| leads(&mut u.columns.iter().map(|n| n.text.as_str())))
             || table.indexes.iter().any(|i| leads(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
-        if !indexed && !self.own.failed_keys.any {
+        if !indexed && !self.own.failed_keys.any && !self.own.failed_keys.primary {
             self.report(key.name.pos, "foreign_key", "no index or key of the table leads with the foreign key's columns");
         }
     }
@@ -444,15 +471,21 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let mut codecs = HashSet::new();
         let mut navigations = HashSet::new();
         let mut blind_indexes = HashSet::new();
+        let mut markdowns = HashSet::new();
         for line in &settings.lines {
             let first = match &line.setting {
                 Setting::Codec(column, _) => codecs.insert(column.text.as_str()),
                 Setting::Navigation(key, _, _) => navigations.insert(key.text.as_str()),
                 Setting::BlindIndex(aes, _) => blind_indexes.insert(aes.text.as_str()),
+                Setting::Markdown(column) => markdowns.insert(column.text.as_str()),
+                // state_machine and checkbox lines repeat by design; their consistency is checked per table.
+                Setting::StateMachine { .. } | Setting::Checkbox { .. } => true,
                 other => kinds.insert(other.rank()),
             };
             if !first {
+                // A repeated line is not checked, as the reference does.
                 self.report(line.pos, "setting", "the setting repeats");
+                continue;
             }
             match &line.setting {
                 Setting::Entity(_) => {}
@@ -508,11 +541,31 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         }
                     }
                 }
-                Setting::BlindIndex(aes, target) => self.blind_index(settings, aes, target),
+                Setting::BlindIndex(aes, target) => self.blind_index(settings, line.pos, aes, target),
                 Setting::Navigation(key, _, _) => {
-                    if !table.foreign_keys.iter().any(|k| k.name.text == key.text) {
+                    if !table.foreign_keys.iter().any(|k| k.name.text == key.text) && !self.own.unresolved.is_some_and(|u| u.contains(key.text.as_str())) {
                         self.report(key.pos, "setting", format!("table has no foreign key '{}'", key.text));
                     }
+                }
+                Setting::Markdown(name) => {
+                    if let Some(column) = self.setting_column(name) {
+                        if !matches!(column.ty, Type::Varchar(_) | Type::Text) {
+                            self.report(name.pos, "setting", "markdown needs a varchar or text column");
+                        }
+                    }
+                }
+                Setting::Store { kind, foreign: Some(foreign), .. } if kind.text == "block" => self.foreign_key_name(foreign),
+                Setting::Store { .. } => {}
+                Setting::KeyPrefix(_) => self.key_prefix(line.pos),
+                Setting::Title(name) | Setting::Body(name) => self.text_column(name),
+                Setting::Order(name) => self.order(name),
+                Setting::Checkbox { .. } => {}
+                Setting::StateMachine { column, line: state } => {
+                    let requires: &[Name] = match state {
+                        StateLine::Terminal(_, requires) | StateLine::Transition { requires, .. } => requires,
+                        StateLine::Initial(_) | StateLine::History(_) | StateLine::Limit { .. } => &[],
+                    };
+                    self.state_machine_column(column, requires);
                 }
                 Setting::Immutable => {
                     if changes_rows {
@@ -531,15 +584,292 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 }
             }
         }
+        self.state_machine_consistency(settings);
     }
 
-    fn blind_index(&mut self, settings: &Settings, aes: &Name, target: &Name) {
+    /// The `default` value token of a column of this table, when its line parsed.
+    fn default_of(&self, column: &str) -> Option<&'s DefaultToken> {
+        let defaults: &'s [DefaultToken] = self.defaults;
+        defaults.iter().find(|d| d.column == column)
+    }
+
+    /// A name that must be a foreign key of this table. A malformed name is reported by the parser.
+    fn foreign_key_name(&mut self, name: &Name) {
+        if well_formed(&name.text)
+            && !self.own.table.foreign_keys.iter().any(|k| k.name.text == name.text)
+            && !self.own.unresolved.is_some_and(|u| u.contains(name.text.as_str()))
+        {
+            self.report(name.pos, "setting", format!("foreign key '{}' is not a foreign key of the table", name.text));
+        }
+    }
+
+    /// `key_prefix` needs a varchar primary key of one column; a failed primary key line reports nothing.
+    fn key_prefix(&mut self, at: Pos) {
+        let table = self.own.table;
+        if self.own.failed_keys.primary {
+            return;
+        }
+        let single = match table.primary.as_slice() {
+            [key] => match key.columns.as_slice() {
+                [column] => Some(column),
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some(column) = single else {
+            self.report(at, "setting", "key_prefix needs a single-column primary key");
+            return;
+        };
+        if let Some(c) = table.column(&column.text) {
+            if !matches!(c.ty, Type::Varchar(_)) {
+                self.report(at, "setting", format!("key_prefix needs a varchar primary key, not {}", c.ty.render()));
+            }
+        }
+    }
+
+    /// `title` and `body` name a non-null varchar or text column.
+    fn text_column(&mut self, name: &Name) {
+        if let Some(column) = self.setting_column(name) {
+            if !matches!(column.ty, Type::Varchar(_) | Type::Text) || column.nullable {
+                self.report(name.pos, "setting", "needs a non-null varchar or text column");
+            }
+        }
+    }
+
+    /// `order` names a non-null i32 or i64 column with no default that no key, index, foreign key or check names.
+    fn order(&mut self, name: &Name) {
+        let Some(column) = self.setting_column(name) else { return };
+        if !matches!(column.ty, Type::I32 | Type::I64) || column.nullable || self.default_of(&name.text).is_some() {
+            self.report(name.pos, "setting", "order needs a non-null i32 or i64 column with no default");
+        } else if in_key_or_check(self.own.table, &name.text) {
+            self.report(name.pos, "setting", format!("order column '{}' is in a key, index or check", name.text));
+        }
+    }
+
+    /// The column of a `state_machine` line is a non-null varchar or text column, and its `require`
+    /// columns exist.
+    fn state_machine_column(&mut self, column: &Name, requires: &[Name]) {
+        if let Some(c) = self.setting_column(column) {
+            if !matches!(c.ty, Type::Varchar(_) | Type::Text) || c.nullable {
+                self.report(column.pos, "setting", "state_machine needs a non-null varchar or text column");
+            }
+        }
+        for name in requires {
+            self.setting_column(name);
+        }
+    }
+
+    /// Checks the `state_machine` and `checkbox` lines of the table between them (docs/dbspec.md,
+    /// "Settings"): one column, the initial and terminal states, the transition lines, history and
+    /// limit lines, the default of the state column and the checkboxes.
+    fn state_machine_consistency(&mut self, settings: &Settings) {
+        let table = self.own.table;
+        let mut column: Option<&str> = None;
+        let mut states = BTreeSet::new();
+        let mut initials = HashSet::new();
+        let mut terminals = HashSet::new();
+        let mut lines: Vec<(Pos, &StateLine)> = Vec::new();
+        let mut limits: Vec<(&Name, &Name)> = Vec::new();
+        let mut requires: Vec<&Name> = Vec::new();
+        let mut history: Option<&History> = None;
+        for line in &settings.lines {
+            let Setting::StateMachine { column: name, line: state } = &line.setting else { continue };
+            match column {
+                None => column = Some(name.text.as_str()),
+                Some(first) if first != name.text => {
+                    self.report(name.pos, "setting", format!("state_machine repeats for '{}'; a table holds one machine", name.text));
+                }
+                Some(_) => {}
+            }
+            match state {
+                StateLine::History(h) => match history {
+                    Some(_) => self.report(line.pos, "setting", "state_machine repeats history"),
+                    None => history = Some(h),
+                },
+                StateLine::Limit { state, count } => limits.push((state, count)),
+                StateLine::Initial(s) => {
+                    initials.insert(s.text.as_str());
+                    states.insert(s.text.as_str());
+                    lines.push((line.pos, state));
+                }
+                StateLine::Terminal(s, list) => {
+                    terminals.insert(s.text.as_str());
+                    states.insert(s.text.as_str());
+                    requires.extend(list);
+                    lines.push((line.pos, state));
+                }
+                StateLine::Transition { from, to, requires: list } => {
+                    states.insert(from.text.as_str());
+                    states.insert(to.text.as_str());
+                    requires.extend(list);
+                    lines.push((line.pos, state));
+                }
+            }
+        }
+        for (pos, state) in &lines {
+            match state {
+                StateLine::Initial(s) if terminals.contains(s.text.as_str()) => {
+                    self.report(*pos, "setting", format!("an initial state '{}' is also terminal", s.text));
+                }
+                StateLine::Transition { from, .. } if terminals.contains(from.text.as_str()) => {
+                    self.report(*pos, "setting", format!("a transition leaves the terminal state '{}'", from.text));
+                }
+                _ => {}
+            }
+        }
+        self.limits(&limits, &states);
+        let state_column = column.and_then(|name| table.column(name));
+        if let Some(h) = history {
+            self.history(h, state_column, &requires);
+        }
+        if let (Some(name), Some(_)) = (column, state_column) {
+            if let Some(default) = self.default_of(name) {
+                if !initials.contains(default.text.as_str()) {
+                    self.report(default.pos, "setting", format!("the default '{}' of the state column is not an initial state", default.text));
+                }
+            }
+        }
+        self.checkboxes(column, &states, settings);
+    }
+
+    /// Each `limit` line names a state of the state set once and a positive row count.
+    fn limits(&mut self, limits: &[(&Name, &Name)], states: &BTreeSet<&str>) {
+        let mut seen = HashSet::new();
+        for (state, count) in limits {
+            if !states.contains(state.text.as_str()) {
+                self.report(state.pos, "setting", format!("limit names state '{}' outside the state set", state.text));
+            } else if seen.contains(state.text.as_str()) {
+                self.report(state.pos, "setting", format!("limit repeats for state '{}'", state.text));
+            }
+            seen.insert(state.text.as_str());
+            if count.text.parse::<i64>().map_or(true, |n| n < 1) {
+                self.report(count.pos, "setting", format!("limit needs a positive row count, not {}", count.text));
+            }
+        }
+    }
+
+    /// The `history` line: its table is a table of this document or a used one, with a foreign key of
+    /// `row` to this table, the state type for `from` and `to`, datetime(6) for `at`, and a nullable
+    /// column of the type of each required column. The table has no other column and declares no
+    /// title or body. Every mismatch is reported at the history table name.
+    fn history(&mut self, history: &History, state: Option<&Column>, requires: &[&Name]) {
+        let name = &history.table;
+        if !well_formed(&name.text) {
+            return;
+        }
+        let scope = self.scope;
+        let Some(other) = scope.table(&name.text) else {
+            self.report(name.pos, "setting", format!("history table '{}' is not a table of this document or a used table", name.text));
+            return;
+        };
+        let Some(state) = state else { return };
+        let owner = self.own.table.name.text.as_str();
+        let row = history.row.text.as_str();
+        let linked = other.table.foreign_keys.iter().any(|f| f.columns.len() == 1 && f.columns[0].text == row && f.table.text == owner);
+        if !linked {
+            self.report(name.pos, "setting", format!("history table '{}' has no foreign key of '{row}' to table '{owner}'", name.text));
+        }
+        let mut named: HashSet<&str> = HashSet::from([row]);
+        for (column, want) in [(&history.from, state.ty), (&history.to, state.ty), (&history.at, Type::DateTime(6))] {
+            named.insert(column.text.as_str());
+            match other.table.column(&column.text) {
+                Some(c) if c.ty != want => {
+                    self.report(name.pos, "setting", format!("history column '{}' has type {}, not {}", column.text, c.ty.render(), want.render()));
+                }
+                Some(_) => {}
+                None if !other.failed(&column.text) => {
+                    self.report(name.pos, "setting", format!("history table '{}' has no column '{}'", name.text, column.text));
+                }
+                None => {}
+            }
+        }
+        for required in requires {
+            named.insert(required.text.as_str());
+            let Some(c) = self.own.table.column(&required.text) else { continue };
+            match other.table.column(&required.text) {
+                None if !other.failed(&required.text) => {
+                    self.report(name.pos, "setting", format!("history table '{}' has no column '{}' of the required column", name.text, required.text));
+                }
+                Some(hc) if !hc.nullable || hc.ty != c.ty => {
+                    self.report(name.pos, "setting", format!("history column '{}' is not a nullable {} column", required.text, c.ty.render()));
+                }
+                _ => {}
+            }
+        }
+        for key in &other.table.primary {
+            named.extend(key.columns.iter().map(|c| c.text.as_str()));
+        }
+        for column in &other.table.columns {
+            if !named.contains(column.name.text.as_str()) {
+                self.report(
+                    name.pos,
+                    "setting",
+                    format!("history table '{}' has column '{}', which the history line does not name", name.text, column.name.text),
+                );
+            }
+        }
+        if let Some(settings) = &other.table.settings {
+            for line in &settings.lines {
+                if matches!(line.setting, Setting::Title(_) | Setting::Body(_)) {
+                    self.report(name.pos, "setting", format!("history table '{}' declares a title or body, which a history table does not", name.text));
+                }
+            }
+        }
+    }
+
+    /// The `checkbox` lines name the column of the machine, one of its states each, once per state, with one
+    /// character glyphs that differ, and every state of the machine has one.
+    fn checkboxes(&mut self, column: Option<&str>, states: &BTreeSet<&str>, settings: &Settings) {
+        let boxes: Vec<(Pos, &Name, &Name, &Name)> = settings
+            .lines
+            .iter()
+            .filter_map(|l| match &l.setting {
+                Setting::Checkbox { column, state, glyph } => Some((l.pos, column, state, glyph)),
+                _ => None,
+            })
+            .collect();
+        let Some(&(first_pos, first_column, _, _)) = boxes.first() else { return };
+        let Some(column) = column else {
+            self.report(first_column.pos, "setting", format!("checkbox needs a state_machine on column '{}'", first_column.text));
+            return;
+        };
+        let mut covered = HashSet::new();
+        let mut glyphs = HashSet::new();
+        for &(_, name, state, glyph) in &boxes {
+            if self.setting_column(name).is_none() {
+                continue;
+            }
+            if name.text != column {
+                self.report(name.pos, "setting", format!("checkbox names column '{}', but the state_machine column is '{column}'", name.text));
+                continue;
+            }
+            if !states.contains(state.text.as_str()) {
+                self.report(state.pos, "setting", format!("checkbox names state '{}' outside the state set", state.text));
+            } else if covered.contains(state.text.as_str()) {
+                self.report(state.pos, "setting", format!("checkbox repeats for state '{}'", state.text));
+            }
+            covered.insert(state.text.as_str());
+            if glyph.text.chars().count() != 1 {
+                self.report(glyph.pos, "setting", "a checkbox glyph is one character");
+            } else if glyphs.contains(glyph.text.as_str()) {
+                self.report(glyph.pos, "setting", format!("checkbox glyph '{}' repeats", glyph.text));
+            }
+            glyphs.insert(glyph.text.as_str());
+        }
+        for state in states {
+            if !covered.contains(state) {
+                self.report(first_pos, "setting", format!("checkbox does not cover state '{state}'"));
+            }
+        }
+    }
+
+    fn blind_index(&mut self, settings: &Settings, keyword: Pos, aes: &Name, target: &Name) {
         let encrypted = |name: &str| {
             settings.lines.iter().any(|l| matches!(&l.setting, Setting::Codec(c, stages) if c.text == name && stages.iter().any(|s| s.text == "aes")))
         };
         let aes_column = self.setting_column(aes);
         if aes_column.is_some() && !encrypted(&aes.text) {
-            self.report(aes.pos, "setting", format!("column '{}' has no codec with aes", aes.text));
+            self.report(keyword, "setting", format!("column '{}' has no codec with aes", aes.text));
         }
         let Some(column) = self.setting_column(target) else { return };
         let table = self.own.table;
@@ -551,7 +881,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
             || table.indexes.iter().any(|i| only(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
         let storage = matches!(column.ty, Type::Varchar(n) if n >= BLIND_INDEX_LENGTH);
         let nullability = aes_column.is_none_or(|a| a.nullable == column.nullable);
-        if !storage || !indexed || !nullability || encrypted(&target.text) {
+        if !storage || (!indexed && !self.own.failed_keys.any) || !nullability || encrypted(&target.text) {
             self.report(
                 target.pos,
                 "setting",

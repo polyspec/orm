@@ -245,7 +245,7 @@ const CASES: &[Case] = &[
             "  d decimal(4,3) default .5",
             "}",
         ]],
-        expect: Expect::Errors(&[("key", 2, 7), ("column", 3, 10), ("syntax", 7, 26)]),
+        expect: Expect::Errors(&[("key", 2, 7), ("column", 3, 10), ("column", 7, 26)]),
     },
     Case {
         id: "canonical-literals",
@@ -429,7 +429,7 @@ const CASES: &[Case] = &[
             "  check ck_f (-a > 0)",
             "}",
         ]],
-        expect: Expect::Errors(&[("check", 6, 15), ("check", 7, 24), ("check", 8, 21), ("check", 9, 22), ("check", 10, 17), ("check", 11, 15)]),
+        expect: Expect::Errors(&[("check", 6, 15), ("check", 7, 24), ("check", 8, 21), ("syntax", 9, 27), ("syntax", 10, 17), ("check", 11, 15)]),
     },
     Case {
         id: "check-canonical",
@@ -651,7 +651,7 @@ const CASES: &[Case] = &[
             "  }",
             "}",
         ]],
-        expect: Expect::Errors(&[("setting", 16, 17), ("setting", 16, 23)]),
+        expect: Expect::Errors(&[("setting", 16, 5), ("setting", 16, 23)]),
     },
     Case {
         id: "immutable-and-audit-on-cascade-child",

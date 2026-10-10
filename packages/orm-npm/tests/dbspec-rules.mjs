@@ -175,7 +175,6 @@ invalid('column combinations and defaults', [
 ], [
   ['column', 3, 15],
   ['column', 4, 9],
-  ['column', 4, 9],
   ['column', 4, 18],
   ['column', 5, 13],
   ['column', 6, 21],
@@ -418,10 +417,8 @@ invalid('settings', [
   ['setting', 19, 17],
   ['setting', 20, 22],
   ['setting', 21, 17],
-  ['setting', 22, 17], // name has no aes stage
-  ['setting', 22, 22], // the index column is bytes, not varchar(n >= 64)
-  ['setting', 22, 22], // the index column is aes-encoded
-  ['setting', 22, 22], // and is not the only column of an index
+  ['setting', 22, 5],
+  ['setting', 22, 22],
   ['setting', 23, 16],
   ['setting', 24, 26],
   ['setting', 25, 5],
@@ -687,9 +684,8 @@ invalid('blind index shape', [
   '  }',
   '}',
 ], [
-  ['setting', 15, 23], // varchar(63) is too short
-  ['setting', 15, 23], // and not the only column of an index
-  ['setting', 16, 5], // a second blind_index for email repeats
+  ['setting', 15, 23],
+  ['setting', 16, 5],
 ]);
 normalize('blind index accepted', [
   'dbspec 1 shop',
@@ -736,9 +732,9 @@ invalid('tabs, reserved words and table-named constraints', [
   '  primary key (id)',
   '}',
 ], [
-  ['syntax', 2, 1], // the tab is reported and the line is still read
+  ['syntax', 2, 1],
   ['name.format', 4, 3],
-  ['name.duplicate', 8, 7], // the later of the constraint and the table
+  ['name.duplicate', 6, 10],
 ]);
 invalid('constraint named like a used table', ['dbspec 1 shop', 'use core { users }', 'table orders {', '  id i64 identity', '  primary key (id)', '  index teams (id)', '}'], [
   ['name.duplicate', 6, 9],
@@ -813,6 +809,5 @@ invalid('blind index column is not bytes', [
   '  }',
   '}',
 ], [
-  ['setting', 11, 23], // bytes is not varchar(n >= 64)
-  ['setting', 11, 23], // and is not the only column of an index (bytes cannot be indexed)
+  ['setting', 11, 23],
 ]);
