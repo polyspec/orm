@@ -2080,15 +2080,15 @@ static void table_line(parser *p)
         p->state = S_SETTINGS;
         return;
     }
-    if (p->table_phase > 0) {
-        error(p, "order", p->line, first.column, SL("column lines come before key, index, foreign key, check and settings lines"));
-    }
     column_line(p);
     if (syntax_here(p)) {
         p->failed_lines++;
         if (str_dotted(first.text)) {
             fail_column(p, first.text);
         }
+    } else if (p->table_phase > 0) {
+        /* Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). 구문 오류가 난 줄은 syntax만 낸다. */
+        error(p, "order", p->line, first.column, SL("column lines come before key, index, foreign key, check and settings lines"));
     }
 }
 

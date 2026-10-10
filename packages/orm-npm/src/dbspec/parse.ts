@@ -748,10 +748,11 @@ class DocumentParser {
           else t.phase = 1;
           this.constraint(t, toks, line, own);
         } else {
-          if (t.phase > 0) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
           this.column(t, toks, line, own);
           // Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
           if (this.syntaxLine === line) this.failColumnLine(t, first);
+          // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). limit으로 멈춘 줄도 아니다.
+          else if (t.phase > 0 && !this.stopped) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
         }
       } else if (state === 'settings') {
         const t = table!;

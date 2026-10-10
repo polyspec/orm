@@ -860,9 +860,10 @@ class DocumentParser:
                         table.phase = 1
                     self._constraint(table, toks, line, own)
                 else:
-                    if table.phase > 0:
-                        self._at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings')
                     self._column(table, toks, line, own)
+                    # Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). limit으로 멈춘 줄도 아니다.
+                    if self._syntax_line != line and table.phase > 0 and not self._stopped:
+                        self._at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings')
             elif state == 'settings':
                 if is_punct(first, '}'):
                     if len(toks) > 1:
