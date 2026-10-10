@@ -1697,13 +1697,22 @@ class DocumentParser {
       seen.add(c.t);
       children.push(column);
     }
-    if (!wellFormed(fk.table.t)) return;
+    // Go는 참조 table이 없거나 이름이 잘못되었거나 header가 실패했어도 자식의 key 검사와 set_null 검사를 한다.
+    // 열, 짝과 type 검사만 건너뛴다(validate.go의 foreignKey, target이 nil인 경우).
+    if (!wellFormed(fk.table.t)) {
+      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      return;
+    }
     if (!available.has(fk.table.t)) {
       this.at('foreign_key', fk.table, `table ${fk.table.t} is not defined or used`);
+      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
       return;
     }
     const target = available.get(fk.table.t) ?? null;
-    if (target === null) return;
+    if (target === null) {
+      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      return;
+    }
     // Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
     if (target.headerFailed) {
       if (resolved) this.foreignKeyKeyChecks(table, fk, children);
@@ -1727,6 +1736,8 @@ class DocumentParser {
     }
     if (children.length !== parents.length) {
       this.at('foreign_key', fk.name, 'the foreign key lists a different number of child and referenced columns');
+      // Go는 개수가 다를 때도 짝과 type 검사만 건너뛰고 자식의 key 검사와 set_null 검사를 한다.
+      this.foreignKeyKeyChecks(table, fk, children);
       return;
     }
     const refs = fk.refs.map(r => r.t).join(',');
