@@ -734,6 +734,11 @@ class DocumentParser:
     def _at(self, rule: str, tok: Tk, message: str) -> None:
         self._report(rule, tok.line, tok.s, message)
 
+    def _unclosed(self, tok: Tk, message: str) -> None:
+        # 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다).
+        text = self.lines[tok.line - 1] if 1 <= tok.line <= len(self.lines) else ''
+        self.diagnostics.append(DbspecDiagnostic('syntax', tok.line, column_of(text, tok.s), message))
+
     def _syntax(self, toks, i: int, line: int, message: str) -> None:
         tok = toks[i] if i < len(toks) else None
         if tok is not None:
@@ -886,11 +891,11 @@ class DocumentParser:
             return
         # 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
         if state == 'settings':
-            self._at('syntax', self._settings_block.open, 'the settings block is not closed')
+            self._unclosed(self._settings_block.open, 'the settings block is not closed')
         elif state == 'table':
-            self._at('syntax', table.open, 'the table block is not closed')
+            self._unclosed(table.open, 'the table block is not closed')
         if state == 'diagram':
-            self._at('syntax', diagram.open, 'the diagram block is not closed')
+            self._unclosed(diagram.open, 'the diagram block is not closed')
         self.document.closing = comments
 
     def _header(self) -> bool:
