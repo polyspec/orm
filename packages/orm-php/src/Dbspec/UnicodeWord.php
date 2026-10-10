@@ -8,6 +8,7 @@ namespace Polyspec\Orm\Dbspec;
 
 /**
  * Go의 unicode 표가 담은 word rune 표다. 이 파일은 생성되며 직접 고치지 않는다.
+ * @internal
  */
 final class UnicodeWord
 {
