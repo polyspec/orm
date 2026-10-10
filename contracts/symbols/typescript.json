@@ -823,7 +823,7 @@
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.end": "private end(toks: Tk[], i: number, line: number): boolean",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.failColumnLine": "private failColumnLine(table: ITable, first: Tk): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.foreignKey": "private foreignKey(table: ITable, fk: IForeignKey, available: Map\u003cstring, ITable | null\u003e): void",
-  "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.foreignKeyKeyChecks": "private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: IColumn[], known: boolean): void",
+  "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.foreignKeyKeyChecks": "private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: (IColumn | null)[], known: boolean): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.foreignKeyLine": "private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.generatedName": "private generatedName(table: ITable, tok: Tk, suffix: string, column: boolean): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.header": "private header(): boolean",

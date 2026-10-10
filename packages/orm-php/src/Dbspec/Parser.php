@@ -1080,7 +1080,7 @@ final class Parser
             }
         }
         if ($resolvable) {
-            $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1], $parents[0], $known];
+            $this->deferredForeignKeys[] = [$this->columns, $foreignKey, $this->line, $name[1], $target[1], $parents[0]];
         }
     }
 
@@ -1607,7 +1607,7 @@ final class Parser
 
     private function checkForeignKeyTargets(): void
     {
-        foreach ($this->deferredForeignKeys as [$columns, $foreignKey, $line, $at, $targetAt, $parents, $known]) {
+        foreach ($this->deferredForeignKeys as [$columns, $foreignKey, $line, $at, $targetAt, $parents]) {
             $target = $this->tables[$foreignKey->table] ?? null;
             if ($target === null && isset($this->failedTables[$foreignKey->table])) {
                 continue;
@@ -1624,17 +1624,20 @@ final class Parser
                 continue;
             }
             $targetColumns = $target['columns'];
+            // Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
+            // 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
+            $referencesKnown = true;
             foreach ($parents as [$parent, $position]) {
                 if (!isset($targetColumns[$parent])) {
                     $this->error('foreign_key', $line, $position, "table `{$foreignKey->table}` has no column `$parent`");
-                    $known = false;
+                    $referencesKnown = false;
                 }
-            }
-            if (!$known) {
-                continue;
             }
             if (count($foreignKey->columns) !== count($foreignKey->referencedColumns)) {
                 $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` lists " . count($foreignKey->columns) . ' columns and references ' . count($foreignKey->referencedColumns));
+                continue;
+            }
+            if (!$referencesKnown) {
                 continue;
             }
             $keys = $target['table']->primaryKey === null ? [] : [$target['table']->primaryKey->columns];
@@ -1645,6 +1648,9 @@ final class Parser
                 $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` references columns that are not the primary key or a unique key of `{$foreignKey->table}`");
             }
             foreach ($foreignKey->columns as $i => $child) {
+                if (!isset($columns[$child]) || $columns[$child]->type->name === 'invalid') {
+                    continue;
+                }
                 $parentType = $targetColumns[$foreignKey->referencedColumns[$i]]->type;
                 if ($parentType->name !== 'invalid' && $columns[$child]->type !== $parentType && $columns[$child]->type->text() !== $parentType->text()) {
                     $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` column `$child` is {$columns[$child]->type->text()} but `{$foreignKey->referencedColumns[$i]}` is {$parentType->text()}");

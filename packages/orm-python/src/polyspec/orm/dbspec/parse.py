@@ -1723,7 +1723,9 @@ class DocumentParser:
         for c in fk.cols:
             column = self._lookup(table, c, 'foreign_key')
             if column is None:
+                # 알려지지 않은 자식은 None으로 자리를 지킨다. Go의 children처럼 열 순서와 짝을 맞추기 위해서다.
                 resolved = False
+                children.append(None)
                 continue
             if c.t in seen:
                 self._at('foreign_key', c, f'column {c.t} repeats')
@@ -1747,40 +1749,34 @@ class DocumentParser:
         if target.header_failed:
             self._foreign_key_keys(table, fk, children, resolved)
             return
+        # Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
+        # 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
         parents = []
         references_known = True
         for r in fk.refs:
             column = self._lookup(target, r, 'foreign_key')
             if column is None:
                 references_known = False
+                parents.append(None)
                 continue
             parents.append(column)
-        # Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사는 건너뛴다.
-        if not resolved:
-            self._foreign_key_keys(table, fk, children, False)
-            return
-        # Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
-        if not references_known:
-            self._foreign_key_keys(table, fk, children, True)
-            return
-        if len(children) != len(parents):
+        if len(fk.cols) != len(fk.refs):
             self._at('foreign_key', fk.name, 'the foreign key lists a different number of child '
                                              'and referenced columns')
-            # Go는 개수가 다를 때도 짝과 type 검사만 건너뛰고 자식의 key 검사와 set_null 검사를 한다.
-            self._foreign_key_keys(table, fk, children, True)
-            return
-        refs = ','.join(r.t for r in fk.refs)
-        keys = [','.join(c.tok.t for c in k.cols) for k in target.pks[:1] + target.uniques]
-        if refs not in keys and not target.failed_key and not target.failed_primary:
-            self._at('foreign_key', fk.name, f'the referenced columns are not the primary key or '
-                                             f'a unique key of table {target.name.t}')
-        for i in range(len(children)):
-            child = children[i].type
-            parent = parents[i].type
-            if child is not None and parent is not None and not same_type(child, parent):
-                self._at('foreign_key', fk.name, f'column {fk.cols[i].t} is {type_text(child)} '
-                                                 f'but references {type_text(parent)}')
-        self._foreign_key_keys(table, fk, children, True)
+        elif references_known:
+            refs = ','.join(r.t for r in fk.refs)
+            keys = [','.join(c.tok.t for c in k.cols) for k in target.pks[:1] + target.uniques]
+            if refs not in keys and not target.failed_key and not target.failed_primary:
+                self._at('foreign_key', fk.name, f'the referenced columns are not the primary key or '
+                                                 f'a unique key of table {target.name.t}')
+            for i in range(len(children)):
+                child = children[i].type if children[i] is not None else None
+                parent = parents[i].type
+                if child is not None and parent is not None and not same_type(child, parent):
+                    self._at('foreign_key', fk.name, f'column {fk.cols[i].t} is {type_text(child)} '
+                                                     f'but references {type_text(parent)}')
+                    break
+        self._foreign_key_keys(table, fk, children, resolved)
 
     def _foreign_key_keys(self, table: _Table, fk: _ForeignKey, children, known: bool) -> None:
         '''자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
@@ -1792,7 +1788,7 @@ class DocumentParser:
             self._at('foreign_key', fk.name, 'no index or key of the table leads with the foreign '
                                              'key columns')
         if (fk.on_delete == 'set_null' or fk.on_update == 'set_null') \
-                and any(not c.nullable for c in children):
+                and any(c is not None and not c.nullable for c in children):
             self._at('foreign_key', fk.name, 'set_null requires every child column to be null')
 
     def _check(self, table: _Table, check: _Check, banned) -> None:

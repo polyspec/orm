@@ -338,72 +338,81 @@ impl<'s, 'd> TableRules<'s, 'd> {
     }
 
     fn foreign_key(&mut self, key: &ForeignKey) {
-        let mut complete = true;
         // Go는 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다(validate.go의 foreignKey, known).
+        // 짝과 type 검사는 자식 열과 관계없이 하므로, 알려지지 않은 자식은 None으로 자리를 지켜 참조 열과 짝을 맞춘다.
         let mut children_known = true;
         let mut seen = HashSet::new();
-        let mut children = Vec::new();
+        let mut children: Vec<Option<&Column>> = Vec::new();
         for name in &key.columns {
-            if !seen.insert(name.text.as_str()) {
-                self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
-                complete = false;
-                children_known = false;
-                continue;
-            }
+            let repeated = !seen.insert(name.text.as_str());
             match self.own.column(&name.text) {
-                Lookup::Found(column) => children.push(column),
+                Lookup::Found(column) => {
+                    if repeated {
+                        self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
+                        children_known = false;
+                    }
+                    children.push(Some(column));
+                }
                 Lookup::Unresolved => {
-                    complete = false;
                     children_known = false;
+                    children.push(None);
                 }
                 Lookup::Missing => {
                     self.report(name.pos, "foreign_key", format!("unknown column '{}'", name.text));
-                    complete = false;
                     children_known = false;
+                    children.push(None);
                 }
             }
         }
         let target = self.scope.table(&key.table.text);
         // Go는 표 줄이 실패한 target의 열, 개수, key와 type을 검사하지 않는다.
         let failed_target = target.is_some_and(|t| t.header_failed);
-        let mut parents = Vec::new();
+        // 참조 열이 모두 알려졌는지만 짝과 type 검사를 정한다(Go의 referencesKnown).
+        let mut references_known = true;
+        let mut parents: Vec<Option<&Column>> = Vec::new();
         match &target {
             None => {
                 if !self.scope.unresolved(&key.table.text) {
                     self.report(key.table.pos, "foreign_key", format!("unknown table '{}'", key.table.text));
                 }
-                complete = false;
+                references_known = false;
             }
             Some(_) if failed_target => {}
             Some(target) => {
                 for name in &key.references {
                     match target.column(&name.text) {
-                        Lookup::Found(column) => parents.push(column),
-                        Lookup::Unresolved => complete = false,
+                        Lookup::Found(column) => parents.push(Some(column)),
+                        Lookup::Unresolved => {
+                            references_known = false;
+                            parents.push(None);
+                        }
                         Lookup::Missing => {
                             self.report(name.pos, "foreign_key", format!("table '{}' has no column '{}'", key.table.text, name.text));
-                            complete = false;
+                            references_known = false;
+                            parents.push(None);
                         }
                     }
                 }
             }
         }
-        if !failed_target && key.columns.len() != key.references.len() {
+        let same_length = key.columns.len() == key.references.len();
+        if !failed_target && !same_length {
             self.report(key.name.pos, "foreign_key", "the foreign key lists a different number of columns and referenced columns");
-            complete = false;
         }
-        if let (true, Some(target), false) = (complete, &target, failed_target) {
+        // Go의 foreignKey와 같다: 개수가 같고 참조 열이 모두 알려졌을 때만 짝과 type 검사를 한다.
+        if let (true, true, Some(target), false) = (same_length, references_known, &target, failed_target) {
             let references: Vec<&str> = key.references.iter().map(|n| n.text.as_str()).collect();
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
             let keyed = target.table.primary.first().is_some_and(|p| same(&p.columns)) || target.table.uniques.iter().any(|u| same(&u.columns));
             if !keyed && !target.failed_keys.any && !target.failed_keys.primary {
                 self.report(key.name.pos, "foreign_key", format!("the referenced columns are not the primary key or a unique key of '{}'", key.table.text));
             }
-            if children.iter().zip(&parents).any(|(c, p)| c.ty != p.ty) {
+            // 알려진 자식 열만 type을 본다. 참조 열은 위에서 모두 알려졌음을 확인했다.
+            if children.iter().zip(&parents).any(|(c, p)| matches!((c, p), (Some(c), Some(p)) if c.ty != p.ty)) {
                 self.report(key.name.pos, "foreign_key", "a column type differs from its referenced column type");
             }
         }
-        if (key.on_delete == Action::SetNull || key.on_update == Action::SetNull) && children.iter().any(|c| !c.nullable) {
+        if (key.on_delete == Action::SetNull || key.on_update == Action::SetNull) && children.iter().flatten().any(|c| !c.nullable) {
             self.report(key.name.pos, "foreign_key", "set_null requires every column to be null");
         }
         let names: Vec<&str> = key.columns.iter().map(|n| n.text.as_str()).collect();

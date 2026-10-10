@@ -1678,7 +1678,8 @@ class DocumentParser {
 
   private foreignKey(table: ITable, fk: IForeignKey, available: Map<string, ITable | null>): void {
     let resolved = true;
-    const children: IColumn[] = [];
+    // 알려지지 않은 자식은 null로 자리를 지킨다. Go의 children처럼 열 순서와 짝을 맞추기 위해서다.
+    const children: (IColumn | null)[] = [];
     const seen = new Set<string>();
     if (fk.cols.length === 0) {
       this.at('foreign_key', fk.name, 'a foreign key lists at least one column');
@@ -1688,6 +1689,7 @@ class DocumentParser {
       const column = this.lookup(table, c, 'foreign_key');
       if (column === undefined || column === null) {
         resolved = false;
+        children.push(null);
         continue;
       }
       if (seen.has(c.t)) {
@@ -1718,59 +1720,50 @@ class DocumentParser {
       this.foreignKeyKeyChecks(table, fk, children, resolved);
       return;
     }
-    const parents: IColumn[] = [];
+    // Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
+    // 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다.
+    const parents: (IColumn | null)[] = [];
     let referencesKnown = true;
     for (const r of fk.refs) {
       const column = this.lookup(target, r, 'foreign_key');
       if (column === undefined || column === null) {
         referencesKnown = false;
+        parents.push(null);
         continue;
       }
       parents.push(column);
     }
-    // Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사는 건너뛴다.
-    // 짝과 type 검사만 건너뛴다.
-    if (!resolved) {
-      this.foreignKeyKeyChecks(table, fk, children, false);
-      return;
-    }
-    // Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
-    if (!referencesKnown) {
-      this.foreignKeyKeyChecks(table, fk, children, true);
-      return;
-    }
-    if (children.length !== parents.length) {
+    if (fk.cols.length !== fk.refs.length) {
       this.at('foreign_key', fk.name, 'the foreign key lists a different number of child and referenced columns');
-      // Go는 개수가 다를 때도 짝과 type 검사만 건너뛰고 자식의 key 검사와 set_null 검사를 한다.
-      this.foreignKeyKeyChecks(table, fk, children, true);
-      return;
-    }
-    const refs = fk.refs.map(r => r.t).join(',');
-    const keys = [...target.pks.slice(0, 1), ...target.uniques].map(k => k.cols.map(c => c.tok.t).join(','));
-    if (!keys.includes(refs) && !target.failedKey && !target.failedPrimary) {
-      this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${target.name.t}`);
-    }
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i]!.type;
-      const parent = parents[i]!.type;
-      if (child !== null && parent !== null && !sameType(child, parent)) {
-        this.at('foreign_key', fk.name, `column ${fk.cols[i]!.t} is ${typeText(child)} but references ${typeText(parent)}`);
+    } else if (referencesKnown) {
+      const refs = fk.refs.map(r => r.t).join(',');
+      const keys = [...target.pks.slice(0, 1), ...target.uniques].map(k => k.cols.map(c => c.tok.t).join(','));
+      if (!keys.includes(refs) && !target.failedKey && !target.failedPrimary) {
+        this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${target.name.t}`);
+      }
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i]?.type ?? null;
+        const parent = parents[i]?.type ?? null;
+        if (child !== null && parent !== null && !sameType(child, parent)) {
+          this.at('foreign_key', fk.name, `column ${fk.cols[i]!.t} is ${typeText(child)} but references ${typeText(parent)}`);
+          break;
+        }
       }
     }
-    this.foreignKeyKeyChecks(table, fk, children, true);
+    this.foreignKeyKeyChecks(table, fk, children, resolved);
   }
 
   /**
    * 자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
    * known이 false이면 자식 열이 알려지지 않았거나 겹치는 것이므로 색인 검사를 건너뛴다(Go의 known).
    */
-  private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: IColumn[], known: boolean): void {
+  private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: (IColumn | null)[], known: boolean): void {
     const lead = fk.cols.map(c => c.t);
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
     );
     if (known && !indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
-    if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => !c.nullable)) {
+    if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => c !== null && !c.nullable)) {
       this.at('foreign_key', fk.name, 'set_null requires every child column to be null');
     }
   }

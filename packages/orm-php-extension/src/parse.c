@@ -118,7 +118,6 @@ typedef struct {
     fkey *fk;
     zend_long line, at, target_at;
     lcols parents;
-    bool known;
 } dfk_rec;
 
 /* audit이 기록하는 column을 정한다. include이면 목록의 column만, 아니면 목록 밖의 column을 기록한다. */
@@ -1323,7 +1322,7 @@ static void foreign_key_line(parser *p)
         }
     }
     if (resolvable) {
-        PUSH(p->deferred_fks, ((dfk_rec){copy_map(p->columns), f, p->line, name->column, target->column, parents, known}));
+        PUSH(p->deferred_fks, ((dfk_rec){copy_map(p->columns), f, p->line, name->column, target->column, parents}));
     }
     if (!failed_before) {
         smap_del(&p->failed_names, name->text);
@@ -2803,18 +2802,20 @@ static void check_foreign_key_targets(parser *p)
         if (target->table->header_failed) {
             continue;
         }
-        bool known = r->known;
+        /* Go의 foreignKey와 같다: 개수 검사는 자식 열이 알려졌는지와 관계없이 하고, 짝과 type 검사는 참조 열이 모두
+         * 알려졌을 때 한다. type 검사는 알려진 자식만 보며, 첫 불일치에서 멈춘다. */
+        bool refs_known = true;
         for (size_t k = 0; k < r->parents.n; k++) {
             if (!smap_has(target->columns, r->parents.v[k].name)) {
                 error(p, "foreign_key", r->line, r->parents.v[k].column, fmt("table `%S` has no column `%S`", f->table, r->parents.v[k].name));
-                known = false;
+                refs_known = false;
             }
-        }
-        if (!known) {
-            continue;
         }
         if (f->columns.n != f->refs.n) {
             error(p, "foreign_key", r->line, r->at, fmt("foreign key `%S` lists %u columns and references %u", f->name, f->columns.n, f->refs.n));
+            continue;
+        }
+        if (!refs_known) {
             continue;
         }
         table *tt = target->table;
@@ -2826,8 +2827,12 @@ static void check_foreign_key_targets(parser *p)
             error(p, "foreign_key", r->line, r->at, fmt("foreign key `%S` references columns that are not the primary key or a unique key of `%S`", f->name, f->table));
         }
         for (size_t k = 0; k < f->columns.n; k++) {
-            column *parent = smap_get(target->columns, f->refs.v[k]);
             column *child = smap_get(r->columns, f->columns.v[k]);
+            /* 알려지지 않았거나 type이 invalid인 자식은 type을 보지 않는다(Go의 typ.valid). */
+            if (child == NULL || str_eqc(child->type->name, "invalid")) {
+                continue;
+            }
+            column *parent = smap_get(target->columns, f->refs.v[k]);
             const ctype *pt = parent->type;
             if (!str_eqc(pt->name, "invalid") && child->type != pt && !str_eq(ctype_text(child->type), ctype_text(pt))) {
                 error(p, "foreign_key", r->line, r->at, fmt("foreign key `%S` column `%S` is %S but `%S` is %S", f->name, f->columns.v[k],
