@@ -66,6 +66,8 @@ pub(crate) struct Diag {
 pub(crate) struct Parsed {
     pub document: Document,
     pub unresolved: Vec<Vec<String>>,
+    /// 표마다, type이 잘못된 column 줄의 이름이다. Go는 그런 열을 남기므로 그 열을 가리키는 외래 key의 자식은 알려진 것으로 본다.
+    pub typeless: Vec<Vec<String>>,
     /// For each table, the key and index lines that failed.
     pub failed_keys: Vec<FailedKeys>,
     /// 표마다, 표 줄이 실패했는지(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 있다). Go의 failed table이다.
@@ -141,6 +143,8 @@ struct Parser {
     pending: Vec<String>,
     document: Document,
     unresolved: Vec<Vec<String>>,
+    typeless: Vec<Vec<String>>,
+    table_typeless: Vec<String>,
     failed_keys: Vec<FailedKeys>,
     header_failed: Vec<bool>,
     table_header_failed: bool,
@@ -217,6 +221,8 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
             external: false,
         },
         unresolved: Vec::new(),
+        typeless: Vec::new(),
+        table_typeless: Vec::new(),
         failed_keys: Vec::new(),
         header_failed: Vec::new(),
         table_header_failed: false,
@@ -254,6 +260,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
     Ok(Parsed {
         document: parser.document,
         unresolved: parser.unresolved,
+        typeless: parser.typeless,
         failed_keys: parser.failed_keys,
         header_failed: parser.header_failed,
         defaults: parser.defaults,
@@ -554,6 +561,7 @@ impl Parser {
         self.table_unresolved = Vec::new();
         self.table_failed_keys = FailedKeys::default();
         self.table_defaults = Vec::new();
+        self.table_typeless = Vec::new();
         self.table_phase = 0;
         self.context = Context::Table;
     }
@@ -569,6 +577,7 @@ impl Parser {
             }
             self.document.tables.push(table);
             self.unresolved.push(std::mem::take(&mut self.table_unresolved));
+            self.typeless.push(std::mem::take(&mut self.table_typeless));
             self.failed_keys.push(std::mem::take(&mut self.table_failed_keys));
             self.header_failed.push(std::mem::take(&mut self.table_header_failed));
             self.defaults.push(std::mem::take(&mut self.table_defaults));
@@ -751,7 +760,11 @@ impl Parser {
                 self.report(err(keyword, "column", "an identity column has no default"));
             }
         }
-        let ty = ty?;
+        let Some(ty) = ty else {
+            // 줄은 구문이 맞고 type만 잘못되었다. Go는 이 열을 남기므로(type만 invalid) 이름을 기록한다.
+            self.table_typeless.push(name.text.to_owned());
+            return None;
+        };
         let default = match (default, default_keyword) {
             (Some(_), Some(keyword)) if matches!(ty, Type::Text | Type::Bytes) => {
                 self.report(err(keyword, "column", format!("a {} column has no default", ty.render())));
