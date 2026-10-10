@@ -7,6 +7,7 @@ import type {
   DbspecForeignKey,
   DbspecIndex,
   DbspecSetting,
+  DbspecStateLine,
   DbspecTable,
   DbspecType,
 } from './model.js';
@@ -21,6 +22,14 @@ const SETTING_ORDER: readonly DbspecSetting['kind'][] = [
   'aes_version',
   'blind_index',
   'navigation',
+  'markdown',
+  'store',
+  'key_prefix',
+  'title',
+  'body',
+  'order',
+  'checkbox',
+  'state_machine',
   'immutable',
   'audit',
 ];
@@ -66,9 +75,40 @@ function defaultText(value: DbspecDefault): string {
 }
 
 function settingKey(setting: DbspecSetting): string {
-  if (setting.kind === 'codec' || setting.kind === 'blind_index') return setting.column;
+  if (setting.kind === 'codec' || setting.kind === 'blind_index' || setting.kind === 'markdown') return setting.column;
   if (setting.kind === 'navigation') return setting.foreignKey;
   return '';
+}
+
+/** The order of the state_machine lines: the transitions, initial and terminal lines first, then history, then limits. */
+function formOrder(setting: DbspecSetting): number {
+  if (setting.kind !== 'state_machine') return 0;
+  if (setting.line.form === 'history') return 1;
+  return setting.line.form === 'limit' ? 2 : 0;
+}
+
+/** A string literal in canonical form: quoted, with each quote doubled. */
+function quoted(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+function requiresText(requires: readonly string[] | null): string {
+  return requires === null || requires.length === 0 ? '' : ` require (${requires.join(', ')})`;
+}
+
+function stateLineText(line: DbspecStateLine): string {
+  switch (line.form) {
+    case 'initial':
+      return `initial ${line.state}`;
+    case 'terminal':
+      return `terminal ${line.state}${requiresText(line.requires)}`;
+    case 'transition':
+      return `${line.from} -> ${line.to}${requiresText(line.requires)}`;
+    case 'history':
+      return `history ${line.table} row ${line.row} from ${line.from} to ${line.to} at ${line.at}`;
+    case 'limit':
+      return `limit ${line.state} ${line.count}`;
+  }
 }
 
 function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string {
@@ -89,6 +129,22 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
       return `navigation ${setting.foreignKey} ${setting.childName} ${setting.parentName}`;
     case 'immutable':
       return 'immutable';
+    case 'markdown':
+      return `markdown ${setting.column}`;
+    case 'store':
+      if (setting.storage === 'files') return 'store files';
+      if (setting.storage === 'document') return `store document ${setting.shape ?? ''}`;
+      return `store block ${setting.foreignKey ?? ''} ${setting.shape ?? ''}`;
+    case 'key_prefix':
+      return `key_prefix ${quoted(setting.prefix)}`;
+    case 'title':
+    case 'body':
+    case 'order':
+      return `${setting.kind} ${setting.column}`;
+    case 'checkbox':
+      return `checkbox ${setting.column} ${setting.state} ${quoted(setting.glyph)}`;
+    case 'state_machine':
+      return `state_machine ${setting.column} ${stateLineText(setting.line)}`;
     case 'audit':
       // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude 목록으로
       // 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
@@ -145,7 +201,10 @@ function table(out: string[], t: DbspecTable, view: View): void {
     comments(out, t.settings.comments, '  ', view);
     out.push('  settings {');
     const settings = [...written].sort(
-      (a, b) => SETTING_ORDER.indexOf(a.kind) - SETTING_ORDER.indexOf(b.kind) || compare(settingKey(a), settingKey(b)),
+      (a, b) =>
+        SETTING_ORDER.indexOf(a.kind) - SETTING_ORDER.indexOf(b.kind) ||
+        formOrder(a) - formOrder(b) ||
+        compare(settingKey(a), settingKey(b)),
     );
     for (const s of settings) {
       comments(out, s.comments, '    ', view);

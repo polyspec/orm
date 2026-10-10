@@ -157,5 +157,6 @@ str setting_audit_line(const setting *s, const char *list, const strs *columns)
 
 bool fkey_changes_child_rows(const fkey *f)
 {
-    return !str_eqc(f->on_delete, "restrict") || !str_eqc(f->on_update, "restrict");
+    /* Go의 propagates: cascade와 set_null만 자식 행을 바꾼다. */
+    return str_eqc(f->on_delete, "cascade") || str_eqc(f->on_delete, "set_null") || str_eqc(f->on_update, "cascade") || str_eqc(f->on_update, "set_null");
 }

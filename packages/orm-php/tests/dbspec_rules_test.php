@@ -113,7 +113,7 @@ $invalid = [
         '  check ck_users_chain (a < 1 < 2)',
         '  check ck_users_empty ()',
         '  check ck_users_upper (a > 1 AND a < 3)',
-    ]), [['check', 8, '%'], ['check', 9, 'zzz'], ['check', 10, '< 2'], ['check', 11, ')'], ['check', 12, 'AND']]),
+    ]), [['syntax', 8, '%'], ['check', 9, 'zzz'], ['check', 10, '< 2'], ['check', 11, ')'], ['check', 12, 'AND']]),
     rules_case('check-set-null-column', ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  parent_id i64 null', '  primary key (id)', '  index ix_users_parent (parent_id)',
         '  foreign key fk_users_parent (parent_id) references users (id) on delete restrict on update set_null',
         '  check ck_users_parent (parent_id is null or parent_id <> id)', '}'], [['check', 9, 'parent_id is']]),

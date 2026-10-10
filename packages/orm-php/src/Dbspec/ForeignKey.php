@@ -27,6 +27,6 @@ final class ForeignKey
     /** True when an action changes child rows: `cascade` or `set_null` on delete or update. */
     public function changesChildRows(): bool
     {
-        return $this->onDelete !== 'restrict' || $this->onUpdate !== 'restrict';
+        return in_array($this->onDelete, ['cascade', 'set_null'], true) || in_array($this->onUpdate, ['cascade', 'set_null'], true);
     }
 }

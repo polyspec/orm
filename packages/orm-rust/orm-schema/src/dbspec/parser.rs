@@ -20,6 +20,12 @@ const RESERVED: [&str; 21] = [
     "or", "not", "in", "between", "is",
 ];
 
+/// Whether the keyword `text` comes next and is not the from state of a transition: a word followed by
+/// `->` is a state name.
+fn form_ahead(cursor: &Cursor, text: &str) -> bool {
+    cursor.peek_is(text) && !cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is("-"))
+}
+
 /// A name that matches `[a-z][a-z0-9_]*`, is not reserved and has at most 63 bytes.
 pub(crate) fn well_formed(text: &str) -> bool {
     name_format(text) && text.len() <= MAX_NAME_BYTES
@@ -62,7 +68,18 @@ pub(crate) struct Parsed {
     pub unresolved: Vec<Vec<String>>,
     /// For each table, the key and index lines that failed.
     pub failed_keys: Vec<FailedKeys>,
+    /// For each table, the `default` value tokens of its column lines that parsed.
+    pub defaults: Vec<Vec<DefaultToken>>,
     pub diags: Vec<Diag>,
+}
+
+/// The value token of a column `default`: its column, its position and its text, which is a string
+/// without its quotes. Validation reads it for the rules that compare a state column's default.
+#[derive(Clone, Debug)]
+pub(crate) struct DefaultToken {
+    pub column: String,
+    pub pos: Pos,
+    pub text: String,
 }
 
 /// Key and index lines of a table that failed: their columns are unknown, so
@@ -123,6 +140,8 @@ struct Parser {
     document: Document,
     unresolved: Vec<Vec<String>>,
     failed_keys: Vec<FailedKeys>,
+    defaults: Vec<Vec<DefaultToken>>,
+    table_defaults: Vec<DefaultToken>,
     context: Context,
     /// Depth of an unreadable block whose lines are skipped.
     skip: usize,
@@ -192,6 +211,8 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         },
         unresolved: Vec::new(),
         failed_keys: Vec::new(),
+        defaults: Vec::new(),
+        table_defaults: Vec::new(),
         context: Context::Top,
         skip: 0,
         phase: 0,
@@ -219,7 +240,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         }
     }
     parser.finish();
-    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, diags: parser.diags })
+    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, defaults: parser.defaults, diags: parser.diags })
 }
 
 fn bare_cr(line: usize, column: usize) -> Diag {
@@ -367,7 +388,18 @@ impl Parser {
             }
             return;
         }
-        let tokens = tokenize(line, number);
+        let mut tokens = tokenize(line, number);
+        // A line of the top level with a bad character is still read without it (Go's lexRecover), so that a
+        // table header keeps its table; the bad character is reported once.
+        if matches!(self.context, Context::Top) {
+            if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid).copied() {
+                self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
+                tokens.retain(|t| t.kind != Kind::Invalid);
+                if tokens.is_empty() {
+                    return;
+                }
+            }
+        }
         if self.skip > 0 {
             if tokens.len() == 1 && tokens[0].is("}") {
                 self.skip -= 1;
@@ -377,26 +409,29 @@ impl Parser {
             return;
         }
         let first = &tokens[0];
-        let check_line = matches!(self.context, Context::Table) && first.is("check");
-        if !check_line {
-            if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid) {
-                self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
-                // The line keeps the kind and name that its words give.
-                let mut words = tokens.iter().filter(|t| t.kind != Kind::Invalid);
-                if let (Context::Table, Some(word)) = (&self.context, words.next()) {
-                    match line_kind(word, words.next()) {
-                        Some(LineKind::Primary) => self.fail_key(true),
-                        Some(LineKind::Unique | LineKind::Index) => self.fail_key(false),
-                        Some(_) => {}
-                        None if word.kind == Kind::Word => self.table_unresolved.push(word.text.to_owned()),
-                        None => {}
+        if let Some(bad) = tokens.iter().find(|t| t.kind == Kind::Invalid) {
+            self.report(err(bad.pos, "syntax", format!("'{}' is not allowed here", bad.text)));
+            // The line keeps the kind and name that its words give.
+            let mut words = tokens.iter().filter(|t| t.kind != Kind::Invalid);
+            if let (Context::Table, Some(word)) = (&self.context, words.next()) {
+                match line_kind(word, words.next()) {
+                    Some(LineKind::Primary) => self.fail_key(true),
+                    Some(LineKind::Unique | LineKind::Index) => self.fail_key(false),
+                    // A foreign key line that fails fails its name, as the syntax error of a line does (Go's markFailed).
+                    Some(LineKind::ForeignKey) => {
+                        if let Some(name) = words.next().filter(|n| n.kind == Kind::Word) {
+                            self.table_unresolved.push(name.text.to_owned());
+                        }
                     }
+                    Some(_) => {}
+                    None if word.kind == Kind::Word => self.table_unresolved.push(word.text.to_owned()),
+                    None => {}
                 }
-                if tokens.last().is_some_and(|t| t.is("{")) {
-                    self.skip = 1;
-                }
-                return;
             }
+            if tokens.last().is_some_and(|t| t.is("{")) {
+                self.skip = 1;
+            }
+            return;
         }
         match self.context {
             Context::Top => self.top_line(&tokens),
@@ -498,6 +533,7 @@ impl Parser {
         });
         self.table_unresolved = Vec::new();
         self.table_failed_keys = FailedKeys::default();
+        self.table_defaults = Vec::new();
         self.table_phase = 0;
         self.context = Context::Table;
     }
@@ -514,6 +550,7 @@ impl Parser {
             self.document.tables.push(table);
             self.unresolved.push(std::mem::take(&mut self.table_unresolved));
             self.failed_keys.push(std::mem::take(&mut self.table_failed_keys));
+            self.defaults.push(std::mem::take(&mut self.table_defaults));
         }
         self.context = Context::Top;
     }
@@ -656,6 +693,13 @@ impl Parser {
             default = Some((value_pos, value));
         }
         self.end(cursor)?;
+        if let Some((pos, Some(value))) = &default {
+            let text = match value {
+                Value::Number { negative: true, text } => format!("-{text}"),
+                Value::Number { negative: false, text } | Value::Word(text) | Value::Str(text) => text.clone(),
+            };
+            self.table_defaults.push(DefaultToken { column: name.text.clone(), pos: *pos, text });
+        }
         if let Some(pos) = identity {
             let mut problems = Vec::new();
             if nullable {
@@ -806,10 +850,14 @@ impl Parser {
         }
     }
 
-    /// Knows a key or index line that failed, so the rules that depend on its columns report nothing.
+    /// Knows a key or index line that failed, so the rules that depend on its columns report nothing. A failed
+    /// primary key line is `primary` only; a failed unique or index line is `any` only (Go's failedPK and failedKey).
     fn fail_key(&mut self, primary: bool) {
-        self.table_failed_keys.primary |= primary;
-        self.table_failed_keys.any = true;
+        if primary {
+            self.table_failed_keys.primary = true;
+        } else {
+            self.table_failed_keys.any = true;
+        }
     }
 
     fn primary_line(&mut self, cursor: &mut Cursor) {
@@ -862,11 +910,21 @@ impl Parser {
         Some(())
     }
 
-    fn action(&mut self, cursor: &mut Cursor) -> Option<Action> {
-        let action = match cursor.peek().map(|t| (t.kind, t.text)) {
-            Some((Kind::Word, "restrict")) => Action::Restrict,
-            Some((Kind::Word, "cascade")) => Action::Cascade,
-            Some((Kind::Word, "set_null")) => Action::SetNull,
+    /// Reads a foreign key action. A word that is not restrict, cascade or set_null is returned with its
+    /// position, for the foreign_key error, and acts as restrict, which propagates nothing as Go's does.
+    fn action(&mut self, cursor: &mut Cursor) -> Option<(Action, Option<(Pos, String)>)> {
+        let (kind, text, pos) = match cursor.peek() {
+            Some(t) => (t.kind, t.text, t.pos),
+            None => {
+                self.syntax(cursor);
+                return None;
+            }
+        };
+        let action = match (kind, text) {
+            (Kind::Word, "restrict") => (Action::Restrict, None),
+            (Kind::Word, "cascade") => (Action::Cascade, None),
+            (Kind::Word, "set_null") => (Action::SetNull, None),
+            (Kind::Word | Kind::Number, other) => (Action::Restrict, Some((pos, other.to_owned()))),
             _ => {
                 self.syntax(cursor);
                 return None;
@@ -888,30 +946,45 @@ impl Parser {
             return;
         }
         let Some(name) = self.name(cursor) else { return };
-        let Some(columns) = self.column_list(cursor, false) else { return };
-        if self.expect(cursor, "references").is_none() {
-            return;
+        match self.foreign_key_rest(cursor) {
+            Some((columns, table, references, on_delete, on_update, unknown)) => {
+                for (pos, text) in unknown {
+                    self.report(err(pos, "foreign_key", format!("action '{text}' is not restrict, cascade or set_null")));
+                }
+                let columns = columns.into_iter().map(|(n, _)| n).collect();
+                let references = references.into_iter().map(|(n, _)| n).collect();
+                self.table_mut().foreign_keys.push(ForeignKey { comments, name, columns, table, references, on_delete, on_update });
+            }
+            // A failed foreign key line fails its name: references to it report nothing more (Go's markFailed).
+            None => self.table_unresolved.push(name.text.to_owned()),
         }
-        let Some(table) = self.name(cursor) else { return };
-        let Some(references) = self.column_list(cursor, false) else { return };
+    }
+
+    /// The rest of a foreign key line after its name; `None` when the line fails. The unknown actions are returned
+    /// with their positions, for the foreign_key error of an accepted line.
+    #[allow(clippy::type_complexity)]
+    fn foreign_key_rest(&mut self, cursor: &mut Cursor) -> Option<(Vec<(Name, bool)>, Name, Vec<(Name, bool)>, Action, Action, Vec<(Pos, String)>)> {
+        let columns = self.column_list(cursor, false)?;
+        self.expect(cursor, "references")?;
+        let table = self.name(cursor)?;
+        let references = self.column_list(cursor, false)?;
         let mut on_delete = Action::Restrict;
         let mut on_update = Action::Restrict;
+        let mut unknown = Vec::new();
         if cursor.peek_is("on") && cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is("delete")) {
             cursor.at += 2;
-            let Some(action) = self.action(cursor) else { return };
+            let (action, bad) = self.action(cursor)?;
             on_delete = action;
+            unknown.extend(bad);
         }
         if cursor.peek_is("on") && cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is("update")) {
             cursor.at += 2;
-            let Some(action) = self.action(cursor) else { return };
+            let (action, bad) = self.action(cursor)?;
             on_update = action;
+            unknown.extend(bad);
         }
-        if self.end(cursor).is_none() {
-            return;
-        }
-        let columns = columns.into_iter().map(|(n, _)| n).collect();
-        let references = references.into_iter().map(|(n, _)| n).collect();
-        self.table_mut().foreign_keys.push(ForeignKey { comments, name, columns, table, references, on_delete, on_update });
+        self.end(cursor)?;
+        Some((columns, table, references, on_delete, on_update, unknown))
     }
 
     fn check_line(&mut self, cursor: &mut Cursor) {
@@ -926,6 +999,11 @@ impl Parser {
             return;
         }
         let rest = &cursor.tokens[cursor.at..];
+        // Go: the tokens after `(` end with `)`; otherwise the line fails at its end.
+        if rest.last().is_none_or(|t| !t.is(")")) {
+            self.report(err(cursor.end, "syntax", "expected ')' at the end of the check"));
+            return;
+        }
         let mut parser = CheckParser::new(rest, cursor.end);
         let result = parser.expression().and_then(|expr| {
             let at = parser.position();
@@ -1004,6 +1082,19 @@ impl Parser {
                 let parent = self.name(&mut cursor)?;
                 Some(Setting::Navigation(key, child, parent))
             }),
+            (Kind::Word, "markdown") => self.name(&mut cursor).map(Setting::Markdown),
+            (Kind::Word, "store") => self.store(&mut cursor),
+            (Kind::Word, "key_prefix") => self.quoted(&mut cursor).map(Setting::KeyPrefix),
+            (Kind::Word, "title") => self.name(&mut cursor).map(Setting::Title),
+            (Kind::Word, "body") => self.name(&mut cursor).map(Setting::Body),
+            (Kind::Word, "order") => self.name(&mut cursor).map(Setting::Order),
+            (Kind::Word, "checkbox") => (|| {
+                let column = self.name(&mut cursor)?;
+                let state = self.name(&mut cursor)?;
+                let glyph = self.quoted(&mut cursor)?;
+                Some(Setting::Checkbox { column, state, glyph })
+            })(),
+            (Kind::Word, "state_machine") => self.state_machine(&mut cursor),
             (Kind::Word, "immutable") => Some(Setting::Immutable),
             (Kind::Word, "audit") => (|| {
                 self.expect(&mut cursor, "into")?;
@@ -1042,6 +1133,127 @@ impl Parser {
         }
         if let Some(settings) = self.table_mut().settings.as_mut() {
             settings.lines.push(SettingLine { comments, pos: keyword.pos, setting });
+        }
+    }
+
+    /// `store files`, `store document <shape>` or `store block <foreign key> <shape>`.
+    fn store(&mut self, cursor: &mut Cursor) -> Option<Setting> {
+        let kind = self.one_of(cursor, &["files", "document", "block"])?;
+        let foreign = if kind.text == "block" { Some(self.name(cursor)?) } else { None };
+        let shape = if kind.text == "files" { None } else { Some(self.one_of(cursor, &["list", "table"])?) };
+        Some(Setting::Store { kind, foreign, shape })
+    }
+
+    /// `state_machine <column> ...`: the form is read after the column, as the keywords `initial`,
+    /// `terminal`, `history` and `limit` only when no `->` follows them (a state named like one of them).
+    fn state_machine(&mut self, cursor: &mut Cursor) -> Option<Setting> {
+        let column = self.name(cursor)?;
+        let line = if form_ahead(cursor, "initial") {
+            cursor.next();
+            StateLine::Initial(self.name(cursor)?)
+        } else if form_ahead(cursor, "terminal") {
+            cursor.next();
+            let state = self.name(cursor)?;
+            StateLine::Terminal(state, self.requires(cursor)?)
+        } else if form_ahead(cursor, "history") {
+            cursor.next();
+            let table = self.name(cursor)?;
+            self.expect(cursor, "row")?;
+            let row = self.name(cursor)?;
+            self.expect(cursor, "from")?;
+            let from = self.name(cursor)?;
+            self.expect(cursor, "to")?;
+            let to = self.name(cursor)?;
+            self.expect(cursor, "at")?;
+            let at = self.name(cursor)?;
+            StateLine::History(History { table, row, from, to, at })
+        } else if form_ahead(cursor, "limit") {
+            cursor.next();
+            let state = self.name(cursor)?;
+            StateLine::Limit { state, count: self.row_count(cursor)? }
+        } else {
+            let from = self.name(cursor)?;
+            self.arrow(cursor)?;
+            let to = self.name(cursor)?;
+            StateLine::Transition { from, to, requires: self.requires(cursor)? }
+        };
+        Some(Setting::StateMachine { column, line })
+    }
+
+    /// `require (<column>, ...)` when it comes next; the empty list otherwise.
+    fn requires(&mut self, cursor: &mut Cursor) -> Option<Vec<Name>> {
+        if !cursor.peek_is("require") {
+            return Some(Vec::new());
+        }
+        cursor.next();
+        Some(self.column_list(cursor, false)?.into_iter().map(|(name, _)| name).collect())
+    }
+
+    /// `->`, which the lexer writes as the two operator tokens `-` and `>`.
+    fn arrow(&mut self, cursor: &mut Cursor) -> Option<()> {
+        let next_is_greater = cursor.tokens.get(cursor.at + 1).is_some_and(|t| t.is(">"));
+        if cursor.peek_is("-") && next_is_greater {
+            cursor.at += 2;
+            Some(())
+        } else {
+            self.syntax(cursor);
+            None
+        }
+    }
+
+    /// The row count of a `limit` line: a number token, or `-` and a number, which is read as the
+    /// negative text. Its value is checked by validation.
+    fn row_count(&mut self, cursor: &mut Cursor) -> Option<Name> {
+        if cursor.peek_is("-") {
+            let minus = cursor.next()?;
+            return match cursor.peek() {
+                Some(number) if number.kind == Kind::Number => {
+                    cursor.next();
+                    Some(Name { text: format!("-{}", number.text), pos: minus.pos })
+                }
+                _ => {
+                    self.syntax(cursor);
+                    None
+                }
+            };
+        }
+        match cursor.peek() {
+            Some(t) if matches!(t.kind, Kind::Word | Kind::Number) => {
+                cursor.next();
+                Some(Name { text: t.text.to_owned(), pos: t.pos })
+            }
+            _ => {
+                self.syntax(cursor);
+                None
+            }
+        }
+    }
+
+    /// A word that is one of `words`; the word is returned as a name.
+    fn one_of(&mut self, cursor: &mut Cursor, words: &[&str]) -> Option<Name> {
+        match cursor.peek() {
+            Some(t) if t.kind == Kind::Word && words.contains(&t.text) => {
+                cursor.next();
+                Some(Name { text: t.text.to_owned(), pos: t.pos })
+            }
+            _ => {
+                self.syntax(cursor);
+                None
+            }
+        }
+    }
+
+    /// A string literal; the name holds its text without the quotes.
+    fn quoted(&mut self, cursor: &mut Cursor) -> Option<Name> {
+        match cursor.peek() {
+            Some(t) if t.kind == Kind::Str => {
+                cursor.next();
+                Some(Name { text: t.string_value(), pos: t.pos })
+            }
+            _ => {
+                self.syntax(cursor);
+                None
+            }
         }
     }
 

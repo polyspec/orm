@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 642a153cd65d5053364dd960a89eb13c8384a2a52d3a72460dbe28cc96ca8c6a -->
+<!-- source-sha256: 1a66cf2ce7cb47de8c8588a54d898aaf568f3ced51bf9bf831be99acab1b79d3 -->
 # 변경 이력
 
 ## Unreleased
+- T62-2: PHP, Rust와 PHP 확장의 dbspec parser가 `a.b` 같은 점이 있는 이름을 Go parser처럼 token 하나로 유지하므로, 점이 있는 table, column, setting 이름은 각각 `name.format` 오류 하나다.
+- T62-1: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser가 `state_machine`, `markdown`과 markdown 저장 setting(T59, T60, T62)을 Go parser처럼 읽는다. 각 구현은 같은 규칙과 규칙 이름으로 parse, 검증, emit하며, `tests/dbspec/cases.json`의 공유 case를 모든 구현이 실행하고 `dbspec-compare-check`로 비교한다.
 - T62-3: dbspec이 `CanonicalLiteral(t Type, text string) (string, bool)`을 export한다. 이 함수는 column default로 쓰인 literal의 canonical 형태와 그 literal이 type에 유효한지 여부를 돌려주므로, 소비자는 `canonicalDefault`의 복사본 대신 orm의 규칙으로 column 값을 읽는다. 함수는 `canonicalDefault`의 코드를 실행한다. literal은 한 줄의 token 하나이며 앞뒤에 space가 없고, text나 bytes column에는 literal이 없다.
-- T62: dbspec이 markdown 저장 setting을 얻는다: `store files`, `store document list|table`, `store block <foreign key> list|table`(table마다 정확히 하나), `key_prefix '<p>'`, `title <column>`, `body <column>`, `order <column>`, `checkbox <column> <state> '<glyph>'`, 그리고 state machine의 `state_machine <column> initial <state>`, `history`, `limit` 줄이다. validator는 state, glyph, column과 history table의 모양을 검사하고, emitter는 canonical 줄을 쓰며, manifest hash가 이를 포함한다. TypeScript, PHP, Rust와 PHP 확장의 dbspec parser는 아직 이 setting을 알 수 없는 setting으로 거부한다. `state_machine`과 `markdown` setting(T59, T60)과 같다.
+- T62: dbspec이 markdown 저장 setting을 얻는다: `store files`, `store document list|table`, `store block <foreign key> list|table`(table마다 정확히 하나), `key_prefix '<p>'`, `title <column>`, `body <column>`, `order <column>`, `checkbox <column> <state> '<glyph>'`, 그리고 state machine의 `state_machine <column> initial <state>`, `history`, `limit` 줄이다. validator는 state, glyph, column과 history table의 모양을 검사하고, emitter는 canonical 줄을 쓰며, manifest hash가 이를 포함한다.
 - T61: protocol에 5절 IR executor가 있다. `markdown://` DSN은 SQL dialect 대신 IR executor를 고르며, 클라이언트는 요청마다 `ir.Validate`로 검증하고 `{ir_version, manifest_hash, request, params, now}`를 executor에 전한다. 제어 메시지 `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`가 세션 트랜잭션을 열고, 끝내고, 중첩한다. `docs/errors.yaml`에 `WRITE_CONFLICT`가 있으며 생성된 Go, PHP, Rust 상수가 이를 담는다. `docs/dialects.md`에 markdown executor의 capability 표가 있다.
 - T68: 한국어 checklist의 T58 줄이 Python client를 writing-style 규칙이 허용하는 `명시한다`로 적어, `make docs-rules-check`가 main에서 통과합니다.
 - T57-1: version check가 root README의 version 선언을 읽지 않는다. 제목은 version을 적지 않는다. README 변경의 CI가 그로 인해 실패했다.

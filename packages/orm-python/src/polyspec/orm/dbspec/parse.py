@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
@@ -262,64 +263,104 @@ def valid_name(name: str) -> bool:
     return well_formed(name) and utf8_length(name) <= MAX_NAME_BYTES
 
 
+def _check_refs(check):
+    """check 식의 column 참조 token: 식이 맞는 단어이고 함수 호출이 아니다(Go의 expr.go)."""
+    out = []
+    toks = check.expr
+    for i, tok in enumerate(toks):
+        if tok.k != WORD or tok.t in EXPRESSION_WORDS:
+            continue
+        nxt = toks[i + 1] if i + 1 < len(toks) else None
+        if nxt is not None and is_punct(nxt, '('):
+            continue
+        out.append(tok)
+    return out
+
+
 def column_of(text: str, index: int) -> int:
     # Python 문자열 index가 곧 code point 칸이다.
     return index + 1
 
 
-_DELIMITERS = set(' \t(){}\',=<>+-*/')
+def is_word_rune(c: str) -> bool:
+    """Go의 isWordRune과 같다: ASCII는 letter, digit, '_', '.'이고 그 밖은 Unicode letter나 digit이다."""
+    if ord(c) < 0x80:
+        return c == '_' or c == '.' or ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9')
+    return unicodedata.category(c) in ('Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nd')
 
 
-def tokenize(text: str, line: int):
-    """한 줄의 token. tab은 보고 뒤에 구분자로 읽고, 닫히지 않은 문자열은
-    token을 끝낸다."""
+def is_number_text(text: str) -> bool:
+    """Go의 isNumberText: 숫자 하나 이상과 선택적인 소수부 하나이다."""
+    return re.fullmatch(r'[0-9]+(\.[0-9]+)?', text) is not None
+
+
+def go_rune_quote(c: str) -> str:
+    """Go의 %q로 쓴 rune이다. 제어 문자는 escape하고 그 밖은 작은따옴표로 감싼다."""
+    escapes = {'\t': '\\t', '\n': '\\n', '\r': '\\r', "'": "\\'", '\\': '\\\\'}
+    return "'" + escapes.get(c, c) + "'"
+
+
+def lex_line(text: str, line: int):
+    """한 줄을 token으로 나눈다(engine/dbspec/lex.go의 lexLine). 돌려주는 값은 (token, 줄 끝 index,
+    오류)이다. 오류는 첫 글자가 token을 시작할 수 없을 때나 string이 닫히지 않을 때 (index, message)이고,
+    그때 token은 오류 앞까지다. 줄 끝 index는 문자 수다(칸 수는 index + 1)."""
     toks = []
     n = len(text)
     i = 0
-    tab = -1
     while i < n:
         c = text[i]
-        if c in ' \t':
-            if c == '\t' and tab < 0:
-                tab = i
+        if c == ' ':
             i += 1
         elif c in '(){},':
             toks.append(Tk(PUNCT, c, i, i + 1, line))
             i += 1
+        elif c in '<>':
+            e = i + 2 if i + 1 < n and (text[i + 1] == '=' or (c == '<' and text[i + 1] == '>')) else i + 1
+            toks.append(Tk(OP, text[i:e], i, e, line))
+            i = e
+        elif c in '=+-*/':
+            toks.append(Tk(OP, c, i, i + 1, line))
+            i += 1
         elif c == "'":
             j = i + 1
-            while True:
-                if j >= n:
-                    if tab >= 0:
-                        return toks, tab, 'a tab is not a separator'
-                    return toks, i, 'the string is not terminated'
+            closed = False
+            while j < n:
                 if text[j] == "'":
                     if j + 1 < n and text[j + 1] == "'":
                         j += 2
                         continue
+                    j += 1
+                    closed = True
                     break
                 j += 1
-            toks.append(Tk(STR, text[i:j + 1], i, j + 1, line))
-            i = j + 1
-        elif c in '=<>+-*/':
-            two = (c == '<' and i + 1 < n and text[i + 1] in ('>', '=')) \
-                or (c == '>' and i + 1 < n and text[i + 1] == '=')
-            e = i + 2 if two else i + 1
-            toks.append(Tk(OP, text[i:e], i, e, line))
-            i = e
-        else:
+            if not closed:
+                return toks, 0, (i, 'string is not closed on its line')
+            toks.append(Tk(STR, text[i:j], i, j, line))
+            i = j
+        elif is_word_rune(c):
             j = i + 1
-            while j < n and text[j] not in _DELIMITERS:
+            while j < n and is_word_rune(text[j]):
                 j += 1
             toks.append(Tk(WORD, text[i:j], i, j, line))
             i = j
-    if tab >= 0:
-        return toks, tab, 'a tab is not a separator'
-    return toks, -1, ''
+        else:
+            return toks, 0, (i, f'character {go_rune_quote(c)} is not allowed here')
+    return toks, n, None
+
+
+def lex_recover(text: str, line: int):
+    """오류 글자를 빈칸으로 바꾸며 다시 나누어 줄의 token을 모두 돌려준다(lexRecover). 오류가 남으면 []."""
+    chars = list(text)
+    while True:
+        toks, _, err = lex_line(''.join(chars), line)
+        if err is None:
+            return toks
+        index = err[0]
+        chars[index] = ' '
 
 
 class _Column:
-    __slots__ = ('name', 'type', 'nullable', 'identity', 'value', 'comments')
+    __slots__ = ('name', 'type', 'nullable', 'identity', 'value', 'comments', 'default_tok')
 
     def __init__(self, name, type_, nullable, identity, value, comments):
         self.name = name
@@ -328,6 +369,8 @@ class _Column:
         self.identity = identity
         self.value = value
         self.comments = comments
+        # 기본값 literal의 token(없으면 None). value는 맞는 literal일 때만 있다.
+        self.default_tok = None
 
 
 class _KeyColumn:
@@ -349,7 +392,8 @@ class _Key:
 
 
 class _ForeignKey:
-    __slots__ = ('name', 'cols', 'table', 'refs', 'on_delete', 'on_update', 'comments')
+    __slots__ = ('name', 'cols', 'table', 'refs', 'on_delete', 'on_update', 'comments',
+                 'delete_tok', 'update_tok')
 
     def __init__(self, name, cols, table, refs, on_delete, on_update, comments):
         self.name = name
@@ -375,7 +419,7 @@ class _Check:
 class _Setting:
     __slots__ = ('kw', 'comments', 'kind', 'name', 'column', 'columns', 'stages',
                  'index_column', 'foreign_key', 'child_name', 'parent_name', 'into',
-                 'references', 'action', 'previous', 'lists')
+                 'references', 'action', 'previous', 'lists', 'args', 'form')
 
     def __init__(self, kw, comments, kind, **fields):
         self.kw = kw
@@ -395,6 +439,9 @@ class _Setting:
         self.previous = fields.get('previous')
         # audit의 exclude와 include 목록. 둘 다 쓴 setting은 검사가 거부한다.
         self.lists = fields.get('lists', ())
+        # markdown, store, key_prefix, title, body, order, checkbox, state_machine 줄의 token과 form.
+        self.args = fields.get('args', ())
+        self.form = fields.get('form', '')
 
 
 class _Settings:
@@ -410,7 +457,7 @@ class _Settings:
 class _Table:
     __slots__ = ('kw', 'name', 'named', 'columns', 'col_map', 'pks', 'uniques', 'indexes',
                  'fks', 'checks', 'settings', 'comments', 'closing', 'phase', 'identity',
-                 'open', 'failed', 'failed_primary', 'failed_key')
+                 'open', 'failed', 'failed_primary', 'failed_key', 'failed_lines')
 
     def __init__(self, kw, name, named, open_, comments):
         self.kw = kw
@@ -436,6 +483,8 @@ class _Table:
         self.failed_primary = False
         # primary key, unique, index 줄이 실패했다: 어떤 key의 column을 알 수 없다.
         self.failed_key = False
+        # 구문 오류가 난 column 줄의 수(Go의 failedLines): 그 줄이 있으면 column이 없어도 보고하지 않는다.
+        self.failed_lines = 0
 
 
 class _Use:
@@ -515,6 +564,132 @@ class _Operand:
         self.slot = slot
 
 
+FORM_SETTINGS = frozenset({'markdown', 'store', 'key_prefix', 'title', 'body', 'order',
+                           'checkbox', 'state_machine'})
+
+
+def is_number_text(text: str) -> bool:
+    return re.fullmatch(r'[0-9]+(\.[0-9]+)?', text) is not None
+
+
+def go_int64(text: str):
+    """Go의 strconv.ParseInt(text, 10, 64)와 같다: 선택적인 '-'와 십진 숫자, int64 범위. 아니면 None."""
+    if re.fullmatch(r'-?[0-9]+', text) is None:
+        return None
+    n = int(text)
+    if -(1 << 63) <= n < (1 << 63):
+        return n
+    return None
+
+
+class _Cursor:
+    """engine/dbspec/parse.go의 cursor와 같다: 줄의 첫 실패가 syntax 오류 하나를 보고하고, 그 뒤는 읽지 않는다."""
+
+    def __init__(self, parser, toks, line: int, text: str):
+        self.parser = parser
+        self.toks = toks
+        self.i = 0
+        self.line = line
+        self.text = text
+
+    def more(self) -> bool:
+        return self.i < len(self.toks)
+
+    def peek(self, kind: str, text: str) -> bool:
+        return self.more() and self.toks[self.i].k == kind and self.toks[self.i].t == text
+
+    def fail(self, expected: str) -> bool:
+        if self.more():
+            t = self.toks[self.i]
+            shown = f"string '{string_value(t)}'" if t.k == STR else f"'{t.t}'"
+            self.parser._at('syntax', t, f'unexpected {shown}, expected {expected}')
+        else:
+            self.parser._report('syntax', self.line, len(self.text), f'line ends, expected {expected}')
+        return False
+
+    def next(self) -> Tk:
+        tok = self.toks[self.i]
+        self.i += 1
+        return tok
+
+    def keyword(self, text: str) -> bool:
+        if self.peek(WORD, text):
+            self.i += 1
+            return True
+        return self.fail(f"'{text}'")
+
+    def punct(self, text: str) -> bool:
+        if self.peek(PUNCT, text):
+            self.i += 1
+            return True
+        return self.fail(f"'{text}'")
+
+    def name(self, what: str):
+        if self.more() and self.toks[self.i].k == WORD:
+            return self.next(), True
+        return None, self.fail(what)
+
+    def one_of(self, what: str, *words: str):
+        if self.more() and self.toks[self.i].k == WORD and self.toks[self.i].t in words:
+            return self.next(), True
+        return None, self.fail(what)
+
+    def quoted(self, what: str):
+        if self.more() and self.toks[self.i].k == STR:
+            return self.next(), True
+        return None, self.fail(what)
+
+    def value(self, what: str):
+        """literal 하나를 읽는다. '-'는 바로 뒤의 숫자와 붙어 음수가 된다."""
+        if self.peek(OP, '-'):
+            minus = self.toks[self.i]
+            if self.i + 1 < len(self.toks) and self.toks[self.i + 1].k == WORD \
+                    and is_number_text(self.toks[self.i + 1].t):
+                number = self.toks[self.i + 1]
+                self.i += 2
+                return Tk(WORD, '-' + number.t, minus.s, number.e, minus.line), True
+            self.i += 1
+            return None, self.fail("a number after '-'")
+        if self.more() and self.toks[self.i].k == WORD:
+            return self.next(), True
+        return None, self.fail(what)
+
+    def arrow(self) -> bool:
+        if self.peek(OP, '-') and self.i + 1 < len(self.toks) and self.toks[self.i + 1].k == OP \
+                and self.toks[self.i + 1].t == '>':
+            self.i += 2
+            return True
+        return self.fail("'->'")
+
+    def form_ahead(self, text: str) -> bool:
+        """keyword 글자가 다음에 오고 전환의 from state가 아닌지 보고한다: 뒤에 `->`가 오면 state 이름이다."""
+        if not self.peek(WORD, text):
+            return False
+        nxt = self.i + 1
+        return nxt >= len(self.toks) or not (self.toks[nxt].k == OP and self.toks[nxt].t == '-')
+
+    def names(self):
+        """`( name, ... )`를 읽는다. 실패하면 None."""
+        if not self.punct('('):
+            return None
+        out = []
+        while True:
+            tok, ok = self.name('a column name')
+            if not ok:
+                return None
+            out.append(tok)
+            if self.peek(PUNCT, ')'):
+                self.i += 1
+                return out
+            if not self.peek(PUNCT, ','):
+                self.fail("',' or ')'")
+                return None
+            self.i += 1
+
+    def done(self) -> bool:
+        return True if not self.more() else self.fail('the end of the line')
+
+
 class DocumentParser:
     def __init__(self, lines, context: _ParseContext, parents):
         self.lines = lines
@@ -547,10 +722,10 @@ class DocumentParser:
         tok = toks[i] if i < len(toks) else None
         if tok is not None:
             self._at('syntax', tok, message)
-        elif toks:
-            self._report('syntax', line, toks[-1].e, message)
         else:
-            self._report('syntax', line, 0, message)
+            # 줄 끝 오류는 줄의 끝 다음 칸이다(Go의 cursor.end): 뒤쪽 빈칸도 센다.
+            self._report('syntax', line, len(self.lines[line - 1]) if 1 <= line <= len(self.lines) else 0,
+                         message)
 
     def _stop(self, rule: str, tok: Tk, message: str) -> None:
         self._at(rule, tok, message)
@@ -611,9 +786,11 @@ class DocumentParser:
                 continue
             own = comments
             comments = []
-            toks, bad, why = tokenize(text, line)
-            if bad >= 0:
-                self._report('syntax', line, bad, why)
+            toks, _, lexed = lex_line(text, line)
+            if lexed is not None:
+                self._report('syntax', line, lexed[0], lexed[1])
+                # 오류 글자를 뺀 token으로 dispatch한다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+                toks = lex_recover(text, line)
             first = toks[0] if toks else None
             if first is None:
                 n += 1
@@ -645,6 +822,8 @@ class DocumentParser:
                     table.closing = own
                     table = None
                     state = 'top'
+                elif lexed is not None:
+                    state = self._lexed_table_line(table, toks, line, own)
                 elif is_word(first, 'settings'):
                     if table.settings is not None:
                         self._at('order', first, 'a table has at most one settings block')
@@ -674,7 +853,7 @@ class DocumentParser:
                     table.settings.closing = own
                     state = 'table'
                 else:
-                    self._setting(table, toks, line, own)
+                    self._setting(table, toks, line, own, lexed is not None)
             else:
                 if is_punct(first, '}'):
                     if len(toks) > 1:
@@ -682,7 +861,7 @@ class DocumentParser:
                     diagram.closing = own
                     diagram = None
                     state = 'top'
-                else:
+                elif lexed is None:
                     self._placement(diagram, toks, line, own)
             n += 1
         if self._stopped:
@@ -713,7 +892,7 @@ class DocumentParser:
             end += 1
         if end == len(prefix) or end < len(text):
             return fail(end)
-        name = tokenize(text, 1)[0][2]
+        name = lex_line(text, 1)[0][2]
         self._name(name)
         self.document.name = name.t
         return True
@@ -840,6 +1019,14 @@ class DocumentParser:
         return None
 
     def _column(self, table: _Table, toks, line: int, comments) -> None:
+        self._column_line(table, toks, line, comments)
+        if self._syntax_line == line:
+            # Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
+            table.failed_lines += 1
+            if toks and toks[0].k == WORD:
+                table.failed.add(toks[0].t)
+
+    def _column_line(self, table: _Table, toks, line: int, comments) -> None:
         name = toks[0]
         if name.k != WORD:
             return self._syntax(toks, 0, line, 'expected a column name')
@@ -913,6 +1100,7 @@ class DocumentParser:
                 else:
                     value = fitted
         column = _Column(name, type_, null_tok is not None, identity, value, comments)
+        column.default_tok = value_tok if default_tok is not None else None
         table.columns.append(column)
         if not resolvable:
             return
@@ -950,6 +1138,13 @@ class DocumentParser:
             return None
 
     def _constraint(self, table: _Table, toks, line: int, comments) -> None:
+        self._constraint_line(table, toks, line, comments)
+        # Go의 markFailed: 구문 오류가 난 foreign key 줄의 이름은 실패한 이름이다.
+        if toks and toks[0].t == 'foreign' and self._syntax_line == line and len(toks) > 2 \
+                and toks[2].k == WORD:
+            table.failed.add(toks[2].t)
+
+    def _constraint_line(self, table: _Table, toks, line: int, comments) -> None:
         kw = toks[0]
 
         def failed_key():
@@ -958,12 +1153,10 @@ class DocumentParser:
         if kw.t == 'primary':
             if not is_word(toks[1] if len(toks) > 1 else None, 'key'):
                 table.failed_primary = True
-                failed_key()
                 return self._syntax(toks, 1, line, 'expected key')
             cols = self._key_columns(toks, 2, line, False)
             if cols is None or not self._end(toks, cols[1], line):
                 table.failed_primary = True
-                failed_key()
                 return
             for c in cols[0]:
                 self._name(c.tok)
@@ -1004,14 +1197,16 @@ class DocumentParser:
                 return
             i = refs[1]
             actions = {'delete': 'restrict', 'update': 'restrict'}
+            action_toks = {}
             for event in ('delete', 'update'):
                 if not is_word(toks[i] if i < len(toks) else None, 'on') \
                         or not is_word(toks[i + 1] if i + 1 < len(toks) else None, event):
                     continue
                 action = toks[i + 2] if i + 2 < len(toks) else None
-                if action is None or action.k != WORD or action.t not in ACTIONS:
-                    return self._syntax(toks, i + 2, line, 'expected restrict, cascade or set_null')
+                if action is None or action.k != WORD:
+                    return self._syntax(toks, i + 2, line, 'expected an action')
                 actions[event] = action.t
+                action_toks[event] = action
                 i += 3
             if not self._end(toks, i, line):
                 return
@@ -1024,9 +1219,12 @@ class DocumentParser:
             self._name(target)
             for c in refs[0]:
                 self._name(c.tok)
-            table.fks.append(_ForeignKey(name, [c.tok for c in cols[0]], target,
-                                         [c.tok for c in refs[0]], actions['delete'],
-                                         actions['update'], comments))
+            fk = _ForeignKey(name, [c.tok for c in cols[0]], target,
+                             [c.tok for c in refs[0]], actions['delete'],
+                             actions['update'], comments)
+            fk.delete_tok = action_toks.get('delete')
+            fk.update_tok = action_toks.get('update')
+            table.fks.append(fk)
             return
         if kw.t == 'check':
             name = toks[1] if len(toks) > 1 else None
@@ -1035,16 +1233,24 @@ class DocumentParser:
             if not is_punct(toks[2] if len(toks) > 2 else None, '('):
                 return self._syntax(toks, 2, line, 'expected (')
             close = toks[-1]
-            if len(toks) < 5 or not is_punct(close, ')'):
-                return self._syntax(toks, 3 if len(toks) < 5 else len(toks), line,
-                                    'expected an expression in parentheses')
+            # Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
+            if len(toks) < 4 or not is_punct(close, ')'):
+                return self._syntax(toks, len(toks), line, "expected ')' at the end of the check")
             self._constraint_name(name)
             table.checks.append(_Check(name, toks[3:-1], close, comments))
 
-    def _setting(self, table: _Table, toks, line: int, comments) -> None:
+    def _setting(self, table: _Table, toks, line: int, comments, lexed: bool = False) -> None:
+        if lexed:
+            # 줄의 lex 오류는 parse 루프가 이미 보고했다. Go의 cursor는 그 뒤로 이 줄의 나머지를 검사하지 않는다.
+            return
         kw = toks[0]
         if kw.k != WORD:
             return self._syntax(toks, 0, line, 'expected a setting')
+        if kw.t in FORM_SETTINGS:
+            entry = self._form_setting(toks, line, comments)
+            if entry is not None:
+                table.settings.entries.append(entry)
+            return
 
         def words(frm: int, count):
             out = []
@@ -1146,6 +1352,106 @@ class DocumentParser:
         else:
             return self._at('setting', kw, f'{kw.t} is not a setting')
         table.settings.entries.append(entry)
+
+    def _form_setting(self, toks, line: int, comments):
+        """markdown, store, key_prefix, title, body, order, checkbox, state_machine 줄을 Go의 settingsLine처럼 읽는다.
+        줄이 맞으면 _Setting을, 아니면 None을 돌려준다(오류는 보고했다)."""
+        c = _Cursor(self, toks, line, self.lines[line - 1])
+        kw = c.next()
+        args = []
+        lists = []
+        form = ''
+
+        def arg(what: str) -> bool:
+            tok, ok = c.name(what)
+            if ok:
+                args.append(tok)
+            return ok
+
+        ok = True
+        if kw.t in ('markdown', 'title', 'body', 'order'):
+            ok = arg('a column name')
+        elif kw.t == 'store':
+            kind, ok = c.one_of("'files', 'document' or 'block'", 'files', 'document', 'block')
+            if ok:
+                args.append(kind)
+            if ok and kind.t == 'block':
+                ok = arg('a foreign key name')
+            if ok and kind.t != 'files':
+                shape, ok = c.one_of("'list' or 'table'", 'list', 'table')
+                if ok:
+                    args.append(shape)
+        elif kw.t == 'key_prefix':
+            prefix, ok = c.quoted('a key prefix in quotes')
+            if ok:
+                args.append(prefix)
+        elif kw.t == 'checkbox':
+            ok = arg('the state column') and arg('a state name')
+            if ok:
+                glyph, ok = c.quoted('a glyph in quotes')
+                if ok:
+                    args.append(glyph)
+        else:
+            ok = arg('the state column')
+            if not ok:
+                pass
+            elif c.form_ahead('initial'):
+                c.next()
+                form = 'initial'
+                ok = arg('a state name')
+            elif c.form_ahead('terminal'):
+                c.next()
+                form = 'terminal'
+                ok = arg('a state name')
+            elif c.form_ahead('history'):
+                c.next()
+                form = 'history'
+                ok = (arg('the history table') and c.keyword('row') and arg('the foreign key column')
+                      and c.keyword('from') and arg('the from column') and c.keyword('to')
+                      and arg('the to column') and c.keyword('at') and arg('the at column'))
+            elif c.form_ahead('limit'):
+                c.next()
+                form = 'limit'
+                ok = arg('a state name')
+                if ok:
+                    count, ok = c.value('a row count')
+                    if ok:
+                        args.append(count)
+            else:
+                form = 'transition'
+                ok = arg('the from state') and c.arrow() and arg('the to state')
+            if ok and form in ('transition', 'terminal') and c.peek(WORD, 'require'):
+                require = c.next()
+                columns = c.names()
+                ok = columns is not None
+                if ok:
+                    lists.append((require, tuple(columns)))
+        if not ok or not c.done():
+            return None
+        return _Setting(kw, comments, kw.t, args=tuple(args), form=form, lists=tuple(lists))
+
+    def _lexed_table_line(self, table: _Table, toks, line: int, comments) -> str:
+        """lex 오류가 난 table 줄(}가 아닌)을 Go의 tableLine처럼 처리한다: 줄은 실패하고 이름만 남긴다. settings
+        줄은 상태를 settings로 바꾼다. 새 state를 돌려준다."""
+        first = toks[0]
+        if is_word(first, 'settings'):
+            if table.settings is None:
+                opened = toks[1] if len(toks) > 1 and is_punct(toks[1], '{') else first
+                table.settings = _Settings(opened, [], comments)
+            table.phase = 2
+            return 'settings'
+        if first.k == WORD and first.t in CONSTRAINT_WORDS:
+            if first.t == 'primary':
+                table.failed_primary = True
+            elif first.t in ('unique', 'index'):
+                table.failed_key = True
+            elif first.t == 'foreign' and len(toks) > 2 and toks[2].k == WORD:
+                table.failed.add(toks[2].t)
+            return 'table'
+        table.failed_lines += 1
+        if first.k == WORD:
+            table.failed.add(first.t)
+        return 'table'
 
     def _placement(self, diagram: _Diagram, toks, line: int, comments) -> None:
         table = toks[0]
@@ -1253,7 +1559,8 @@ class DocumentParser:
         for name, tok in doc.constraints.items():
             table = local_tables.get(name)
             if table is not None:
-                self._at('name.duplicate', later(table, tok), f'{name} names both a table and a constraint')
+                # Go의 제약 검사처럼 제약 이름이 쓰인 자리에 보고한다(표가 앞이든 뒤든).
+                self._at('name.duplicate', tok, f'{name} names both a table and a constraint')
             elif name in used_constraints or name in used_tables:
                 self._at('name.duplicate', tok, f'{name} repeats a name of a used document')
         for t in doc.tables:
@@ -1338,7 +1645,7 @@ class DocumentParser:
                     or column.type.kind in ('text', 'bytes'):
                 continue
             self._generated_name(table, column.name, column.name.t, True)
-        if len(table.columns) == 0:
+        if len(table.columns) == 0 and table.failed_lines == 0:
             self._at('column', table.name, 'a table has at least one column')
         if len(table.pks) == 0 and not table.failed_primary:
             self._at('key', table.name, f'table {table.name.t} has no primary key')
@@ -1351,17 +1658,20 @@ class DocumentParser:
         for i in table.indexes:
             self._key_like(table, i, False)
         pk = table.pks[0] if table.pks else None
-        for column in table.columns:
-            if column.identity is None:
-                continue
-            only = pk is not None and len(pk.cols) == 1 and pk.cols[0].tok.t == column.name.t
-            if not only and not table.failed_primary:
-                self._at('column', column.identity, 'an identity column is the only primary key column')
+        identity = next((c for c in table.columns if c.identity is not None), None)
+        if identity is not None:
+            if pk is None:
+                if not table.failed_primary:
+                    self._at('column', identity.identity, 'an identity column is the only primary key column')
+            elif all(well_formed(c.tok.t) and c.tok.t not in table.failed for c in pk.cols):
+                only = len(pk.cols) == 1 and pk.cols[0].tok.t == identity.name.t
+                if not only:
+                    self._at('column', identity.identity, 'an identity column is the only primary key column')
         banned = set()
         action_child = False
         for fk in table.fks:
             self._foreign_key(table, fk, available)
-            if fk.on_delete != 'restrict' or fk.on_update != 'restrict':
+            if fk.on_delete in ('cascade', 'set_null') or fk.on_update in ('cascade', 'set_null'):
                 action_child = True
                 for c in fk.cols:
                     banned.add(c.t)
@@ -1371,6 +1681,9 @@ class DocumentParser:
             self._settings(table, table.settings, available, action_child)
 
     def _foreign_key(self, table: _Table, fk: _ForeignKey, available) -> None:
+        for tok in (fk.delete_tok, fk.update_tok):
+            if tok is not None and tok.t not in ACTIONS:
+                self._at('foreign_key', tok, f'action "{tok.t}" is not restrict, cascade or set_null')
         resolved = True
         children = []
         seen = set()
@@ -1410,7 +1723,7 @@ class DocumentParser:
             return
         refs = ','.join(r.t for r in fk.refs)
         keys = [','.join(c.tok.t for c in k.cols) for k in target.pks[:1] + target.uniques]
-        if refs not in keys and not target.failed_key:
+        if refs not in keys and not target.failed_key and not target.failed_primary:
             self._at('foreign_key', fk.name, f'the referenced columns are not the primary key or '
                                              f'a unique key of table {target.name.t}')
         for i in range(len(children)):
@@ -1703,113 +2016,375 @@ class DocumentParser:
         check.text = _predicate_text(tree)
 
     def _settings(self, table: _Table, settings: _Settings, available, action_child: bool) -> None:
-        seen = set()
-        entries = settings.entries
-        has_aes_version = any(s.kind == 'aes_version' for s in entries)
-        aes_columns = {s.column.t for s in entries
-                       if s.kind == 'codec' and any(stage.t == 'aes' for stage in s.stages)}
+        """settings 블록을 검사한다(engine/dbspec/settings.go의 settings). 반복 검사로 받아들인 줄만 검사하고,
+        state_machine과 checkbox는 줄 사이의 일치를 본다. 진단 위치는 setting keyword, column 참조, history table 이름이다."""
+        once = set()
+        repeatable = {'codec': set(), 'navigation': set(), 'blind_index': set(), 'markdown': set()}
+        by_kind = {}
+        accepted = []
+        aes_columns = set()
+        aes_codecs = []
+        for s in settings.entries:
+            kind = s.kind
+            if kind in repeatable:
+                if kind == 'navigation':
+                    key = s.foreign_key.t
+                elif kind == 'markdown':
+                    key = s.args[0].t
+                else:
+                    key = s.column.t
+                if key in repeatable[kind]:
+                    self._at('setting', s.kw, f'{s.kw.t} repeats for "{key}"')
+                    continue
+                repeatable[kind].add(key)
+            elif kind not in ('state_machine', 'checkbox'):
+                if kind in once:
+                    self._at('setting', s.kw, f'setting {s.kw.t} repeats')
+                    continue
+                once.add(kind)
+                by_kind[kind] = s
+            accepted.append(s)
+            if kind == 'codec' and any(stage.t == 'aes' for stage in s.stages):
+                aes_codecs.append(s)
+                aes_columns.add(s.column.t)
 
         def lookup(tok: Tk):
             return self._lookup(table, tok, 'setting')
 
-        for s in entries:
-            if s.kind == 'codec':
-                key = f'codec {s.column.t}'
-            elif s.kind == 'navigation':
-                key = f'navigation {s.foreign_key.t}'
-            elif s.kind == 'blind_index':
-                key = f'blind_index {s.column.t}'
-            else:
-                key = s.kind
-            if key in seen:
-                self._at('setting', s.kw, f'setting {key} repeats')
-                continue
-            seen.add(key)
-            if s.kind == 'entity':
-                pass
-            elif s.kind == 'updated':
-                c = lookup(s.column)
-                if c is not None and c.type is not None and c.type.kind != 'datetime':
-                    self._at('setting', s.column, 'updated names a datetime column')
-            elif s.kind == 'soft_delete':
-                c = lookup(s.column)
-                if c is not None and c.type is not None \
-                        and (c.type.kind != 'datetime' or not c.nullable):
-                    self._at('setting', s.column, 'soft_delete names a nullable datetime column')
-            elif s.kind == 'select_explicit':
-                listed = set()
-                for tok in s.columns:
-                    if lookup(tok) is not None and tok.t in listed:
-                        self._at('setting', tok, f'column {tok.t} repeats')
-                    listed.add(tok.t)
-            elif s.kind == 'codec':
-                self._codec(table, s, has_aes_version)
-            elif s.kind == 'aes_version':
-                c = lookup(s.column)
-                if c is not None and c.type is not None \
-                        and (c.type.kind not in ('i16', 'i32', 'i64') or c.nullable):
-                    self._at('setting', s.column, 'aes_version names a non-null integer column')
-                if not aes_columns:
-                    self._at('setting', s.kw, 'aes_version requires a column with the aes codec stage')
-            elif s.kind == 'blind_index':
-                self._blind_index(table, s, aes_columns)
-            elif s.kind == 'navigation':
-                if well_formed(s.foreign_key.t) \
-                        and not any(fk.name.t == s.foreign_key.t for fk in table.fks):
-                    self._at('setting', s.foreign_key,
-                             f'{s.foreign_key.t} is not a foreign key of table {table.name.t}')
-            elif s.kind == 'immutable':
-                if action_child:
-                    self._at('setting', s.kw,
-                             'immutable is rejected on a child of a cascade or set_null foreign key')
-                # 가장 긴 trigger 이름이 설정의 모든 이름을 대신한다.
-                self._generated_name(table, s.kw, 'immutable_update', False)
-            elif s.kind == 'audit':
-                self._audit(table, s, available, action_child)
-                self._generated_name(table, s.kw, 'audit_insert', False)
+        for s in accepted:
+            self._setting_check(table, s, aes_columns, available, action_child, lookup)
+        self._state_machine_consistency(table, settings.entries, available)
+        aes_version = by_kind.get('aes_version')
+        if aes_version is None:
+            for s in aes_codecs:
+                self._at('setting', s.kw, 'a column with the aes stage requires an aes_version setting')
+        elif not aes_codecs:
+            self._at('setting', aes_version.kw, 'aes_version without a column that uses aes')
 
-    def _codec(self, table: _Table, s: _Setting, has_aes_version: bool) -> None:
-        """stage 순서와 마지막 stage가 요구하는 저장 type."""
+    def _setting_check(self, table: _Table, s: _Setting, aes_columns, available, action_child: bool, lookup) -> None:
+        kind = s.kind
+        if kind == 'entity':
+            pass
+        elif kind == 'updated':
+            c = lookup(s.column)
+            if c is not None and c.type is not None and c.type.kind != 'datetime':
+                self._at('setting', s.column, 'updated names a datetime column')
+        elif kind == 'soft_delete':
+            c = lookup(s.column)
+            if c is not None and c.type is not None \
+                    and (c.type.kind != 'datetime' or not c.nullable):
+                self._at('setting', s.column, 'soft_delete names a nullable datetime column')
+        elif kind == 'select_explicit':
+            listed = set()
+            for tok in s.columns:
+                if lookup(tok) is not None and tok.t in listed:
+                    self._at('setting', tok, f'column {tok.t} repeats')
+                listed.add(tok.t)
+        elif kind == 'codec':
+            self._codec(table, s)
+        elif kind == 'aes_version':
+            c = lookup(s.column)
+            if c is not None and c.type is not None \
+                    and (c.type.kind not in ('i16', 'i32', 'i64') or c.nullable):
+                self._at('setting', s.column, 'aes_version names a non-null integer column')
+        elif kind == 'blind_index':
+            self._blind_index(table, s, aes_columns)
+        elif kind == 'navigation':
+            # 이름이 형식을 어기면 parse가 이미 보고했다. 실패한 foreign key 줄의 이름은 검사하지 않는다.
+            if well_formed(s.foreign_key.t) and s.foreign_key.t not in table.failed \
+                    and not any(fk.name.t == s.foreign_key.t for fk in table.fks):
+                self._at('setting', s.foreign_key,
+                         f'foreign key "{s.foreign_key.t}" is not a foreign key of the table')
+        elif kind == 'immutable':
+            if action_child:
+                self._at('setting', s.kw,
+                         'immutable is rejected on a child of a cascade or set_null foreign key')
+            # 가장 긴 trigger 이름이 설정의 모든 이름을 대신한다.
+            self._generated_name(table, s.kw, 'immutable_update', False)
+        elif kind == 'audit':
+            self._audit(table, s, available, action_child)
+            self._generated_name(table, s.kw, 'audit_insert', False)
+        elif kind == 'markdown':
+            c = self._column_ref(table, s.args[0])
+            if c is not None and c.type is not None and c.type.kind not in ('varchar', 'text'):
+                self._at('setting', s.args[0], f'markdown needs a varchar or text column, not {type_text(c.type)}')
+        elif kind == 'store':
+            if s.args[0].t == 'block':
+                self._foreign_key_name(table, s.args[1])
+        elif kind == 'key_prefix':
+            self._key_prefix(table, s)
+        elif kind in ('title', 'body'):
+            c = self._column_ref(table, s.args[0])
+            if c is not None and ((c.type is not None and c.type.kind not in ('varchar', 'text')) or c.nullable):
+                self._at('setting', s.args[0], f'{kind} needs a non-null varchar or text column')
+        elif kind == 'order':
+            self._order(table, s)
+        elif kind == 'state_machine':
+            self._state_machine_line(table, s)
+
+    def _ref(self, tok: Tk) -> bool:
+        """Go의 validator.ref다: 형식이 맞는 이름이면 참이고, 아니면 이름 진단을 보고하고 거짓이다."""
+        if well_formed(tok.t):
+            return True
+        if not well_formed(tok.t):
+            self._at('name.format', tok, f'{tok.t} is a reserved word' if tok.t in RESERVED
+                     else f'{tok.t} does not match [a-z][a-z0-9_]*')
+        if utf8_length(tok.t) > MAX_NAME_BYTES:
+            self._at('name.length', tok, f'{tok.t} is longer than 63 bytes')
+        return False
+
+    def _column_ref(self, table: _Table, tok: Tk):
+        """Go의 columnRef다: 이름이 맞고 table의 column이면 그 column, 아니면 보고 뒤 None."""
+        if not self._ref(tok):
+            return None
+        column = table.col_map.get(tok.t)
+        if column is None and tok.t not in table.failed:
+            self._at('setting', tok, f'column {tok.t} is not a column of table {table.name.t}')
+        return column
+
+    def _foreign_key_name(self, table: _Table, tok: Tk) -> None:
+        """Go의 foreignKeyName이다: 이름이 table의 foreign key를 가리키는지 검사한다."""
+        if not self._ref(tok) or tok.t in table.failed:
+            return
+        if not any(fk.name.t == tok.t for fk in table.fks):
+            self._at('setting', tok, f'foreign key "{tok.t}" is not a foreign key of the table')
+
+    def _key_prefix(self, table: _Table, s: _Setting) -> None:
+        if table.failed_primary:
+            return
+        if len(table.pks) != 1 or len(table.pks[0].cols) != 1:
+            self._at('setting', s.kw, 'key_prefix needs a single-column primary key')
+            return
+        c = table.col_map.get(table.pks[0].cols[0].tok.t)
+        if c is not None and c.type is not None and c.type.kind != 'varchar':
+            self._at('setting', s.kw, f'key_prefix needs a varchar primary key, not {type_text(c.type)}')
+
+    def _order(self, table: _Table, s: _Setting) -> None:
+        c = self._column_ref(table, s.args[0])
+        if c is None:
+            return
+        if (c.type is not None and c.type.kind not in ('i32', 'i64')) or c.nullable or c.default_tok is not None:
+            self._at('setting', s.args[0], 'order needs a non-null i32 or i64 column with no default')
+            return
+        if self._in_key_or_check(table, s.args[0].t):
+            self._at('setting', s.args[0], f'order column "{s.args[0].t}" is in a key, index or check')
+
+    def _in_key_or_check(self, table: _Table, column: str) -> bool:
+        for group in (table.pks, table.uniques, table.indexes):
+            for k in group:
+                if any(ct.tok.t == column for ct in k.cols):
+                    return True
+        for fk in table.fks:
+            if any(ct.t == column for ct in fk.cols):
+                return True
+        for check in table.checks:
+            if any(ref.t == column for ref in _check_refs(check)):
+                return True
+        return False
+
+    def _state_machine_line(self, table: _Table, s: _Setting) -> None:
+        """state_machine 줄 하나: column은 non-null varchar 또는 text이고, require 목록은 table의 column이다."""
+        column = self._column_ref(table, s.args[0])
+        if column is not None and ((column.type is not None and column.type.kind not in ('varchar', 'text'))
+                                   or column.nullable):
+            self._at('setting', s.args[0], 'state_machine needs a non-null varchar or text column')
+        for _, columns in s.lists:
+            for ref in columns:
+                self._column_ref(table, ref)
+
+    def _state_machine_consistency(self, table: _Table, entries, available) -> None:
+        """state_machine 줄들을 줄 사이에서 검사한다: table마다 column 하나, history 하나, 전환과 terminal과 initial의
+        상호 일치, limit, state column의 default, checkbox(docs/dbspec.md "Settings")."""
+        machine = [s for s in entries if s.kind == 'state_machine']
+        column = None
+        states = set()
+        initials = set()
+        terminals = set()
+        lines = []
+        limits = []
+        history = None
+        requires = []
+        for s in machine:
+            if column is None:
+                column = s.args[0].t
+            elif s.args[0].t != column:
+                self._at('setting', s.args[0], f'state_machine repeats for "{s.args[0].t}"; a table holds one machine')
+            if s.form == 'history':
+                if history is not None:
+                    self._at('setting', s.kw, 'state_machine repeats history')
+                    continue
+                history = s
+            elif s.form == 'limit':
+                limits.append(s)
+            else:
+                lines.append(s)
+                for _, columns in s.lists:
+                    requires.extend(columns)
+                if s.form == 'initial':
+                    initials.add(s.args[1].t)
+                    states.add(s.args[1].t)
+                elif s.form == 'terminal':
+                    terminals.add(s.args[1].t)
+                    states.add(s.args[1].t)
+                else:
+                    states.add(s.args[1].t)
+                    states.add(s.args[2].t)
+        for s in lines:
+            if s.form == 'initial' and s.args[1].t in terminals:
+                self._at('setting', s.kw, f'an initial state "{s.args[1].t}" is also terminal')
+            elif s.form == 'transition' and s.args[1].t in terminals:
+                self._at('setting', s.kw, f'a transition leaves the terminal state "{s.args[1].t}"')
+        self._limits(limits, states)
+        if history is not None:
+            self._history(table, history, table.col_map.get(column), requires, available)
+        state_column = table.col_map.get(column) if column is not None else None
+        if state_column is not None and state_column.default_tok is not None and state_column.value is not None:
+            default = state_column.default_tok
+            text = string_value(default) if default.k == STR else default.t
+            if text not in initials:
+                self._at('setting', default, f'the default "{text}" of the state column is not an initial state')
+        self._checkboxes(table, column, states)
+
+    def _limits(self, lines, states) -> None:
+        """limit 줄마다 검사한다: state는 state 집합에 속하고, state마다 한 번이며, count는 양의 int64다."""
+        seen = set()
+        for s in lines:
+            state = s.args[1]
+            if state.t not in states:
+                self._at('setting', state, f'limit names state "{state.t}" outside the state set')
+            elif state.t in seen:
+                self._at('setting', state, f'limit repeats for state "{state.t}"')
+            seen.add(state.t)
+            count = go_int64(s.args[2].t)
+            if count is None or count < 1:
+                self._at('setting', s.args[2], f'limit needs a positive row count, not {s.args[2].t}')
+
+    def _history(self, table: _Table, s: _Setting, state, requires, available) -> None:
+        """state_machine history 줄의 history table을 검사한다(docs/dbspec.md "Settings"): 이 table을 가리키는 foreign
+        key, state column의 type을 가진 from과 to, datetime(6)의 at, 필요한 column마다 같은 type의 nullable column,
+        key, title이나 body 없음. 불일치는 모두 history table의 이름에 보고한다."""
+        name = s.args[1]
+        if not self._ref(name):
+            return
+        if name.t not in available:
+            self._at('setting', name, f'history table "{name.t}" is not a table of this document or a used table')
+            return
+        h = available[name.t]
+        if h is None:
+            return
+        if state is None or state.type is None:
+            return
+        row = s.args[2]
+        fk = any(len(f.cols) == 1 and f.cols[0].t == row.t and f.table.t == table.name.t for f in h.fks)
+        if not fk:
+            self._at('setting', name, f'history table "{name.t}" has no foreign key of "{row.t}" to table "{table.name.t}"')
+        named = {row.t}
+
+        def typed(ref: Tk, want) -> None:
+            named.add(ref.t)
+            c = h.col_map.get(ref.t)
+            if c is None:
+                if ref.t not in h.failed:
+                    self._at('setting', name, f'history table "{name.t}" has no column "{ref.t}"')
+            elif c.type is not None and not same_type(c.type, want):
+                self._at('setting', name, f'history column "{ref.t}" has type {type_text(c.type)}, not {type_text(want)}')
+
+        typed(s.args[3], state.type)
+        typed(s.args[4], state.type)
+        typed(s.args[5], DbspecType(kind='datetime', precision=6))
+        for r in requires:
+            named.add(r.t)
+            c = table.col_map.get(r.t)
+            hc = h.col_map.get(r.t)
+            if c is None or c.type is None:
+                continue
+            if hc is None:
+                if r.t not in h.failed:
+                    self._at('setting', name, f'history table "{name.t}" has no column "{r.t}" of the required column')
+            elif not hc.nullable or (hc.type is not None and not same_type(hc.type, c.type)):
+                self._at('setting', name, f'history column "{r.t}" is not a nullable {type_text(c.type)} column')
+        for k in h.pks:
+            for ct in k.cols:
+                named.add(ct.tok.t)
+        for c in h.columns:
+            if c.name.t not in named:
+                self._at('setting', name, f'history table "{name.t}" has column "{c.name.t}", which the history line does not name')
+        if h.settings is not None:
+            for hs in h.settings.entries:
+                if hs.kind in ('title', 'body'):
+                    self._at('setting', name, f'history table "{name.t}" declares {hs.kind}, which a history table does not')
+
+    def _checkboxes(self, table: _Table, column, states) -> None:
+        """checkbox 줄을 기계의 state 집합에 대해 검사한다: 기계의 column을 이름 붙이고, state마다 한 글자이며 서로 다른
+        glyph를 가진 줄이 하나씩 있고, 어떤 줄도 다른 state를 이름 붙이지 않는다."""
+        boxes = [s for s in table.settings.entries if s.kind == 'checkbox'] if table.settings is not None else []
+        if not boxes:
+            return
+        first = boxes[0]
+        if column is None:
+            self._at('setting', first.args[0], f'checkbox needs a state_machine on column "{first.args[0].t}"')
+            return
+        covered = set()
+        glyphs = set()
+        for b in boxes:
+            if self._column_ref(table, b.args[0]) is None:
+                continue
+            if b.args[0].t != column:
+                self._at('setting', b.args[0], f'checkbox names column "{b.args[0].t}", but the state_machine column is "{column}"')
+                continue
+            state = b.args[1]
+            if state.t not in states:
+                self._at('setting', state, f'checkbox names state "{state.t}" outside the state set')
+            elif state.t in covered:
+                self._at('setting', state, f'checkbox repeats for state "{state.t}"')
+            covered.add(state.t)
+            glyph = string_value(b.args[2])
+            if len(glyph) != 1:
+                self._at('setting', b.args[2], 'a checkbox glyph is one character')
+            elif glyph in glyphs:
+                self._at('setting', b.args[2], f'checkbox glyph "{glyph}" repeats')
+            glyphs.add(glyph)
+        for state in sorted(states):
+            if state not in covered:
+                self._at('setting', first.kw, f'checkbox does not cover state "{state}"')
+
+    def _codec(self, table: _Table, s: _Setting) -> None:
+        """stage 순서와 마지막 stage가 요구하는 저장 type(engine/dbspec/settings.go의 codec)."""
         column = self._lookup(table, s.column, 'setting')
         stages = [stage.t for stage in s.stages]
-        if 'aes' in stages and not has_aes_version:
-            self._at('setting', s.kw, 'a column with the aes stage requires aes_version')
-        try:
-            json_index = stages.index('ordered_json')
-        except ValueError:
-            json_index = -1
-        if json_index > 0:
-            self._at('setting', s.stages[json_index], 'ordered_json is the first codec stage')
-        if column is None or column.type is None or not all(stage in STAGES for stage in stages):
+        known = all(stage in STAGES for stage in stages)
+        for i, stage in enumerate(s.stages):
+            if stage.t == 'ordered_json' and i > 0:
+                self._at('setting', stage, 'ordered_json is the first codec stage')
+        if column is None or column.type is None or not known:
             return
         last = stages[-1]
         bytes_stage = last in ('aes', 'gz', 'ip')
         kind = column.type.kind
         if bytes_stage and kind != 'bytes':
-            self._at('setting', s.column, f'the {last} stage stores bytes and needs a bytes column')
+            self._at('setting', s.column, f'the last codec stage {last} stores bytes and needs a bytes column, not {type_text(column.type)}')
         if not bytes_stage and kind not in ('varchar', 'text'):
-            self._at('setting', s.column, f'the {last} stage stores text and needs a varchar '
-                                          f'or text column')
+            self._at('setting', s.column, f'the last codec stage {last} stores text and needs a varchar '
+                                          f'or text column, not {type_text(column.type)}')
 
     def _blind_index(self, table: _Table, s: _Setting, aes_columns) -> None:
-        source = self._lookup(table, s.column, 'setting')
-        if source is not None and s.column.t not in aes_columns:
-            self._at('setting', s.column, f'column {s.column.t} has no aes codec stage')
-        target = self._lookup(table, s.index_column, 'setting')
-        if target is None:
+        """blind_index <aes column> <index column>(engine/dbspec/settings.go의 blindIndex). 검사는 switch처럼 처음 맞는
+        하나만 보고한다. AES codec이 없는 것은 setting keyword에서 보고한다."""
+        aes = self._lookup(table, s.column, 'setting')
+        if aes is not None and s.column.t not in aes_columns:
+            self._at('setting', s.kw, f'blind_index names column "{s.column.t}", which has no codec with the aes stage')
+        index = self._lookup(table, s.index_column, 'setting')
+        if index is None:
             return
-        type_ = target.type
-        if type_ is not None and not (type_.kind == 'varchar' and type_.length >= 64):
-            self._at('setting', s.index_column, 'the blind index column is varchar(n) with n >= 64')
-        if source is not None and source.nullable != target.nullable:
-            self._at('setting', s.index_column, 'the blind index column has the nullability of '
-                                                'the aes column')
         if s.index_column.t in aes_columns:
-            self._at('setting', s.index_column, 'the blind index column is not aes-encoded')
-        indexed = any(len(k.cols) == 1 and k.cols[0].tok.t == s.index_column.t
-                      for k in table.uniques + table.indexes)
-        if not indexed:
-            self._at('setting', s.index_column, 'the blind index column is the only column of a '
+            self._at('setting', s.index_column, 'the blind index column is not AES-encoded')
+        elif index.type is not None and not (index.type.kind == 'varchar' and index.type.length >= 64):
+            self._at('setting', s.index_column, f'the blind index column is varchar(n) with n >= 64, not {type_text(index.type)}')
+        elif aes is not None and aes.nullable != index.nullable:
+            self._at('setting', s.index_column, 'the blind index column has the nullability of the AES column')
+        elif not table.failed_key and not any(len(k.cols) == 1 and k.cols[0].tok.t == s.index_column.t
+                                              for k in table.uniques + table.indexes):
+            self._at('setting', s.index_column, f'column {s.index_column.t} is not the only column of a '
                                                 'declared index or unique key')
 
     def _audit(self, table: _Table, s: _Setting, available, action_child: bool) -> None:
@@ -1835,7 +2410,7 @@ class DocumentParser:
         if history.settings is not None and any(e.kind == 'audit' for e in history.settings.entries):
             self._at('setting', s.into, f'history table {s.into.t} is audited itself')
         key = next((c for c in history.columns if c.identity is not None), None)
-        if key is None or key.type is None or key.type.kind != 'i64':
+        if (key is None and not history.failed_primary) or (key is not None and (key.type is None or key.type.kind != 'i64')):
             self._at('setting', s.into, f'history table {s.into.t} has no i64 identity primary key')
         if well_formed(s.action.t):
             action = history.col_map.get(s.action.t)
@@ -1947,7 +2522,7 @@ class DocumentParser:
                        and len(fk.refs) == 1 and fk.refs[0].t == key
                        and fk.on_delete == 'restrict' and fk.on_update == 'restrict'
                        for fk in table.fks)
-        if not declared and not table.failed_key:
+        if not declared and not table.failed_key and not table.failed_primary:
             self._at('setting', s.column, f'the audit column needs the foreign key '
                                           f'({s.column.t}) references {ref.t} ({key}) on delete '
                                           f'restrict on update restrict')
@@ -1997,11 +2572,37 @@ class DocumentParser:
             closing_comments=tuple(doc.closing),
         )
 
+    def _form_setting_of(self, s: _Setting) -> DbspecSetting:
+        a = [t.t if t.k != STR else string_value(t) for t in s.args]
+        base = {'kind': s.kind, 'comments': tuple(s.comments)}
+        if s.kind in ('markdown', 'title', 'body', 'order'):
+            return DbspecSetting(column=a[0], **base)
+        if s.kind == 'store':
+            return DbspecSetting(form=a[0], foreign_key=a[1] if a[0] == 'block' else '',
+                                 shape=a[-1] if a[0] != 'files' else '', **base)
+        if s.kind == 'key_prefix':
+            return DbspecSetting(prefix=a[0], **base)
+        if s.kind == 'checkbox':
+            return DbspecSetting(column=a[0], state=a[1], glyph=a[2], **base)
+        requires = tuple(c.t for _, columns in s.lists for c in columns)
+        if s.form == 'history':
+            return DbspecSetting(column=a[0], form='history', history=a[1], row=a[2], from_column=a[3],
+                                 to_column=a[4], at_column=a[5], **base)
+        if s.form == 'limit':
+            return DbspecSetting(column=a[0], form='limit', state=a[1],
+                                 count=str(int(a[2])), **base)
+        if s.form in ('initial', 'terminal'):
+            return DbspecSetting(column=a[0], form=s.form, state=a[1], requires=requires, **base)
+        return DbspecSetting(column=a[0], form='transition', from_state=a[1], to_state=a[2],
+                             requires=requires, **base)
+
     @property
     def halted(self) -> bool:
         return self._stopped
 
     def _setting_of(self, s: _Setting) -> DbspecSetting:
+        if s.kind in FORM_SETTINGS:
+            return self._form_setting_of(s)
         exclude = None
         include = None
         for kw, columns in s.lists:

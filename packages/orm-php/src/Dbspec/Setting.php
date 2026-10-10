@@ -15,7 +15,7 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Setting
 {
-    public const KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'immutable', 'audit'];
+    public const KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
 
     /**
@@ -23,6 +23,8 @@ final class Setting
      * @param list<string> $comments
      * @param list<string>|null $exclude
      * @param list<string>|null $include
+     * @param 'transition'|'terminal'|'initial'|'history'|'limit'|null $form state_machine 설정의 줄 형태
+     * @param list<string>|null $requires transition 또는 terminal 줄의 `require (...)` column
      */
     public function __construct(
         public string $kind,
@@ -30,6 +32,8 @@ final class Setting
         public array $comments = [],
         public ?array $exclude = null,
         public ?array $include = null,
+        public ?string $form = null,
+        public ?array $requires = null,
     ) {
     }
 

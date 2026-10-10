@@ -95,6 +95,22 @@ export interface DbspecCheck {
   readonly expression: string;
 }
 
+/** One `state_machine` line after the column: an initial or terminal state, a transition, a history row or a row limit. */
+export type DbspecStateLine =
+  | { readonly form: 'initial'; readonly state: string }
+  | { readonly form: 'terminal'; readonly state: string; readonly requires: readonly string[] | null }
+  | { readonly form: 'transition'; readonly from: string; readonly to: string; readonly requires: readonly string[] | null }
+  | {
+      readonly form: 'history';
+      readonly table: string;
+      readonly row: string;
+      readonly from: string;
+      readonly to: string;
+      readonly at: string;
+    }
+  /** count is the canonical decimal text of the positive row count. */
+  | { readonly form: 'limit'; readonly state: string; readonly count: string };
+
 export type DbspecSetting = { readonly comments: readonly string[] } & (
   | { readonly kind: 'entity'; readonly name: string }
   | { readonly kind: 'updated' | 'soft_delete' | 'aes_version'; readonly column: string }
@@ -102,6 +118,18 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
   | { readonly kind: 'codec'; readonly column: string; readonly stages: readonly DbspecCodecStage[] }
   | { readonly kind: 'blind_index'; readonly column: string; readonly indexColumn: string }
   | { readonly kind: 'navigation'; readonly foreignKey: string; readonly childName: string; readonly parentName: string }
+  | { readonly kind: 'markdown'; readonly column: string }
+  /** store files (no shape), store document list|table, or store block <foreign key> list|table. */
+  | {
+      readonly kind: 'store';
+      readonly storage: 'files' | 'document' | 'block';
+      readonly foreignKey: string | null;
+      readonly shape: 'list' | 'table' | null;
+    }
+  | { readonly kind: 'key_prefix'; readonly prefix: string }
+  | { readonly kind: 'title' | 'body' | 'order'; readonly column: string }
+  | { readonly kind: 'checkbox'; readonly column: string; readonly state: string; readonly glyph: string }
+  | { readonly kind: 'state_machine'; readonly column: string; readonly line: DbspecStateLine }
   | { readonly kind: 'immutable' }
   | {
       readonly kind: 'audit';

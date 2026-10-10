@@ -170,7 +170,7 @@ final class Settings
 /** One setting line; `audit` holds the history table, the audit column, the audit record table, the action and previous columns. */
 final class Setting
 {
-    public const array KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'immutable', 'audit'];
+    public const array KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
     public const array CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
 
     public string $kind;
@@ -178,8 +178,10 @@ final class Setting
     public array $comments;
     public ?array $exclude;
     public ?array $include;
+    public ?string $form;
+    public ?array $requires;
 
-    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null) {}
+    public function __construct(string $kind, array $arguments, array $comments = [], ?array $exclude = null, ?array $include = null, ?string $form = null, ?array $requires = null) {}
 
     public function records(string $column): bool {}
 

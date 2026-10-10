@@ -349,21 +349,25 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Settings, __construct)
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Setting, __construct)
 {
-    zend_string *kind;
-    zval *arguments, *comments = NULL, *exclude = NULL, *include = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 5)
+    zend_string *kind, *form = NULL;
+    zval *arguments, *comments = NULL, *exclude = NULL, *include = NULL, *requires = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 7)
         Z_PARAM_STR(kind)
         Z_PARAM_ARRAY(arguments)
         Z_PARAM_OPTIONAL
         Z_PARAM_ARRAY(comments)
         Z_PARAM_ARRAY_OR_NULL(exclude)
         Z_PARAM_ARRAY_OR_NULL(include)
+        Z_PARAM_STR_OR_NULL(form)
+        Z_PARAM_ARRAY_OR_NULL(requires)
     ZEND_PARSE_PARAMETERS_END();
     init_str(ZEND_THIS, "kind", kind);
     init_array(ZEND_THIS, "arguments", arguments);
     init_array(ZEND_THIS, "comments", comments);
     init_array_or_null(ZEND_THIS, "exclude", exclude);
     init_array_or_null(ZEND_THIS, "include", include);
+    init_str_or_null(ZEND_THIS, "form", form);
+    init_array_or_null(ZEND_THIS, "requires", requires);
 }
 
 /* in_array($column, $list, true) */
@@ -1745,7 +1749,8 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     static const char *const parameterized[] = {"decimal", "varchar", "time", "datetime"};
     static const zend_long arity[] = {2, 1, 1, 1};
     static const char *const actions[] = {"restrict", "cascade", "set_null"};
-    static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "immutable", "audit"};
+    static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
+        "key_prefix", "title", "body", "order", "checkbox", "state_machine", "immutable", "audit"};
     static const char *const stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"};
     array_constant(dbs_ce_ColumnType, "SIMPLE", simple, NULL, COUNT(simple));
     array_constant(dbs_ce_ColumnType, "PARAMETERIZED", parameterized, arity, COUNT(parameterized));

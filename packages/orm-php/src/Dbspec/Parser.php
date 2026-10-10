@@ -16,7 +16,8 @@ namespace Polyspec\Orm\Dbspec;
  */
 final class Parser
 {
-    private const TOKEN = "/[0-9]+\\.[0-9]+|[A-Za-z0-9_]+|'(?:[^']|'')*+'|<=|>=|<>|[^ ]/u";
+    // 단어는 Go의 isWordRune과 같이 `.`을 포함한다(`a.b`는 한 token이고 1.5 같은 수도 한 token이다).
+    private const TOKEN = "/[A-Za-z0-9_.]+|'(?:[^']|'')*+'|<=|>=|<>|[^ ]/u";
     private const VALID_UTF8 = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
     private const MAX_BYTES = 32 * 1024 * 1024;
     private const MAX_TABLES = 4096;
@@ -30,6 +31,10 @@ final class Parser
     public const RESERVED = ['dbspec', 'use', 'table', 'diagram', 'primary', 'unique', 'index', 'foreign', 'check', 'settings', 'null', 'identity', 'default', 'true', 'false', 'and', 'or', 'not', 'in', 'between', 'is'];
     /** Codec stages that produce text; the others produce bytes. */
     private const TEXT_STAGES = ['hex', 'base64', 'ordered_json', 'yaml', 'serialize'];
+    /** markdown 저장 설정의 keyword다. cursor가 읽는다 (storageLine). */
+    private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine'];
+    /** 표마다 한 번만 쓰는 저장 keyword다. 되풀이하면 keyword 위치에 setting 오류를 낸다. */
+    private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
 
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $diagnostics = [];
@@ -90,8 +95,22 @@ final class Parser
     private array $settingKeys = [];
     /** A primary key line of the table failed: its primary key columns are unknown. */
     private bool $failedPrimary = false;
-    /** @var array<string, true> tables with a failed primary key, unique or index line: some key's columns are unknown */
+    /** @var array<string, true> tables with a failed unique or index line: some key's columns are unknown */
     private array $failedKeyTables = [];
+    /** @var array<string, array{0: int, 1: int}> the line and column of each local constraint name */
+    private array $constraintAt = [];
+    /** @var array<string, true> names of foreign key and column lines that had a syntax error (Go's failedName) */
+    private array $failedNames = [];
+    /** @var array<string, true> names of column lines that had a syntax error, so their identity check is unresolved */
+    private array $failedColumns = [];
+    /** Column lines of the table that had a syntax error (Go's failedLines). */
+    private int $failedLines = 0;
+    /** Primary key lines of the table that were read (Go keeps every one). */
+    private int $primaryKeyLines = 0;
+    /** @var array<string, list<string>> per table, the title and body lines that parsed, duplicates included */
+    private array $parsedTitleBody = [];
+    /** The first lex error of the current line: [column, message], or null. */
+    private ?array $lexError = null;
     private ?Diagram $diagram = null;
     /** @var array<string, true> */
     private array $diagramTables = [];
@@ -104,6 +123,12 @@ final class Parser
     private array $deferredAuditRecords = [];
     /** @var array<string, true> primary key 줄이 실패한 table */
     private array $failedPrimaryTables = [];
+    /** @var list<array> state_machine history 줄의 history table을 마지막 줄 뒤에 검사한다 */
+    private array $deferredHistories = [];
+    /** @var array<string, array{0: string, 1: int, 2: int}> column => [default 값, 줄, column], 처음 선언한 column만 */
+    private array $defaultValues = [];
+    /** @var int 설정 줄을 읽는 커서가 다음에 읽을 token의 위치 */
+    private int $cursor = 0;
 
     /**
      * @param array<string, string> $documents the declared document set
@@ -173,8 +198,13 @@ final class Parser
                 continue;
             }
             $this->tokenize();
-            if ($this->tabLine()) {
-                continue;
+            if ($this->lexError !== null) {
+                $this->error('syntax', $this->line, $this->lexError[0], $this->lexError[1]);
+                // 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+                $this->tokens = self::lexRecover($text);
+                if ($this->lexedLine()) {
+                    continue;
+                }
             }
             match ($this->state) {
                 'top' => $this->topLine(),
@@ -197,6 +227,7 @@ final class Parser
         $this->checkForeignKeyTargets();
         $this->checkAuditRecords();
         $this->checkAuditHistories();
+        $this->checkStateHistories();
     }
 
     private function checkEncoding(string $source): void
@@ -225,40 +256,177 @@ final class Parser
 
     private function tokenize(): void
     {
-        preg_match_all(self::TOKEN, $this->text, $m, PREG_OFFSET_CAPTURE);
-        $ascii = !preg_match('/[\x80-\xFF]/', $this->text);
-        $tokens = [];
-        foreach ($m[0] as [$token, $offset]) {
-            $tokens[] = [$token, $ascii ? $offset + 1 : mb_strlen(substr($this->text, 0, $offset), 'UTF-8') + 1];
-        }
-        $this->tokens = $tokens;
+        [$this->tokens, $this->lexError] = self::lexLine($this->text);
     }
 
     /**
-     * A tab is not a separator: the line is a `syntax` error and is not read
-     * further. A column it would declare is known as failed, so references to
-     * it report nothing more.
+     * Splits one line into [token, column] pairs as Go's lexLine does: the
+     * tokens before the first character that starts no token, and that
+     * character's error (or an unclosed string's), or null.
+     *
+     * @return array{0: list<array{0: string, 1: int}>, 1: ?array{0: int, 1: string}}
      */
-    private function tabLine(): bool
+    private static function lexLine(string $text): array
     {
-        foreach ($this->tokens as $i => [$token, $column]) {
-            if ($token !== "\t") {
+        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        $n = count($chars);
+        $tokens = [];
+        $i = 0;
+        $column = 1;
+        while ($i < $n) {
+            $c = $chars[$i];
+            if ($c === ' ') {
+                $i++;
+                $column++;
                 continue;
             }
-            $this->error('syntax', $this->line, $column, 'only the space character separates tokens');
-            $words = array_values(array_filter($this->tokens, static fn(array $t): bool => $t[0] !== "\t"));
-            $first = $words[0][0] ?? '';
-            if ($this->state === 'table' && self::isWord($first)) {
-                match ($first) {
-                    'primary' => $this->failKey(true),
-                    'unique', 'index' => $this->failKey(false),
-                    'foreign', 'check', 'settings' => null,
-                    default => $this->failColumn($first),
-                };
+            if (in_array($c, ['(', ')', '{', '}', ','], true)) {
+                $tokens[] = [$c, $column];
+                $i++;
+                $column++;
+                continue;
             }
+            if ($c === '<' || $c === '>') {
+                $next = $chars[$i + 1] ?? '';
+                $length = $next === '=' || ($c === '<' && $next === '>') ? 2 : 1;
+                $tokens[] = [implode('', array_slice($chars, $i, $length)), $column];
+                $i += $length;
+                $column += $length;
+                continue;
+            }
+            if (in_array($c, ['=', '+', '-', '*', '/'], true)) {
+                $tokens[] = [$c, $column];
+                $i++;
+                $column++;
+                continue;
+            }
+            if ($c === "'") {
+                $start = $column;
+                $j = $i + 1;
+                $closed = false;
+                while ($j < $n) {
+                    if ($chars[$j] === "'") {
+                        if (($chars[$j + 1] ?? '') === "'") {
+                            $j += 2;
+                            continue;
+                        }
+                        $j++;
+                        $closed = true;
+                        break;
+                    }
+                    $j++;
+                }
+                if (!$closed) {
+                    return [$tokens, [$start, 'string is not closed on its line']];
+                }
+                $tokens[] = [implode('', array_slice($chars, $i, $j - $i)), $start];
+                $column += $j - $i;
+                $i = $j;
+                continue;
+            }
+            if (self::wordRune($c)) {
+                $j = $i + 1;
+                while ($j < $n && self::wordRune($chars[$j])) {
+                    $j++;
+                }
+                $tokens[] = [implode('', array_slice($chars, $i, $j - $i)), $column];
+                $column += $j - $i;
+                $i = $j;
+                continue;
+            }
+            return [$tokens, [$column, 'character ' . self::goRune($c) . ' is not allowed here']];
+        }
+        return [$tokens, null];
+    }
+
+    /** Go's lexRecover: the line's tokens with each character that starts no token replaced by a space. */
+    private static function lexRecover(string $text): array
+    {
+        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        for ($attempt = 0; $attempt <= count($chars); $attempt++) {
+            [$tokens, $error] = self::lexLine(implode('', $chars));
+            if ($error === null) {
+                return $tokens;
+            }
+            $chars[$error[0] - 1] = ' ';
+        }
+        return [];
+    }
+
+    /** Go's isWordRune: an ASCII letter, digit, `_` or `.`, or a Unicode letter or digit. */
+    private static function wordRune(string $c): bool
+    {
+        return preg_match('/^[A-Za-z0-9_.]$/D', $c) === 1 || (strlen($c) > 1 && preg_match('/^[\p{L}\p{Nd}]$/u', $c) === 1);
+    }
+
+    /** The character as Go's %q writes a rune. */
+    private static function goRune(string $c): string
+    {
+        return "'" . match ($c) {
+            "\t" => '\\t',
+            "\n" => '\\n',
+            "\r" => '\\r',
+            '\\' => '\\\\',
+            "'" => "\\'",
+            default => $c,
+        } . "'";
+    }
+
+    /**
+     * A line with a lex error (Go's cursor failure): a table, settings or diagram line reads nothing but its
+     * state and the names it fails, and a closing brace still closes its block. Returns whether the line is done.
+     */
+    private function lexedLine(): bool
+    {
+        $first = $this->tokens[0][0] ?? null;
+        if ($first === null || $first === '}') {
+            return $first === null;
+        }
+        return match ($this->state) {
+            'top' => false,
+            'table' => $this->lexedTableLine(),
+            default => true,
+        };
+    }
+
+    /** A table line with a lex error: `settings` opens the settings block; a key, foreign key or column line fails. */
+    private function lexedTableLine(): bool
+    {
+        $first = $this->tokens[0];
+        if ($first[0] === 'settings') {
+            $this->tablePhase = 2;
+            $this->table->settings ??= new Settings($this->takeComments());
+            $this->settingsOpen = [$this->line, $this->tokens[1][1] ?? $first[1]];
+            $this->state = 'settings';
             return true;
         }
-        return false;
+        match ($first[0]) {
+            'primary' => $this->failKey(true),
+            'unique', 'index' => $this->failKey(false),
+            'foreign' => $this->failForeignKeyName(),
+            'check' => null,
+            default => $this->failColumnLine($first[0]),
+        };
+        return true;
+    }
+
+    /** Knows a foreign key line that failed: its name is failed, so that references to it report nothing more. */
+    private function failForeignKeyName(): void
+    {
+        $name = $this->tokens[2] ?? null;
+        if ($name !== null && self::isWord($name[0])) {
+            $this->failedNames[$name[0]] = true;
+        }
+    }
+
+    /** Knows a column line that had a syntax error (Go's markFailed and failedLines). */
+    private function failColumnLine(string $token): void
+    {
+        $this->failedLines++;
+        if (self::isWord($token)) {
+            $this->failColumn($token);
+            $this->failedColumns[$token] = true;
+        }
     }
 
     /** Knows a column whose line failed, so that references to it report nothing more. */
@@ -467,7 +635,11 @@ final class Parser
             if (isset($this->tables[$name[0]])) {
                 $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
             } else {
-                if (isset($this->constraintNames[$name[0]])) {
+                // Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리에 보고한다.
+                if (isset($this->constraintAt[$name[0]])) {
+                    [$constraintLine, $constraintColumn] = $this->constraintAt[$name[0]];
+                    $this->error('name.duplicate', $constraintLine, $constraintColumn, "constraint name `{$name[0]}` is the name of a table");
+                } elseif (isset($this->constraintNames[$name[0]])) {
                     $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is named like an index, key, foreign key or check");
                 }
                 $this->tables[$name[0]] = ['table' => $table, 'columns' => []];
@@ -485,7 +657,12 @@ final class Parser
         $this->tableChecks = [];
         $this->tableSettings = [];
         $this->settingKeys = [];
+        $this->defaultValues = [];
         $this->failedPrimary = false;
+        $this->failedNames = [];
+        $this->failedColumns = [];
+        $this->failedLines = 0;
+        $this->primaryKeyLines = 0;
     }
 
     private function tableLine(): void
@@ -511,7 +688,7 @@ final class Parser
                 match ($first[0]) {
                     'primary' => $this->primaryKeyLine(),
                     'unique', 'index' => $this->keyLine($first[0] === 'index'),
-                    'foreign' => $this->foreignKeyLine(),
+                    'foreign' => $this->foreignKeyLineChecked(),
                     'check' => $this->checkLine(),
                 };
                 return;
@@ -533,6 +710,9 @@ final class Parser
             $this->error('order', $this->line, $first[1], 'column lines come before key, index, foreign key, check and settings lines');
         }
         $this->columnLine();
+        if (isset($this->syntaxLines[$this->line])) {
+            $this->failColumnLine($first[0]);
+        }
     }
 
     private function columnLine(): void
@@ -622,6 +802,9 @@ final class Parser
             if ($type === null) {
                 $this->invalidTypes[$name[0]] = true;
             }
+            if ($default !== null) {
+                $this->defaultValues[$name[0]] = [self::literalValue($default[1][0]), $this->line, $default[1][1]];
+            }
         }
         $this->table->columns[] = $column;
     }
@@ -703,6 +886,7 @@ final class Parser
             $this->failKey(true);
             return;
         }
+        $this->primaryKeyLines++;
         if ($this->table->primaryKey !== null) {
             $this->error('key', $this->line, $first[1], 'a table has exactly one primary key');
             return;
@@ -736,11 +920,12 @@ final class Parser
     /** Knows a key or index line that failed, so that rules depending on its columns report nothing. */
     private function failKey(bool $primary): void
     {
-        $this->failedPrimary = $this->failedPrimary || $primary;
-        $this->failedKeyTables[$this->table->name] = true;
         if ($primary) {
+            $this->failedPrimary = true;
             $this->failedPrimaryTables[$this->table->name] = true;
+            return;
         }
+        $this->failedKeyTables[$this->table->name] = true;
     }
 
     /** @param list<array{0:string,1:int,2:bool}> $columns */
@@ -783,6 +968,15 @@ final class Parser
         }
     }
 
+    /** A foreign key line whose syntax failed marks its name failed (Go's markFailed). */
+    private function foreignKeyLineChecked(): void
+    {
+        $this->foreignKeyLine();
+        if (isset($this->syntaxLines[$this->line])) {
+            $this->failForeignKeyName();
+        }
+    }
+
     private function foreignKeyLine(): void
     {
         $t = $this->tokens;
@@ -810,19 +1004,26 @@ final class Parser
         }
         $i = $parents[1];
         $actions = ['delete' => 'restrict', 'update' => 'restrict'];
+        $actionTokens = [];
         foreach (['delete', 'update'] as $event) {
             if (($t[$i][0] ?? null) === 'on' && ($t[$i + 1][0] ?? null) === $event) {
                 $action = $t[$i + 2] ?? null;
-                if ($action === null || !in_array($action[0], ForeignKey::ACTIONS, true)) {
-                    $this->error('syntax', $this->line, $action[1] ?? $this->endColumn(), 'expected `restrict`, `cascade` or `set_null`');
+                if ($action === null || !self::isWord($action[0])) {
+                    $this->error('syntax', $this->line, $action[1] ?? $this->endColumn(), 'expected an action');
                     return;
                 }
                 $actions[$event] = $action[0];
+                $actionTokens[$event] = $action;
                 $i += 3;
             }
         }
         if (!$this->endAt($i)) {
             return;
+        }
+        foreach ($actionTokens as $action) {
+            if (!in_array($action[0], ForeignKey::ACTIONS, true)) {
+                $this->error('foreign_key', $this->line, $action[1], "action `{$action[0]}` is not restrict, cascade or set_null");
+            }
         }
         $resolvable = $this->name($target);
         $this->constraintName($name);
@@ -869,6 +1070,12 @@ final class Parser
         if ($name === null || !$this->expectAt(2, '(')) {
             return;
         }
+        // Go: the tokens after `(` end with `)`; otherwise the line fails at its end and declares no check.
+        $rest = array_slice($this->tokens, 3);
+        if ($rest === [] || end($rest)[0] !== ')') {
+            $this->error('syntax', $this->line, $this->endColumn(), "expected ')' at the end of the check");
+            return;
+        }
         $this->constraintName($name);
         $check = new Check($name[0], '', $this->takeComments());
         $this->table->checks[] = $check;
@@ -883,6 +1090,10 @@ final class Parser
             $this->endAt(1);
             $this->table->settings->closingComments = $this->takeComments();
             $this->state = 'table';
+            return;
+        }
+        if (in_array($keyword, self::STORAGE_KEYWORDS, true)) {
+            $this->storageLine($keyword, $at);
             return;
         }
         $arity = match ($keyword) {
@@ -971,7 +1182,7 @@ final class Parser
             $listed[$list[0]] = array_map(static fn(array $a): string => $a[0], $columns);
         }
         $this->table->settings->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
-        $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists];
+        $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
     }
 
     /**
@@ -1113,7 +1324,8 @@ final class Parser
             $this->error('key', $this->tableName[0], $this->tableName[1], "table `{$table->name}` has no primary key");
         }
         foreach ($this->identities as [$name, $line, $column, $rejected]) {
-            if (!$rejected && !$this->failedPrimary && ($primary === null || $primary->columns !== [$name])) {
+            $resolved = $primary === null || array_reduce($primary->columns, fn(bool $ok, string $c): bool => $ok && self::validName($c) && !isset($this->failedColumns[$c]), true);
+            if (!$rejected && !$this->failedPrimary && ($primary === null || ($resolved && $primary->columns !== [$name]))) {
                 $this->error('column', $line, $column, "identity column `$name` must be the only primary key column");
             }
         }
@@ -1141,7 +1353,7 @@ final class Parser
                     break;
                 }
             }
-            if (!$covered && !isset($this->failedKeyTables[$table->name])) {
+            if (!$covered && !isset($this->failedKeyTables[$table->name]) && !isset($this->failedPrimaryTables[$table->name])) {
                 $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its columns");
             }
             if ($foreignKey->onDelete === 'set_null' || $foreignKey->onUpdate === 'set_null') {
@@ -1153,22 +1365,27 @@ final class Parser
                 }
             }
         }
+        $checkColumns = [];
         foreach ($this->tableChecks as [$check, $line, $tokens, $end]) {
-            [$text, $errors] = Expression::parse($tokens, $line, $end, $this->columns, $actionColumns);
+            [$text, $errors, $refs] = Expression::parse($tokens, $line, $end, $this->columns, $actionColumns);
             foreach ($errors as $error) {
                 $this->error(...$error);
             }
             $check->expression = $text ?? '';
+            array_push($checkColumns, ...$refs);
         }
-        $this->checkSettings($leading, $actionColumns !== []);
+        $this->checkSettings($leading, $actionColumns !== [], $checkColumns);
         if (isset($this->tables[$table->name]) && $this->tables[$table->name]['table'] === $table) {
             $this->tables[$table->name]['columns'] = $this->columns;
         }
         $this->table = null;
     }
 
-    /** @param list<list<string>> $leading column lists of the table's keys and indexes */
-    private function checkSettings(array $leading, bool $changedByForeignKeys): void
+    /**
+     * @param list<list<string>> $leading 표의 key와 index의 column 목록
+     * @param list<string> $checkColumns 표의 check가 읽는 column
+     */
+    private function checkSettings(array $leading, bool $changedByForeignKeys, array $checkColumns): void
     {
         $kinds = [];
         $aes = [];
@@ -1256,7 +1473,7 @@ final class Parser
                     [$source, $target] = $arguments;
                     $encrypted = $column($source);
                     if (self::validName($source[0]) && isset($this->columns[$source[0]]) && !isset($aes[$source[0]])) {
-                        $this->error('setting', $line, $source[1], "setting `blind_index` needs a column with the `aes` codec, not `{$source[0]}`");
+                        $this->error('setting', $line, $at, "setting `blind_index` needs a column with the `aes` codec, not `{$source[0]}`");
                     }
                     $index = $column($target);
                     if ($index !== null) {
@@ -1264,7 +1481,7 @@ final class Parser
                         if (!($type->name === 'varchar' && $type->parameters[0] >= 64)
                             || ($encrypted !== null && $encrypted->nullable !== $index->nullable)
                             || isset($aes[$target[0]])
-                            || !isset($singleColumnKeys[$target[0]])) {
+                            || (!isset($singleColumnKeys[$target[0]]) && !isset($this->failedKeyTables[$this->table->name]))) {
                             $this->error('setting', $line, $target[1], "blind index column `{$target[0]}` is a varchar(n >= 64) column with the AES column's nullability, not AES-encoded, and the only column of an index or unique key");
                         }
                     }
@@ -1273,7 +1490,7 @@ final class Parser
                     if (!self::validName($arguments[0][0])) {
                         break;
                     }
-                    $found = false;
+                    $found = isset($this->failedNames[$arguments[0][0]]);
                     foreach ($this->table->foreignKeys as $foreignKey) {
                         $found = $found || $foreignKey->name === $arguments[0][0];
                     }
@@ -1287,6 +1504,49 @@ final class Parser
                     }
                     $this->generatedName($line, $at, $this->table->name . '$immutable_update');
                     break;
+                case 'markdown':
+                    $definition = $this->columnRef($arguments[0], $line, $kind);
+                    if ($definition !== null && $definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) {
+                        $this->error('setting', $line, $arguments[0][1], "markdown needs a varchar or text column, not {$definition->type->text()}");
+                    }
+                    break;
+                case 'store':
+                    if ($arguments[0][0] === 'block') {
+                        $this->foreignKeyNamed($arguments[1], $line);
+                    }
+                    break;
+                case 'key_prefix':
+                    $this->checkKeyPrefix($line, $at);
+                    break;
+                case 'title':
+                case 'body':
+                    $definition = $this->columnRef($arguments[0], $line, $kind);
+                    if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
+                        $this->error('setting', $line, $arguments[0][1], "$kind needs a non-null varchar or text column");
+                    }
+                    break;
+                case 'order':
+                    $definition = $this->columnRef($arguments[0], $line, $kind);
+                    if ($definition === null) {
+                        break;
+                    }
+                    if (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['i32', 'i64'], true)) || $definition->nullable || $definition->default !== null) {
+                        $this->error('setting', $line, $arguments[0][1], 'order needs a non-null i32 or i64 column with no default');
+                    } elseif ($this->inKeyOrCheck($arguments[0][0], $checkColumns)) {
+                        $this->error('setting', $line, $arguments[0][1], "order column `{$arguments[0][0]}` is in a key, index or check");
+                    }
+                    break;
+                case 'state_machine':
+                    $definition = $this->columnRef($arguments[0], $line, $kind);
+                    if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)) {
+                        $this->error('setting', $line, $arguments[0][1], 'state_machine needs a non-null varchar or text column');
+                    }
+                    foreach ($lists as [, $columns]) {
+                        foreach ($columns as $token) {
+                            $this->columnRef($token, $line, $kind);
+                        }
+                    }
+                    break;
                 case 'audit':
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
@@ -1297,7 +1557,7 @@ final class Parser
                     }
                     $recorded = $this->auditLists($lists, $arguments[1][0], $line, $column);
                     if (self::validName($arguments[2][0])) {
-                        $this->deferredAuditRecords[] = [$this->table, $audit, $arguments, $line, isset($this->failedKeyTables[$this->table->name])];
+                        $this->deferredAuditRecords[] = [$this->table, $audit, $arguments, $line, isset($this->failedKeyTables[$this->table->name]) || isset($this->failedPrimaryTables[$this->table->name])];
                     }
                     if (self::validName($arguments[0][0]) && self::validName($arguments[3][0]) && self::validName($arguments[4][0])) {
                         $this->deferredAudits[] = [$this->table, $this->columns, $arguments, $audit?->type, $line, $recorded];
@@ -1306,6 +1566,7 @@ final class Parser
                     break;
             }
         }
+        $this->checkStateMachine();
     }
 
     // ------------------------------------------------------- cross-table checks
@@ -1342,7 +1603,7 @@ final class Parser
             foreach ($target['table']->uniqueKeys as $unique) {
                 $keys[] = $unique->columns;
             }
-            if (!in_array($foreignKey->referencedColumns, $keys, true) && !isset($this->failedKeyTables[$foreignKey->table])) {
+            if (!in_array($foreignKey->referencedColumns, $keys, true) && !isset($this->failedKeyTables[$foreignKey->table]) && !isset($this->failedPrimaryTables[$foreignKey->table])) {
                 $this->error('foreign_key', $line, $at, "foreign key `{$foreignKey->name}` references columns that are not the primary key or a unique key of `{$foreignKey->table}`");
             }
             foreach ($foreignKey->columns as $i => $child) {
@@ -1532,6 +1793,545 @@ final class Parser
         }
     }
 
+    // ---------------------------------------------------- 저장 설정
+
+    /**
+     * markdown 저장 설정 줄 하나(`markdown`, `store`, `key_prefix`, `title`, `body`,
+     * `order`, `checkbox`, `state_machine`)를 cursor로 읽는다. Go의 settingsLine과 같이
+     * 첫 syntax 오류에서 줄이 끝난다. 표 전체의 규칙은 표가 닫힐 때 검사한다.
+     */
+    private function storageLine(string $keyword, int $at): void
+    {
+        $this->cursor = 1;
+        try {
+            [$arguments, $form, $lists] = $this->storageArguments($keyword);
+            if (isset($this->tokens[$this->cursor])) {
+                throw $this->cursorFail('the end of the line');
+            }
+        } catch (SettingFailure) {
+            return;
+        }
+        if ($keyword === 'title' || $keyword === 'body') {
+            $this->parsedTitleBody[$this->table->name][] = $keyword;
+        }
+        if ($keyword === 'markdown' || in_array($keyword, self::ONCE_STORAGE, true)) {
+            $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
+            if (isset($this->settingKeys[$key])) {
+                $this->error('setting', $this->line, $at, $keyword === 'markdown' ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                return;
+            }
+            $this->settingKeys[$key] = true;
+        }
+        $requires = $lists === [] ? null : array_map(static fn(array $a): string => $a[0], $lists[0][1]);
+        $this->table->settings->settings[] = new Setting(
+            $keyword,
+            array_map(static fn(array $a): string => $a[0], $arguments),
+            $this->takeComments(),
+            null,
+            null,
+            $form,
+            $requires,
+        );
+        $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
+    }
+
+    /**
+     * cursor에서 저장 설정의 인자를 읽고, 이어서 줄 형태와 `require` 목록을 읽는다
+     * (transition과 terminal 줄에만 있다).
+     *
+     * @return array{0: list<array{0:string,1:int}>, 1: ?string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
+     */
+    private function storageArguments(string $keyword): array
+    {
+        switch ($keyword) {
+            case 'markdown':
+            case 'title':
+            case 'body':
+            case 'order':
+                return [[$this->cursorWord('a column name')], null, []];
+            case 'store':
+                $kind = $this->cursorOneOf('`files`, `document` or `block`', ['files', 'document', 'block']);
+                $arguments = [$kind];
+                if ($kind[0] === 'block') {
+                    $arguments[] = $this->cursorWord('a foreign key name');
+                }
+                if ($kind[0] !== 'files') {
+                    $arguments[] = $this->cursorOneOf('`list` or `table`', ['list', 'table']);
+                }
+                return [$arguments, null, []];
+            case 'key_prefix':
+                return [[$this->cursorQuoted('a key prefix in quotes')], null, []];
+            case 'checkbox':
+                $column = $this->cursorWord('the state column');
+                $state = $this->cursorWord('a state name');
+                $glyph = $this->cursorQuoted('a glyph in quotes');
+                return [[$column, $state, $glyph], null, []];
+            default:
+                return $this->machineArguments();
+        }
+    }
+
+    /**
+     * column 뒤의 state_machine 줄을 읽는다: initial, terminal, history, limit 또는
+     * transition 줄이며, Go의 settingsLine이 읽는 방식과 같다.
+     *
+     * @return array{0: list<array{0:string,1:int}>, 1: string, 2: list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>}
+     */
+    private function machineArguments(): array
+    {
+        $arguments = [$this->cursorWord('the state column')];
+        foreach (['initial', 'terminal'] as $form) {
+            if ($this->formAhead($form)) {
+                $this->cursor++;
+                $arguments[] = $this->cursorWord('a state name');
+                return [$arguments, $form, $form === 'terminal' ? $this->optionalRequire() : []];
+            }
+        }
+        if ($this->formAhead('history')) {
+            $this->cursor++;
+            $arguments[] = $this->cursorWord('the history table');
+            $this->cursorKeyword('row');
+            $arguments[] = $this->cursorWord('the foreign key column');
+            $this->cursorKeyword('from');
+            $arguments[] = $this->cursorWord('the from column');
+            $this->cursorKeyword('to');
+            $arguments[] = $this->cursorWord('the to column');
+            $this->cursorKeyword('at');
+            $arguments[] = $this->cursorWord('the at column');
+            return [$arguments, 'history', []];
+        }
+        if ($this->formAhead('limit')) {
+            $this->cursor++;
+            $arguments[] = $this->cursorWord('a state name');
+            $arguments[] = $this->cursorValue('a row count');
+            return [$arguments, 'limit', []];
+        }
+        $arguments[] = $this->cursorWord('the from state');
+        $this->cursorArrow();
+        $arguments[] = $this->cursorWord('the to state');
+        return [$arguments, 'transition', $this->optionalRequire()];
+    }
+
+    /**
+     * 다음에 오면 `require (<column>, ...)`을 읽는다: 목록 하나이며 keyword token으로 식별한다.
+     *
+     * @return list<array{0: array{0:string,1:int}, 1: list<array{0:string,1:int}>}>
+     */
+    private function optionalRequire(): array
+    {
+        $keyword = $this->tokens[$this->cursor] ?? null;
+        if ($keyword === null || $keyword[0] !== 'require') {
+            return [];
+        }
+        $this->cursor++;
+        if (($this->tokens[$this->cursor][0] ?? null) !== '(') {
+            throw $this->cursorFail('`(`');
+        }
+        $this->cursor++;
+        $columns = [];
+        while (true) {
+            $columns[] = $this->cursorWord('a column name');
+            $next = $this->tokens[$this->cursor][0] ?? null;
+            if ($next === ')') {
+                $this->cursor++;
+                return [[$keyword, $columns]];
+            }
+            if ($next !== ',') {
+                throw $this->cursorFail('`,` or `)`');
+            }
+            $this->cursor++;
+        }
+    }
+
+    /** cursor 위치의 syntax 오류다. 줄에 기록하고, 호출한 쪽이 줄을 멈춘다. */
+    private function cursorFail(string $expected): SettingFailure
+    {
+        $token = $this->tokens[$this->cursor] ?? null;
+        if ($token === null) {
+            $this->error('syntax', $this->line, $this->endColumn(), "line ends, expected $expected");
+        } else {
+            $shown = $token[0][0] === "'" && strlen($token[0]) >= 2 ? "string {$token[0]}" : "`{$token[0]}`";
+            $this->error('syntax', $this->line, $token[1], "unexpected $shown, expected $expected");
+        }
+        return new SettingFailure();
+    }
+
+    /** @return array{0:string,1:int} 낱말 또는 숫자 token */
+    private function cursorWord(string $what): array
+    {
+        $token = $this->tokens[$this->cursor] ?? null;
+        if ($token === null || !self::isWord($token[0])) {
+            throw $this->cursorFail($what);
+        }
+        $this->cursor++;
+        return $token;
+    }
+
+    private function cursorKeyword(string $text): void
+    {
+        if (($this->tokens[$this->cursor][0] ?? null) !== $text) {
+            throw $this->cursorFail("`$text`");
+        }
+        $this->cursor++;
+    }
+
+    /** @param list<string> $words @return array{0:string,1:int} 목록 가운데 하나인 token */
+    private function cursorOneOf(string $what, array $words): array
+    {
+        $token = $this->tokens[$this->cursor] ?? null;
+        if ($token === null || !in_array($token[0], $words, true)) {
+            throw $this->cursorFail($what);
+        }
+        $this->cursor++;
+        return $token;
+    }
+
+    /** 문자열 literal이다. 값은 따옴표 사이 글이며, 겹따옴표는 한 글자로 읽는다. @return array{0:string,1:int} */
+    private function cursorQuoted(string $what): array
+    {
+        $token = $this->tokens[$this->cursor] ?? null;
+        if ($token === null || strlen($token[0]) < 2 || $token[0][0] !== "'") {
+            throw $this->cursorFail($what);
+        }
+        $this->cursor++;
+        return [self::literalValue($token[0]), $token[1]];
+    }
+
+    /** 행 수다: 낱말이나 소수점 숫자, 또는 숫자 앞의 minus다. @return array{0:string,1:int} */
+    private function cursorValue(string $what): array
+    {
+        $token = $this->tokens[$this->cursor] ?? null;
+        if ($token !== null && $token[0] === '-') {
+            $this->cursor++;
+            $number = $this->tokens[$this->cursor] ?? null;
+            if ($number === null || !self::isNumber($number[0])) {
+                throw $this->cursorFail('a number after `-`');
+            }
+            $this->cursor++;
+            return ['-' . $number[0], $token[1]];
+        }
+        if ($token === null || !(self::isWord($token[0]) || self::isNumber($token[0]))) {
+            throw $this->cursorFail($what);
+        }
+        $this->cursor++;
+        return $token;
+    }
+
+    private function cursorArrow(): void
+    {
+        if (($this->tokens[$this->cursor][0] ?? null) !== '-' || ($this->tokens[$this->cursor + 1][0] ?? null) !== '>') {
+            throw $this->cursorFail('`->`');
+        }
+        $this->cursor += 2;
+    }
+
+    /** keyword $text가 다음이고, transition의 from state가 아닌지 본다(뒤에 `->`가 오지 않는다). */
+    private function formAhead(string $text): bool
+    {
+        return ($this->tokens[$this->cursor][0] ?? null) === $text && ($this->tokens[$this->cursor + 1][0] ?? null) !== '-';
+    }
+
+    /** default literal token의 값이다: 문자열이면 따옴표를 뺀 글, 아니면 token 그대로다. */
+    private static function literalValue(string $text): string
+    {
+        return $text !== '' && $text[0] === "'" && strlen($text) >= 2 ? str_replace("''", "'", substr($text, 1, -1)) : $text;
+    }
+
+    private static function isNumber(string $token): bool
+    {
+        return preg_match('/^[0-9]+(?:\.[0-9]+)?$/D', $token) === 1;
+    }
+
+    /** 행 수가 10진수 양의 int64인지 본다 (Go의 strconv.ParseInt와 n >= 1). */
+    private static function positiveCount(string $text): bool
+    {
+        if (preg_match('/^[0-9]+$/D', $text) !== 1) {
+            return false;
+        }
+        $digits = ltrim($text, '0');
+        return $digits !== '' && (strlen($digits) < 19 || (strlen($digits) === 19 && strcmp($digits, '9223372036854775807') <= 0));
+    }
+
+    /**
+     * 설정이 이름 붙인 column이다: 이름을 검사한 뒤 표의 column이어야 한다. type이
+     * invalid여도 column을 돌려준다.
+     */
+    private function columnRef(array $token, int $line, string $kind): ?Column
+    {
+        if (!$this->name($token, $line)) {
+            return null;
+        }
+        if (!isset($this->columns[$token[0]])) {
+            $this->error('setting', $line, $token[1], "setting `$kind` names unknown column `{$token[0]}`");
+            return null;
+        }
+        return $this->columns[$token[0]];
+    }
+
+    /** `store block` 줄이 이름 붙인 foreign key는 표의 foreign key여야 한다. */
+    private function foreignKeyNamed(array $token, int $line): void
+    {
+        if (!$this->name($token, $line) || isset($this->failedNames[$token[0]])) {
+            return;
+        }
+        foreach ($this->table->foreignKeys as $foreignKey) {
+            if ($foreignKey->name === $token[0]) {
+                return;
+            }
+        }
+        $this->error('setting', $line, $token[1], "foreign key `{$token[0]}` is not a foreign key of the table");
+    }
+
+    /** `key_prefix`는 varchar type의 single-column primary key가 필요하다. */
+    private function checkKeyPrefix(int $line, int $at): void
+    {
+        if ($this->failedPrimary) {
+            return;
+        }
+        $primary = $this->table->primaryKey;
+        if ($this->primaryKeyLines !== 1 || $primary === null || count($primary->columns) !== 1) {
+            $this->error('setting', $line, $at, 'key_prefix needs a single-column primary key');
+            return;
+        }
+        $definition = $this->columns[$primary->columns[0]] ?? null;
+        if ($definition !== null && $definition->type->name !== 'invalid' && $definition->type->name !== 'varchar') {
+            $this->error('setting', $line, $at, "key_prefix needs a varchar primary key, not {$definition->type->text()}");
+        }
+    }
+
+    /** column이 표의 primary key, unique key, index, foreign key 또는 check가 이름 붙였는지 본다. */
+    private function inKeyOrCheck(string $column, array $checkColumns): bool
+    {
+        $groups = [];
+        if ($this->table->primaryKey !== null) {
+            $groups[] = $this->table->primaryKey->columns;
+        }
+        foreach ($this->table->uniqueKeys as $unique) {
+            $groups[] = $unique->columns;
+        }
+        foreach ($this->table->indexes as $index) {
+            $groups[] = array_map(static fn(IndexColumn $c): string => $c->name, $index->columns);
+        }
+        foreach ($this->table->foreignKeys as $foreignKey) {
+            $groups[] = $foreignKey->columns;
+        }
+        foreach ($groups as $columns) {
+            if (in_array($column, $columns, true)) {
+                return true;
+            }
+        }
+        return in_array($column, $checkColumns, true);
+    }
+
+    /**
+     * 표의 state_machine 줄들을 함께 검사한다 (Go의 stateMachineConsistency): column 하나,
+     * initial과 terminal state, terminal state에서 나가는 transition, limit 줄, history 줄
+     * (마지막 줄 뒤에 검사한다), state column의 default, 그리고 checkbox 줄이다.
+     */
+    private function checkStateMachine(): void
+    {
+        $column = '';
+        $states = [];
+        $initials = [];
+        $terminals = [];
+        $lines = [];
+        $limits = [];
+        $history = null;
+        $requires = [];
+        foreach ($this->tableSettings as [$kind, $arguments, $line, $at, $lists, $form]) {
+            if ($kind !== 'state_machine') {
+                continue;
+            }
+            if ($column === '') {
+                $column = $arguments[0][0];
+            } elseif ($arguments[0][0] !== $column) {
+                $this->error('setting', $line, $arguments[0][1], "state_machine repeats for `{$arguments[0][0]}`; a table holds one machine");
+            }
+            if ($form === 'history') {
+                if ($history !== null) {
+                    $this->error('setting', $line, $at, 'state_machine repeats history');
+                    continue;
+                }
+                $history = [$line, $arguments];
+            } elseif ($form === 'limit') {
+                $limits[] = [$line, $arguments];
+            } else {
+                $lines[] = [$line, $arguments, $form, $at];
+                foreach ($lists as [, $columns]) {
+                    array_push($requires, ...$columns);
+                }
+                if ($form === 'initial') {
+                    $initials[$arguments[1][0]] = true;
+                    $states[$arguments[1][0]] = true;
+                } elseif ($form === 'terminal') {
+                    $terminals[$arguments[1][0]] = true;
+                    $states[$arguments[1][0]] = true;
+                } else {
+                    $states[$arguments[1][0]] = true;
+                    $states[$arguments[2][0]] = true;
+                }
+            }
+        }
+        foreach ($lines as [$line, $arguments, $form, $at]) {
+            if ($form === 'initial' && isset($terminals[$arguments[1][0]])) {
+                $this->error('setting', $line, $at, "an initial state `{$arguments[1][0]}` is also terminal");
+            } elseif ($form === 'transition' && isset($terminals[$arguments[1][0]])) {
+                $this->error('setting', $line, $at, "a transition leaves the terminal state `{$arguments[1][0]}`");
+            }
+        }
+        $seen = [];
+        foreach ($limits as [$line, $arguments]) {
+            $state = $arguments[1];
+            if (!isset($states[$state[0]])) {
+                $this->error('setting', $line, $state[1], "limit names state `{$state[0]}` outside the state set");
+            } elseif (isset($seen[$state[0]])) {
+                $this->error('setting', $line, $state[1], "limit repeats for state `{$state[0]}`");
+            }
+            $seen[$state[0]] = true;
+            if (!self::positiveCount($arguments[2][0])) {
+                $this->error('setting', $line, $arguments[2][1], "limit needs a positive row count, not {$arguments[2][0]}");
+            }
+        }
+        $definition = $column === '' ? null : ($this->columns[$column] ?? null);
+        if ($history !== null) {
+            [$line, $arguments] = $history;
+            if ($this->name($arguments[1], $line)) {
+                $this->deferredHistories[] = [$this->table, $line, $arguments, $definition, $requires, $this->columns];
+            }
+        }
+        if ($definition !== null && isset($this->defaultValues[$column])) {
+            [$text, $line, $at] = $this->defaultValues[$column];
+            if (!isset($initials[$text])) {
+                $this->error('setting', $line, $at, "the default `$text` of the state column is not an initial state");
+            }
+        }
+        $this->checkCheckboxes($column, $states);
+    }
+
+    /**
+     * checkbox 줄들을 검사한다 (Go의 checkboxes): state_machine column을 이름 붙이고,
+     * 각 state를 한 글자 glyph로 한 번씩 덮으며, glyph는 서로 달라야 한다.
+     *
+     * @param array<string, true> $states 기계의 state 집합
+     */
+    private function checkCheckboxes(string $column, array $states): void
+    {
+        $boxes = [];
+        foreach ($this->tableSettings as [$kind, $arguments, $line, $at]) {
+            if ($kind === 'checkbox') {
+                $boxes[] = [$line, $arguments, $at];
+            }
+        }
+        if ($boxes === []) {
+            return;
+        }
+        [$firstLine, $firstArguments, $firstAt] = $boxes[0];
+        if ($column === '') {
+            $this->error('setting', $firstLine, $firstArguments[0][1], "checkbox needs a state_machine on column `{$firstArguments[0][0]}`");
+            return;
+        }
+        $covered = [];
+        $glyphs = [];
+        foreach ($boxes as [$line, $arguments]) {
+            if ($this->columnRef($arguments[0], $line, 'checkbox') === null) {
+                continue;
+            }
+            if ($arguments[0][0] !== $column) {
+                $this->error('setting', $line, $arguments[0][1], "checkbox names column `{$arguments[0][0]}`, but the state_machine column is `$column`");
+                continue;
+            }
+            $state = $arguments[1];
+            if (!isset($states[$state[0]])) {
+                $this->error('setting', $line, $state[1], "checkbox names state `{$state[0]}` outside the state set");
+            } elseif (isset($covered[$state[0]])) {
+                $this->error('setting', $line, $state[1], "checkbox repeats for state `{$state[0]}`");
+            }
+            $covered[$state[0]] = true;
+            $glyph = $arguments[2];
+            if (mb_strlen($glyph[0], 'UTF-8') !== 1) {
+                $this->error('setting', $line, $glyph[1], 'a checkbox glyph is one character');
+            } elseif (isset($glyphs[$glyph[0]])) {
+                $this->error('setting', $line, $glyph[1], "checkbox glyph `{$glyph[0]}` repeats");
+            }
+            $glyphs[$glyph[0]] = true;
+        }
+        foreach (array_keys($states) as $state) {
+            if (!isset($covered[$state])) {
+                $this->error('setting', $firstLine, $firstAt, "checkbox does not cover state `$state`");
+            }
+        }
+    }
+
+    /**
+     * state_machine history 줄의 history table을 검사한다 (Go의 history). 마지막 줄 뒤에
+     * 검사하며, 문서나 사용한 문서의 table이어야 하고, row column이 기계의 table을 가리키는
+     * foreign key를 가져야 하며, from과 to column은 state type, at column은 datetime(6)이어야
+     * 한다. 필요한 column마다 nullable 사본이 있어야 하고, 줄이 이름 붙이지 않은 column은 없어야
+     * 한다. title이나 body를 선언하지 않는다.
+     */
+    private function checkStateHistories(): void
+    {
+        foreach ($this->deferredHistories as [$machine, $line, $arguments, $state, $requires, $columns]) {
+            [, $tableToken, $rowToken, $fromToken, $toToken, $atToken] = $arguments;
+            $name = $tableToken[0];
+            $entry = $this->tables[$name] ?? null;
+            if ($entry === null && isset($this->failedTables[$name])) {
+                continue;
+            }
+            if ($entry === null) {
+                $this->error('setting', $line, $tableToken[1], "history table `$name` is not a table of this document or a used table");
+                continue;
+            }
+            if ($entry['table'] === null || $state === null || $state->type->name === 'invalid') {
+                continue;
+            }
+            $history = $entry['table'];
+            $historyColumns = $entry['columns'];
+            $foreignKey = false;
+            foreach ($history->foreignKeys as $candidate) {
+                $foreignKey = $foreignKey || ($candidate->columns === [$rowToken[0]] && $candidate->table === $machine->name);
+            }
+            if (!$foreignKey) {
+                $this->error('setting', $line, $tableToken[1], "history table `$name` has no foreign key of `{$rowToken[0]}` to table `{$machine->name}`");
+            }
+            $named = [$rowToken[0] => true];
+            $stateType = $state->type->text();
+            foreach ([[$fromToken, $stateType], [$toToken, $stateType], [$atToken, 'datetime(6)']] as [$ref, $want]) {
+                $named[$ref[0]] = true;
+                $column = $historyColumns[$ref[0]] ?? null;
+                if ($column === null) {
+                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column `{$ref[0]}`");
+                } elseif ($column->type->name !== 'invalid' && $column->type->text() !== $want) {
+                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` has type {$column->type->text()}, not $want");
+                }
+            }
+            foreach ($requires as $ref) {
+                $named[$ref[0]] = true;
+                $required = $columns[$ref[0]] ?? null;
+                $copy = $historyColumns[$ref[0]] ?? null;
+                if ($required === null || $required->type->name === 'invalid') {
+                    continue;
+                }
+                if ($copy === null) {
+                    $this->error('setting', $line, $tableToken[1], "history table `$name` has no column `{$ref[0]}` of the required column");
+                } elseif (!$copy->nullable || ($copy->type->name !== 'invalid' && $copy->type->text() !== $required->type->text())) {
+                    $this->error('setting', $line, $tableToken[1], "history column `{$ref[0]}` is not a nullable {$required->type->text()} column");
+                }
+            }
+            foreach ($history->primaryKey?->columns ?? [] as $column) {
+                $named[$column] = true;
+            }
+            foreach ($history->columns as $column) {
+                if (!isset($named[$column->name])) {
+                    $this->error('setting', $line, $tableToken[1], "history table `$name` has column `{$column->name}`, which the history line does not name");
+                }
+            }
+            foreach ($this->parsedTitleBody[$history->name] ?? [] as $kind) {
+                $this->error('setting', $line, $tableToken[1], "history table `$name` declares $kind, which a history table does not");
+            }
+        }
+    }
+
     // ------------------------------------------------------- helpers
 
     /** @return array<string, Column> */
@@ -1564,19 +2364,20 @@ final class Parser
 
     private static function isWord(string $token): bool
     {
-        return preg_match('/^[A-Za-z0-9_]+$/D', $token) === 1;
+        return preg_match('/^[A-Za-z0-9_.]+$/D', $token) === 1;
     }
 
     /** Checks a name token's format and length; returns whether it is valid. */
-    private function name(array $token): bool
+    private function name(array $token, ?int $line = null): bool
     {
         [$name, $column] = $token;
+        $line ??= $this->line;
         if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || in_array($name, self::RESERVED, true)) {
-            $this->error('name.format', $this->line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a reserved word");
+            $this->error('name.format', $line, $column, "name `$name` does not match [a-z][a-z0-9_]* or is a reserved word");
             return false;
         }
         if (strlen($name) > 63) {
-            $this->error('name.length', $this->line, $column, "name `$name` is longer than 63 bytes");
+            $this->error('name.length', $line, $column, "name `$name` is longer than 63 bytes");
             return false;
         }
         return true;
@@ -1596,6 +2397,7 @@ final class Parser
             $this->error('name.duplicate', $this->line, $token[1], "constraint name `{$token[0]}` is the name of a table");
         }
         $this->constraintNames[$token[0]] = true;
+        $this->constraintAt[$token[0]] = [$this->line, $token[1]];
     }
 
     /** @return ?array{0:string,1:int} the word token at $i, or null after a syntax error */

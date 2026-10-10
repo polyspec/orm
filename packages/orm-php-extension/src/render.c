@@ -400,7 +400,7 @@ static coperand check_literal(renderer *r)
 static coperand coperand_read(renderer *r)
 {
     const str *t = cpeek(r, 0);
-    if (t != NULL && str_word(*t) && !str_digits(*t) && !ckeyword(*t)) {
+    if (t != NULL && str_dotted(*t) && !str_digits(*t) && !str_decimal(*t) && !ckeyword(*t)) {
         r->at++;
         const column *c = table_column(r->table, *t);
         if (c == NULL) {

@@ -11,6 +11,7 @@ import type {
   DbspecSetting,
   DbspecTable,
   DbspecType,
+  DbspecStateLine,
 } from './model.js';
 import { typeText } from './emit.js';
 
@@ -78,6 +79,10 @@ interface IColumn {
   readonly identity: Tk | null;
   readonly value: DbspecDefault | null;
   readonly comments: string[];
+  /** The default keyword, when the line has one. */
+  readonly dflt: Tk | null;
+  /** The default value token, when it was read. */
+  readonly valueTok: Tk | null;
 }
 
 interface IKeyColumn {
@@ -128,7 +133,24 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       /** exclude와 include 목록이다. 둘 다 쓴 setting은 검사가 거부한다. */
       readonly lists: readonly { readonly kw: Tk; readonly columns: readonly Tk[] }[];
     }
+  | { readonly kind: 'markdown'; readonly column: Tk }
+  | { readonly kind: 'store'; readonly storage: Tk; readonly foreignKey: Tk | null; readonly shape: Tk | null }
+  | { readonly kind: 'key_prefix'; readonly prefix: Tk }
+  | { readonly kind: 'title' | 'body' | 'order'; readonly column: Tk }
+  | { readonly kind: 'checkbox'; readonly column: Tk; readonly state: Tk; readonly glyph: Tk }
+  | { readonly kind: 'state_machine'; readonly column: Tk; readonly line: IStateLine }
 );
+
+/** A state_machine line after its column, with the tokens it names. */
+type IStateLine =
+  | { readonly form: 'initial'; readonly state: Tk }
+  | { readonly form: 'terminal'; readonly state: Tk; readonly requires: Tk[] | null }
+  | { readonly form: 'transition'; readonly from: Tk; readonly to: Tk; readonly requires: Tk[] | null }
+  | { readonly form: 'history'; readonly table: Tk; readonly row: Tk; readonly from: Tk; readonly to: Tk; readonly at: Tk }
+  | { readonly form: 'limit'; readonly state: Tk; readonly count: Tk };
+
+type IStateMachine = Extract<ISetting, { kind: 'state_machine' }>;
+type ICheckbox = Extract<ISetting, { kind: 'checkbox' }>;
 
 interface ISettings {
   readonly open: Tk;
@@ -161,6 +183,8 @@ interface ITable {
   failedPrimary: boolean;
   /** A primary key, unique or index line failed: some key's columns are unknown. */
   failedKey: boolean;
+  /** Column lines of the table that had a syntax error (Go's failedLines). */
+  failedLines: number;
 }
 
 interface IUse {
@@ -280,49 +304,95 @@ interface Tokens {
   readonly why: string;
 }
 
-/** Tokens of one line. A tab is read as a separator after it is reported; an unterminated string ends the tokens. */
-function tokenize(text: string, line: number): Tokens {
+/** One line split as Go's lexLine splits it: the tokens before the first error, and that error. */
+interface Lexed {
+  readonly toks: Tk[];
+  /** The UTF-16 index of the character that starts no token, or of an unterminated string's quote. */
+  readonly error: { readonly index: number; readonly message: string } | null;
+}
+
+/** Go's isWordRune: an ASCII letter, digit, `_` or `.`, or a Unicode letter or digit. */
+function isWordRune(cp: number): boolean {
+  if (cp < 128) return cp === 95 || cp === 46 || (cp >= 48 && cp <= 57) || (cp >= 65 && cp <= 90) || (cp >= 97 && cp <= 122);
+  return /^[\p{L}\p{Nd}]$/u.test(String.fromCodePoint(cp));
+}
+
+/** The character as Go's %q writes a rune. */
+function goRune(cp: number): string {
+  const escapes: Record<number, string> = { 9: '\\t', 10: '\\n', 13: '\\r', 39: "\\'", 92: '\\\\' };
+  return `'${escapes[cp] ?? String.fromCodePoint(cp)}'`;
+}
+
+/** Splits one line into tokens (engine/dbspec/lex.go's lexLine); only the space separates tokens. */
+function lexLine(text: string, line: number): Lexed {
   const toks: Tk[] = [];
   const n = text.length;
   let i = 0;
-  let tab = -1;
   while (i < n) {
     const c = text.charCodeAt(i);
-    if (c === 32 || c === 9) {
-      if (c === 9 && tab < 0) tab = i;
+    if (c === 32) {
       i++;
     } else if (c === 40 || c === 41 || c === 123 || c === 125 || c === 44) {
       toks.push({ k: K.Punct, t: text[i]!, s: i, e: i + 1, line });
       i++;
-    } else if (c === 39) {
-      let j = i + 1;
-      for (;;) {
-        if (j >= n) return tab >= 0 ? { toks, bad: tab, why: 'a tab is not a separator' } : { toks, bad: i, why: 'the string is not terminated' };
-        if (text.charCodeAt(j) === 39) {
-          if (text.charCodeAt(j + 1) === 39) {
-            j += 2;
-            continue;
-          }
-          break;
-        }
-        j++;
-      }
-      toks.push({ k: K.Str, t: text.slice(i, j + 1), s: i, e: j + 1, line });
-      i = j + 1;
-    } else if (c === 61 || c === 60 || c === 62 || c === 43 || c === 45 || c === 42 || c === 47) {
+    } else if (c === 60 || c === 62) {
       const d = text.charCodeAt(i + 1);
       const two = (c === 60 && (d === 62 || d === 61)) || (c === 62 && d === 61);
       const e = two ? i + 2 : i + 1;
       toks.push({ k: K.Op, t: text.slice(i, e), s: i, e, line });
       i = e;
-    } else {
+    } else if (c === 61 || c === 43 || c === 45 || c === 42 || c === 47) {
+      toks.push({ k: K.Op, t: text[i]!, s: i, e: i + 1, line });
+      i++;
+    } else if (c === 39) {
       let j = i + 1;
-      while (j < n && !isDelimiter(text.charCodeAt(j))) j++;
+      let closed = false;
+      while (j < n) {
+        if (text.charCodeAt(j) === 39) {
+          if (text.charCodeAt(j + 1) === 39) {
+            j += 2;
+            continue;
+          }
+          j++;
+          closed = true;
+          break;
+        }
+        j++;
+      }
+      if (!closed) return { toks, error: { index: i, message: 'string is not closed on its line' } };
+      toks.push({ k: K.Str, t: text.slice(i, j), s: i, e: j, line });
+      i = j;
+    } else {
+      const cp = text.codePointAt(i)!;
+      if (!isWordRune(cp)) return { toks, error: { index: i, message: `character ${goRune(cp)} is not allowed here` } };
+      let j = i + (cp > 0xffff ? 2 : 1);
+      while (j < n) {
+        const d = text.codePointAt(j)!;
+        if (!isWordRune(d)) break;
+        j += d > 0xffff ? 2 : 1;
+      }
       toks.push({ k: K.Word, t: text.slice(i, j), s: i, e: j, line });
       i = j;
     }
   }
-  return tab >= 0 ? { toks, bad: tab, why: 'a tab is not a separator' } : { toks, bad: -1, why: '' };
+  return { toks, error: null };
+}
+
+/** Go's lexRecover: the tokens of a line whose character that starts no token is read as a space. */
+function lexRecover(text: string, line: number): Tk[] {
+  const chars = Array.from(text);
+  for (let attempt = 0; attempt <= chars.length; attempt++) {
+    const joined = chars.join('');
+    const lexed = lexLine(joined, line);
+    if (lexed.error === null) return lexed.toks;
+    chars[Array.from(joined.slice(0, lexed.error.index)).length] = ' ';
+  }
+  return [];
+}
+
+/** Whether a foreign key action changes child rows (Go's propagates). */
+function propagates(action: string): boolean {
+  return action === 'cascade' || action === 'set_null';
 }
 
 function isWord(tok: Tk | undefined, text: string): boolean {
@@ -331,6 +401,10 @@ function isWord(tok: Tk | undefined, text: string): boolean {
 
 function isPunct(tok: Tk | undefined, text: string): boolean {
   return tok !== undefined && tok.k === K.Punct && tok.t === text;
+}
+
+function isOp(tok: Tk | undefined, text: string): boolean {
+  return tok !== undefined && tok.k === K.Op && tok.t === text;
 }
 
 function stringValue(tok: Tk): string {
@@ -562,7 +636,7 @@ class DocumentParser {
   private syntax(toks: Tk[], i: number, line: number, message: string): void {
     const tok = toks[i];
     if (tok !== undefined) this.at('syntax', tok, message);
-    else this.report('syntax', line, toks.length > 0 ? toks[toks.length - 1]!.e : 0, message);
+    else this.report('syntax', line, (this.lines[line - 1] ?? '').length, message);
   }
 
   private stop(rule: DbspecRule, tok: Tk, message: string): void {
@@ -620,8 +694,13 @@ class DocumentParser {
       }
       const own = comments;
       comments = [];
-      const { toks, bad, why } = tokenize(text, line);
-      if (bad >= 0) this.report('syntax', line, bad, why);
+      const lexed = lexLine(text, line);
+      let toks = lexed.toks;
+      if (lexed.error !== null) {
+        this.report('syntax', line, lexed.error.index, lexed.error.message);
+        // 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
+        toks = lexRecover(text, line);
+      }
       const first = toks[0];
       if (first === undefined) continue;
       if (state === 'top') {
@@ -648,6 +727,8 @@ class DocumentParser {
           t.closing = own;
           table = null;
           state = 'top';
+        } else if (lexed.error !== null) {
+          state = this.lexedTableLine(t, toks, line, own);
         } else if (isWord(first, 'settings')) {
           if (t.settings !== null) this.at('order', first, 'a table has at most one settings block');
           else t.settings = { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] };
@@ -662,6 +743,8 @@ class DocumentParser {
         } else {
           if (t.phase > 0) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
           this.column(t, toks, line, own);
+          // Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
+          if (this.syntaxLine === line) this.failColumnLine(t, first);
         }
       } else if (state === 'settings') {
         const t = table!;
@@ -670,7 +753,7 @@ class DocumentParser {
           t.settings!.closing = own;
           state = 'table';
         } else {
-          this.setting(t, toks, line, own);
+          this.setting(t, toks, line, own, lexed.error !== null);
         }
       } else {
         const d = diagram!;
@@ -679,7 +762,7 @@ class DocumentParser {
           d.closing = own;
           diagram = null;
           state = 'top';
-        } else {
+        } else if (lexed.error === null) {
           this.placement(d, toks, line, own);
         }
       }
@@ -707,7 +790,7 @@ class DocumentParser {
     let end = prefix.length;
     while (end < text.length && /[A-Za-z0-9_]/.test(text[end]!)) end++;
     if (end === prefix.length || end < text.length) return fail(end);
-    const name = tokenize(text, 1).toks[2]!;
+    const name = lexLine(text, 1).toks[2]!;
     this.name(name);
     this.document.name = name.t;
     return true;
@@ -778,6 +861,7 @@ class DocumentParser {
       failed: new Set(),
       failedPrimary: false,
       failedKey: false,
+      failedLines: 0,
     };
     if (this.document.tables.length >= MAX_TABLES) {
       this.stop('limit', kw, `a document has at most ${MAX_TABLES} tables`);
@@ -914,7 +998,7 @@ class DocumentParser {
         else value = fitted;
       }
     }
-    const column: IColumn = { name, type, nullable: nullTok !== null, identity, value, comments };
+    const column: IColumn = { name, type, nullable: nullTok !== null, identity, value, comments, dflt: defaultTok, valueTok };
     table.columns.push(column);
     if (!resolvable) return;
     if (table.colMap.has(name.t)) this.at('name.duplicate', name, `column ${name.t} repeats`);
@@ -949,13 +1033,39 @@ class DocumentParser {
     }
   }
 
+  /**
+   * A table line with a lex error (Go's cursor failure): `settings` opens the block, a key or foreign key line fails
+   * its key or name, and a column line fails its name. Returns the next state.
+   */
+  private lexedTableLine(table: ITable, toks: Tk[], line: number, comments: string[]): 'table' | 'settings' {
+    const first = toks[0]!;
+    if (isWord(first, 'settings')) {
+      if (table.settings === null) table.settings = { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments, closing: [] };
+      table.phase = 2;
+      return 'settings';
+    }
+    if (first.k === K.Word && CONSTRAINT_WORDS.has(first.t)) {
+      if (first.t === 'primary') table.failedPrimary = true;
+      else if (first.t === 'unique' || first.t === 'index') table.failedKey = true;
+      else if (first.t === 'foreign' && toks[2]?.k === K.Word) table.failed.add(toks[2].t);
+      return 'table';
+    }
+    this.failColumnLine(table, first);
+    return 'table';
+  }
+
+  /** Knows a column line that had a syntax error: its name is failed and the table has one more failed line. */
+  private failColumnLine(table: ITable, first: Tk): void {
+    table.failedLines++;
+    if (first.k === K.Word) table.failed.add(first.t);
+  }
+
   private constraint(table: ITable, toks: Tk[], line: number, comments: string[]): void {
     const kw = toks[0]!;
     switch (kw.t) {
       case 'primary': {
         const failed = (): void => {
           table.failedPrimary = true;
-          table.failedKey = true;
         };
         if (!isWord(toks[1], 'key')) {
           failed();
@@ -985,44 +1095,11 @@ class DocumentParser {
         return;
       }
       case 'foreign': {
-        if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
-        const name = toks[2];
-        if (name === undefined || name.k !== K.Word) return this.syntax(toks, 2, line, 'expected a name');
-        const cols = this.keyColumns(toks, 3, line, false);
-        if (cols === null) return;
-        let i = cols[1];
-        if (!isWord(toks[i], 'references')) return this.syntax(toks, i, line, 'expected references');
-        const target = toks[i + 1];
-        if (target === undefined || target.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a table name');
-        const refs = this.keyColumns(toks, i + 2, line, false);
-        if (refs === null) return;
-        i = refs[1];
-        const actions: Record<'delete' | 'update', DbspecAction> = { delete: 'restrict', update: 'restrict' };
-        for (const event of ['delete', 'update'] as const) {
-          if (!isWord(toks[i], 'on') || !isWord(toks[i + 1], event)) continue;
-          const action = toks[i + 2];
-          if (action === undefined || action.k !== K.Word || !ACTIONS.has(action.t)) {
-            return this.syntax(toks, i + 2, line, 'expected restrict, cascade or set_null');
-          }
-          actions[event] = action.t as DbspecAction;
-          i += 3;
-        }
-        if (!this.end(toks, i, line)) return;
-        if (this.foreignKeyCount >= MAX_FOREIGN_KEYS) return this.stop('limit', kw, `a document has at most ${MAX_FOREIGN_KEYS} foreign keys`);
-        this.foreignKeyCount++;
-        this.constraintName(name);
-        for (const c of cols[0]) this.name(c.tok);
-        this.name(target);
-        for (const c of refs[0]) this.name(c.tok);
-        table.fks.push({
-          name,
-          cols: cols[0].map(c => c.tok),
-          table: target,
-          refs: refs[0].map(c => c.tok),
-          onDelete: actions.delete,
-          onUpdate: actions.update,
-          comments,
-        });
+        // 줄이 실패하면 그 이름을 실패한 이름으로 표시한다(Go markFailed): 설정의 참조가 추가 진단을 내지 않는다.
+        const failedName = toks[2];
+        const before = table.fks.length;
+        this.foreignKeyLine(table, toks, line, comments);
+        if (table.fks.length === before && failedName !== undefined && failedName.k === K.Word) table.failed.add(failedName.t);
         return;
       }
       case 'check': {
@@ -1030,7 +1107,8 @@ class DocumentParser {
         if (name === undefined || name.k !== K.Word) return this.syntax(toks, 1, line, 'expected a name');
         if (!isPunct(toks[2], '(')) return this.syntax(toks, 2, line, 'expected (');
         const close = toks[toks.length - 1]!;
-        if (toks.length < 5 || !isPunct(close, ')')) return this.syntax(toks, toks.length < 5 ? 3 : toks.length, line, 'expected an expression in parentheses');
+        // Go: the rest after `(` must end with `)`; an empty expression `()` is an expression error at the `)`.
+        if (toks.length < 4 || !isPunct(close, ')')) return this.syntax(toks, toks.length, line, "expected ')' at the end of the check");
         this.constraintName(name);
         table.checks.push({ name, expr: toks.slice(3, -1), close, comments, text: '' });
         return;
@@ -1038,7 +1116,56 @@ class DocumentParser {
     }
   }
 
-  private setting(table: ITable, toks: Tk[], line: number, comments: string[]): void {
+  private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void {
+    const kw = toks[0]!;
+    if (!isWord(toks[1], 'key')) return this.syntax(toks, 1, line, 'expected key');
+    const name = toks[2];
+    if (name === undefined || name.k !== K.Word) return this.syntax(toks, 2, line, 'expected a name');
+    const cols = this.keyColumns(toks, 3, line, false);
+    if (cols === null) return;
+    let i = cols[1];
+    if (!isWord(toks[i], 'references')) return this.syntax(toks, i, line, 'expected references');
+    const target = toks[i + 1];
+    if (target === undefined || target.k !== K.Word) return this.syntax(toks, i + 1, line, 'expected a table name');
+    const refs = this.keyColumns(toks, i + 2, line, false);
+    if (refs === null) return;
+    i = refs[1];
+    const actions: Record<'delete' | 'update', DbspecAction> = { delete: 'restrict', update: 'restrict' };
+    const actionToks: Tk[] = [];
+    for (const event of ['delete', 'update'] as const) {
+      if (!isWord(toks[i], 'on') || !isWord(toks[i + 1], event)) continue;
+      const action = toks[i + 2];
+      if (action === undefined || action.k !== K.Word) return this.syntax(toks, i + 2, line, 'expected an action');
+      actions[event] = action.t as DbspecAction;
+      actionToks.push(action);
+      i += 3;
+    }
+    if (!this.end(toks, i, line)) return;
+    for (const action of actionToks) {
+      if (!ACTIONS.has(action.t)) this.at('foreign_key', action, `action "${action.t}" is not restrict, cascade or set_null`);
+    }
+    if (this.foreignKeyCount >= MAX_FOREIGN_KEYS) return this.stop('limit', kw, `a document has at most ${MAX_FOREIGN_KEYS} foreign keys`);
+    this.foreignKeyCount++;
+    this.constraintName(name);
+    for (const c of cols[0]) this.name(c.tok);
+    this.name(target);
+    for (const c of refs[0]) this.name(c.tok);
+    table.fks.push({
+      name,
+      cols: cols[0].map(c => c.tok),
+      table: target,
+      refs: refs[0].map(c => c.tok),
+      onDelete: actions.delete,
+      onUpdate: actions.update,
+      comments,
+    });
+    return;
+  }
+
+
+  private setting(table: ITable, toks: Tk[], line: number, comments: string[], lexed = false): void {
+    // 줄의 lex 오류는 이미 보고했다. Go의 cursor는 그 뒤로 이 줄을 검사하지 않는다.
+    if (lexed) return;
     const kw = toks[0]!;
     if (kw.k !== K.Word) return this.syntax(toks, 0, line, 'expected a setting');
     const words = (from: number, count: number | null): Tk[] | null => {
@@ -1114,6 +1241,50 @@ class DocumentParser {
         if (!this.end(toks, 1, line)) return;
         entry = { kw, comments, kind: 'immutable' };
         break;
+      case 'markdown': {
+        const w = words(1, 1);
+        if (w === null) return;
+        entry = { kw, comments, kind: 'markdown', column: w[0]! };
+        break;
+      }
+      case 'store': {
+        const parsed = this.storeLine(toks, line, kw, comments);
+        if (parsed === null) return;
+        entry = parsed;
+        break;
+      }
+      case 'key_prefix': {
+        const prefix = toks[1];
+        if (prefix === undefined || prefix.k !== K.Str) return this.syntax(toks, 1, line, 'expected a key prefix in quotes');
+        if (toks.length > 2) return this.syntax(toks, 2, line, 'expected the end of the line');
+        entry = { kw, comments, kind: 'key_prefix', prefix };
+        break;
+      }
+      case 'title':
+      case 'order':
+      case 'body': {
+        const w = words(1, 1);
+        if (w === null) return;
+        entry = { kw, comments, kind: kw.t === 'title' ? 'title' : kw.t === 'body' ? 'body' : 'order', column: w[0]! };
+        break;
+      }
+      case 'checkbox': {
+        const column = this.settingWord(toks, 1, line, 'the state column');
+        if (column === null) return;
+        const state = this.settingWord(toks, 2, line, 'a state name');
+        if (state === null) return;
+        const glyph = toks[3];
+        if (glyph === undefined || glyph.k !== K.Str) return this.syntax(toks, 3, line, 'expected a glyph in quotes');
+        if (toks.length > 4) return this.syntax(toks, 4, line, 'expected the end of the line');
+        entry = { kw, comments, kind: 'checkbox', column, state, glyph };
+        break;
+      }
+      case 'state_machine': {
+        const parsed = this.stateMachineLine(toks, line, kw, comments);
+        if (parsed === null) return;
+        entry = parsed;
+        break;
+      }
       case 'audit': {
         const parts: Tk[] = [];
         let i = 1;
@@ -1141,6 +1312,148 @@ class DocumentParser {
         return this.at('setting', kw, `${kw.t} is not a setting`);
     }
     table.settings!.entries.push(entry);
+  }
+
+  /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */
+  private settingWord(toks: Tk[], i: number, line: number, what: string): Tk | null {
+    const t = toks[i];
+    if (t !== undefined && t.k === K.Word) return t;
+    this.syntax(toks, i, line, `expected ${what}`);
+    return null;
+  }
+
+  /** Reads `store files`, `store document list|table` or `store block <foreign key> list|table`. */
+  private storeLine(toks: Tk[], line: number, kw: Tk, comments: string[]): ISetting | null {
+    const storage = toks[1];
+    if (storage === undefined || storage.k !== K.Word || !['files', 'document', 'block'].includes(storage.t)) {
+      this.syntax(toks, 1, line, "expected 'files', 'document' or 'block'");
+      return null;
+    }
+    let i = 2;
+    let foreignKey: Tk | null = null;
+    if (storage.t === 'block') {
+      foreignKey = this.settingWord(toks, i, line, 'a foreign key name');
+      if (foreignKey === null) return null;
+      i++;
+    }
+    let shape: Tk | null = null;
+    if (storage.t !== 'files') {
+      const word = toks[i];
+      if (word === undefined || word.k !== K.Word || (word.t !== 'list' && word.t !== 'table')) {
+        this.syntax(toks, i, line, "expected 'list' or 'table'");
+        return null;
+      }
+      shape = word;
+      i++;
+    }
+    if (i < toks.length) {
+      this.syntax(toks, i, line, 'expected the end of the line');
+      return null;
+    }
+    return { kw, comments, kind: 'store', storage, foreignKey, shape };
+  }
+
+  /**
+   * Reads one state_machine line, with the forms of the Go reference: a state
+   * word followed by `->` is a transition, and `initial`, `terminal`, `history`
+   * and `limit` are forms only when no `->` follows them.
+   */
+  private stateMachineLine(toks: Tk[], line: number, kw: Tk, comments: string[]): ISetting | null {
+    let i = 1;
+    const take = (what: string): Tk | null => {
+      const t = this.settingWord(toks, i, line, what);
+      if (t !== null) i++;
+      return t;
+    };
+    const keyword = (text: string): boolean => {
+      if (isWord(toks[i], text)) {
+        i++;
+        return true;
+      }
+      this.syntax(toks, i, line, `'${text}'`);
+      return false;
+    };
+    const formAhead = (text: string): boolean => isWord(toks[i], text) && !isOp(toks[i + 1], '-');
+    const requireList = (): Tk[] | null | undefined => {
+      if (!isWord(toks[i], 'require')) return null;
+      i++;
+      if (!isPunct(toks[i], '(')) {
+        this.syntax(toks, i, line, "expected '('");
+        return undefined;
+      }
+      const listed = this.list(toks, i + 1, line, ')');
+      if (listed === null) return undefined;
+      i = listed[1];
+      return listed[0];
+    };
+    const column = take('the state column');
+    if (column === null) return null;
+    const done = (form: IStateLine): ISetting | null => {
+      if (i < toks.length) {
+        this.syntax(toks, i, line, 'the end of the line');
+        return null;
+      }
+      return { kw, comments, kind: 'state_machine', column, line: form };
+    };
+    if (formAhead('initial') || formAhead('terminal')) {
+      const terminal = toks[i]!.t === 'terminal';
+      i++;
+      const state = take('a state name');
+      if (state === null) return null;
+      if (!terminal) return done({ form: 'initial', state });
+      const requires = requireList();
+      if (requires === undefined) return null;
+      return done({ form: 'terminal', state, requires });
+    }
+    if (formAhead('history')) {
+      i++;
+      const table = take('the history table');
+      if (table === null || !keyword('row')) return null;
+      const row = take('the foreign key column');
+      if (row === null || !keyword('from')) return null;
+      const from = take('the from column');
+      if (from === null || !keyword('to')) return null;
+      const to = take('the to column');
+      if (to === null || !keyword('at')) return null;
+      const at = take('the at column');
+      if (at === null) return null;
+      return done({ form: 'history', table, row, from, to, at });
+    }
+    if (formAhead('limit')) {
+      i++;
+      const state = take('a state name');
+      if (state === null) return null;
+      const t = toks[i];
+      let count: Tk;
+      if (isOp(t, '-')) {
+        const n = toks[i + 1];
+        if (n === undefined || n.k !== K.Word || !UNSIGNED_NUMBER.test(n.t)) {
+          this.syntax(toks, i + 1, line, "expected a number after '-'");
+          return null;
+        }
+        count = { k: K.Word, t: '-' + n.t, s: t!.s, e: n.e, line };
+        i += 2;
+      } else if (t !== undefined && t.k === K.Word) {
+        count = t;
+        i++;
+      } else {
+        this.syntax(toks, i, line, 'expected a row count');
+        return null;
+      }
+      return done({ form: 'limit', state, count });
+    }
+    const from = take('the from state');
+    if (from === null) return null;
+    if (!isOp(toks[i], '-') || !isOp(toks[i + 1], '>')) {
+      this.syntax(toks, i, line, "expected '->'");
+      return null;
+    }
+    i += 2;
+    const to = take('the to state');
+    if (to === null) return null;
+    const requires = requireList();
+    if (requires === undefined) return null;
+    return done({ form: 'transition', from, to, requires });
   }
 
   private placement(diagram: IDiagram, toks: Tk[], line: number, comments: string[]): void {
@@ -1233,7 +1546,7 @@ class DocumentParser {
     for (const name of doc.failed) if (!available.has(name)) available.set(name, null);
     for (const [name, tok] of doc.constraints) {
       const table = localTables.get(name);
-      if (table !== undefined) this.at('name.duplicate', later(table, tok), `${name} names both a table and a constraint`);
+      if (table !== undefined) this.at('name.duplicate', tok, `${name} names both a table and a constraint`);
       else if (usedConstraints.has(name) || usedTables.has(name)) this.at('name.duplicate', tok, `${name} repeats a name of a used document`);
     }
     for (const t of doc.tables) this.validateTable(t, available);
@@ -1316,23 +1629,27 @@ class DocumentParser {
       if (column.identity !== null || column.type === null || column.type.kind === 'text' || column.type.kind === 'bytes') continue;
       this.generatedName(table, column.name, column.name.t, true);
     }
-    if (table.columns.length === 0) this.at('column', table.name, 'a table has at least one column');
+    if (table.columns.length === 0 && table.failedLines === 0) this.at('column', table.name, 'a table has at least one column');
     if (table.pks.length === 0 && !table.failedPrimary) this.at('key', table.name, `table ${table.name.t} has no primary key`);
     for (const extra of table.pks.slice(1)) this.at('key', extra.kw, 'a table has exactly one primary key');
     for (const pk of table.pks) this.keyLike(table, pk, true);
     for (const u of table.uniques) this.keyLike(table, u, false);
     for (const i of table.indexes) this.keyLike(table, i, false);
     const pk = table.pks[0];
-    for (const column of table.columns) {
-      if (column.identity === null) continue;
-      const only = pk !== undefined && pk.cols.length === 1 && pk.cols[0]!.tok.t === column.name.t;
-      if (!only && !table.failedPrimary) this.at('column', column.identity, 'an identity column is the only primary key column');
+    const identity = table.columns.find(c => c.identity !== null);
+    if (identity !== undefined) {
+      if (pk === undefined) {
+        if (!table.failedPrimary) this.at('column', identity.identity!, 'an identity column is the only primary key column');
+      } else if (pk.cols.every(c => wellFormed(c.tok.t) && !table.failed.has(c.tok.t))) {
+        const only = pk.cols.length === 1 && pk.cols[0]!.tok.t === identity.name.t;
+        if (!only) this.at('column', identity.identity!, 'an identity column is the only primary key column');
+      }
     }
     const banned = new Set<string>();
     let actionChild = false;
     for (const fk of table.fks) {
       this.foreignKey(table, fk, available);
-      if (fk.onDelete !== 'restrict' || fk.onUpdate !== 'restrict') {
+      if (propagates(fk.onDelete) || propagates(fk.onUpdate)) {
         actionChild = true;
         for (const c of fk.cols) banned.add(c.t);
       }
@@ -1385,7 +1702,7 @@ class DocumentParser {
     }
     const refs = fk.refs.map(r => r.t).join(',');
     const keys = [...target.pks.slice(0, 1), ...target.uniques].map(k => k.cols.map(c => c.tok.t).join(','));
-    if (!keys.includes(refs) && !target.failedKey) {
+    if (!keys.includes(refs) && !target.failedKey && !target.failedPrimary) {
       this.at('foreign_key', fk.name, `the referenced columns are not the primary key or a unique key of table ${target.name.t}`);
     }
     for (let i = 0; i < children.length; i++) {
@@ -1399,7 +1716,7 @@ class DocumentParser {
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
     );
-    if (!indexed && !table.failedKey) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
+    if (!indexed && !table.failedKey && !table.failedPrimary) this.at('foreign_key', fk.name, 'no index or key of the table leads with the foreign key columns');
     if ((fk.onDelete === 'set_null' || fk.onUpdate === 'set_null') && children.some(c => !c.nullable)) {
       this.at('foreign_key', fk.name, 'set_null requires every child column to be null');
     }
@@ -1643,19 +1960,24 @@ class DocumentParser {
     for (const s of entries) if (s.kind === 'codec' && s.stages.some(stage => stage.t === 'aes')) aesColumns.add(s.column.t);
     const lookup = (tok: Tk): IColumn | null | undefined => this.lookup(table, tok, 'setting');
     for (const s of entries) {
-      const key =
-        s.kind === 'codec'
-          ? `codec ${s.column.t}`
-          : s.kind === 'navigation'
-            ? `navigation ${s.foreignKey.t}`
-            : s.kind === 'blind_index'
-              ? `blind_index ${s.column.t}`
-              : s.kind;
-      if (seen.has(key)) {
-        this.at('setting', s.kw, `setting ${key} repeats`);
-        continue;
+      // state_machine과 checkbox는 여러 줄로 쓰므로 반복 검사에서 뺀다.
+      if (s.kind !== 'state_machine' && s.kind !== 'checkbox') {
+        const key =
+          s.kind === 'codec'
+            ? `codec ${s.column.t}`
+            : s.kind === 'navigation'
+              ? `navigation ${s.foreignKey.t}`
+              : s.kind === 'blind_index'
+                ? `blind_index ${s.column.t}`
+                : s.kind === 'markdown'
+                  ? `markdown ${s.column.t}`
+                  : s.kind;
+        if (seen.has(key)) {
+          this.at('setting', s.kw, `setting ${key} repeats`);
+          continue;
+        }
+        seen.add(key);
       }
-      seen.add(key);
       switch (s.kind) {
         case 'entity':
           break;
@@ -1694,9 +2016,28 @@ class DocumentParser {
           this.blindIndex(table, s, aesColumns);
           break;
         case 'navigation':
-          if (wellFormed(s.foreignKey.t) && !table.fks.some(fk => fk.name.t === s.foreignKey.t)) {
+          if (wellFormed(s.foreignKey.t) && !table.failed.has(s.foreignKey.t) && !table.fks.some(fk => fk.name.t === s.foreignKey.t)) {
             this.at('setting', s.foreignKey, `${s.foreignKey.t} is not a foreign key of table ${table.name.t}`);
           }
+          break;
+        case 'markdown':
+          this.checkMarkdown(table, s);
+          break;
+        case 'store':
+          if (s.storage.t === 'block' && s.foreignKey !== null) this.checkForeignKeyName(table, s.foreignKey);
+          break;
+        case 'key_prefix':
+          this.checkKeyPrefix(table, s);
+          break;
+        case 'title':
+        case 'body':
+          this.checkTextColumn(table, s);
+          break;
+        case 'order':
+          this.checkOrder(table, s);
+          break;
+        case 'state_machine':
+          this.checkStateMachine(table, s);
           break;
         case 'immutable':
           if (actionChild) this.at('setting', s.kw, 'immutable is rejected on a child of a cascade or set_null foreign key');
@@ -1708,6 +2049,264 @@ class DocumentParser {
           this.generatedName(table, s.kw, 'audit_insert', false);
           break;
       }
+    }
+    this.checkStateMachineConsistency(table, entries, available);
+  }
+
+  /** Reports a malformed name as Go's ref does; says whether the name can be resolved. */
+  private ref(tok: Tk): boolean {
+    if (wellFormed(tok.t)) return true;
+    this.name(tok);
+    return false;
+  }
+
+  /** The column that a setting names: null after a report, undefined when the name is malformed or its line failed. */
+  private columnRef(table: ITable, tok: Tk): IColumn | null | undefined {
+    if (!this.ref(tok)) return undefined;
+    return this.lookup(table, tok, 'setting');
+  }
+
+  private checkMarkdown(table: ITable, s: Extract<ISetting, { kind: 'markdown' }>): void {
+    const c = this.columnRef(table, s.column);
+    if (c && c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') {
+      this.at('setting', s.column, `markdown needs a varchar or text column, not ${typeText(c.type)}`);
+    }
+  }
+
+  /** A block store names a foreign key of the table. */
+  private checkForeignKeyName(table: ITable, tok: Tk): void {
+    if (!this.ref(tok) || table.failed.has(tok.t)) return;
+    if (!table.fks.some(f => f.name.t === tok.t)) this.at('setting', tok, `foreign key ${tok.t} is not a foreign key of the table`);
+  }
+
+  /** The primary key is one varchar column. */
+  private checkKeyPrefix(table: ITable, s: Extract<ISetting, { kind: 'key_prefix' }>): void {
+    if (table.failedPrimary) return;
+    const pk = table.pks;
+    if (pk.length !== 1 || pk[0]!.cols.length !== 1) {
+      this.at('setting', s.kw, 'key_prefix needs a single-column primary key');
+      return;
+    }
+    const c = table.colMap.get(pk[0]!.cols[0]!.tok.t);
+    if (c !== undefined && c.type !== null && c.type.kind !== 'varchar') {
+      this.at('setting', s.kw, `key_prefix needs a varchar primary key, not ${typeText(c.type)}`);
+    }
+  }
+
+  /** The title and body columns are non-null varchar or text columns. */
+  private checkTextColumn(table: ITable, s: Extract<ISetting, { kind: 'title' | 'body' | 'order' }>): void {
+    const c = this.columnRef(table, s.column);
+    if (c && ((c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') || c.nullable)) {
+      this.at('setting', s.column, `${s.kw.t} needs a non-null varchar or text column`);
+    }
+  }
+
+  /** The order column is a non-null i32 or i64 column with no default, in no key, index or check. */
+  private checkOrder(table: ITable, s: Extract<ISetting, { kind: 'title' | 'body' | 'order' }>): void {
+    const c = this.columnRef(table, s.column);
+    if (!c) return;
+    if ((c.type !== null && c.type.kind !== 'i32' && c.type.kind !== 'i64') || c.nullable || c.dflt !== null) {
+      this.at('setting', s.column, 'order needs a non-null i32 or i64 column with no default');
+      return;
+    }
+    if (inKeyOrCheck(table, s.column.t)) this.at('setting', s.column, `order column ${s.column.t} is in a key, index or check`);
+  }
+
+  /** Each state_machine line: its column is a non-null varchar or text column, and its require list names columns. */
+  private checkStateMachine(table: ITable, s: IStateMachine): void {
+    const c = this.columnRef(table, s.column);
+    if (c && ((c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') || c.nullable)) {
+      this.at('setting', s.column, 'state_machine needs a non-null varchar or text column');
+    }
+    if (s.line.form === 'terminal' || s.line.form === 'transition') {
+      for (const ref of s.line.requires ?? []) this.columnRef(table, ref);
+    }
+  }
+
+  /**
+   * Checks the state_machine lines against each other: one column per table,
+   * one history line, initial and terminal states that agree with the
+   * transitions, limit lines, the default of the state column, and checkbox lines.
+   */
+  private checkStateMachineConsistency(table: ITable, entries: ISetting[], available: Map<string, ITable | null>): void {
+    let column = '';
+    const states = new Set<string>();
+    const initials = new Set<string>();
+    const terminals = new Set<string>();
+    const lines: IStateMachine[] = [];
+    const limits: IStateMachine[] = [];
+    let history: IStateMachine | null = null;
+    const requires: Tk[] = [];
+    const boxes: ICheckbox[] = [];
+    for (const s of entries) {
+      if (s.kind === 'checkbox') {
+        boxes.push(s);
+        continue;
+      }
+      if (s.kind !== 'state_machine') continue;
+      if (column === '') column = s.column.t;
+      else if (s.column.t !== column) {
+        this.at('setting', s.column, `state_machine repeats for ${s.column.t}; a table holds one machine`);
+      }
+      const line = s.line;
+      if (line.form === 'history') {
+        if (history !== null) {
+          this.at('setting', s.kw, 'state_machine repeats history');
+          continue;
+        }
+        history = s;
+        continue;
+      }
+      if (line.form === 'limit') {
+        limits.push(s);
+        continue;
+      }
+      lines.push(s);
+      if (line.form === 'transition' || line.form === 'terminal') requires.push(...(line.requires ?? []));
+      if (line.form === 'initial') {
+        initials.add(line.state.t);
+        states.add(line.state.t);
+      } else if (line.form === 'terminal') {
+        terminals.add(line.state.t);
+        states.add(line.state.t);
+      } else if (line.form === 'transition') {
+        states.add(line.from.t);
+        states.add(line.to.t);
+      }
+    }
+    for (const s of lines) {
+      const line = s.line;
+      if (line.form === 'initial' && terminals.has(line.state.t)) {
+        this.at('setting', s.kw, `an initial state ${line.state.t} is also terminal`);
+      } else if (line.form === 'transition' && terminals.has(line.from.t)) {
+        this.at('setting', s.kw, `a transition leaves the terminal state ${line.from.t}`);
+      }
+    }
+    this.checkLimits(limits, states);
+    if (history !== null) this.checkHistory(table, history, table.colMap.get(column), requires, available);
+    const c = table.colMap.get(column);
+    if (c !== undefined && c.valueTok !== null) {
+      const value = c.valueTok.k === K.Str ? stringValue(c.valueTok) : c.valueTok.t;
+      if (!initials.has(value)) {
+        this.at('setting', c.valueTok, `the default ${value} of the state column is not an initial state`);
+      }
+    }
+    this.checkCheckboxes(table, column, states, boxes);
+  }
+
+  /** Each limit names a state of the machine once, with a positive row count that fits 64 bits. */
+  private checkLimits(lines: IStateMachine[], states: Set<string>): void {
+    const seen = new Set<string>();
+    for (const s of lines) {
+      if (s.line.form !== 'limit') continue;
+      const state = s.line.state;
+      if (!states.has(state.t)) this.at('setting', state, `limit names state ${state.t} outside the state set`);
+      else if (seen.has(state.t)) this.at('setting', state, `limit repeats for state ${state.t}`);
+      seen.add(state.t);
+      const count = s.line.count;
+      const n = /^-?[0-9]+$/.test(count.t) ? BigInt(count.t) : BigInt(0);
+      if (n < BigInt(1) || n > BigInt('9223372036854775807')) {
+        this.at('setting', count, `limit needs a positive row count, not ${count.t}`);
+      }
+    }
+  }
+
+  /**
+   * The history line names a history table that has a foreign key to this
+   * table, a from and a to column of the state type, an at column of
+   * datetime(6), a nullable column of each required column's type, and no
+   * column the line leaves out; it declares no title or body.
+   */
+  private checkHistory(
+    table: ITable,
+    s: IStateMachine,
+    state: IColumn | undefined,
+    requires: Tk[],
+    available: Map<string, ITable | null>,
+  ): void {
+    if (s.line.form !== 'history') return;
+    const line = s.line;
+    const name = line.table;
+    if (!this.ref(name)) return;
+    if (!available.has(name.t)) {
+      this.at('setting', name, `history table ${name.t} is not a table of this document or a used table`);
+      return;
+    }
+    const h = available.get(name.t) ?? null;
+    if (h === null) return;
+    if (state === undefined || state.type === null) return;
+    const stateType = state.type;
+    const row = line.row;
+    if (!h.fks.some(f => f.cols.length === 1 && f.cols[0]!.t === row.t && f.table.t === table.name.t)) {
+      this.at('setting', name, `history table ${name.t} has no foreign key of ${row.t} to table ${table.name.t}`);
+    }
+    const named = new Set<string>([row.t]);
+    const typed = (ref: Tk, want: DbspecType): void => {
+      named.add(ref.t);
+      const c = h.colMap.get(ref.t);
+      if (c === undefined) {
+        if (!h.failed.has(ref.t)) this.at('setting', name, `history table ${name.t} has no column ${ref.t}`);
+      } else if (c.type !== null && !sameType(c.type, want)) {
+        this.at('setting', name, `history column ${ref.t} has type ${typeText(c.type)}, not ${typeText(want)}`);
+      }
+    };
+    typed(line.from, stateType);
+    typed(line.to, stateType);
+    typed(line.at, { kind: 'datetime', precision: 6 });
+    for (const r of requires) {
+      named.add(r.t);
+      const c = table.colMap.get(r.t);
+      if (c === undefined || c.type === null) continue;
+      const hc = h.colMap.get(r.t);
+      if (hc === undefined) {
+        if (!h.failed.has(r.t)) this.at('setting', name, `history table ${name.t} has no column ${r.t} of the required column`);
+      } else if (!hc.nullable || (hc.type !== null && !sameType(hc.type, c.type))) {
+        this.at('setting', name, `history column ${r.t} is not a nullable ${typeText(c.type)} column`);
+      }
+    }
+    for (const k of h.pks) for (const c of k.cols) named.add(c.tok.t);
+    for (const c of h.columns) {
+      if (!named.has(c.name.t)) {
+        this.at('setting', name, `history table ${name.t} has column ${c.name.t}, which the history line does not name`);
+      }
+    }
+    for (const e of h.settings?.entries ?? []) {
+      if (e.kind === 'title' || e.kind === 'body') {
+        this.at('setting', name, `history table ${name.t} declares ${e.kind}, which a history table does not`);
+      }
+    }
+  }
+
+  /**
+   * The checkbox lines name the machine's column, one state of the machine
+   * each, one glyph character each with no glyph repeated, and every state
+   * has one.
+   */
+  private checkCheckboxes(table: ITable, column: string, states: Set<string>, boxes: ICheckbox[]): void {
+    if (boxes.length === 0) return;
+    const first = boxes[0]!;
+    if (column === '') {
+      this.at('setting', first.column, `checkbox needs a state_machine on column ${first.column.t}`);
+      return;
+    }
+    const covered = new Set<string>();
+    const glyphs = new Set<string>();
+    for (const b of boxes) {
+      if (!this.columnRef(table, b.column)) continue;
+      if (b.column.t !== column) {
+        this.at('setting', b.column, `checkbox names column ${b.column.t}, but the state_machine column is ${column}`);
+        continue;
+      }
+      if (!states.has(b.state.t)) this.at('setting', b.state, `checkbox names state ${b.state.t} outside the state set`);
+      else if (covered.has(b.state.t)) this.at('setting', b.state, `checkbox repeats for state ${b.state.t}`);
+      covered.add(b.state.t);
+      const glyph = stringValue(b.glyph);
+      if ([...glyph].length !== 1) this.at('setting', b.glyph, 'a checkbox glyph is one character');
+      else if (glyphs.has(glyph)) this.at('setting', b.glyph, `checkbox glyph ${glyph} repeats`);
+      glyphs.add(glyph);
+    }
+    for (const state of [...states].sort()) {
+      if (!covered.has(state)) this.at('setting', first.kw, `checkbox does not cover state ${state}`);
     }
   }
 
@@ -1730,19 +2329,15 @@ class DocumentParser {
 
   private blindIndex(table: ITable, s: Extract<ISetting, { kind: 'blind_index' }>, aesColumns: Set<string>): void {
     const source = this.lookup(table, s.column, 'setting');
-    if (source && !aesColumns.has(s.column.t)) this.at('setting', s.column, `column ${s.column.t} has no aes codec stage`);
+    if (source && !aesColumns.has(s.column.t)) this.at('setting', s.kw, `column ${s.column.t} has no aes codec stage`);
     const target = this.lookup(table, s.indexColumn, 'setting');
     if (!target) return;
     const type = target.type;
-    if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) {
-      this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64');
-    }
-    if (source && source.nullable !== target.nullable) {
-      this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');
-    }
-    if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not aes-encoded');
     const indexed = [...table.uniques, ...table.indexes].some(k => k.cols.length === 1 && k.cols[0]!.tok.t === s.indexColumn.t);
-    if (!indexed) this.at('setting', s.indexColumn, 'the blind index column is the only column of a declared index or unique key');
+    if (aesColumns.has(s.indexColumn.t)) this.at('setting', s.indexColumn, 'the blind index column is not aes-encoded');
+    else if (type !== null && !(type.kind === 'varchar' && type.length >= 64)) this.at('setting', s.indexColumn, 'the blind index column is varchar(n) with n >= 64');
+    else if (source && source.nullable !== target.nullable) this.at('setting', s.indexColumn, 'the blind index column has the nullability of the aes column');
+    else if (!table.failedKey && !indexed) this.at('setting', s.indexColumn, 'the blind index column is the only column of a declared index or unique key');
   }
 
   private audit(
@@ -1962,6 +2557,32 @@ class DocumentParser {
   }
 }
 
+/** Whether a key, index, foreign key or check of the table names the column. */
+function inKeyOrCheck(table: ITable, column: string): boolean {
+  const keys = [...table.pks, ...table.uniques, ...table.indexes];
+  return (
+    keys.some(k => k.cols.some(c => c.tok.t === column)) ||
+    table.fks.some(f => f.cols.some(c => c.t === column)) ||
+    table.checks.some(ch => ch.expr.some(t => t.k === K.Word && t.t === column))
+  );
+}
+
+function stateLineOf(line: IStateLine): DbspecStateLine {
+  const names = (list: Tk[] | null): readonly string[] | null => (list === null ? null : Object.freeze(list.map(c => c.t)));
+  switch (line.form) {
+    case 'initial':
+      return Object.freeze({ form: 'initial', state: line.state.t });
+    case 'terminal':
+      return Object.freeze({ form: 'terminal', state: line.state.t, requires: names(line.requires) });
+    case 'transition':
+      return Object.freeze({ form: 'transition', from: line.from.t, to: line.to.t, requires: names(line.requires) });
+    case 'history':
+      return Object.freeze({ form: 'history', table: line.table.t, row: line.row.t, from: line.from.t, to: line.to.t, at: line.at.t });
+    case 'limit':
+      return Object.freeze({ form: 'limit', state: line.state.t, count: BigInt(line.count.t).toString() });
+  }
+}
+
 function settingOf(s: ISetting): DbspecSetting {
   const comments = Object.freeze(s.comments);
   let setting: DbspecSetting;
@@ -1988,6 +2609,32 @@ function settingOf(s: ISetting): DbspecSetting {
       break;
     case 'immutable':
       setting = { comments, kind: s.kind };
+      break;
+    case 'markdown':
+      setting = { comments, kind: s.kind, column: s.column.t };
+      break;
+    case 'store':
+      setting = {
+        comments,
+        kind: s.kind,
+        storage: s.storage.t as 'files' | 'document' | 'block',
+        foreignKey: s.foreignKey?.t ?? null,
+        shape: (s.shape?.t ?? null) as 'list' | 'table' | null,
+      };
+      break;
+    case 'key_prefix':
+      setting = { comments, kind: s.kind, prefix: stringValue(s.prefix) };
+      break;
+    case 'title':
+    case 'body':
+    case 'order':
+      setting = { comments, kind: s.kind, column: s.column.t };
+      break;
+    case 'checkbox':
+      setting = { comments, kind: s.kind, column: s.column.t, state: s.state.t, glyph: stringValue(s.glyph) };
+      break;
+    case 'state_machine':
+      setting = { comments, kind: s.kind, column: s.column.t, line: stateLineOf(s.line) };
       break;
     case 'audit':
       setting = {
