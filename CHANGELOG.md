@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T62-3-1: `engine/dbspec/literal_test.go` belongs to the schema feature of `contracts/features.json`, as a declared test of the feature and an input of `make dbspec-go-check`, so `make feature-unit-check` no longer reports it. No dbspec behavior changes.
 - T62-4-3: the Rust dbspec sources pass `cargo clippy --all-targets -- -D warnings` (`make rust-check/clippy`): the parser drops a binding that no code read, the lexer's `is_number` uses `is_none_or`, and `validate` takes the parse result `Parsed` instead of its eight parts. No dbspec behavior changes; the Rust symbol snapshot records the new `validate` signature.
 - T62-5-3: the Rust dbspec sources `orm-schema/src/dbspec/parser.rs` and `dbspec/mod.rs` are formatted by rustfmt with the repository's `rustfmt.toml`, so `make rust-fmt-check/clients` passes. The change is layout only; no declaration or behavior changes.
 - T62-6: the TypeScript, PHP, Rust, PHP extension and Python dbspec parsers read a repeated settings block as Go does: its lines get the syntax checks of the first block (unknown settings, name syntax, lex errors) and are never validated, `order` is reported at its keyword only when its header is exactly `settings {`, and a `settings` line without `{` no longer crashes the Python parser or reads as a column in Rust. `tests/dbspec/cases.json` pins these with fourteen cases of repeated and brace-less settings blocks, which every implementation passes in `dbspec-compare-check`.

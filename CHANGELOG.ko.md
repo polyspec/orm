@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fc755eea9a159f4ae2a9ee4d2bdcd164ed53ca799bd971c29ff44bfe721e5006 -->
+<!-- source-sha256: d517c3be8df3b2a88e3a9847c185d5a1b36f7e167e78a0ce5ebb1c6a9c4032e6 -->
 # 변경 이력
 
 ## Unreleased
+- T62-3-1: `engine/dbspec/literal_test.go`가 `contracts/features.json`의 schema feature에 속한다. feature의 test로 선언되고 `make dbspec-go-check`의 입력이므로 `make feature-unit-check`가 더 이상 그것을 보고하지 않는다. dbspec 동작은 바뀌지 않는다.
 - T62-4-3: Rust dbspec 원천이 `cargo clippy --all-targets -- -D warnings`(`make rust-check/clippy`)를 통과한다. parser는 읽는 곳이 없던 바인딩을 없앴고, lexer의 `is_number`는 `is_none_or`를 쓰며, `validate`는 여덟 부분 대신 parse 결과 `Parsed`를 받는다. dbspec 동작은 바뀌지 않으며, Rust symbol snapshot이 새 `validate` 선언을 기록한다.
 - T62-5-3: Rust dbspec 원천 `orm-schema/src/dbspec/parser.rs`와 `dbspec/mod.rs`를 저장소의 `rustfmt.toml` 설정으로 rustfmt 정리해 `make rust-fmt-check/clients`가 통과한다. 줄 배치만 바뀌며 선언과 동작은 바뀌지 않는다.
 - T62-6: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 반복된 settings 블록을 Go처럼 읽는다. 그 줄은 구문, 알 수 없는 setting, 이름 구문만 검사하고 검증하지 않으며, `order`는 header가 정확히 `settings {`일 때만 키워드에 보고한다. `{`가 없는 `settings` 줄은 Python에서 더 이상 실패하지 않고 Rust에서 열로 읽히지 않는다. `tests/dbspec/cases.json`의 열네 개 반복 및 `{` 없는 settings case가 이를 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다.
