@@ -976,29 +976,50 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     }
     VEC(zend_long) params = {0};
     size_t j = i + 2;
-    bool well_formed = false;
-    while (j < p->t.n && str_digits(p->t.v[j].text)) {
-        str digits = p->t.v[j].text;
-        size_t lead = 0;
-        while (lead < digits.n && digits.s[lead] == '0') {
-            lead++;
+    bool malformed = false;
+    /* Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면 구문 오류다. */
+    for (;;) {
+        const token *v = tok(p, j);
+        if (v != NULL && str_eqc(v->text, "-") && tok(p, j + 1) != NULL && str_digits(tok(p, j + 1)->text)) {
+            malformed = true;
+            PUSH(params, ZEND_LONG_MAX);
+            j += 2;
+        } else if (v != NULL && str_digits(v->text)) {
+            str digits = v->text;
+            size_t lead = 0;
+            while (lead < digits.n && digits.s[lead] == '0') {
+                lead++;
+            }
+            zend_long value = digits.n - lead > 6 ? ZEND_LONG_MAX : ZEND_STRTOL(str_of(digits.s, digits.n).s, NULL, 10);
+            PUSH(params, value);
+            j++;
+        } else if (v != NULL && str_dotted(v->text)) {
+            malformed = true;
+            PUSH(params, ZEND_LONG_MAX);
+            j++;
+        } else {
+            error(p, "syntax", p->line, v != NULL ? v->column : end_column(p), SL("expected a type parameter"));
+            *next = skip_parentheses(p, j);
+            return NULL;
         }
-        zend_long value = digits.n - lead > 6 ? ZEND_LONG_MAX : ZEND_STRTOL(str_of(digits.s, digits.n).s, NULL, 10);
-        PUSH(params, value);
-        j++;
         if (tok_is(p, j, ",")) {
             j++;
             continue;
         }
-        well_formed = tok_is(p, j, ")");
-        break;
-    }
-    if (!well_formed) {
-        error(p, "type", p->line, column, fmt("type `%S` has malformed parameters", name));
-        *next = skip_parentheses(p, i + 1);
+        if (tok_is(p, j, ")")) {
+            j++;
+            break;
+        }
+        const token *sep = tok(p, j);
+        error(p, "syntax", p->line, sep != NULL ? sep->column : end_column(p), SL("expected ',' or ')'"));
+        *next = skip_parentheses(p, j);
         return NULL;
     }
-    j++;
+    if (malformed) {
+        error(p, "type", p->line, column, fmt("type `%S` has malformed parameters", name));
+        *next = j;
+        return NULL;
+    }
     bool valid = (int)params.n == arity;
     if (valid) {
         if (str_eqc(name, "decimal")) {

@@ -850,22 +850,41 @@ final class Parser
         }
         $parameters = [];
         $j = $i + 2;
-        $wellFormed = false;
-        while (isset($t[$j]) && ctype_digit($t[$j][0])) {
-            $parameters[] = strlen(ltrim($t[$j][0], '0')) > 6 ? PHP_INT_MAX : (int) $t[$j][0];
-            $j++;
-            if (($t[$j][0] ?? null) === ',') {
+        $malformed = false;
+        // Go처럼 값(수, 단어, `-` 수)과 구분자를 읽는다. 값 자리에 다른 token이 오거나 구분자가 `,`나 `)`가 아니면 구문 오류다.
+        for (;;) {
+            $value = $t[$j] ?? null;
+            if ($value !== null && $value[0] === '-' && isset($t[$j + 1]) && ctype_digit($t[$j + 1][0])) {
+                $malformed = true;
+                $parameters[] = PHP_INT_MAX;
+                $j += 2;
+            } elseif ($value !== null && ctype_digit($value[0])) {
+                $parameters[] = strlen(ltrim($value[0], '0')) > 6 ? PHP_INT_MAX : (int) $value[0];
+                $j++;
+            } elseif ($value !== null && self::isWord($value[0])) {
+                $malformed = true;
+                $parameters[] = PHP_INT_MAX;
+                $j++;
+            } else {
+                $this->error('syntax', $this->line, $value[1] ?? $this->endColumn(), 'expected a type parameter');
+                return [null, $this->skipParentheses($j)];
+            }
+            $separator = $t[$j][0] ?? null;
+            if ($separator === ',') {
                 $j++;
                 continue;
             }
-            $wellFormed = ($t[$j][0] ?? null) === ')';
-            break;
+            if ($separator === ')') {
+                $j++;
+                break;
+            }
+            $this->error('syntax', $this->line, $t[$j][1] ?? $this->endColumn(), "expected ',' or ')'");
+            return [null, $this->skipParentheses($j)];
         }
-        if (!$wellFormed) {
+        if ($malformed) {
             $this->error('type', $this->line, $column, "type `$name` has malformed parameters");
-            return [null, $this->skipParentheses($i + 1)];
+            return [null, $j];
         }
-        $j++;
         $valid = count($parameters) === ColumnType::PARAMETERIZED[$name] && match ($name) {
             'decimal' => $parameters[0] >= 1 && $parameters[0] <= 18 && $parameters[1] <= $parameters[0],
             'varchar' => $parameters[0] >= 1 && $parameters[0] <= 16383,
