@@ -1744,13 +1744,18 @@ class DocumentParser:
                 self._foreign_key_keys(table, fk, children)
             return
         parents = []
+        references_known = True
         for r in fk.refs:
             column = self._lookup(target, r, 'foreign_key')
             if column is None:
-                resolved = False
+                references_known = False
                 continue
             parents.append(column)
         if not resolved:
+            return
+        # Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
+        if not references_known:
+            self._foreign_key_keys(table, fk, children)
             return
         if len(children) != len(parents):
             self._at('foreign_key', fk.name, 'the foreign key lists a different number of child '
@@ -1774,7 +1779,7 @@ class DocumentParser:
         lead = [c.t for c in fk.cols]
         indexed = any(len(k.cols) >= len(lead) and all(k.cols[i].tok.t == name for i, name in enumerate(lead))
                       for k in table.pks + table.uniques + table.indexes)
-        if not indexed and not table.failed_key:
+        if not indexed and not table.failed_key and not table.failed_primary:
             self._at('foreign_key', fk.name, 'no index or key of the table leads with the foreign '
                                              'key columns')
         if (fk.on_delete == 'set_null' or fk.on_update == 'set_null') \
