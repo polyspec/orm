@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7ec7840a0f3a39b2ce3c5c52f5d2755542f70240a0977c1d286e635552238976 -->
+<!-- source-sha256: da80bbb601e3ff70efff6a801caa29cef86fe487b73030a64fb09b8b95bd3e66 -->
 # 변경 이력
 
 ## Unreleased
+- T62-6-1: TypeScript, PHP, PHP 확장, Python과 Rust dbspec parser는 문서 끝에서 아직 닫히지 않은 settings block을 Go처럼 자기 `{`에서 한 번만 보고한다. 표의 `{`에 `the table block is not closed`를 덧붙이던 동작을 없앴다. `tests/dbspec/cases.json`의 case `settings-block-open-at-end`가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 이중 보고를 고정하던 단위 case 두 개를 바꾸었다(Rust의 `unclosed-settings-and-table` 규칙 case와 TypeScript의 `unclosed settings block` case). 선언은 바뀌지 않는다.
 - T62-5-9: Rust dbspec parser는 외래 key의 set_null 검사를 존재하는 자식 열 모두에 Go처럼 실행한다. type이 invalid인 열도 포함되므로 null이 아닌 그런 열은 Go가 보고하는 대로 보고된다. `tests/dbspec/cases.json`의 case `foreign-key-invalid-child-set-null`이 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. dbspec parser의 private Rust 구조체에서 type이 invalid인 열 기록의 type이 바뀌어 `contracts/symbols/rust.json`을 다시 기록했다. 공개 선언은 바뀌지 않는다.
 - T62-5-8: Rust dbspec parser는 type이 잘못되었지만 줄은 구문이 맞는 자식 열의 외래 key 색인 검사를 Go처럼 실행한다. 그 열은 여전히 table의 열이므로, type 검사만 그 열을 건너뛴다. `tests/dbspec/cases.json`의 case `foreign-key-invalid-child-type-index`가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. dbspec parser의 private Rust 구조체에 필드가 생겨 `contracts/symbols/rust.json`을 다시 기록했다. 공개 선언은 바뀌지 않는다.
 - T62-5-7: Rust dbspec parser는 외래 key의 개수 검사를 Go처럼 대상 table이 정의되어 있고 header가 실패하지 않았을 때만 실행한다. 그래서 정의되지 않은 table을 가리키는 외래 key는 table 오류와 색인 오류만 보고하고 개수 오류는 보고하지 않는다. `tests/dbspec/cases.json`의 case `foreign-key-unknown-table-count`가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 선언은 바뀌지 않는다.

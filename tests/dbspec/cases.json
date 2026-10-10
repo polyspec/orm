@@ -10487,6 +10487,28 @@
           "rule": "foreign_key"
         }
       ]
+    },
+    {
+      "id": "settings-block-open-at-end",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 12,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [

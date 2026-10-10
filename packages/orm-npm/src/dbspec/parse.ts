@@ -776,8 +776,9 @@ class DocumentParser {
       }
     }
     if (this.stopped) return;
+    // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
     if (state === 'settings') this.at('syntax', this.settingsBlock!.open, 'the settings block is not closed');
-    if (state === 'settings' || state === 'table') this.at('syntax', table!.open, 'the table block is not closed');
+    else if (state === 'table') this.at('syntax', table!.open, 'the table block is not closed');
     if (state === 'diagram') this.at('syntax', diagram!.open, 'the diagram block is not closed');
     this.document.closing = comments;
   }

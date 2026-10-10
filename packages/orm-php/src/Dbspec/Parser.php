@@ -217,11 +217,12 @@ final class Parser
                 'diagram' => $this->diagramLine(),
             };
         }
+        // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
         if ($this->state === 'settings') {
             $this->error('syntax', $this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
             $this->state = 'table';
-        }
-        if ($this->state === 'table') {
+            $this->closeTable();
+        } elseif ($this->state === 'table') {
             $this->error('syntax', $this->blockOpen[0], $this->blockOpen[1], 'the table block is not closed');
             $this->closeTable();
         } elseif ($this->state === 'diagram') {

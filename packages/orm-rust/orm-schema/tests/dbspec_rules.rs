@@ -1020,7 +1020,7 @@ const CASES: &[Case] = &[
     Case {
         id: "unclosed-settings-and-table",
         documents: &[&["dbspec 1 shop", "table users {", "  id i64 identity", "  primary key (id)", "  settings {", "    entity user"]],
-        expect: Expect::Errors(&[("syntax", 2, 13), ("syntax", 5, 12)]),
+        expect: Expect::Errors(&[("syntax", 5, 12)]),
     },
     Case {
         id: "empty-settings-comments-move",
