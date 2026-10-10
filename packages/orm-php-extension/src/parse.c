@@ -621,6 +621,18 @@ static void fail_key(parser *p, bool primary)
     smap_set(&p->failed_key_tables, p->table->name, TRUEP);
 }
 
+/* 구문 오류가 난 column 줄은 Go처럼 구문 오류만 남긴다: 이름과 type 검사는 줄이 구문에 맞을 때만 한다. */
+static void keep_syntax_since(parser *p, size_t mark)
+{
+    size_t out = mark;
+    for (size_t i = mark; i < p->diagnostics.n; i++) {
+        if (str_eqc(p->diagnostics.v[i].rule, "syntax")) {
+            p->diagnostics.v[out++] = p->diagnostics.v[i];
+        }
+    }
+    p->diagnostics.n = out;
+}
+
 /* 줄에 syntax 오류가 있었는지 본다(error의 syntax 줄 기록과 같은 key). */
 static bool syntax_here(parser *p)
 {
@@ -2091,8 +2103,10 @@ static void table_line(parser *p)
         p->state = S_SETTINGS;
         return;
     }
+    size_t mark = p->diagnostics.n;
     column_line(p);
     if (syntax_here(p)) {
+        keep_syntax_since(p, mark);
         p->failed_lines++;
         if (str_dotted(first.text)) {
             fail_column(p, first.text);

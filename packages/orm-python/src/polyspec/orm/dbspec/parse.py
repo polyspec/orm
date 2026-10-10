@@ -1045,8 +1045,11 @@ class DocumentParser:
         return None
 
     def _column(self, table: _Table, toks, line: int, comments) -> None:
+        mark = len(self.diagnostics)
         self._column_line(table, toks, line, comments)
         if self._syntax_line == line:
+            # Go는 구문 오류가 난 column 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
+            self.diagnostics[mark:] = [d for d in self.diagnostics[mark:] if d.rule == 'syntax']
             # Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
             table.failed_lines += 1
             if toks and toks[0].k == WORD:

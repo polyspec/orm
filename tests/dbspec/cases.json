@@ -10618,6 +10618,114 @@
           "rule": "setting"
         }
       ]
+    },
+    {
+      "id": "table-line-inside-open-table",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "table other {",
+          "  id i64 identity",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        },
+        {
+          "line": 5,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "name.duplicate"
+        },
+        {
+          "line": 6,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "table-line-inside-open-table-at-end",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "table other {"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        },
+        {
+          "line": 5,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-unknown-type-with-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  other other {",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        },
+        {
+          "line": 5,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [

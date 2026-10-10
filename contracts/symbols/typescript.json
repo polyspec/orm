@@ -827,6 +827,7 @@
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.foreignKeyLine": "private foreignKeyLine(table: ITable, toks: Tk[], line: number, comments: string[]): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.generatedName": "private generatedName(table: ITable, tok: Tk, suffix: string, column: boolean): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.header": "private header(): boolean",
+  "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.keepSyntaxSince": "private keepSyntaxSince(mark: number): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.keyColumns": "private keyColumns(toks: Tk[], i: number, line: number, directions: boolean): [ IKeyColumn[], number ] | null",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.keyLike": "private keyLike(table: ITable, key: IKey, primary: boolean): void",
   "packages/orm-npm/src/dbspec/parse.ts::DocumentParser.lexedTableLine": "private lexedTableLine(table: ITable, toks: Tk[], line: number, comments: string[]): 'table' | 'settings'",
