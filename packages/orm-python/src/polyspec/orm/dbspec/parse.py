@@ -710,6 +710,10 @@ class DocumentParser:
         self.diagnostics = []
         self.document = _Document()
         self._stopped = False
+        # 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block이다.
+        self._settings_block = None
+        # 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block).
+        self._detached_block = False
         # 마지막 syntax 오류의 줄: 한 줄은 최대 하나만 보고한다. 나머지는 읽을 수 없다.
         self._syntax_line = 0
         self._column_count = 0
@@ -837,13 +841,14 @@ class DocumentParser:
                 elif lexed is not None:
                     state = self._lexed_table_line(table, toks, line, own)
                 elif is_word(first, 'settings'):
-                    if table.settings is not None:
+                    second = toks[1] if len(toks) > 1 else None
+                    # Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+                    if table.settings is not None and is_punct(second, '{') and len(toks) == 2:
                         self._at('order', first, 'a table has at most one settings block')
-                    else:
-                        table.settings = _Settings(is_punct(toks[1], '{') and toks[1] or first,
-                                                   [], own)
+                    self._open_settings_block(table, _Settings(second if is_punct(second, '{') else first,
+                                                               [], own))
                     table.phase = 2
-                    if not is_punct(toks[1], '{'):
+                    if not is_punct(second, '{'):
                         self._syntax(toks, 1, line, 'expected {')
                     elif len(toks) > 2:
                         self._syntax(toks, 2, line, 'expected the end of the line')
@@ -862,10 +867,10 @@ class DocumentParser:
                 if is_punct(first, '}'):
                     if len(toks) > 1:
                         self._syntax(toks, 1, line, 'expected the end of the line')
-                    table.settings.closing = own
+                    self._settings_block.closing = own
                     state = 'table'
                 else:
-                    self._setting(table, toks, line, own, lexed is not None)
+                    self._setting(toks, line, own, lexed is not None)
             else:
                 if is_punct(first, '}'):
                     if len(toks) > 1:
@@ -879,7 +884,7 @@ class DocumentParser:
         if self._stopped:
             return
         if state == 'settings':
-            self._at('syntax', table.settings.open, 'the settings block is not closed')
+            self._at('syntax', self._settings_block.open, 'the settings block is not closed')
         if state in ('settings', 'table'):
             self._at('syntax', table.open, 'the table block is not closed')
         if state == 'diagram':
@@ -1253,7 +1258,14 @@ class DocumentParser:
             self._constraint_name(name)
             table.checks.append(_Check(name, toks[3:-1], close, comments))
 
-    def _setting(self, table: _Table, toks, line: int, comments, lexed: bool = False) -> None:
+    def _open_settings_block(self, table: _Table, block: _Settings) -> None:
+        """다음 줄들이 읽을 settings block을 정한다: 첫 block은 유지하고, 반복된 block은 분리한다."""
+        self._detached_block = table.settings is not None
+        if not self._detached_block:
+            table.settings = block
+        self._settings_block = block if self._detached_block else table.settings
+
+    def _setting(self, toks, line: int, comments, lexed: bool = False) -> None:
         if lexed:
             # 줄의 lex 오류는 parse 루프가 이미 보고했다. Go의 cursor는 그 뒤로 이 줄의 나머지를 검사하지 않는다.
             return
@@ -1263,7 +1275,7 @@ class DocumentParser:
         if kw.t in FORM_SETTINGS:
             entry = self._form_setting(toks, line, comments)
             if entry is not None:
-                table.settings.entries.append(entry)
+                self._settings_block.entries.append(entry)
             return
 
         def words(frm: int, count):
@@ -1315,7 +1327,8 @@ class DocumentParser:
             stages = w[1:]
             for s in stages:
                 if s.t not in STAGES:
-                    self._at('setting', s, f'{s.t} is not a codec stage')
+                    if not self._detached_block:
+                        self._at('setting', s, f'{s.t} is not a codec stage')
             entry = _Setting(kw, comments, 'codec', column=w[0], stages=tuple(stages))
         elif kw.t == 'blind_index':
             w = words(1, 2)
@@ -1365,7 +1378,7 @@ class DocumentParser:
                              lists=tuple(lists))
         else:
             return self._at('setting', kw, f'{kw.t} is not a setting')
-        table.settings.entries.append(entry)
+        self._settings_block.entries.append(entry)
 
     def _form_setting(self, toks, line: int, comments):
         """markdown, store, key_prefix, title, body, order, checkbox, state_machine 줄을 Go의 settingsLine처럼 읽는다.
@@ -1449,9 +1462,8 @@ class DocumentParser:
         줄은 상태를 settings로 바꾼다. 새 state를 돌려준다."""
         first = toks[0]
         if is_word(first, 'settings'):
-            if table.settings is None:
-                opened = toks[1] if len(toks) > 1 and is_punct(toks[1], '{') else first
-                table.settings = _Settings(opened, [], comments)
+            opened = toks[1] if len(toks) > 1 and is_punct(toks[1], '{') else first
+            self._open_settings_block(table, _Settings(opened, [], comments))
             table.phase = 2
             return 'settings'
         if first.k == WORD and first.t in CONSTRAINT_WORDS:

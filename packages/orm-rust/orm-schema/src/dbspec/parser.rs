@@ -159,6 +159,9 @@ struct Parser {
     /// The `{` of the open table, settings block and diagram.
     table_brace: Option<Pos>,
     settings_brace: Option<Pos>,
+    /// 반복된 settings block: 줄은 구문만 읽고 `detached_settings`에 쌓으며, Go의 detached block이다.
+    settings_detached: bool,
+    detached_settings: Option<Settings>,
     diagram_brace: Option<Pos>,
     diagram: Option<Diagram>,
     columns: usize,
@@ -228,6 +231,8 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         table_phase: 0,
         table_brace: None,
         settings_brace: None,
+        settings_detached: false,
+        detached_settings: None,
         diagram_brace: None,
         diagram: None,
         columns: 0,
@@ -291,14 +296,14 @@ enum LineKind {
     Settings,
 }
 
-fn line_kind(first: &Token, second: Option<&Token>) -> Option<LineKind> {
+fn line_kind(first: &Token) -> Option<LineKind> {
     match first.text {
         "primary" => Some(LineKind::Primary),
         "unique" => Some(LineKind::Unique),
         "index" => Some(LineKind::Index),
         "foreign" => Some(LineKind::ForeignKey),
         "check" => Some(LineKind::Check),
-        "settings" if second.is_some_and(|t| t.is("{")) => Some(LineKind::Settings),
+        "settings" => Some(LineKind::Settings),
         _ => None,
     }
 }
@@ -422,7 +427,7 @@ impl Parser {
             // The line keeps the kind and name that its words give.
             let mut words = tokens.iter().filter(|t| t.kind != Kind::Invalid);
             if let (Context::Table, Some(word)) = (&self.context, words.next()) {
-                match line_kind(word, words.next()) {
+                match line_kind(word) {
                     Some(LineKind::Primary) => self.fail_key(true),
                     Some(LineKind::Unique | LineKind::Index) => self.fail_key(false),
                     // A foreign key line that fails fails its name, as the syntax error of a line does (Go's markFailed).
@@ -616,13 +621,15 @@ impl Parser {
             return;
         }
         let first = &tokens[0];
-        let kind = if first.kind == Kind::Word { line_kind(first, tokens.get(1)) } else { None };
+        let kind = if first.kind == Kind::Word { line_kind(first) } else { None };
         let phase = match kind {
             None => 0,
             Some(LineKind::Settings) => 2,
             Some(_) => 1,
         };
-        let second_settings = kind == Some(LineKind::Settings) && self.table.as_ref().is_some_and(|t| t.settings.is_some());
+        // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+        let well_formed = tokens.len() == 2 && tokens[1].is("{");
+        let second_settings = kind == Some(LineKind::Settings) && well_formed && self.table.as_ref().is_some_and(|t| t.settings.is_some());
         if phase < self.table_phase || second_settings {
             let message = if second_settings {
                 "a table has at most one settings block"
@@ -640,7 +647,7 @@ impl Parser {
             Some(LineKind::Index) => self.index_line(&mut cursor),
             Some(LineKind::ForeignKey) => self.foreign_key_line(&mut cursor),
             Some(LineKind::Check) => self.check_line(&mut cursor),
-            Some(LineKind::Settings) => self.open_settings(first, tokens.get(1).map(|t| t.pos), tokens.get(2)),
+            Some(LineKind::Settings) => self.open_settings(&mut cursor),
             None => self.column_line(&mut cursor),
         }
     }
@@ -1030,24 +1037,41 @@ impl Parser {
         }
     }
 
-    /// `settings {`; a second block was reported as `order` and its lines join the first.
-    fn open_settings(&mut self, _keyword: &Token, brace: Option<Pos>, extra: Option<&Token>) {
+    /// `settings {`. 반복된 block은 구문만 읽는다(Go의 detached block): 줄은 표에 붙지 않고 검사되지 않는다.
+    /// header가 실패해도 block은 Go처럼 열린 채로 남는다.
+    fn open_settings(&mut self, cursor: &mut Cursor) {
+        let keyword = cursor.next().map_or(Pos::default(), |t| t.pos);
         let comments = self.comments();
-        self.settings_brace = brace;
-        if let Some(extra) = extra {
-            self.report(err(extra.pos, "syntax", format!("'{}' is not allowed after '{{'", extra.text)));
-            self.settings_brace = None;
+        let brace = cursor.here();
+        let opened = self.expect(cursor, "{").is_some();
+        if opened {
+            self.end(cursor);
         }
-        if self.table_mut().settings.is_none() {
-            self.table_mut().settings = Some(Settings { comments, lines: Vec::new(), closing: Vec::new() });
+        // Go의 열린 위치: 읽은 `{`, 없으면 키워드다.
+        self.settings_brace = Some(if opened { brace } else { keyword });
+        let block = Settings { comments, lines: Vec::new(), closing: Vec::new() };
+        self.settings_detached = self.table.as_ref().is_some_and(|t| t.settings.is_some());
+        if self.settings_detached {
+            self.detached_settings = Some(block);
+        } else {
+            self.table_mut().settings = Some(block);
         }
         self.context = Context::Settings;
+    }
+
+    /// 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block의 detached block이다.
+    fn settings_target(&mut self) -> Option<&mut Settings> {
+        if self.settings_detached {
+            self.detached_settings.as_mut()
+        } else {
+            self.table.as_mut().and_then(|t| t.settings.as_mut())
+        }
     }
 
     fn setting_line(&mut self, tokens: &[Token]) {
         if self.closing(tokens) {
             let closing = self.comments();
-            if let Some(settings) = self.table_mut().settings.as_mut() {
+            if let Some(settings) = self.settings_target() {
                 settings.closing = closing;
             }
             self.context = Context::Table;
@@ -1141,7 +1165,7 @@ impl Parser {
         if self.end(&cursor).is_none() {
             return;
         }
-        if let Some(settings) = self.table_mut().settings.as_mut() {
+        if let Some(settings) = self.settings_target() {
             settings.lines.push(SettingLine { comments, pos: keyword.pos, setting });
         }
     }

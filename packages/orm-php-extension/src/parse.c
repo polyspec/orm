@@ -199,6 +199,9 @@ typedef struct parser {
     VEC(tcheck_rec) table_checks;
     VEC(tsetting_rec) table_settings;
     smap setting_keys;
+    /* 설정 줄이 읽는 block: 표의 첫 block이거나, 반복된 block이면 표에 붙지 않은 block(Go의 detached settings)이다. */
+    settings *settings_block;
+    bool detached_block;
     bool failed_primary;
     smap failed_key_tables;
     diagram *diagram;
@@ -617,6 +620,16 @@ static bool syntax_here(parser *p)
     return smap_has(&p->syntax_lines, fmt("%d", p->line));
 }
 
+/* 설정 block을 연다. 반복된 block은 표에 붙이지 않고 구문만 읽는다(Go의 detached settings block). */
+static void open_settings_block(parser *p, settings *s)
+{
+    p->detached_block = p->table->settings != NULL;
+    if (!p->detached_block) {
+        p->table->settings = s;
+    }
+    p->settings_block = p->detached_block ? s : p->table->settings;
+}
+
 /* lex 오류가 난 table 줄(}가 아닌)은 Go의 tableLine처럼 상태와 실패한 이름만 남긴다. */
 static void lexed_table_line(parser *p)
 {
@@ -626,9 +639,7 @@ static void lexed_table_line(parser *p)
         p->table_phase = 2;
         settings *s = dbs_alloc(sizeof *s);
         s->comments = take_comments(p);
-        if (p->table->settings == NULL) {
-            p->table->settings = s;
-        }
+        open_settings_block(p, s);
         p->settings_open[0] = p->line;
         p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
         p->state = S_SETTINGS;
@@ -1719,18 +1730,20 @@ static void new_setting(parser *p, token keyword)
         return;
     }
     str kind = keyword.text;
-    if (str_eqc(kind, "title") || str_eqc(kind, "body")) {
-        rawtb_rec raw = {p->table->name, kind};
-        PUSH(p->raw_title_body, raw);
-    }
-    if (once_kind(kind) || str_eqc(kind, "markdown")) {
-        str key = str_eqc(kind, "markdown") ? fmt("markdown %S", args.v[0].text) : kind;
-        if (smap_has(&p->setting_keys, key)) {
-            error(p, "setting", p->line, keyword.column, str_eqc(kind, "markdown")
-                ? fmt("setting `markdown` repeats for `%S`", args.v[0].text) : fmt("setting `%S` repeats", kind));
-            return;
+    if (!p->detached_block) {
+        if (str_eqc(kind, "title") || str_eqc(kind, "body")) {
+            rawtb_rec raw = {p->table->name, kind};
+            PUSH(p->raw_title_body, raw);
         }
-        smap_set(&p->setting_keys, key, TRUEP);
+        if (once_kind(kind) || str_eqc(kind, "markdown")) {
+            str key = str_eqc(kind, "markdown") ? fmt("markdown %S", args.v[0].text) : kind;
+            if (smap_has(&p->setting_keys, key)) {
+                error(p, "setting", p->line, keyword.column, str_eqc(kind, "markdown")
+                    ? fmt("setting `markdown` repeats for `%S`", args.v[0].text) : fmt("setting `%S` repeats", kind));
+                return;
+            }
+            smap_set(&p->setting_keys, key, TRUEP);
+        }
     }
     setting *s = dbs_alloc(sizeof *s);
     s->kind = kind;
@@ -1754,9 +1767,11 @@ static void new_setting(parser *p, token keyword)
             PUSH(s->args, args.v[i].text);
         }
     }
-    PUSH(p->table->settings->list, s);
-    audit_lists none = {0};
-    PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, keyword.column, none}));
+    PUSH(p->settings_block->list, s);
+    if (!p->detached_block) {
+        audit_lists none = {0};
+        PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, keyword.column, none}));
+    }
 }
 
 static void settings_line(parser *p)
@@ -1766,7 +1781,7 @@ static void settings_line(parser *p)
     zend_long at = first.column;
     if (str_eqc(keyword, "}")) {
         end_at(p, 1);
-        p->table->settings->closing = take_comments(p);
+        p->settings_block->closing = take_comments(p);
         p->state = S_TABLE;
         return;
     }
@@ -1850,11 +1865,13 @@ static void settings_line(parser *p)
     }
     bool per_name = str_eqc(kind, "codec") || str_eqc(kind, "navigation") || str_eqc(kind, "blind_index");
     str key = per_name ? fmt("%S %S", kind, args.v[0].text) : kind;
-    if (smap_has(&p->setting_keys, key)) {
-        error(p, "setting", p->line, at, per_name ? fmt("setting `%S` repeats for `%S`", kind, args.v[0].text) : fmt("setting `%S` repeats", keyword));
-        return;
+    if (!p->detached_block) {
+        if (smap_has(&p->setting_keys, key)) {
+            error(p, "setting", p->line, at, per_name ? fmt("setting `%S` repeats for `%S`", kind, args.v[0].text) : fmt("setting `%S` repeats", keyword));
+            return;
+        }
+        smap_set(&p->setting_keys, key, TRUEP);
     }
-    smap_set(&p->setting_keys, key, TRUEP);
     /* codec의 단계 말고는 모든 인자가 이름이다. */
     size_t named_args = str_eqc(kind, "codec") ? 1 : args.n;
     for (size_t i = 0; i < named_args; i++) {
@@ -1888,8 +1905,10 @@ static void settings_line(parser *p)
             s->include = names;
         }
     }
-    PUSH(p->table->settings->list, s);
-    PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, at, lists}));
+    PUSH(p->settings_block->list, s);
+    if (!p->detached_block) {
+        PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, at, lists}));
+    }
 }
 
 static void open_diagram(parser *p)
@@ -2044,7 +2063,9 @@ static void table_line(parser *p)
         return;
     }
     if (str_eqc(w, "settings")) {
-        if (p->table_phase == 2) {
+        /* Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다. */
+        bool well_formed = tok_is(p, 1, "{") && p->t.n == 2;
+        if (p->table_phase == 2 && well_formed) {
             error(p, "order", p->line, first.column, SL("a table has at most one settings block, after its other lines"));
         }
         p->table_phase = 2;
@@ -2053,9 +2074,7 @@ static void table_line(parser *p)
         }
         settings *s = dbs_alloc(sizeof *s);
         s->comments = take_comments(p);
-        if (p->table->settings == NULL) {
-            p->table->settings = s;
-        }
+        open_settings_block(p, s);
         p->settings_open[0] = p->line;
         p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
         p->state = S_SETTINGS;
