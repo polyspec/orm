@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 382168666fa2b5dcbd29670f211b4e964ecf34a7ff67d4f09c0c2fbd35b6bd8f -->
+<!-- source-sha256: ced33db865f2b71ff146ef62e5fb9931dd99e5a1f58701c7a8d6a4e87d352a9d -->
 # 변경 이력
 
 ## Unreleased
+- T62-5-8: Rust dbspec parser는 type이 잘못되었지만 줄은 구문이 맞는 자식 열의 외래 key 색인 검사를 Go처럼 실행한다. 그 열은 여전히 table의 열이므로, type 검사만 그 열을 건너뛴다. `tests/dbspec/cases.json`의 case `foreign-key-invalid-child-type-index`가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. dbspec parser의 private Rust 구조체에 필드가 생겨 `contracts/symbols/rust.json`을 다시 기록했다. 공개 선언은 바뀌지 않는다.
 - T62-5-7: Rust dbspec parser는 외래 key의 개수 검사를 Go처럼 대상 table이 정의되어 있고 header가 실패하지 않았을 때만 실행한다. 그래서 정의되지 않은 table을 가리키는 외래 key는 table 오류와 색인 오류만 보고하고 개수 오류는 보고하지 않는다. `tests/dbspec/cases.json`의 case `foreign-key-unknown-table-count`가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 선언은 바뀌지 않는다.
 - T62-5-6: TypeScript, Python, Rust, PHP와 PHP 확장 dbspec parser는 알려지지 않은 자식 열이 있는 외래 key를 Go처럼 대상 table의 key와 열 type에 대해 검사한다. 개수 검사와 짝, type 검사는 참조 열이 모두 알려졌을 때 실행되고, type 검사는 알려지지 않은 자식을 건너뛴다. `tests/dbspec/cases.json`의 case 세 개(대조군 하나 포함)가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. TypeScript의 private 메서드 `foreignKeyKeyChecks`는 매개변수 type이 바뀌어 symbol snapshot을 다시 기록했다. 공개 선언은 바뀌지 않는다.
 - T62-5-5: Rust, TypeScript, Python, PHP와 PHP 확장 dbspec parser는 외래 key의 색인 검사를 자식 열이 모두 알려지고 겹치지 않을 때만 실행하고, 자식 열이 알려지지 않아도 알려진 자식 열에 대해 set_null 검사를 Go처럼 실행한다. `tests/dbspec/cases.json`의 case 세 개가 Go의 출력을 고정하며, 모든 구현이 `make dbspec-compare-check`를 통과한다. 공개 API 선언은 바뀌지 않는다. TypeScript의 private 메서드 `foreignKeyKeyChecks`는 매개변수가 하나 늘어 snapshot을 다시 기록했다.

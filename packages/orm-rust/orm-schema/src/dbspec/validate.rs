@@ -26,6 +26,8 @@ enum Lookup<'d> {
 struct TableScope<'s, 'd> {
     table: &'d Table,
     unresolved: Option<&'s HashSet<&'d str>>,
+    /// 열 줄의 type이 잘못된 열의 이름이다. Go는 이 열을 있는 열로 보고 type만 검사하지 않는다.
+    typeless: Option<&'s HashSet<&'d str>>,
     failed_keys: FailedKeys,
     /// 표 줄이 실패했다. Go의 failed table로서 이 표를 가리키는 참조와 이름 중복을 보고하지 않는다.
     header_failed: bool,
@@ -35,6 +37,11 @@ impl<'s, 'd> TableScope<'s, 'd> {
     /// A column whose line failed, which the rules that name it report nothing about.
     fn failed(&self, name: &str) -> bool {
         self.unresolved.is_some_and(|u| u.contains(name))
+    }
+
+    /// A column whose line parsed but whose type is invalid.
+    fn typeless(&self, name: &str) -> bool {
+        self.typeless.is_some_and(|t| t.contains(name))
     }
 
     fn column(&self, name: &str) -> Lookup<'d> {
@@ -51,6 +58,7 @@ struct Scope<'d> {
     tables: HashMap<&'d str, usize>,
     document: &'d Document,
     failed: Vec<HashSet<&'d str>>,
+    typeless: Vec<HashSet<&'d str>>,
     failed_keys: &'d [FailedKeys],
     header_failed: &'d [bool],
     used: HashMap<&'d str, &'d Table>,
@@ -63,6 +71,7 @@ impl<'d> Scope<'d> {
         TableScope {
             table: &self.document.tables[index],
             unresolved: Some(&self.failed[index]),
+            typeless: self.typeless.get(index),
             failed_keys: self.failed_keys.get(index).copied().unwrap_or_default(),
             header_failed: self.header_failed.get(index).copied().unwrap_or(false),
         }
@@ -73,7 +82,7 @@ impl<'d> Scope<'d> {
         if let Some(index) = self.tables.get(name) {
             return Some(self.own(*index));
         }
-        self.used.get(name).map(|table| TableScope { table, unresolved: None, failed_keys: FailedKeys::default(), header_failed: false })
+        self.used.get(name).map(|table| TableScope { table, unresolved: None, typeless: None, failed_keys: FailedKeys::default(), header_failed: false })
     }
 
     /// A malformed table name, already reported, or a table of a failed `use` line.
@@ -86,9 +95,10 @@ impl<'d> Scope<'d> {
 /// when it was found and is valid; a missing or invalid one is already reported.
 /// `literals` receives the canonical literal texts of each check that types.
 pub(crate) fn validate(parsed: &Parsed, used: &[Option<&Document>], diags: &mut Vec<Diag>, literals: &mut Vec<CheckLiterals>) {
-    let Parsed { document, unresolved, failed_keys, header_failed, defaults, .. } = parsed;
+    let Parsed { document, unresolved, typeless, failed_keys, header_failed, defaults, .. } = parsed;
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
-    let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
+    let typeless = (0..document.tables.len()).map(|i| typeless.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
+    let mut scope = Scope { tables: HashMap::new(), document, failed, typeless, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
@@ -352,6 +362,14 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         children_known = false;
                     }
                     children.push(Some(column));
+                }
+                // Go의 columnRef는 type이 잘못된 열을 찾는다. 색인 검사는 이 열을 알려진 것으로 보고 type 검사는 건너뛴다.
+                Lookup::Unresolved if self.own.typeless(&name.text) => {
+                    if repeated {
+                        self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
+                        children_known = false;
+                    }
+                    children.push(None);
                 }
                 Lookup::Unresolved => {
                     children_known = false;
