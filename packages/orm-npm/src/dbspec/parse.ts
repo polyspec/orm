@@ -606,6 +606,10 @@ class DocumentParser {
   readonly diagnostics: RawDiagnostic[] = [];
   readonly document: IDocument = { name: '', uses: [], tables: [], diagrams: [], closing: [], failed: new Set(), constraints: new Map() };
   private stopped = false;
+  /** 줄을 읽는 settings block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block이다. */
+  private settingsBlock: ISettings | null = null;
+  /** 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block). */
+  private detachedBlock = false;
   /** The line of the last syntax error: a line reports at most one, since the rest of it cannot be read reliably. */
   private syntaxLine = 0;
   private columnCount = 0;
@@ -732,8 +736,9 @@ class DocumentParser {
         } else if (lexed.error !== null) {
           state = this.lexedTableLine(t, toks, line, own);
         } else if (isWord(first, 'settings')) {
-          if (t.settings !== null) this.at('order', first, 'a table has at most one settings block');
-          else t.settings = { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] };
+          // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+          if (t.settings !== null && isPunct(toks[1], '{') && toks.length === 2) this.at('order', first, 'a table has at most one settings block');
+          this.openSettingsBlock(t, { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments: own, closing: [] });
           t.phase = 2;
           if (!isPunct(toks[1], '{')) this.syntax(toks, 1, line, 'expected {');
           else if (toks.length > 2) this.syntax(toks, 2, line, 'expected the end of the line');
@@ -752,10 +757,10 @@ class DocumentParser {
         const t = table!;
         if (isPunct(first, '}')) {
           if (toks.length > 1) this.syntax(toks, 1, line, 'expected the end of the line');
-          t.settings!.closing = own;
+          this.settingsBlock!.closing = own;
           state = 'table';
         } else {
-          this.setting(t, toks, line, own, lexed.error !== null);
+          this.setting(toks, line, own, lexed.error !== null);
         }
       } else {
         const d = diagram!;
@@ -770,7 +775,7 @@ class DocumentParser {
       }
     }
     if (this.stopped) return;
-    if (state === 'settings') this.at('syntax', table!.settings!.open, 'the settings block is not closed');
+    if (state === 'settings') this.at('syntax', this.settingsBlock!.open, 'the settings block is not closed');
     if (state === 'settings' || state === 'table') this.at('syntax', table!.open, 'the table block is not closed');
     if (state === 'diagram') this.at('syntax', diagram!.open, 'the diagram block is not closed');
     this.document.closing = comments;
@@ -1043,7 +1048,7 @@ class DocumentParser {
   private lexedTableLine(table: ITable, toks: Tk[], line: number, comments: string[]): 'table' | 'settings' {
     const first = toks[0]!;
     if (isWord(first, 'settings')) {
-      if (table.settings === null) table.settings = { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments, closing: [] };
+      this.openSettingsBlock(table, { open: isPunct(toks[1], '{') ? toks[1]! : first, entries: [], comments, closing: [] });
       table.phase = 2;
       return 'settings';
     }
@@ -1166,7 +1171,14 @@ class DocumentParser {
   }
 
 
-  private setting(table: ITable, toks: Tk[], line: number, comments: string[], lexed = false): void {
+  /** 다음 줄들이 읽을 settings block을 정한다: 첫 block은 유지하고, 반복된 block은 분리한다. */
+  private openSettingsBlock(table: ITable, block: ISettings): void {
+    this.detachedBlock = table.settings !== null;
+    if (!this.detachedBlock) table.settings = block;
+    this.settingsBlock = this.detachedBlock ? block : table.settings;
+  }
+
+  private setting(toks: Tk[], line: number, comments: string[], lexed = false): void {
     // 줄의 lex 오류는 이미 보고했다. Go의 cursor는 그 뒤로 이 줄을 검사하지 않는다.
     if (lexed) return;
     const kw = toks[0]!;
@@ -1222,7 +1234,7 @@ class DocumentParser {
         if (w.length < 2) return this.syntax(toks, toks.length, line, 'expected a codec stage');
         this.name(w[0]!);
         const stages = w.slice(1);
-        for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `${s.t} is not a codec stage`);
+        if (!this.detachedBlock) for (const s of stages) if (!STAGES.has(s.t)) this.at('setting', s, `${s.t} is not a codec stage`);
         entry = { kw, comments, kind: 'codec', column: w[0]!, stages };
         break;
       }
@@ -1314,7 +1326,7 @@ class DocumentParser {
       default:
         return this.at('setting', kw, `${kw.t} is not a setting`);
     }
-    table.settings!.entries.push(entry);
+    this.settingsBlock!.entries.push(entry);
   }
 
   /** Reads a name-like word at i, or reports a syntax error there (or after the line) and returns null. */

@@ -1553,6 +1553,414 @@
       ]
     },
     {
+      "id": "repeated-settings-block-valid-lines",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity account",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-invalid-lines",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    updated missing_at",
+          "    soft_delete missing_flag",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-syntax-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 10,
+          "column": 11,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-unknown-setting",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    bogus_setting user",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 10,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-header-trailing",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings { entity account",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 14,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-third",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity account",
+          "  }",
+          "  settings {",
+          "    entity owner",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 12,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "first-settings-without-brace",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings",
+          "    entity user",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 11,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-header-junk-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings x {",
+          "    entity account",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 12,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-header-lex-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings € {",
+          "    entity account",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 12,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-close-trailing",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity account",
+          "  } x",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 11,
+          "column": 5,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-without-brace",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings",
+          "    entity account",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 11,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-empty-without-brace",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 11,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-body-name-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity 5",
+          "    updated missing",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 10,
+          "column": 12,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "repeated-settings-block-body-lex-error",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    entity user",
+          "  }",
+          "  settings {",
+          "    entity acc€ount",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 9,
+          "column": 3,
+          "rule": "order"
+        },
+        {
+          "line": 10,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
       "id": "table-without-columns",
       "documents": {
         "shop": [

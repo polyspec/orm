@@ -93,6 +93,10 @@ final class Parser
     private array $tableSettings = [];
     /** @var array<string, true> */
     private array $settingKeys = [];
+    /** @var Settings|null 줄을 읽는 block: 표의 첫 block이거나, 반복된 block이면 유지하지 않는 block */
+    private ?Settings $settingsBlock = null;
+    /** 반복된 settings block: 줄은 구문만 읽고 검사하지 않는다(Go의 detached block) */
+    private bool $detachedBlock = false;
     /** A primary key line of the table failed: its primary key columns are unknown. */
     private bool $failedPrimary = false;
     /** @var array<string, true> tables with a failed unique or index line: some key's columns are unknown */
@@ -395,7 +399,7 @@ final class Parser
         $first = $this->tokens[0];
         if ($first[0] === 'settings') {
             $this->tablePhase = 2;
-            $this->table->settings ??= new Settings($this->takeComments());
+            $this->openSettingsBlock(new Settings($this->takeComments()));
             $this->settingsOpen = [$this->line, $this->tokens[1][1] ?? $first[1]];
             $this->state = 'settings';
             return true;
@@ -703,15 +707,16 @@ final class Parser
                 };
                 return;
             case 'settings':
-                if ($this->tablePhase === 2) {
+                // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
+                $wellFormed = ($this->tokens[1][0] ?? null) === '{' && !isset($this->tokens[2]);
+                if ($this->tablePhase === 2 && $wellFormed) {
                     $this->error('order', $this->line, $first[1], 'a table has at most one settings block, after its other lines');
                 }
                 $this->tablePhase = 2;
                 if ($this->expectAt(1, '{')) {
                     $this->endAt(2);
                 }
-                $settings = new Settings($this->takeComments());
-                $this->table->settings ??= $settings;
+                $this->openSettingsBlock(new Settings($this->takeComments()));
                 $this->settingsOpen = [$this->line, $this->tokens[1][1] ?? $first[1]];
                 $this->state = 'settings';
                 return;
@@ -1092,13 +1097,23 @@ final class Parser
         $this->tableChecks[] = [$check, $this->line, array_slice($this->tokens, 3), $this->endColumn()];
     }
 
+    /**
+     * 표의 설정 block을 연다: 첫 block은 유지하고, 반복된 block은 표에 붙이지 않고 구문만 읽는다(Go의 detached block).
+     */
+    private function openSettingsBlock(Settings $settings): void
+    {
+        $this->detachedBlock = $this->table->settings !== null;
+        $this->table->settings ??= $settings;
+        $this->settingsBlock = $this->detachedBlock ? $settings : $this->table->settings;
+    }
+
     private function settingsLine(): void
     {
         $t = $this->tokens;
         [$keyword, $at] = $t[0];
         if ($keyword === '}') {
             $this->endAt(1);
-            $this->table->settings->closingComments = $this->takeComments();
+            $this->settingsBlock->closingComments = $this->takeComments();
             $this->state = 'table';
             return;
         }
@@ -1168,11 +1183,13 @@ final class Parser
         }
         $perName = $kind === 'codec' || $kind === 'navigation' || $kind === 'blind_index';
         $key = $perName ? $kind . ' ' . $arguments[0][0] : $kind;
-        if (isset($this->settingKeys[$key])) {
-            $this->error('setting', $this->line, $at, $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
-            return;
+        if (!$this->detachedBlock) {
+            if (isset($this->settingKeys[$key])) {
+                $this->error('setting', $this->line, $at, $perName ? "setting `$kind` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                return;
+            }
+            $this->settingKeys[$key] = true;
         }
-        $this->settingKeys[$key] = true;
         // Every argument is a name, except the stages of a codec.
         foreach ($kind === 'codec' ? [$arguments[0]] : $arguments as $argument) {
             $this->name($argument);
@@ -1191,8 +1208,10 @@ final class Parser
         foreach ($lists as [$list, $columns]) {
             $listed[$list[0]] = array_map(static fn(array $a): string => $a[0], $columns);
         }
-        $this->table->settings->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
-        $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
+        $this->settingsBlock->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
+        if (!$this->detachedBlock) {
+            $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
+        }
     }
 
     /**
@@ -1833,19 +1852,21 @@ final class Parser
         } catch (SettingFailure) {
             return;
         }
-        if ($keyword === 'title' || $keyword === 'body') {
-            $this->parsedTitleBody[$this->table->name][] = $keyword;
-        }
-        if ($keyword === 'markdown' || in_array($keyword, self::ONCE_STORAGE, true)) {
-            $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
-            if (isset($this->settingKeys[$key])) {
-                $this->error('setting', $this->line, $at, $keyword === 'markdown' ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
-                return;
+        if (!$this->detachedBlock) {
+            if ($keyword === 'title' || $keyword === 'body') {
+                $this->parsedTitleBody[$this->table->name][] = $keyword;
             }
-            $this->settingKeys[$key] = true;
+            if ($keyword === 'markdown' || in_array($keyword, self::ONCE_STORAGE, true)) {
+                $key = $keyword === 'markdown' ? "markdown {$arguments[0][0]}" : $keyword;
+                if (isset($this->settingKeys[$key])) {
+                    $this->error('setting', $this->line, $at, $keyword === 'markdown' ? "setting `markdown` repeats for `{$arguments[0][0]}`" : "setting `$keyword` repeats");
+                    return;
+                }
+                $this->settingKeys[$key] = true;
+            }
         }
         $requires = $lists === [] ? null : array_map(static fn(array $a): string => $a[0], $lists[0][1]);
-        $this->table->settings->settings[] = new Setting(
+        $this->settingsBlock->settings[] = new Setting(
             $keyword,
             array_map(static fn(array $a): string => $a[0], $arguments),
             $this->takeComments(),
@@ -1854,7 +1875,9 @@ final class Parser
             $form,
             $requires,
         );
-        $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
+        if (!$this->detachedBlock) {
+            $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
+        }
     }
 
     /**
