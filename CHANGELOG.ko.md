@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 44836369d2fb24fe4dfb68f4200ec63928c0ac86b6a06571a8506246d0181b5a -->
+<!-- source-sha256: d304967bd22c4a9a6679671ceb4c1c9af88c6707ebc5a4c84e5670123a9982ba -->
 # 변경 이력
 
 ## Unreleased
+- T70: repository 검사는 실행 중인 Go나 Composer를 선언된 release와 major, minor로 비교한다. 그래서 선언된 version의 patch release도 `make repo-check`를 통과하며, `.go-version`, `.composer-version`과 CI workflow는 여전히 정확한 release 하나를 고정한다. 제품 동작은 바뀌지 않는다.
 - T62-5-1: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 column 줄의 `order`를 Go처럼 그 줄이 parse된 경우에만 보고한다. 그래서 key, index, foreign key 또는 check 줄 뒤에서 구문 오류가 난 column 줄은 `syntax`만 받는다. `tests/dbspec/cases.json`의 여덟 case가 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 그 밖의 dbspec 동작은 바뀌지 않는다.
 - T62-4-2: PHP dbspec CHECK decoder는 word 바이트를 `ctype_alpha`, `ctype_alnum` 대신 명시적 ASCII 범위로 읽는다. 그 둘은 runtime의 locale에 따라 0x80 이상 바이트도 글자로 보므로, non-ASCII word가 열 이름으로 읽히는 대신 Go처럼 `unexpected character`로 보고된다. CHECK와 canonical check 텍스트를 읽는 나머지 word 판정과 dbspec header 및 이름 규칙은 이미 Go의 ASCII 규칙과 같으며, `tests/dbspec/cases.json`과 `tests/dbspec/introspect.json`의 공유 case가 이를 고정한다. 그 밖의 dbspec 동작은 바뀌지 않는다.
 - T62-4-1: PHP과 TypeScript dbspec lexer는 단어 글자를 runtime의 Unicode 자료가 아니라 Go `unicode` 패키지에서 생성된 Unicode 표로 분류한다. `go run ./tests/dbspec/unicode -write`가 `packages/orm-php/src/Dbspec/UnicodeWord.php`와 `packages/orm-npm/src/dbspec/unicode_word.ts`도 쓰고, 최신성 test가 두 파일을 덮으며, 두 표의 모든 code point test가 `make dbspec-php-check`와 `make dbspec-ts-check`에서 실행된다. dbspec 동작은 바뀌지 않는다. PHP와 TypeScript symbol snapshot에는 새 `UnicodeWord` class, public `Parser::isWord`, `containsWordRune`이 기록된다.
