@@ -467,7 +467,7 @@ class _Settings:
 class _Table:
     __slots__ = ('kw', 'name', 'named', 'columns', 'col_map', 'pks', 'uniques', 'indexes',
                  'fks', 'checks', 'settings', 'comments', 'closing', 'phase', 'identity',
-                 'open', 'failed', 'failed_primary', 'failed_key', 'failed_lines')
+                 'open', 'failed', 'failed_primary', 'failed_key', 'failed_lines', 'header_failed')
 
     def __init__(self, kw, name, named, open_, comments):
         self.kw = kw
@@ -495,6 +495,8 @@ class _Table:
         self.failed_key = False
         # 구문 오류가 난 column 줄의 수(Go의 failedLines): 그 줄이 있으면 column이 없어도 보고하지 않는다.
         self.failed_lines = 0
+        # table 줄이 실패했다(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 더 있다): 이 table을 가리키는 검사는 하지 않는다(Go의 failed table).
+        self.header_failed = False
 
 
 class _Use:
@@ -963,6 +965,8 @@ class DocumentParser:
             self._stop('limit', kw, f'a document has at most {MAX_TABLES} tables')
             return table
         self.document.tables.append(table)
+        table.header_failed = not named or not is_punct(toks[2] if len(toks) > 2 else None, '{') \
+            or len(toks) > 3
         if not named:
             self._syntax(toks, 1, line, 'expected a table name')
         else:
@@ -1556,9 +1560,12 @@ class DocumentParser:
             if t.name.t not in available:
                 available[t.name.t] = t
                 local_tables[t.name.t] = t.name
-                if t.name.t in used_constraints:
+                if t.name.t in used_constraints and not t.header_failed:
                     self._at('name.duplicate', t.name,
                              f'table {t.name.t} repeats a constraint name of a used document')
+                continue
+            # Go는 header가 실패한 table의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+            if t.header_failed:
                 continue
             used = used_at.get(t.name.t)
             self._at('name.duplicate', t.name if used is None else later(used, t.name),
@@ -1718,6 +1725,11 @@ class DocumentParser:
         target = available[fk.table.t]
         if target is None:
             return
+        # Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
+        if target.header_failed:
+            if resolved:
+                self._foreign_key_keys(table, fk, children)
+            return
         parents = []
         for r in fk.refs:
             column = self._lookup(target, r, 'foreign_key')
@@ -1742,6 +1754,10 @@ class DocumentParser:
             if child is not None and parent is not None and not same_type(child, parent):
                 self._at('foreign_key', fk.name, f'column {fk.cols[i].t} is {type_text(child)} '
                                                  f'but references {type_text(parent)}')
+        self._foreign_key_keys(table, fk, children)
+
+    def _foreign_key_keys(self, table: _Table, fk: _ForeignKey, children) -> None:
+        '''자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.'''
         lead = [c.t for c in fk.cols]
         indexed = any(len(k.cols) >= len(lead) and all(k.cols[i].tok.t == name for i, name in enumerate(lead))
                       for k in table.pks + table.uniques + table.indexes)
@@ -2416,6 +2432,9 @@ class DocumentParser:
         history = available[s.into.t]
         if history is None:
             return
+        # Go는 header가 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+        if history.header_failed:
+            return
         if history is table:
             self._at('setting', s.into, 'a table is not its own history table')
             return
@@ -2506,6 +2525,9 @@ class DocumentParser:
             return
         record = available[ref.t]
         if record is None:
+            return
+        # Go는 header가 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+        if record.header_failed:
             return
         if record is table:
             self._at('setting', ref, 'a table cannot record its audits in itself')

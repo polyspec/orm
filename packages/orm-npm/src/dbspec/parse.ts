@@ -185,6 +185,8 @@ interface ITable {
   failedKey: boolean;
   /** Column lines of the table that had a syntax error (Go's failedLines). */
   failedLines: number;
+  /** The table line failed (no name, no `{` or words after it): references to the table skip their checks (Go's failed table). */
+  readonly headerFailed: boolean;
 }
 
 interface IUse {
@@ -862,6 +864,7 @@ class DocumentParser {
       failedPrimary: false,
       failedKey: false,
       failedLines: 0,
+      headerFailed: !named || !isPunct(toks[2], '{') || toks.length > 3,
     };
     if (this.document.tables.length >= MAX_TABLES) {
       this.stop('limit', kw, `a document has at most ${MAX_TABLES} tables`);
@@ -1537,9 +1540,11 @@ class DocumentParser {
       if (!available.has(t.name.t)) {
         available.set(t.name.t, t);
         localTables.set(t.name.t, t.name);
-        if (usedConstraints.has(t.name.t)) this.at('name.duplicate', t.name, `table ${t.name.t} repeats a constraint name of a used document`);
+        if (usedConstraints.has(t.name.t) && !t.headerFailed) this.at('name.duplicate', t.name, `table ${t.name.t} repeats a constraint name of a used document`);
         continue;
       }
+      // Go는 header가 실패한 table의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+      if (t.headerFailed) continue;
       const used = usedAt.get(t.name.t);
       this.at('name.duplicate', used === undefined ? t.name : later(used, t.name), `table ${t.name.t} repeats`);
     }
@@ -1686,6 +1691,11 @@ class DocumentParser {
     }
     const target = available.get(fk.table.t) ?? null;
     if (target === null) return;
+    // Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
+    if (target.headerFailed) {
+      if (resolved) this.foreignKeyKeyChecks(table, fk, children);
+      return;
+    }
     const parents: IColumn[] = [];
     for (const r of fk.refs) {
       const column = this.lookup(target, r, 'foreign_key');
@@ -1712,6 +1722,11 @@ class DocumentParser {
         this.at('foreign_key', fk.name, `column ${fk.cols[i]!.t} is ${typeText(child)} but references ${typeText(parent)}`);
       }
     }
+    this.foreignKeyKeyChecks(table, fk, children);
+  }
+
+  /** 자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다. */
+  private foreignKeyKeyChecks(table: ITable, fk: IForeignKey, children: IColumn[]): void {
     const lead = fk.cols.map(c => c.t);
     const indexed = [...table.pks, ...table.uniques, ...table.indexes].some(
       k => k.cols.length >= lead.length && lead.every((name, i) => k.cols[i]!.tok.t === name),
@@ -2363,6 +2378,8 @@ class DocumentParser {
     }
     const history = available.get(s.into.t) ?? null;
     if (history === null) return;
+    // Go는 header가 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+    if (history.headerFailed) return;
     if (history === table) {
       this.at('setting', s.into, 'a table is not its own history table');
       return;
@@ -2451,6 +2468,8 @@ class DocumentParser {
     }
     const record = available.get(ref.t) ?? null;
     if (record === null) return;
+    // Go는 header가 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+    if (record.headerFailed) return;
     if (record === table) {
       this.at('setting', ref, 'a table cannot record its audits in itself');
       return;

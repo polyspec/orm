@@ -8725,6 +8725,461 @@
           "rule": "header"
         }
       ]
+    },
+    {
+      "id": "failed-header-body-unknown-index-column",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users x {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_team (missing)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 7,
+          "column": 18,
+          "rule": "key"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-missing-brace-identity-type",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users",
+          "  id i32 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 12,
+          "rule": "syntax"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-missing-name-identity-type",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table {",
+          "  id i32 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "syntax"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-body-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users x {",
+          "  id i64 identity",
+          "  primary key id",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 5,
+          "column": 15,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-body-unknown-type",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users x {",
+          "  id bogus",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 4,
+          "column": 6,
+          "rule": "type"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-no-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users x {",
+          "  id i64",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-foreign-key-to-failed-target",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams x {",
+          "  id i64 identity",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_team (team_id)",
+          "  foreign key fk_team (team_id) references teams (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 7,
+          "rule": "key"
+        },
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "column"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-foreign-key-column-of-failed-target",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams x {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i32",
+          "  primary key (id)",
+          "  index ix_team (team_id)",
+          "  foreign key fk_team (team_id) references teams (nope)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-duplicate-after-failed",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users x {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 3,
+          "column": 13,
+          "rule": "syntax"
+        },
+        {
+          "line": 8,
+          "column": 7,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-duplicate-second-failed",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users x {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 8,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-state-history-target",
+      "documents": {
+        "wiki": [
+          "dbspec 1 wiki",
+          "",
+          "table page {",
+          "  id varchar(64)",
+          "  title varchar(191)",
+          "  body text",
+          "  sort_order i32",
+          "  state varchar(16)",
+          "  primary key (id)",
+          "  settings {",
+          "    markdown body",
+          "    store files",
+          "    key_prefix 'page-'",
+          "    title title",
+          "    body body",
+          "    order sort_order",
+          "    checkbox state todo '.'",
+          "    checkbox state doing '~'",
+          "    checkbox state done 'x'",
+          "    state_machine state initial todo",
+          "    state_machine state todo -> doing",
+          "    state_machine state doing -> done require (sort_order)",
+          "    state_machine state terminal done",
+          "    state_machine state history page_history row page_id from from_state to to_state at changed_at",
+          "    state_machine state limit doing 3",
+          "  }",
+          "}",
+          "",
+          "table page_history x {",
+          "  history_id i64 identity",
+          "  page_id varchar(64)",
+          "  from_state varchar(16)",
+          "  to_state varchar(16)",
+          "  changed_at datetime(3)",
+          "  sort_order i32 null",
+          "  primary key (history_id)",
+          "  index ix_page_history_page (page_id)",
+          "  foreign key fk_page_history_page (page_id) references page (id) on delete restrict on update restrict",
+          "}",
+          "",
+          "table section {",
+          "  id varchar(64)",
+          "  page_id varchar(64)",
+          "  body text",
+          "  primary key (id)",
+          "  index ix_section_page (page_id)",
+          "  foreign key fk_section_page (page_id) references page (id) on delete restrict on update restrict",
+          "  settings {",
+          "    store block fk_section_page list",
+          "  }",
+          "}",
+          "",
+          "table ledger {",
+          "  id varchar(64)",
+          "  amount i64",
+          "  primary key (id)",
+          "  settings {",
+          "    store document table",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "wiki",
+      "errors": [
+        {
+          "line": 24,
+          "column": 33,
+          "rule": "setting"
+        },
+        {
+          "line": 29,
+          "column": 20,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-audit-history-target",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  secret text null",
+          "  audit_seq i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (seq)",
+          "  index ix_card_audit (audit_seq)",
+          "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    soft_delete deleted_at",
+          "    audit into card_history column audit_seq references audit action change previous previous_audit_seq exclude (secret)",
+          "  }",
+          "}",
+          "",
+          "table card_history x {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  secret text null",
+          "  audit_seq i64",
+          "  deleted_at datetime(6) null",
+          "  primary key (history_id)",
+          "  index ix_card_history_row (seq)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 18,
+          "column": 20,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "failed-header-audit-record-target",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table card {",
+          "  seq i64 identity",
+          "  title varchar(191)",
+          "  audit_seq i64",
+          "  primary key (seq)",
+          "  index ix_card_audit (audit_seq)",
+          "  foreign key fk_card_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into card_history column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table card_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  seq i64",
+          "  title varchar(191)",
+          "  audit_seq i64",
+          "  primary key (history_id)",
+          "}",
+          "",
+          "table audit x {",
+          "  seq i64",
+          "  actor varchar(64)",
+          "  primary key (seq, actor)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 25,
+          "column": 13,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [
