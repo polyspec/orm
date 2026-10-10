@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ba4c6b182d4af51ba6ea9e209af26e7bf22ba302b5254f4d9a102b3c572dfadf -->
+<!-- source-sha256: f4c8194163af77b6dfd3bc97d4d1876883bbeb6be7989ed1c3de37242fdf2149 -->
 # 변경 이력
 
 ## Unreleased
+- T62-4-6: 문자열 literal에 non-ASCII 글자가 있는 CHECK가 모든 client에서 MySQL을 거쳐 그대로 되돌아온다. MySQL 8.4.11은 `information_schema.CHECK_CONSTRAINTS.CHECK_CLAUSE`에 non-ASCII literal의 UTF-8 bytes를 한 번 더 인코딩해 쓴다(`café`가 `cafÃ©`로 읽힌다). `SHOW CREATE TABLE`은 바르게 쓴다. Go, PHP, PHP 확장, TypeScript, Python과 Rust의 MySQL introspection은 그런 check의 본문을 `SHOW CREATE TABLE`에서 읽어 CHECK_CLAUSE 형식으로 옮기며, Rust driver는 catalog query 뒤에 그 follow-up query를 실행한다. `tests/dbspec/plans.json`의 case `rename-column-check-non-ascii-literal`이 왕복을 고정한다.
 - T62-4-5: `make feature-unit-check`가 실행하는 음성 owner sample의 실패를 `scripts/features/coverage.test.mjs`가 exact 오류와 출력된 FAIL 줄로 확인한다. 확인되지 않던 `sample/owner/typescript/none`의 두 번째 `duplicate observed case first`와 sqlite만 쓰는 두 번째 검사의 mysql, postgres 줄도 포함된다. test가 음성 실행의 줄을 가로채 확인하므로 통과한 실행은 그 FAIL 줄을 출력하지 않는다. native 실행의 관측 case가 빈 집합이면 `observed cases  differ from ...` 대신 `observed no cases differ from ...`을 출력한다. 선언 변경은 없다.
 - T62-6-6: PHP, Rust와 PHP 확장 dbspec parser는 잘못된 type 인자 목록을 Go처럼 읽는다. type 인자를 읽을 곳에 다른 token이 오거나 인자 뒤의 구분자가 `,`나 `)`가 아니면, 그 token에 `syntax` 오류를 보고한다. 전에는 그 오류를 가리던 type 이름의 `type` 오류를 보고했다(`varchar(64 x`, `varchar(64,) null`, `decimal(10 2)`). `tests/dbspec/cases.json`의 case `column-type-argument-unclosed`, `column-type-argument-trailing-comma`, `column-type-argument-decimal-space`와, 비ASCII 단어를 type 인자로 쓴 `column-type-argument-unicode-word`, `column-type-argument-unicode-decimal`이 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 이 단어는 ASCII 검사가 아니라 각 lexer의 단어 표로 분류한다. 선언은 바뀌지 않는다.
 - T62-6-5: Rust dbspec parser는 열린 table block 안의 `diagram` 줄을 Go처럼 열 줄로 읽는다. 전에는 그 줄에서 표를 닫았다. `tests/dbspec/cases.json`의 case `diagram-line-inside-open-table`이 Go의 출력을 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다. 같은 case 묶음은 이미 모든 구현이 일치하는 열 줄 case 여섯 개도 고정한다(잘못된 type 인자 값, 구문 오류가 있는 중복 열 이름과 중복 열 type, 열 이름 값으로 쓴 예약어 `identity`, `default`, `null`). 선언은 바뀌지 않는다.

@@ -706,12 +706,21 @@ async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect:
     let queries = dbspec::catalog_queries(dialect);
     let mut results = Vec::with_capacity(queries.len());
     for query in queries {
-        let start = std::time::Instant::now();
-        let rows = conn.fetch(query).await.map_err(Error::from);
-        let rows = on.db.statement_done(Sent::bare(KIND_SCHEMA, &[], on.transaction, query), start, rows)?;
-        results.push(C::values(&rows)?);
+        results.push(fetch_catalog(on, conn, query).await?);
+    }
+    let followups = dbspec::catalog_followups(dialect, &results).map_err(Error::internal)?;
+    for query in &followups {
+        results.push(fetch_catalog(on, conn, query).await?);
     }
     dbspec::read_catalog(dialect, &results, "schema").map_err(Error::internal)
+}
+
+/// catalog query 하나를 실행하고 그 행의 값을 돌려준다. 실행은 statement 관찰에 기록된다.
+async fn fetch_catalog<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>> {
+    let start = std::time::Instant::now();
+    let rows = conn.fetch(query).await.map_err(Error::from);
+    let rows = on.db.statement_done(Sent::bare(KIND_SCHEMA, &[], on.transaction, query), start, rows)?;
+    C::values(&rows).map_err(Error::from)
 }
 
 /// 연결의 database를 introspect하고, set이 외부 문서에서 쓰는 table이 외부 문서와 다르면

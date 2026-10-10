@@ -79,7 +79,7 @@ struct RunAfter<'c, C> {
 }
 
 impl<C: CatalogQuerier + Send> CatalogQuerier for RunAfter<'_, C> {
-    async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         self.inner.rows(query).await
     }
 }
@@ -117,7 +117,7 @@ struct ApplyOtherUnderLock<'c, C> {
 }
 
 impl<C: CatalogQuerier + Send> CatalogQuerier for ApplyOtherUnderLock<'_, C> {
-    async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         self.inner.rows(query).await
     }
 }

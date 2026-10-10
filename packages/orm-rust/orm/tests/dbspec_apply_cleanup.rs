@@ -61,7 +61,7 @@ struct Failing {
 }
 
 impl CatalogQuerier for Failing {
-    async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         self.inner.rows(query).await
     }
 }
@@ -96,7 +96,7 @@ struct Scripted {
 }
 
 impl CatalogQuerier for Scripted {
-    async fn rows(&mut self, query: &'static str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         Err(sqlx::Error::Protocol(format!("unexpected catalog query {query}")))
     }
 }

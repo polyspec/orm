@@ -1296,6 +1296,107 @@ static ctype *mysql_type(str column_type, str charset, str collation, str *needs
     return one_param("datetime", precision);
 }
 
+/* CHECK_CLAUSE가 0x80 이상의 byte를 가지면 true다. MySQL 8.4는 non-ASCII literal을 두 번 인코딩해 보여 준다. */
+static bool has_non_ascii(str clause)
+{
+    for (size_t i = 0; i < clause.n; i++) {
+        if ((unsigned char)clause.s[i] >= 0x80) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* 식 text의 `\` 와 `'` 를 escape한다. unescape_mysql_clause의 역이다. */
+static str escape_mysql_clause(str text)
+{
+    char *out = dbs_alloc(text.n * 2 + 1);
+    size_t n = 0;
+    for (size_t i = 0; i < text.n; i++) {
+        if (text.s[i] == '\\' || text.s[i] == '\'') {
+            out[n++] = '\\';
+        }
+        out[n++] = text.s[i];
+    }
+    out[n] = '\0';
+    return (str){out, n};
+}
+
+/* SHOW CREATE TABLE 문장에서 name인 CHECK의 본문을 CHECK_CLAUSE 형식으로 out에 쓴다.
+ * 문자열 literal은 `\` 와 `'` 를 한 번 escape하므로 literal을 건너뛰고, 본문 끝은 CHECK (의 짝인 )다. */
+static bool shown_check(str create, str name, str *out)
+{
+    ssize_t at = str_find(create, "CONSTRAINT `", 0);
+    while (at >= 0) {
+        size_t start = (size_t)at + sizeof("CONSTRAINT `") - 1;
+        ssize_t close = str_find(create, "` CHECK (", start);
+        if (close < 0) {
+            return false;
+        }
+        size_t body = (size_t)close + sizeof("` CHECK (") - 1;
+        if (str_eq(str_sub(create, start, (size_t)close - start), name)) {
+            size_t depth = 1;
+            for (size_t i = body; i < create.n; i++) {
+                char c = create.s[i];
+                if (c == '\'') {
+                    for (i++; i < create.n && create.s[i] != '\''; i++) {
+                        if (create.s[i] == '\\') {
+                            i++;
+                        }
+                    }
+                } else if (c == '(') {
+                    depth++;
+                } else if (c == ')' && --depth == 0) {
+                    *out = escape_mysql_clause(str_sub(create, body, i - body));
+                    return true;
+                }
+            }
+            return false;
+        }
+        at = str_find(create, "CONSTRAINT `", start);
+    }
+    return false;
+}
+
+/* table의 SHOW CREATE TABLE 문장을 out에 읽는다. */
+static bool show_create_table(zval *pdo, str table, str *out)
+{
+    zval rows, *row;
+    str q = fmt("SHOW CREATE TABLE `%S`", str_replace(table, "`", "``"));
+    bool ok = catalog_read(pdo, q, &rows);
+    if (ok) {
+        bool found = false;
+        EACH_ROW(rows, row) {
+            found = row_text(row, 1, q, out);
+            ok = found;
+            break;
+        } ZEND_HASH_FOREACH_END();
+        if (ok && !found) {
+            ok = dbs_throw(spl_ce_RuntimeException, fmt("SHOW CREATE TABLE %S returned no row", table));
+        }
+    }
+    zval_ptr_dtor(&rows);
+    return ok;
+}
+
+/* CHECK_CLAUSE가 non-ASCII를 깨뜨린 check의 본문을 SHOW CREATE TABLE에서 out에 읽는다. table별로
+ * SHOW CREATE TABLE을 한 번만 읽으며 creates에 모은다. */
+static bool shown_clause(zval *pdo, str table, str name, smap *creates, str *out)
+{
+    str *create = smap_get(creates, table);
+    if (create == NULL) {
+        create = dbs_alloc(sizeof *create);
+        if (!show_create_table(pdo, table, create)) {
+            return false;
+        }
+        smap_set(creates, table, create);
+    }
+    if (!shown_check(*create, name, out)) {
+        return dbs_throw(spl_ce_RuntimeException, fmt("check %S.%S has no CHECK in SHOW CREATE TABLE", table, name));
+    }
+    return true;
+}
+
 /* character set introducer와 time literal의 0 소수를 뺀 CHECK_CLAUSE다. */
 static str without_introducers(str clause)
 {
@@ -1610,6 +1711,7 @@ static catalog *mysql_read(zval *pdo)
     }
     zval_ptr_dtor(&rows);
     TRY(ok);
+    smap creates = {0};
     q = Q(MYSQL_CHECKS);
     ok = catalog_read(pdo, q, &rows);
     if (ok) {
@@ -1624,6 +1726,14 @@ static catalog *mysql_read(zval *pdo)
                 dbs_throw(spl_ce_RuntimeException, fmt("check %S.%S has no CHECK_CLAUSE", table, name));
                 ok = false;
                 break;
+            }
+            if (has_non_ascii(*clause)) {
+                str *shown = dbs_alloc(sizeof *shown);
+                if (!shown_clause(pdo, table, name, &creates, shown)) {
+                    ok = false;
+                    break;
+                }
+                clause = shown;
             }
             itable *t = catalog_table(c, table);
             if (t == NULL) {

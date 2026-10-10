@@ -98,9 +98,13 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         foreach (CatalogRows::read($connection, self::CHECK_CLAUSES) as $row) {
             $clauses[CatalogRows::text($row, 0, self::CHECK_CLAUSES)] = CatalogRows::text($row, 1, self::CHECK_CLAUSES);
         }
+        $shown = [];
         foreach (CatalogRows::read($connection, self::CHECKS) as $row) {
             [$table, $name, $enforced] = array_map(static fn(int $i): string => CatalogRows::text($row, $i, self::CHECKS), [0, 1, 2]);
             $clause = $clauses[$name] ?? throw new \RuntimeException("check $table.$name has no CHECK_CLAUSE");
+            if (self::hasNonAscii($clause)) {
+                $clause = self::shownCheck($connection, $table, $name, $shown);
+            }
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -191,6 +195,67 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
         // 붙이므로(probe mysql.check.alter_writes_time_precision) 그 소수도 뺀다.
         $clause = preg_replace("/_[a-z0-9]+\\\\'/", "\\'", $clause) ?? throw new \RuntimeException('introducer pattern failed');
         return preg_replace("/\\\\'(\\d\\d:\\d\\d:\\d\\d)\\.0+\\\\'/", "\\'\$1\\'", $clause) ?? throw new \RuntimeException('time fraction pattern failed');
+    }
+
+    /** CHECK_CLAUSE 가 0x80 이상의 byte 를 가지면 true 다. MySQL 8.4 는 non-ASCII literal 을 두 번 인코딩해 보여 준다. */
+    private static function hasNonAscii(string $clause): bool
+    {
+        return preg_match('/[\x80-\xff]/', $clause) === 1;
+    }
+
+    /**
+     * CHECK_CLAUSE 가 non-ASCII 를 깨뜨린 check 의 본문을 SHOW CREATE TABLE 에서 읽고, CHECK_CLAUSE
+     * 형식으로 다시 escape 한다. information_schema 는 utf8 bytes 를 한 번 더 인코딩해 보여 주지만
+     * SHOW CREATE TABLE 은 바르게 쓰며, 본문의 literal 은 `\` 와 `'` 를 한 번만 escape 한다.
+     * table 별로 SHOW CREATE TABLE 을 한 번만 읽고, $shown 에 table 마다 모은다.
+     *
+     * @param array<string, array<string, string>> $shown
+     */
+    private static function shownCheck(\PDO $connection, string $table, string $name, array &$shown): string
+    {
+        if (!isset($shown[$table])) {
+            $query = 'SHOW CREATE TABLE `' . str_replace('`', '``', $table) . '`';
+            $rows = CatalogRows::read($connection, $query);
+            $create = CatalogRows::text($rows[0] ?? throw new \RuntimeException("SHOW CREATE TABLE $table returned no row"), 1, $query);
+            $shown[$table] = self::createChecks($create);
+        }
+        return $shown[$table][$name] ?? throw new \RuntimeException("check $table.$name has no CHECK in SHOW CREATE TABLE");
+    }
+
+    /**
+     * SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다.
+     *
+     * @return array<string, string>
+     */
+    private static function createChecks(string $create): array
+    {
+        $checks = [];
+        $length = strlen($create);
+        for ($at = strpos($create, 'CONSTRAINT `'); $at !== false; $at = strpos($create, 'CONSTRAINT `', $at + 1)) {
+            $close = strpos($create, '` CHECK (', $at);
+            if ($close === false) {
+                break;
+            }
+            $name = substr($create, $at + 12, $close - ($at + 12));
+            $start = $close + 9;
+            $depth = 1;
+            for ($i = $start; $i < $length; $i++) {
+                $c = $create[$i];
+                if ($c === "'") {
+                    for ($i++; $i < $length && $create[$i] !== "'"; $i++) {
+                        if ($create[$i] === '\\') {
+                            $i++;
+                        }
+                    }
+                } elseif ($c === '(') {
+                    $depth++;
+                } elseif ($c === ')' && --$depth === 0) {
+                    $checks[$name] = str_replace(["\\", "'"], ["\\\\", "\\'"], substr($create, $start, $i - $start));
+                    break;
+                }
+            }
+        }
+        return $checks;
     }
 
     /** renderer CHECK 이 CHECK_CLAUSE 에 남는 형식 (docs/dialects.md "Introspection", "Checks"). */
