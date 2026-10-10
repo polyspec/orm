@@ -27,7 +27,7 @@ struct TableScope<'s, 'd> {
     table: &'d Table,
     unresolved: Option<&'s HashSet<&'d str>>,
     /// 열 줄의 type이 잘못된 열의 이름이다. Go는 이 열을 있는 열로 보고 type만 검사하지 않는다.
-    typeless: Option<&'s HashSet<&'d str>>,
+    typeless: Option<&'s HashMap<&'d str, bool>>,
     failed_keys: FailedKeys,
     /// 표 줄이 실패했다. Go의 failed table로서 이 표를 가리키는 참조와 이름 중복을 보고하지 않는다.
     header_failed: bool,
@@ -39,9 +39,9 @@ impl<'s, 'd> TableScope<'s, 'd> {
         self.unresolved.is_some_and(|u| u.contains(name))
     }
 
-    /// A column whose line parsed but whose type is invalid.
-    fn typeless(&self, name: &str) -> bool {
-        self.typeless.is_some_and(|t| t.contains(name))
+    /// A column whose line parsed but whose type is invalid: `Some(nullable)` for such a column.
+    fn typeless(&self, name: &str) -> Option<bool> {
+        self.typeless.and_then(|t| t.get(name).copied())
     }
 
     fn column(&self, name: &str) -> Lookup<'d> {
@@ -58,7 +58,7 @@ struct Scope<'d> {
     tables: HashMap<&'d str, usize>,
     document: &'d Document,
     failed: Vec<HashSet<&'d str>>,
-    typeless: Vec<HashSet<&'d str>>,
+    typeless: Vec<HashMap<&'d str, bool>>,
     failed_keys: &'d [FailedKeys],
     header_failed: &'d [bool],
     used: HashMap<&'d str, &'d Table>,
@@ -97,7 +97,9 @@ impl<'d> Scope<'d> {
 pub(crate) fn validate(parsed: &Parsed, used: &[Option<&Document>], diags: &mut Vec<Diag>, literals: &mut Vec<CheckLiterals>) {
     let Parsed { document, unresolved, typeless, failed_keys, header_failed, defaults, .. } = parsed;
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
-    let typeless = (0..document.tables.len()).map(|i| typeless.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
+    let typeless = (0..document.tables.len())
+        .map(|i| typeless.get(i).map(|names| names.iter().map(|(name, null)| (name.as_str(), *null)).collect()).unwrap_or_default())
+        .collect();
     let mut scope = Scope { tables: HashMap::new(), document, failed, typeless, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
@@ -353,8 +355,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let mut children_known = true;
         let mut seen = HashSet::new();
         let mut children: Vec<Option<&Column>> = Vec::new();
+        // 열마다 null 여부다. Go의 set_null 검사는 type이 잘못된 자식도 읽으므로 이 값은 children과 따로 둔다.
+        let mut nullable: Vec<Option<bool>> = Vec::new();
         for name in &key.columns {
             let repeated = !seen.insert(name.text.as_str());
+            let typeless = self.own.typeless(&name.text);
             match self.own.column(&name.text) {
                 Lookup::Found(column) => {
                     if repeated {
@@ -362,22 +367,26 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         children_known = false;
                     }
                     children.push(Some(column));
+                    nullable.push(Some(column.nullable));
                 }
                 // Go의 columnRef는 type이 잘못된 열을 찾는다. 색인 검사는 이 열을 알려진 것으로 보고 type 검사는 건너뛴다.
-                Lookup::Unresolved if self.own.typeless(&name.text) => {
+                Lookup::Unresolved if typeless.is_some() => {
                     if repeated {
                         self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
                         children_known = false;
                     }
                     children.push(None);
+                    nullable.push(typeless);
                 }
                 Lookup::Unresolved => {
                     children_known = false;
                     children.push(None);
+                    nullable.push(None);
                 }
                 Lookup::Missing => {
                     self.report(name.pos, "foreign_key", format!("unknown column '{}'", name.text));
                     children_known = false;
+                    nullable.push(None);
                     children.push(None);
                 }
             }
@@ -432,7 +441,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 self.report(key.name.pos, "foreign_key", "a column type differs from its referenced column type");
             }
         }
-        if (key.on_delete == Action::SetNull || key.on_update == Action::SetNull) && children.iter().flatten().any(|c| !c.nullable) {
+        if (key.on_delete == Action::SetNull || key.on_update == Action::SetNull) && nullable.iter().flatten().any(|null| !null) {
             self.report(key.name.pos, "foreign_key", "set_null requires every column to be null");
         }
         let names: Vec<&str> = key.columns.iter().map(|n| n.text.as_str()).collect();

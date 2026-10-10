@@ -67,7 +67,7 @@ pub(crate) struct Parsed {
     pub document: Document,
     pub unresolved: Vec<Vec<String>>,
     /// 표마다, type이 잘못된 column 줄의 이름이다. Go는 그런 열을 남기므로 그 열을 가리키는 외래 key의 자식은 알려진 것으로 본다.
-    pub typeless: Vec<Vec<String>>,
+    pub typeless: Vec<Vec<(String, bool)>>,
     /// For each table, the key and index lines that failed.
     pub failed_keys: Vec<FailedKeys>,
     /// 표마다, 표 줄이 실패했는지(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 있다). Go의 failed table이다.
@@ -143,8 +143,8 @@ struct Parser {
     pending: Vec<String>,
     document: Document,
     unresolved: Vec<Vec<String>>,
-    typeless: Vec<Vec<String>>,
-    table_typeless: Vec<String>,
+    typeless: Vec<Vec<(String, bool)>>,
+    table_typeless: Vec<(String, bool)>,
     failed_keys: Vec<FailedKeys>,
     header_failed: Vec<bool>,
     table_header_failed: bool,
@@ -762,7 +762,7 @@ impl Parser {
         }
         let Some(ty) = ty else {
             // 줄은 구문이 맞고 type만 잘못되었다. Go는 이 열을 남기므로(type만 invalid) 이름을 기록한다.
-            self.table_typeless.push(name.text.to_owned());
+            self.table_typeless.push((name.text.to_owned(), nullable));
             return None;
         };
         let default = match (default, default_keyword) {
