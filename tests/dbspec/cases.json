@@ -9978,6 +9978,212 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "foreign-key-undefined-table-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id) references nowhere (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 12,
+          "column": 50,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-undefined-table-with-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (team_id) references nowhere (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 13,
+          "column": 50,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-undefined-table-set-null",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id) references nowhere (id) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 12,
+          "column": 50,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-column-count-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  other i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id, other) references teams (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-column-count-set-null",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  other i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id, other) references teams (id) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 13,
+          "column": 15,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-malformed-target-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id) references Nowhere (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 12,
+          "column": 50,
+          "rule": "name.format"
+        }
+      ]
     }
   ],
   "hashes": [
