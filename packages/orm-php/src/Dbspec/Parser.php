@@ -721,12 +721,12 @@ final class Parser
                 $this->state = 'settings';
                 return;
         }
-        if ($this->tablePhase > 0) {
-            $this->error('order', $this->line, $first[1], 'column lines come before key, index, foreign key, check and settings lines');
-        }
         $this->columnLine();
         if (isset($this->syntaxLines[$this->line])) {
             $this->failColumnLine($first[0]);
+        } elseif ($this->tablePhase > 0) {
+            // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). 구문 오류가 난 줄은 syntax만 낸다.
+            $this->error('order', $this->line, $first[1], 'column lines come before key, index, foreign key, check and settings lines');
         }
     }
 

@@ -964,6 +964,7 @@
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::closing": " fn closing (\u0026 mut self , tokens : \u0026 [Token]) -\u003e bool",
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::column": " fn column (\u0026 mut self , cursor : \u0026 mut Cursor) -\u003e Option \u003c Column \u003e",
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::column_line": " fn column_line (\u0026 mut self , cursor : \u0026 mut Cursor)",
+  "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::column_line_in_order": " fn column_line_in_order (\u0026 mut self , first : \u0026 Token , cursor : \u0026 mut Cursor)",
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::column_list": " fn column_list (\u0026 mut self , cursor : \u0026 mut Cursor , directions : bool) -\u003e Option \u003c Vec \u003c (Name , bool) \u003e \u003e",
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::column_type": " fn column_type (\u0026 mut self , cursor : \u0026 mut Cursor) -\u003e Option \u003c Option \u003c Type \u003e \u003e",
   "packages/orm-rust/orm-schema/src/dbspec/parser.rs::Parser::comments": " fn comments (\u0026 mut self) -\u003e Vec \u003c String \u003e",

@@ -636,17 +636,19 @@ impl Parser {
         // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
         let well_formed = tokens.len() == 2 && tokens[1].is("{");
         let second_settings = kind == Some(LineKind::Settings) && well_formed && self.table.as_ref().is_some_and(|t| t.settings.is_some());
-        if phase < self.table_phase || second_settings {
-            let message = if second_settings {
-                "a table has at most one settings block"
-            } else {
-                "table lines are columns, then key, index, foreign key and check lines, then settings"
-            };
-            self.report(err(first.pos, "order", message));
-        } else {
-            self.table_phase = phase;
-        }
         let mut cursor = Cursor::new(tokens);
+        if kind.is_some() {
+            if phase < self.table_phase || second_settings {
+                let message = if second_settings {
+                    "a table has at most one settings block"
+                } else {
+                    "table lines are columns, then key, index, foreign key and check lines, then settings"
+                };
+                self.report(err(first.pos, "order", message));
+            } else {
+                self.table_phase = phase;
+            }
+        }
         match kind {
             Some(LineKind::Primary) => self.primary_line(&mut cursor),
             Some(LineKind::Unique) => self.unique_line(&mut cursor),
@@ -654,12 +656,23 @@ impl Parser {
             Some(LineKind::ForeignKey) => self.foreign_key_line(&mut cursor),
             Some(LineKind::Check) => self.check_line(&mut cursor),
             Some(LineKind::Settings) => self.open_settings(&mut cursor),
-            None => self.column_line(&mut cursor),
+            None => self.column_line_in_order(first, &mut cursor),
         }
     }
 
     fn table_mut(&mut self) -> &mut Table {
         self.table.as_mut().expect("a table line is read inside a table")
+    }
+
+    /// Parses a column line after the key lines of its table. Go reports `order` only when the
+    /// line parses (`columnLine` after `c.done`), so a line with a syntax error gets `syntax` alone.
+    fn column_line_in_order(&mut self, first: &Token, cursor: &mut Cursor) {
+        let before = self.diags.len();
+        self.column_line(cursor);
+        let syntax = self.diags[before..].iter().any(|d| d.rule == "syntax");
+        if self.table_phase > 0 && !syntax && !self.stopped {
+            self.report(err(first.pos, "order", "table lines are columns, then key, index, foreign key and check lines, then settings"));
+        }
     }
 
     fn column_line(&mut self, cursor: &mut Cursor) {

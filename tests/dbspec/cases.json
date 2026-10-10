@@ -9625,6 +9625,202 @@
           "rule": "syntax"
         }
       ]
+    },
+    {
+      "id": "column-after-primary-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  note text",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "column-after-primary-key-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  name",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 6,
+          "column": 7,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-after-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  index ix_users_id (id)",
+          "  note text",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "column-after-index-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  index ix_users_id (id)",
+          "  name",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 7,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-after-foreign-key",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (team_id) references teams (id) on delete restrict on update restrict",
+          "  note text",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "column-after-foreign-key-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (team_id) references teams (id) on delete restrict on update restrict",
+          "  name",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 7,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "column-after-check",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  check ck_users_id (id > 0)",
+          "  note text",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 3,
+          "rule": "order"
+        }
+      ]
+    },
+    {
+      "id": "column-after-check-syntax",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  check ck_users_id (id > 0)",
+          "  name",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 7,
+          "rule": "syntax"
+        }
+      ]
     }
   ],
   "hashes": [
