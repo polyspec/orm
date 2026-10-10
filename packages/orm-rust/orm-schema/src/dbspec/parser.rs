@@ -251,7 +251,14 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         }
     }
     parser.finish();
-    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, header_failed: parser.header_failed, defaults: parser.defaults, diags: parser.diags })
+    Ok(Parsed {
+        document: parser.document,
+        unresolved: parser.unresolved,
+        failed_keys: parser.failed_keys,
+        header_failed: parser.header_failed,
+        defaults: parser.defaults,
+        diags: parser.diags,
+    })
 }
 
 fn bare_cr(line: usize, column: usize) -> Diag {

@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 292d0c9e1536b591f48850c62bb6346a2b256c395de0b472a141e417deafe7bc -->
+<!-- source-sha256: 7497d1697903372217c0ddd368b099a573b205b688296ffc869c3f173fe07159 -->
 # 변경 이력
 
 ## Unreleased
+- T62-5-3: Rust dbspec 원천 `orm-schema/src/dbspec/parser.rs`와 `dbspec/mod.rs`를 저장소의 `rustfmt.toml` 설정으로 rustfmt 정리해 `make rust-fmt-check/clients`가 통과한다. 줄 배치만 바뀌며 선언과 동작은 바뀌지 않는다.
 - T62-6: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 반복된 settings 블록을 Go처럼 읽는다. 그 줄은 구문, 알 수 없는 setting, 이름 구문만 검사하고 검증하지 않으며, `order`는 header가 정확히 `settings {`일 때만 키워드에 보고한다. `{`가 없는 `settings` 줄은 Python에서 더 이상 실패하지 않고 Rust에서 열로 읽히지 않는다. `tests/dbspec/cases.json`의 열네 개 반복 및 `{` 없는 settings case가 이를 고정하며, 모든 구현이 `dbspec-compare-check`를 통과한다.
 - T62-5: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser는 header가 실패한 table을 Go처럼 검사한다. 그런 table의 중복 이름은 보고하지 않고, 그 table을 가리키는 외래 key는 참조 열, 개수, key, type을 검사하지 않으며, 실패한 audit history table이나 audit 기록 table은 열이나 key를 검사하지 않고, 본문의 오류는 모두 보고한다. `tests/dbspec/cases.json`의 열세 개 `failed-header-*` case가 Go가 만든 오류로 이를 고정한다.
 - T62-4: Rust, PHP 확장, PHP, TypeScript와 Python의 dbspec lexer가 단어 글자를 Go의 `unicode.IsLetter`와 `unicode.IsDigit`처럼 읽는다. `€` 같은 symbol은 놓인 곳에서 `syntax` 오류이고, ASCII가 아닌 글자와 숫자는 단어의 일부이며, 형식이 틀린 check 참조는 `name.format`을 보고하고, Rust의 머리글 이름은 Go처럼 ASCII다. C 확장과 Python은 `go run ./tests/dbspec/unicode -write`가 `unicode_word.h`, `unicode_word.rs`, `unicode_word.py`에 쓰는 Go의 Unicode 17.0.0 표를 읽고, `go run ./tests/dbspec/unicode`가 이 파일들이 표와 같은지 검사한다. `tests/dbspec/cases.json`은 Go의 동작을 고정하는 invalid case 여섯 개를 더하며, docs/dbspec.md와 docs/dbspec.ko.md가 단어 규칙을 적는다.
