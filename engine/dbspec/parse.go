@@ -1,6 +1,7 @@
 package dbspec
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -167,8 +168,8 @@ type settingNode struct {
 	// lists는 audit의 exclude와 include 목록이다. 둘 다 쓴 setting은 검사가
 	// 거부한다.
 	lists []columnList
-	// terminal은 state_machine의 terminal 줄임을 표시한다.
-	terminal bool
+	// form은 state_machine 줄의 종류다: transition, terminal, initial, history 또는 limit.
+	form string
 }
 
 // columnList는 `exclude (<column>, ...)`나 `include (<column>, ...)`다.
@@ -411,6 +412,32 @@ func (c *cursor) arrow() bool {
 		return true
 	}
 	return c.fail("'->'")
+}
+
+// formAhead는 keyword 글자가 다음에 오고 전환의 from state가 아닌지 보고한다:
+// 뒤에 전환 화살표 `->`가 오면 그 글자는 state 이름이다.
+func (c *cursor) formAhead(text string) bool {
+	if !c.peekIs(tokenWord, text) {
+		return false
+	}
+	next := c.i + 1
+	return next >= len(c.tokens) || !c.tokens[next].is(tokenOperator, "-")
+}
+
+// oneOf는 주어진 word 가운데 하나인 word를 소비하고, 아니면 what으로 실패한다.
+func (c *cursor) oneOf(what string, words ...string) (token, bool) {
+	if c.more() && c.tokens[c.i].kind == tokenWord && slices.Contains(words, c.tokens[c.i].text) {
+		return c.next(), true
+	}
+	return token{}, c.fail(what)
+}
+
+// quoted는 string literal 하나를 읽는다. 그 text는 따옴표를 뺀 값이다.
+func (c *cursor) quoted(what string) (token, bool) {
+	if c.more() && c.tokens[c.i].kind == tokenString {
+		return c.next(), true
+	}
+	return token{}, c.fail(what)
 }
 
 // optional consumes the keyword text when it comes next.
@@ -942,16 +969,73 @@ func (p *parser) settingsLine(c *cursor) {
 	case "immutable":
 	case "markdown":
 		ok = arg("a column name")
+	case "store":
+		var kind token
+		kind, ok = c.oneOf("'files', 'document' or 'block'", "files", "document", "block")
+		if ok {
+			line.args = append(line.args, kind)
+		}
+		if ok && kind.text == "block" {
+			ok = arg("a foreign key name")
+		}
+		if ok && kind.text != "files" {
+			var shape token
+			shape, ok = c.oneOf("'list' or 'table'", "list", "table")
+			if ok {
+				line.args = append(line.args, shape)
+			}
+		}
+	case "key_prefix":
+		var prefix token
+		prefix, ok = c.quoted("a key prefix in quotes")
+		if ok {
+			line.args = append(line.args, prefix)
+		}
+	case "title", "body", "order":
+		ok = arg("a column name")
+	case "checkbox":
+		ok = arg("the state column") && arg("a state name")
+		if ok {
+			var glyph token
+			glyph, ok = c.quoted("a glyph in quotes")
+			if ok {
+				line.args = append(line.args, glyph)
+			}
+		}
 	case "state_machine":
 		ok = arg("the state column")
-		if ok && c.peekIs(tokenWord, "terminal") {
+		switch {
+		case !ok:
+		case c.formAhead("initial"):
 			c.next()
-			line.terminal = true
+			line.form = "initial"
 			ok = arg("a state name")
-		} else if ok {
+		case c.formAhead("terminal"):
+			c.next()
+			line.form = "terminal"
+			ok = arg("a state name")
+		case c.formAhead("history"):
+			c.next()
+			line.form = "history"
+			ok = arg("the history table") && c.keyword("row") && arg("the foreign key column") &&
+				c.keyword("from") && arg("the from column") && c.keyword("to") && arg("the to column") &&
+				c.keyword("at") && arg("the at column")
+		case c.formAhead("limit"):
+			c.next()
+			line.form = "limit"
+			ok = arg("a state name")
+			if ok {
+				var count token
+				count, ok = c.value("a row count", false)
+				if ok {
+					line.args = append(line.args, count)
+				}
+			}
+		default:
+			line.form = "transition"
 			ok = arg("the from state") && c.arrow() && arg("the to state")
 		}
-		if ok && c.peekIs(tokenWord, "require") {
+		if ok && (line.form == "transition" || line.form == "terminal") && c.peekIs(tokenWord, "require") {
 			require := c.next()
 			list := columnList{keyword: require}
 			list.columns, _, ok = c.names(false)

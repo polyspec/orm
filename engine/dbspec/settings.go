@@ -1,8 +1,11 @@
 package dbspec
 
 import (
+	"maps"
 	"math"
+	"slices"
 	"strconv"
+	"unicode/utf8"
 )
 
 // codecStages maps each codec stage to the storage it produces
@@ -33,8 +36,8 @@ func (v *validator) settings(t *tableNode) {
 				continue
 			}
 			seen[s.args[0].text] = true
-		} else if kind != "state_machine" {
-			// state_machine은 한 column에 여러 줄로 쓰므로 once 검사에서 뺀다.
+		} else if kind != "state_machine" && kind != "checkbox" {
+			// state_machine과 checkbox는 여러 줄로 쓰므로 once 검사에서 뺀다.
 			if once[kind] {
 				v.add(RuleSetting, s.keyword, "setting %s repeats", kind)
 				continue
@@ -104,15 +107,15 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 	case "blind_index":
 		v.blindIndex(t, s, aesColumns)
 	case "navigation":
-		if v.ref(s.args[0]) && !t.failedName(s.args[0].text) {
-			found := false
-			for _, f := range t.foreignKeys {
-				found = found || f.name.text == s.args[0].text
-			}
-			if !found {
-				v.add(RuleSetting, s.args[0], "foreign key %q is not a foreign key of the table", s.args[0].text)
-			}
-		}
+		v.foreignKeyName(t, s.args[0])
+	case "store":
+		v.store(t, s)
+	case "key_prefix":
+		v.keyPrefix(t, s)
+	case "title", "body":
+		v.textColumn(t, s)
+	case "order":
+		v.order(t, s)
 	case "immutable":
 		if v.propagatedChild(t) {
 			v.add(RuleSetting, s.keyword, "immutable is rejected on a child of a cascade or set_null foreign key")
@@ -127,6 +130,19 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		if c := v.columnRef(t, s.args[0], RuleSetting); c != nil && c.typ.valid &&
 			c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText {
 			v.add(RuleSetting, s.args[0], "markdown needs a varchar or text column, not %s", c.typ.typ)
+		}
+	}
+}
+
+// foreignKeyName은 이름이 table의 foreign key를 가리키는지 검사한다.
+func (v *validator) foreignKeyName(t *tableNode, ref token) {
+	if v.ref(ref) && !t.failedName(ref.text) {
+		found := false
+		for _, f := range t.foreignKeys {
+			found = found || f.name.text == ref.text
+		}
+		if !found {
+			v.add(RuleSetting, ref, "foreign key %q is not a foreign key of the table", ref.text)
 		}
 	}
 }
@@ -147,12 +163,17 @@ func (v *validator) stateMachine(t *tableNode, s *settingNode) {
 	}
 }
 
-// stateMachineConsistency checks the machine across its lines: one column per
-// table and no transition that leaves a terminal state.
+// stateMachineConsistency는 기계의 줄들을 줄 사이에서 검사한다: table마다 column 하나,
+// initial, 전환과 terminal 줄의 상호 일치, history와 limit 줄, state column의 default,
+// checkbox 줄이다 (docs/dbspec.md "Settings").
 func (v *validator) stateMachineConsistency(t *tableNode) {
 	column := ""
+	states := map[string]bool{}
+	initials := map[string]bool{}
 	terminals := map[string]bool{}
-	var lines []*settingNode
+	var lines, limits []*settingNode
+	var history *settingNode
+	var requires []token
 	for _, s := range t.settings.lines {
 		if s.keyword.text != "state_machine" {
 			continue
@@ -162,16 +183,261 @@ func (v *validator) stateMachineConsistency(t *tableNode) {
 		} else if s.args[0].text != column {
 			v.add(RuleSetting, s.args[0], "state_machine repeats for %q; a table holds one machine", s.args[0].text)
 		}
-		lines = append(lines, s)
-		if s.terminal {
-			terminals[s.args[1].text] = true
+		switch s.form {
+		case "history":
+			if history != nil {
+				v.add(RuleSetting, s.keyword, "state_machine repeats history")
+				continue
+			}
+			history = s
+		case "limit":
+			limits = append(limits, s)
+		default:
+			lines = append(lines, s)
+			for _, list := range s.lists {
+				requires = append(requires, list.columns...)
+			}
+			switch s.form {
+			case "initial":
+				initials[s.args[1].text] = true
+				states[s.args[1].text] = true
+			case "terminal":
+				terminals[s.args[1].text] = true
+				states[s.args[1].text] = true
+			default:
+				states[s.args[1].text] = true
+				states[s.args[2].text] = true
+			}
 		}
 	}
 	for _, s := range lines {
-		if !s.terminal && terminals[s.args[1].text] {
-			v.add(RuleSetting, s.keyword, "a transition leaves the terminal state %q", s.args[1].text)
+		switch s.form {
+		case "initial":
+			if terminals[s.args[1].text] {
+				v.add(RuleSetting, s.keyword, "an initial state %q is also terminal", s.args[1].text)
+			}
+		case "transition":
+			if terminals[s.args[1].text] {
+				v.add(RuleSetting, s.keyword, "a transition leaves the terminal state %q", s.args[1].text)
+			}
 		}
 	}
+	v.limits(limits, states)
+	if history != nil {
+		v.history(t, history, t.column(column), requires)
+	}
+	if c := t.column(column); column != "" && c != nil && c.value != nil && c.dflt != nil && !initials[c.value.text] {
+		v.add(RuleSetting, *c.value, "the default %q of the state column is not an initial state", c.value.text)
+	}
+	v.checkboxes(t, column, states)
+}
+
+// limits는 limit 줄마다 검사한다: state는 state 집합에 속하고, state마다 반복하지 않으며, count는 양의 정수다.
+func (v *validator) limits(lines []*settingNode, states map[string]bool) {
+	seen := map[string]bool{}
+	for _, s := range lines {
+		state := s.args[1]
+		switch {
+		case !states[state.text]:
+			v.add(RuleSetting, state, "limit names state %q outside the state set", state.text)
+		case seen[state.text]:
+			v.add(RuleSetting, state, "limit repeats for state %q", state.text)
+		}
+		seen[state.text] = true
+		if n, err := strconv.ParseInt(s.args[2].text, 10, 64); err != nil || n < 1 {
+			v.add(RuleSetting, s.args[2], "limit needs a positive row count, not %s", s.args[2].text)
+		}
+	}
+}
+
+// history는 state_machine history 줄의 history table을 검사한다. 그 column은
+// 이 table을 가리키는 foreign key, state column의 type을 가진 from과 to column,
+// datetime(6)의 at column, 필요한 column마다 같은 type의 nullable column 하나, key이며,
+// title이나 body를 선언하지 않는다. 불일치는 모두 history table의 이름에 보고한다.
+func (v *validator) history(t *tableNode, s *settingNode, state *columnNode, requires []token) {
+	name := s.args[1]
+	if !v.ref(name) {
+		return
+	}
+	h := v.table(name.text)
+	if h == nil {
+		v.add(RuleSetting, name, "history table %q is not a table of this document or a used table", name.text)
+		return
+	}
+	if state == nil || !state.typ.valid {
+		return
+	}
+	row := s.args[2]
+	fk := false
+	for _, f := range h.foreignKeys {
+		fk = fk || (len(f.columns) == 1 && f.columns[0].text == row.text && f.target.text == t.name.text)
+	}
+	if !fk {
+		v.add(RuleSetting, name, "history table %q has no foreign key of %q to table %q", name.text, row.text, t.name.text)
+	}
+	named := map[string]bool{row.text: true}
+	typed := func(ref token, want Type) {
+		named[ref.text] = true
+		c := h.column(ref.text)
+		switch {
+		case c == nil:
+			if !h.failedName(ref.text) {
+				v.add(RuleSetting, name, "history table %q has no column %q", name.text, ref.text)
+			}
+		case c.typ.valid && c.typ.typ != want:
+			v.add(RuleSetting, name, "history column %q has type %s, not %s", ref.text, c.typ.typ, want)
+		}
+	}
+	typed(s.args[3], state.typ.typ)
+	typed(s.args[4], state.typ.typ)
+	typed(s.args[5], Type{Kind: TypeDatetime, Precision: 6})
+	for _, r := range requires {
+		named[r.text] = true
+		c := t.column(r.text)
+		hc := h.column(r.text)
+		switch {
+		case c == nil || !c.typ.valid:
+		case hc == nil:
+			if !h.failedName(r.text) {
+				v.add(RuleSetting, name, "history table %q has no column %q of the required column", name.text, r.text)
+			}
+		case hc.null == nil || (hc.typ.valid && hc.typ.typ != c.typ.typ):
+			v.add(RuleSetting, name, "history column %q is not a nullable %s column", r.text, c.typ.typ)
+		}
+	}
+	for _, k := range h.primaryKeys {
+		for _, ct := range k.columns {
+			named[ct.text] = true
+		}
+	}
+	for _, c := range h.columns {
+		if !named[c.name.text] {
+			v.add(RuleSetting, name, "history table %q has column %q, which the history line does not name", name.text, c.name.text)
+		}
+	}
+	if h.settings != nil {
+		for _, hs := range h.settings.lines {
+			if hs.keyword.text == "title" || hs.keyword.text == "body" {
+				v.add(RuleSetting, name, "history table %q declares %s, which a history table does not", name.text, hs.keyword.text)
+			}
+		}
+	}
+}
+
+// checkboxes는 checkbox 줄을 기계의 state 집합에 대해 검사한다: 기계의 column을 이름 붙이고, 집합의 state마다 한 글자이며 서로 다른 glyph를 가진 줄이 하나씩 있고, 어떤 줄도 다른 state를 이름 붙이지 않는다.
+func (v *validator) checkboxes(t *tableNode, column string, states map[string]bool) {
+	var boxes []*settingNode
+	for _, s := range t.settings.lines {
+		if s.keyword.text == "checkbox" {
+			boxes = append(boxes, s)
+		}
+	}
+	if len(boxes) == 0 {
+		return
+	}
+	first := boxes[0]
+	if column == "" {
+		v.add(RuleSetting, first.args[0], "checkbox needs a state_machine on column %q", first.args[0].text)
+		return
+	}
+	covered := map[string]bool{}
+	glyphs := map[string]bool{}
+	for _, b := range boxes {
+		if v.columnRef(t, b.args[0], RuleSetting) == nil {
+			continue
+		}
+		if b.args[0].text != column {
+			v.add(RuleSetting, b.args[0], "checkbox names column %q, but the state_machine column is %q", b.args[0].text, column)
+			continue
+		}
+		state := b.args[1]
+		switch {
+		case !states[state.text]:
+			v.add(RuleSetting, state, "checkbox names state %q outside the state set", state.text)
+		case covered[state.text]:
+			v.add(RuleSetting, state, "checkbox repeats for state %q", state.text)
+		}
+		covered[state.text] = true
+		glyph := b.args[2]
+		switch {
+		case utf8.RuneCountInString(glyph.text) != 1:
+			v.add(RuleSetting, glyph, "a checkbox glyph is one character")
+		case glyphs[glyph.text]:
+			v.add(RuleSetting, glyph, "checkbox glyph %q repeats", glyph.text)
+		}
+		glyphs[glyph.text] = true
+	}
+	for _, state := range slices.Sorted(maps.Keys(states)) {
+		if !covered[state] {
+			v.add(RuleSetting, first.keyword, "checkbox does not cover state %q", state)
+		}
+	}
+}
+
+// store는 block 저장을 검사한다: 그 foreign key는 table의 foreign key여야 한다. kind와 shape는 parser가 읽는다.
+func (v *validator) store(t *tableNode, s *settingNode) {
+	if s.args[0].text == "block" {
+		v.foreignKeyName(t, s.args[1])
+	}
+}
+
+// keyPrefix는 primary key가 varchar column 하나인지 검사한다.
+func (v *validator) keyPrefix(t *tableNode, s *settingNode) {
+	if t.failedPK {
+		return
+	}
+	if len(t.primaryKeys) != 1 || len(t.primaryKeys[0].columns) != 1 {
+		v.add(RuleSetting, s.keyword, "key_prefix needs a single-column primary key")
+		return
+	}
+	if c := t.column(t.primaryKeys[0].columns[0].text); c != nil && c.typ.valid && c.typ.typ.Kind != TypeVarchar {
+		v.add(RuleSetting, s.keyword, "key_prefix needs a varchar primary key, not %s", c.typ.typ)
+	}
+}
+
+// textColumn은 title과 body column을 검사한다: 각각 non-null varchar 또는 text column이다.
+func (v *validator) textColumn(t *tableNode, s *settingNode) {
+	c := v.columnRef(t, s.args[0], RuleSetting)
+	if c != nil && ((c.typ.valid && c.typ.typ.Kind != TypeVarchar && c.typ.typ.Kind != TypeText) || c.null != nil) {
+		v.add(RuleSetting, s.args[0], "%s needs a non-null varchar or text column", s.keyword.text)
+	}
+}
+
+// order는 order column을 검사한다: default가 없고 어떤 key, index 또는 check에도 없는 non-null i32 또는 i64 column이다.
+func (v *validator) order(t *tableNode, s *settingNode) {
+	c := v.columnRef(t, s.args[0], RuleSetting)
+	if c == nil {
+		return
+	}
+	if (c.typ.valid && c.typ.typ.Kind != TypeI32 && c.typ.typ.Kind != TypeI64) || c.null != nil || c.dflt != nil {
+		v.add(RuleSetting, s.args[0], "order needs a non-null i32 or i64 column with no default")
+		return
+	}
+	if inKeyOrCheck(t, s.args[0].text) {
+		v.add(RuleSetting, s.args[0], "order column %q is in a key, index or check", s.args[0].text)
+	}
+}
+
+// inKeyOrCheck는 t의 primary key, unique key, index, foreign key 또는 check가 그 column을 이름 붙이는지 보고한다.
+func inKeyOrCheck(t *tableNode, column string) bool {
+	for _, group := range [][]*keyNode{t.primaryKeys, t.uniques, t.indexes} {
+		for _, k := range group {
+			if slices.ContainsFunc(k.columns, func(ct token) bool { return ct.text == column }) {
+				return true
+			}
+		}
+	}
+	for _, f := range t.foreignKeys {
+		if slices.ContainsFunc(f.columns, func(ct token) bool { return ct.text == column }) {
+			return true
+		}
+	}
+	for _, ch := range t.checks {
+		if slices.ContainsFunc(ch.refs, func(ct token) bool { return ct.text == column }) {
+			return true
+		}
+	}
+	return false
 }
 
 // codec checks the stages and the storage type, which follows the last

@@ -109,20 +109,48 @@ func (s *settingsNode) model() *Settings {
 			}
 		case "markdown":
 			out.Marks = append(out.Marks, MarkSetting{Comments: line.comments, Column: args[0]})
+		case "store":
+			store := &StoreSetting{Comments: line.comments, Kind: args[0]}
+			switch store.Kind {
+			case "block":
+				store.Foreign, store.Shape = args[1], args[2]
+			case "document":
+				store.Shape = args[1]
+			}
+			out.Store = store
+		case "key_prefix":
+			out.KeyPrefix = &KeyPrefixSetting{Comments: line.comments, Prefix: args[0]}
+		case "title":
+			out.Title = &ColumnSetting{Comments: line.comments, Column: args[0]}
+		case "body":
+			out.Body = &ColumnSetting{Comments: line.comments, Column: args[0]}
+		case "order":
+			out.Order = &ColumnSetting{Comments: line.comments, Column: args[0]}
+		case "checkbox":
+			out.Checkboxes = append(out.Checkboxes, CheckboxSetting{Comments: line.comments, Column: args[0], State: args[1], Glyph: args[2]})
 		case "state_machine":
 			if out.StateMachine == nil {
 				out.StateMachine = &StateMachineSetting{Comments: line.comments, Column: args[0]}
 			}
-			stateLine := StateLineSetting{Comments: line.comments, Terminal: line.terminal}
-			if line.terminal {
-				stateLine.State = args[1]
-			} else {
-				stateLine.From, stateLine.To = args[1], args[2]
+			machine := out.StateMachine
+			switch line.form {
+			case "history":
+				machine.History = &HistorySetting{Comments: line.comments, Table: args[1], Row: args[2], From: args[3], To: args[4], At: args[5]}
+			case "limit":
+				count, _ := strconv.ParseInt(args[2], 10, 64) // 검사가 count를 받아들였으므로 변환 오류가 없다
+				machine.Limits = append(machine.Limits, LimitSetting{Comments: line.comments, State: args[1], Count: count})
+			default:
+				stateLine := StateLineSetting{Comments: line.comments, Initial: line.form == "initial", Terminal: line.form == "terminal"}
+				if stateLine.Initial || stateLine.Terminal {
+					stateLine.State = args[1]
+				} else {
+					stateLine.From, stateLine.To = args[1], args[2]
+				}
+				for _, list := range line.lists {
+					stateLine.Requires = tokenTexts(list.columns)
+				}
+				machine.Lines = append(machine.Lines, stateLine)
 			}
-			for _, list := range line.lists {
-				stateLine.Requires = tokenTexts(list.columns)
-			}
-			out.StateMachine.Lines = append(out.StateMachine.Lines, stateLine)
 		}
 	}
 	return out
@@ -261,7 +289,8 @@ func (e *emitter) table(t *Table) {
 func (s *Settings) empty() bool {
 	return s.Entity == nil && s.Updated == nil && s.SoftDelete == nil && s.SelectExplicit == nil &&
 		len(s.Codecs) == 0 && s.AESVersion == nil && len(s.BlindIndexes) == 0 && len(s.Navigations) == 0 &&
-		s.Immutable == nil && s.Audit == nil && s.StateMachine == nil && len(s.Marks) == 0
+		s.Immutable == nil && s.Audit == nil && s.StateMachine == nil && len(s.Marks) == 0 &&
+		s.Store == nil && s.KeyPrefix == nil && s.Title == nil && s.Body == nil && s.Order == nil && len(s.Checkboxes) == 0
 }
 
 func (e *emitter) settings(t *Table, s *Settings) {
@@ -317,18 +346,53 @@ func (e *emitter) mappingSettings(s *Settings) {
 	for _, m := range sortedBy(s.Marks, func(m MarkSetting) string { return m.Column }) {
 		e.line(2, m.Comments, "markdown "+m.Column)
 	}
+	if st := s.Store; st != nil {
+		switch st.Kind {
+		case "files":
+			e.line(2, st.Comments, "store files")
+		case "document":
+			e.line(2, st.Comments, "store document "+st.Shape)
+		case "block":
+			e.line(2, st.Comments, "store block "+st.Foreign+" "+st.Shape)
+		}
+	}
+	if k := s.KeyPrefix; k != nil {
+		e.line(2, k.Comments, "key_prefix "+quote(k.Prefix))
+	}
+	if s.Title != nil {
+		e.line(2, s.Title.Comments, "title "+s.Title.Column)
+	}
+	if s.Body != nil {
+		e.line(2, s.Body.Comments, "body "+s.Body.Column)
+	}
+	if s.Order != nil {
+		e.line(2, s.Order.Comments, "order "+s.Order.Column)
+	}
+	for _, c := range s.Checkboxes {
+		e.line(2, c.Comments, "checkbox "+c.Column+" "+c.State+" "+quote(c.Glyph))
+	}
 	if m := s.StateMachine; m != nil {
 		for _, line := range m.Lines {
 			text := "state_machine " + m.Column + " "
-			if line.Terminal {
+			switch {
+			case line.Initial:
+				text += "initial " + line.State
+			case line.Terminal:
 				text += "terminal " + line.State
-			} else {
+			default:
 				text += line.From + " -> " + line.To
 			}
 			if len(line.Requires) > 0 {
 				text += " require (" + strings.Join(line.Requires, ", ") + ")"
 			}
 			e.line(2, line.Comments, text)
+		}
+		if h := m.History; h != nil {
+			e.line(2, h.Comments, "state_machine "+m.Column+" history "+h.Table+" row "+h.Row+
+				" from "+h.From+" to "+h.To+" at "+h.At)
+		}
+		for _, l := range m.Limits {
+			e.line(2, l.Comments, "state_machine "+m.Column+" limit "+l.State+" "+strconv.FormatInt(l.Count, 10))
 		}
 	}
 }

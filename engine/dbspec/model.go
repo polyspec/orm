@@ -178,7 +178,54 @@ type Settings struct {
 	Audit           *AuditSetting
 	StateMachine    *StateMachineSetting
 	Marks           []MarkSetting
+	Store           *StoreSetting
+	KeyPrefix       *KeyPrefixSetting
+	Title           *ColumnSetting
+	Body            *ColumnSetting
+	Order           *ColumnSetting
+	Checkboxes      []CheckboxSetting
 	ClosingComments []string
+}
+
+// StoreSetting은 table의 저장 선언이다. Kind는 files, document 또는 block이다.
+// block은 Foreign에 부모 행의 foreign key 이름을 쓰고, document와 block은 Shape에 list 또는 table을 쓴다.
+type StoreSetting struct {
+	Comments []string
+	Kind     string
+	Foreign  string
+	Shape    string
+}
+
+// KeyPrefixSetting은 `key_prefix '<p>'`다: 문자 primary key의 할당 접두사다.
+type KeyPrefixSetting struct {
+	Comments []string
+	Prefix   string
+}
+
+// CheckboxSetting은 한 state의 list glyph다.
+type CheckboxSetting struct {
+	Comments []string
+	Column   string
+	State    string
+	Glyph    string
+}
+
+// HistorySetting은 state_machine의 history 줄이다. Row는 history table의 foreign key column,
+// From, To와 At은 상태 전환의 이전 상태, 이후 상태와 시각 column이다.
+type HistorySetting struct {
+	Comments []string
+	Table    string
+	Row      string
+	From     string
+	To       string
+	At       string
+}
+
+// LimitSetting은 state_machine의 limit 줄이다: 그 state의 행은 Count를 넘을 수 없다.
+type LimitSetting struct {
+	Comments []string
+	State    string
+	Count    int64
 }
 
 // MarkSetting은 `markdown <column>`이다: 산문 column의 manifest 전용 표시다.
@@ -192,11 +239,14 @@ type StateMachineSetting struct {
 	Comments []string
 	Column   string
 	Lines    []StateLineSetting
+	History  *HistorySetting
+	Limits   []LimitSetting
 }
 
-// StateLineSetting은 전환 줄이거나 terminal 선언 줄이다.
+// StateLineSetting은 전환 줄, terminal 선언 줄 또는 initial 선언 줄이다.
 type StateLineSetting struct {
 	Comments []string
+	Initial  bool
 	Terminal bool
 	From     string
 	To       string

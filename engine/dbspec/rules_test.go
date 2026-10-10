@@ -469,3 +469,288 @@ func TestMarkdownSetting(t *testing.T) {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}
 }
+
+// markdownColumns는 markdown storage case들이 공유하는 tickets table의 column이다.
+var markdownColumns = []string{
+	"  id varchar(32)",
+	"  title varchar(255)",
+	"  body text",
+	"  position i64",
+	"  status varchar(16)",
+	"  reason varchar(200) null",
+}
+
+// historyColumns는 state_machine history가 이름 붙이는 ticket_history table의 column이다.
+var historyColumns = []string{
+	"  id i64 identity",
+	"  ticket_id varchar(32)",
+	"  from_status varchar(16)",
+	"  to_status varchar(16)",
+	"  changed_at datetime(6)",
+	"  reason varchar(200) null",
+}
+
+// ticketHistory는 주어진 column과 key, foreign key를 선행하는 index, tickets를 가리키는 foreign key를 가진 ticket_history table을 쓴다.
+func ticketHistory(columns []string) []string {
+	out := []string{"table ticket_history {"}
+	out = append(out, columns...)
+	return append(out,
+		"  primary key (id)",
+		"  index ix_ticket_history_ticket (ticket_id)",
+		"  foreign key fk_ticket_history_ticket (ticket_id) references tickets (id) on delete restrict on update restrict",
+		"}",
+	)
+}
+
+// markdownDoc은 주어진 column, key 줄과 setting으로 tickets table을 쓰고, 그 뒤에 history table을 쓴다. 각 setting은 settings block 안에 들여쓴다.
+func markdownDoc(columns, key, history []string, settings ...string) []string {
+	body := []string{"table tickets {"}
+	body = append(body, columns...)
+	body = append(body, key...)
+	body = append(body, "  settings {")
+	for _, s := range settings {
+		body = append(body, "    "+s)
+	}
+	body = append(body, "  }", "}")
+	return with(body, []string{""}, history)
+}
+
+// at은 text를 담은 첫 줄에서 rule이 token에 보고하는 diagnostic을 돌려준다.
+func at(lines []string, text, token, rule string) vectorError {
+	for i, line := range lines {
+		if start := strings.Index(line, text); start >= 0 {
+			return vectorError{Line: i + 1, Column: strings.Index(line[start:], token) + start + 1, Rule: rule}
+		}
+	}
+	panic("no line holds " + text)
+}
+
+var (
+	pkID             = []string{"  primary key (id)"}
+	standardHistory  = ticketHistory(historyColumns)
+	markdownSettings = []string{
+		"store document list",
+		"key_prefix 'T'",
+		"title title",
+		"body body",
+		"order position",
+		"checkbox status waiting '-'",
+		"checkbox status doing '/'",
+		"checkbox status done 'x'",
+		"state_machine status initial waiting",
+		"state_machine status waiting -> doing",
+		"state_machine status doing -> done require (reason)",
+		"state_machine status terminal done",
+		"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+		"state_machine status limit doing 3",
+	}
+)
+
+// TestMarkdownStorageSetting: markdown storage의 storage, key, title, body, order, checkbox와 state_machine setting이 parse되고 canonical하게 emit되어 settings model에 도달한다.
+func TestMarkdownStorageSetting(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	text := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
+	document, diagnostics := Parse(text, nil)
+	if document == nil || len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+	if got, err := emitStable(text, nil); err != nil || got != text {
+		t.Fatalf("emission: %v\n%s", err, got)
+	}
+	s := document.Tables[0].Settings
+	if s.Store == nil || s.Store.Kind != "document" || s.Store.Shape != "list" {
+		t.Fatalf("store: %+v", s.Store)
+	}
+	if s.KeyPrefix == nil || s.KeyPrefix.Prefix != "T" || s.Title == nil || s.Title.Column != "title" ||
+		s.Body == nil || s.Body.Column != "body" || s.Order == nil || s.Order.Column != "position" {
+		t.Fatalf("key, title, body or order: %+v %+v %+v %+v", s.KeyPrefix, s.Title, s.Body, s.Order)
+	}
+	if len(s.Checkboxes) != 3 || s.Checkboxes[1].State != "doing" || s.Checkboxes[1].Glyph != "/" {
+		t.Fatalf("checkboxes: %+v", s.Checkboxes)
+	}
+	machine := s.StateMachine
+	if machine == nil || len(machine.Lines) != 4 || !machine.Lines[0].Initial || machine.Lines[0].State != "waiting" ||
+		machine.History == nil || machine.History.Table != "ticket_history" || machine.History.At != "changed_at" ||
+		len(machine.Limits) != 1 || machine.Limits[0].State != "doing" || machine.Limits[0].Count != 3 {
+		t.Fatalf("machine: %+v", machine)
+	}
+}
+
+// TestMarkdownStorageManifest: markdown setting은 manifest hash에 들어가고 schema hash에는 들어가지 않는다.
+func TestMarkdownStorageManifest(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	list := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
+	table := strings.Replace(list, "store document list", "store document table", 1)
+	manifests := make([]*Manifest, 0, 2)
+	for _, text := range []string{list, table} {
+		document, diagnostics := Parse(text, nil)
+		if document == nil || len(diagnostics) != 0 {
+			t.Fatalf("diagnostics: %+v", diagnostics)
+		}
+		manifest, diagnostics := ManifestOf([]*Document{document})
+		if len(diagnostics) != 0 {
+			t.Fatalf("manifest diagnostics: %+v", diagnostics)
+		}
+		manifests = append(manifests, manifest)
+	}
+	if manifests[0].ManifestHash == manifests[1].ManifestHash {
+		t.Fatalf("the manifest hash does not cover the store setting")
+	}
+	if manifests[0].SchemaHash != manifests[1].SchemaHash {
+		t.Fatalf("the schema hash covers the store setting")
+	}
+}
+
+// TestStateMachineKeywordStates: state_machine 줄의 keyword와 이름이 같은 state도 뒤에 전환 화살표가 오면 여전히 전환 state다.
+func TestStateMachineKeywordStates(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	text := joinLines(with(block(
+		"table jobs {", "  id i64 identity", "  status varchar(16)", "  primary key (id)",
+		"  settings {",
+		"    state_machine status initial -> waiting",
+		"    state_machine status limit -> history",
+		"    state_machine status initial initial",
+		"  }", "}",
+	)), false)
+	document, diagnostics := Parse(text, nil)
+	if document == nil || len(diagnostics) != 0 {
+		t.Fatalf("diagnostics: %+v", diagnostics)
+	}
+	if got, err := emitStable(text, nil); err != nil || got != text {
+		t.Fatalf("emission: %v\n%s", err, got)
+	}
+	lines := document.Tables[0].Settings.StateMachine.Lines
+	if len(lines) != 3 || lines[0].From != "initial" || lines[0].Initial || lines[1].From != "limit" ||
+		lines[1].To != "history" || !lines[2].Initial || lines[2].State != "initial" {
+		t.Fatalf("lines: %+v", lines)
+	}
+}
+
+// TestMarkdownStorageRules: 각 markdown storage setting은 그 rule이 이름 붙이는 state, column, 모양을 rule이 이름 붙이는 token에서 거부한다.
+func TestMarkdownStorageRules(t *testing.T) {
+	intKey := []string{"  primary key (id)"}
+	intColumns := append([]string{"  id i64 identity"}, markdownColumns[1:]...)
+	position := append([]string{}, markdownColumns...)
+	position[3] = "  position i64 default 0"
+	defaulted := append([]string{}, markdownColumns...)
+	defaulted[4] = "  status varchar(16) default 'doing'"
+	badHistory := historyColumns[:5]
+	extraHistory := append(append([]string{}, historyColumns...), "  note varchar(10) null")
+	precisionHistory := append([]string{}, historyColumns...)
+	precisionHistory[4] = "  changed_at datetime(3)"
+	fromHistory := append([]string{}, historyColumns...)
+	fromHistory[2] = "  from_status varchar(8)"
+	machine := []string{
+		"state_machine status initial waiting",
+		"state_machine status waiting -> doing",
+		"state_machine status doing -> done require (reason)",
+		"state_machine status terminal done",
+	}
+	cases := []struct {
+		id       string
+		columns  []string
+		key      []string
+		history  []string
+		settings []string
+		want     func(lines []string) []vectorError
+	}{
+		{id: "store-repeats", settings: []string{"store files", "store document list"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "store document list", "store", RuleSetting)}
+		}},
+		{id: "store-shape", settings: []string{"store document rows"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "store document rows", "rows", RuleSyntax)}
+		}},
+		{id: "store-block-foreign-key", settings: []string{"store block nope list"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "store block nope", "nope", RuleSetting)}
+		}},
+		{id: "key-prefix-integer-key", columns: intColumns, key: intKey, history: []string{}, settings: []string{"key_prefix 'T'"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "key_prefix 'T'", "key_prefix", RuleSetting)}
+		}},
+		{id: "title-nullable", settings: []string{"title reason"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "title reason", "reason", RuleSetting)}
+		}},
+		{id: "body-unknown-column", settings: []string{"body nope"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "body nope", "nope", RuleSetting)}
+		}},
+		{id: "order-kind", settings: []string{"order status"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "order status", "status", RuleSetting)}
+		}},
+		{id: "order-default", columns: position, settings: []string{"order position"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "order position", "position", RuleSetting)}
+		}},
+		{id: "order-in-index", key: []string{"  primary key (id)", "  index ix_position (position)"}, settings: []string{"order position"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "order position", "position", RuleSetting)}
+		}},
+		{id: "checkbox-outside-state-set", settings: append([]string{"checkbox status waiting '-'", "checkbox status doing '/'", "checkbox status done 'x'", "checkbox status paused '~'"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "checkbox status paused", "paused", RuleSetting)}
+		}},
+		{id: "checkbox-missing-state", settings: append([]string{"checkbox status waiting '-'", "checkbox status doing '/'"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "checkbox status waiting", "checkbox", RuleSetting)}
+		}},
+		{id: "checkbox-repeated-glyph", settings: append([]string{"checkbox status waiting '-'", "checkbox status doing '-'", "checkbox status done 'x'"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "checkbox status doing", "'-'", RuleSetting)}
+		}},
+		{id: "checkbox-glyph-length", settings: append([]string{"checkbox status waiting '--'", "checkbox status doing '/'", "checkbox status done 'x'"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "checkbox status waiting", "'--'", RuleSetting)}
+		}},
+		{id: "checkbox-without-machine", settings: []string{"checkbox status waiting '-'"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "checkbox status waiting", "status", RuleSetting)}
+		}},
+		{id: "initial-terminal", settings: []string{"state_machine status initial done", "state_machine status terminal done"}, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "state_machine status initial done", "state_machine", RuleSetting)}
+		}},
+		{id: "default-not-initial", columns: defaulted, settings: machine, want: func(l []string) []vectorError {
+			return []vectorError{at(l, "status varchar(16) default", "'doing'", RuleSetting)}
+		}},
+		{id: "history-missing-table", settings: append([]string{"state_machine status history nope row ticket_id from from_status to to_status at changed_at"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "history nope", "nope", RuleSetting)}
+		}},
+		{id: "history-extra-column", history: ticketHistory(extraHistory), settings: append([]string{"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "history ticket_history", "ticket_history", RuleSetting)}
+		}},
+		{id: "history-at-precision", history: ticketHistory(precisionHistory), settings: append([]string{"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "history ticket_history", "ticket_history", RuleSetting)}
+		}},
+		{id: "history-from-type", history: ticketHistory(fromHistory), settings: append([]string{"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "history ticket_history", "ticket_history", RuleSetting)}
+		}},
+		{id: "history-missing-required-column", history: ticketHistory(badHistory), settings: append([]string{"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "history ticket_history", "ticket_history", RuleSetting)}
+		}},
+		{id: "history-repeated", settings: append([]string{
+			"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+			"state_machine status history ticket_history row ticket_id from from_status to to_status at changed_at",
+		}, machine...), want: func(l []string) []vectorError {
+			first := at(l, "state_machine status history", "state_machine", RuleSetting)
+			return []vectorError{{Line: first.Line + 1, Column: first.Column, Rule: RuleSetting}}
+		}},
+		{id: "limit-outside-state-set", settings: append([]string{"state_machine status limit paused 3"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "limit paused 3", "paused", RuleSetting)}
+		}},
+		{id: "limit-zero-count", settings: append([]string{"state_machine status limit doing 0"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "limit doing 0", "0", RuleSetting)}
+		}},
+		{id: "limit-repeated-state", settings: append([]string{"state_machine status limit doing 3", "state_machine status limit doing 4"}, machine...), want: func(l []string) []vectorError {
+			return []vectorError{at(l, "limit doing 4", "doing", RuleSetting)}
+		}},
+	}
+	testcase.Start(t, testcase.Compute)
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			columns, key, history := c.columns, c.key, c.history
+			if columns == nil {
+				columns = markdownColumns
+			}
+			if key == nil {
+				key = pkID
+			}
+			if history == nil {
+				history = standardHistory
+			}
+			lines := markdownDoc(columns, key, history, c.settings...)
+			runTimed(t, "rule/"+c.id, 5*time.Second, func() error {
+				return expectDiagnostics(joinLines(lines, false), nil, c.want(lines))
+			})
+		})
+	}
+}

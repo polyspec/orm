@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 02a215eb6ab21376b5cc17e30aa41b9793fbbae86c3531baaa956e644f6f9ddf -->
+<!-- source-sha256: bba292d14f836b5da51f16024c7350559e9ff3ba4df8f66ed4a1b1613b8ef636 -->
 # dbspec
 
 [English](dbspec.md)
@@ -148,7 +148,7 @@ operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 �
 
 ## Settings
 
-`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다 한 번씩 반복하고, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
+`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다, `markdown`은 column마다, `checkbox`는 state마다 한 번씩 반복하고 `state_machine`은 여러 줄에 쓰며, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
 
 codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이고(`bytes` column은 index에 넣을 수 없다), AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
 
@@ -164,6 +164,14 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `navigation <foreign key> <child name> <parent name>` | 도구가 foreign key에 보여 주는 관계 이름(자식 쪽, 부모 쪽). 생성 코드는 match method로 join하며 이 이름을 읽지 않는다 | manifest |
 | `state_machine <column> <from> -> <to> [require (<column>, ...)]`, `state_machine <column> terminal <state> [require (<column>, ...)]` | non-null varchar 또는 text column 하나의 row 상태 기계다. 각 줄은 하나의 전환이거나 하나의 terminal 상태이고, table마다 한 column에서 순서와 섞임에 제한 없이 쓴다. `require`는 전환이나 terminal이 기록하는 column을 명명하고, terminal 상태를 벗어나는 전환은 거부한다. database는 기계를 강제하지 않고 row를 소유한 executor가 강제한다 | manifest |
 | `markdown <column>` | column이 markdown 산문을 담는다. column마다 반복 가능하고 임의의 nullability varchar 또는 text column에 쓴다. database는 이를 위해 아무것도 render하지 않고 문서를 소유한 도구가 읽는다 | manifest |
+| `store files`, `store document list\|table`, `store block <foreign key> list\|table` | table의 markdown corpus 저장이다. `files`는 행마다 file 하나를, `document`는 모든 행을 문서 하나에, `block`은 지정한 foreign key가 가리키는 부모 행 안에 행을 쓴다. `list`나 `table`이 모양이다. table마다 정확히 하나를 쓴다 | manifest |
+| `key_prefix '<p>'` | executor가 varchar primary key를 `<p><n + 1>`로 할당한다. n은 그 꼴 key 가운데 가장 큰 10진 suffix다. primary key는 varchar column 하나여야 한다 | manifest |
+| `title <column>`, `body <column>` | 행의 제목과 본문이다. 각각 non-null varchar 또는 text column이다 | manifest |
+| `order <column>` | 형제 행 사이의 위치이며 executor가 할당한다. default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 | manifest |
+| `checkbox <column> <state> '<glyph>'` | state machine column의 한 state에 대한 list glyph다. 줄들은 state 집합을 정확히 덮고, 각 glyph는 한 글자이며 서로 달라야 한다 | manifest |
+| `state_machine <column> initial <state>` | 기계의 초기 state이며 여러 줄 가능하다. 기계의 state는 initial, 전환과 terminal 줄이 이름 붙이는 state들이다. state column의 default는 초기 state여야 하며, 초기 state는 terminal일 수 없다 | manifest |
+| `state_machine <column> history <table> row <foreign key column> from <column> to <column> at <column>` | 기계 전환의 history table이다. foreign key column은 이 table을 가리키고, `from`과 `to`는 state column의 type, `at`은 `datetime(6)`이며, 필요한 column마다 같은 type의 nullable column이 있고, key와 이것들 외의 column은 없다 | manifest |
+| `state_machine <column> limit <state> <count>` | 그 state의 행은 `count`개를 넘을 수 없다. count는 양의 정수이고 state는 state 집합에 속한다 | manifest |
 | `immutable` | database가 생성된 row trigger로 table row의 `UPDATE`와 `DELETE`를 거부한다. `TRUNCATE`는 포함하지 않는다. `cascade`나 `set_null` foreign key의 자식 table에서는 거부된다 | schema |
 | `audit into <history table> column <column> references <table> action <history column> previous <history column> [exclude (<column>, ...) \| include (<column>, ...)]` | 생성된 row trigger가 모든 `INSERT`와 `UPDATE`의 기록하는 column을 이력 table에 복사한다. [Audit](#audit) 참조 | schema |
 
