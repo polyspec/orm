@@ -10184,6 +10184,99 @@
           "rule": "name.format"
         }
       ]
+    },
+    {
+      "id": "foreign-key-unknown-child-set-null",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64",
+          "  code i64",
+          "  primary key (id, code)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (nope, team_id) references teams (id, code) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 14,
+          "column": 30,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-unknown-child-set-null-nullable",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64",
+          "  code i64",
+          "  primary key (id, code)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64 null",
+          "  primary key (id)",
+          "  index ix_users_team (team_id)",
+          "  foreign key fk_users_team (nope, team_id) references teams (id, code) on delete set_null",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 14,
+          "column": 30,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
+      "id": "foreign-key-unknown-child-without-index",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (nope) references teams (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 30,
+          "rule": "foreign_key"
+        }
+      ]
     }
   ],
   "hashes": [

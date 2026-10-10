@@ -339,20 +339,27 @@ impl<'s, 'd> TableRules<'s, 'd> {
 
     fn foreign_key(&mut self, key: &ForeignKey) {
         let mut complete = true;
+        // Go는 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다(validate.go의 foreignKey, known).
+        let mut children_known = true;
         let mut seen = HashSet::new();
         let mut children = Vec::new();
         for name in &key.columns {
             if !seen.insert(name.text.as_str()) {
                 self.report(name.pos, "foreign_key", format!("column '{}' is repeated", name.text));
                 complete = false;
+                children_known = false;
                 continue;
             }
             match self.own.column(&name.text) {
                 Lookup::Found(column) => children.push(column),
-                Lookup::Unresolved => complete = false,
+                Lookup::Unresolved => {
+                    complete = false;
+                    children_known = false;
+                }
                 Lookup::Missing => {
                     self.report(name.pos, "foreign_key", format!("unknown column '{}'", name.text));
                     complete = false;
+                    children_known = false;
                 }
             }
         }
@@ -408,7 +415,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let indexed = table.primary.iter().any(|p| leads(&mut p.columns.iter().map(|n| n.text.as_str())))
             || table.uniques.iter().any(|u| leads(&mut u.columns.iter().map(|n| n.text.as_str())))
             || table.indexes.iter().any(|i| leads(&mut i.columns.iter().map(|(n, _)| n.text.as_str())));
-        if !indexed && !self.own.failed_keys.any && !self.own.failed_keys.primary {
+        if children_known && !indexed && !self.own.failed_keys.any && !self.own.failed_keys.primary {
             self.report(key.name.pos, "foreign_key", "no index or key of the table leads with the foreign key's columns");
         }
     }

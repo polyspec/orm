@@ -1053,22 +1053,27 @@ final class Parser
         );
         $this->table->foreignKeys[] = $foreignKey;
         $known = true;
+        // Go의 known이다: 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다.
+        $childrenKnown = true;
         $seen = [];
         foreach ($children[0] as [$column, $position]) {
             if (!$this->name([$column, $position])) {
                 $known = false;
+                $childrenKnown = false;
             } elseif (!isset($this->columns[$column])) {
                 $this->error('foreign_key', $this->line, $position, "foreign key `{$name[0]}` lists unknown column `$column`");
                 $known = false;
+                $childrenKnown = false;
             } elseif (isset($seen[$column])) {
                 $this->error('foreign_key', $this->line, $position, "foreign key `{$name[0]}` repeats column `$column`");
                 $known = false;
+                $childrenKnown = false;
             } elseif (isset($this->invalidTypes[$column])) {
                 $known = false;
             }
             $seen[$column] = true;
         }
-        $this->tableForeignKeys[] = [$foreignKey, $this->line, $name[1], $known];
+        $this->tableForeignKeys[] = [$foreignKey, $this->line, $name[1], $known, $childrenKnown];
         foreach ($parents[0] as [$column, $position]) {
             if (!$this->name([$column, $position])) {
                 $resolvable = false;
@@ -1366,28 +1371,28 @@ final class Parser
             $leading[] = array_map(static fn(IndexColumn $c): string => $c->name, $index->columns);
         }
         $actionColumns = [];
-        foreach ($this->tableForeignKeys as [$foreignKey, $line, $column, $known]) {
+        foreach ($this->tableForeignKeys as [$foreignKey, $line, $column, $known, $childrenKnown]) {
             if ($foreignKey->changesChildRows()) {
                 foreach ($foreignKey->columns as $child) {
                     $actionColumns[$child] ??= $foreignKey->name;
                 }
             }
-            if (!$known) {
-                continue;
-            }
-            $covered = false;
-            foreach ($leading as $columns) {
-                if (array_slice($columns, 0, count($foreignKey->columns)) === $foreignKey->columns) {
-                    $covered = true;
-                    break;
+            // Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사만 건너뛴다.
+            if ($childrenKnown) {
+                $covered = false;
+                foreach ($leading as $columns) {
+                    if (array_slice($columns, 0, count($foreignKey->columns)) === $foreignKey->columns) {
+                        $covered = true;
+                        break;
+                    }
                 }
-            }
-            if (!$covered && !isset($this->failedKeyTables[$table->name]) && !isset($this->failedPrimaryTables[$table->name])) {
-                $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its columns");
+                if (!$covered && !isset($this->failedKeyTables[$table->name]) && !isset($this->failedPrimaryTables[$table->name])) {
+                    $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` needs an index or key whose leading columns are its columns");
+                }
             }
             if ($foreignKey->onDelete === 'set_null' || $foreignKey->onUpdate === 'set_null') {
                 foreach ($foreignKey->columns as $child) {
-                    if (!$this->columns[$child]->nullable) {
+                    if (isset($this->columns[$child]) && !$this->columns[$child]->nullable) {
                         $this->error('foreign_key', $line, $column, "foreign key `{$foreignKey->name}` sets `$child` null but the column is not null");
                         break;
                     }

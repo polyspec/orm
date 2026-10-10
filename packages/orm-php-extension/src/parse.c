@@ -88,6 +88,8 @@ typedef struct {
     fkey *fk;
     zend_long line, column;
     bool known;
+    /* Go의 known이다: 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다. */
+    bool children_known;
 } tfk_rec;
 
 typedef struct {
@@ -1293,24 +1295,28 @@ static void foreign_key_line(parser *p)
     f->comments = take_comments(p);
     PUSH(p->table->fks, f);
     bool known = true;
+    bool children_known = true;
     smap seen = {0};
     for (size_t k = 0; k < children.n; k++) {
         str c = children.v[k].name;
         zend_long position = children.v[k].column;
         if (!name_ok(p, c, position)) {
             known = false;
+            children_known = false;
         } else if (!smap_has(p->columns, c)) {
             error(p, "foreign_key", p->line, position, fmt("foreign key `%S` lists unknown column `%S`", name->text, c));
             known = false;
+            children_known = false;
         } else if (smap_has(&seen, c)) {
             error(p, "foreign_key", p->line, position, fmt("foreign key `%S` repeats column `%S`", name->text, c));
             known = false;
+            children_known = false;
         } else if (smap_has(&p->invalid_types, c)) {
             known = false;
         }
         smap_set(&seen, c, TRUEP);
     }
-    PUSH(p->table_fks, ((tfk_rec){f, p->line, name->column, known}));
+    PUSH(p->table_fks, ((tfk_rec){f, p->line, name->column, known, children_known}));
     for (size_t k = 0; k < parents.n; k++) {
         if (!name_ok(p, parents.v[k].name, parents.v[k].column)) {
             resolvable = false;
@@ -2738,20 +2744,20 @@ static void close_table(parser *p)
                 }
             }
         }
-        if (!r->known) {
-            continue;
-        }
-        bool covered = false;
-        for (size_t k = 0; k < leading.n && !covered; k++) {
-            covered = prefix_equal(&leading.v[k], &f->columns);
-        }
-        if (!covered && !smap_has(&p->failed_key_tables, t->name) && !smap_has(&p->failed_primary_tables, t->name)) {
-            error(p, "foreign_key", r->line, r->column, fmt("foreign key `%S` needs an index or key whose leading columns are its columns", f->name));
+        /* Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사만 건너뛴다. */
+        if (r->children_known) {
+            bool covered = false;
+            for (size_t k = 0; k < leading.n && !covered; k++) {
+                covered = prefix_equal(&leading.v[k], &f->columns);
+            }
+            if (!covered && !smap_has(&p->failed_key_tables, t->name) && !smap_has(&p->failed_primary_tables, t->name)) {
+                error(p, "foreign_key", r->line, r->column, fmt("foreign key `%S` needs an index or key whose leading columns are its columns", f->name));
+            }
         }
         if (str_eqc(f->on_delete, "set_null") || str_eqc(f->on_update, "set_null")) {
             for (size_t k = 0; k < f->columns.n; k++) {
                 column *c = smap_get(p->columns, f->columns.v[k]);
-                if (!c->nullable) {
+                if (c != NULL && !c->nullable) {
                     error(p, "foreign_key", r->line, r->column, fmt("foreign key `%S` sets `%S` null but the column is not null", f->name, f->columns.v[k]));
                     break;
                 }

@@ -1733,23 +1733,19 @@ class DocumentParser:
         # Go는 참조 table이 없거나 이름이 잘못되었거나 header가 실패했어도 자식의 key 검사와 set_null 검사를 한다.
         # 열, 짝과 type 검사만 건너뛴다(validate.go의 foreignKey, target이 nil인 경우).
         if not well_formed(fk.table.t):
-            if resolved:
-                self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, resolved)
             return
         if fk.table.t not in available:
             self._at('foreign_key', fk.table, f'table {fk.table.t} is not defined or used')
-            if resolved:
-                self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, resolved)
             return
         target = available[fk.table.t]
         if target is None:
-            if resolved:
-                self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, resolved)
             return
         # Go는 header가 실패한 target의 열, 짝과 type을 검사하지 않는다. 자식의 key 검사는 그대로 한다.
         if target.header_failed:
-            if resolved:
-                self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, resolved)
             return
         parents = []
         references_known = True
@@ -1759,17 +1755,19 @@ class DocumentParser:
                 references_known = False
                 continue
             parents.append(column)
+        # Go는 자식 열이 알려지지 않아도 set_null 검사를 알려진 자식에 대해 한다. 색인 검사는 건너뛴다.
         if not resolved:
+            self._foreign_key_keys(table, fk, children, False)
             return
         # Go는 참조 열이 알려지지 않아도 자식의 key 검사와 set_null 검사를 한다. 짝과 type 검사만 건너뛴다.
         if not references_known:
-            self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, True)
             return
         if len(children) != len(parents):
             self._at('foreign_key', fk.name, 'the foreign key lists a different number of child '
                                              'and referenced columns')
             # Go는 개수가 다를 때도 짝과 type 검사만 건너뛰고 자식의 key 검사와 set_null 검사를 한다.
-            self._foreign_key_keys(table, fk, children)
+            self._foreign_key_keys(table, fk, children, True)
             return
         refs = ','.join(r.t for r in fk.refs)
         keys = [','.join(c.tok.t for c in k.cols) for k in target.pks[:1] + target.uniques]
@@ -1782,14 +1780,15 @@ class DocumentParser:
             if child is not None and parent is not None and not same_type(child, parent):
                 self._at('foreign_key', fk.name, f'column {fk.cols[i].t} is {type_text(child)} '
                                                  f'but references {type_text(parent)}')
-        self._foreign_key_keys(table, fk, children)
+        self._foreign_key_keys(table, fk, children, True)
 
-    def _foreign_key_keys(self, table: _Table, fk: _ForeignKey, children) -> None:
-        '''자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.'''
+    def _foreign_key_keys(self, table: _Table, fk: _ForeignKey, children, known: bool) -> None:
+        '''자식 열의 key와 set_null 검사다. target의 열을 보지 않으므로 header가 실패한 target에도 쓴다.
+        known이 false이면 자식 열이 알려지지 않았거나 겹치는 것이므로 색인 검사를 건너뛴다(Go의 known).'''
         lead = [c.t for c in fk.cols]
         indexed = any(len(k.cols) >= len(lead) and all(k.cols[i].tok.t == name for i, name in enumerate(lead))
                       for k in table.pks + table.uniques + table.indexes)
-        if not indexed and not table.failed_key and not table.failed_primary:
+        if known and not indexed and not table.failed_key and not table.failed_primary:
             self._at('foreign_key', fk.name, 'no index or key of the table leads with the foreign '
                                              'key columns')
         if (fk.on_delete == 'set_null' or fk.on_update == 'set_null') \
