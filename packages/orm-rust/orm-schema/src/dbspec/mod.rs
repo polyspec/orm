@@ -420,16 +420,7 @@ impl<'s> Session<'s> {
         }
         let used: Vec<Option<&Document>> = used.iter().map(|u| u.as_ref().map(|p| &p.document)).collect();
         let mut literals = Vec::new();
-        validate::validate(
-            &parsed.document,
-            &parsed.unresolved,
-            &parsed.failed_keys,
-            &parsed.header_failed,
-            &parsed.defaults,
-            &used,
-            &mut diags,
-            &mut literals,
-        );
+        validate::validate(parsed, &used, &mut diags, &mut literals);
         self.validating.pop();
         (diags, literals)
     }

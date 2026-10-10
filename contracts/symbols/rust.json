@@ -1339,7 +1339,7 @@
   "packages/orm-rust/orm-schema/src/dbspec/validate.rs::diagrams": " fn diagrams (document : \u0026 Document , scope : \u0026 Scope , diags : \u0026 mut Vec \u003c Diag \u003e)",
   "packages/orm-rust/orm-schema/src/dbspec/validate.rs::err": " fn err (pos : Pos , rule : \u0026 'static str , message : impl Into \u003c String \u003e) -\u003e Diag",
   "packages/orm-rust/orm-schema/src/dbspec/validate.rs::in_key_or_check": " fn in_key_or_check (table : \u0026 Table , column : \u0026 str) -\u003e bool",
-  "packages/orm-rust/orm-schema/src/dbspec/validate.rs::validate": "pub (crate) fn validate (document : \u0026 Document , unresolved : \u0026 [Vec \u003c String \u003e] , failed_keys : \u0026 [FailedKeys] , header_failed : \u0026 [bool] , defaults : \u0026 [Vec \u003c DefaultToken \u003e] , used : \u0026 [Option \u003c \u0026 Document \u003e] , diags : \u0026 mut Vec \u003c Diag \u003e , literals : \u0026 mut Vec \u003c CheckLiterals \u003e ,)",
+  "packages/orm-rust/orm-schema/src/dbspec/validate.rs::validate": "pub (crate) fn validate (parsed : \u0026 Parsed , used : \u0026 [Option \u003c \u0026 Document \u003e] , diags : \u0026 mut Vec \u003c Diag \u003e , literals : \u0026 mut Vec \u003c CheckLiterals \u003e)",
   "packages/orm-rust/orm-schema/src/sql.rs::next_word": " fn next_word (b : \u0026 [u8] , mut i : usize) -\u003e String",
   "packages/orm-rust/orm-schema/src/sql.rs::split_sql": "pub fn split_sql (text : \u0026 str) -\u003e Vec \u003c String \u003e",
   "packages/orm-rust/orm-schema/src/sql.rs::word_byte": " fn word_byte (b : u8) -\u003e bool",
