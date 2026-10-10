@@ -1109,9 +1109,7 @@ impl Parser {
             self.context = Context::Table;
             return;
         }
-        if self.unclosed(tokens) {
-            return;
-        }
+        // settings block 안의 `table`이나 `diagram` 줄은 Go처럼 알 수 없는 setting이다. block을 닫지 않는다.
         let mut cursor = Cursor::new(tokens);
         let comments = self.comments();
         let keyword = tokens[0];
