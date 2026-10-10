@@ -413,6 +413,7 @@
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::decode": "public static function decode(string $dialect, string $text, array $columns): string",
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::expect": "private function expect(string $text): void",
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::expression": "private function expression(): array",
+  "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::isAsciiLetter": "private static function isAsciiLetter(string $ch): bool",
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::literalList": "private function literalList(): array",
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::operand": "private function operand(): array",
   "packages/orm-php/src/Dbspec/CheckDecoder.php::Polyspec\\Orm\\Dbspec\\CheckDecoder::operandNode": "private static function operandNode(string $kind, string $text): array",

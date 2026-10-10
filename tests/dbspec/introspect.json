@@ -562,6 +562,55 @@
       ]
     },
     {
+      "id": "sqlite-check-non-ascii-word",
+      "dialect": "sqlite",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE \"s\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"ê\" TEXT NOT NULL, \"a\" TEXT NOT NULL, CONSTRAINT \"ck_ok\" CHECK (\"a\" <> ''), CONSTRAINT \"ck_b\" CHECK (ê <> ''))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table s {",
+        "  id i64 identity",
+        "  a text",
+        "  primary key (id)",
+        "  check ck_ok (a <> '')",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "check",
+          "s",
+          "ck_b"
+        ],
+        [
+          "column",
+          "s",
+          "ê"
+        ]
+      ]
+    },
+    {
+      "id": "sqlite-check-non-ascii-literal",
+      "dialect": "sqlite",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE \"s\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"a\" TEXT NOT NULL, CONSTRAINT \"ck_name\" CHECK (\"a\" <> 'café'))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table s {",
+        "  id i64 identity",
+        "  a text",
+        "  primary key (id)",
+        "  check ck_name (a <> 'café')",
+        "}"
+      ],
+      "unsupported": []
+    },
+    {
       "id": "sqlite-primary-key-null",
       "dialect": "sqlite",
       "documents": {},
