@@ -2364,7 +2364,7 @@ final class Parser
 
     private static function isWord(string $token): bool
     {
-        return preg_match('/^[A-Za-z0-9_.]+$/D', $token) === 1;
+        return preg_match('/^[A-Za-z0-9_.\p{L}\p{Nd}]+$/Du', $token) === 1;
     }
 
     /** Checks a name token's format and length; returns whether it is valid. */

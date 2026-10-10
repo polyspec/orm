@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
@@ -13,6 +12,7 @@ from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
                                        DbspecPlacement, DbspecPrimaryKey, DbspecSetting,
                                        DbspecSettings, DbspecTable, DbspecType, DbspecUnique,
                                        DbspecUse)
+from polyspec.orm.dbspec.unicode_word import _is_word_rune_code_point
 
 __all__ = ['RESERVED', 'parse_document', 'parse_dbspec', 'valid_name', 'well_formed']
 
@@ -259,6 +259,16 @@ def well_formed(name: str) -> bool:
     return NAME.fullmatch(name) is not None and name not in RESERVED
 
 
+def _name_rule(name: str):
+    """Go's nameDiagnostics: the rule and the message of a name that breaks the form or the length, or None."""
+    if not well_formed(name):
+        return ('name.format', f'{name} is a reserved word' if name in RESERVED
+                else f'{name} does not match [a-z][a-z0-9_]*')
+    if utf8_length(name) > MAX_NAME_BYTES:
+        return ('name.length', f'{name} is longer than 63 bytes')
+    return None
+
+
 def valid_name(name: str) -> bool:
     return well_formed(name) and utf8_length(name) <= MAX_NAME_BYTES
 
@@ -283,10 +293,10 @@ def column_of(text: str, index: int) -> int:
 
 
 def is_word_rune(c: str) -> bool:
-    """Go의 isWordRune과 같다: ASCII는 letter, digit, '_', '.'이고 그 밖은 Unicode letter나 digit이다."""
+    """Go의 isWordRune과 같다: ASCII는 letter, digit, '_', '.'이고 그 밖은 Go의 표가 정한 Unicode letter나 digit이다."""
     if ord(c) < 0x80:
         return c == '_' or c == '.' or ('a' <= c <= 'z') or ('A' <= c <= 'Z') or ('0' <= c <= '9')
-    return unicodedata.category(c) in ('Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nd')
+    return _is_word_rune_code_point(ord(c))
 
 
 def is_number_text(text: str) -> bool:
@@ -1757,8 +1767,8 @@ class DocumentParser:
 
         issues = []
 
-        def issue(tok: Tk, message: str) -> None:
-            issues.append((tok, message))
+        def issue(tok: Tk, message: str, rule: str = 'check') -> None:
+            issues.append((tok, message, rule))
 
         i = 0
 
@@ -1857,8 +1867,10 @@ class DocumentParser:
                     if depth <= 0:
                         break
                 return None
-            if not well_formed(t.t):
-                flag('check', t, f'{t.t} is not part of a predicate')
+            # Go의 ref: a malformed reference reports its name rule and is not resolved.
+            malformed = _name_rule(t.t)
+            if malformed is not None:
+                issue(t, malformed[1], malformed[0])
                 return None
             out.append(t.t)
             column = table.col_map.get(t.t)
@@ -2011,7 +2023,7 @@ class DocumentParser:
             if first is None or found[0].s < first[0].s:
                 first = found
         if first is not None:
-            self._at('check', first[0], first[1])
+            self._at(first[2], first[0], first[1])
             return
         check.text = _predicate_text(tree)
 

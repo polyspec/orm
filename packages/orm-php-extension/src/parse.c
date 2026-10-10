@@ -267,8 +267,8 @@ static bool tok_is(parser *p, size_t i, const char *s)
     return t != NULL && str_eqc(t->text, s);
 }
 
-/* 이름 token의 형식과 길이를 확인한다. */
-static bool name_ok(parser *p, str name, zend_long column)
+/* Go의 nameDiagnostics: 이름이 형식이나 길이를 어기면 그 규칙과 메시지를 쓰고 참을 돌려준다. */
+bool name_rule(str name, const char **rule, str *message)
 {
     bool format = name.n > 0 && name.s[0] >= 'a' && name.s[0] <= 'z';
     for (size_t i = 1; format && i < name.n; i++) {
@@ -283,11 +283,25 @@ static bool name_ok(parser *p, str name, zend_long column)
         }
     }
     if (!format) {
-        error(p, "name.format", p->line, column, fmt("name `%S` does not match [a-z][a-z0-9_]* or is a reserved word", name));
-        return false;
+        *rule = "name.format";
+        *message = fmt("name `%S` does not match [a-z][a-z0-9_]* or is a reserved word", name);
+        return true;
     }
     if (name.n > 63) {
-        error(p, "name.length", p->line, column, fmt("name `%S` is longer than 63 bytes", name));
+        *rule = "name.length";
+        *message = fmt("name `%S` is longer than 63 bytes", name);
+        return true;
+    }
+    return false;
+}
+
+/* 이름 token의 형식과 길이를 확인한다. */
+static bool name_ok(parser *p, str name, zend_long column)
+{
+    const char *rule;
+    str message;
+    if (name_rule(name, &rule, &message)) {
+        error(p, rule, p->line, column, message);
         return false;
     }
     return true;
@@ -493,24 +507,15 @@ static bool digitc(char c)
     return c >= '0' && c <= '9';
 }
 
-static bool wordc(char c)
+/* 머리글의 문서 이름은 Go의 isHeaderNameRune처럼 ASCII 글자, 숫자와 _만 잇는다. */
+static bool header_name_char(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || digitc(c) || c == '_';
 }
 
 /* Go의 lexLine: 한 줄을 token으로 나눈다. 첫 오류는 p->lex_* 에 둔다. recover이면 오류 글자를 건너뛰며 계속 읽는다
- * (Go의 lexRecover는 그 글자를 빈칸으로 바꾸어 다시 읽는 것과 같다). 단어 글자는 ASCII의 [A-Za-z0-9_.]와 그 밖의
- * code point다(C에는 Unicode 글자 분류가 없다). */
-static bool dotword_ascii(unsigned char c)
-{
-    return c == '_' || c == '.' || digitc((char)c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
-static size_t utf8_width(unsigned char b)
-{
-    return b < 0x80 ? 1 : b < 0xE0 ? 2 : b < 0xF0 ? 3 : 4;
-}
-
+ * (Go의 lexRecover는 그 글자를 빈칸으로 바꾸어 다시 읽는 것과 같다). 단어 글자는 Go의 isWordRune이 참인 글자다
+ * (word_rune_width). */
 static void lex_line(parser *p, bool recover)
 {
     str s = p->text;
@@ -557,31 +562,21 @@ static void lex_line(parser *p, bool recover)
                 continue;
             }
             len = j - i;
-        } else if (dotword_ascii(c) || c >= 0x80) {
-            size_t j = i;
-            while (j < s.n) {
-                unsigned char d = (unsigned char)s.s[j];
-                if (dotword_ascii(d)) {
-                    j++;
-                } else if (d >= 0x80) {
-                    j += utf8_width(d);
-                } else {
-                    break;
-                }
-            }
-            if (j > s.n) {
-                j = s.n;
-            }
-            len = j - i;
+        } else if (word_rune_width(s, i) > 0) {
+            len = word_run_end(s, i) - i;
         } else {
+            size_t width = 1;
+            if (c >= 0x80) {
+                (void)utf8_decode_at(s, i, &width);
+            }
             if (!recover) {
                 p->lex_failed = true;
                 p->lex_column = column;
                 p->lex_message = c == '\t' ? SL("character '\\t' is not allowed here")
-                    : fmt("character '%S' is not allowed here", str_sub(s, i, 1));
+                    : fmt("character '%S' is not allowed here", str_sub(s, i, width));
                 return;
             }
-            i++;
+            i += width;
             column++;
             continue;
         }
@@ -691,7 +686,7 @@ static void header(parser *p)
         stop(p, "header", 1, (zend_long)(same < p->text.n ? same : p->text.n) + 1, SL("the first line is exactly `dbspec 1 <document>`"));
     }
     size_t end = pn;
-    while (end < p->text.n && wordc(p->text.s[end])) {
+    while (end < p->text.n && header_name_char(p->text.s[end])) {
         end++;
     }
     if (end == pn || end < p->text.n) {
@@ -2191,11 +2186,8 @@ static bool expression_mentions(str s, str name)
                 i++;
             }
             i++;
-        } else if (wordc(c)) {
-            size_t j = i;
-            while (j < s.n && wordc(s.s[j])) {
-                j++;
-            }
+        } else if (word_rune_width(s, i) > 0) {
+            size_t j = word_run_end(s, i);
             if (str_eq(str_sub(s, i, j - i), name)) {
                 return true;
             }

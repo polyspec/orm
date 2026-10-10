@@ -1,10 +1,11 @@
 //! Splits one dbspec line into tokens with their 1-based character columns.
 
 use super::model::Pos;
+use super::unicode_word::is_word_rune;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Kind {
-    /// A run of letters, digits, `_` and non-ASCII characters that is not a number.
+    /// A run of ASCII letters and digits, `_`, `.` and Unicode letters and digits (Go's isWordRune) that is not a number.
     Word,
     /// Digits with an optional `.digits` fraction.
     Number,
@@ -39,9 +40,10 @@ impl<'a> Token<'a> {
     }
 }
 
-/// Whether `c` continues a word. A `.` is a word character as in Go's isWordRune, so `a.b` is one token.
+/// Whether `c` continues a word, as Go's isWordRune: an ASCII letter, digit, `_` or `.`, or a Unicode letter or digit.
+/// A `.` is a word character, so `a.b` is one token.
 fn word_char(c: char) -> bool {
-    c.is_ascii_alphanumeric() || c == '_' || c == '.' || (!c.is_ascii() && !c.is_whitespace())
+    c.is_ascii_alphanumeric() || c == '_' || c == '.' || (!c.is_ascii() && is_word_rune(c))
 }
 
 /// Whether `run` is digits with an optional `.digits` fraction, the form of a Number token.
@@ -97,8 +99,8 @@ pub(crate) fn tokenize(line: &str, number: usize) -> Vec<Token<'_>> {
             kind = if closed { Kind::Str } else { Kind::Invalid };
             i = j;
         } else {
-            let two = if i + 1 < bytes.len() { &line[i..i + 2] } else { "" };
-            if matches!(two, "<>" | "<=" | ">=") {
+            let next = bytes.get(i + 1).copied().unwrap_or(0);
+            if matches!((c, next), ('<', b'>' | b'=') | ('>', b'=')) {
                 kind = Kind::Punct;
                 i += 2;
             } else if matches!(c, '{' | '}' | '(' | ')' | ',' | '=' | '<' | '>' | '+' | '-' | '*' | '/') {

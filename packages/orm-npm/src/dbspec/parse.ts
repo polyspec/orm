@@ -1734,9 +1734,9 @@ class DocumentParser {
       this.at(rule, tok, message);
     };
     // 끝까지 읽힌 술어의 열과 타입 진단: 원본 순서로 첫 번째만 보고한다.
-    const issues: { readonly tok: Tk; readonly message: string }[] = [];
-    const issue = (tok: Tk, message: string): void => {
-      issues.push({ tok, message });
+    const issues: { readonly tok: Tk; readonly message: string; readonly rule: DbspecRule }[] = [];
+    const issue = (tok: Tk, message: string, rule: DbspecRule = 'check'): void => {
+      issues.push({ tok, message, rule });
     };
     let i = 0;
     const peek = (): Tk | undefined => toks[i];
@@ -1813,8 +1813,13 @@ class DocumentParser {
         } while (depth > 0);
         return null;
       }
+      // Go의 ref: a malformed reference reports its name rule (format, then length) and is not resolved.
       if (!wellFormed(t.t)) {
-        flag('check', t, `${t.t} is not part of a predicate`);
+        issue(t, RESERVED.has(t.t) ? `${t.t} is a reserved word` : `${t.t} does not match [a-z][a-z0-9_]*`, 'name.format');
+        return null;
+      }
+      if (utf8Length(t.t) > MAX_NAME_BYTES) {
+        issue(t, `${t.t} is longer than 63 bytes`, 'name.length');
         return null;
       }
       out.push(t.t);
@@ -1943,10 +1948,10 @@ class DocumentParser {
       return;
     }
     if (flagged) return;
-    let first: { readonly tok: Tk; readonly message: string } | undefined;
+    let first: (typeof issues)[number] | undefined;
     for (const found of issues) if (first === undefined || found.tok.s < first.tok.s) first = found;
     if (first !== undefined) {
-      this.at('check', first.tok, first.message);
+      this.at(first.rule, first.tok, first.message);
       return;
     }
     check.text = predicateText(tree);

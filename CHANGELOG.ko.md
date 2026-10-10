@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1a66cf2ce7cb47de8c8588a54d898aaf568f3ced51bf9bf831be99acab1b79d3 -->
+<!-- source-sha256: 521e64cf751d4b7a5de0c77e251b721aec4cd6aa4c49cadb7adb91e5f0d624dd -->
 # 변경 이력
 
 ## Unreleased
+- T62-4: Rust, PHP 확장, PHP, TypeScript와 Python의 dbspec lexer가 단어 글자를 Go의 `unicode.IsLetter`와 `unicode.IsDigit`처럼 읽는다. `€` 같은 symbol은 놓인 곳에서 `syntax` 오류이고, ASCII가 아닌 글자와 숫자는 단어의 일부이며, 형식이 틀린 check 참조는 `name.format`을 보고하고, Rust의 머리글 이름은 Go처럼 ASCII다. C 확장과 Python은 `go run ./tests/dbspec/unicode -write`가 `unicode_word.h`, `unicode_word.rs`, `unicode_word.py`에 쓰는 Go의 Unicode 17.0.0 표를 읽고, `go run ./tests/dbspec/unicode`가 이 파일들이 표와 같은지 검사한다. `tests/dbspec/cases.json`은 Go의 동작을 고정하는 invalid case 여섯 개를 더하며, docs/dbspec.md와 docs/dbspec.ko.md가 단어 규칙을 적는다.
 - T62-2: PHP, Rust와 PHP 확장의 dbspec parser가 `a.b` 같은 점이 있는 이름을 Go parser처럼 token 하나로 유지하므로, 점이 있는 table, column, setting 이름은 각각 `name.format` 오류 하나다.
 - T62-1: TypeScript, PHP, Rust, PHP 확장과 Python의 dbspec parser가 `state_machine`, `markdown`과 markdown 저장 setting(T59, T60, T62)을 Go parser처럼 읽는다. 각 구현은 같은 규칙과 규칙 이름으로 parse, 검증, emit하며, `tests/dbspec/cases.json`의 공유 case를 모든 구현이 실행하고 `dbspec-compare-check`로 비교한다.
 - T62-3: dbspec이 `CanonicalLiteral(t Type, text string) (string, bool)`을 export한다. 이 함수는 column default로 쓰인 literal의 canonical 형태와 그 literal이 type에 유효한지 여부를 돌려주므로, 소비자는 `canonicalDefault`의 복사본 대신 orm의 규칙으로 column 값을 읽는다. 함수는 `canonicalDefault`의 코드를 실행한다. literal은 한 줄의 token 하나이며 앞뒤에 space가 없고, text나 bytes column에는 literal이 없다.

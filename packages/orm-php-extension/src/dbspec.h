@@ -71,11 +71,15 @@ str str_lower(str s);
 str str_upper(str s);
 bool str_digits(str s);                  /* ctype_digit: 비어 있지 않고 모두 0-9 */
 bool str_word(str s);                    /* [A-Za-z0-9_]+ */
-bool str_dotted(str s);                  /* a Go word token: [A-Za-z0-9_.]+ */
+bool str_dotted(str s);                  /* a Go word token: a run of word runes, [A-Za-z0-9_.] or a Unicode letter or digit */
 bool str_decimal(str s);                 /* [0-9]+\.[0-9]+ */
 str str_replace(str s, const char *from, const char *to);
 str str_repeat(const char *s, size_t times);
 size_t utf8_length(str s);               /* code point 수(올바른 UTF-8) */
+uint32_t utf8_decode_at(str s, size_t i, size_t *width); /* 위치 i의 code point 값과 그 byte 수 */
+size_t word_rune_width(str s, size_t i); /* 위치 i가 Go의 isWordRune인 글자의 byte 수, 아니면 0 */
+size_t word_run_end(str s, size_t i);  /* 위치 i에서 시작하는 word token이 끝나는 위치 */
+bool name_rule(str name, const char **rule, str *message); /* Go의 nameDiagnostics: 형식이나 길이가 틀린 이름의 규칙과 메시지 */
 size_t utf8_valid_prefix(str s);         /* 올바른 UTF-8인 앞부분의 byte 수 */
 zend_string *str_zend(str s);
 

@@ -8588,6 +8588,143 @@
           "rule": "setting"
         }
       ]
+    },
+    {
+      "id": "symbol-in-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id€ i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 4,
+          "column": 5,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "non-ascii-letters-in-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  café i32",
+          "  한글 i32 null",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        },
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "non-ascii-digit-in-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  col٣ i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 3,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "combining-mark-in-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  café i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 5,
+          "column": 7,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "non-ascii-word-in-check",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  x i32",
+          "  primary key (id)",
+          "  check ck_t_x (éx > 0)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 7,
+          "column": 17,
+          "rule": "name.format"
+        }
+      ]
+    },
+    {
+      "id": "non-ascii-letter-after-document-name",
+      "documents": {
+        "shop": [
+          "dbspec 1 shopé",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 1,
+          "column": 14,
+          "rule": "header"
+        }
+      ]
     }
   ],
   "hashes": [
