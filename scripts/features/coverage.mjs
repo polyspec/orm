@@ -292,8 +292,11 @@ function observedCases(format, output, requested, nativeSymbols = requested) {
       if (match) add(match[1]);
     }
   }
-  if (seen.size !== nativeSymbols.length || nativeSymbols.some(symbol => !seen.has(symbol)))
-    throw new Error(`observed cases ${[...seen].join(',')} differ from ${nativeSymbols.join(',')}`);
+  if (seen.size !== nativeSymbols.length || nativeSymbols.some(symbol => !seen.has(symbol))) {
+    // 빈 집합은 `observed no cases`로 쓴다. 목록이 비면 `observed cases` 뒤가 비어 보이기 때문이다.
+    const observed = seen.size === 0 ? 'observed no cases' : `observed cases ${[...seen].join(',')}`;
+    throw new Error(`${observed} differ from ${nativeSymbols.join(',')}`);
+  }
   return requested.map(id => ({ id, value_json: 'true' }));
 }
 

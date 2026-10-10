@@ -109,6 +109,22 @@ function mutation(change, kind = 'database') {
   return checkCoverage(manifest, reports).join('\n');
 }
 
+// executeCoverage는 실패한 실행마다 FAIL 줄을 출력한다. 음성 sample의 FAIL은 test가 일부러 만든 실패이므로
+// 통과한 실행의 출력에 나타나면 안 된다. negative는 그 줄을 가로채 돌려주고, 호출한 test가 exact 문구를 확인한다.
+// 경과 시간은 `elapsed=<t>`로 바꾸고, 병렬 database 줄의 순서가 정해지지 않으므로 두 목록을 정렬한다.
+async function negative(manifest, root, timeoutMs) {
+  const lines = [];
+  const log = console.log;
+  console.log = (...args) => lines.push(args.join(' '));
+  let errors;
+  try { errors = await executeCoverage(manifest, root, timeoutMs); }
+  finally { console.log = log; }
+  return {
+    errors: errors.toSorted(),
+    failures: lines.filter(line => line.startsWith('FAIL ')).map(line => line.replace(/ elapsed=[^:]+:/, ' elapsed=<t>:')).toSorted(),
+  };
+}
+
 caseTest('owner and dependent cases execute in four languages and three databases', 1000, () => {
   assert.deepEqual(checkCoverage(contract(), complete()), []);
   assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
@@ -162,12 +178,24 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { if (!['first', 'second'].includes(id)) process.exit(2); console.log(`CASE ${id} PASS`); }\n");
     await writeFile(join(root, dependent), "for (const id of process.argv.slice(2)) { if (id !== 'first') process.exit(2); console.log(`CASE ${id} PASS`); }\n");
     assert.deepEqual(await executeCoverage(manifest, root, 1000), []);
-    await writeFile(join(root, owner), "process.stdout.write(JSON.stringify({success:true,cases:['first','second']}));\n");
-    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /unexpected test output/);
+    const unexpected = '{"success":true,"cases":["first","second"]}';
+    await writeFile(join(root, owner), `process.stdout.write(${JSON.stringify(unexpected)});\n`);
+    const missing = 'sample/owner/typescript/none: exactly two executions required';
+    assert.deepEqual(await negative(manifest, root, 1000), {
+      errors: [`sample/owner/typescript/none run 1: unexpected test output: ${unexpected}`, missing].toSorted(),
+      failures: [`FAIL sample/owner/typescript/none run 1 elapsed=<t>: unexpected test output: ${unexpected}`],
+    });
     await writeFile(join(root, owner), "for (const id of process.argv.slice(2)) { console.log(`CASE ${id} PASS`); console.log(`CASE ${id} PASS`); }\n");
-    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /duplicate observed case first/);
+    assert.deepEqual(await negative(manifest, root, 1000), {
+      errors: ['sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
+      failures: ['FAIL sample/owner/typescript/none run 1 elapsed=<t>: duplicate observed case first'],
+    });
     delete manifest.features[0].coverage.dependents[0].commands.none;
-    assert.match((await executeCoverage(manifest, root, 1000)).join('\n'), /no executable command/);
+    assert.deepEqual(await negative(manifest, root, 1000), {
+      errors: ['sample/dependent/use/typescript/none: no executable command', 'sample/dependent/use/typescript/none: no executed report',
+        'sample/owner/typescript/none run 1: duplicate observed case first', missing].toSorted(),
+      failures: ['FAIL sample/owner/typescript/none run 1 elapsed=<t>: duplicate observed case first'],
+    });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -308,13 +336,37 @@ caseTest('checker reads physical database state around each native test run', 12
     feature.coverage.kind = 'database';
     const original = [...databases];
     assert.deepEqual(original, ['mysql', 'postgres', 'sqlite']);
-    const errors = await executeCoverage(manifest, root, 30000);
-    assert.ok(errors.some(error => error.includes('mysql')));
-    assert.ok(errors.some(error => error.includes('postgres')));
-    assert.ok(!errors.some(error => error.includes('/sqlite')), errors.join('\n'));
+    const sqliteOnly = 'database state reader: exit 1: check: state DSN scheme "sqlite" differs from database';
+    const first = await negative(manifest, root, 30000);
+    const missing = ['mysql', 'postgres'].map(database => `sample/owner/typescript/${database}: exactly two executions required`);
+    assert.deepEqual(first, {
+      errors: [
+        `sample/owner/typescript/mysql run 1: ${sqliteOnly} "mysql"`,
+        `sample/owner/typescript/postgres run 1: ${sqliteOnly} "postgres"`,
+        ...missing,
+      ].toSorted(),
+      failures: [
+        `FAIL sample/owner/typescript/mysql run 1 elapsed=<t>: ${sqliteOnly} "mysql"`,
+        `FAIL sample/owner/typescript/postgres run 1 elapsed=<t>: ${sqliteOnly} "postgres"`,
+      ].toSorted(),
+    });
     await writeFile(join(root, owner), "import { DatabaseSync } from 'node:sqlite'; const db = new DatabaseSync(new URL(process.env.ORM_COVERAGE_TEST_SQLITE_DSN).pathname); db.exec('UPDATE state SET value = value + 1'); db.close(); console.log('CASE first PASS');\n");
-    const changed = await executeCoverage(manifest, root, 30000);
-    assert.match(changed.join('\n'), /sample\/owner\/typescript\/sqlite: database state changed/);
+    const changed = await negative(manifest, root, 30000);
+    assert.deepEqual(changed, {
+      errors: [
+        // 두 실행이 각각 state를 바꾸므로 실행 사이의 state가 어긋나고, checkCoverage는 두 보고마다 state 변화를 보고한다.
+        'sample/owner/typescript/sqlite: database state changed between executions',
+        'sample/owner/typescript/sqlite: database state changed or was not observed',
+        'sample/owner/typescript/sqlite: database state changed or was not observed',
+        `sample/owner/typescript/mysql run 1: ${sqliteOnly} "mysql"`,
+        `sample/owner/typescript/postgres run 1: ${sqliteOnly} "postgres"`,
+        ...missing,
+      ].toSorted(),
+      failures: [
+        `FAIL sample/owner/typescript/mysql run 1 elapsed=<t>: ${sqliteOnly} "mysql"`,
+        `FAIL sample/owner/typescript/postgres run 1 elapsed=<t>: ${sqliteOnly} "postgres"`,
+      ].toSorted(),
+    });
   } finally {
     if (previous === undefined) delete process.env.ORM_COVERAGE_TEST_SQLITE_DSN;
     else process.env.ORM_COVERAGE_TEST_SQLITE_DSN = previous;
@@ -378,7 +430,11 @@ caseTest('Go, PHP, and Rust native cases execute through their owning files', 12
         go: { part: go.part, tests: [go.file], commands: { none: [{ runner: 'go', test: go.file,
           cases: ['first'], symbols: { first: go.symbol } }] } },
       } } }] };
-    assert.match((await executeCoverage(skipped, root, 30000)).join('\n'), /observed cases .* differ from TestFirst/);
+    const message = 'observed no cases differ from TestFirst';
+    assert.deepEqual(await negative(skipped, root, 30000), {
+      errors: [`sample/owner/go/none run 1: ${message}`, 'sample/owner/go/none: exactly two executions required'].toSorted(),
+      failures: [`FAIL sample/owner/go/none run 1 elapsed=<t>: ${message}`],
+    });
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
