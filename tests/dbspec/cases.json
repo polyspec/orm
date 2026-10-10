@@ -10354,6 +10354,39 @@
       ]
     },
     {
+      "id": "foreign-key-unknown-table-count",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table teams {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "}",
+          "",
+          "table users {",
+          "  id i64 identity",
+          "  team_id i64",
+          "  primary key (id)",
+          "  foreign key fk_users_team (team_id, id) references nowhere (id)",
+          "}"
+        ]
+      },
+      "main": "shop",
+      "errors": [
+        {
+          "line": 12,
+          "column": 15,
+          "rule": "foreign_key"
+        },
+        {
+          "line": 12,
+          "column": 54,
+          "rule": "foreign_key"
+        }
+      ]
+    },
+    {
       "id": "foreign-key-unknown-child-unknown-reference",
       "documents": {
         "shop": [
