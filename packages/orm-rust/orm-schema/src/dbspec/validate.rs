@@ -27,6 +27,8 @@ struct TableScope<'s, 'd> {
     table: &'d Table,
     unresolved: Option<&'s HashSet<&'d str>>,
     failed_keys: FailedKeys,
+    /// 표 줄이 실패했다. Go의 failed table로서 이 표를 가리키는 참조와 이름 중복을 보고하지 않는다.
+    header_failed: bool,
 }
 
 impl<'s, 'd> TableScope<'s, 'd> {
@@ -50,6 +52,7 @@ struct Scope<'d> {
     document: &'d Document,
     failed: Vec<HashSet<&'d str>>,
     failed_keys: &'d [FailedKeys],
+    header_failed: &'d [bool],
     used: HashMap<&'d str, &'d Table>,
     /// Tables of `use` lines whose document or table failed; references to them report nothing more.
     unresolved: HashSet<&'d str>,
@@ -61,6 +64,7 @@ impl<'d> Scope<'d> {
             table: &self.document.tables[index],
             unresolved: Some(&self.failed[index]),
             failed_keys: self.failed_keys.get(index).copied().unwrap_or_default(),
+            header_failed: self.header_failed.get(index).copied().unwrap_or(false),
         }
     }
 
@@ -69,7 +73,7 @@ impl<'d> Scope<'d> {
         if let Some(index) = self.tables.get(name) {
             return Some(self.own(*index));
         }
-        self.used.get(name).map(|table| TableScope { table, unresolved: None, failed_keys: FailedKeys::default() })
+        self.used.get(name).map(|table| TableScope { table, unresolved: None, failed_keys: FailedKeys::default(), header_failed: false })
     }
 
     /// A malformed table name, already reported, or a table of a failed `use` line.
@@ -85,13 +89,14 @@ pub(crate) fn validate(
     document: &Document,
     unresolved: &[Vec<String>],
     failed_keys: &[FailedKeys],
+    header_failed: &[bool],
     defaults: &[Vec<DefaultToken>],
     used: &[Option<&Document>],
     diags: &mut Vec<Diag>,
     literals: &mut Vec<CheckLiterals>,
 ) {
     let failed = (0..document.tables.len()).map(|i| unresolved.get(i).map(|names| names.iter().map(String::as_str).collect()).unwrap_or_default()).collect();
-    let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, used: HashMap::new(), unresolved: HashSet::new() };
+    let mut scope = Scope { tables: HashMap::new(), document, failed, failed_keys, header_failed, used: HashMap::new(), unresolved: HashSet::new() };
     let mut used_documents: Vec<(&Name, &Document)> = Vec::new();
     let mut seen_documents = HashSet::new();
     for (line, found) in document.uses.iter().zip(used) {
@@ -126,7 +131,10 @@ pub(crate) fn validate(
             continue;
         }
         if scope.tables.contains_key(table.name.text.as_str()) || scope.used.contains_key(table.name.text.as_str()) {
-            diags.push(err(table.name.pos, "name.duplicate", format!("table '{}' is defined twice", table.name.text)));
+            // Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+            if !header_failed.get(index).copied().unwrap_or(false) {
+                diags.push(err(table.name.pos, "name.duplicate", format!("table '{}' is defined twice", table.name.text)));
+            }
             continue;
         }
         scope.tables.insert(table.name.text.as_str(), index);
@@ -357,6 +365,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
         }
         let target = self.scope.table(&key.table.text);
+        // Go는 표 줄이 실패한 target의 열, 개수, key와 type을 검사하지 않는다.
+        let failed_target = target.is_some_and(|t| t.header_failed);
         let mut parents = Vec::new();
         match &target {
             None => {
@@ -365,6 +375,7 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 }
                 complete = false;
             }
+            Some(_) if failed_target => {}
             Some(target) => {
                 for name in &key.references {
                     match target.column(&name.text) {
@@ -378,11 +389,11 @@ impl<'s, 'd> TableRules<'s, 'd> {
                 }
             }
         }
-        if key.columns.len() != key.references.len() {
+        if !failed_target && key.columns.len() != key.references.len() {
             self.report(key.name.pos, "foreign_key", "the foreign key lists a different number of columns and referenced columns");
             complete = false;
         }
-        if let (true, Some(target)) = (complete, &target) {
+        if let (true, Some(target), false) = (complete, &target, failed_target) {
             let references: Vec<&str> = key.references.iter().map(|n| n.text.as_str()).collect();
             let same = |names: &[Name]| names.iter().map(|n| n.text.as_str()).eq(references.iter().copied());
             let keyed = target.table.primary.first().is_some_and(|p| same(&p.columns)) || target.table.uniques.iter().any(|u| same(&u.columns));
@@ -913,6 +924,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
             return;
         };
+        // Go는 표 줄이 실패한 history table의 열을 검사하지 않는다.
+        if history.header_failed {
+            return;
+        }
         let history = history.table;
         if history.name.text == table.name.text {
             self.report(into.pos, "setting", "a table is not its own history table");
@@ -1009,6 +1024,10 @@ impl<'s, 'd> TableRules<'s, 'd> {
             }
             return;
         };
+        // Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다.
+        if record.header_failed {
+            return;
+        }
         if record.table.name.text == table.name.text {
             self.report(references.pos, "setting", "a table cannot record its audits in itself");
             return;

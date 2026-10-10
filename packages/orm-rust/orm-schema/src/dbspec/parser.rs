@@ -68,6 +68,8 @@ pub(crate) struct Parsed {
     pub unresolved: Vec<Vec<String>>,
     /// For each table, the key and index lines that failed.
     pub failed_keys: Vec<FailedKeys>,
+    /// 표마다, 표 줄이 실패했는지(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 있다). Go의 failed table이다.
+    pub header_failed: Vec<bool>,
     /// For each table, the `default` value tokens of its column lines that parsed.
     pub defaults: Vec<Vec<DefaultToken>>,
     pub diags: Vec<Diag>,
@@ -140,6 +142,8 @@ struct Parser {
     document: Document,
     unresolved: Vec<Vec<String>>,
     failed_keys: Vec<FailedKeys>,
+    header_failed: Vec<bool>,
+    table_header_failed: bool,
     defaults: Vec<Vec<DefaultToken>>,
     table_defaults: Vec<DefaultToken>,
     context: Context,
@@ -211,6 +215,8 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         },
         unresolved: Vec::new(),
         failed_keys: Vec::new(),
+        header_failed: Vec::new(),
+        table_header_failed: false,
         defaults: Vec::new(),
         table_defaults: Vec::new(),
         context: Context::Top,
@@ -240,7 +246,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         }
     }
     parser.finish();
-    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, defaults: parser.defaults, diags: parser.diags })
+    Ok(Parsed { document: parser.document, unresolved: parser.unresolved, failed_keys: parser.failed_keys, header_failed: parser.header_failed, defaults: parser.defaults, diags: parser.diags })
 }
 
 fn bare_cr(line: usize, column: usize) -> Diag {
@@ -519,6 +525,7 @@ impl Parser {
         }
         let comments = self.comments();
         let (name, brace) = self.block_header(cursor, keyword);
+        self.table_header_failed = brace.is_none();
         self.table_brace = brace;
         self.settings_brace = None;
         self.table = Some(Table {
@@ -552,6 +559,7 @@ impl Parser {
             self.document.tables.push(table);
             self.unresolved.push(std::mem::take(&mut self.table_unresolved));
             self.failed_keys.push(std::mem::take(&mut self.table_failed_keys));
+            self.header_failed.push(std::mem::take(&mut self.table_header_failed));
             self.defaults.push(std::mem::take(&mut self.table_defaults));
         }
         self.context = Context::Top;

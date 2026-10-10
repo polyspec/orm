@@ -841,22 +841,32 @@ static void open_table(parser *p)
     }
     const token *n = tok(p, 1);
     token name;
+    bool header_failed = false;
     if (n == NULL || !str_dotted(n->text)) {
         error(p, "syntax", p->line, n != NULL ? n->column : end_column(p), SL("expected a table name"));
         name = (token){SL(""), p->t.v[0].column};
+        header_failed = true;
     } else {
         name = *n;
         name_tok(p, &name);
     }
     if (expect_at(p, 2, "{")) {
-        end_at(p, 3);
+        if (!end_at(p, 3)) {
+            header_failed = true;
+        }
+    } else {
+        header_failed = true;
     }
     table *t = table_new(name.text);
     t->comments = take_comments(p);
+    t->header_failed = header_failed;
     PUSH(p->doc->tables, t);
     if (name.text.n > 0) {
         if (smap_has(&p->tables, name.text)) {
-            error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is already defined or used", name.text));
+            /* Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table). */
+            if (!header_failed) {
+                error(p, "name.duplicate", p->line, name.column, fmt("table `%S` is already defined or used", name.text));
+            }
         } else {
             if (smap_has(&p->constraint_names, name.text)) {
                 /* Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리다. */
@@ -2764,6 +2774,10 @@ static void check_foreign_key_targets(parser *p)
             error(p, "foreign_key", r->line, r->target_at, fmt("foreign key `%S` references unknown table `%S`", f->name, f->table));
             continue;
         }
+        /* Go는 표 줄이 실패한 target의 열, 짝과 type을 검사하지 않는다(validate.go의 foreignKey). */
+        if (target->table->header_failed) {
+            continue;
+        }
         bool known = r->known;
         for (size_t k = 0; k < r->parents.n; k++) {
             if (!smap_has(target->columns, r->parents.v[k].name)) {
@@ -2814,6 +2828,10 @@ static void check_audit_records(parser *p)
             continue;
         }
         table *record = entry->table;
+        /* Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord). */
+        if (record->header_failed) {
+            continue;
+        }
         if (record == r->audited) {
             error(p, "setting", r->line, refs->column, SL("a table cannot record its audits in itself"));
             continue;
@@ -2877,6 +2895,10 @@ static void check_audit_histories(parser *p)
         }
         table *history = entry->table;
         smap *hcols = entry->columns;
+        /* Go는 표 줄이 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit). */
+        if (history->header_failed) {
+            continue;
+        }
         if (history == r->audited) {
             error(p, "setting", r->line, history_tok->column, SL("an audited table is not its own history table"));
             continue;

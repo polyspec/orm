@@ -620,20 +620,30 @@ final class Parser
             $this->stop('limit', $this->line, $t[0][1], 'the document has more than ' . self::MAX_TABLES . ' tables');
         }
         $name = $t[1] ?? null;
+        // 표 줄이 실패했다(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 더 있다). Go의 failed table이다.
+        $headerFailed = false;
         if ($name === null || !self::isWord($name[0])) {
             $this->error('syntax', $this->line, $name[1] ?? $this->endColumn(), 'expected a table name');
             $name = ['', $t[0][1]];
+            $headerFailed = true;
         } else {
             $this->name($name);
         }
         if ($this->expectAt(2, '{')) {
-            $this->endAt(3);
+            if (!$this->endAt(3)) {
+                $headerFailed = true;
+            }
+        } else {
+            $headerFailed = true;
         }
         $table = new Table($name[0], $this->takeComments());
         $this->document->tables[] = $table;
         if ($name[0] !== '') {
             if (isset($this->tables[$name[0]])) {
-                $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
+                // Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table).
+                if (!$headerFailed) {
+                    $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is already defined or used");
+                }
             } else {
                 // Go은 표와 같은 이름의 제약을 제약의 자리에 보고한다(표가 뒤에 와도). 쓰는 문서의 제약은 표의 자리에 보고한다.
                 if (isset($this->constraintAt[$name[0]])) {
@@ -642,7 +652,7 @@ final class Parser
                 } elseif (isset($this->constraintNames[$name[0]])) {
                     $this->error('name.duplicate', $this->line, $name[1], "table `{$name[0]}` is named like an index, key, foreign key or check");
                 }
-                $this->tables[$name[0]] = ['table' => $table, 'columns' => []];
+                $this->tables[$name[0]] = ['table' => $table, 'columns' => [], 'headerFailed' => $headerFailed];
             }
         }
         $this->state = 'table';
@@ -1585,6 +1595,10 @@ final class Parser
             if ($target['table'] === null) {
                 continue;
             }
+            // Go는 표 줄이 실패한 target의 열, 짝과 type을 검사하지 않는다(validate.go의 foreignKey).
+            if ($target['headerFailed'] ?? false) {
+                continue;
+            }
             $targetColumns = $target['columns'];
             foreach ($parents as [$parent, $position]) {
                 if (!isset($targetColumns[$parent])) {
@@ -1677,6 +1691,10 @@ final class Parser
             if ($record === null) {
                 continue;
             }
+            // Go는 표 줄이 실패한 audit 기록 table의 key를 검사하지 않는다(settings.go의 auditRecord).
+            if ($entry['headerFailed'] ?? false) {
+                continue;
+            }
             if ($record === $audited) {
                 $this->error('setting', $line, $referencesToken[1], 'a table cannot record its audits in itself');
                 continue;
@@ -1730,6 +1748,10 @@ final class Parser
                 continue;
             }
             if ($entry['table'] === null) {
+                continue;
+            }
+            // Go는 표 줄이 실패한 history table의 열을 맞추어 보지 않는다(settings.go의 audit).
+            if ($entry['headerFailed'] ?? false) {
                 continue;
             }
             $history = $entry['table'];

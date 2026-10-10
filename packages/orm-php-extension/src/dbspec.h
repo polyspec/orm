@@ -257,6 +257,8 @@ typedef struct {
     checkv checks;
     settings *settings;
     strs closing;
+    /* 표 줄이 실패했다(이름이 없거나, `{`가 없거나, `{` 뒤에 말이 더 있다). Go의 failed table이다. */
+    bool header_failed;
 } table;
 
 typedef struct {
