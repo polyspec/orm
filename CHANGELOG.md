@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T61: the protocol has section 5, IR executors: a `markdown://` DSN selects an IR executor instead of a SQL dialect; the client validates each request with `ir.Validate` and sends `{ir_version, manifest_hash, request, params, now}`, and the control messages `begin`, `commit`, `rollback`, `savepoint`, `release` and `rollback_to` open, end and nest a session transaction. `docs/errors.yaml` has `WRITE_CONFLICT`, which the generated Go, PHP and Rust constants carry, and `docs/dialects.md` has the capability table of the markdown executor.
 - T68: the Korean checklist states the Python client in T58 with `명시한다`, a word the writing-style rule allows, so `make docs-rules-check` passes on main.
 - T57-1: the version check reads no version declaration of the root README, whose title names no version; the CI of the README change had failed on it.
 - `make release-consumer TAG=v0.0.7` passes on a machine with npm 12.2.0, PHP 8.5 and Composer 2.10.3, also the Composer project that the machine of the release could not install; the Makefile exports `npm_config_allow_remote=root` for `release-consumer` and `release-proof`, because npm 12 installs no URL dependency by default (T56).

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: f1dcc284ec4723f1b7f7e023405b60496d790ef7d1835fc033d9cf07bba9c48e -->
+<!-- source-sha256: b54b4d6cadc9f3e1537eed6334cfadc07e217d42db4fa9e7f682374c2776dda4 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -376,3 +376,38 @@ literal은 만나는 column의 값으로 읽어 canonical default 형식으로 �
 빠진 객체를 참조하는 객체도 보고하고 뺀다. 미지원 column 위의 index나 key, 빠진 table로 가는 foreign key, 미지원 column을 쓰는 check가 그렇다. introspect한 문서는 parse되며, parse가 거부한 줄의 객체는 그 diagnostic을 이유로 보고되고 빠진다. 문서가 parse될 때까지 반복한다. parse가 table을 거부하면 그 table은 모든 객체와 함께 빠지고, 같은 parse에서 거부된 그 table의 객체는 따로 보고하지 않는다. 각 객체는 한 번만 보고한다. catalog row가 column마다 하나인 foreign key도 그렇다.
 
 SQLite는 table 항목을 `CREATE TABLE` text에서 읽는다. column 정의는 renderer 형식, 곧 따옴표 친 이름, 선언 type, `NULL`이나 `NOT NULL`, 있으면 default일 때 읽는다. 다른 clause(`CHECK`, `REFERENCES`, `UNIQUE`, `COLLATE` 등)가 있는 column은 미지원이다. renderer 형식이 아닌 `CHECK`, `UNIQUE`, `FOREIGN KEY` 항목은 그 kind와 constraint 이름을 붙여 보고하며, 이름이 없으면 빈 이름이다. `UNIQUE` 항목이나 clause의 자동 index는 따로 보고하지 않는다. 다른 형식의 primary key 항목과 그 밖의 항목은 table을 빼게 한다.
+
+## Markdown IR executor
+
+DSN scheme `markdown://`은 SQL dialect 대신 flowmark IR executor를 고른다([protocol](protocol.ko.md#_5-ir-executors)). executor는 SQL text를 만들지 않으므로, 이 client의 각 표면은 여기 적은 규칙으로 지원되거나, 그 행의 코드로 거부된다. 판정은 같은 표면에 대한 flowmark capability 표의 것이다.
+
+| 표면 | 결과 | 규칙 |
+|---|---|---|
+| `one`, `all`, `count`, `group_count`, `sum`, `avg` | 지원 | 행은 메모리 안의 corpus에서 읽는다. `group_count`는 NULL을 한 그룹으로 묶는다 |
+| 정렬 | 지원 | IR `order`는 column의 type으로 정렬한다. 정렬이 없는 읽기는 저장 순서를 돌려준다 |
+| `paginate` | 지원 | 요청 하나는 일관된 corpus 하나를 읽는다 |
+| `insert` (한 행과 여러 행) | 지원 | `identity`, `key_prefix`, `order` column은 executor가 정하며 생략할 수 있다. 기본값은 명시해 쓴다 |
+| `update` | 지원 | 읽은 뒤 대상이 바뀌었으면 `WRITE_CONFLICT`로 실패하며, 덮어쓰지 않는다 |
+| `delete`, `restore` | 지원 | `restore`는 soft delete column을 비우고, row가 삭제된 동안 unique key를 유지한다. 참조되는 row의 삭제는 `FOREIGN_KEY`다 |
+| `optimistic` | 지원 | 맞는 row가 없으면 `OPTIMISTIC_LOCK`이다 |
+| `on_duplicate` | 지원 | 충돌 대상은 임의의 unique key다(MySQL 규칙). unique key가 여럿인 table에서는 PostgreSQL과 SQLite의 대상 규칙과 다르다 |
+| `lock` `update`, `share` | 지원 | 무동작으로 받아들인다. server 트랜잭션이 이미 corpus lock을 잡고 있다 |
+| `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` | |
+| 관계(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | 지원 | executor가 조립한다 |
+| 부분 질의(`tuple_in`, `tuple_not_in`, scalar `Sub` 집계) | 지원 | |
+| `now`, `default now`, `updated`, `soft_delete` | 지원 | 요청의 `now`다([clock](protocol.ko.md#_2-plan)) |
+| codec column | 지원 | SQL과 같이 클라이언트가 적용한다([protocol](protocol.ko.md#_5-ir-executors)) |
+| index | 지원 | 허용하고 메모리 안에서 파생한다 |
+| `select explicit`, `entity`, `navigation` | 지원 | 클라이언트 쪽이며 저장소에 영향이 없다 |
+| `aes`, `aes_version`, `blind_index` | `SCHEMA_INVALID` | executor가 corpus catalog를 읽을 때 거부한다. key는 클라이언트를 떠나지 않는다 |
+| `audit`, `immutable` setting | `SCHEMA_INVALID` | executor가 corpus catalog를 읽을 때 거부한다. 대신 `state_machine … history`를 쓴다 |
+| 트랜잭션 | 지원 | 세션 위에서 `begin`부터 `commit` 또는 `rollback`까지다. `readOnly`는 지키고 lock을 잡는다 |
+| savepoint | 지원 | 중첩된 단계다 |
+| `orderByRandom` | 지원 | 순서를 seed로 정하지 않는다 |
+| audit 값이 있는 트랜잭션 | `CAPABILITY_UNSUPPORTED` | |
+| `isolation`, `timeoutMs` 옵션 | `CAPABILITY_UNSUPPORTED` | |
+| `getQuery()`, statement event, `subscribe()` | `CAPABILITY_UNSUPPORTED` | SQL text가 없다 |
+| `force_index` | `CAPABILITY_UNSUPPORTED` | index는 이름이 아니라 파생된다 |
+| `fulltext`, `Lb` 연산자 | `OPERATOR_NOT_ALLOWED` | |
+| lock, local 설정, 권한, AES 회전 유틸리티 | `CAPABILITY_UNSUPPORTED` | |
+| schema 설치, dbplan 체인 | `CAPABILITY_UNSUPPORTED` | `flowmark install`이 corpus를 만든다. schema 변경은 flowmark 이전 규칙을 따른다 |

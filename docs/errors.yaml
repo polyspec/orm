@@ -51,6 +51,8 @@ codes:
     origin: executor
   - code: OPTIMISTIC_LOCK         # updateOptimistic matched no row (updated_ts changed)
     origin: executor
+  - code: WRITE_CONFLICT          # a target changed since it was read; names the file and line; the client never retries it
+    origin: executor
   - code: CODEC_DECODE            # styled column bytes could not be decoded (docs/codec.md)
     origin: executor
   - code: CODEC_ENCODE           # a styled input cannot be encoded, including SQL NULL for a non-null column
@@ -59,7 +61,7 @@ codes:
     origin: executor
   - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
     origin: executor
-  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout)
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
     origin: executor
   - code: ROLLBACK                # a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
     origin: executor

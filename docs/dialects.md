@@ -381,3 +381,38 @@ Each unsupported object is reported with its kind, its table and name where it h
 An object that refers to a left-out object is reported and left out too: an index or a key on an unsupported column, a foreign key to a table that is left out, a check that names an unsupported column. The introspected document is parsed, and each object on a line that the parse rejects is reported with the diagnostic as its reason and left out, until the document parses. When the parse rejects a table, the table is left out with all its objects, and objects of that table rejected by the same parse are not reported apart from it. Each object is reported once, also a foreign key whose catalog rows are one per column.
 
 SQLite reads table items from the `CREATE TABLE` text. A column definition is read when it is the renderer form: the quoted name, the declared type, `NULL` or `NOT NULL`, and the default if there is one; a column with any other clause (`CHECK`, `REFERENCES`, `UNIQUE`, `COLLATE`, …) is unsupported. A `CHECK`, `UNIQUE` or `FOREIGN KEY` item that is not the renderer form is reported with that kind and its constraint name, an empty name when it has none; the automatic index of a `UNIQUE` item or clause is not reported apart from it. A primary key item of another form, and any other item, leave the table out.
+
+## Markdown IR executor
+
+The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL dialect ([protocol](protocol.md#_5-ir-executors)). The executor builds no SQL text, so each surface of the client is either supported, with the rule stated here, or rejected with the code of its row. The rulings are those of the flowmark capability table for the same surfaces.
+
+| Surface | Result | Rule |
+|---|---|---|
+| `one`, `all`, `count`, `group_count`, `sum`, `avg` | supported | rows are read from the in-memory corpus; `group_count` groups NULLs together |
+| ordering | supported | an IR `order` sorts by the column's type; a read without one returns storage order |
+| `paginate` | supported | one request reads one consistent corpus |
+| `insert` (single and multi-row) | supported | `identity`, `key_prefix` and `order` columns are executor-assigned and may be omitted; defaults are written explicitly |
+| `update` | supported | a target changed since it was read fails with `WRITE_CONFLICT`, never an overwrite |
+| `delete`, `restore` | supported | `restore` clears the soft delete column and holds unique keys while the row is deleted; deleting a referenced row is `FOREIGN_KEY` |
+| `optimistic` | supported | no match is `OPTIMISTIC_LOCK` |
+| `on_duplicate` | supported | the conflict target is any unique key (the MySQL rule); on a table with several unique keys this diverges from the PostgreSQL and SQLite target rule |
+| `lock` `update`, `share` | supported | accepted as no-ops: a server transaction already holds the corpus lock |
+| `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` | |
+| relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | supported | assembled by the executor |
+| subqueries (`tuple_in`, `tuple_not_in`, scalar `Sub` aggregates) | supported | |
+| `now`, `default now`, `updated`, `soft_delete` | supported | the request's `now` ([clock](protocol.md#_2-plan)) |
+| codec columns | supported | applied by the client, as for SQL ([protocol](protocol.md#_5-ir-executors)) |
+| indexes | supported | accepted and derived in memory |
+| `select explicit`, `entity`, `navigation` | supported | client-side; no storage effect |
+| `aes`, `aes_version`, `blind_index` | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; the key never leaves the client |
+| `audit`, `immutable` settings | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; use `state_machine … history` instead |
+| transactions | supported | `begin` to `commit` or `rollback` over the session; `readOnly` is honoured and takes the lock |
+| savepoints | supported | nested stages |
+| `orderByRandom` | supported | the order is not seeded |
+| a transaction with audit values | `CAPABILITY_UNSUPPORTED` | |
+| `isolation`, `timeoutMs` options | `CAPABILITY_UNSUPPORTED` | |
+| `getQuery()`, statement events, `subscribe()` | `CAPABILITY_UNSUPPORTED` | there is no SQL text |
+| `force_index` | `CAPABILITY_UNSUPPORTED` | indexes are derived, not named |
+| `fulltext`, the `Lb` operator | `OPERATOR_NOT_ALLOWED` | |
+| lock, local-setting, privilege and AES-rotation utilities | `CAPABILITY_UNSUPPORTED` | |
+| schema install, dbplan chains | `CAPABILITY_UNSUPPORTED` | `flowmark install` creates a corpus; schema evolution follows the flowmark migration rules |

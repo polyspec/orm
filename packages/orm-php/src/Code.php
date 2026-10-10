@@ -49,6 +49,8 @@ final class Code
     public const COLUMN_UNSELECTED = 'COLUMN_UNSELECTED';
     /** executor: updateOptimistic matched no row (updated_ts changed) */
     public const OPTIMISTIC_LOCK = 'OPTIMISTIC_LOCK';
+    /** executor: a target changed since it was read; names the file and line; the client never retries it */
+    public const WRITE_CONFLICT = 'WRITE_CONFLICT';
     /** executor: styled column bytes could not be decoded (docs/codec.md) */
     public const CODEC_DECODE = 'CODEC_DECODE';
     /** executor: a styled input cannot be encoded, including SQL NULL for a non-null column */
@@ -57,7 +59,7 @@ final class Code
     public const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
     /** executor: missing secret, bad DSN/paths, transaction misuse */
     public const CONFIG = 'CONFIG';
-    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout) */
+    /** executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too */
     public const CANCELED = 'CANCELED';
     /** executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors */
     public const ROLLBACK = 'ROLLBACK';

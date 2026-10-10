@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 8b8c895953e2fa2c1b7b5c931d841c464d0813b1b83ced6e66442a8178733b66 -->
+<!-- source-sha256: 2dae2239fe80e015e9e33b20bb82826c0c8164a2f5e3118847e5e1fe606f96ec -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -184,3 +184,17 @@ generated code는 document set의 manifest text와 `manifestHash`를 가진다. 
 한 프로세스는 여러 document set의 generated code를 읽을 수 있고, 연결 하나가 그중 여러 set을 처리할 수 있다. 연결은 자기에게 등록된 set으로만 요청을 계획한다. 요청이 실행될 수 있는 대상은 프로세스가 읽은 code가 아니라 연결이 쓰는 데이터베이스가 정하기 때문이다. set은 세 방법으로 연결에 등록된다. `utils().schema().register(schema)`는 set을 연결에 등록한다. generated code의 connect helper(Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript generated module의 `connect(dsn, options)`)는 연결을 열고 `connectSchema`(Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`)로 같은 방법으로 자기 set을 등록한다. `utils().schema().install(schema)`는 set의 테이블을 만들고 데이터베이스를 확인한 뒤 같은 연결에 그 set을 등록한다. 셋 다 generated schema 값, 곧 manifest text와 선언한 `manifestHash`(Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`)를 받고, text가 선언한 hash로 hash되지 않으면 어떤 statement보다 먼저 `CONFIG`로 실패한다. 등록은 외부 문서를 쓰는 set도 데이터베이스를 읽거나 쓰지 않는다. 데이터베이스는 연결마다가 아니라 set을 설치하거나 올릴 때(`install`, `addTablesAndColumns`) 확인하므로, 요청마다 연 연결은 statement 없이 set을 등록한다([schema](schema.ko.md#_6-schema-registration)). raw 연결(클라이언트의 `connect(dsn, …)`)은 set을 등록하지 않고, generated code를 읽는 것도 연결에 아무것도 등록하지 않는다. 연결에 등록되지 않은 manifest의 요청은 같은 형태의 plan이 캐시되어 있어도 실행 전에 `SCHEMA_HASH_MISMATCH`로 실패하고, manifest text가 선언한 `manifestHash`로 hash되지 않는 generated code의 요청도 그렇다. 다른 등록 호출은 없다. 모든 클라이언트가 이 규칙을 따른다.
 
 네 플래너는 같은 요청에서 같은 SQL과 bind slot을 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 같은 벡터를 네 클라이언트로 실행하고 문장, bind, 결과를 기록된 기대값과 비교한다.
+
+## 5. IR executors
+
+DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://` scheme은 flowmark executor를 고르며, 이 executor는 flowmark server가 제공하는 markdown corpus에서 요청을 실행한다([capability 표](dialects.ko.md#markdown-ir-executor)). 4절은 SQL dialect에만 적용된다.
+
+- **검증.** 클라이언트는 요청마다 `ir.Validate`로 요청을 검증하고 계획하지 않는다. SQL을 보내지 않고 plan을 읽지도 않는다. 요청을 계획하고 실행하는 것은 executor다.
+- **메시지.** 요청마다 메시지 하나 `{ir_version, manifest_hash, request, params, now}`를 executor에 전한다. `request`는 1절의 요청이며 필드와 값(매개변수 index)이 같다. `manifest_hash`는 1절대로 확인하고, `now`는 2절의 요청 시각을 `datetime` text 형식으로 적는다.
+- **매개변수.** `params`는 runtime value model JSON을 쓴다. decimal은 문자열, bytes는 base64, datetime은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff`다.
+- **Codec.** 클라이언트가 SQL과 같이 codec 단계를 직접 적용한다. 쓰기의 값은 보내기 전에 인코딩하고, 읽기의 값은 받은 뒤에 디코딩한다.
+- **읽기.** 읽기는 요청 형태에 맞게 조립된 row를 돌려준다. 조인, 관계, `key_by`, `flatten`은 1.2절이 정의한 대로다.
+- **쓰기.** 쓰기는 `{affected, keys}`를 돌려준다. `keys`는 삽입한 row마다 그 primary key를 삽입 순서대로 담는다.
+- **오류.** 실패한 메시지는 [errors.yaml](errors.yaml)의 코드 하나를 가진 오류 하나를 돌려준다. hash가 다르면 `SCHEMA_HASH_MISMATCH`다. 읽은 뒤 대상이 바뀐 쓰기는 `WRITE_CONFLICT`이며, 파일과 줄을 적는다. 클라이언트는 이를 재시도하지 않는다. 끝난 lock 대기는 `CANCELED`다.
+- **세션.** 연결 하나가 세션이다. 제어 메시지 `{op: begin | commit | rollback | savepoint | release | rollback_to, name?}`가 트랜잭션을 시작하고, 끝내고, 중첩한다. `name`은 `savepoint`, `release`, `rollback_to`가 가리키는 savepoint의 이름이다. 제어 메시지마다 `{ok}` 또는 오류를 돌려준다.
+- **executor가 정하는 column.** `identity`, `key_prefix`, `order` column은 executor가 값을 정하므로 insert에서 생략할 수 있다. 1.4절은 planner가 정하는 column을 정의하며, 이 column들은 executor가 정한다.
