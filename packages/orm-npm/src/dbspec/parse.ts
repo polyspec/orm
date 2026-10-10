@@ -638,6 +638,13 @@ class DocumentParser {
     this.report(rule, tok.line, tok.s, message);
   }
 
+  /** 구문 오류가 난 줄은 mark 뒤의 구문 오류만 남긴다(Go는 구문이 맞는 줄에서만 이름과 type을 검사한다). */
+  private keepSyntaxSince(mark: number): void {
+    const later = this.diagnostics.slice(mark).filter(d => d.rule === 'syntax');
+    this.diagnostics.length = mark;
+    this.diagnostics.push(...later);
+  }
+
   /** 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
   private unclosed(tok: Tk, message: string): void {
     this.diagnostics.push({ rule: 'syntax', line: tok.line, column: columnOf(this.lines[tok.line - 1] ?? '', tok.s), message });
@@ -753,9 +760,14 @@ class DocumentParser {
           else t.phase = 1;
           this.constraint(t, toks, line, own);
         } else {
+          const mark = this.diagnostics.length;
           this.column(t, toks, line, own);
+          // Go는 구문 오류가 난 column 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
           // Go의 markFailed와 failedLines: 구문 오류가 난 column 줄의 이름은 실패한 이름이다.
-          if (this.syntaxLine === line) this.failColumnLine(t, first);
+          if (this.syntaxLine === line) {
+            this.keepSyntaxSince(mark);
+            this.failColumnLine(t, first);
+          }
           // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). limit으로 멈춘 줄도 아니다.
           else if (t.phase > 0 && !this.stopped) this.at('order', first, 'columns come before keys, indexes, foreign keys, checks and settings');
         }

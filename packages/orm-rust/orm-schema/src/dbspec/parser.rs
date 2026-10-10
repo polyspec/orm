@@ -632,7 +632,8 @@ impl Parser {
             self.close_table();
             return;
         }
-        if self.unclosed(tokens) {
+        // 표 block 안의 `table` 줄은 Go처럼 열 줄이다(block을 열지 않는다). 그 줄의 구문 오류는 열 줄의 구문으로 본다.
+        if !tokens[0].is("table") && self.unclosed(tokens) {
             return;
         }
         let first = &tokens[0];
@@ -679,6 +680,11 @@ impl Parser {
         let before = self.diags.len();
         self.column_line(cursor);
         let syntax = self.diags[before..].iter().any(|d| d.rule == "syntax");
+        // Go는 구문 오류가 난 줄의 이름과 type 검사를 하지 않는다: 이 줄에서는 구문 오류만 남긴다.
+        if syntax {
+            let later = self.diags.split_off(before);
+            self.diags.extend(later.into_iter().filter(|d| d.rule == "syntax"));
+        }
         if self.table_phase > 0 && !syntax && !self.stopped {
             self.report(err(first.pos, "order", "table lines are columns, then key, index, foreign key and check lines, then settings"));
         }

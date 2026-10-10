@@ -617,7 +617,6 @@ invalid('diagrams', [
 
 // columns count code points, and inputs are strings
 invalid('columns count code points', ['dbspec 1 shop', 'table t {', '  id i64 identity', "  name varchar(1) default '\u{1F600}\u{1F600}' x", '  primary key (id)', '}'], [
-  ['column', 4, 27],
   ['syntax', 4, 32],
 ]);
 invalid('foreign key actions in grammar order', [

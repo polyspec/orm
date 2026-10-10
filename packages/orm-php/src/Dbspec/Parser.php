@@ -722,8 +722,10 @@ final class Parser
                 $this->state = 'settings';
                 return;
         }
+        $mark = count($this->diagnostics);
         $this->columnLine();
         if (isset($this->syntaxLines[$this->line])) {
+            $this->keepSyntaxSince($mark);
             $this->failColumnLine($first[0]);
         } elseif ($this->tablePhase > 0) {
             // Go는 column 줄이 구문에 맞을 때만 order를 보고한다(columnLine의 c.done 뒤). 구문 오류가 난 줄은 syntax만 낸다.
@@ -2545,6 +2547,18 @@ final class Parser
     private function endColumn(): int
     {
         return mb_strlen($this->text, 'UTF-8') + 1;
+    }
+
+    /**
+     * 구문 오류가 난 column 줄은 Go처럼 구문 오류만 남긴다: 이름과 type 검사는 줄이 구문에 맞을 때만 한다.
+     */
+    private function keepSyntaxSince(int $mark): void
+    {
+        $later = array_slice($this->diagnostics, $mark);
+        $this->diagnostics = array_merge(
+            array_slice($this->diagnostics, 0, $mark),
+            array_values(array_filter($later, static fn(array $d): bool => $d[0] === 'syntax')),
+        );
     }
 
     /**

@@ -758,6 +758,7 @@
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::inKeyOrCheck": "private function inKeyOrCheck(string $column, array $checkColumns): bool",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::isNumber": "private static function isNumber(string $token): bool",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::isWord": "public static function isWord(string $token): bool",
+  "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::keepSyntaxSince": "private function keepSyntaxSince(int $mark): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::keyLine": "private function keyLine(bool $index): void",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::lexLine": "private static function lexLine(string $text): array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::lexRecover": "private static function lexRecover(string $text): array",
