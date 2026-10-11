@@ -164,6 +164,10 @@ def _time_form(value, col_type: str, zone: str, precision: int):
     datetime은 connection 시간대로 바꾼다. 다른 값이면 None이다."""
     import datetime
     if isinstance(value, datetime.datetime):
+        if value.tzinfo is None:
+            # PyMySQL과 psycopg는 시간대 없는 datetime을 연결 시간대의 시각으로 준다. astimezone은 그 값을
+            # process의 지역 시각(TZ)으로 읽으므로, 연결 시간대를 붙인 뒤에 바꾼다.
+            value = value.replace(tzinfo=datetime.timezone(datetime.timedelta(minutes=_zone_offset(zone))))
         text = format_instant(value.astimezone(datetime.timezone.utc), zone)
         return text[:10] if col_type == 'date' else _time_form(text, col_type, zone, precision)
     if isinstance(value, datetime.date):
