@@ -27,6 +27,8 @@ type executor interface {
 	context() context.Context
 	stmt(ctx context.Context, sqlText string) (*sql.Stmt, error)
 	transaction() *txConn
+	// requestHook은 statement가 지나는 handle의 request hook이며 없으면 nil이다.
+	requestHook() RequestHook
 	// enter marks the start of a statement and returns its end; a
 	// transaction rejects concurrent use.
 	enter() (func(), error)
@@ -35,6 +37,7 @@ type executor interface {
 func (d *DB) base() *DB                { return d }
 func (d *DB) context() context.Context { return d.ctx }
 func (d *DB) transaction() *txConn     { return nil }
+func (d *DB) requestHook() RequestHook { return d.hook }
 func (d *DB) enter() (func(), error) {
 	if d.m.closed.Load() {
 		return nil, configErr("database is closed")
@@ -81,6 +84,7 @@ type txConn struct {
 
 func (t *txConn) base() *DB                { return t.db }
 func (t *txConn) context() context.Context { return t.ctx }
+func (t *txConn) requestHook() RequestHook { return t.db.hook }
 func (t *txConn) transaction() *txConn     { return t }
 
 func (t *txConn) enter() (func(), error) {
@@ -214,18 +218,26 @@ func innermost() *txConn {
 // txContext runs on an active transaction with the context of the connection
 // handle the model was connected to, so a handle from WithContext cancels
 // statements that run inside the transaction as well.
+// 같은 이유로 그 handle의 request hook도 싣는다.
 type txContext struct {
 	*txConn
-	ctx context.Context
+	ctx  context.Context
+	hook RequestHook
 }
 
 func (t txContext) context() context.Context { return t.ctx }
+func (t txContext) requestHook() RequestHook { return t.hook }
 
 func resolve(conn *DB) (executor, error) {
 	if conn != nil {
 		if t := activeFor(conn); t != nil {
+			ctx := t.ctx
 			if conn.ctx != t.ctx && conn.ctx != nil {
-				return txContext{txConn: t, ctx: conn.ctx}, nil
+				ctx = conn.ctx
+			}
+			// model이 연결된 handle의 hook을 쓴다. transaction을 시작한 handle과 hook이 모두 없으면 그대로다.
+			if ctx != t.ctx || conn.hook != nil || t.db.hook != nil {
+				return txContext{txConn: t, ctx: ctx, hook: conn.hook}, nil
 			}
 			return t, nil
 		}

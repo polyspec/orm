@@ -90,9 +90,11 @@ type DB struct {
 	sql *sql.DB
 	// md는 markdown:// 연결의 flowmark session pool이다. SQL 연결에서는 nil이고 sql이 그
 	// 자리다.
-	md       *mdPool
-	ctx      context.Context
-	root     *DB
+	md   *mdPool
+	ctx  context.Context
+	root *DB
+	// hook은 이 handle의 request hook이다. nil이면 request를 그대로 plan한다.
+	hook     RequestHook
 	m        *dbMutable
 	cfg      Config
 	driver   string
@@ -399,6 +401,24 @@ func (d *DB) WithContext(ctx context.Context) *DB {
 	}
 	handle := *d
 	handle.ctx = ctx
+	handle.root = d.Root()
+	return &handle
+}
+
+// RequestHook receives each request of a handle right before the client plans
+// it (docs/usage.md "Request hook"). It changes r in place; addParam appends a
+// value to the request parameters and returns its index. An error it returns
+// fails the operation unchanged before any statement.
+type RequestHook func(r *ir.Request, addParam func(value any) int) error
+
+// WithRequestHook returns a handle on the same connection whose hook receives
+// each request of the handle before planning. The handle shares the pool, the
+// caches, the subscribers and the active transactions, and keeps the context
+// of d; a handle carries one hook, so a hooked d gets the new hook. The client
+// plans the changed request as any other, so the planner validates it.
+func (d *DB) WithRequestHook(hook RequestHook) *DB {
+	handle := *d
+	handle.hook = hook
 	handle.root = d.Root()
 	return &handle
 }
