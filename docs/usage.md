@@ -402,6 +402,7 @@ The same statement produces the same result on all three databases, although sta
 | Check generated files | `git diff --exit-code` after the language generator runs |
 | Statement events | `subscribe` on the connection; every statement the client sends ([statement events](#statement-events)) |
 | Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
+| Change every request of a handle before planning | `withRequestHook` on the connection ([request hook](#request-hook)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
@@ -460,6 +461,27 @@ A program that compiles requests itself, such as a load that writes rows with th
 - A step that reads rows (it has an `assemble`) fails with `IR_INVALID` `execute runs a statement without rows; the statement is a read`, and a `param` slot past the parameters fails with `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`; neither sends a statement.
 - `execute` returns nothing. A load reads back what it needs with a model or a query.
 - The PHP extension `orm_dbspec` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both.
+
+### Request hook
+
+`withRequestHook` returns a handle on the same connection whose hook receives each request ([protocol](protocol.md#_1-request)) of the handle right before the client plans it. The hook may add predicates, assignments and parameters; the client gives the hook no meaning of its own.
+
+| Client | Handle | Hook |
+|---|---|---|
+| Go | `h := db.WithRequestHook(hook)` | `func(r *ir.Request, addParam func(value any) int) error` of `orm.RequestHook`, which changes `r` in place; `ir` is `github.com/polyspec/orm/engine/ir` |
+| PHP | `$h = $db->withRequestHook($hook)` | `\Closure(Polyspec\Orm\Request $r): void`, which changes `$r->ir` in place and adds a parameter with `$r->param($value)` |
+| Rust | `let h = db.with_request_hook(hook);` | `Fn(&mut polyspec_orm::ir::Request, &mut polyspec_orm::RequestParams) -> polyspec_orm::Result<()>`, which changes the request in place and adds a parameter with `params.add(value)` |
+| TypeScript | `const h = db.withRequestHook(hook)` | `(request: Request, addParam: (value: unknown) => number) => Request` of `RequestHook`, which returns the request to plan |
+| Python | `h = db.with_request_hook(hook)` | `Callable[[IRRequest, Callable[[object], int]], IRRequest]` of `RequestHook`, which returns the request to plan; `IRRequest` is of `polyspec.orm.ir` |
+
+- The handle shares everything of the connection: the pool (the PDO connection in PHP), the plan and statement caches, the statement event subscribers and the active transactions. It keeps the other properties of the handle it was derived from (the Go context, the TypeScript signal), and a handle derived from it with `WithContext` or `withSignal` keeps its hook. A handle carries one hook: `withRequestHook` on a hooked handle returns a handle with the new hook. `Root()` (Go) and `root()` (Python, TypeScript) return the connection.
+- The client calls the hook once for each request of a model terminal that runs through the handle: `one` and `all` reads, `count`, `group_count`, `sum` and `avg`, `paginate` (one call for its page and count statements), `insert` with one row or with `rows`, `update`, `delete`, soft delete, `restore`, an insert with `on_duplicate`, and `getQuery`. It also calls it for the requests the client builds for the model: the child deletes of a recursive delete and, in a transaction with audit values that began on the handle, the insert of the audit record. A relation whose child has its own connection runs through that connection. `execute`, the schema utilities and the other utilities send no request and do not call it.
+- The hook receives the request after the model built it and the means to add a parameter: `addParam(value)` appends value to the request parameters and returns its index. It may change the request in any way the protocol permits, such as a predicate in the `where` of the root, of a join or of a relation, an assignment in `set` with one more parameter in each item of `rows`, or an item of `on_duplicate`. The client then sets `n_params` to the number of parameters and plans the request as any other: the planner validates it, so a parameter index outside the parameters fails with `IR_INVALID` and an unknown column with `COLUMN_UNKNOWN`, before any statement. The plan cache keys on the request, never on values, so two requests that the hook changes alike share one plan whatever values it adds.
+- An error of the hook (thrown in PHP, Python and TypeScript, returned in Go and Rust) fails the operation unchanged, before any statement.
+- A model runs through the handle it is connected to; inside a transaction, a model without a connection runs through the handle that began the transaction. A row read or created through a hooked handle keeps that handle, so its later `update`, `delete` and `restore` pass the hook. A transaction that begins on a hooked handle keeps the hook for the models of its callback, and a model connected to another handle of the connection inside it runs with the hook of that handle.
+- A created row holds the values its caller assigned; a value the hook assigned is written but not read back into the row.
+- A handle without a hook plans each request as the model built it, without a copy or a call.
+- The shared cases `contracts/fixtures/request_hook.dbs` run in every client on SQLite: a predicate the hook adds filters a read, a count and a page; an assignment it adds is written by a single and a bulk insert; the update and the delete of a loaded row pass the hook; a parameter index outside the parameters fails with `IR_INVALID` before any statement; a handle without a hook reads every row.
 
 ## 11. Common errors
 
