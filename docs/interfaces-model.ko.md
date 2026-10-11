@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: c7e877f3372ee5b82bd11cba27c9deac84ecfc13c6fb6ee952bec7d276b1a5c2 -->
+<!-- source-sha256: 2d9989e8aa38a7f106f45b972cf2af64e8e3387cda6296a0bcc4e88681e0c1f5 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -113,6 +113,7 @@ classDiagram
         stats()
         subscribe()
         execute()
+        withRequestHook()
     }
     class TransactionFlow {
         List_TransactionFrame frames
