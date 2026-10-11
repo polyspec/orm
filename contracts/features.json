@@ -3744,7 +3744,12 @@
           "planner_rejects_relation_integer_varchar",
           "planner_rejects_upsert_primary_and_unique_key",
           "planner_rejects_upsert_unique_key_not_assigned",
-          "planner_rejects_upsert_without_a_key"
+          "planner_rejects_upsert_without_a_key",
+          "planner_order_nullable_column",
+          "planner_order_not_null_column",
+          "planner_order_nullable_column_function",
+          "planner_order_nullable_group_count",
+          "planner_order_nullable_limit_per_parent"
         ],
         "owners": {
           "go": {
@@ -3805,7 +3810,12 @@
                     "planner_rejects_relation_integer_varchar",
                     "planner_rejects_upsert_primary_and_unique_key",
                     "planner_rejects_upsert_unique_key_not_assigned",
-                    "planner_rejects_upsert_without_a_key"
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3852,7 +3862,12 @@
                     "planner_rejects_relation_integer_varchar": "TestCoveragePlannerRejectsRelationIntegerVarchar",
                     "planner_rejects_upsert_primary_and_unique_key": "TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey",
                     "planner_rejects_upsert_unique_key_not_assigned": "TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned",
-                    "planner_rejects_upsert_without_a_key": "TestCoveragePlannerRejectsUpsertWithoutAKey"
+                    "planner_rejects_upsert_without_a_key": "TestCoveragePlannerRejectsUpsertWithoutAKey",
+                    "planner_order_nullable_column": "TestCoveragePlannerOrderNullableColumn",
+                    "planner_order_not_null_column": "TestCoveragePlannerOrderNotNullColumn",
+                    "planner_order_nullable_column_function": "TestCoveragePlannerOrderNullableColumnFunction",
+                    "planner_order_nullable_group_count": "TestCoveragePlannerOrderNullableGroupCount",
+                    "planner_order_nullable_limit_per_parent": "TestCoveragePlannerOrderNullableLimitPerParent"
                   }
                 }
               ]
@@ -3916,7 +3931,12 @@
                     "planner_rejects_relation_integer_varchar",
                     "planner_rejects_upsert_primary_and_unique_key",
                     "planner_rejects_upsert_unique_key_not_assigned",
-                    "planner_rejects_upsert_without_a_key"
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent"
                   ]
                 }
               ]
@@ -3980,7 +4000,12 @@
                     "planner_rejects_relation_integer_varchar",
                     "planner_rejects_upsert_primary_and_unique_key",
                     "planner_rejects_upsert_unique_key_not_assigned",
-                    "planner_rejects_upsert_without_a_key"
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -4027,7 +4052,12 @@
                     "planner_rejects_relation_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_relation_integer_varchar",
                     "planner_rejects_upsert_primary_and_unique_key": "engine::coverage_planner::coverage_planner_rejects_upsert_primary_and_unique_key",
                     "planner_rejects_upsert_unique_key_not_assigned": "engine::coverage_planner::coverage_planner_rejects_upsert_unique_key_not_assigned",
-                    "planner_rejects_upsert_without_a_key": "engine::coverage_planner::coverage_planner_rejects_upsert_without_a_key"
+                    "planner_rejects_upsert_without_a_key": "engine::coverage_planner::coverage_planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column": "engine::coverage_planner::coverage_planner_order_nullable_column",
+                    "planner_order_not_null_column": "engine::coverage_planner::coverage_planner_order_not_null_column",
+                    "planner_order_nullable_column_function": "engine::coverage_planner::coverage_planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count": "engine::coverage_planner::coverage_planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent": "engine::coverage_planner::coverage_planner_order_nullable_limit_per_parent"
                   }
                 }
               ]
@@ -4091,7 +4121,12 @@
                     "planner_rejects_relation_integer_varchar",
                     "planner_rejects_upsert_primary_and_unique_key",
                     "planner_rejects_upsert_unique_key_not_assigned",
-                    "planner_rejects_upsert_without_a_key"
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent"
                   ]
                 }
               ]

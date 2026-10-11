@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T82: an order item sorts NULL before every value ascending and after every value descending on every database: PostgreSQL renders `ASC NULLS FIRST` and `DESC NULLS LAST` on an order expression that can be NULL (it sorted NULL last ascending), in the root order, `limit_per_parent` and `group_count`. The probes and the conformance vector are `T82-1`.
 - T88: write `affected` counts each written row once: an insert with `on_duplicate` is 1 in every client whether it inserted or updated (MySQL counted 2 for the update), and an update counts the rows it matched in every MySQL configuration (the Python client counted only changed rows and now asks for found rows). The conformance vector is `T88-1`.
 - T87: an insert with `on_duplicate` has exactly one key that can meet the inserted row (the primary key unless the insert leaves it out, and each unique key) and assigns every column of it, else `IR_INVALID` in every implementation; the planners' conflict target is that key, so MySQL, PostgreSQL and SQLite agree where MySQL used to update the row met on any unique key. The probes and the conformance vector are `T87-1`.
 - T96: the two columns of a column comparison, of a column `in`/`not_in` a subquery column, of a join's `left`/`right` and of each relation key pair must meet as dbspec check operands do, else `OPERATOR_NOT_ALLOWED` in every implementation (PostgreSQL refuses `integer = varchar`, MySQL coerces, SQLite compares by affinity); the conformance vector over the three databases is `T96-1`.

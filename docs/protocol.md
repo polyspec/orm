@@ -110,6 +110,8 @@ Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | 
 Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"column", "minus_p"}
 ```
 
+An order item sorts NULL before every value ascending and after every value descending: MySQL and SQLite do so natively, and PostgreSQL, which sorts NULL last ascending, renders `ASC NULLS FIRST` and `DESC NULLS LAST` on an order expression that can be NULL (a nullable column or a column function of one); a NOT NULL column keeps its btree order. This holds in the root order, in the `ROW_NUMBER()` order of `limit_per_parent` and in the `group_count` order.
+
 With `group_by`, an order item names a group column, a function of one, or `random`; any other column fails with `IR_INVALID` ("order by %s, which is not a group column"), because a group has no single value for it (MySQL 1055, PostgreSQL 42803, an arbitrary row on SQLite).
 
 `minus_p` never stores a negative value.

@@ -107,4 +107,9 @@ runCoverageCases($argv, [
     'planner_rejects_upsert_primary_and_unique_key' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_primary_and_unique_key'),
     'planner_rejects_upsert_unique_key_not_assigned' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_unique_key_not_assigned'),
     'planner_rejects_upsert_without_a_key' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_without_a_key'),
+    'planner_order_nullable_column' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_column'),
+    'planner_order_not_null_column' => fn() => plannerCase($root, $fixture, 'planner_order_not_null_column'),
+    'planner_order_nullable_column_function' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_column_function'),
+    'planner_order_nullable_group_count' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_group_count'),
+    'planner_order_nullable_limit_per_parent' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_limit_per_parent'),
 ]);

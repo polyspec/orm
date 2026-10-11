@@ -331,6 +331,15 @@ impl Dialect {
         }
     }
 
+    /// The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it.
+    pub fn nulls_order(self, desc: bool) -> &'static str {
+        match self {
+            Dialect::Postgres if desc => " NULLS LAST",
+            Dialect::Postgres => " NULLS FIRST",
+            _ => "",
+        }
+    }
+
     pub fn random(self) -> &'static str {
         match self {
             Dialect::MySql => "RAND()",

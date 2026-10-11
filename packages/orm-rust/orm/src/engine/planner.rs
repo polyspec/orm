@@ -595,7 +595,9 @@ impl<'m> Planner<'m> {
                 Some(f) => self.column_function(s, &o.column, f)?,
                 None => self.qcol(s, &o.column),
             };
-            parts.push(format!("{col} {}", if o.desc { "DESC" } else { "ASC" }));
+            // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+            let nulls = if s.ent.field(&o.column).is_some_and(|f| f.nullable) { self.d.nulls_order(o.desc) } else { "" };
+            parts.push(format!("{col} {}{nulls}", if o.desc { "DESC" } else { "ASC" }));
         }
         Ok(format!(" ORDER BY {}", parts.join(", ")))
     }

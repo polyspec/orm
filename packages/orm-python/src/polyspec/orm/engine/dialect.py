@@ -117,6 +117,10 @@ class _Dialect:
     def random(self) -> str:
         return 'random()'
 
+    def nulls_order(self, desc: bool) -> str:
+        """The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it."""
+        return ''
+
     # restart_identity(table, column)은 dialect마다 정의한다: table의 identity column을 가장 큰 key
     # 다음 값에서 다시 시작하는 statement이며, 빈 table이면 다음 key는 1이다.
 
@@ -198,6 +202,9 @@ class PostgresDialect(_Dialect):
 
     name = 'postgres'
     insert_returning_id = True
+
+    def nulls_order(self, desc):
+        return ' NULLS LAST' if desc else ' NULLS FIRST'
 
     def quote(self, ident):
         return quote_with('"', ident)
