@@ -406,11 +406,11 @@ The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL d
 | `select explicit`, `entity`, `navigation` | supported | client-side; no storage effect |
 | `aes`, `aes_version`, `blind_index` | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; the key never leaves the client |
 | `audit`, `immutable` settings | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; use `state_machine … history` instead |
-| transactions | supported | `begin` to `commit` or `rollback` over the session; `readOnly` is honoured and takes the lock |
+| transactions | supported | `begin` to `commit` or `rollback` over the session; `readOnly` is sent as `read_only` on `begin`, takes the lock, and every write of the transaction is `READ_ONLY` |
 | savepoints | supported | nested stages |
 | `orderByRandom` | supported | the order is not seeded |
 | a transaction with audit values | `CAPABILITY_UNSUPPORTED` | |
-| `isolation`, `timeoutMs` options | `CAPABILITY_UNSUPPORTED` | |
+| `isolation`, `timeoutMs` options, the `statementTimeoutMs` setting | `CAPABILITY_UNSUPPORTED` | |
 | `getQuery()`, statement events, `subscribe()` | `CAPABILITY_UNSUPPORTED` | there is no SQL text |
 | `force_index` | `CAPABILITY_UNSUPPORTED` | indexes are derived, not named |
 | `fulltext`, the `Lb` operator | `OPERATOR_NOT_ALLOWED` | |

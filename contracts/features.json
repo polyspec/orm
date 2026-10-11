@@ -89,14 +89,25 @@
         "packages/orm-php/tests/mysql_tls.php",
         "packages/orm-rust/orm/tests/mysql_tls.rs",
         "packages/orm-npm/tests/mysql_tls.mjs",
-        "tests/dsn/sqlite-paths.json"
+        "tests/dsn/sqlite-paths.json",
+        "packages/orm-go/orm/markdown_test.go"
       ],
       "docs": [
         "docs/config.md",
         "docs/usage.md",
-        "docs/errors.yaml"
+        "docs/errors.yaml",
+        "docs/protocol.md"
       ],
       "verification": [
+        {
+          "id": "markdown-session-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -run '^(TestParseMarkdownDSN|TestMarkdownSessionMessages|TestMarkdownConnectRefused|TestMarkdownRejectedSurfaces)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-go/orm/markdown_test.go",
+            "packages/orm-go/orm/markdown.go"
+          ]
+        },
         {
           "id": "dsn-go",
           "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -run 'ParseDSN|ConnectionsUseUTC|SQLiteFileNameIsThePath' -count=1",
@@ -3463,13 +3474,23 @@
         "engine/planner/restore_test.go",
         "packages/orm-python/tests/test_planner_fixture.py",
         "engine/ir/validate_test.go",
-        "packages/orm-python/tests/test_ir_validate.py"
+        "packages/orm-python/tests/test_ir_validate.py",
+        "engine/ir/params_test.go"
       ],
       "docs": [
         "docs/protocol.md",
         "docs/dialects.md"
       ],
       "verification": [
+        {
+          "id": "param-uses-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./engine/ir -run '^TestParamUses$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "engine/ir/params_test.go",
+            "engine/ir/params.go"
+          ]
+        },
         {
           "id": "planner-go-engine",
           "command": "node tests/go-test.mjs -v -timeout 0 ./engine -count=1",
@@ -5758,9 +5779,13 @@
         "packages/orm-go/model/coverage_helpers_test.go",
         "packages/orm-php/tests/coverage_cases.php",
         "packages/orm-rust/tests/tests/common/mod.rs",
-        "packages/orm-npm/tests/coverage_case.mjs"
+        "packages/orm-npm/tests/coverage_case.mjs",
+        "tests/markdown/cases.json",
+        "tests/markdown/corpus/dbspec/conformance.dbs",
+        "tests/markdown/flowmark.version"
       ],
       "tests": [
+        "packages/orm-go/markdownmodel/conformance_test.go",
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
@@ -5776,6 +5801,7 @@
       ],
       "docs": [
         "tests/conformance/README.md",
+        "tests/markdown/README.md",
         "docs/protocol.md"
       ],
       "verification": [
@@ -6305,6 +6331,18 @@
       ],
       "tests": [],
       "command": "node tests/run-long.mjs go-decimal-model -- sh -c 'cd packages/orm-go/decimalmodel && go generate ./ && git diff --exit-code -- .'"
+    },
+    {
+      "id": "go-markdown-model-generated",
+      "paths": [
+        "packages/orm-go/markdownmodel/generate.go",
+        "packages/orm-go/markdownmodel/logs.go",
+        "packages/orm-go/markdownmodel/orm.go",
+        "packages/orm-go/markdownmodel/people.go",
+        "packages/orm-go/markdownmodel/tasks.go"
+      ],
+      "tests": [],
+      "command": "node tests/run-long.mjs go-markdown-model -- sh -c 'cd packages/orm-go/markdownmodel && go generate ./ && git diff --exit-code -- .'"
     },
     {
       "id": "stmtdiff",

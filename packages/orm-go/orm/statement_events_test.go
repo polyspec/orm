@@ -149,13 +149,14 @@ func (r *eventRun) step(s eventStep) error {
 		return r.db.Utils().Schema().Install(r.schema)
 	case "fail_subscriber":
 		kind := s.Kind
-		r.stopFail = r.db.Subscribe(func(e orm.StatementEvent) error {
+		var err error
+		r.stopFail, err = r.db.Subscribe(func(e orm.StatementEvent) error {
 			if e.Kind == kind {
 				return errors.New("subscriber refused the event")
 			}
 			return nil
 		})
-		return nil
+		return err
 	case "stop_failing":
 		r.stopFail()
 		return nil
@@ -216,7 +217,9 @@ func runEventCases(t *testing.T, driver string, subtests bool) {
 				}
 			}
 			r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
-			r.stopRec = db.Subscribe(r.record)
+			if r.stopRec, err = db.Subscribe(r.record); err != nil {
+				t.Fatal(err)
+			}
 			for _, s := range c.Steps {
 				r.checked(s)
 			}
@@ -383,7 +386,9 @@ func TestStatementEventsServerTransactions(t *testing.T) {
 	first := probe()
 	cost := probe() - first
 	r := &eventRun{t: t, db: db, schema: s, ent: rowEntity("event_probe", s, "seq", "label"), numbers: map[int64]int64{}}
-	r.stopRec = db.Subscribe(r.record)
+	if r.stopRec, err = db.Subscribe(r.record); err != nil {
+		t.Fatal(err)
+	}
 	before := probe()
 	for _, name := range []string{"first", "second"} {
 		r.records = nil

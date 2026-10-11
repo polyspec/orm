@@ -92,7 +92,12 @@ func TestSchemaSetPostgres(t *testing.T) {
 }
 
 // counted는 db가 실행한 statement 수를 n에 센다.
-func counted(db *orm.DB, n *int) { db.Subscribe(func(orm.StatementEvent) error { *n++; return nil }) }
+func counted(t *testing.T, db *orm.DB, n *int) {
+	t.Helper()
+	if _, err := db.Subscribe(func(orm.StatementEvent) error { *n++; return nil }); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // schemaSetUnregistered는 연결에 등록되지 않은 set의 요청이 table이 있어도
 // 실행 전에 SCHEMA_HASH_MISMATCH로 실패하는지 확인한다. raw 연결은 아무 set도
@@ -105,7 +110,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	counted(raw, &rawRuns)
+	counted(t, raw, &rawRuns)
 	defer raw.Close()
 	if _, err := model.User().Connect(raw).GetCount(); orm.ErrorCode(err) != orm.CodeSchemaHashMismatch {
 		t.Fatalf("bench read on a raw connection = %v, want SCHEMA_HASH_MISMATCH", err)
@@ -114,7 +119,7 @@ func schemaSetUnregistered(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	counted(core, &coreRuns)
+	counted(t, core, &coreRuns)
 	defer core.Close()
 	installer, err := decimalmodel.Connect(dsn, orm.Config{})
 	if err != nil {
@@ -185,7 +190,7 @@ func schemaSetEditedManifest(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	counted(db, &runs)
+	counted(t, db, &runs)
 	defer db.Close()
 	if err := db.Utils().Schema().Install(edited); orm.ErrorCode(err) != orm.CodeConfig {
 		t.Fatalf("install of an edited manifest = %v, want CONFIG", err)
