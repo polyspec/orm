@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 69c7aba5af5bc1275dc612dbe56652cd1e60bc46fbaebbae13375e3cd07e4526 -->
+<!-- source-sha256: 7085cc1f11960996d42271ccf285cf8517615ba43de53445d37c49f37c34b10e -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -15,7 +15,7 @@
 
 ## release asset에서 설치
 
-0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`과 Python wheel `polyspec_orm-<version>-py3-none-any.whl`이 있다(`<package>-<language>-<version>.<ext>`, Python client release 참조). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
+0.0.x 동안 polyspec package는 GitHub로만, release asset과 tag로 배포한다. npm, Composer, Python package는 어떤 registry(npm, Packagist, PyPI)에도 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`과 Python wheel `polyspec_orm-<version>-py3-none-any.whl`이 있다(`<package>-<language>-<version>.<ext>`, Python client release 참조). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
 
 - npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 

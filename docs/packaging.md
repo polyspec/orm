@@ -14,7 +14,7 @@
 
 ## Installing from release assets
 
-Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
+In 0.0.x the polyspec packages are distributed through GitHub only, as release assets and tags: the npm, Composer and Python packages are on no registry (npm, Packagist, PyPI). Each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
