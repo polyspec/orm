@@ -1111,6 +1111,7 @@
         "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/identity_load.dbs",
         "contracts/fixtures/identity_load.json",
+        "contracts/fixtures/time_precision.dbs",
         "packages/orm-go/model/coverage_helpers_test.go",
         "packages/orm-php/tests/coverage_cases.php",
         "packages/orm-rust/tests/src/coverage_env.rs",
@@ -1156,7 +1157,8 @@
         "packages/orm-php/tests/identity_load_test.php",
         "packages/orm-npm/tests/identity-load.mjs",
         "packages/orm-python/tests/test_identity_load.py",
-        "packages/orm-rust/orm/tests/identity_load.rs"
+        "packages/orm-rust/orm/tests/identity_load.rs",
+        "packages/orm-go/orm/time_precision_test.go"
       ],
       "docs": [
         "docs/dsl.md",
@@ -1386,6 +1388,15 @@
             "packages/orm-npm/tests/identity-load.mjs",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "time-precision-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -run '^TestSQLiteTimePrecision$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-go/orm/time_precision_test.go",
+            "contracts/fixtures/time_precision.dbs"
           ]
         }
       ],
