@@ -63,6 +63,7 @@ final class Utils
     /** Takes a named lock that is released when the transaction ends. */
     public function lock(string $key): void
     {
+        $this->db->unsupportedOnMarkdown('lock');
         $frame = $this->active('lock');
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "lock key $key is invalid");
@@ -89,6 +90,7 @@ final class Utils
      */
     public function setLocal(string $key, string $value): void
     {
+        $this->db->unsupportedOnMarkdown('setLocal');
         $frame = $this->active('setLocal');
         if (!self::validKey($key)) {
             throw new OrmException(Code::CONFIG, "local key $key is invalid");
@@ -107,6 +109,7 @@ final class Utils
     /** A value set with setLocal(); NO_ROWS when it is missing. */
     public function local(string $key): string
     {
+        $this->db->unsupportedOnMarkdown('local');
         $frame = $this->active('local');
         return $frame->locals[$key] ?? throw new OrmException(Code::NO_ROWS, "local value $key is not set");
     }
@@ -171,6 +174,7 @@ final class SchemaUtils
      */
     public function install(Schema $schema): void
     {
+        $this->db->unsupportedOnMarkdown('schema install (flowmark install creates a corpus)');
         $schema->verify();
         $driver = $this->db->driver();
         $documents = $schema->documents();
@@ -247,6 +251,7 @@ final class SchemaUtils
      */
     public function addTablesAndColumns(Schema $schema): array
     {
+        $this->db->unsupportedOnMarkdown('addTablesAndColumns (schema evolution follows the flowmark migration rules)');
         $schema->verify();
         $driver = $this->db->driver();
         $documents = $schema->documents();
@@ -416,6 +421,7 @@ final class SchemaUtils
 
     private function bool(string $sql, array $args): bool
     {
+        $this->db->unsupportedOnMarkdown('schema inspection');
         return (bool) $this->u->read(StatementEvent::SCHEMA, [], $sql, $args);
     }
 
@@ -535,6 +541,7 @@ final class AesUtils
     /** @return array{table: string, keys: list<string>, version: string, columns: list<array{name: string, styles: list<string>}>} */
     private function spec(Model $model): array
     {
+        $this->db->unsupportedOnMarkdown('aes rotation');
         $meta = $model::meta();
         $columns = [];
         foreach ($meta['columns'] as $name => $col) {

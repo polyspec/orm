@@ -11,6 +11,7 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`) and `logs` (with an `identity` key) |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
 | `packages/orm-go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
+| `packages/orm-php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is `packages/orm-php/tests/markdown_conformance.php`, which reports each case as `markdown-conformance/<id>` |
 
 ## Run
 
@@ -20,8 +21,9 @@ make markdown-conformance-check
 ```
 
 `make install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
-`make markdown-conformance-check` passes that path as `FLOWMARK`. The runner reads the build information of
-`FLOWMARK` and fails unless its main module is `github.com/polyspec/flowmark` at the version of
+`make markdown-conformance-check` passes that path as `FLOWMARK` to the Go runner and then to the PHP runner, each on
+a server and a corpus of its own. Each runner reads the build information of `FLOWMARK` (the PHP runner with
+`go version -m`) and fails unless its main module is `github.com/polyspec/flowmark` at the version of
 `flowmark.version`; a missing or other build fails the run and is never skipped. A build of a flowmark checkout
 at the pinned revision carries the same version, so `make markdown-conformance-check FLOWMARK=<its path>` runs
 the cases on it.

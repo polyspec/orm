@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: fadecf85f11156908995aa61aee547ba0d880f0e63ca807d54dd81e48c4876ee -->
+<!-- source-sha256: 313785802b64df691b2eb4cf00fd85d69ceb417b2df866930012e4ca13114617 -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -12,6 +12,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key) |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
 | `packages/orm-go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
+| `packages/orm-php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/orm-php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
 
 ## 실행
 
@@ -21,7 +22,8 @@ make markdown-conformance-check
 ```
 
 `make install-flowmark`는 고정한 `flowmark`를 `.runtime/bin/flowmark`에 설치하고, `make markdown-conformance-check`는
-그 경로를 `FLOWMARK`로 넘긴다. 실행기는 `FLOWMARK`의 build 정보를 읽고, main module이 `flowmark.version` 판의
+그 경로를 `FLOWMARK`로 Go 실행기에, 그다음 PHP 실행기에 넘기며, 각 실행기는 자기 server와 corpus를 쓴다. 각 실행기는
+`FLOWMARK`의 build 정보를 읽고(PHP 실행기는 `go version -m`으로), main module이 `flowmark.version` 판의
 `github.com/polyspec/flowmark`가 아니면 실패한다. 없거나 다른 build는 실행을 실패시키며 건너뛰지 않는다. 고정한
 revision의 flowmark checkout을 build한 binary도 같은 판을 가지므로, `make markdown-conformance-check FLOWMARK=<그 경로>`가
 그 binary에서 case를 실행한다.
