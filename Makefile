@@ -909,17 +909,20 @@ conformance-check/run: lease-tool conformance-python-models
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
-# markdown-conformance-check는 tests/markdown/cases.json의 case를 Go client와 PHP client로 각자 FLOWMARK의 flowmark
-# server에서 실행한다(tests/markdown/README.md). FLOWMARK는 tests/markdown/flowmark.version이 고정한 build이며 make
+# markdown-conformance-check는 tests/markdown/cases.json의 case를 client마다 FLOWMARK의 flowmark server에서
+# 실행한다(tests/markdown/README.md). FLOWMARK는 tests/markdown/flowmark.version이 고정한 build이며 make
 # install-flowmark가 여기에 설치한다. test는 그 build 정보가 고정한 판이 아니면 실패하므로, 고정한 revision의 flowmark
 # checkout을 build한 binary는 FLOWMARK=<그 경로>로 줄 수 있다.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php install-flowmark
-markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php
+.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python install-flowmark
+markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php:
 	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
+# Python runner는 build 정보를 go version -m으로 읽는다.
+markdown-conformance-check/python: python-venv-check
+	FLOWMARK=$(FLOWMARK) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/markdown_conformance.py
 
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
