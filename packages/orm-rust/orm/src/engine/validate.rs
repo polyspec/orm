@@ -702,8 +702,25 @@ impl<'m> Validator<'m> {
             return Err(unknown_column(&ent.name, &s.column));
         }
         let q = &s.query;
-        if q.limit.is_some() || !q.relations.is_empty() || !q.lock.is_empty() || q.columns.is_some() {
+        // A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for
+        // several rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL
+        // 1235) and an aggregate take no limit.
+        let scalar_column = scalar && s.agg.is_empty();
+        if !q.relations.is_empty() || !q.lock.is_empty() || q.columns.is_some() || (q.limit.is_some() && !scalar_column) {
             return Err(err(codes::IR_INVALID, "subquery may not use limit, relations, lock or columns"));
+        }
+        if scalar_column {
+            if q.limit.as_ref().map_or(true, |l| l.count != 1) {
+                return Err(err(codes::IR_INVALID, "a scalar column subquery needs limit with count 1"));
+            }
+            if q.order.iter().any(|o| o.random) {
+                return Err(err(codes::IR_INVALID, "a scalar column subquery may not order by random"));
+            }
+            for pk in &ent.primary_key {
+                if !q.order.iter().any(|o| &o.column == pk && o.r#fn.is_none()) {
+                    return Err(err(codes::IR_INVALID, format!("a scalar column subquery needs an order that includes the primary key column {pk}")));
+                }
+            }
         }
         let scope = self.scopes(q);
         self.query(q, At { root: &scope, outer: Some(outer), node: &scope }, false, false)

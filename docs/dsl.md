@@ -160,7 +160,7 @@ Key   = [Operator] Column
 |---|---|
 | `addColumn<Col>()` | add one column |
 | `addColumn<Col>Alias<Name>(fn)` | add a column function of the column (section 10) with an output name |
-| `addColumn<Name>(fn)` | add a scalar subquery column; the callback receives the calling model and returns an unexecuted model |
+| `addColumn<Name>(fn)` | add a scalar subquery column; the callback receives the calling model and returns an unexecuted model; a scalar column subquery has `limit(0, 1)` and an order that includes every primary key column, else the request is `IR_INVALID` |
 | `removeColumn<Col>()` | remove one column |
 | `removeAllColumns()` | keep only primary and foreign keys |
 | `addAllColumns()` | select every column |

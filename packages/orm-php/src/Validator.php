@@ -969,8 +969,34 @@ final class Validator
         if ($column !== '' && RuntimeModel::column($ent, $column) === null) {
             throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$column");
         }
-        if (isset($q['limit']) || ($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])) {
+        // A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for several
+        // rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL 1235) and an
+        // aggregate take no limit.
+        $scalarColumn = $scalar && $agg === '';
+        if (($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns']) || (isset($q['limit']) && !$scalarColumn)) {
             throw self::err(Code::IR_INVALID, 'subquery may not use limit, relations, lock or columns');
+        }
+        if ($scalarColumn) {
+            if (!isset($q['limit']) || ($q['limit']['count'] ?? 0) !== 1) {
+                throw self::err(Code::IR_INVALID, 'a scalar column subquery needs limit with count 1');
+            }
+            $order = $q['order'] ?? [];
+            foreach ($order as $o) {
+                if (!empty($o['random'])) {
+                    throw self::err(Code::IR_INVALID, 'a scalar column subquery may not order by random');
+                }
+            }
+            foreach ($ent['pk'] as $pk) {
+                $found = false;
+                foreach ($order as $o) {
+                    if (($o['column'] ?? '') === $pk && !isset($o['fn'])) {
+                        $found = true;
+                    }
+                }
+                if (!$found) {
+                    throw self::err(Code::IR_INVALID, "a scalar column subquery needs an order that includes the primary key column $pk");
+                }
+            }
         }
         $scope = $this->scopes($q);
         $this->query($q, ['root' => $scope, 'outer' => $outer, 'node' => $scope], false, false);

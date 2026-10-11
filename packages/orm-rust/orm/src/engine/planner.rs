@@ -1020,6 +1020,13 @@ impl<'m> Planner<'m> {
             sb.push_str(" WHERE ");
             sb.push_str(&where_.join(" AND "));
         }
+        // A scalar column subquery is ordered and limited to one row, which the validator has checked.
+        if sub.agg.is_empty() {
+            if let Some(l) = &sub.query.limit {
+                sb.push_str(&self.render_order(root, &sub.query)?);
+                sb.push_str(&self.d.limit(l.offset, l.count));
+            }
+        }
         Ok(sb)
     }
 

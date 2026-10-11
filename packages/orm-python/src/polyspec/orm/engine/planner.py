@@ -783,6 +783,9 @@ class Planner:
         self._collect_join_where(b, root, where)
         if where:
             sql += f' WHERE {" AND ".join(where)}'
+        # A scalar column subquery is ordered and limited to one row, which the validator has checked.
+        if not agg and sub['query'].get('limit'):
+            sql += self._render_order(b, root, sub['query']) + self.d.limit(sub['query']['limit']['offset'], sub['query']['limit']['count'])
         return sql
 
     def _sub_type(self, sub: dict) -> str:

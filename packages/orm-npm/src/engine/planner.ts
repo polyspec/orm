@@ -672,6 +672,8 @@ export class Planner {
     if (sub.query.where && sub.query.where.items.length > 0) where.push(this.renderGroup(b, root, sub.query.where, true));
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
+    // A scalar column subquery is ordered and limited to one row, which the validator has checked.
+    if ((sub.agg ?? '') === '' && sub.query.limit) sql += this.renderOrder(b, root, sub.query) + this.d.limit(sub.query.limit.offset, sub.query.limit.count);
     return sql;
   }
 
