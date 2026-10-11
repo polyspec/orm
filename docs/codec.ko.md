@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 8e14758e12cb60ade003e287668cc179a35c4482dbc5c98f5c78a8253eaa083e -->
+<!-- source-sha256: 37947a0e7949ad565895c69245f12b070b21966d30c6ebc996ce7e2efb31bd72 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -92,7 +92,7 @@ PHP 배열은 순서 있는 맵이다. 키가 정확히 `0..n-1`인 배열은 �
 
 - 둘 이상의 저장 형태에서 디코딩되는 값은 왕복하지 않는다. 다시 인코딩하면 다른 바이트를 쓰므로, 읽기가 저장 셀이 ORM이 쓰는 것과 다르다는 사실을 감춘다.
 - 언어마다 trim이 지우는 문자 집합이 다르다(예를 들어 Go와 Python은 form feed를, PHP는 NUL을, JavaScript는 byte order mark를 지운다). 그래서 너그러운 읽기는 클라이언트마다 다른 셀을 받는다. 정확한 읽기만이 모든 클라이언트가 똑같이 구현하는 규칙이다.
-- MySQL에서 dialect는 `hex`를 SQL의 `UNHEX`로 디코딩하는데, `UNHEX`도 trim하지 않으며 공백이 있는 셀에는 값을 내지 않는다. 클라이언트의 정확한 디코딩은 PostgreSQL과 SQLite의 host 단계를 MySQL의 SQL 단계와 같게 한다.
+- 클라이언트가 모든 `hex` 셀을 디코딩하므로 이 규칙은 모든 데이터베이스에서 성립한다. MySQL `UNHEX`는 홀수 길이 text를 받고 공백이 있는 셀에 NULL을 내므로, 어떤 dialect도 `hex`를 SQL에서 읽지 않는다. MySQL dialect는 여전히 `hex`를 SQL의 `HEX()`로 쓰며, 이것은 클라이언트 인코더와 같은 대문자 text를 쓴다. 읽을 때는 PostgreSQL과 SQLite처럼 저장된 셀을 그대로 읽어 host 디코딩에 넘긴다.
 
 `hex`는 대문자 hex 숫자만 받는다. 모든 인코더와 MySQL `HEX()`가 대문자를 쓰므로 소문자는 `CODEC_DECODE`다. Go는 다른 클라이언트가 host 디코딩을 공개하듯(PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`) `orm.HostDecode(raw, styles, aesKey)`를 공개한다. `aes`가 없는 목록에는 key가 필요 없다.
 

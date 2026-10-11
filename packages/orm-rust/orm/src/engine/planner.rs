@@ -411,8 +411,13 @@ impl<'m> Planner<'m> {
         styles.iter().map(String::as_str).filter(|s| self.d.handles_style(s)).collect()
     }
 
+    /// 읽기에서 dialect가 SQL로 푸는 stage다. `client_styles`는 나머지를 executor에 남긴다.
+    fn read_sql_styles<'c>(&self, styles: &'c [String]) -> Vec<&'c str> {
+        styles.iter().map(String::as_str).filter(|s| self.d.decodes_style(s)).collect()
+    }
+
     fn client_styles(&self, styles: &[String]) -> Vec<String> {
-        styles.iter().filter(|s| !self.d.handles_style(s)).cloned().collect()
+        styles.iter().filter(|s| !self.d.decodes_style(s)).cloned().collect()
     }
 
     fn select_step(&self, steps: &mut Vec<Step>, q: &ir::Query, kind: &str, agg: &str, rc: Option<&RelCtx>) -> Result<usize> {
@@ -621,7 +626,7 @@ impl<'m> Planner<'m> {
         };
         for name in &s.q.group_by {
             let col = s.ent.field(name).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{name}", s.ent.name)))?;
-            let expr = self.d.read_expr(&self.qcol(s, name), col.ty, &self.sql_styles(&col.codec));
+            let expr = self.d.read_expr(&self.qcol(s, name), col.ty, &self.read_sql_styles(&col.codec));
             let out =
                 OutCol { name: name.clone(), column: name.clone(), typ: col.ty.name().into(), styles: self.client_styles(&col.codec), ..Default::default() };
             push(sb, expr, name, out, asm);
@@ -664,7 +669,7 @@ impl<'m> Planner<'m> {
                 OutKind::Column => {
                     let col = col.ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, c.column)))?;
                     styles = self.client_styles(&col.codec);
-                    self.d.read_expr(&self.qcol(s, &c.column), col.ty, &self.sql_styles(&col.codec))
+                    self.d.read_expr(&self.qcol(s, &c.column), col.ty, &self.read_sql_styles(&col.codec))
                 }
             };
             let out = format!("{}__{}", s.alias, c.name);

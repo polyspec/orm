@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:2aa65b472cb16a5ef6753c59322dae32d8f95b7fbcbaaa5520f0833944679925",
-    "php": "sha256:4d9673afdddc0c5622f32f76409494bac6f2b5d4d9d1e23675f8870a8448bea2",
-    "rust": "sha256:4d59de46bae0b4869c9693a108bdb9d30978742d7ea240b709c7463bc75ccaa9",
-    "typescript": "sha256:b503b121c74ac14be3fcb364c8580d35eb73309ebda173836321f38d3327c157",
-    "python": "sha256:e7147957fa113dc611a3ea2d7790ce472fe77c2627a818ae8a897553a7c20d23"
+    "go": "sha256:242a58924fa629dd19b517cfcb55868374c182d98904f45e5b7a2f39c2f31d7b",
+    "php": "sha256:550ab11cdd4f09bac0526f3662aecb1a93fae680d9a4b53e6659da5b7f1c4c69",
+    "rust": "sha256:83cc033297b47c3f8d9ec5d53890af2910529e6ff2908dd2720d23daa365a2ce",
+    "typescript": "sha256:468572c5633a330251766f310d0da266059f963121fdde2e45a88a9f6a9c48ad",
+    "python": "sha256:3ac7e38a3610b8c7ba1c2e50c32f321f21dd1ac0bb03cae221da5a4fd53f8b11"
   },
   "extensions": {
     "php-extension": {

@@ -88,7 +88,7 @@ A stored cell is the output of the encoder, so a read decodes a cell only in the
 
 - A value that decodes from more than one stored form does not round-trip: re-encoding it writes different bytes, so the read hides that the stored cell differs from what the ORM writes.
 - Each language's trimming removes a different set of characters (for example Go and Python strip a form feed, PHP strips NUL, and JavaScript strips a byte order mark), so a lenient read accepts different cells in different clients; an exact read is the one rule that every client implements alike.
-- On MySQL the dialect decodes `hex` in SQL with `UNHEX`, which does not trim either and yields no value for a cell with white space; an exact client decode keeps the host stage of PostgreSQL and SQLite equal to the SQL stage of MySQL.
+- The rule holds on every database because the client decodes every `hex` cell: MySQL `UNHEX` takes odd-length text and yields NULL for a cell with white space, so no dialect reads `hex` in SQL. The MySQL dialect still writes `hex` in SQL with `HEX()`, which writes the same upper-case text as the client encoder, and reads the cell as stored for the host decode, as PostgreSQL and SQLite do.
 
 `hex` is upper-case hex digits only: every encoder and MySQL `HEX()` write upper case, so a lower-case letter is `CODEC_DECODE`. Go exports the host decode as `orm.HostDecode(raw, styles, aesKey)`, as the other clients export theirs (PHP `Codec::hostDecode`, TypeScript `hostDecode`, Rust `codec::host_decode`, Python `host_decode`); a list without `aes` needs no key.
 

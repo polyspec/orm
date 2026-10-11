@@ -293,8 +293,12 @@ class Planner:
     def _sql_styles(self, stages) -> list:
         return [s for s in stages if self.d.handles_stage(s)]
 
+    def _read_sql_styles(self, stages) -> list:
+        """읽기에서 dialect가 SQL로 푸는 stage다. _client_styles는 나머지를 executor에 남긴다."""
+        return [s for s in stages if self.d.decodes_stage(s)]
+
     def _client_styles(self, stages) -> list:
-        return [s for s in stages if not self.d.handles_stage(s)]
+        return [s for s in stages if not self.d.decodes_stage(s)]
 
     def _select_step(self, add, steps, q: dict, kind: str, agg: str, rc) -> dict:
         b = _Builder(self.d)
@@ -463,7 +467,7 @@ class Planner:
             if col is None:
                 _fail('COLUMN_UNKNOWN', f'{s.ent.name}.{name}')
             out = f'{s.alias}__{name}'
-            parts.append(f'{self.d.read_expr(self._qcol(s, name), self._sql_styles(_styles(col)))} AS {self.d.quote(out)}')
+            parts.append(f'{self.d.read_expr(self._qcol(s, name), self._read_sql_styles(_styles(col)))} AS {self.d.quote(out)}')
             out_names.append(out)
             asm['columns'].append({'index': idx['n'], 'name': name, 'column': name,
                                    'type': col.type, 'styles': self._client_styles(_styles(col)),
@@ -496,7 +500,7 @@ class Planner:
                 type_ = self._sub_type(c['sub'])
             else:
                 expr = self.d.read_expr(self._qcol(s, c['column']),
-                                        self._sql_styles(_styles(col)))
+                                        self._read_sql_styles(_styles(col)))
                 col_styles = self._client_styles(_styles(col))
             out = f'{s.alias}__{c["name"]}'
             parts.append(f'{expr} AS {self.d.quote(out)}')

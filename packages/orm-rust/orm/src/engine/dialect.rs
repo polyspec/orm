@@ -112,11 +112,21 @@ impl Dialect {
         }
     }
 
-    /// codec stage를 SQL에서 적용하는지 판단한다. PostgreSQL의 `bytes` column은
+    /// 쓰기에서 codec stage를 SQL에서 적용하는지 판단한다. PostgreSQL의 `bytes` column은
     /// `bytea`라서 `ip`도 executor가 적용한다.
     pub fn handles_style(self, style: &str) -> bool {
         match self {
             Dialect::MySql => style == "hex" || style == "ip",
+            Dialect::Postgres | Dialect::Sqlite => false,
+        }
+    }
+
+    /// 읽기에서 codec stage를 SQL에서 푸는지 판단한다(MySQL: `ip`). `hex`는 어느 dialect도 SQL에서
+    /// 풀지 않는다: `UNHEX`는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 `host_decode`로
+    /// 정확히 읽는다(docs/codec.md).
+    pub fn decodes_style(self, style: &str) -> bool {
+        match self {
+            Dialect::MySql => style == "ip",
             Dialect::Postgres | Dialect::Sqlite => false,
         }
     }
@@ -178,10 +188,8 @@ impl Dialect {
                     _ => col.to_owned(),
                 };
                 for s in styles.iter().rev() {
-                    match *s {
-                        "hex" => expr = format!("UNHEX({expr})"),
-                        "ip" => expr = format!("INET6_NTOA({expr})"),
-                        _ => {}
+                    if *s == "ip" {
+                        expr = format!("INET6_NTOA({expr})");
                     }
                 }
                 expr

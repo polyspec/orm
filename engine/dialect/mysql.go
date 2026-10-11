@@ -39,6 +39,8 @@ func (MySQL) RowLock(mode string) (string, bool) {
 // hex and ip remain SQL-side because they do not depend on a secret.
 func (MySQL) HandlesStyle(s string) bool { return s == "hex" || s == "ip" }
 
+func (MySQL) DecodesStyle(s string) bool { return s == "ip" }
+
 func (MySQL) Like(col, ph string) string { return col + " LIKE " + ph }
 
 func (MySQL) RowNumber(partition, orderBy string) string {
@@ -58,10 +60,7 @@ func (MySQL) Upsert(_ []string, assigns string) string {
 func (MySQL) ReadExpr(col string, styles []string, ph func() string) (string, int) {
 	expr, binds := col, 0
 	for i := len(styles) - 1; i >= 0; i-- {
-		switch styles[i] {
-		case "hex":
-			expr = "UNHEX(" + expr + ")"
-		case "ip":
+		if styles[i] == "ip" {
 			expr = "INET6_NTOA(" + expr + ")"
 		}
 	}
