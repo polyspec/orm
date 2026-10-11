@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eeb8f234ee0ab57e55f00a04cb232dc5bdce1fc43fe482298bc806ff9f5c2c76 -->
+<!-- source-sha256: 4b82a497405f1da2c69177a3e598a06e96d3b6a0809aec16206018621280d39b -->
 # 변경 이력
 
 ## Unreleased
+- T78-1: client test lane의 검사 case(`scripts/check/continue.test.mjs`)가 손으로 적은 개수와 비교하지 않고 기대하는 명령을 `scripts/client-db-test.sh`의 PHP lane과 `scripts/typescript/sqlite-test.sh`에서 읽으므로, lane에 test file을 더해도 case가 깨지지 않는다. Python driver error test의 frame double은 `TxFrame.run`의 `faultable` 인자를 받고 SQLite row lock이 statement fault를 소비하지 않는지 확인한다.
 - T119: dbspec `store` setting이 non-null `date`나 `datetime` column에 시간 shard 절 `shard <column> year|month|day`를 받는다. 여섯 구현이 같게 parse, emit, 검사, hash하고 SQL backend는 무시하며, block table, self foreign key가 있는 table, `order`가 있는 table에서는 거부한다.
 - T78: 모든 client의 test entry point가 연결의 다음 statement를 주어진 code와 message로 실패하게 한다. Go `orm.FailNextStatement`, Rust `polyspec_orm::testing::fail_next_statement`, TypeScript testing subpath의 `failNextStatement`, PHP `Polyspec\Orm\Testing\Faults::failNextStatement`, Python `polyspec.orm.testing.fail_next_statement`다. statement는 보내지 않고, 클라이언트는 driver 오류가 가는 statement 종료 지점에서 그 code와 message의 `OrmException`(ORM 오류)으로 보고하며, fault는 그 statement가 소비한다. transaction 장치의 statement는 fault를 소비하지 않는다(protocol 3.2). PHP 확장을 포함한 모든 구현의 dbspec apply와 introspection은 `Db` 밖의 driver 연결 위에서 실행하며 fault를 소비하지 않는다(protocol 3.2).
 - T76: AGENTS가 설계 원칙을 적는다. 하위 호환은 유지하지 않고(오래된 경로는 호환 layer, fallback, migration 뒤에 남기지 않고 지운다), 현재 요구사항을 완전히 충족하는 가장 단순한 구현을 고르며 불확실한 미래를 위한 추상화, 설정, 간접 계층을 두지 않는다. component는 관심사를 분리한 module로 나누고, architecture는 장기적으로 정하며 임시방편을 받아들이지 않는다.
