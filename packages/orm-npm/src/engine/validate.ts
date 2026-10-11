@@ -400,7 +400,11 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (hasGroupBy(r) && r.kind !== 'count' && r.kind !== 'group_count') fail('IR_INVALID', `group_by is only valid on count or group_count, not ${r.kind}`);
   if (r.kind === 'insert' || r.kind === 'update' || r.kind === 'restore') {
     if ((r.set ?? []).length === 0 && r.kind !== 'restore') fail('IR_INVALID', `${r.kind} needs set[]`);
-    for (const a of r.set ?? []) v.assign(ent, r, a);
+    for (const a of r.set ?? []) {
+      v.assign(ent, r, a);
+      // A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
+      if (r.kind === 'insert' && (a.plus_p !== undefined || a.minus_p !== undefined)) fail('IR_INVALID', `insert cannot assign ${a.column} by plus or minus`);
+    }
   }
   if ((r.rows ?? []).length > 0) {
     if (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0) fail('IR_INVALID', 'rows are only valid on insert without on_duplicate');

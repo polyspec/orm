@@ -72,4 +72,8 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_group_by_subquery() { compileCase('planner_rejects_group_by_subquery'); },
   async planner_rejects_group_order_non_group_column() { compileCase('planner_rejects_group_order_non_group_column'); },
   async planner_rejects_nullable_key_by() { compileCase('planner_rejects_nullable_key_by'); },
+  async planner_insert_by_value() { compileCase('planner_insert_by_value'); },
+  async planner_insert_on_duplicate_plus() { compileCase('planner_insert_on_duplicate_plus'); },
+  async planner_rejects_insert_set_plus() { compileCase('planner_rejects_insert_set_plus'); },
+  async planner_rejects_insert_set_minus() { compileCase('planner_rejects_insert_set_minus'); },
 }, 60_000);

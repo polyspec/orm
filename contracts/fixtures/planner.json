@@ -2063,6 +2063,243 @@
         ]
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `service_region` (`service_seq`, `name`) VALUES (?, ?)",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES ($1, $2) RETURNING \"seq\"",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES (?, ?) RETURNING \"seq\"",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ]
+      },
+      "id": "planner_insert_by_value",
+      "input": {
+        "entity": "service_region",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 3,
+        "set": [
+          {
+            "column": "service_seq",
+            "p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
+            "sql": "INSERT INTO `service_region` (`service_seq`, `name`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `service_seq` = `service_region`.`service_seq` + ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
+            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES ($1, $2) ON CONFLICT (\"seq\") DO UPDATE SET \"service_seq\" = \"service_region\".\"service_seq\" + $3 RETURNING \"seq\"",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              }
+            ],
+            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES (?, ?) ON CONFLICT (\"seq\") DO UPDATE SET \"service_seq\" = \"service_region\".\"service_seq\" + ? RETURNING \"seq\"",
+            "tables": [
+              "service_region"
+            ]
+          }
+        ]
+      },
+      "id": "planner_insert_on_duplicate_plus",
+      "input": {
+        "entity": "service_region",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 3,
+        "on_duplicate": [
+          {
+            "column": "service_seq",
+            "plus_p": 2
+          }
+        ],
+        "set": [
+          {
+            "column": "service_seq",
+            "p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_insert_set_plus",
+      "input": {
+        "entity": "service_region",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 3,
+        "set": [
+          {
+            "column": "service_seq",
+            "plus_p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_insert_set_minus",
+      "input": {
+        "entity": "service_region",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 3,
+        "set": [
+          {
+            "column": "service_seq",
+            "minus_p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

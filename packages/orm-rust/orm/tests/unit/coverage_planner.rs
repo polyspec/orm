@@ -320,10 +320,10 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let object = members(
         input,
         at,
-        &["ir_version", "kind", "entity", "n_params", "columns", "limit", "order", "group_by", "where", "joins", "relations", "set", "optimistic", "agg"],
+        &["ir_version", "kind", "entity", "n_params", "columns", "limit", "order", "group_by", "where", "joins", "relations", "set", "on_duplicate", "optimistic", "agg"],
     );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "optimistic", "agg"] {
+    for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "optimistic", "agg"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -333,6 +333,7 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         query: query(&query_input, at),
         n_params: index(object.get("n_params").unwrap_or_else(|| panic!("input.n_params: expected a count")), "input.n_params"),
         set: object.get("set").map(|set| assigns(set, "input.set")).unwrap_or_default(),
+        on_duplicate: object.get("on_duplicate").map(|set| assigns(set, "input.on_duplicate")).unwrap_or_default(),
         agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);
@@ -604,4 +605,32 @@ fn coverage_planner_rejects_group_order_non_group_column() {
 fn coverage_planner_rejects_nullable_key_by() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_nullable_key_by");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_insert_by_value() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_insert_by_value");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_insert_on_duplicate_plus() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_insert_on_duplicate_plus");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_insert_set_plus() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_insert_set_plus");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_insert_set_minus() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_insert_set_minus");
 }

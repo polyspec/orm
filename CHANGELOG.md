@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T99: an `insert` assigns by `p` or `null`; `plus_p` and `minus_p` in its `set` are `IR_INVALID` in every implementation and stay valid in `on_duplicate` and `update` (MySQL read the default in a `VALUES` list, PostgreSQL and SQLite refused the statement).
 - T86: `key_by` names a non-null column of the child; a nullable column is `IR_INVALID` in every implementation, since a NULL collection key had a different answer by language.
 - T83: `group_by` is valid only on the root of `count` and `group_count`, and an order item under it names a group column, a function of one, or `random`; every other use is `IR_INVALID` in all implementations (MySQL and PostgreSQL refused the SQL the planner made for them, SQLite answered an arbitrary row), and the planner paths that became unreachable are deleted.
 - T67: the TypeScript client reaches a corpus through the markdown DSN, a pool keeping the server sessions, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.

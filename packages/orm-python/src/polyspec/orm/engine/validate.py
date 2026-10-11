@@ -456,6 +456,9 @@ def validate(m: RuntimeModel, r: dict) -> None:
             _fail('IR_INVALID', f'{r["kind"]} needs set[]')
         for a in r.get('set') or []:
             v.assign(ent, r, a)
+            # A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
+            if r['kind'] == 'insert' and (a.get('plus_p') is not None or a.get('minus_p') is not None):
+                _fail('IR_INVALID', f'insert cannot assign {a["column"]} by plus or minus')
     if r.get('rows'):
         if r['kind'] != 'insert' or r.get('on_duplicate'):
             _fail('IR_INVALID', 'rows are only valid on insert without on_duplicate')

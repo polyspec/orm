@@ -354,6 +354,10 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			if err := v.assign(ent, r, &a); err != nil {
 				return err
 			}
+			// A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
+			if r.Kind == "insert" && (a.PlusP != nil || a.MinusP != nil) {
+				return errf("IR_INVALID", "insert cannot assign %s by plus or minus", a.Column)
+			}
 		}
 	}
 	if len(r.Rows) > 0 {

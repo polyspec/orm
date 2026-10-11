@@ -91,4 +91,8 @@ runCoverageCases($argv, [
     'planner_rejects_group_by_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_subquery'),
     'planner_rejects_group_order_non_group_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_order_non_group_column'),
     'planner_rejects_nullable_key_by' => fn() => plannerCase($root, $fixture, 'planner_rejects_nullable_key_by'),
+    'planner_insert_by_value' => fn() => plannerCase($root, $fixture, 'planner_insert_by_value'),
+    'planner_insert_on_duplicate_plus' => fn() => plannerCase($root, $fixture, 'planner_insert_on_duplicate_plus'),
+    'planner_rejects_insert_set_plus' => fn() => plannerCase($root, $fixture, 'planner_rejects_insert_set_plus'),
+    'planner_rejects_insert_set_minus' => fn() => plannerCase($root, $fixture, 'planner_rejects_insert_set_minus'),
 ]);
