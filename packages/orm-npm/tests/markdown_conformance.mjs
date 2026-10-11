@@ -230,7 +230,8 @@ const conformanceCases = {
   connect_token_mismatch: async s => (await connect(s.dsn(s.corpus, '0'.repeat(32)))).close(),
 };
 
-/** 결과를 JSON으로 썼다 읽은 값이다: cases.json의 expect와 같은 형태다. */
+/** 결과를 JSON으로 썼다 읽은 값이다: cases.json의 expect와 같은 형태다. TypeScript model은 date를 README
+ * "Results"가 정한 YYYY-MM-DD text로 가진다. */
 function normalize(value) {
   if (value instanceof StyledValue) throw new Error('a case result holds a styled value, which has no JSON form here');
   return JSON.parse(JSON.stringify(value ?? null));

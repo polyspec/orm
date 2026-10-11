@@ -93,7 +93,8 @@
         "tests/dsn/sqlite-paths.json",
         "packages/orm-go/orm/markdown_test.go",
         "packages/orm-php/tests/markdown_test.php",
-        "packages/orm-rust/orm/tests/markdown.rs"
+        "packages/orm-rust/orm/tests/markdown.rs",
+        "packages/orm-npm/tests/markdown.mjs"
       ],
       "docs": [
         "docs/config.md",
@@ -128,6 +129,15 @@
           "inputs": [
             "packages/orm-rust/orm/tests/markdown.rs",
             "packages/orm-rust/orm/src/markdown.rs"
+          ]
+        },
+        {
+          "id": "markdown-session-typescript",
+          "command": "node packages/orm-npm/tests/markdown.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-npm/tests/markdown.mjs",
+            "packages/orm-npm/src/markdown.ts"
           ]
         },
         {
@@ -3567,7 +3577,8 @@
         "engine/ir/validate_test.go",
         "packages/orm-python/tests/test_ir_validate.py",
         "engine/ir/params_test.go",
-        "packages/orm-rust/orm/tests/unit/param_uses.rs"
+        "packages/orm-rust/orm/tests/unit/param_uses.rs",
+        "packages/orm-npm/tests/param-uses.mjs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -3590,6 +3601,15 @@
           "inputs": [
             "packages/orm-rust/orm/tests/unit/param_uses.rs",
             "packages/orm-rust/orm/src/engine/params.rs"
+          ]
+        },
+        {
+          "id": "param-uses-typescript",
+          "command": "node packages/orm-npm/tests/param-uses.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-npm/tests/param-uses.mjs",
+            "packages/orm-npm/src/engine/params.ts"
           ]
         },
         {
@@ -5890,6 +5910,7 @@
         "packages/orm-php/tests/markdown_conformance.php",
         "packages/orm-python/tests/markdown_conformance.py",
         "packages/orm-rust/tests/tests/markdown_conformance.rs",
+        "packages/orm-npm/tests/markdown_conformance.mjs",
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
@@ -6458,6 +6479,14 @@
       ],
       "tests": [],
       "command": "vendor-php/bin/orm-gen gen --check --out packages/orm-php/markdownmodel --namespace 'Polyspec\\Orm\\Tests\\MarkdownModel' tests/markdown/corpus/dbspec/conformance.dbs"
+    },
+    {
+      "id": "typescript-markdown-model-generated",
+      "paths": [
+        "packages/orm-npm/src/models/markdown_fixture/models.ts"
+      ],
+      "tests": [],
+      "command": "node tests/run-long.mjs typescript-build -- npm run typescript:build && sh -c 'cd packages/orm-npm && node dist/bin/orm-gen.js gen --schema ../../tests/markdown/corpus/dbspec/conformance.dbs --out src/models/markdown_fixture --scan tests/markdown_conformance.mjs --check'"
     },
     {
       "id": "stmtdiff",

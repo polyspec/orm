@@ -4,6 +4,7 @@ import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@p
 import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
+import { markdownLinks } from './markdown.js';
 import { columnName, parseChain, parseOrder, snake, splitPair, upperFirst, type ChainKey } from './names.js';
 import { OrmError } from './runtime_error.js';
 import { StyledValue, orderedJsonOutput } from './styled_value.js';
@@ -255,15 +256,13 @@ class Assembler {
     for (const ch of asm.children) {
       if (ch.kind === 'join') {
         const child = joinChild(b, ch.rel);
-        const first = ch.assemble!.columns[0];
-        const value = first !== undefined && row[first.index] !== null ? this.model(child, ch.assemble!, row).self : null;
+        const joined = this.joinRow(ch, row);
+        const value = joined !== undefined ? this.model(child, ch.assemble!, joined).self : null;
         st.setRelated(ch.rel, value, false, false);
         continue;
       }
       const [child, many] = relationChild(b, ch.rel);
-      const step = this.result.steps.get(ch.step);
-      const childAsm = step!.step.assemble!;
-      const rows = this.related(ch, row);
+      const [rows, childAsm] = this.related(ch, row);
       if (many) {
         const coll = new Collection();
         for (const cr of rows) {
@@ -282,14 +281,29 @@ class Assembler {
     return m;
   }
 
-  private related(ch: Assemble['children'][number], parent: readonly unknown[]): unknown[][] {
-    const sr = this.result.steps.get(ch.step);
-    if (!sr) return [];
+  /**
+   * join ch의 행이고, 없으면 undefined다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이 NULL이면
+   * 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+   */
+  private joinRow(ch: Assemble['children'][number], row: readonly unknown[]): readonly unknown[] | undefined {
+    if (this.result.markdown) return markdownLinks(row).joins.get(ch.rel) ?? undefined;
+    const first = ch.assemble!.columns[0];
+    return first !== undefined && row[first.index] !== null ? row : undefined;
+  }
+
+  /**
+   * relation ch에서 부모 행 parent의 행과 그 배치다. SQL 결과에서는 relation step의 행을 key로 찾고, markdown
+   * 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+   */
+  private related(ch: Assemble['children'][number], parent: readonly unknown[]): [unknown[][], Assemble] {
+    if (this.result.markdown) return [markdownLinks(parent).rels.get(ch.rel) ?? [], ch.assemble!];
+    const sr = this.result.steps.get(ch.step)!;
+    const childAsm = sr.step.assemble!;
     const ifp = sr.step.parent?.if_parent;
-    if (ifp && scalarKey(parent[ifp.index]) !== scalarKey(this.result.params[ifp.param])) return [];
+    if (ifp && scalarKey(parent[ifp.index]) !== scalarKey(this.result.params[ifp.param])) return [[], childAsm];
     const key = rowKey(parent, ch.parent_keys);
-    if (key === undefined) return [];
-    return (sr.byKey.get(key) ?? []).map(i => sr.data[i]!);
+    if (key === undefined) return [[], childAsm];
+    return [(sr.byKey.get(key) ?? []).map(i => sr.data[i]!), childAsm];
   }
 }
 
@@ -577,7 +591,7 @@ async function create(c: Core): Promise<Model> {
     r.ir.on_duplicate = c.duplication.sets.map(s => assign(r, schema, s));
     if (r.ir.on_duplicate.length === 0) throw configError('duplication model has no set<Col> values');
   }
-  const { id } = await write(ex, finishWrite(r), r.params);
+  const { key } = await write(ex, finishWrite(r), r.params);
   const m = newModel(c.ent);
   m.conn = c.conn;
   const st = new RowState();
@@ -591,9 +605,15 @@ async function create(c: Core): Promise<Model> {
       ? (type === 'styled' ? StyledValue.sqlNull() : null)
       : convert(type, s.value, ex.db.zone, field));
   }
-  if (schema.identity !== '') {
-    st.addName(schema.identity);
-    m.values.set(schema.identity, id);
+  // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
+  // 않은 하나뿐인 primary key column이다.
+  let assignedKey = schema.identity;
+  if (assignedKey === '' && ex.db.md !== undefined && schema.primaryKey.length === 1 && key !== null && !c.sets.some(s => s.column === schema.primaryKey[0])) {
+    assignedKey = schema.primaryKey[0]!;
+  }
+  if (assignedKey !== '') {
+    st.addName(assignedKey);
+    m.values.set(assignedKey, key);
   }
   st.loaded = true;
   for (const pk of schema.primaryKey) {
