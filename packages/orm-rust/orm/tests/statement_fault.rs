@@ -153,11 +153,7 @@ async fn refused_in_transaction(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
     polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
-    let error = db
-        .transaction(async || create(&db, "refused").await)
-        .retry(0)
-        .await
-        .expect_err("the transaction with the refused insert");
+    let error = db.transaction(async || create(&db, "refused").await).retry(0).await.expect_err("the transaction with the refused insert");
     assert!(!matches!(error, polyspec_orm::Error::Rollback { .. }), "{driver}: the rollback succeeds, so the error is not ROLLBACK: {error}");
     check_fault(driver, &error, "transaction");
     assert_eq!(count(&db).await, 0, "{driver}: the refused transaction stores no row");
@@ -170,13 +166,9 @@ async fn refused_in_transaction(driver: &str, dsn: &str) {
 async fn empty_argument_refused(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
-    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        polyspec_orm::testing::fail_next_statement(&db, "", &fixture.message)
-    }));
+    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, "", &fixture.message)));
     assert!(refused.is_err(), "{driver}: an empty code panics");
-    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        polyspec_orm::testing::fail_next_statement(&db, &fixture.code, "")
-    }));
+    let refused = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| polyspec_orm::testing::fail_next_statement(&db, &fixture.code, "")));
     assert!(refused.is_err(), "{driver}: an empty message panics");
     create(&db, "kept").await.unwrap_or_else(|e| panic!("{driver}: a refused arming leaves the next insert running: {e}"));
     assert_eq!(count(&db).await, 1, "{driver}: the insert ran");

@@ -222,6 +222,7 @@ async fn execute_on(driver: &'static str, doc: &Value, m: &Manifest, c: &Value) 
 // case마다 보고 줄을 읽는다.
 #[tokio::test]
 async fn identity_load() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let doc: Value = serde_json::from_str(CASES).expect("contracts/fixtures/identity_load.json");
     let m = manifest();
     let mut failed = Vec::new();
