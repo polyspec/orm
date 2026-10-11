@@ -375,9 +375,30 @@ func (v *validator) checkboxes(t *tableNode, column string, states map[string]bo
 }
 
 // store는 block 저장을 검사한다: 그 foreign key는 table의 foreign key여야 한다. kind와 shape는 parser가 읽는다.
+// shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가 있는 table과
+// order가 있는 table에서는 거절한다.
 func (v *validator) store(t *tableNode, s *settingNode) {
 	if s.args[0].text == "block" {
 		v.foreignKeyName(t, s.args[1])
+	}
+	// shard 절은 kind의 인자(files 0개, document 1개, block 2개) 바로 뒤에 온다.
+	i := map[string]int{"files": 1, "document": 2, "block": 3}[s.args[0].text]
+	if len(s.args) <= i {
+		return
+	}
+	shard, column := s.args[i], s.args[i+1]
+	if c := v.columnRef(t, column, RuleSetting); c != nil &&
+		((c.typ.valid && c.typ.typ.Kind != TypeDate && c.typ.typ.Kind != TypeDatetime) || c.null != nil) {
+		v.add(RuleSetting, column, "store shard needs a non-null date or datetime column")
+	}
+	if s.args[0].text == "block" {
+		v.add(RuleSetting, shard, "store shard is rejected on a block table")
+	}
+	if slices.ContainsFunc(t.foreignKeys, func(f *foreignKeyNode) bool { return f.target.text == t.name.text }) {
+		v.add(RuleSetting, shard, "store shard is rejected on a table with a self foreign key")
+	}
+	if slices.ContainsFunc(t.settings.lines, func(l *settingNode) bool { return l.keyword.text == "order" }) {
+		v.add(RuleSetting, shard, "store shard is rejected on a table with order")
 	}
 }
 
