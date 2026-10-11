@@ -91,7 +91,11 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         if !c.has_table(&table) {
             continue;
         }
-        let Some(typ) = postgres_type(&formatted, &collation).filter(|_| generated.is_empty()) else {
+        if !generated.is_empty() {
+            c.report("column", &table, &name, "a generated column has no dbspec definition");
+            continue;
+        }
+        let Some(typ) = postgres_type(&formatted, &collation) else {
             c.report("column", &table, &name, format!("type {formatted} with collation {collation:?} has no dbspec type"));
             continue;
         };

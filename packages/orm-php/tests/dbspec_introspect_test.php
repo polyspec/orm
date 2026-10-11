@@ -242,8 +242,14 @@ foreach ($vectors['cases'] as $case) {
     if ($got !== $want) {
         throw new RuntimeException("$id: document differs\n--- want\n$want--- got\n$got");
     }
-    if (unsupported_entries($result->unsupported) !== $case['unsupported']) {
+    if (unsupported_entries($result->unsupported) !== array_map(static fn(array $w): array => array_slice($w, 0, 3), $case['unsupported'])) {
         throw new RuntimeException("$id: unsupported differs\nwant " . json_encode($case['unsupported']) . "\ngot  " . json_encode(array_map(static fn(Unsupported $u): array => [$u->kind, $u->table, $u->name, $u->reason], $result->unsupported)));
+    }
+    // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+    foreach ($case['unsupported'] as $i => $want) {
+        if (isset($want[3]) && !str_contains($result->unsupported[$i]->reason, $want[3])) {
+            throw new RuntimeException("$id: reason of " . implode(' ', array_slice($want, 0, 3)) . " differs\nwant rule " . json_encode($want[3]) . "\ngot  " . json_encode($result->unsupported[$i]->reason));
+        }
     }
     finish_case($id);
 }

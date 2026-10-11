@@ -197,8 +197,17 @@ async fn introspect_unsupported() {
                     return Err(format!("document differs\n--- want\n{want_document}--- got\n{got_document}"));
                 }
                 let got: Vec<Vec<String>> = introspection.unsupported.iter().map(|u| vec![u.kind.clone(), u.table.clone(), u.name.clone()]).collect();
-                if got != want_unsupported {
+                let want_triples: Vec<Vec<String>> = want_unsupported.iter().map(|w| w.iter().take(3).cloned().collect()).collect();
+                if got != want_triples {
                     return Err(format!("unsupported differs\nwant {want_unsupported:?}\ngot  {:?}", introspection.unsupported));
+                }
+                // 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+                for (w, u) in want_unsupported.iter().zip(&introspection.unsupported) {
+                    if let Some(rule) = w.get(3) {
+                        if !u.reason.contains(rule.as_str()) {
+                            return Err(format!("reason of {} {} {} differs\nwant rule {rule:?}\ngot  {:?}", u.kind, u.table, u.name, u.reason));
+                        }
+                    }
                 }
                 Ok(())
             })

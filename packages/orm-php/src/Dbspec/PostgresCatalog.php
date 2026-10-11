@@ -76,8 +76,12 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
             if ($t === null) {
                 continue;
             }
+            if ($generated !== '') {
+                $c->report('column', $table, $name, 'a generated column has no dbspec definition');
+                continue;
+            }
             $type = self::type($formatted, $collation);
-            if ($type === null || $generated !== '') {
+            if ($type === null) {
                 $c->report('column', $table, $name, "type $formatted with collation \"$collation\" has no dbspec type");
                 continue;
             }
