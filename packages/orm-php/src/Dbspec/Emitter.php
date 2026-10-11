@@ -115,6 +115,7 @@ final class Emitter
             'key_prefix' => 'key_prefix ' . self::quote($setting->arguments[0]),
             'checkbox' => "checkbox {$setting->arguments[0]} {$setting->arguments[1]} " . self::quote($setting->arguments[2]),
             'state_machine' => self::machine($setting),
+            'store' => self::store($setting->arguments),
             // schema text는 database 상태로 정해지므로 기록하지 않는 column을 column 순서의 exclude
             // 목록으로 쓴다. 다른 view는 쓴 목록을 그대로 쓴다.
             'audit' => match (true) {
@@ -124,6 +125,21 @@ final class Emitter
             },
             default => implode(' ', [$setting->kind, ...$setting->arguments]),
         };
+    }
+
+    /**
+     * store 줄이다: kind의 인자 뒤에 shard 절의 column과 period가 있으면 `shard`를 앞에 쓴다.
+     *
+     * @param list<string> $arguments
+     */
+    private static function store(array $arguments): string
+    {
+        $count = Setting::STORE_ARGUMENTS[$arguments[0]];
+        $line = 'store ' . implode(' ', array_slice($arguments, 0, $count));
+        if (count($arguments) > $count) {
+            $line .= ' shard ' . implode(' ', array_slice($arguments, $count));
+        }
+        return $line;
     }
 
     /** state_machine 줄 하나다: transition, initial 또는 terminal state, history 또는 limit. */

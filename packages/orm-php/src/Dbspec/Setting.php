@@ -7,7 +7,9 @@ namespace Polyspec\Orm\Dbspec;
  * One setting line. The kind is one of KINDS, in canonical order; the
  * arguments are the names the line lists: `audit` holds the history table,
  * the audit column, the audit record table, and the action and previous
- * columns in that order.
+ * columns in that order. `store` holds its kind, the foreign key of `block`,
+ * the shape of `document` and `block` (STORE_ARGUMENTS counts them), and then
+ * the column and the period of its `shard` clause when it has one.
  *
  * audit의 exclude와 include는 기록하지 않는 column과 audit column 말고 기록하는
  * column의 목록이며, 목록이 없으면 null이다. parse한 setting은 둘 중 하나만 가진다
@@ -17,6 +19,8 @@ final class Setting
 {
     public const KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
     public const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
+    /** store 종류마다 shard 절 앞의 인자 수다(kind 포함). */
+    public const STORE_ARGUMENTS = ['files' => 1, 'document' => 2, 'block' => 3];
 
     /**
      * @param list<string> $arguments

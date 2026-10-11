@@ -1570,6 +1570,7 @@ final class Parser
                     if ($arguments[0][0] === 'block') {
                         $this->foreignKeyNamed($arguments[1], $line);
                     }
+                    $this->checkStoreShard($arguments, $line, isset($kinds['order']));
                     break;
                 case 'key_prefix':
                     $this->checkKeyPrefix($line, $at);
@@ -1899,9 +1900,13 @@ final class Parser
             }
         }
         $requires = $lists === [] ? null : array_map(static fn(array $a): string => $a[0], $lists[0][1]);
+        $names = $arguments;
+        if ($keyword === 'store' && count($names) > Setting::STORE_ARGUMENTS[$names[0][0]]) {
+            array_splice($names, Setting::STORE_ARGUMENTS[$names[0][0]], 1);
+        }
         $this->settingsBlock->settings[] = new Setting(
             $keyword,
-            array_map(static fn(array $a): string => $a[0], $arguments),
+            array_map(static fn(array $a): string => $a[0], $names),
             $this->takeComments(),
             null,
             null,
@@ -1935,6 +1940,13 @@ final class Parser
                 }
                 if ($kind[0] !== 'files') {
                     $arguments[] = $this->cursorOneOf('`list` or `table`', ['list', 'table']);
+                }
+                // shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은
+                // 위치를 위해 남기며 Setting의 인자에서는 뺀다.
+                if (($this->tokens[$this->cursor][0] ?? null) === 'shard') {
+                    $arguments[] = $this->tokens[$this->cursor++];
+                    $arguments[] = $this->cursorWord('the shard column');
+                    $arguments[] = $this->cursorOneOf('`year`, `month` or `day`', ['year', 'month', 'day']);
                 }
                 return [$arguments, null, []];
             case 'key_prefix':
@@ -2158,6 +2170,37 @@ final class Parser
             }
         }
         $this->error('setting', $line, $token[1], "foreign key `{$token[0]}` is not a foreign key of the table");
+    }
+
+    /**
+     * store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가
+     * 있는 table과 order가 있는 table에서는 거절한다.
+     *
+     * @param list<array{0:string,1:int}> $arguments kind의 인자 뒤에 `shard` token, column, period가 온다
+     */
+    private function checkStoreShard(array $arguments, int $line, bool $order): void
+    {
+        $at = Setting::STORE_ARGUMENTS[$arguments[0][0]];
+        if (count($arguments) <= $at) {
+            return;
+        }
+        [$shard, $column] = [$arguments[$at], $arguments[$at + 1]];
+        $definition = $this->columnRef($column, $line, 'store');
+        if ($definition !== null && (($definition->type->name !== 'invalid' && !in_array($definition->type->name, ['date', 'datetime'], true)) || $definition->nullable)) {
+            $this->error('setting', $line, $column[1], 'store shard needs a non-null date or datetime column');
+        }
+        if ($arguments[0][0] === 'block') {
+            $this->error('setting', $line, $shard[1], 'store shard is rejected on a block table');
+        }
+        foreach ($this->table->foreignKeys as $foreignKey) {
+            if ($foreignKey->table === $this->table->name) {
+                $this->error('setting', $line, $shard[1], 'store shard is rejected on a table with a self foreign key');
+                break;
+            }
+        }
+        if ($order) {
+            $this->error('setting', $line, $shard[1], 'store shard is rejected on a table with order');
+        }
     }
 
     /** `key_prefix`는 varchar type의 single-column primary key가 필요하다. */
