@@ -749,7 +749,7 @@ func (c *Core) GetQuery() (*Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ex.base().statement(ex.context(), c.build("all"))
+	return getQuery(ex, c.build("all"))
 }
 
 func inTransaction(conn *DB, fn func() error) error {

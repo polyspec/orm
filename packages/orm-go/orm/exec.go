@@ -274,8 +274,12 @@ type Statement struct {
 	Binds []any
 }
 
-func (d *DB) statement(ctx context.Context, r *request) (*Statement, error) {
+func getQuery(ex executor, r *request) (*Statement, error) {
+	d := ex.base()
 	if err := d.unsupportedOnMarkdown("getQuery"); err != nil {
+		return nil, err
+	}
+	if err := applyRequestHook(ex, r); err != nil {
 		return nil, err
 	}
 	c, err := d.plan(r)
@@ -409,6 +413,22 @@ func (res *result) related(ch *plan.Child, parent []any) ([][]any, error) {
 	return out, nil
 }
 
+// applyRequestHook은 ex가 지나는 handle의 request hook을 plan 직전에 r에 적용한다(docs/usage.md
+// "Request hook"). hook은 r.ir을 그 자리에서 바꾸고 r.param으로 parameter를 더한다. r은 terminal 호출마다
+// 새로 만든 request이므로 다른 호출과 나누지 않는다. hook이 없는 handle은 아무것도 하지 않으며, hook의
+// 오류는 그대로 돌려준다. 바뀐 request는 d.plan이 다른 request처럼 검증한다.
+func applyRequestHook(ex executor, r *request) error {
+	hook := ex.requestHook()
+	if hook == nil || r.err != nil {
+		return nil
+	}
+	if err := hook(&r.ir, r.param); err != nil {
+		return err
+	}
+	r.ir.NParams = len(r.params)
+	return nil
+}
+
 func checkLock(ex executor, r *request) error {
 	if r.ir.Query.Lock != "" && ex.transaction() == nil {
 		return configErr("row locks are allowed only inside a transaction")
@@ -423,6 +443,9 @@ func query(ex executor, r *request) (*result, error) {
 		return nil, err
 	}
 	defer done()
+	if err := applyRequestHook(ex, r); err != nil {
+		return nil, err
+	}
 	if err := checkLock(ex, r); err != nil {
 		return nil, err
 	}
@@ -884,6 +907,9 @@ func scalar(ex executor, r *request) (any, error) {
 		return nil, err
 	}
 	defer done()
+	if err := applyRequestHook(ex, r); err != nil {
+		return nil, err
+	}
 	if err := checkLock(ex, r); err != nil {
 		return nil, err
 	}
@@ -962,6 +988,9 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 		return nil, 0, err
 	}
 	defer done()
+	if err := applyRequestHook(ex, r); err != nil {
+		return nil, 0, err
+	}
 	if err := checkLock(ex, r); err != nil {
 		return nil, 0, err
 	}
@@ -1003,6 +1032,9 @@ func write(ex executor, r *request) (key any, affected int64, err error) {
 		return nil, 0, err
 	}
 	defer done()
+	if err := applyRequestHook(ex, r); err != nil {
+		return nil, 0, err
+	}
 	d, ctx := ex.base(), ex.context()
 	if d.md != nil {
 		keys, affected, err := markdownWrite(ex, r)
