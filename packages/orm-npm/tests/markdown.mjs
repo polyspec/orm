@@ -48,7 +48,7 @@ async function codeOf(work) {
 
 await run.run('markdown/parse-dsn', COMPUTE, () => {
   const parsed = parseDsn(`markdown://127.0.0.1:4100/tracker?token=${token}`);
-  const want = { driver: 'markdown', zone: '+00:00', markdown: { host: '127.0.0.1', port: 4100, corpus: 'tracker', token } };
+  const want = { driver: 'markdown', zone: '+00:00', markdown: { address: '127.0.0.1:4100', corpus: 'tracker', token } };
   if (!isDeepStrictEqual(parsed, want)) throw new Error(`parseDsn() = ${JSON.stringify(parsed)}; want ${JSON.stringify(want)}`);
   for (const input of [
     'markdown://127.0.0.1:4100/tracker',

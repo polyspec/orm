@@ -159,6 +159,7 @@ export class Utils {
 
   /** Takes a named lock that is released when the transaction ends. */
   public async lock(key: string): Promise<void> {
+    this.db.unsupportedOnMarkdown('lock');
     const frame = this.active('lock');
     if (!validKey(key)) throw config(`lock key ${key} is invalid`);
     switch (this.db.driver) {
@@ -182,6 +183,7 @@ export class Utils {
    * session setting, a value of the transaction that only local() reads.
    */
   public async setLocal(key: string, value: string): Promise<void> {
+    this.db.unsupportedOnMarkdown('setLocal');
     const frame = this.active('setLocal');
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
     switch (this.db.driver) {
@@ -197,6 +199,7 @@ export class Utils {
 
   /** Returns a value set with setLocal; NO_ROWS when it is missing. */
   public async local(key: string): Promise<string> {
+    this.db.unsupportedOnMarkdown('local');
     const frame = this.active('local');
     const value = frame.locals.get(key);
     if (value === undefined) throw new OrmError('NO_ROWS', `local value ${key} is not set`);
@@ -213,6 +216,7 @@ export class SchemaUtils {
   public constructor(private readonly u: Utils) {}
 
   private async check(sql: string, params: readonly DriverValue[] = []): Promise<boolean> {
+    this.u.db.unsupportedOnMarkdown('schema inspection');
     const value = (await this.u.read('schema', [], sql, params))[0]?.[0];
     return value === true || Number(value) === 1;
   }
@@ -240,15 +244,16 @@ export class SchemaUtils {
    * 밖에서 적용하고 안에서는 CONFIG다.
    */
   public async install(schema: Schema): Promise<void> {
+    this.u.db.unsupportedOnMarkdown('schema install (flowmark install creates a corpus)');
     const model = schemaModel(schema);
-    const rendered = renderDbspecStatements(model.documents, this.u.db.driver);
+    const driver = this.u.db.pool.name;
+    const rendered = renderDbspecStatements(model.documents, driver);
     if (rendered.statements === null) {
       const d = rendered.diagnostics[0]!;
       throw new OrmError('SCHEMA_INVALID', `document set: ${d.rule} at ${d.line}:${d.column}: ${d.message}`);
     }
     const statements = rendered.statements;
     const target = schemaTarget(model);
-    const driver = this.u.db.driver;
     // MySQL commits schema statements implicitly, so they run outside a transaction.
     if (driver === 'mysql' && activeFor(this.u.db)) throw config('MySQL commits schema statements implicitly; install outside a transaction');
     const apply = async (run: Runner): Promise<void> => {
@@ -282,9 +287,10 @@ export class SchemaUtils {
    * "table.column"으로 table 이름, column 순서로 돌려준다.
    */
   public async addTablesAndColumns(schema: Schema): Promise<string[]> {
+    this.u.db.unsupportedOnMarkdown('addTablesAndColumns (schema evolution follows the flowmark migration rules)');
     const model = schemaModel(schema);
     const target = schemaTarget(model);
-    const driver = this.u.db.driver;
+    const driver = this.u.db.pool.name;
     const apply = async (run: Runner): Promise<string[]> => {
       let live = await introspectSet(run, driver, model);
       const { added, steps, differences } = addTablesAndColumnsSteps(live.document, live.unsupported, target, driver);
@@ -385,6 +391,7 @@ export class AesUtils {
   public constructor(private readonly u: Utils) {}
 
   private spec(model: unknown): AesSpec {
+    this.u.db.unsupportedOnMarkdown('aes rotation');
     if (!isModel(model)) throw config('aes requires a model');
     const schema = model[CORE].ent.entity;
     const columns = schema.fields

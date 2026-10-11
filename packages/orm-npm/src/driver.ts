@@ -5,6 +5,7 @@ import { connect as netConnect, isIP } from 'node:net';
 import mysql, { type Pool as MySqlPool, type PoolConnection as MySqlConnection } from 'mysql2/promise';
 import pg from 'pg';
 import { OrmError } from './runtime_error.js';
+import { parseMarkdownDsn, type MarkdownDsn } from './markdown.js';
 
 pg.types.setTypeParser(20, value => {
   const parsed = Number(value);
@@ -486,7 +487,13 @@ class SqliteSession implements DriverSession {
   }
 }
 
-export interface ParsedDsn { driver: DriverName; zone: string; sslCa?: string; }
+/** A DSN of a SQL database: the driver, the connection time zone and the MySQL TLS CA. */
+export interface SqlDsn { driver: DriverName; zone: string; sslCa?: string; }
+
+/** A markdown:// DSN: the flowmark server address, the corpus and the token of the markdown IR executor (docs/protocol.md §5). */
+export interface MarkdownParsedDsn { driver: 'markdown'; zone: string; markdown: MarkdownDsn; }
+
+export type ParsedDsn = SqlDsn | MarkdownParsedDsn;
 
 /** scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다. */
 const DSN_PARAMETERS: Record<string, readonly string[]> = {
@@ -516,7 +523,7 @@ function mysqlTls(url: URL): string | undefined {
  * ssl-mode=VERIFY_IDENTITY의 mysql2 TLS option이거나 undefined다: `ssl-ca`의 CA, 그 CA가
  * 서명하지 않은 인증서의 거부, host 이름 검사다.
  */
-export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
+export function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verifyIdentity: true } | undefined {
   if (parsed.sslCa === undefined) return undefined;
   try { return { ca: readFileSync(parsed.sslCa, 'utf8'), rejectUnauthorized: true, verifyIdentity: true }; } catch (error) {
     throw new OrmError('CONFIG', `mysql DSN ssl-ca ${parsed.sslCa} cannot be read: ${(error as Error).message}`, error);
@@ -530,7 +537,7 @@ export function mysqlSsl(parsed: ParsedDsn): { ca: string; rejectUnauthorized: t
  */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
-  try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or sqlite://'); }
+  try { url = new URL(dsn); } catch { throw new OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'); }
   const accepted = DSN_PARAMETERS[url.protocol];
   if (accepted !== undefined) {
     for (const name of url.searchParams.keys()) {
@@ -554,8 +561,10 @@ export function parseDsn(dsn: string): ParsedDsn {
       if (url.searchParams.has('_txlock')) throw new OrmError('CONFIG', 'sqlite DSN does not accept _txlock; write transactions begin with BEGIN IMMEDIATE');
       sqlitePath(url);
       return { driver: 'sqlite', zone };
+    case 'markdown:':
+      return { driver: 'markdown', zone, markdown: parseMarkdownDsn(url) };
   }
-  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, or sqlite`);
+  throw new OrmError('CONFIG', `unsupported DSN scheme ${url.protocol.replace(/:$/, '')}; want mysql, postgres, sqlite, or markdown`);
 }
 
 /**
@@ -629,7 +638,7 @@ function boundMySqlPool(pool: MySqlCorePool, bounds: PoolBounds): void {
   }
 }
 
-export function openDriver(dsn: string, parsed: ParsedDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
+export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool {
   const url = new URL(dsn);
   url.searchParams.delete('timezone');
   switch (parsed.driver) {
