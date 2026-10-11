@@ -806,6 +806,33 @@ impl Db {
         }
         Ok(Statement { sql: st.sql.clone(), binds })
     }
+
+    /// Runs one compiled statement `step`, a step of a plan of [`engine::compile`], with the
+    /// request parameters `params`, on the connection or on its active transaction. Its bind slots
+    /// are resolved as a model statement's are: host styles, decimals, SQLite time values, the AES
+    /// key and key version, the clock and the audit of the transaction. A step that reads rows (it
+    /// has an assemble) and a param slot past `params` fail with IR_INVALID before any statement
+    /// runs (docs/usage.md "Execute a compiled statement").
+    pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
+        let ex = crate::tx::resolve(&Some(self.clone()))?;
+        if matches!(ex, Executor::Db(_)) && self.inner.closed.load(Ordering::Acquire) {
+            return Err(Error::Config("database is closed".into()));
+        }
+        if step.assemble.is_some() {
+            return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "execute runs a statement without rows; the statement is a read".into() });
+        }
+        for (i, b) in step.bind_slots.iter().enumerate() {
+            if b.from == "param" && b.param >= params.len() {
+                return Err(Error::Engine {
+                    code: codes::IR_INVALID.into(),
+                    msg: format!("bind slot {i} reads parameter {}, but execute has {} parameters", b.param, params.len()),
+                });
+            }
+        }
+        // model 쓰기와 같은 경로다: 연결이나 활성 transaction에서 실행하고, transaction의 audit,
+        // statement fault, statement event와 driver 오류 변환을 그대로 쓴다.
+        ex.execute(step, params).await.map(drop)
+    }
 }
 
 /// The text and binds of a statement that was not executed.

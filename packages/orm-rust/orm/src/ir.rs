@@ -10,6 +10,10 @@ pub struct Request {
     pub kind: String,
     #[serde(flatten)]
     pub query: Query,
+    /// insert only: the rows keep their stored keys. The identity column takes a value, which a
+    /// table with an identity requires; not valid with `on_duplicate`.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub load: bool,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub set: Vec<Assign>,
     /// insert only: assignments applied when the unique key already exists (never PK/auto).
