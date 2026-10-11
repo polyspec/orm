@@ -39,11 +39,11 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:996edeaf43679da9d6b35dd9fa4ca3b8342979567aa41800884859081d2b600d",
+    "go": "sha256:0e2e2294d10e4872126ee3e9fe9fcfe2896749e75c45b0c017dda0485c1d4daa",
     "php": "sha256:31349307d9baaf5d00fcc64d2a1fced43be8f0adc88a7d88e40549a70de0495f",
     "rust": "sha256:01547d1b220bb4027ccd49debf218b9fbe21cc3f316b317471197199b57d6003",
-    "typescript": "sha256:f8f843dbec698cba9814710e4be33d6a951adaa2cdf64f4aab632bc4b2e819dc",
-    "python": "sha256:e2756d0a47895a529f7837297b2750f8e4afb8be8b9a210e48ef0d18bb78f483"
+    "typescript": "sha256:b5b813b7e5e3ba34cb4ee7584290c2baa35bec431610f8d1ebd4ee1bffe6cbe0",
+    "python": "sha256:1d449d763e4f8ca657b052bbe3f4bf40c712b2ddb37a3e8b37cdf5a715f77462"
   },
   "extensions": {
     "php-extension": {
@@ -277,7 +277,8 @@
         "close",
         "stats",
         "subscribe",
-        "execute"
+        "execute",
+        "withRequestHook"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
@@ -1409,6 +1410,38 @@
         "python": {
           "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.execute",
           "signature": "def execute(self, step: dict, params: list) -> None"
+        }
+      }
+    },
+    {
+      "id": "Db.withRequestHook",
+      "for": "once",
+      "inputs": [
+        "RequestHook"
+      ],
+      "output": "RequestHookHandle",
+      "errors": [],
+      "state": "Returns a handle on the same connection whose hook receives each request of the handle right before planning and may add predicates, assignments and parameters; the client plans the changed request as any other, so the planner validates it, and rows and transactions of the handle keep the hook (docs/usage.md \"Request hook\")",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/db.go::DB.WithRequestHook",
+          "signature": "receiver=*DB func(hook RequestHook) *DB"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::withRequestHook",
+          "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/db.rs::Db::with_request_hook",
+          "signature": "pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/database.ts::Db.withRequestHook",
+          "signature": "public withRequestHook(hook: RequestHook): Db"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.with_request_hook",
+          "signature": "def with_request_hook(self, hook: RequestHook) -> Db"
         }
       }
     },

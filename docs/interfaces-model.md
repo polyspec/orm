@@ -112,6 +112,7 @@ classDiagram
         stats()
         subscribe()
         execute()
+        withRequestHook()
     }
     class TransactionFlow {
         List_TransactionFrame frames

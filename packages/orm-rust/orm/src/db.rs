@@ -503,10 +503,7 @@ impl Db {
     /// hook"). The handle shares the pool, the caches, the subscribers and the
     /// active transactions of the connection; it carries one hook, so this
     /// replaces the hook of a hooked handle.
-    pub fn with_request_hook<F>(&self, hook: F) -> Db
-    where
-        F: Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static,
-    {
+    pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db {
         Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)) }
     }
 

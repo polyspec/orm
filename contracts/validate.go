@@ -71,7 +71,9 @@ var outputs = map[string]map[string]string{
 	"DbspecMermaidImport":        {"go": "(*Document,[]Unsupported,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\MermaidImportResult", "rust": "Result<(Document,Vec<Unsupported>),Vec<Diagnostic>>", "typescript": "DbspecMermaidImport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult", "python": "dict"},
 	"AddedTablesAndColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>", "python": "list[str]"},
 	// 구독과 그 해제는 database를 읽거나 쓰지 않는 동기 호출이다. Go와 Rust는 markdown 연결의 거절을 error로 돌려준다.
-	"Unsubscribe": {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Result<Subscription>", "typescript": "()=>void", "python": "Callable[[],None]"},
+	// request hook handle은 같은 연결의 handle이며 database에 닿지 않는 동기 호출이다.
+	"RequestHookHandle": {"go": "*DB", "php": "Polyspec\\Orm\\Db", "rust": "Db", "typescript": "Db", "python": "Db"},
+	"Unsubscribe":       {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Result<Subscription>", "typescript": "()=>void", "python": "Callable[[],None]"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -114,6 +116,7 @@ var inputs = map[string]map[string]string{
 	"DbspecExportedDocument": {"go": "d*Document", "php": "Polyspec\\Orm\\Dbspec\\Document$document", "rust": "document:&Document", "typescript": "document:DbspecDocument", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\Document$document", "python": "document:DbspecDocument"},
 	"DbspecMermaidSource":    {"go": "text,namestring", "php": "string$text,string$name", "rust": "text:&str,name:&str", "typescript": "text:string,name:string", "php-extension": "string$text,string$name", "python": "text:str,name:str"},
 	"CompiledStatement":      {"go": "st*plan.Step,params[]any", "php": "array$step,array$params", "rust": "step:&Step,params:&[Param]", "typescript": "step:PlanStep,params:readonlyunknown[]", "python": "step:dict,params:list"},
+	"RequestHook":            {"go": "hookRequestHook", "php": "Closure$hook", "rust": "hook:implFn(&mutcrate::ir::Request,&mutRequestParams)->Result<()>+Send+Sync+'static", "typescript": "hook:RequestHook", "python": "hook:RequestHook"},
 	"StatementSubscriber":    {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void", "python": "subscriber:Callable[[StatementEvent],None]"},
 }
 
