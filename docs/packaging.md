@@ -14,7 +14,7 @@
 
 ## Installing from release assets
 
-Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip` and `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
+Until 0.1 the npm and Composer packages are on no registry; each GitHub Release carries `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip` (`<package>-<language>-<version>.<ext>`) and the Python wheel `polyspec_orm-<version>-py3-none-any.whl` (see Python client release). Each asset holds the manifest of the repository tree unchanged, and that manifest names every other polyspec package by the exact version of its release, so a project downloads the release assets it needs and installs them together. `make release-assets TAG=vX.Y.Z` builds them from the tagged commit.
 
 - npm: list every tarball as a `file:` dependency, the orm tarball and the tarball of each polyspec package it depends on, from the GitHub Release of the version that the orm `package.json` names. npm satisfies the exact version of `@polyspec/ordered-json` with the tarball installed beside it:
 
@@ -40,7 +40,11 @@ Until 0.1 the npm and Composer packages are on no registry; each GitHub Release 
 
 ## Python client release
 
-The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is consumed by its git tag, and no GitHub Release carries an archive of it. The version-bump commit sets its `version` with the other manifests, and `make version-check` reads that version. Its dependency `polyspec-ordered-json` names tag `v0.0.7` of ordered-json, so an install needs that tag to exist.
+The Python client, `packages/orm-python/pyproject.toml` (distribution `polyspec-orm`), is released as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`, one of the assets of its GitHub Release beside the npm and Composer archives. `make release-assets TAG=vX.Y.Z` builds the wheel from the tagged commit with the build backend that `buildBackend` of `config/release.json` pins (`setuptools==84.0.0`, its sha256 checked before each build). The wheel keeps the PEP 427 name because it is not an archive of the `<package>-<language>-<version>.<ext>` form.
+
+Every `Requires-Dist` of the wheel is an exact `name==version`. The dependency `polyspec-ordered-json==0.0.8` is on no package index: its wheel is an asset of the ordered-json release v0.0.8. An install therefore takes that wheel from the ordered-json release and the wheel of orm from the orm release, both in one `pip install --find-links <directory>`; the other dependencies come from the index at their pinned versions.
+
+The binary extra of psycopg is written as the two plain requirements that it expands to, `psycopg==3.3.6` and `psycopg-binary==3.3.6`. The extra excludes PyPy, which a plain requirement cannot express, so `psycopg-binary` is also required there.
 
 ## Development layout
 

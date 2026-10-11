@@ -19,7 +19,8 @@
   and the job `ci-passed` of `.github/workflows/ci.yml`) before the version-bump commit and the tag.
   Only the maintainer creates, moves or pushes a tag, and the push of a tag runs the release
   workflow. A release asset is named `<package>-<language>-<version>.<ext>`, for example
-  `polyspec-orm-npm-X.Y.Z.tgz`.
+  `polyspec-orm-npm-X.Y.Z.tgz`; the Python wheel keeps its PEP 427 name,
+  `polyspec_orm-X.Y.Z-py3-none-any.whl`.
 - The shared tools are the vendored copy of `polyspec/kit`: `scripts/kit`, `tests/kit`, `kit.json`
   and `.kit/kit.lock.json` are changed only in kit and reach this repository with
   `make kit-sync KIT_TAG=<tag>`; `make kit-check` compares them with the lock and `make kit-test`
@@ -241,12 +242,15 @@
   `make release-verify` (the commit is on `main` and its checks `push-gate` and `ci-passed`
   succeeded), `make release-versions` (every released manifest carries X.Y.Z, the module path of
   `go.mod` is `github.com/polyspec/orm` and the changelogs have its section), `make release-assets`
-  (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm` and
-  `polyspec-orm-dbspec-php-X.Y.Z.zip` of `polyspec/orm-dbspec`) and `make release-publish` (the release
+  (`polyspec-orm-npm-X.Y.Z.tgz` of `@polyspec/orm`, `polyspec-orm-php-X.Y.Z.zip` of `polyspec/orm`,
+  `polyspec-orm-dbspec-php-X.Y.Z.zip` of `polyspec/orm-dbspec` and `polyspec_orm-X.Y.Z-py3-none-any.whl` of
+  `polyspec-orm`) and `make release-publish` (the release
   with the notes of that section; a section over 125000 characters, the limit of a GitHub release
   body, becomes one line that links the section of CHANGELOG.md at the tag). The tests do not run
   again; `make release-coverage` requires every manifest of the checkout to be classified in
   `config/release.json`.
-- The Python client (`packages/orm-python/pyproject.toml`) and the Rust crates `orm`, `orm-schema` and
-  `orm-build` are consumed by their git tag and have no release archive (`git-tag` in
-  `config/release.json`); the version-bump commit sets their `version` with the other manifests.
+- The Python client (`packages/orm-python/pyproject.toml`) is released as the wheel
+  `polyspec_orm-X.Y.Z-py3-none-any.whl` (`wheel` in `config/release.json`, with the pinned `buildBackend`).
+  The Rust crates `orm`, `orm-schema` and `orm-build` are consumed by their git tag and have no release
+  archive (`git-tag` in `config/release.json`); the version-bump commit sets the `version` of all of them
+  with the other manifests.

@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: e789d58ca4b11ef4a28ed327c342e43480b81693f093657404cef51c74172e7a -->
+<!-- source-sha256: bd17c753682156902c2f7d551aed8433d789d1806923d9e2641031c97dbb67ef -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -15,7 +15,7 @@
 
 ## release asset에서 설치
 
-0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`이 있다(`<package>-<language>-<version>.<ext>`). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
+0.1까지 npm과 Composer package는 registry에 없다. GitHub Release마다 `polyspec-orm-npm-<version>.tgz`, `polyspec-orm-php-<version>.zip`, `polyspec-orm-dbspec-php-<version>.zip`과 Python wheel `polyspec_orm-<version>-py3-none-any.whl`이 있다(`<package>-<language>-<version>.<ext>`, Python client release 참조). 각 asset은 저장소 tree의 manifest를 그대로 담고, 그 manifest는 다른 polyspec package를 모두 그 release의 정확한 version으로 선언하므로, project는 필요한 release asset을 내려받아 함께 설치한다. `make release-assets TAG=vX.Y.Z`가 tag한 commit에서 그것을 만든다.
 
 - npm: orm tarball과, 그것이 의존하는 polyspec package마다 orm `package.json`이 적은 version의 GitHub Release에 있는 tarball을 모두 `file:` dependency로 나열한다. npm은 `@polyspec/ordered-json`의 정확한 version을 함께 설치한 tarball로 채운다:
 
@@ -41,7 +41,11 @@
 
 ## Python client release
 
-Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 git tag로 소비되며, GitHub Release에 그 archive가 없다. version을 올리는 commit이 다른 manifest와 함께 그 `version`을 설정하고, `make version-check`가 그 version을 읽는다. 의존성 `polyspec-ordered-json`은 ordered-json의 tag `v0.0.7`를 가리키므로, 설치하려면 그 tag가 있어야 한다.
+Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release되며, GitHub Release의 asset으로 npm과 Composer archive 곁에 놓인다. `make release-assets TAG=vX.Y.Z`가 tag된 commit에서 wheel을 만들고, 그때 `config/release.json`의 `buildBackend`가 고정한 build backend(`setuptools==84.0.0`, sha256을 build마다 확인)를 쓴다. wheel은 `<package>-<language>-<version>.<ext>` 형식의 archive가 아니므로 PEP 427 이름을 유지한다.
+
+wheel의 모든 `Requires-Dist`는 정확한 `name==version`이다. 의존성 `polyspec-ordered-json==0.0.8`은 어떤 package index에도 없고, 그 wheel은 ordered-json release v0.0.8의 asset이다. 따라서 설치할 때는 ordered-json release의 wheel과 orm release의 wheel을 `pip install --find-links <directory>` 하나로 함께 지정하고, 나머지 의존성은 index에서 고정된 version으로 받는다.
+
+psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg==3.3.6`과 `psycopg-binary==3.3.6`으로 적는다. 그 extra는 PyPy를 제외하는데 plain requirement로는 그것을 나타낼 수 없으므로, PyPy에서도 `psycopg-binary`를 요구한다.
 
 ## 개발 배치
 

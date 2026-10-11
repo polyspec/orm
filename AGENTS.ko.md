@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: ebb1008b68ab10b16cd4d7f631b1ab83511a1c031f0c1259f5033fd5ff6bca7f -->
+<!-- source-sha256: f7cf47c7259f44a328b7ee4c4c9bd0823f6b07041fcde66a808850f18b17e1d7 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -15,7 +15,8 @@
   unit test가 통과하면 `[o]`가 된다. `main`에는 `[~]`인 항목이 없고 그 push의 작업이 끝났을 때 한 번 push한다. 그
   push의 CI(`push-gate`와 `.github/workflows/ci.yml`의 job `ci-passed`)가 성공해야 version을 올리는 commit과 tag를
   만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
-  asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`).
+  asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
+  `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
 - 공유 도구는 `polyspec/kit`의 vendored 사본이다: `scripts/kit`, `tests/kit`, `kit.json`, `.kit/kit.lock.json`은 kit에서만
   바꾸고 `make kit-sync KIT_TAG=<tag>`로 이 저장소에 들어온다. `make kit-check`는 그것을 lock과 비교하고
   `make kit-test`는 그 test를 실행한다. 이 저장소는 `config/*.json`과 자체 product code(`scripts/check`,
@@ -200,10 +201,11 @@
   (commit이 `main`에 있고 그 check `push-gate`와 `ci-passed`가 성공했다), `make release-versions`(release하는 모든
   manifest가 X.Y.Z를 가지고, `go.mod`의 module path가 `github.com/polyspec/orm`이며, 변경 이력에 그 section이 있다),
   `make release-assets`(`@polyspec/orm`의 `polyspec-orm-npm-X.Y.Z.tgz`, `polyspec/orm`의 `polyspec-orm-php-X.Y.Z.zip`,
-  `polyspec/orm-dbspec`의 `polyspec-orm-dbspec-php-X.Y.Z.zip`), `make release-publish`(그 section의 notes로 만든
+  `polyspec/orm-dbspec`의 `polyspec-orm-dbspec-php-X.Y.Z.zip`, `polyspec-orm`의 `polyspec_orm-X.Y.Z-py3-none-any.whl`), `make release-publish`(그 section의 notes로 만든
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
   된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.
-- Python client(`packages/orm-python/pyproject.toml`)와 Rust crate `orm`, `orm-schema`, `orm-build`는 git tag로 소비되고
+- Python client(`packages/orm-python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
+  `wheel`, 고정된 `buildBackend`와 함께). Rust crate `orm`, `orm-schema`, `orm-build`는 git tag로 소비되고
   release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
-  `version`을 설정한다.
+  모든 `version`을 설정한다.
