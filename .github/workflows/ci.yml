@@ -114,14 +114,14 @@ jobs:
             packages/orm-rust -> target
             bench/rust -> target
             tests/interfaces/rust -> target
-      # The Python checks import the ordered-json client of its release v0.0.7 from ORDERED_JSON,
+      # The Python checks import the ordered-json client of its release v0.0.8 from ORDERED_JSON,
       # which names this directory inside the workspace.
       - uses: actions/checkout@v5
         id: ordered-json
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
         with:
           repository: polyspec/ordered-json
-          ref: v0.0.7
+          ref: v0.0.8
           path: ordered-json
       # make install-python installs the Python of config/toolchain.json pythonBuild (the interpreter of make python-venv) and
       # builds the venv from it, so CI and a local check use the same interpreter; setup-python is not used.

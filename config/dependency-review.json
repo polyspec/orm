@@ -1,36 +1,36 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-09T06:21:04.616Z",
+  "reviewed": "2026-10-11T13:48:57.798Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "c352a5b8ee97b02dc014b3a8676891983fa66257f317bf1d257fa8e6373d642d",
+      "sha256": "8fe213508e768bb8ed5a6abded483d7d3a8138be0cc0470186e22abec9370c83",
       "advisories": []
     },
     {
       "lock": "composer.lock",
-      "sha256": "7fb8c972fe112c5b472762196dd16fc37610c06c023d356a64246b921502824b",
+      "sha256": "1a548d911e28fecbdaaa1f47a0c626a7b4b739b97c672450a9233bbe99fe15fa",
       "advisories": []
     },
     {
       "lock": "go.sum",
-      "sha256": "eeab44d38b5f03b02d8647d6f474ff5375abfcb1c598be4c6ba3cf601fc68919",
+      "sha256": "6f160f23420de6af0c0b3d33ebc5c5daa664cf8e274bcb2706d3575ce806fda5",
       "advisories": []
     },
     {
       "lock": "bench/rust/Cargo.lock",
-      "sha256": "f217ed0017f7dbbe1401f6453726f0f0ce110007d2b2d1c87d5b2a5045d6308d",
+      "sha256": "b372164dc1a5936748afd7297bf7d5f3f6caaf51122247026e99d89850f9bb32",
       "advisories": []
     },
     {
       "lock": "packages/orm-rust/Cargo.lock",
-      "sha256": "f874d25e0de4ab2929ca2cb0f89bc9d03c009bb6a8b49ba85ccba966856e6dc2",
+      "sha256": "5b580bcd9b09bc2ec616514efd957a77ca488b985e55432a806df6f05dad2f06",
       "advisories": []
     },
     {
       "lock": "tests/interfaces/rust/Cargo.lock",
-      "sha256": "504411c8a0c496821a4bb7aaef5263bc0e8d17a106ad0474324071d98adca9fb",
+      "sha256": "6ec881c5c4512a7a41e1832832cacdfb57ca1058d655d4acdf17364b43cbd03c",
       "advisories": []
     }
   ],
@@ -82,7 +82,7 @@
       "manifest": "packages/orm-npm/package.json",
       "package": "@types/node",
       "version": "22.20.5",
-      "latest": "26.6.4"
+      "latest": "26.6.5"
     },
     {
       "ecosystem": "npm",
@@ -116,8 +116,8 @@
       "ecosystem": "go",
       "manifest": "go.mod",
       "package": "github.com/polyspec/ordered-json/packages/ordered-json-go",
-      "version": "v0.0.7",
-      "latest": "v0.0.7"
+      "version": "v0.0.8",
+      "latest": "v0.0.8"
     },
     {
       "ecosystem": "go",
@@ -130,15 +130,15 @@
       "ecosystem": "go",
       "manifest": "go.mod",
       "package": "golang.org/x/sys",
-      "version": "v0.48.0",
-      "latest": "v0.48.0"
+      "version": "v0.49.0",
+      "latest": "v0.49.0"
     },
     {
       "ecosystem": "go",
       "manifest": "go.mod",
       "package": "golang.org/x/tools",
-      "version": "v0.51.0",
-      "latest": "v0.51.0"
+      "version": "v0.52.0",
+      "latest": "v0.52.0"
     },
     {
       "ecosystem": "go",

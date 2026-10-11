@@ -2,11 +2,11 @@
     "name": "polyspec/orm",
     "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
     "type": "library",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "license": "MIT",
     "require": {
         "php": ">=8.4",
-        "polyspec/ordered-json": "0.0.7",
+        "polyspec/ordered-json": "0.0.8",
         "ext-pdo": "*",
         "ext-json": "*",
         "ext-zlib": "*",
