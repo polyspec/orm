@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 01e2c08f18409a8c865d5b4675585601ebe628932a79771b2993121df0f59ac2 -->
+<!-- source-sha256: c1990ab3223174886a59b4cc0b8f9fb69ef87b225ddfd49b715e097e601fd4f2 -->
 # 변경 이력
 
 ## Unreleased
+- T62-4-10: T62-4-8의 `SHOW CREATE TABLE` reader test가 `contracts/features.json`의 기능 `schema_definition`에 속한다. `tests/dbspec/show-create.json`은 그 fixture이고, Go, PHP, PHP 확장, TypeScript test는 그 test이며, fixture와 각 test는 그것을 실행하는 검사(`dbspec-go-check`, `dbspec-php-check`, `dbspec-php-extension-check`, `dbspec-ts-check`, `dbspec-rust-check`, `python-check`)의 입력이다. 그래서 `features/contracts`와 `feature-unit-check`가 다시 통과한다.
 - T62-4-9: introspection이 모든 client에서 생성 컬럼을 생성 컬럼으로 보고한다. MySQL과 PostgreSQL reader는 type보다 먼저 생성 여부를 보고, `type ... has no dbspec type` 대신 SQLite reader의 문구인 `a generated column has no dbspec definition`을 적는다. `tests/dbspec/introspect.json`의 공유 case `mysql-generated-column`과 `postgres-generated-column`이 이를 고정하며, 미지원 항목은 사유가 포함해야 하는 rule을 네 번째 원소로 가질 수 있고 Go, PHP, PHP 확장, TypeScript, Rust harness가 이를 검사한다. `make dbspec-introspect-python-check`가 공유 case를 Python client로 MySQL, PostgreSQL, SQLite에서 실행하며, Python runner는 `make dbspec-introspect-compare-check`에 들어갔다.
 - T62-4-7: dbspec은 생성 컬럼을 만들지 않는다고 적는다. 열 줄에는 생성 식 문법이 없고, 모든 client는 식이 있는 MySQL 열을 식 text를 읽기 전에 미지원으로 보고하므로, `GENERATION_EXPRESSION`의 non-ASCII literal 이중 인코딩은 어느 client에도 닿지 않는다. `docs/dbspec.md`와 `docs/dialects.md`에 그렇게 적었다. reader와 plan은 바뀌지 않았다.
 - T62-4-8: `tests/dbspec/show-create.json`이 MySQL `SHOW CREATE TABLE`을 읽는 reader(Go, PHP, PHP 확장, TypeScript, Python과 Rust)가 `'`, `\`나 괄호를 가진 literal, non-ASCII literal, 한 table의 CHECK 둘, statement에 없는 이름에서 내는 CHECK 본문을 고정한다. Go와 PHP 확장의 introspection은 같은 canned catalog에서 같은 check와 미지원 객체를 돌려준다. 모든 reader가 일치하므로 reader 동작은 바뀌지 않았다. TypeScript의 `createChecks`는 그 test를 위해 export되었다.
