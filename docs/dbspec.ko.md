@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 6910b8128b9cd90a10b3565ceff0d1563d6403ec85466c880b48daba73e9e3fc -->
+<!-- source-sha256: a743e692ca3c038377e0436f2c3bb6231554ccfe09327477ee66699ca9f70212 -->
 # dbspec
 
 [English](dbspec.md)
@@ -93,7 +93,7 @@ index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 
 
 모든 문자 column은 binary collation 하나를 쓴다: MySQL `utf8mb4_0900_bin`, PostgreSQL `COLLATE "C"`, SQLite `BINARY`. 모든 연결은 `datetime`을 UTC로 읽고 쓴다. SQLite table은 STRICT가 아니며, 모든 SQLite 연결은 `foreign_keys`를 켠다. 정확한 CHECK text는 renderer version에 속하며 [dialects](dialects.md#schema-definitions)에 있다.
 
-지원하지 않음: 8-bit·24-bit 정수, unsigned type, `f32`, `char(n)`, `binary(n)`, `varbinary(n)`, native enum(`in` check가 있는 `varchar(n)`을 쓴다), native JSON(`ordered_json` codec이 있는 `text`를 쓴다), time zone instant, generated column, `now` 외의 식 default.
+지원하지 않음: 8-bit·24-bit 정수, unsigned type, `f32`, `char(n)`, `binary(n)`, `varbinary(n)`, native enum(`in` check가 있는 `varchar(n)`을 쓴다), native JSON(`ordered_json` codec이 있는 `text`를 쓴다), time zone instant, generated column, `now` 외의 식 default. 열 줄은 `name type [null] [identity] [default value]`만 받으므로(`engine/dbspec/parse.go`) 어떤 문서도 생성 컬럼을 만들지 않는다. introspection은 생성 식이 있는 열을 type에 따른 이유로 미지원 객체로 보고하며, 어느 client도 그 식의 text를 읽지 않는다. 따라서 `GENERATION_EXPRESSION`에 있는 non-ASCII literal의 MySQL 이중 인코딩은 어느 client에도 닿지 않는다([dialects](dialects.ko.md) 참고).
 
 ### Key와 index
 

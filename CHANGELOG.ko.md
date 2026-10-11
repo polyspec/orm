@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 90fffa081f314ded7e0d14b2de6d5396752d9a712da947a7f264947c769ecdc4 -->
+<!-- source-sha256: 325ffba7624bd6d748bc62246bd28bf4a537cd09891543870be0bb04817b9238 -->
 # 변경 이력
 
 ## Unreleased
+- T62-4-7: dbspec은 생성 컬럼을 만들지 않는다고 적는다. 열 줄에는 생성 식 문법이 없고, 모든 client는 식이 있는 MySQL 열을 식 text를 읽기 전에 미지원으로 보고하므로, `GENERATION_EXPRESSION`의 non-ASCII literal 이중 인코딩은 어느 client에도 닿지 않는다. `docs/dbspec.md`와 `docs/dialects.md`에 그렇게 적었다. reader와 plan은 바뀌지 않았다.
 - T62-4-8: `tests/dbspec/show-create.json`이 MySQL `SHOW CREATE TABLE`을 읽는 reader(Go, PHP, PHP 확장, TypeScript, Python과 Rust)가 `'`, `\`나 괄호를 가진 literal, non-ASCII literal, 한 table의 CHECK 둘, statement에 없는 이름에서 내는 CHECK 본문을 고정한다. Go와 PHP 확장의 introspection은 같은 canned catalog에서 같은 check와 미지원 객체를 돌려준다. 모든 reader가 일치하므로 reader 동작은 바뀌지 않았다. TypeScript의 `createChecks`는 그 test를 위해 export되었다.
 - T62-4-6: 문자열 literal에 non-ASCII 글자가 있는 CHECK가 모든 client에서 MySQL을 거쳐 그대로 되돌아온다. MySQL 8.4.11은 `information_schema.CHECK_CONSTRAINTS.CHECK_CLAUSE`에 non-ASCII literal의 UTF-8 bytes를 한 번 더 인코딩해 쓴다(`café`가 `cafÃ©`로 읽힌다). `SHOW CREATE TABLE`은 바르게 쓴다. Go, PHP, PHP 확장, TypeScript, Python과 Rust의 MySQL introspection은 그런 check의 본문을 `SHOW CREATE TABLE`에서 읽어 CHECK_CLAUSE 형식으로 옮기며, Rust driver는 catalog query 뒤에 그 follow-up query를 실행한다. `tests/dbspec/plans.json`의 case `rename-column-check-non-ascii-literal`이 왕복을 고정한다.
 - T62-4-5: `make feature-unit-check`가 실행하는 음성 owner sample의 실패를 `scripts/features/coverage.test.mjs`가 exact 오류와 출력된 FAIL 줄로 확인한다. 확인되지 않던 `sample/owner/typescript/none`의 두 번째 `duplicate observed case first`와 sqlite만 쓰는 두 번째 검사의 mysql, postgres 줄도 포함된다. test가 음성 실행의 줄을 가로채 확인하므로 통과한 실행은 그 FAIL 줄을 출력하지 않는다. native 실행의 관측 case가 빈 집합이면 `observed cases  differ from ...` 대신 `observed no cases differ from ...`을 출력한다. 선언 변경은 없다.
