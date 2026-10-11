@@ -270,7 +270,7 @@ final class Codec
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'hex':
-                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789abcdefABCDEF') === strlen($cur) ? hex2bin($cur) : false;
+                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789ABCDEF') === strlen($cur) ? hex2bin($cur) : false;
                     if ($cur === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'hex: odd length or non-hex input');
                     }

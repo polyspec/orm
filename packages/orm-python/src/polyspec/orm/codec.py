@@ -139,7 +139,7 @@ def host_decode(raw, styles, aes_key: str):
         if style == 'hex':
             # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백이나 hex 숫자 밖의 byte는 CODEC_DECODE다.
             source = current.decode('utf-8', 'replace')
-            if len(source) % 2 != 0 or re.fullmatch(r'[0-9a-fA-F]*', source) is None:
+            if len(source) % 2 != 0 or re.fullmatch(r'[0-9A-F]*', source) is None:
                 raise CodecError('CODEC_DECODE', 'hex: odd length or non-hex input')
             current = bytes.fromhex(source)
         elif style == 'aes':
