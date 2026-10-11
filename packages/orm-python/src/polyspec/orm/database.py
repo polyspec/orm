@@ -2,6 +2,7 @@
 # (docs/config.md, docs/usage.md). 실행은 동기다.
 from __future__ import annotations
 
+import copy
 import json
 import re
 import sqlite3
@@ -21,6 +22,7 @@ from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.markdown import (MarkdownDsn, begin_markdown, dial_markdown, end_markdown,
                                    markdown_read, markdown_scalar, markdown_write,
                                    parse_markdown_dsn, savepoint_markdown, unsupported_on_markdown)
+from polyspec.orm.ir import IRRequest
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
@@ -31,7 +33,7 @@ T = TypeVar('T')
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 
-__all__ = ['Db', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
+__all__ = ['Db', 'RequestHook', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
            'parse_dsn', 'read_time', 'row_key', 'scalar_key', 'time_value']
 
 # scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다.
@@ -649,11 +651,31 @@ class Executor:
         self.frame = frame
 
 
+# 연결(root)마다 활성 transaction frame이다. 같은 연결의 handle은 같은 frame을 본다.
 _ACTIVE: dict = {}
 
 
 def _active_for(db: 'Db') -> TxFrame | None:
-    return _ACTIVE.get(id(db))
+    return _ACTIVE.get(id(db.root()))
+
+
+# Request hook: handle의 각 request를 plan 직전에 받아 plan할 request를 돌려준다. 두 번째 인자 add_param(value)는
+# value를 request parameter 끝에 더하고 그 index를 돌려준다 (docs/usage.md "Request hook").
+RequestHook = Callable[[IRRequest, Callable[[object], int]], IRRequest]
+
+
+class _Shared:
+    """한 연결의 모든 handle이 공유하는 바뀌는 상태다. rollback_fault와 statement_fault는 test entry point
+    polyspec.orm.testing이 설정하는 test fault다."""
+
+    __slots__ = ('closed', 'row_lock_ready', 'rollback_fault', 'statement_fault')
+
+    def __init__(self):
+        self.closed = False
+        self.row_lock_ready = False
+        self.rollback_fault = False
+        # fail_next_statement이 설정하는 (code, message)다.
+        self.statement_fault = None
 
 
 class Db:
@@ -683,12 +705,10 @@ class Db:
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get('planCacheSize', 1024)
         self.events = Subscribers()
-        self._closed = False
-        self._row_lock_ready = False
-        # test entry point의 fail_next_rollback이 설정하는 test fault다.
-        self._rollback_fault = False
-        # test entry point의 fail_next_statement이 설정하는 test fault: (code, message)다.
-        self._statement_fault = None
+        self._shared = _Shared()
+        # handle의 root는 그 handle을 파생한 연결이고, 연결 자신은 None이다.
+        self._root: Db | None = None
+        self.request_hook: RequestHook | None = None
         self._connection = self._open()
 
     def utils(self) -> Utils:
@@ -735,7 +755,23 @@ class Db:
 
     @property
     def closed(self) -> bool:
-        return self._closed
+        return self._shared.closed
+
+    def with_request_hook(self, hook: RequestHook) -> Db:
+        """Returns a handle on the same connection whose hook receives each request of the handle
+        right before it is planned (docs/usage.md "Request hook"). The handle shares the connection,
+        the plan cache, the subscribers and the active transactions; withRequestHook on a hooked
+        handle replaces its hook."""
+        if not callable(hook):
+            raise OrmError('CONFIG', 'with_request_hook takes a callable')
+        handle = copy.copy(self)
+        handle.request_hook = hook
+        handle._root = self.root()
+        return handle
+
+    def root(self) -> Db:
+        """The connection this handle was derived from; a connection returns itself."""
+        return self._root if self._root is not None else self
 
     def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]:
         """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
@@ -746,12 +782,12 @@ class Db:
         return self.events.subscribe(subscriber)
 
     def close(self) -> None:
-        if not self._closed:
-            self._closed = True
+        if not self._shared.closed:
+            self._shared.closed = True
             self._connection.close()
 
     def plan(self, request: dict) -> dict:
-        if self._closed:
+        if self._shared.closed:
             raise OrmError('CONFIG', 'database is closed')
         # 연결은 자기에게 등록된 set만 plan한다. plan cache를 보기 전에 확인한다.
         engine = self.engines.get(request['manifest_hash'])
@@ -843,7 +879,7 @@ class Db:
         version, the clock and the audit of the transaction. A step that reads rows (it has an
         assemble) and a param slot past params fail with IR_INVALID before any statement runs
         (docs/usage.md "Execute a compiled statement")."""
-        if self._closed:
+        if self._shared.closed:
             raise OrmError('CONFIG', 'database is closed')
         ex = Executor(self, self.active_frame())
 
@@ -874,10 +910,10 @@ class Db:
         point fail_next_statement) is consumed here: the statement is not sent and raises the fault's
         OrmError, so the statement event of the statement carries it. Transaction control statements
         do not call this (TxFrame.run with faultable=False)."""
-        fault = self._statement_fault
+        fault = self._shared.statement_fault
         if fault is None:
             return run()
-        self._statement_fault = None
+        self._shared.statement_fault = None
         raise OrmError(fault[0], fault[1])
 
     # --- transaction ---
@@ -919,33 +955,34 @@ class Db:
                 attempt += 1
 
     def _run(self, callback, options: dict, record: dict | None = None):
-        if self._closed:
+        if self._shared.closed:
             raise OrmError('CONFIG', 'database is closed')
         frame = self._begin(options)
-        previous = _ACTIVE.get(id(self))
-        _ACTIVE[id(self)] = frame
+        key = id(self.root())
+        previous = _ACTIVE.get(key)
+        _ACTIVE[key] = frame
         try:
             if record is not None:
                 frame.audit = self._insert_audit(record)
             result = callback()
         except BaseException as error:
-            del _ACTIVE[id(self)]
+            del _ACTIVE[key]
             if previous is not None:
-                _ACTIVE[id(self)] = previous
+                _ACTIVE[key] = previous
             try:
                 self._finish(frame, False)
             except OrmError as cleanup:
                 raise rollback_failed(error, cleanup) from None
             # 설정된 test fault는 실행된 rollback을 실패로 보고하고 소비된다.
-            if self._rollback_fault:
-                self._rollback_fault = False
+            if self._shared.rollback_fault:
+                self._shared.rollback_fault = False
                 raise rollback_failed(error, OrmError(
                     'FAULT', 'test fault: the rollback of the transaction ran and is '
                              'reported as failed')) from None
             raise
-        del _ACTIVE[id(self)]
+        del _ACTIVE[key]
         if previous is not None:
-            _ACTIVE[id(self)] = previous
+            _ACTIVE[key] = previous
         self._finish(frame, True)
         return result
 
@@ -1030,11 +1067,11 @@ class Db:
     def _row_lock_table(self) -> None:
         """SQLite row lock table을 첫 transaction 전에 transaction 밖에서 한 번
         만든다 (docs/usage.md "Statement events")."""
-        if self._row_lock_ready:
+        if self._shared.row_lock_ready:
             return
         self.events.send('utility', ROW_LOCK_TABLES, None, [], ROW_LOCK_DDL,
                          lambda: self._connection.execute(ROW_LOCK_DDL, []))
-        self._row_lock_ready = True
+        self._shared.row_lock_ready = True
 
     def row_lock(self, frame: TxFrame, mode: str) -> None:
         """SQLite의 row lock이다. SQLite에는 row lock 절이 없으므로 lock row 하나가
@@ -1205,7 +1242,7 @@ class Db:
 
     def active_frame(self):
         """이 연결에서 열려 있는 transaction frame(없으면 None)."""
-        return _ACTIVE.get(id(self))
+        return _active_for(self)
 
 
 def _transform(kind: str, value: str) -> str:
@@ -1257,13 +1294,13 @@ def _check_lock(ex: Executor, request: dict) -> None:
 def _arm_rollback_fault(db: Db) -> None:
     """connection의 rollback fault를 설정한다. test entry point polyspec.orm.testing만
     부르며 package entry point는 export하지 않는다."""
-    db._rollback_fault = True
+    db._shared.rollback_fault = True
 
 
 def _arm_statement_fault(db: Db, code: str, message: str) -> None:
     """connection의 statement fault를 설정한다. 이미 설정된 fault는 대체된다. test entry point
     polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
-    db._statement_fault = (code, message)
+    db._shared.statement_fault = (code, message)
 
 
 def _subscriber_error(error) -> bool:
@@ -1275,8 +1312,29 @@ def _sqlite_busy(error) -> bool:
     return code is not None and (code & 0xff) == 5
 
 
+def _hooked(db: Db, request: dict, params):
+    """handle의 request hook을 plan 직전의 request에 적용하고 (request, params)를 돌려준다. hook은 params의 복사본에
+    add_param으로 값을 더하고, n_params는 그 개수가 된다. 바뀐 request는 plan이 다른 request처럼 validate한다. hook이 없으면
+    아무것도 복사하거나 부르지 않는다."""
+    hook = db.request_hook
+    if hook is None:
+        return request, params
+    values = list(params)
+
+    def add_param(value) -> int:
+        values.append(value)
+        return len(values) - 1
+
+    out = hook(request, add_param)
+    if not isinstance(out, dict):
+        raise OrmError('CONFIG', 'the request hook returns the request to plan')
+    out['n_params'] = len(values)
+    return out, values
+
+
 def query(ex: Executor, request: dict, params):
     """select request를 실행해 main row들과 relation step들의 결과를 낸다."""
+    request, params = _hooked(ex.db, request, params)
     def work():
         _check_lock(ex, request)
         db = ex.db
@@ -1528,6 +1586,7 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
 
 def scalar(ex: Executor, request: dict, params):
     """집계나 count 등 스칼라 하나를 실행한다."""
+    request, params = _hooked(ex.db, request, params)
 
     def work():
         _check_lock(ex, request)
@@ -1554,6 +1613,8 @@ def scalar(ex: Executor, request: dict, params):
 
 
 def paginate(ex: Executor, request: dict, params):
+    request, params = _hooked(ex.db, request, params)
+
     def work():
         _check_lock(ex, request)
         db = ex.db
@@ -1577,6 +1638,7 @@ def write(ex: Executor, request: dict, params):
     """insert, update, delete를 실행하고 id와 영향 줄 수를 낸다."""
     """insert, update, delete를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
     identity, markdown executor에서는 그 답의 첫 key다."""
+    request, params = _hooked(ex.db, request, params)
 
     def work():
         db = ex.db
@@ -1604,6 +1666,7 @@ def write(ex: Executor, request: dict, params):
 def statement(ex: Executor, request: dict, params):
     """select request의 statement를 실행 없이 돌려준다."""
     unsupported_on_markdown(ex.db, 'getQuery')
+    request, params = _hooked(ex.db, request, params)
     cached = ex.db.plan(request)
     step = cached['plan']['steps'][0]
     return {'sql': step['sql'], 'binds': ex.db.args(step, params)['masked']}
