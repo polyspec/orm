@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T115-3: Python 3.15 is the Python the repository tests: `.python-version`, `config/toolchain.json` (python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15` and the README declare it.
 ## 0.0.8
 
 - T114: release 0.0.8: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.8, the dependency review is recorded again, `tests/release-consumer` holds the locks of the archives of 0.0.8, and the Python wheel `polyspec_orm-0.0.8-py3-none-any.whl` is among the release assets.

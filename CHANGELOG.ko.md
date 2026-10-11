@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 394af21b178cf457cedd076c2e28e50527c73ae9bbf5caed270f20656faa6931 -->
+<!-- source-sha256: c80053e5d8d7c07ca33ceb556c682a7b029b2a47e5b479db828ce35bcd9e98ab -->
 # 변경 이력
 
 ## Unreleased
 
+- T115-3: Python 3.15가 저장소가 test하는 Python이다. `.python-version`, `config/toolchain.json`(python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15`, README가 이를 선언한다.
 ## 0.0.8
 
 - T114: 0.0.8 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.8을 밝히고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.8 archive의 lock을 가지고, Python wheel `polyspec_orm-0.0.8-py3-none-any.whl`이 release asset에 있다.
