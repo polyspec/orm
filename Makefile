@@ -825,7 +825,7 @@ conformance-result-check/python: python-venv-check
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
+	$(WITH_TEST_ENV) TZ=$(CONFORMANCE_TZ) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
 conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
@@ -865,6 +865,11 @@ PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
 python-model-check: python-venv-check
 	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
 
+# CONFORMANCE_TZ는 conformance runner가 실행되는 process의 시간대다. UTC가 아닌 시간대로 실행해야 client가
+# database의 시간대 없는 datetime을 machine의 지역 시각으로 읽는 결함이 CI(UTC runner)에서도 드러난다. 모든 client는
+# 연결의 시간대(+00:00)로 읽고 쓰므로 결과는 이 값과 무관해야 한다(docs/dialects.md).
+CONFORMANCE_TZ = Asia/Seoul
+
 # CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
 # 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은
 # sibling checkout의 packages/ordered-json-python/src에서 읽는다(docs/plans/execution-checklist.md T43.5-1).
@@ -881,7 +886,7 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 conformance-check/run: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) TZ=$(CONFORMANCE_TZ) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
