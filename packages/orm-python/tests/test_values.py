@@ -27,6 +27,34 @@ class ValueFunctionTest(unittest.TestCase):
         self.assertEqual(orm.year().name, 'year')
 
 
+class NaiveDatetimeTest(unittest.TestCase):
+    """MySQL과 PostgreSQL driver는 시간대 없는 datetime을 연결의 시간대로 돌려준다. process의 지역
+    시간대(TZ)는 그 값을 바꾸지 않는다."""
+
+    def test_a_naive_cell_is_in_the_connection_zone_whatever_the_process_zone(self):
+        import datetime
+        import os
+        import time
+        from polyspec.orm.database import read_time, time_value
+        saved = os.environ.get('TZ')
+        os.environ['TZ'] = 'Asia/Seoul'
+        time.tzset()
+        try:
+            cell = datetime.datetime(2026, 10, 11, 6, 7, 8, 123456)
+            self.assertEqual(read_time(cell, 'datetime', '+00:00', 6), '2026-10-11 06:07:08.123456')
+            self.assertEqual(time_value(cell, 'datetime', '+00:00', 6), '2026-10-11 06:07:08.123456')
+            self.assertEqual(read_time(cell, 'datetime', '+09:00', 6), '2026-10-11 06:07:08.123456')
+            # 시간대가 있는 값은 연결의 시간대로 바꾼다.
+            aware = cell.replace(tzinfo=datetime.timezone.utc)
+            self.assertEqual(read_time(aware, 'datetime', '+09:00', 6), '2026-10-11 15:07:08.123456')
+        finally:
+            if saved is None:
+                os.environ.pop('TZ', None)
+            else:
+                os.environ['TZ'] = saved
+            time.tzset()
+
+
 class HostCodecTest(unittest.TestCase):
     def test_ip_round_trip(self):
         for address in ['127.0.0.1', '255.255.255.255', '2001:db8::1', '::1', 'fe80::']:
