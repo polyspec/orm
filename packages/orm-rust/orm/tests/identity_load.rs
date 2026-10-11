@@ -169,6 +169,7 @@ async fn read_rows(db: &Db, query: &str) -> Result<Vec<(i64, String)>, String> {
         Pool::MySql(p) => read!(p),
         Pool::Postgres(p) => read!(p),
         Pool::Sqlite(p) => read!(p),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 
