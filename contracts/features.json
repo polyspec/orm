@@ -5868,6 +5868,7 @@
       "tests": [
         "packages/orm-go/markdownmodel/conformance_test.go",
         "packages/orm-php/tests/markdown_conformance.php",
+        "packages/orm-python/tests/markdown_conformance.py",
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
