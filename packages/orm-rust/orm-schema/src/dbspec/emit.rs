@@ -195,11 +195,17 @@ fn setting_text(setting: &Setting, table: &Table, view: View) -> String {
         Setting::BlindIndex(aes, target) => format!("blind_index {} {}", aes.text, target.text),
         Setting::Navigation(key, child, parent) => format!("navigation {} {} {}", key.text, child.text, parent.text),
         Setting::Markdown(column) => format!("markdown {}", column.text),
-        Setting::Store { kind, foreign, shape } => match (kind.text.as_str(), foreign, shape) {
-            ("block", Some(foreign), Some(shape)) => format!("store block {} {}", foreign.text, shape.text),
-            ("document", _, Some(shape)) => format!("store document {}", shape.text),
-            _ => "store files".into(),
-        },
+        Setting::Store { kind, foreign, shape, shard } => {
+            let head = match (kind.text.as_str(), foreign, shape) {
+                ("block", Some(foreign), Some(shape)) => format!("store block {} {}", foreign.text, shape.text),
+                ("document", _, Some(shape)) => format!("store document {}", shape.text),
+                _ => "store files".into(),
+            };
+            match shard {
+                Some(shard) => format!("{head} shard {} {}", shard.column.text, shard.period.text),
+                None => head,
+            }
+        }
         Setting::KeyPrefix(prefix) => format!("key_prefix {}", quote(&prefix.text)),
         Setting::Title(column) => format!("title {}", column.text),
         Setting::Body(column) => format!("body {}", column.text),
