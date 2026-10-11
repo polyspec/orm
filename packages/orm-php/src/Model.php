@@ -1209,9 +1209,9 @@ abstract class Model implements \JsonSerializable
             if ($ch['kind'] === 'join') {
                 $child = $this->joinChild($ch['rel']);
                 $value = null;
-                $first = $ch['assemble']['columns'][0]['index'] ?? null;
-                if ($first !== null && $vals[$first] !== null) {
-                    $value = $child->assembleRow($a, $ch['assemble'], $vals);
+                $jrow = $a->joinRow($ch, $vals);
+                if ($jrow !== null) {
+                    $value = $child->assembleRow($a, $ch['assemble'], $jrow);
                 }
                 $st['related'][$ch['rel']] = $value;
                 $st['cascade'][$ch['rel']] = false;
@@ -1219,7 +1219,7 @@ abstract class Model implements \JsonSerializable
             }
             [$child, $many] = $this->relationChild($ch['rel']);
             $rows = $a->related($ch, $vals);
-            $childAsm = $a->stepAssemble($ch['step']);
+            $childAsm = $a->relationAssemble($ch);
             if ($many) {
                 $coll = new Collection();
                 foreach ($rows as $cr) {
@@ -1692,11 +1692,17 @@ abstract class Model implements \JsonSerializable
                 $m->values[$column] = null;
             }
         }
-        if ($meta['identity'] !== '') {
-            if (!in_array($meta['identity'], $st['names'], true)) {
-                $st['names'][] = $meta['identity'];
+        // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로
+        // 요청이 값을 주지 않은 하나뿐인 primary key column이다.
+        $assignedKey = $meta['identity'];
+        if ($assignedKey === '' && $db->driver() === 'markdown' && count($meta['pk']) === 1 && $id !== null && !array_key_exists($meta['pk'][0], $this->sets)) {
+            $assignedKey = $meta['pk'][0];
+        }
+        if ($assignedKey !== '') {
+            if (!in_array($assignedKey, $st['names'], true)) {
+                $st['names'][] = $assignedKey;
             }
-            $m->values[$meta['identity']] = self::columnValue($meta['columns'][$meta['identity']], $id, $db->zone());
+            $m->values[$assignedKey] = self::columnValue($meta['columns'][$assignedKey], $id, $db->zone());
         }
         foreach ($meta['pk'] as $pk) {
             $v = $m->values[$pk] ?? null;
@@ -2246,20 +2252,48 @@ final class Assembly
     public array $made = [];
 
     public readonly \DateTimeZone $zone;
+    /** markdown 답의 result인지다: 각 행의 마지막 칸이 그 행의 join과 relation 행(MarkdownLinks)이다. */
+    private readonly bool $markdown;
 
     public function __construct(public readonly Db $db, public readonly ?Db $conn, private readonly array $result, public readonly bool $track = false)
     {
         $this->zone = $db->zone();
+        $this->markdown = !empty($result['markdown']);
     }
 
-    public function stepAssemble(int $step): array
+    /**
+     * join $ch의 행이다. 없으면 null이다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이
+     * NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+     *
+     * @param list<mixed> $parent
+     * @return list<mixed>|null
+     */
+    public function joinRow(array $ch, array $parent): ?array
     {
-        return $this->result['steps'][$step]['step']['assemble'];
+        if ($this->markdown) {
+            return Markdown::links($parent)->joins[$ch['rel']] ?? null;
+        }
+        $first = $ch['assemble']['columns'][0]['index'] ?? null;
+        return $first !== null && $parent[$first] !== null ? $parent : null;
     }
 
-    /** @return list<list<mixed>> */
+    /** relation $ch의 행 배치다: SQL 결과에서는 relation step의 배치, markdown 답에서는 child 자신의 배치다. */
+    public function relationAssemble(array $ch): array
+    {
+        return $this->markdown ? $ch['assemble'] : $this->result['steps'][$ch['step']]['step']['assemble'];
+    }
+
+    /**
+     * relation $ch에서 부모 행 $parent의 행이다. SQL 결과에서는 relation step의 행을 key로 찾고,
+     * markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+     *
+     * @return list<list<mixed>>
+     */
     public function related(array $ch, array $parent): array
     {
+        if ($this->markdown) {
+            return Markdown::links($parent)->rels[$ch['rel']] ?? [];
+        }
         $sr = $this->result['steps'][$ch['step']] ?? null;
         if ($sr === null) {
             return [];

@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
 require_once dirname(__DIR__, 3) . '/tests/testcase.php';
+require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
@@ -34,36 +35,47 @@ function markdown_error(Closure $fn): ?OrmException
 }
 
 /**
- * markdown_fake_server.php를 $answers로 시작한다. 돌려주는 값은 [process, stdout, dsn]이다.
+ * markdown_fake_server.php를 $answers로 시작한다. 돌려주는 값은 [process, stdout, dsn, stderr]이다.
+ * stderr는 pipe로 받는다: 이 process의 STDERR를 넘기면 file로 redirect한 출력의 앞부분이 사라진다.
  *
  * @param list<string> $answers
- * @return array{0: resource, 1: resource, 2: string}
+ * @return array{0: resource, 1: resource, 2: string, 3: resource}
  */
 function markdown_fake_server(array $answers): array
 {
-    $process = proc_open([PHP_BINARY, __DIR__ . '/markdown_fake_server.php', ...$answers], [1 => ['pipe', 'w'], 2 => STDERR], $pipes);
+    $process = proc_open([PHP_BINARY, __DIR__ . '/markdown_fake_server.php', ...$answers], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     if ($process === false) {
         throw new RuntimeException('cannot start markdown_fake_server.php');
     }
     $port = trim((string) fgets($pipes[1]));
     if (preg_match('/^[0-9]+$/', $port) !== 1) {
-        throw new RuntimeException("markdown_fake_server.php printed \"$port\", not its port");
+        $stderr = (string) stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+        throw new RuntimeException("markdown_fake_server.php printed \"$port\", not its port; stderr:\n$stderr");
     }
-    return [$process, $pipes[1], "markdown://127.0.0.1:$port/tracker?token=" . MARKDOWN_TOKEN];
+    return [$process, $pipes[1], "markdown://127.0.0.1:$port/tracker?token=" . MARKDOWN_TOKEN, $pipes[2]];
 }
 
 /**
  * fake server가 받은 message 줄이다. server가 끝나기를 기다린다.
  *
- * @param array{0: resource, 1: resource, 2: string} $server
+ * @param array{0: resource, 1: resource, 2: string, 3: resource} $server
  * @return list<string>
  */
 function markdown_received(array $server): array
 {
     $line = (string) stream_get_contents($server[1]);
+    $stderr = (string) stream_get_contents($server[3]);
     fclose($server[1]);
+    fclose($server[3]);
     proc_close($server[0]);
-    return json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+    $received = json_decode($line, true);
+    if (!is_array($received)) {
+        throw new RuntimeException("markdown_fake_server.php printed \"$line\", not the received lines; stderr:\n$stderr");
+    }
+    return $received;
 }
 
 testcase_begin('markdown/parse_dsn', TESTCASE_COMPUTE);
@@ -163,6 +175,26 @@ if ($e?->code_ !== Code::CAPABILITY_UNSUPPORTED) {
 }
 $db->close();
 markdown_received($server);
+testcase_end();
+
+testcase_begin('markdown/request_message', TESTCASE_PROCESS);
+// request message는 parameter를 slot의 form으로 쓴다: date column과 비교하는 시각은 YYYY-MM-DD다. 행이 없는
+// group count는 빈 결과다.
+$server = markdown_fake_server(['{"ok":true}', '{"rows":[]}']);
+$db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+$groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
+    ->due(new DateTimeImmutable('2026-10-01 00:00:00', new DateTimeZone('UTC')))->groupByOwner()->getsCount()->toArray();
+if ($groups !== []) {
+    throw new RuntimeException('group count of no rows = ' . json_encode($groups));
+}
+$db->close();
+$received = markdown_received($server);
+$message = json_decode($received[1] ?? 'null', true);
+if (!is_array($message) || $message['params'] !== ['2026-10-01'] || $message['request']['kind'] !== 'group_count'
+    || $message['ir_version'] !== 1 || $message['manifest_hash'] !== \Polyspec\Orm\Tests\MarkdownModel\MANIFEST_HASH
+    || preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{6}$/D', (string) $message['now']) !== 1) {
+    throw new RuntimeException('request message = ' . ($received[1] ?? 'none'));
+}
 testcase_end();
 
 testcase_begin('markdown/param_uses', TESTCASE_COMPUTE);

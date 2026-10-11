@@ -442,7 +442,8 @@
       "id": "markdown-conformance", "kind": "suite", "profile": "client",
       "file": "tests/markdown/cases.json", "cases": "$.cases[*].id",
       "bindings": [
-        { "implementation": "go", "test": "packages/orm-go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" }
+        { "implementation": "go", "test": "packages/orm-go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" },
+        { "implementation": "php", "test": "packages/orm-php/tests/markdown_conformance.php" }
       ]
     }
   ],
