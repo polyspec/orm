@@ -64,7 +64,8 @@ func TestSelectAll(t *testing.T) {
 	sql := p.Steps[0].SQL
 	wantParts := []string{
 		"SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, ",
-		"UNHEX(`a`.`aes_hex_email`) AS `a__aes_hex_email`",
+		// MySQL도 hex를 SQL에서 풀지 않는다: executor가 HostDecode로 정확히 읽는다(docs/codec.md).
+		"`a`.`aes_hex_email` AS `a__aes_hex_email`",
 		" FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND (`a`.`is_display` = ? OR (`a`.`is_display` = ? AND `a`.`display_start_dt` < ?)) AND `a`.`seq` IN (?, ?, ?) AND `a`.`email_blind_index` = ? AND `a`.`name` LIKE ? ORDER BY `a`.`seq` DESC LIMIT 0, 100",
 	}
 	for _, w := range wantParts {
@@ -95,6 +96,12 @@ func TestSelectAll(t *testing.T) {
 	// explicit column(ip 등)은 빠진다.
 	if asm == nil || asm.Columns[0].Name != "seq" || asm.Columns[0].Index != 0 || len(asm.Columns) != 27 || asm.Columns[26].Name != "aes_key_version" || !asm.Columns[26].Hidden || strings.Contains(sql, "`a`.`ip`") {
 		t.Errorf("assemble: %+v", asm)
+	}
+	// 읽은 aes_hex column은 executor가 hex와 aes를 모두 decode한다.
+	for _, c := range asm.Columns {
+		if c.Name == "aes_hex_email" && !slices.Equal(c.Styles, []string{"aes", "hex"}) {
+			t.Errorf("aes_hex_email styles %v, want [aes hex]", c.Styles)
+		}
 	}
 }
 
