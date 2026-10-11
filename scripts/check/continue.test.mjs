@@ -26,14 +26,29 @@ function fake(programs, failing) {
   };
 }
 
+// declared는 script가 실행하는 명령을 그 script의 줄에서 읽는다. 기대 명령과 개수를 손으로 적지 않으므로 lane에 test
+// file을 더하거나 빼도 case가 맞는다. from이 주어지면 그 줄 다음부터 `}`로 끝나는 shell 함수 본문만 읽고, `keep `을 뗀 줄
+// 가운데 program으로 시작하는 줄을 실행 순서대로 돌려준다.
+function declared(script, program, from) {
+  let lines = readFileSync(join(repo, script), 'utf8').split('\n').map((line) => line.trim());
+  if (from !== undefined) {
+    const start = lines.indexOf(from);
+    assert.notEqual(start, -1, `${script} has no line ${from}`);
+    lines = lines.slice(start + 1, lines.indexOf('}', start));
+  }
+  const commands = lines.map((line) => line.replace(/^keep /, '')).filter((line) => line.startsWith(`${program} `));
+  assert.ok(commands.length > 1, `${script} declares no ${program} commands`);
+  return commands;
+}
+
 caseTest('the PHP lane of client-db-test runs every test after a failed one and names the failures', PROCESS, () => {
   const f = fake(['php'], 'model_test');
   try {
     const result = f.run(['scripts/client-db-test.sh', '--lane', 'php'], { ORM_RUST_TEST_FEATURES: 'none' });
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    const ran = f.ran();
-    assert.equal(ran.length, 11, ran.join('\n'));
-    assert.deepEqual([ran[0], ran.at(-1)], ['php packages/orm-php/tests/model_test.php', 'php packages/orm-php/tests/mysql_tls.php']);
+    const expected = declared('scripts/client-db-test.sh', 'php', 'php_lane() {');
+    assert.equal(expected[0], 'php packages/orm-php/tests/model_test.php');
+    assert.deepEqual(f.ran(), expected);
     assert.match(result.stderr, /client-db-test: the php lane failed:\n {2}php packages\/orm-php\/tests\/model_test\.php \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
@@ -45,9 +60,10 @@ caseTest('the TypeScript SQLite tests run every test after a failed one and name
   try {
     const result = f.run(['scripts/typescript/sqlite-test.sh']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    const ran = f.ran();
-    assert.equal(ran.length, 10, ran.join('\n'));
-    assert.deepEqual([ran[1], ran.at(-1)], ['node packages/orm-npm/tests/model.mjs', 'node packages/orm-npm/tests/mysql_tls.mjs']);
+    // 첫 node 명령은 build이고 test는 그 뒤에 실행된다.
+    const expected = declared('scripts/typescript/sqlite-test.sh', 'node');
+    assert.equal(expected[1], 'node packages/orm-npm/tests/model.mjs');
+    assert.deepEqual(f.ran(), expected);
     assert.match(result.stderr, /sqlite-test: failed:\n {2}node packages\/orm-npm\/tests\/model\.mjs \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });
