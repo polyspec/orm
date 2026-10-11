@@ -96,7 +96,11 @@ commits-check: ## Check the commit messages of RANGE (<base>..<head>, default HE
 	node scripts/kit/check-commits.mjs $(if $(RANGE),--range $(RANGE))
 # The steps of a release (scripts/kit/release.mjs, config/release.json). TAG is the pushed tag, vX.Y.Z or <Go module
 # directory>/vX.Y.Z; release-verify reads the check runs of GITHUB_REPOSITORY. The release workflow runs the steps in this order.
-.PHONY: release-verify release-versions release-assets release-publish release-coverage release-go-tags release-backend
+.PHONY: release-tools release-verify release-versions release-assets release-publish release-undraft release-coverage release-go-tags release-backend
+
+release-tools: ## Install the tools that config/release.json needs for the release (npm, Composer, Python and its backend, Go) and check cargo when a git-tag proof needs it; ONLINE
+	$(ONLINE) node scripts/kit/release-tools.mjs
+
 
 release-verify: ## Require the commit of TAG on origin/main with its check runs succeeded; reads GITHUB_REPOSITORY
 	@test -n "$$TAG" || { echo "release-verify: TAG is required, for example make release-verify TAG=v0.0.1"; exit 1; }
@@ -110,9 +114,13 @@ release-assets: ## Build the archive of every package of TAG into var/release/as
 	@test -n "$$TAG" || { echo "release-assets: TAG is required, for example make release-assets TAG=v0.0.1"; exit 1; }
 	node scripts/kit/release.mjs assets "$$TAG"
 
-release-publish: ## Create the GitHub Release of TAG with the notes and the archives of release-assets
+release-publish: ## Create the GitHub Release of TAG as a draft with the notes and the archives of release-assets; a draft of an earlier run is replaced
 	@test -n "$$TAG" || { echo "release-publish: TAG is required, for example make release-publish TAG=v0.0.1"; exit 1; }
 	node scripts/kit/release.mjs publish "$$TAG"
+
+release-undraft: ## Make the draft release of TAG public; run only after release-proof of TAG passed
+	@test -n "$$TAG" || { echo "release-undraft: TAG is required, for example make release-undraft TAG=v0.0.1"; exit 1; }
+	node scripts/kit/release.mjs undraft "$$TAG"
 
 release-coverage: ## Require every package file of the checkout to be classified in config/release.json; offline
 	node scripts/kit/release.mjs coverage
@@ -123,6 +131,13 @@ release-go-tags: ## Require the tag <directory>/vX.Y.Z of every Go module at the
 
 release-backend: ## Download the build backend of the wheel packages into var/tools/wheels with its sha256 checked; ONLINE
 	$(ONLINE) node scripts/kit/release-backend.mjs
+
+# --- python-venv: a virtual environment of the checkout Python with no symbolic link (scripts/kit/python-venv.mjs). Consumers
+# make their environments with it: CPython's `-m venv` links lib64 to lib on 64-bit posix systems other than macOS.
+.PHONY: python-venv
+python-venv: ## Make the virtual environment DIR (which must not exist) from var/tools/bin/python3, with no symbolic link; offline
+	@test -n "$(DIR)" || { echo "python-venv: DIR is required, for example make python-venv DIR=pkg/.venv"; exit 1; }
+	node scripts/kit/python-venv.mjs $(DIR)
 
 # --- lint-python: ruff check and ruff format --check of the Python of the checkout, with the ruff that config/toolchain.json declares.
 .PHONY: lint-python
@@ -135,7 +150,7 @@ lint-python: ## Lint and format-check the Python of the checkout with the ruff o
 # smoke command for each package. A lock pins registry packages by version and integrity, so the install downloads them: that is
 # installation, and the target is no offline check. release-consumer-lock resolves versions and runs ONLINE.
 # scripts/kit/release-proof.mjs proves a released TAG from outside the repository (GitHub Release, consumer installs, git-tag
-# installs, Go modules); it runs after the release exists and belongs to no check.
+# installs, Go modules); the release workflow of workflows/release.yml runs it on the draft after release-publish, and a developer may run it.
 .PHONY: release-consumer release-consumer-lock release-proof
 
 release-consumer: ## Install the archives of TAG in var/release/assets in clean npm and Composer projects and run the smoke commands

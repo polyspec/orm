@@ -110,7 +110,9 @@ test('install runs npm ci and composer install in clean projects outside the rep
     "npm fixture-app 0.0.1: node -e require('fixture-app/package.json')",
     'composer install of 1 packages from tests/release-consumer/composer',
     "composer polyspec/kit-fixture 0.0.1: node -e require('./vendor/composer/installed.json')",
+    'wheel dependencies pip install of 1 requirements',
     'wheel pip install of 1 packages',
+    'wheel pip check passed',
     "wheel kit-fixture 0.0.1: python -c import kit_fixture",
   ]);
   const [ci] = box.calls('npm').slice(-1);
@@ -220,7 +222,7 @@ test('the command line locks, installs, ends a Go module tag without an install 
   lines.length = 0;
   assert.equal(run(['install', 'v0.0.1']), 0);
   assert.equal(lines.at(-1), '[release-consumer] v0.0.1: installed and checked 4 packages from var/release/assets');
-  assert.equal(lines.length, 8);
+  assert.equal(lines.length, 10);
   lines.length = 0;
   assert.equal(run(['install', 'packages/fixture-go/v0.0.1']), 0);
   assert.deepEqual(lines, ['[release-consumer] packages/fixture-go/v0.0.1: a Go module tag releases no archive; nothing to install']);

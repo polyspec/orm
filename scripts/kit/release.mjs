@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// Releases a tag of a commit of main. The steps run in this order from the release workflow, each through its make target:
+// Releases a tag of a commit of main. The steps run in this order from the release workflow (workflows/release.yml), each
+// through its make target:
 //
 //   node scripts/kit/release.mjs verify TAG     the tagged commit is on origin/main and its checks concluded success
 //   node scripts/kit/release.mjs versions TAG   every manifest of the tag has its version, CHANGELOG has its section
 //   node scripts/kit/release.mjs assets TAG     build the archive of every package of the tag into var/release/assets
-//   node scripts/kit/release.mjs publish TAG    create the GitHub Release of the tag with its notes and archives
+//   node scripts/kit/release.mjs publish TAG    create the GitHub Release of the tag as a draft, with its notes and archives
+//   node scripts/kit/release.mjs undraft TAG    make the draft release of the tag public; after the proof of the draft passed
 //   node scripts/kit/release.mjs go-tags TAG    every Go module has its tag <directory>/vX.Y.Z at the commit of TAG
 //   node scripts/kit/release.mjs coverage       every package file of the checkout is classified in config/release.json
 //
@@ -28,13 +30,16 @@
 // create TAG --verify-tag --title TAG --notes-file <notes>` with the archives; the notes are the section X.Y.Z, or one
 // line that links the section when it is longer than NOTES_LIMIT characters, the limit of a release body.
 // A `wheel` package builds its PEP 427 wheel `<distribution>-<version>-py3-none-any.whl` from the tagged commit with the build
-// backend of buildBackend (release-wheel.mjs); its metadata may hold only plain `name==version` Requires-Dist lines.
+// backend of buildBackend (release-wheel.mjs); each of its Requires-Dist lines is a registry pin or a polyspec release asset that
+// its lock of consumers.wheel.lock holds (wheel-dependencies.mjs).
 // Each failure names the tag, the file or the check, and the expected and the actual value, and exits with status 1.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { releaseOf } from './github-release.mjs';
 import { consumerConfigProblems } from './release-consumer-config.mjs';
 import { buildWheel, metadataProblems, sourceProblems, tomlString, wheelMetadata, wheelName } from './release-wheel.mjs';
+import { lockProblems, wheelDependencyProblems } from './wheel-dependencies.mjs';
 import { readConfig } from './schema-validate.mjs';
 import { checkedFiles } from './tracked-files.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -362,9 +367,11 @@ export function assets(ctx, tag) {
   const commit = taggedCommit(ctx, tag);
   const names = assetNames(config, version);
   const sources = config.packages.map(({ kind, directory: folder }) => run('git', ['show', `${commit}:${folder}/${MANIFEST_OF[kind]}`], at(ctx)));
+  // The lock of each wheel package is read from the tagged commit, as its manifest is.
+  const locks = config.packages.map(({ kind, name }) => (kind === 'wheel' ? { file: config.consumers.wheel.lock[name], text: run('git', ['show', `${commit}:${config.consumers.wheel.lock[name]}`], at(ctx)) } : null));
   const problems = config.packages.flatMap(({ kind, directory: folder, name }, index) => {
     const file = `${folder}/${MANIFEST_OF[kind]}`;
-    if (kind === 'wheel') return sourceProblems({ file, text: sources[index], name, requirement: config.buildBackend.requirement });
+    if (kind === 'wheel') return [...sourceProblems({ file, text: sources[index], name, requirement: config.buildBackend.requirement }), ...lockProblems(locks[index].text, locks[index].file)];
     const manifest = JSON.parse(sources[index]);
     return [
       ...(manifest.name === name ? [] : [`${file}: name ${manifest.name ?? 'none'}, ${CONFIG} declares ${name}`]),
@@ -397,7 +404,13 @@ export function assets(ctx, tag) {
     const present = readdirSync(next).sort();
     if (JSON.stringify(present) !== JSON.stringify([...names].sort())) throw new Stop(`${ASSETS} holds [${present.join(', ')}], not the archives [${[...names].sort().join(', ')}]`);
     const failures = config.packages.flatMap(({ kind, directory: folder, name }, index) => {
-      if (kind === 'wheel') return metadataProblems(wheelMetadata(root, path.join(next, names[index]), ctx.env), name, version).map(problem => `${names[index]}: ${problem}`);
+      if (kind === 'wheel') {
+        const metadata = wheelMetadata(root, path.join(next, names[index]), ctx.env);
+        return [
+          ...metadataProblems(metadata, name, version),
+          ...wheelDependencyProblems({ metadata, version, polyspec: config.consumers.wheel.polyspec, lockFile: locks[index].file, lockText: locks[index].text }),
+        ].map(problem => `${names[index]}: ${problem}`);
+      }
       const file = MANIFEST_OF[kind];
       const packed = packedManifest(ctx, path.join(next, names[index]));
       return [
@@ -413,7 +426,10 @@ export function assets(ctx, tag) {
   return names;
 }
 
-/** Creates the GitHub Release of the tag with the notes of releaseNotes and the archives of assets. */
+/**
+ * Creates the GitHub Release of the tag as a draft, with the notes of releaseNotes and the archives of assets. A draft of an
+ * earlier run is replaced; a public release is never replaced.
+ */
 export function publish(ctx, tag) {
   const { root, config } = ctx;
   const [directory, version] = parseTag(config, tag);
@@ -422,16 +438,37 @@ export function publish(ctx, tag) {
   const target = path.join(root, ASSETS);
   const missing = names.filter(name => !existsSync(path.join(target, name)));
   if (missing.length) throw new Stop(`${ASSETS} lacks [${missing.join(', ')}]; make release-assets builds them`);
+  const earlier = releaseOf(at(ctx), config.repositoryUrl, tag);
+  if (earlier && !earlier.draft) throw new Stop(`the release ${tag} is already public; a public release is not replaced`);
+  if (earlier) {
+    ctx.log(`[release] ${tag}: removing the draft release ${earlier.id} of an earlier run`);
+    run('gh', ['release', 'delete', tag, '--yes'], at(ctx));
+  }
   const folder = mkdtempSync(path.join(tmpdir(), 'kit-release-notes-'));
   try {
     const notesFile = path.join(folder, 'notes.md');
     writeFileSync(notesFile, notes);
-    ctx.log(`[release] ${tag}: creating the GitHub Release with ${names.length} archives`);
-    run('gh', ['release', 'create', tag, '--verify-tag', '--title', tag, '--notes-file', notesFile, ...names.map(name => path.join(target, name))], at(ctx));
+    ctx.log(`[release] ${tag}: creating the draft GitHub Release with ${names.length} archives`);
+    run('gh', ['release', 'create', tag, '--verify-tag', '--draft', '--title', tag, '--notes-file', notesFile, ...names.map(name => path.join(target, name))], at(ctx));
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
   return names;
+}
+
+/**
+ * Makes the draft release of the tag public; run only after release-proof passed. A release that is already public stays so.
+ * Returns true when this call made it public.
+ */
+export function undraft(ctx, tag) {
+  const release = releaseOf(at(ctx), ctx.config.repositoryUrl, tag);
+  if (!release) throw new Stop(`the release ${tag} does not exist; make release-publish creates it as a draft`);
+  if (!release.draft) {
+    ctx.log(`[release] ${tag}: the release is already public`);
+    return false;
+  }
+  run('gh', ['release', 'edit', tag, '--draft=false'], at(ctx));
+  return true;
 }
 
 /**
@@ -459,13 +496,13 @@ export function coverage(ctx) {
   return problems;
 }
 
-const USAGE = 'usage: node scripts/kit/release.mjs verify|versions|assets|publish|go-tags TAG | coverage';
+const USAGE = 'usage: node scripts/kit/release.mjs verify|versions|assets|publish|undraft|go-tags TAG | coverage';
 
 /** Runs a step of the command line; the exit status. */
 export function main(argv, { root = ROOT, env = process.env, print = console.log, error = console.error } = {}) {
   const [mode, latest, ...rest] = argv;
   let tag = latest;
-  const tagged = ['verify', 'versions', 'assets', 'publish', 'go-tags'].includes(mode);
+  const tagged = ['verify', 'versions', 'assets', 'publish', 'undraft', 'go-tags'].includes(mode);
   if (!(tagged && tag && rest.length === 0) && !(mode === 'coverage' && tag === undefined)) {
     error(USAGE);
     return 2;
@@ -500,6 +537,9 @@ export function main(argv, { root = ROOT, env = process.env, print = console.log
     } else if (mode === 'assets') {
       const names = assets(ctx, tag);
       print(`[release] ${tag}: built ${names.length ? names.join(', ') : 'no archive (a Go module)'} in ${ASSETS}`);
+    } else if (mode === 'undraft') {
+      const made = undraft(ctx, tag);
+      print(`[release] ${tag}: ${made ? 'made the GitHub Release public' : 'the GitHub Release is already public'}`);
     } else {
       const names = publish(ctx, tag);
       print(`[release] ${tag}: created the GitHub Release with ${names.length ? names.join(', ') : 'no archive'}`);

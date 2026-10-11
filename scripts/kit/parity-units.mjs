@@ -37,11 +37,14 @@ export function undeclaredSuites(model, files) {
     .map(file => finding('R4', 'the vector file is the file of no suite unit; declare a unit for it', { place: file }));
 }
 
-/** R5: each test file of an implementation is the test of a binding of that implementation. */
+/** Whether `file` is a support file of an implementation of `runner`: it holds no test of that runner. */
+const supportFile = (model, runner, file) => model.config.implementations.some(implementation => implementation.runner === runner && matchesAny(implementation.support ?? [], file));
+
+/** R5: each test file of an implementation, except its support files, is the test of a binding of that implementation. */
 export function undeclaredTests(model, files) {
   return model.config.implementations.flatMap((implementation) => {
     const bound = new Set(model.config.units.flatMap(unit => unit.bindings ?? []).filter(entry => entry.implementation === implementation.name).map(entry => entry.test));
-    return [...files].filter(file => matchesAny(implementation.tests, file) && !bound.has(file))
+    return [...files].filter(file => matchesAny(implementation.tests, file) && !bound.has(file) && !matchesAny(implementation.support ?? [], file))
       .map(file => finding('R5', `the test file of ${implementation.name} is the test of no binding, so no check runs it`, { implementation: implementation.name, place: file }));
   });
 }
@@ -51,7 +54,8 @@ const KIT_DIRECTORIES = ['scripts/kit', 'tests/kit'];
 
 /**
  * R6: the test of each binding lies in a root of its implementation or in a comparator root, and every other file of the test
- * patterns of a runner lies in a root of an implementation of that runner or in a comparator root.
+ * patterns of a runner, except a support file of an implementation of that runner, lies in a root of an implementation of that
+ * runner or in a comparator root.
  */
 export function misplacedTests(model, files) {
   const comparators = model.config.comparators ?? [];
@@ -64,7 +68,7 @@ export function misplacedTests(model, files) {
   const tests = new Set(bound.map(({ entry }) => entry.test));
   const patterns = [...files].filter(file => !tests.has(file) && !inComparator(file) && !KIT_DIRECTORIES.some(root => within(root, file))).flatMap((file) => {
     const runners = model.config.testPatterns.filter(pattern => matchesAny(pattern.globs, file)).map(pattern => pattern.runner);
-    return [...new Set(runners)].flatMap((runner) => {
+    return [...new Set(runners)].filter(runner => !supportFile(model, runner, file)).flatMap((runner) => {
       const roots = model.config.implementations.filter(entry => entry.runner === runner).flatMap(entry => entry.roots);
       if (roots.some(root => within(root, file))) return [];
       return [finding('R6', `a ${runner} test outside ${roots.join(', ') || 'nothing'}, the roots of the ${runner} implementations, and outside ${comparators.join(', ') || 'nothing'}, the comparator roots; move it into the package of its implementation`, { place: file })];

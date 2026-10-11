@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-11T02:56:44.177Z",
+  "reviewed": "2026-10-11T05:39:41.400Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -11,6 +11,11 @@
     {
       "lock": "packages/fixture-php/composer.lock",
       "sha256": "27e91f2489524c42fc51dd637f0c06c29ae376ce9f21322ed24e61716c8fb92d",
+      "advisories": []
+    },
+    {
+      "lock": "packages/fixture-python/pylock.toml",
+      "sha256": "55b765afbfb9f7552b3093050820ade2914d21ea4de792fb376a3b25da018f0b",
       "advisories": []
     },
     {
@@ -48,6 +53,13 @@
     },
     {
       "ecosystem": "pypi",
+      "manifest": "packages/fixture-python/pylock.toml",
+      "package": "click",
+      "version": "8.1.7",
+      "latest": "8.1.7"
+    },
+    {
+      "ecosystem": "pypi",
       "manifest": "packages/fixture-python/pyproject.toml",
       "package": "setuptools",
       "version": "84.0.0",
@@ -59,6 +71,15 @@
       "package": "github.com/google/uuid",
       "version": "v1.6.0",
       "latest": "v1.6.0"
+    }
+  ],
+  "vcs": [
+    {
+      "lock": "packages/fixture-python/pylock.toml",
+      "package": "pip-tools",
+      "url": "https://github.com/jazzband/pip-tools",
+      "requestedRevision": "7.4.1",
+      "commitId": "60ebdf5d1625cb63d0b94326035e0aa209659f4d"
     }
   ]
 }

@@ -17,8 +17,10 @@
 // repository by name and version only: no `integrity` for an npm entry and an empty `shasum` for a Composer entry. A lock
 // changes only with a version or a dependency, and `lock` runs on the release commit before the tag is pushed.
 // `lock` resolves version ranges, so it is the one step that reads a registry; no check runs it.
-// A `wheel` package is installed by `pip install --no-index --require-hashes --no-deps` into a clean virtual environment of
-// var/tools/bin/python3, from a requirement file that names each wheel with the sha256 of its file; the wheels have no committed lock.
+// A `wheel` package is installed into a clean virtual environment of var/tools/bin/python3: its dependencies from the lock of
+// consumers.wheel.lock (`pip install --require-hashes --no-deps --only-binary :all:`, the online step of the proof), then the wheel
+// itself (`pip install --no-index --require-hashes --no-deps`, named with the sha256 of its file), then `pip check`, which fails
+// on a lock that lacks a dependency.
 // A Go module tag releases no archive and has nothing to install. Each failure names the expected and the actual value.
 //   TAG is `latest` for the newest root release tag reachable from HEAD.
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -28,7 +30,9 @@ import { fileURLToPath } from 'node:url';
 import { ASSETS, archiveName, assetNames, context, latestTag, parseTag } from './release.mjs';
 import { fileDigest } from './digest.mjs';
 import { wheelName } from './release-wheel.mjs';
+import { lockRequirements, wheelLocks } from './wheel-dependencies.mjs';
 import { toolsPath } from './tool-wrappers.mjs';
+import { makeVenv } from './python-venv.mjs';
 import { readJson, writeAtomic } from './files.mjs';
 import { run, Stop } from './process.mjs';
 import { CONSUMER_KINDS, WHEEL_KIND } from './release-consumer-config.mjs';
@@ -176,26 +180,43 @@ export function installConsumers(ctx, version, directory, step = () => {}) {
 
 /**
  * Installs the wheels of `names` at `version` from `directory` into a clean virtual environment of `folder` made by the Python
- * of `root`: `pip install --no-index --require-hashes --no-deps` from a requirement file that names each wheel with the sha256 of
- * its file. Then each package must show `version`, and its smoke command runs in the environment. Returns the number of packages.
+ * of `root`. `requirements` is the requirement file of the dependencies (lockRequirements), installed first with hashes, no
+ * dependency of their own and only binary files. Then the wheels: `pip install --no-index --require-hashes --no-deps`, each file
+ * named with the sha256 of its file. Each package must show `version`, its smoke command runs in the environment, and `pip check` must
+ * pass in it. Returns the number of packages.
  */
-export function installWheelFiles({ root, env, folder, version, directory, names, smoke, step = () => {} }) {
+export function installWheelFiles({ root, env, folder, version, directory, names, smoke, requirements = '', step = () => {} }) {
   if (names.length === 0) return 0;
   const project = path.join(folder, WHEEL_KIND);
   const venv = path.join(project, 'venv');
   mkdirSync(project, { recursive: true });
-  run(toolsPath(root, 'bin', 'python3'), ['-m', 'venv', venv], { cwd: project, env });
+  // The venv is a copy of the checkout Python with no pip and no symbolic link (python-venv.mjs); pip of the checkout installs into it.
+  try {
+    makeVenv({ root, directory: venv, env });
+  } catch (error) {
+    throw new Stop(error.message);
+  }
   const bin = path.join(venv, 'bin');
+  const python = path.join(bin, 'python');
+  const checkoutPython = toolsPath(root, 'bin', 'python3');
   const venvEnv = { ...env, PATH: `${bin}${path.delimiter}${env.PATH}`, VIRTUAL_ENV: venv };
-  const requirements = path.join(project, 'requirements.txt');
-  writeFileSync(requirements, names.map((name) => {
+  if (requirements !== '') {
+    const dependencies = path.join(project, 'dependencies.txt');
+    writeFileSync(dependencies, requirements);
+    run(checkoutPython, ['-m', 'pip', '--python', python, 'install', '--no-input', '--disable-pip-version-check', '--require-hashes', '--no-deps', '--only-binary', ':all:', '-r', dependencies], { cwd: project, env });
+    step(`wheel dependencies pip install of ${requirements.split('\n').filter(Boolean).length} requirements`);
+  }
+  const requirementsFile = path.join(project, 'requirements.txt');
+  writeFileSync(requirementsFile, names.map((name) => {
     const file = path.join(directory, wheelName(name, version));
     return `${file} --hash=sha256:${fileDigest(file)}\n`;
   }).join(''));
-  run(path.join(bin, 'python'), ['-m', 'pip', 'install', '--no-input', '--disable-pip-version-check', '--no-index', '--require-hashes', '--no-deps', '-r', requirements], { cwd: project, env: venvEnv });
+  run(checkoutPython, ['-m', 'pip', '--python', python, 'install', '--no-input', '--disable-pip-version-check', '--no-index', '--require-hashes', '--no-deps', '-r', requirementsFile], { cwd: project, env });
   step(`wheel pip install of ${names.length} packages`);
+  run(checkoutPython, ['-m', 'pip', '--python', python, 'check'], { cwd: project, env });
+  step('wheel pip check passed');
   for (const name of names) {
-    const shown = run(path.join(bin, 'python'), ['-m', 'pip', 'show', name], { cwd: project, env: venvEnv });
+    const shown = run(checkoutPython, ['-m', 'pip', '--python', python, 'show', name], { cwd: project, env });
     const actual = /^Version: (.*)$/m.exec(shown)?.[1]?.trim() ?? null;
     if (actual !== version) throw new Stop(`wheel installed ${name} ${actual ?? 'none'}, expected ${version}`);
     run(smoke[name][0], smoke[name].slice(1), { cwd: project, env: venvEnv });
@@ -204,11 +225,12 @@ export function installWheelFiles({ root, env, folder, version, directory, names
   return names.length;
 }
 
-/** The wheel packages of the configuration, installed by installWheelFiles with the smoke commands of `consumers.wheel`. */
+/** The wheel packages of the configuration, installed by installWheelFiles with the locks of their dependencies. */
 function installWheels(ctx, version, directory, folder, env, step) {
   const names = ctx.config.packages.filter(item => item.kind === WHEEL_KIND).map(({ name }) => name);
   if (names.length === 0) return 0;
-  return installWheelFiles({ root: ctx.root, env, folder, version, directory, names, smoke: ctx.config.consumers[WHEEL_KIND].smoke, step });
+  const requirements = wheelLocks(ctx.root, ctx.config).map(({ file, text }) => lockRequirements(text, file)).join('');
+  return installWheelFiles({ root: ctx.root, env, folder, version, directory, names, smoke: ctx.config.consumers[WHEEL_KIND].smoke, requirements, step });
 }
 
 /** The lock without the hashes of the archives of this repository, which each run builds again. */

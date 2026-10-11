@@ -1,0 +1,11 @@
+# The dependency lock of the fixture wheel (kit-fixture): the registry package ruff, written as uv writes a PEP 751 lock.
+lock-version = "1.0"
+created-by = "uv"
+requires-python = ">=3.10"
+
+[[packages]]
+name = "ruff"
+version = "0.16.10"
+wheels = [
+  { name = "ruff-0.16.10-py3-none-any.whl", url = "https://files.pythonhosted.org/packages/ruff-0.16.10-py3-none-any.whl", hashes = { sha256 = "1111111111111111111111111111111111111111111111111111111111111111" } },
+]

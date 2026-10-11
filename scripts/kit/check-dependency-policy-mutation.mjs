@@ -13,7 +13,7 @@ import { ROOT } from './paths.mjs';
 import { checkedFiles } from './tracked-files.mjs';
 
 
-const COPIED = /(^|\/)(package\.json|package-lock\.json|composer\.json|composer\.lock|pyproject\.toml|Cargo\.toml|Cargo\.lock|go\.mod|go\.sum)$/;
+const COPIED = /(^|\/)(package\.json|package-lock\.json|composer\.json|composer\.lock|pyproject\.toml|pylock(\.[A-Za-z0-9_-]+)?\.toml|Cargo\.toml|Cargo\.lock|go\.mod|go\.sum)$/;
 
 /**
  * A copy of the files that the gate reads: every tracked manifest and lock (npm workspaces and local packages included), the

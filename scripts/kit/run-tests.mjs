@@ -2,13 +2,18 @@
 // The test runner. A test target runs its test tool through this script, which prints each test as it starts, keeps running,
 // passes, fails or is skipped, with the elapsed time, and gives every test its own timeout.
 //
-//   node scripts/kit/run-tests.mjs <tool> [--timeout <seconds>] [--cwd <directory>] [--php-extension <file>]
+//   node scripts/kit/run-tests.mjs <tool> [--timeout <seconds>] [--cwd <directory>] [--php-extension <file>] [--venv <directory>]
 //       [--results <file> [--inputs <path>]...] [--] [<arguments>]
 //
 // The arguments after the options of the runner go to the tool. --results writes the record of the run, passed or not, to
 // <file> (relative to the checkout root): the counts, each test with its status and elapsed time, the tool, the elapsed time
 // of the run and `inputs`, the `inputsDigest` of the --inputs paths (the --cwd directory when none is given), so that a
 // check can tell a record of the current files from a stale one.
+//
+// --venv runs the python tool with the interpreter of a virtual environment, so a package's tests import its own installed
+// dependencies. The environment must come from the Python of the checkout: its pyvenv.cfg names var/tools/python-build/python/bin
+// as its home (install-tools installs that Python), and it holds no symbolic link (`python -m venv --copies`). Any other
+// environment is refused before the tool starts. python-venv.mjs makes such an environment (make python-venv DIR=<directory>).
 //
 // Tools: node (node --test), vitest, go (go test), cargo (cargo test), phpunit and python (python3 -m unittest). node and
 // vitest stop a test at its timeout themselves; for go, cargo, phpunit and python this runner stops the tool when a test
@@ -22,6 +27,8 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createProgress } from './test-progress.mjs';
+import { signalGroup } from './process-group.mjs';
+import { venvProblem } from './python-venv.mjs';
 import { toolsPath } from './tool-wrappers.mjs';
 import { writeJson } from './files.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -29,7 +36,7 @@ import { inputsDigest } from './tracked-files.mjs';
 
 const KIT = path.dirname(fileURLToPath(import.meta.url));
 const TOOLS = ['node', 'vitest', 'go', 'cargo', 'phpunit', 'python'];
-const USAGE = `Usage: node scripts/kit/run-tests.mjs <${TOOLS.join('|')}> [--timeout <seconds>] [--php-extension <file>] [--cwd <directory>] [--results <file> [--inputs <path>]...] [--] [<arguments>]`;
+const USAGE = `Usage: node scripts/kit/run-tests.mjs <${TOOLS.join('|')}> [--timeout <seconds>] [--php-extension <file>] [--venv <directory>] [--cwd <directory>] [--results <file> [--inputs <path>]...] [--] [<arguments>]`;
 const DEFAULT_TIMEOUT_SECONDS = 30;
 // A line in which a tool reports an error: `error: ...` and `error[E0425]: ...` of cargo and rustc, `fatal error: ...`,
 // `panic: ...` of Go and `PHP Fatal error: ...`.
@@ -58,6 +65,9 @@ export function parseArguments(argv, root = ROOT) {
     } else if (flag === '--php-extension') {
       if (!value || tool !== 'phpunit') throw new Error(USAGE);
       options.phpExtension = path.resolve(root, value);
+    } else if (flag === '--venv') {
+      if (!value || tool !== 'python') throw new Error(USAGE);
+      options.venv = path.resolve(root, value);
     } else if (flag === '--cwd') {
       if (!value) throw new Error(USAGE);
       options.cwd = path.resolve(root, value);
@@ -81,7 +91,7 @@ function splitCargo(args) {
 }
 
 /** The command of a tool with its progress and timeout arguments. */
-export function toolCommand({ tool, timeoutSeconds, cwd, args, phpExtension }, root = ROOT) {
+export function toolCommand({ tool, timeoutSeconds, cwd, args, phpExtension, venv }, root = ROOT) {
   const milliseconds = String(timeoutSeconds * 1000);
   switch (tool) {
     case 'node':
@@ -111,7 +121,7 @@ export function toolCommand({ tool, timeoutSeconds, cwd, args, phpExtension }, r
     case 'python':
       // -v prints each test with its outcome on standard error; unittest runs one test at a time. -v goes last: before a
       // `discover` argument unittest would read `discover` as a test name.
-      return { command: toolsPath(root, 'bin', 'python3'), args: ['-m', 'unittest', ...args, '-v'] };
+      return { command: venv ? path.join(venv, 'bin', 'python') : toolsPath(root, 'bin', 'python3'), args: ['-m', 'unittest', ...args, '-v'] };
   }
   throw new Error(USAGE);
 }
@@ -300,6 +310,14 @@ export function phpunitEvents(progress) {
 }
 
 /** Runs the tool of `argv`; resolves the exit status of the run (0 passed, 1 failed). */
+/**
+ * Sends SIGTERM to the process group of a timed-out test (its pgid is the pid of the detached child). EPERM while a member is in
+ * exit and ESRCH after the group ended are not errors (process-group.mjs).
+ */
+export function terminateGroup(pgid, kill) {
+  return signalGroup(pgid, 'SIGTERM', kill);
+}
+
 export async function run(argv, { root = ROOT, write = text => process.stdout.write(text) } = {}) {
   const options = parseArguments(argv, root);
   const began = Date.now();
@@ -308,6 +326,11 @@ export async function run(argv, { root = ROOT, write = text => process.stdout.wr
   write(`▶ ${label} (each test ${options.timeoutSeconds}s)\n`);
   if (options.phpExtension && !existsSync(options.phpExtension)) {
     write(`✖ ${label}: the PHP extension ${path.relative(root, options.phpExtension)} is not built; build it before the run\n`);
+    return 1;
+  }
+  const venvRefusal = options.venv && venvProblem(options.venv, root);
+  if (venvRefusal) {
+    write(`✖ ${label}: ${venvRefusal}\n`);
     return 1;
   }
   const reads = ['go', 'cargo', 'phpunit', 'python'].includes(options.tool);
@@ -328,7 +351,7 @@ export async function run(argv, { root = ROOT, write = text => process.stdout.wr
       write,
       timeoutMs: options.timeoutSeconds * 1000,
       command: `${command} ${args.slice(0, 2).join(' ')}`,
-      onTimeout: () => { timedOut = true; process.kill(-child.pid, 'SIGTERM'); },
+      onTimeout: () => { timedOut = true; terminateGroup(child.pid); },
       resultFile,
     }) : undefined;
     // The error lines of the tool, which the summary names when the tool exits without a failing test.

@@ -19,11 +19,12 @@
           "name": { "description": "The name of the implementation, used by the profiles, bindings and documents.", "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
           "runner": { "description": "How a binding runs: go (go test -json), cargo (cargo test), node, php and python (var/tools/bin/python3) run the test file and read its PASS and FAIL lines.", "type": "string", "enum": ["go", "cargo", "node", "php", "python"] },
           "roots": { "description": "The directories that hold the implementation and its tests; the whole repository is no root.", "type": "array", "minItems": 1, "items": { "type": "string" } },
-          "tests": { "description": "Globs of the test files of the implementation; each one must be the test of a binding.", "type": "array", "minItems": 1, "items": { "type": "string" } },
-          "command": { "description": "The program of the runner: a path relative to the root of the checkout when it holds a /, else a name on PATH. Default: go, cargo, the running node, php, var/tools/bin/python3.", "type": "string" },
-          "args": { "description": "Arguments of the program: after test for go and cargo, before the test file for node, php and python.", "type": "array", "items": { "type": "string" } },
+          "tests": { "description": "Globs of the test files of the implementation; each one, except a file of its support globs, must be the test of a binding.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "support": { "description": "Globs of the test-support files of the implementation: files in its roots that its tests or the testPatterns of its runner select but that hold no test, such as a Go helper that must end in _test.go. A support file is no test of a binding; a Go support file declares no function that go test runs, a cargo support file holds no test attribute, and parity-check runs each node, php and python support file once and fails when it reports a case. Each glob selects at least one such file.", "type": "array", "items": { "type": "string" } },
+          "command": { "description": "The program of the runner: a path resolved against the root of the checkout when it holds a / (an absolute path stays absolute, and a path with .. may leave the checkout), else a name on PATH. Default: go, cargo, the running node, php, var/tools/bin/python3. ${NAME} is the value of NAME in the invoking environment when the bindings run.", "type": "string", "minLength": 1 },
+          "args": { "description": "Arguments of the program: after test for go and cargo, before the test file for node, php and python. ${NAME} is the value of NAME in the invoking environment when the bindings run.", "type": "array", "items": { "type": "string" } },
           "env": {
-            "description": "Variables set for the runs of this implementation only, over the environment of the check.",
+            "description": "Variables set for the runs of this implementation only, over the environment of the check. ${NAME} in a value is the value of NAME in the invoking environment when the bindings run; an unset or empty NAME is a finding of the runs of the implementation, and there is no default form.",
             "type": "array",
             "items": {
               "type": "object",

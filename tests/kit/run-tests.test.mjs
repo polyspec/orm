@@ -3,7 +3,7 @@
 // PHPUnit. The runs use fixture test files in a temporary checkout and stubs of the tools on PATH; nothing needs a network.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -362,6 +362,45 @@ test('python tests run through var/tools/bin/python3, pass, fail and stop at the
   const none = await inProcess(t, ['python', 'tests'], { root: empty });
   assert.equal(none.status, 1, none.text);
   assert.match(none.text, /no test ran/);
+});
+
+// A virtual environment of the checkout's Python (K37): pyvenv.cfg names var/tools/python-build/python/bin as its home and
+// bin/python is a stub that prints unittest output; `home` overrides the named home.
+function venvRoot(t, { home } = {}) {
+  const root = tree(t);
+  mkdirSync(path.join(root, 'var/tools/python-build/python/bin'), { recursive: true });
+  const venv = path.join(root, 'pkg/.venv');
+  mkdirSync(path.join(venv, 'bin'), { recursive: true });
+  writeFileSync(path.join(venv, 'pyvenv.cfg'), `home = ${home ?? path.join(root, 'var/tools/python-build/python/bin')}\nversion = 3.14.8\n`);
+  writeFileSync(path.join(venv, 'bin/python'), `#!/usr/bin/env node\nprocess.stderr.write('test_a (t.T.test_a) ... ok\\n\\n' + '-'.repeat(70) + '\\nRan 1 test in 0.001s\\n\\nOK\\n');\n`);
+  chmodSync(path.join(venv, 'bin/python'), 0o755);
+  return root;
+}
+
+test('--venv runs the python tests with the interpreter of a virtual environment of the checkout Python (K37)', async (t) => {
+  assert.equal(parseArguments(['python', '--venv', 'pkg/.venv', 'discover'], '/repo').venv, '/repo/pkg/.venv');
+  assert.throws(() => parseArguments(['node', '--venv', 'pkg/.venv'], '/repo'), /Usage:/);
+  assert.equal(toolCommand({ tool: 'python', timeoutSeconds: 7, cwd: '/r', args: [], venv: '/r/pkg/.venv' }, '/r').command, '/r/pkg/.venv/bin/python');
+  const root = venvRoot(t);
+  const passed = await inProcess(t, ['python', '--venv', 'pkg/.venv', 'tests'], { root });
+  assert.equal(passed.status, 0, passed.text);
+  assert.match(passed.text, /✔ python \. tests: 1 passed/);
+});
+
+test('--venv refuses an environment that is not one, comes from another Python or holds a symbolic link (K37)', async (t) => {
+  const missing = tree(t);
+  const none = await inProcess(t, ['python', '--venv', 'pkg/.venv', 'tests'], { root: missing });
+  assert.equal(none.status, 1, none.text);
+  assert.match(none.text, /pkg\/\.venv is not a virtual environment \(no pyvenv\.cfg\); make it with make python-venv DIR=pkg\/\.venv, and install into it with --link-mode copy/);
+  const other = venvRoot(t, { home: '/usr/bin' });
+  const foreign = await inProcess(t, ['python', '--venv', 'pkg/.venv', 'tests'], { root: other });
+  assert.equal(foreign.status, 1, foreign.text);
+  assert.match(foreign.text, /pkg\/\.venv was made from \/usr\/bin, not from the Python of this checkout \(var\/tools\/python-build\/python\/bin\)/);
+  const linked = venvRoot(t);
+  symlinkSync(path.join(linked, 'pkg/.venv/bin/python'), path.join(linked, 'pkg/.venv/bin/python3'));
+  const withLink = await inProcess(t, ['python', '--venv', 'pkg/.venv', 'tests'], { root: linked });
+  assert.equal(withLink.status, 1, withLink.text);
+  assert.match(withLink.text, /pkg\/\.venv holds symbolic links \(bin\/python3\); make it with make python-venv DIR=pkg\/\.venv/);
 });
 
 test('a var/tools/bin/python3 that cannot start fails with the fix', async (t) => {

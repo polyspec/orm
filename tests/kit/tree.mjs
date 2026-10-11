@@ -1,16 +1,16 @@
 // Helpers of the tests of the document, owner and commit checks: a temporary Git repository with the given files, and
 // the Korean twin of an English document with its revision marker.
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { initRepository } from './sandbox-repository.mjs';
 
 /** A temporary Git repository holding `files` ({ path: text }), removed with `t.after`. */
 export function tree(t, files = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'kit-tree-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  spawnSync('git', ['init', '--quiet'], { cwd: root });
+  initRepository(root);
   put(root, files);
   return root;
 }

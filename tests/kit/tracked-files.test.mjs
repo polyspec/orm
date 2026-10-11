@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { trackedFiles } from '../../scripts/kit/tracked-files.mjs';
+import { initRepository } from './sandbox-repository.mjs';
 
 const IDENTITY = ['-c', 'user.name=kit-test', '-c', 'user.email=kit-test@example.invalid', '-c', 'commit.gpgsign=false'];
 
@@ -27,7 +28,7 @@ function write(root, files) {
 function conflicted(t, command) {
   const root = mkdtempSync(path.join(tmpdir(), 'kit-tracked-files-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  git(root, 'init', '--quiet');
+  initRepository(root);
   write(root, { 'a.md': 'one\n', 'b.md': 'keep\n', 'c.md': 'z\n' });
   git(root, 'add', '-A');
   git(root, 'commit', '--quiet', '-m', 'base');

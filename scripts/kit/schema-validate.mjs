@@ -1,5 +1,5 @@
 // A validator for the JSON Schema keywords that the schemas of scripts/kit/schema use: type, required, properties,
-// additionalProperties (false), items, enum, const, pattern, minItems and minimum. Other keywords fail the schema
+// additionalProperties (false), items, enum, const, pattern, minItems, minLength and minimum. Other keywords fail the schema
 // itself, so a schema never passes unchecked. `kit-check` validates config/<name>.json against
 // scripts/kit/schema/<name>.schema.json.
 import path from 'node:path';
@@ -9,7 +9,7 @@ import { readJson } from './files.mjs';
 /** The directory of the schemas of kit. */
 export const SCHEMAS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema');
 
-const KEYWORDS = new Set(['$schema', 'title', 'description', 'type', 'required', 'properties', 'additionalProperties', 'items', 'enum', 'const', 'pattern', 'minItems', 'minimum']);
+const KEYWORDS = new Set(['$schema', 'title', 'description', 'type', 'required', 'properties', 'additionalProperties', 'items', 'enum', 'const', 'pattern', 'minItems', 'minLength', 'minimum']);
 
 const typeOf = value => (value === null ? 'null' : Array.isArray(value) ? 'array' : Number.isInteger(value) ? 'integer' : typeof value);
 
@@ -26,6 +26,7 @@ export function validate(value, schema, where = '$') {
   if (schema.const !== undefined && value !== schema.const) errors.push(`${where} is ${JSON.stringify(value)}, the schema requires ${JSON.stringify(schema.const)}`);
   if (schema.enum && !schema.enum.includes(value)) errors.push(`${where} is ${JSON.stringify(value)}, the schema allows ${schema.enum.map(item => JSON.stringify(item)).join(', ')}`);
   if (schema.pattern && typeof value === 'string' && !new RegExp(schema.pattern).test(value)) errors.push(`${where} is ${JSON.stringify(value)}, the schema requires a match of ${schema.pattern}`);
+  if (schema.minLength !== undefined && typeof value === 'string' && value.length < schema.minLength) errors.push(`${where} is ${JSON.stringify(value)}, the schema requires at least ${schema.minLength} characters`);
   if (schema.minimum !== undefined && typeof value === 'number' && value < schema.minimum) errors.push(`${where} is ${value}, the schema requires at least ${schema.minimum}`);
   if (typeOf(value) === 'object') {
     for (const key of schema.required ?? []) if (!(key in value)) errors.push(`${where} lacks ${key}, the schema requires it`);

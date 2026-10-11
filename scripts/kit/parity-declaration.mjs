@@ -3,6 +3,7 @@
 // implementation or profile, or a stale entry is a finding of the rule `declaration`, and the other rules do not run on it.
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { matchesAny } from './glob.mjs';
 import { readConfig } from './schema-validate.mjs';
 
 export const DECLARATION = 'config/parity.json';
@@ -76,6 +77,59 @@ export const within = (root, file) => file.startsWith(`${root.replace(/\/+$/, ''
 /** Whether the directory `root` is the whole repository. */
 const wholeRepository = root => /^(?:\.?\/*|\.\/+\.?)$/.test(root);
 
+// A reference to the invoking environment in a runner value is ${NAME}; any other ${ form, such as a default, is no reference.
+const REFERENCE = /\$\{([^}]*)(\}?)/g;
+const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * `value` with each ${NAME} replaced by its value in `env`. A form that is no reference is an error of `where`; without `env`
+ * only the forms are checked, and with it an unset or empty name is an error too.
+ */
+function expand(value, env, where, fail) {
+  return value.replace(REFERENCE, (whole, name, close) => {
+    if (!close || !NAME.test(name)) fail(`${where} holds ${whole}, which is no reference; a reference is \${NAME} and has no default`);
+    else if (!env) return whole;
+    else if (env[name] === undefined) fail(`${where} references ${whole}, which the environment does not set`);
+    else if (env[name] === '') fail(`${where} references ${whole}, which the environment sets to an empty string`);
+    else return env[name];
+    return whole;
+  });
+}
+
+/** The implementation with the references of its command, args and env values expanded from `env`, or only checked without it. */
+function expanded(entry, env, fail) {
+  return {
+    ...entry,
+    ...(entry.command === undefined ? {} : { command: expand(entry.command, env, 'command', fail) }),
+    ...(entry.args === undefined ? {} : { args: entry.args.map(arg => expand(arg, env, 'args', fail)) }),
+    ...(entry.env === undefined ? {} : { env: entry.env.map(variable => ({ ...variable, value: expand(variable.value, env, `env ${variable.name}`, fail) })) }),
+  };
+}
+
+/**
+ * The implementation with its references resolved from the invoking environment `env`, for the runs of its bindings:
+ * `{ implementation, errors }`, each error naming the value and the name that is unset or empty.
+ */
+export function resolveReferences(entry, env) {
+  const errors = [];
+  return { implementation: expanded(entry, env, message => errors.push(message)), errors };
+}
+
+// The test functions that go test runs (testing: Test, Benchmark and Fuzz followed by no lower-case letter, and Example) and
+// the attributes that make a Rust function a test (#[test], #[bench], #[tokio::test], #[test_case(..)], #[rstest]).
+const GO_TEST = /^func\s+((?:Test|Benchmark|Fuzz)(?![a-z])\w*|Example\w*)\s*\(/gm;
+const CARGO_TEST = /#\[\s*((?:\w+::)*(?:test|bench|test_case|rstest))\b[^\]]*\]/g;
+
+/** The tests that the native runner of a go or cargo support file would run in `text`, as the names to print. */
+function supportTests(runner, text) {
+  if (runner === 'go') return [...text.matchAll(GO_TEST)].map(match => `declares func ${match[1]}, which go test runs`);
+  if (runner === 'cargo') return [...text.matchAll(CARGO_TEST)].map(match => `holds ${match[0]}, which cargo test runs`);
+  return [];
+}
+
+/** The support files of `entry` among `files`. */
+export const supportFiles = (entry, files) => [...files].filter(file => matchesAny(entry.support ?? [], file));
+
 /** The JSON value of a tracked file, or an error of the declaration. */
 function readTrackedJson(root, files, file, where, errors) {
   if (!files.has(file)) {
@@ -107,7 +161,8 @@ function snapshotOf(value, file, errors) {
 /**
  * The declaration of `root` resolved against `files` (the checked files): `{ errors, model }`. The model holds the config, the
  * implementations and profiles by name, the case names of each suite unit, the symbols of each snapshot, and `members(unit)`,
- * the implementations of the unit's profile, and `exclusion(unit, implementation)`.
+ * the implementations of the unit's profile, and `exclusion(unit, implementation)`. The environment references of the runner
+ * values are checked as forms only; the runs resolve them (resolveReferences).
  */
 export function readDeclaration(root, files) {
   if (!existsSync(path.join(root, DECLARATION))) return { errors: [finding('declaration', `${DECLARATION} does not exist; declare the implementations and units there (scripts/kit/schema/parity.schema.json)`)] };
@@ -125,6 +180,7 @@ export function readDeclaration(root, files) {
   for (const entry of config.implementations) {
     if (implementations.has(entry.name)) fail(`the implementation ${entry.name} is declared twice`);
     implementations.set(entry.name, entry);
+    expanded(entry, undefined, message => fail(`implementation ${entry.name}: ${message}`));
   }
   const profiles = new Map();
   for (const profile of config.profiles) {
@@ -159,6 +215,18 @@ export function readDeclaration(root, files) {
     }
     if (entry.errors && !files.has(entry.errors.file)) fail(`implementation ${entry.name}: ${entry.errors.file} does not exist`);
   }
+  // A support glob names files in the roots of its implementation that a test glob selects and that hold no test; one that
+  // selects none is stale. A Go or Rust support file holds no function that its native runner would run.
+  for (const entry of config.implementations) {
+    const testGlobs = [...entry.tests, ...config.testPatterns.filter(pattern => pattern.runner === entry.runner).flatMap(pattern => pattern.globs)];
+    for (const file of supportFiles(entry, files)) {
+      for (const test of supportTests(entry.runner, readFileSync(path.join(root, file), 'utf8'))) fail(`implementation ${entry.name}: the support file ${file} ${test}; a support file holds no test`);
+      if (!entry.roots.some(directory => within(directory, file))) fail(`implementation ${entry.name}: the support file ${file} lies outside ${entry.roots.join(', ')}, the roots of ${entry.name}`);
+    }
+    for (const glob of entry.support ?? []) {
+      if (![...files].some(file => matchesAny([glob], file) && matchesAny(testGlobs, file))) fail(`implementation ${entry.name}: the support glob ${glob} selects no test file; remove it`);
+    }
+  }
   const patterns = [
     ...config.implementations.filter(entry => entry.errors).map(entry => [`implementation ${entry.name}`, entry.errors.pattern]),
     ...(config.errors ? [['errors catalog', config.errors.catalog.pattern]] : []),
@@ -191,6 +259,7 @@ export function readDeclaration(root, files) {
     for (const key of ['file', 'cases', 'bindings']) if (!(key in unit)) fail(`${where}: a unit of kind suite needs ${key}`);
     for (const entry of unit.bindings ?? []) {
       if (!files.has(entry.test)) fail(`${where}: the test ${entry.test} of ${entry.implementation} does not exist`);
+      if (matchesAny(implementations.get(entry.implementation)?.support ?? [], entry.test)) fail(`${where}: the test ${entry.test} of ${entry.implementation} matches its support globs`);
       const runner = implementations.get(entry.implementation)?.runner;
       if ((runner === 'go' || runner === 'cargo') && !entry.symbol) fail(`${where}: the binding of ${entry.implementation} needs symbol, the ${runner === 'go' ? 'test function' : 'exact test path'} that runs the cases`);
       else if (runner === 'go' && !/^Test\w*$/.test(entry.symbol)) fail(`${where}: the go binding names ${entry.symbol}, which is no test function (^Test\\w*$)`);

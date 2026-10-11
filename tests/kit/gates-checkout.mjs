@@ -5,6 +5,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { initRepository } from './sandbox-repository.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -69,8 +70,8 @@ export function checkout(t, { state = '[ ]', config = null, files = {} } = {}) {
     mkdirSync(path.dirname(path.join(work, name)), { recursive: true });
     writeFileSync(path.join(work, name), text);
   }
-  git(directory, 'init', '--quiet', '--bare', remote);
-  git(directory, 'init', '--quiet', '--initial-branch=main', work);
+  initRepository(remote, '--bare');
+  initRepository(work, '--initial-branch=main');
   git(work, 'remote', 'add', 'origin', remote);
   return { work, remote };
 }

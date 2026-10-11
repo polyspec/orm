@@ -4,8 +4,10 @@
 //   consumers.<npm|composer> = { directory, smoke }   the consumer project of the archives of that kind: `directory` holds
 //                                                      its committed manifest and lock; `smoke` maps each package that the
 //                                                      project installs to the command that checks it
-//   consumers.wheel = { smoke }                        the wheels, installed without a committed lock: `smoke` maps each
-//                                                      wheel package to the command that checks it in the installed venv
+//   consumers.wheel = { smoke, lock, polyspec }        the wheels, installed into a virtual environment: `smoke` maps each
+//                                                      wheel package to the command that checks it in the installed venv;
+//                                                      `lock` maps each wheel package to its PEP 751 lock of dependencies;
+//                                                      `polyspec` maps each polyspec distribution to its repository URL
 //   proof.gitTag = { <manifest>: { kind, name, smoke } }  how the release proof installs a manifest that a tag releases
 //                                                      through git (`git-tag` in `manifests`): kind rust, with its Cargo.toml
 
@@ -17,6 +19,30 @@ export const WHEEL_KIND = 'wheel';
 export const GIT_TAG_KINDS = { rust: 'Cargo.toml' };
 
 const command = value => Array.isArray(value) && value.length > 0 && value.every(item => typeof item === 'string' && item !== '');
+
+const REPOSITORY = /^https:\/\/github\.com\/polyspec\/[A-Za-z0-9._-]+$/;
+const LOCK_FILE = /(?:^|\/)pylock(?:\.[A-Za-z0-9._-]+)?\.toml$/;
+
+/** The problems of the lock and polyspec maps of the wheel consumer: one lock for each wheel package, one repository for each polyspec distribution. */
+function wheelProblems(consumer, names, problems) {
+  if (typeof consumer.lock !== 'object' || consumer.lock === null || Array.isArray(consumer.lock)) {
+    problems.push('consumers.wheel.lock needs one entry per wheel package, an object from a package name to its lock file');
+  } else {
+    for (const name of names) {
+      const file = consumer.lock[name];
+      if (typeof file !== 'string' || !LOCK_FILE.test(file)) problems.push(`consumers.wheel.lock.${name} is ${JSON.stringify(file ?? null)}, the lock of a wheel is pylock.toml or pylock.<name>.toml`);
+    }
+    for (const name of Object.keys(consumer.lock)) if (!names.includes(name)) problems.push(`consumers.wheel.lock.${name} is not a wheel package of packages [${names.join(', ')}]`);
+  }
+  if (typeof consumer.polyspec !== 'object' || consumer.polyspec === null || Array.isArray(consumer.polyspec)) {
+    problems.push('consumers.wheel.polyspec needs an object from each polyspec distribution name to its repository URL');
+  } else {
+    for (const [name, url] of Object.entries(consumer.polyspec)) {
+      if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) problems.push(`consumers.wheel.polyspec.${name} needs a distribution name`);
+      if (typeof url !== 'string' || !REPOSITORY.test(url)) problems.push(`consumers.wheel.polyspec.${name} is ${JSON.stringify(url)}, the repository of a polyspec package is https://github.com/polyspec/<repo>`);
+    }
+  }
+}
 
 /** The problems of the consumer smoke commands of `kind`: one command for each package of that kind. */
 function smokeProblems(kind, consumer, names, problems) {
@@ -48,6 +74,7 @@ export function consumerConfigProblems(config) {
         directories.add(consumer.directory);
       }
       smokeProblems(kind, consumer, names, problems);
+      if (kind === WHEEL_KIND) wheelProblems(consumer, names, problems);
     }
   }
   if (config.proof) {

@@ -7,6 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { git, run } from './gates-checkout.mjs';
+import { initRepository } from './sandbox-repository.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -16,7 +17,7 @@ function repository(t) {
   mkdirSync(path.join(directory, 'scripts/kit'), { recursive: true });
   cpSync(path.join(ROOT, 'scripts/kit/kit.mk'), path.join(directory, 'scripts/kit/kit.mk'));
   writeFileSync(path.join(directory, 'Makefile'), 'include scripts/kit/kit.mk\n');
-  git(directory, 'init', '--quiet');
+  initRepository(directory);
   return directory;
 }
 

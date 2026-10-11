@@ -8,6 +8,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { check, LOCK } from '../../scripts/kit/kit-check.mjs';
 import { DEFAULT_REPOSITORY, parseSyncArguments, sync } from '../../scripts/kit/kit-sync.mjs';
+import { initRepository } from './sandbox-repository.mjs';
 
 const KIT_SYNC = path.join(import.meta.dirname, '../../scripts/kit/kit-sync.mjs');
 
@@ -41,7 +42,7 @@ const write = (root, file, text) => {
 function kitRepository(t, releases) {
   const repository = mkdtempSync(path.join(tmpdir(), 'kit-source-'));
   t.after(() => rmSync(repository, { recursive: true, force: true }));
-  git(['init', '--quiet', '-b', 'main'], repository);
+  initRepository(repository, '-b', 'main');
   for (const [tag, files] of Object.entries(releases)) {
     for (const [file, text] of Object.entries(files)) {
       if (text === null) rmSync(path.join(repository, file));

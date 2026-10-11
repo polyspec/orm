@@ -11,7 +11,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { LOCK, walk } from './kit-check.mjs';
+import { LOCK, vendoredFilesOf, walk } from './kit-check.mjs';
 import { isMain, ROOT } from './paths.mjs';
 import { fileDigest } from './digest.mjs';
 import { jsonText, readJson, writeAtomic } from './files.mjs';
@@ -58,16 +58,21 @@ export function sync({ root, repository, tag }) {
     git(root, 'clone', '--quiet', '--depth', '1', '--branch', tag, repository, clone);
     const commit = git(clone, 'rev-parse', 'HEAD').trim();
     const kit = readJson(clone, 'kit.json');
-    const sources = ['kit.json', ...kit.vendored.flatMap(directory => walk(clone, directory))];
+    // Each entry copies the source file `from` of kit to the path `file` of the checkout.
+    const entries = [
+      { file: 'kit.json', from: 'kit.json' },
+      ...kit.vendored.flatMap(directory => walk(clone, directory)).map(file => ({ file, from: file })),
+      ...vendoredFilesOf(kit).map(({ file, from }) => ({ file, from })),
+    ];
     const changes = [];
-    for (const file of sources) {
+    for (const { file, from } of entries) {
       const target = path.join(root, file);
       const existed = existsSync(target);
-      if (existed && fileDigest(path.join(root, file)) === fileDigest(path.join(clone, file))) continue;
-      writeAtomic(target, readFileSync(path.join(clone, file)));
+      if (existed && fileDigest(path.join(root, file)) === fileDigest(path.join(clone, from))) continue;
+      writeAtomic(target, readFileSync(path.join(clone, from)));
       changes.push(`${existed ? 'written' : 'added'} ${file}`);
     }
-    const expected = new Set(sources);
+    const expected = new Set(entries.map(({ file }) => file));
     for (const directory of kit.vendored) {
       for (const file of walk(root, directory)) {
         if (!expected.has(file)) {
@@ -76,7 +81,7 @@ export function sync({ root, repository, tag }) {
         }
       }
     }
-    const files = Object.fromEntries(sources.sort().map(file => [file, fileDigest(path.join(clone, file))]));
+    const files = Object.fromEntries(entries.map(({ file, from }) => [file, fileDigest(path.join(clone, from))]).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
     const lock = jsonText({ schema: 1, repository, tag, commit, files });
     if (!existsSync(path.join(root, LOCK)) || readFileSync(path.join(root, LOCK), 'utf8') !== lock) {
       writeAtomic(path.join(root, LOCK), lock);

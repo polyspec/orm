@@ -108,7 +108,7 @@
       }
     },
     "consumers": {
-      "description": "The consumer projects that install the archives of a tag outside the repository (release-consumer.mjs); one per package kind that has packages. A wheel has no committed lock.",
+      "description": "The consumer projects that install the archives of a tag outside the repository (release-consumer.mjs); one per package kind that has packages. A wheel has no committed project; its lock is named per package.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -153,12 +153,22 @@
         "wheel": {
           "type": "object",
           "required": [
-            "smoke"
+            "smoke",
+            "lock",
+            "polyspec"
           ],
           "additionalProperties": false,
           "properties": {
             "smoke": {
               "description": "Each wheel package, with the command (an array of strings) that checks it in the installed virtual environment.",
+              "type": "object"
+            },
+            "lock": {
+              "description": "Each wheel package with the path of its PEP 751 lock (pylock.toml or pylock.<name>.toml): the registry packages and the polyspec archives that the wheel depends on, installed with their hashes.",
+              "type": "object"
+            },
+            "polyspec": {
+              "description": "Each polyspec distribution that a wheel may depend on, with the URL of its GitHub repository; a Requires-Dist names it only by a direct reference to its release asset.",
               "type": "object"
             }
           }

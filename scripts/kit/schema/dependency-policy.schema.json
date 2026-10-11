@@ -6,6 +6,7 @@
     "schema",
     "composerPlatforms",
     "pythonManifests",
+    "pythonLocks",
     "npmLocks",
     "exceptions"
   ],
@@ -48,6 +49,13 @@
       "items": {
         "type": "string",
         "pattern": "^([^/\\\\][^\\\\]*/)?package-lock\\.json$"
+      }
+    },
+    "pythonLocks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([^/\\\\][^\\\\]*/)?pylock(\\.[A-Za-z0-9_-]+)?\\.toml$"
       }
     },
     "exceptions": {

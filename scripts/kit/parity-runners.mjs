@@ -92,14 +92,15 @@ const fileRun = (root, binding, unit, options) => ({ args: [...options, binding.
  * The run of the binding `binding` of the unit `unit` (its id) in `implementation`: `{ command, args, cwd, env, cases }` with
  * `cwd` relative to `root`, `env` the variables of the implementation over `base`, `cases({ stdout, stderr })` the outcome of
  * each case that the output reports, and `detail({ stdout, stderr })` the lines that explain a failed run (the last three lines
- * of standard error; for go the whole compiler output); or `{ error }`. A `command` with a / is a path relative to `root`.
+ * of standard error; for go the whole compiler output); or `{ error }`. A `command` with a / is a path relative to `root`, or
+ * an absolute path.
  */
 export function runOf(implementation, root, binding, unit, base) {
   const runner = RUNNERS[implementation.runner];
   const run = (runner.run ?? fileRun)(root, binding, unit, implementation.args ?? []);
   if (run.error) return run;
   const declared = implementation.command;
-  const command = declared === undefined ? runner.program(root) : declared.includes('/') ? path.join(root, declared) : declared;
+  const command = declared === undefined ? runner.program(root) : declared.includes('/') ? path.resolve(root, declared) : declared;
   const env = { ...base, ...Object.fromEntries((implementation.env ?? []).map(entry => [entry.name, entry.value])) };
   return { detail: ({ stderr }) => stderr.trim().split('\n').slice(-3).filter(Boolean), ...run, command, env };
 }

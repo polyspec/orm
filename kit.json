@@ -1,9 +1,12 @@
 {
   "schema": 1,
-  "version": "0.0.21",
+  "version": "0.0.25",
   "repository": "https://github.com/polyspec/kit",
   "vendored": [
     "scripts/kit",
     "tests/kit"
-  ]
+  ],
+  "vendoredFiles": {
+    ".github/workflows/release.yml": "workflows/release.yml"
+  }
 }

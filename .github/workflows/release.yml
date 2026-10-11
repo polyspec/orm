@@ -1,83 +1,54 @@
-# Release: the maintainer tags a commit of main with vX.Y.Z after its CI
-# succeeded, and this workflow creates the GitHub Release of that tag in four
-# make steps (scripts/kit/release.mjs, config/release.json). The tests are not
-# run again: release-verify checks that the tagged commit is on main and that
-# the latest runs of its checks push-gate and ci-passed succeeded;
-# release-versions checks that every released manifest declares the version of
-# the tag, that go.mod declares the module path, and that CHANGELOG.md and
-# CHANGELOG.ko.md have its section; release-assets builds the npm tarball and
-# the Composer zips; release-publish creates the release with them and the
-# notes of that section. No step or job has timeout-minutes (make repo-check).
+# Release workflow of a repository that adopts kit. kit-sync copies this file to .github/workflows/release.yml, records it in
+# .kit/kit.lock.json, and kit-check fails when the checkout differs from it; a repository never edits it.
+#
+# A tag push creates the GitHub Release of the tag as a draft, proves the draft from outside the checkout, and makes it public
+# only after the proof passes. The steps run in order and stop at the first failure; each step runs one make target of
+# scripts/kit/kit.mk with TAG from the environment:
+#   release-tools    installs the tools that config/release.json needs for the packages and proof of this repository
+#   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
+#   release-versions every manifest has the version of the tag and the changelog has its section
+#   release-assets  builds the archive of every package into var/release/assets
+#   release-publish creates the GitHub Release of the tag as a draft, with its notes and archives
+#   release-proof   proves the draft: its assets, its consumer installs, its git-tag installs and its Go module tags
+#   release-undraft makes the release public; it runs only after release-proof passed
+# A failed step leaves the release a draft and fails the run, so a release that cannot be installed is never public.
 name: release
 
 on:
   push:
     tags: ['v*', '**/v*']
 
-# The release creates the GitHub Release and uploads its assets.
 permissions:
   contents: write
 
-# A new push of the same tag cancels the run before it; make repo-check
-# requires this on every workflow that runs on push.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   release:
-    runs-on: ubuntu-26.04-arm
-    # The tag reaches every step as TAG, and each make recipe passes "$TAG".
+    runs-on: ubuntu-24.04
     env:
       TAG: ${{ github.ref_name }}
-    # Every step after the checkout runs after a failed earlier one
-    # (if: !cancelled()), so one run reports every problem of the tag;
-    # release-publish runs only when the three steps before it succeeded.
-    # The actions are pinned to the commits of their tags.
+      GH_TOKEN: ${{ github.token }}
     steps:
-      # release-verify reads origin/main and the tag, so the checkout carries
-      # the full commit graph.
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        id: checkout
+      # actions/checkout v6.1.0: the whole history and every branch, so origin/main is there for the ancestry check.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
-      # .node-version declares the one Node release, locally and here.
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        id: node
-        if: ${{ !cancelled() }}
+      # actions/setup-node v6.5.0: the Node.js of .node-version runs the tools of scripts/kit. The repository installs no npm
+      # package, so the cache of setup-node is off.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
         with:
           node-version-file: .node-version
-      # The TypeScript build of the npm tarball builds the lease program with
-      # the Go of .go-version and its modules.
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        id: go
-        if: ${{ !cancelled() }}
-        with: { go-version-file: .go-version }
-      - name: Go modules
-        id: go-modules
-        if: ${{ !cancelled() }}
-        run: make install-go
-      - name: install Node dependencies
-        id: node-modules
-        if: ${{ !cancelled() }}
-        run: make install-node
-      - name: tagged commit and its checks
-        id: verify
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+          package-manager-cache: false
+      - name: make release-tools
+        run: make release-tools
+      - name: verify the tagged commit
         run: make release-verify
-      - name: versions and changelog section
-        id: versions
-        if: ${{ !cancelled() }}
+      - name: check the versions
         run: make release-versions
-      - name: release assets
-        id: assets
-        if: ${{ !cancelled() }}
+      - name: build the assets
         run: make release-assets
-      - name: GitHub release
-        id: publish
-        if: ${{ !cancelled() && steps.verify.outcome == 'success' && steps.versions.outcome == 'success' && steps.assets.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: create the draft release
         run: make release-publish
+      - name: prove the draft release
+        run: make release-proof TAG="$TAG"
+      - name: make the release public
+        run: make release-undraft TAG="$TAG"

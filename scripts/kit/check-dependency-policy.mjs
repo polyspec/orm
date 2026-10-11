@@ -8,7 +8,7 @@
 //   node scripts/kit/check-dependency-policy.mjs [--root <checkout>]
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { POLICY, RECORD, UPDATE, dependencyKey, localSpecDirectory, readState } from './dependency-state.mjs';
+import { POLICY, RECORD, UPDATE, dependencyKey, lockEcosystem, lockFix, localSpecDirectory, readState } from './dependency-state.mjs';
 import { isPrerelease, older } from './version.mjs';
 import { isMain, ROOT } from './paths.mjs';
 import { execute } from './process.mjs';
@@ -22,6 +22,7 @@ export const RULES = {
   composerPackage: 'each published Composer manifest of packages/ is valid, as composer validate reads it without a lock and without a network',
   local: 'a package of this repository is required at its own version and locked at it',
   tagged: 'a polyspec package taken from a GitHub tag is linked to the checkout of its tag, has the version of that tag and is locked at it',
+  pythonLock: 'each Python lock that the policy names is a PEP 751 pylock.toml with lock-version 1.0 and created-by, every registry file has a sha256, every git package is pinned by a full commit and no package is a local directory',
   npmLock: 'each npm lock that the policy names records the dependencies of every npm manifest that it resolves',
   record: 'every registry dependency and every lock has an entry in the review record that matches the committed manifests and locks',
   latest: 'a registry dependency is locked at the latest stable release known at its review, unless the policy holds an exception for it',
@@ -45,8 +46,8 @@ export function check(root, { composer = 'composer' } = {}) {
   const add = (rule, subject, problem, fix) => findings.push({ rule, subject, problem, fix });
 
   const policy = readJson(root, POLICY);
-  if (policy.schema !== 1 || !Array.isArray(policy.composerPlatforms) || !Array.isArray(policy.pythonManifests) || !Array.isArray(policy.npmLocks) || !Array.isArray(policy.exceptions)) {
-    add('policy', POLICY, 'the schema is not 1 with composerPlatforms, pythonManifests, npmLocks and exceptions', `restore the schema of ${POLICY}`);
+  if (policy.schema !== 1 || !Array.isArray(policy.composerPlatforms) || !Array.isArray(policy.pythonManifests) || !Array.isArray(policy.pythonLocks) || !Array.isArray(policy.npmLocks) || !Array.isArray(policy.exceptions)) {
+    add('policy', POLICY, 'the schema is not 1 with composerPlatforms, pythonManifests, pythonLocks, npmLocks and exceptions', `restore the schema of ${POLICY}`);
     return findings;
   }
   const state = readState(root, policy);
@@ -123,12 +124,26 @@ export function check(root, { composer = 'composer' } = {}) {
     }
   }
 
+  for (const { lock, createdBy, packages } of state.pythonLocks) {
+    if (createdBy === null) add('pythonLock', lock, 'the lock names no tool in created-by', 'write the lock with uv export --format pylock.toml or with pip lock, which set created-by');
+    for (const item of packages) {
+      const subject = `${lock} ${item.name}`;
+      const fix = lockFix(lock, createdBy, item.name);
+      if (item.kind === 'none') add('pythonLock', subject, 'the package has no source table (vcs, archive, sdist or wheels)', fix);
+      else if (item.kind === 'directory') add('pythonLock', subject, 'is a local directory; a consumer exports the lock without the project, so no local package is installed from it', `remove the local package from the project; ${fix}`);
+      else if (item.kind === 'vcs' && item.vcs.type !== 'git') add('pythonLock', subject, `the vcs type is ${item.vcs.type ?? 'absent'}, only git is reviewed`, fix);
+      else if (item.kind === 'vcs' && !/^[0-9a-f]{40}$/.test(item.vcs.commitId ?? '')) add('pythonLock', subject, `commit-id is ${item.vcs.commitId ?? 'absent'}, a git commit is 40 hexadecimal digits`, fix);
+      else if (item.kind === 'registry' || item.kind === 'archive') {
+        for (const file of item.files) if (file.sha256 === null) add('pythonLock', subject, `${file.url ?? 'a file'} has no sha256`, fix);
+      }
+    }
+  }
   if (!existsSync(path.join(root, RECORD))) {
     add('record', RECORD, 'the review record does not exist', REVIEW);
     return findings;
   }
   const record = readJson(root, RECORD);
-  if (record.schema !== 1 || !nonEmpty(record.reviewed) || !Array.isArray(record.locks) || !Array.isArray(record.dependencies)) {
+  if (record.schema !== 1 || !nonEmpty(record.reviewed) || !Array.isArray(record.locks) || !Array.isArray(record.dependencies) || !Array.isArray(record.vcs)) {
     add('record', RECORD, 'the schema is not 1 with reviewed, locks and dependencies', REVIEW);
     return findings;
   }
@@ -143,10 +158,24 @@ export function check(root, { composer = 'composer' } = {}) {
     const actual = fileDigest(path.join(root, lock));
     if (entry.sha256 !== actual) add('record', lock, `the lock changed after the review of ${record.reviewed}: its sha256 is ${actual}, the review recorded ${entry.sha256}`, REVIEW);
     for (const advisory of entry.advisories ?? []) {
-      add('advisory', `${lock} ${advisory.package} ${advisory.version}`, `the review of ${record.reviewed} found advisory ${advisory.id} (${advisory.severity}) ${advisory.title}${advisory.url ? ` ${advisory.url}` : ''}`, `${UPDATE}, which updates the affected package and records the review`);
+      const fix = lockEcosystem(lock) === 'pypi'
+        ? lockFix(lock, state.pythonLocks.find(item => item.lock === lock).createdBy, advisory.package)
+        : `${UPDATE}, which updates the affected package and records the review`;
+      add('advisory', `${lock} ${advisory.package} ${advisory.version}`, `the review of ${record.reviewed} found advisory ${advisory.id} (${advisory.severity}) ${advisory.title}${advisory.url ? ` ${advisory.url}` : ''}`, fix);
     }
   }
   for (const lock of recordedLocks.keys()) if (!state.locks.includes(lock)) add('record', lock, 'the review record names a lock that the checkout does not review', REVIEW);
+
+  // A git package of a lock is pinned by its commit: the record holds the same URL, requested revision and commit as the lock.
+  const pinned = new Map(state.vcs.map(item => [`${item.lock} ${item.package}`, item]));
+  const reviewedPins = new Map(record.vcs.map(item => [`${item.lock} ${item.package}`, item]));
+  const pin = ({ url, requestedRevision, commitId }) => JSON.stringify({ url, requestedRevision, commitId });
+  for (const [key, item] of pinned) {
+    const entry = reviewedPins.get(key);
+    if (!entry) add('record', `${item.lock} ${item.package}`, 'the git package has no entry in the review record', REVIEW);
+    else if (pin(entry) !== pin(item)) add('record', `${item.lock} ${item.package}`, `the lock pins ${item.commitId} at ${item.requestedRevision}, the review of ${record.reviewed} recorded ${entry.commitId} at ${entry.requestedRevision}`, REVIEW);
+  }
+  for (const key of reviewedPins.keys()) if (!pinned.has(key)) add('record', key, 'the review record names a git package that no lock pins', REVIEW);
 
   const recorded = new Map(record.dependencies.map(entry => [dependencyKey(entry), entry]));
   for (const [key, dependency] of declared) {
@@ -165,7 +194,7 @@ export function check(root, { composer = 'composer' } = {}) {
       continue;
     }
     const outdated = older(entry.version, entry.latest);
-    if (outdated && !exceptions.has(key)) add('latest', subject, `${entry.version} is older than ${entry.latest}, the latest stable release at the review of ${record.reviewed}, and ${POLICY} holds no exception for it`, `${UPDATE}, or add an exception with its reason, removal condition and verification to ${POLICY}`);
+    if (outdated && !exceptions.has(key)) add('latest', subject, `${entry.version} is older than ${entry.latest}, the latest stable release at the review of ${record.reviewed}, and ${POLICY} holds no exception for it`, `${dependency.kind === 'lock' ? lockFix(dependency.lock, dependency.createdBy, dependency.package) : UPDATE}, or add an exception with its reason, removal condition and verification to ${POLICY}`);
     if (!outdated && exceptions.has(key)) add('stale', subject, `the review of ${record.reviewed} found ${entry.version}, the latest stable release, and ${POLICY} holds an exception for it`, `remove the exception from ${POLICY}`);
   }
   for (const key of recorded.keys()) if (!declared.has(key)) add('record', key, 'the review record names a dependency that no manifest declares', REVIEW);

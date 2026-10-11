@@ -337,13 +337,13 @@ test('publish creates the release with the notes and the archives', (t) => {
   box.checkRuns([]);
   const lines = [];
   const names = release.publish(context(box, { log: line => lines.push(line) }), tag);
-  const [call] = box.state().calls;
+  const call = box.state().calls.find(args => args[0] === 'release' && args[1] === 'create');
   const target = path.join(box.root, 'var/release/assets');
-  assert.deepEqual(call.slice(0, 6), ['release', 'create', tag, '--verify-tag', '--title', tag]);
-  assert.equal(call[6], '--notes-file');
-  assert.deepEqual(call.slice(8), names.map(name => path.join(target, name)));
+  assert.deepEqual(call.slice(0, 7), ['release', 'create', tag, '--verify-tag', '--draft', '--title', tag]);
+  assert.equal(call[7], '--notes-file');
+  assert.deepEqual(call.slice(9), names.map(name => path.join(target, name)));
   assert.equal(box.state().notes, '- The first entry of 0.0.1.\n- The second entry of 0.0.1.\n');
-  assert.ok(lines.some(line => line.includes('creating the GitHub Release with 4 archives')), lines.join('\n'));
+  assert.ok(lines.some(line => line.includes('creating the draft GitHub Release with 4 archives')), lines.join('\n'));
 });
 
 test('publish with a missing archive fails before any request', (t) => {
@@ -359,8 +359,9 @@ test('publish of a Go module tag creates a release without archives, and a faili
   const tag = box.tag('packages/fixture-go/v0.0.1');
   box.checkRuns([]);
   assert.deepEqual(release.publish(context(box), tag), []);
-  assert.deepEqual(box.state().calls[0].slice(0, 6), ['release', 'create', tag, '--verify-tag', '--title', tag]);
-  assert.equal(box.state().calls[0].length, 8, 'the call ends with the notes file');
+  const call = box.state().calls.find(args => args[0] === 'release' && args[1] === 'create');
+  assert.deepEqual(call.slice(0, 7), ['release', 'create', tag, '--verify-tag', '--draft', '--title', tag]);
+  assert.equal(call.length, 9, 'the call ends with the notes file');
   box.checkRuns([], { failRelease: true });
   stop(() => release.publish(context(box), tag), /gh release create packages\/fixture-go\/v0\.0\.1 .* exited with 1: gh: release failed/);
 });
@@ -445,7 +446,7 @@ test('the command line refuses a missing mode, a missing tag and an extra argume
   for (const args of [[], ['verify'], ['bogus', 'v0.0.1'], ['verify', 'v0.0.1', 'extra'], ['coverage', 'v0.0.1']]) {
     const result = cli(box, args);
     assert.equal(result.status, 2, args.join(' '));
-    assert.match(result.stderr, /usage: node scripts\/kit\/release\.mjs verify\|versions\|assets\|publish\|go-tags TAG \| coverage/);
+    assert.match(result.stderr, /usage: node scripts\/kit\/release\.mjs verify\|versions\|assets\|publish\|undraft\|go-tags TAG \| coverage/);
   }
 });
 
@@ -453,7 +454,7 @@ test('make runs each release step with the tag of the environment and fails with
   const box = releaseSandbox(t);
   box.release('0.0.1');
   const make = (...args) => spawnSync('make', ['-f', 'scripts/kit/kit.mk', ...args], { cwd: box.root, env: { ...box.env, GITHUB_REPOSITORY: REPOSITORY }, encoding: 'utf8' });
-  for (const target of ['release-verify', 'release-versions', 'release-assets', 'release-publish']) {
+  for (const target of ['release-verify', 'release-versions', 'release-assets', 'release-publish', 'release-undraft']) {
     const result = make(target);
     assert.equal(result.status, 2, target);
     assert.match(result.stdout + result.stderr, new RegExp(`${target}: TAG is required, for example make ${target} TAG=v0\\.0\\.1`));
@@ -530,4 +531,34 @@ test('the zip of a tree with other content has other bytes', (t) => {
     return sha256(path.join(box.root, 'var/release/assets/polyspec-kit-fixture-php-0.0.1.zip'));
   };
   assert.notEqual(zipOf('<?php\n'), zipOf('<?php\n// changed\n'));
+});
+
+test('publish replaces the draft of an earlier run and never replaces a public release', (t) => {
+  const box = releaseSandbox(t);
+  const tag = box.tag('v0.0.1');
+  release.assets(context(box), tag);
+  box.checkRuns([]);
+  box.releases([{ id: 5, tag_name: tag, draft: true, assets: [] }]);
+  const lines = [];
+  release.publish(context(box, { log: line => lines.push(line) }), tag);
+  const calls = box.state().calls;
+  assert.ok(calls.some(args => args[0] === 'release' && args[1] === 'delete' && args[2] === tag), 'the draft of the earlier run is deleted');
+  assert.ok(calls.some(args => args[0] === 'release' && args[1] === 'create' && args[4] === '--draft'), 'the release is created as a draft');
+  assert.ok(lines.some(line => line.includes('removing the draft release 5 of an earlier run')), lines.join('\n'));
+  box.releases([{ id: 5, tag_name: tag, draft: false, assets: [] }]);
+  stop(() => release.publish(context(box), tag), /the release v0\.0\.1 is already public; a public release is not replaced/);
+});
+
+test('undraft makes the draft public with one edit, a public release stays as it is, and a missing release stops', (t) => {
+  const box = releaseSandbox(t);
+  const tag = box.tag('v0.0.1');
+  box.checkRuns([]);
+  stop(() => release.undraft(context(box), tag), /the release v0\.0\.1 does not exist; make release-publish creates it as a draft/);
+  box.releases([{ id: 5, tag_name: tag, draft: true, assets: [] }]);
+  assert.equal(release.undraft(context(box), tag), true);
+  assert.deepEqual(box.state().edited, ['release', 'edit', tag, '--draft=false']);
+  box.releases([{ id: 5, tag_name: tag, draft: false, assets: [] }]);
+  const edits = box.state().calls.filter(args => args[1] === 'edit').length;
+  assert.equal(release.undraft(context(box), tag), false);
+  assert.equal(box.state().calls.filter(args => args[1] === 'edit').length, edits, 'a public release is not edited again');
 });

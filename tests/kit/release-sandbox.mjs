@@ -15,11 +15,15 @@ const state = JSON.parse(fs.readFileSync(process.env.STUB_STATE, 'utf8'));
 const args = process.argv.slice(2);
 state.calls.push(args);
 let status = 0;
-if (args[0] === 'api' && args[1] === '--paginate') {
+if (args[0] === 'api' && args.some(arg => arg.endsWith('/releases'))) {
+  for (const release of state.releases ?? []) console.log(JSON.stringify(release));
+} else if (args[0] === 'api' && args[1] === '--paginate') {
   for (const run of state.checkRuns) console.log(JSON.stringify([run.id, run.name, run.status, run.conclusion]));
 } else if (args[0] === 'release' && args[1] === 'create') {
   if (state.failRelease) { console.error('gh: release failed'); status = 1; }
   else state.notes = fs.readFileSync(args[args.indexOf('--notes-file') + 1], 'utf8');
+} else if (args[0] === 'release' && (args[1] === 'delete' || args[1] === 'edit')) {
+  if (args[1] === 'edit') state.edited = args;
 } else {
   console.error('gh stub: unexpected arguments ' + JSON.stringify(args));
   status = 1;
@@ -137,6 +141,11 @@ export function releaseSandbox(t, { version = '0.0.1', changelog = CHANGELOG, mu
     /** The check runs the stub answers: [name, conclusion or null for a run in progress], with ids in order. */
     checkRuns(runs, extra = {}) {
       writeFileSync(state, JSON.stringify({ calls: [], notes: null, checkRuns: runs.map(([name, conclusion], index) => ({ id: index + 1, name, status: conclusion ? 'completed' : 'in_progress', conclusion })), ...extra }));
+    },
+    /** The releases the stub lists for the API, drafts included: each { id, tag_name, draft, assets }. */
+    releases(list) {
+      const current = JSON.parse(readFileSync(state, 'utf8'));
+      writeFileSync(state, JSON.stringify({ ...current, releases: list }));
     },
     tag(name, target = commit) {
       git(root, 'tag', '-a', name, '-m', name, target);

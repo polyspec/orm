@@ -9,6 +9,9 @@
   "pythonManifests": [
     "packages/fixture-python/pyproject.toml"
   ],
+  "pythonLocks": [
+    "packages/fixture-python/pylock.toml"
+  ],
   "npmLocks": [
     "package-lock.json"
   ],

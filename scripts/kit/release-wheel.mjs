@@ -15,8 +15,6 @@ export const BACKEND_DIRECTORY = 'wheels';
 const PURE_PYTHON = 'py3-none-any';
 // The pinned requirement of the build backend: a distribution name, `==` and a version of numbers and dots.
 const REQUIREMENT = /^([A-Za-z0-9._-]+)==(\d+(?:\.\d+)*)$/;
-// A Requires-Dist that is a plain pinned requirement; a URL, a git source, a range and a marker are not.
-const PLAIN_REQUIREMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*==\d+(?:\.\d+)*$/;
 
 /** The distribution name of a file name: each run of characters other than word characters and dots is `_` (PEP 427). */
 export const distributionOf = name => name.replace(/[^\w\d.]+/g, '_');
@@ -53,24 +51,12 @@ export function sourceProblems({ file, text, name, requirement }) {
   return problems;
 }
 
-/** How a Requires-Dist that is not a plain requirement is written: a URL, a git source, a marker or a range. */
-function requirementForm(spec) {
-  if (/ @ (?:git[+:]|hg\+|svn\+|bzr\+)|\.git(?:[@#]|$)/.test(spec)) return 'a git source';
-  if (/ @ |:\/\//.test(spec)) return 'a URL';
-  if (spec.includes(';')) return 'a marker';
-  return 'a range';
-}
-
-/** The problems of the METADATA of a wheel of `name` at `version`: its name and version, and each Requires-Dist that is not a plain name==version. */
+/** The problems of the METADATA of a wheel of `name` at `version`: its name and its version. Dependencies: wheel-dependencies.mjs. */
 export function metadataProblems(metadata, name, version) {
   const problems = [];
   const field = key => new RegExp(`^${key}: (.*)$`, 'm').exec(metadata)?.[1]?.trim() ?? null;
   if (field('Name') !== name) problems.push(`Name ${field('Name') ?? 'none'}, config/release.json declares ${name}`);
   if (field('Version') !== version) problems.push(`Version ${field('Version') ?? 'none'}, the tag is ${version}`);
-  for (const [, requirement] of metadata.matchAll(/^Requires-Dist: (.*)$/gm)) {
-    const spec = requirement.trim();
-    if (!PLAIN_REQUIREMENT.test(spec)) problems.push(`Requires-Dist ${spec} is ${requirementForm(spec)}, not a plain name==version`);
-  }
   return problems;
 }
 

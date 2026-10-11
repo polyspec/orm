@@ -2,10 +2,12 @@
 // keeps, in memory, the ledger of the runs and of the cases that each run reported. A binding holds its unit when its command
 // exits with 0 and the cases that passed are exactly the cases of the suite file: a failed, skipped, missing or extra case is a
 // finding. Each binding runs twice, and a second run with another exit status, another case or another result is a finding
-// that names the case. No saved report is read.
+// that names the case. No saved report is read. The environment references of the runner values resolve here, and a run whose
+// reference is unset or empty cannot start. Each support file of a file runner (node, php, python) runs once, and one that
+// reports a case is an R5 finding.
 import path from 'node:path';
 import { execute } from './process.mjs';
-import { finding } from './parity-declaration.mjs';
+import { finding, resolveReferences, supportFiles } from './parity-declaration.mjs';
 import { runOf } from './parity-runners.mjs';
 import { pairs } from './parity-units.mjs';
 
@@ -23,15 +25,52 @@ function differences(first, second) {
   return found;
 }
 
-/** The ledger `{ runs, cases }` of every bound suite pair and the R3 findings; `say` prints a line for each step. */
-export function runBindings(model, root, { env, say }) {
+/**
+ * The run of `binding` in the implementation `declared` with its environment references resolved from `env`: the run of
+ * runOf, with `shown`, the command line as declared (a reference is printed, never its value), or `{ error }`.
+ */
+function resolvedRun(declared, root, binding, unit, env) {
+  const { implementation, errors } = resolveReferences(declared, env);
+  if (errors.length) return { error: `cannot start: ${errors.join('; ')}` };
+  const run = runOf(implementation, root, binding, unit, env);
+  if (run.error) return run;
+  const shown = runOf(declared, root, binding, unit, env);
+  return { ...run, shown: [declared.command ?? shown.command, ...shown.args].join(' ') };
+}
+
+/** The harness lines (`PASS <unit>/<case>`, `FAIL <unit>/<case>`) of `output`. */
+const harnessLines = output => output.split('\n').map(line => line.trim()).filter(line => /^(?:PASS|FAIL) \S/.test(line));
+
+// The runners whose support files the check runs: a file runner reports its cases by printing them, so a support file of one
+// could hold a test that no declaration shows.
+const FILE_RUNNERS = new Set(['node', 'php', 'python']);
+
+/** R5 of the support files: each support file of a node, php or python implementation runs once and reports no case. */
+function runSupport(model, root, files, { env, say }) {
+  return model.config.implementations.filter(implementation => FILE_RUNNERS.has(implementation.runner)).flatMap(implementation => supportFiles(implementation, files).flatMap((file) => {
+    const where = { implementation: implementation.name, place: file };
+    const run = resolvedRun(implementation, root, { test: file }, '', env);
+    if (run.error) return [finding('R3', run.error, where)];
+    say(`run the support file ${file} of ${implementation.name}: ${run.shown} (in ${run.cwd})`);
+    const result = execute(run.command, run.args, { cwd: path.join(root, run.cwd), env: run.env });
+    if (result.error) return [finding('R5', `the support file could not run: ${run.shown}: ${result.error.message}`, where)];
+    const reported = harnessLines(result.stdout);
+    return reported.length ? [finding('R5', `the support file reports cases (${reported.join(', ')}); declare it as the test of a binding`, where)] : [];
+  }));
+}
+
+/**
+ * The ledger `{ runs, cases }` of every bound suite pair, the R3 findings, and the R5 findings of the support files that
+ * report cases; `say` prints a line for each step.
+ */
+export function runBindings(model, root, { env, files, say }) {
   const ledger = { runs: [], cases: [] };
   const findings = [];
   for (const { unit, implementation } of pairs(model, 'suite')) {
     const binding = unit.bindings.find(entry => entry.implementation === implementation.name);
     if (!binding) continue;
     const where = { unit: unit.id, implementation: implementation.name, place: binding.test };
-    const run = runOf(implementation, root, binding, unit.id, env);
+    const run = resolvedRun(implementation, root, binding, unit.id, env);
     if (run.error) {
       findings.push(finding('R3', run.error, where));
       continue;
@@ -39,7 +78,7 @@ export function runBindings(model, root, { env, say }) {
     const expected = model.cases.get(unit.id);
     // The binding runs twice; the same tree gives the same cases with the same results, or the binding does not hold.
     const [first, second] = [1, 2].map((attempt) => {
-      say(`run ${unit.id} ${implementation.name} (${attempt} of 2): ${[run.command, ...run.args].join(' ')} (in ${run.cwd})`);
+      say(`run ${unit.id} ${implementation.name} (${attempt} of 2): ${run.shown} (in ${run.cwd})`);
       const result = execute(run.command, run.args, { cwd: path.join(root, run.cwd), env: run.env });
       const status = result.error ? null : result.status;
       const cases = result.error ? new Map() : run.cases(result);
@@ -50,7 +89,7 @@ export function runBindings(model, root, { env, say }) {
     const { result, status, cases } = first;
     for (const [name, outcome] of cases) ledger.cases.push({ unit: unit.id, implementation: implementation.name, case: name, outcome });
     const problems = [
-      result.error && `${run.command} could not start: ${result.error.message}`,
+      result.error && `${run.shown} could not start: ${result.error.message}`,
       !result.error && status !== 0 && `exited with ${status ?? result.signal}${run.detail(result).length ? `: ${run.detail(result).join(' | ')}` : ''}`,
       named(cases, 'fail').length && `failed: ${named(cases, 'fail').join(', ')}`,
       named(cases, 'skip').length && `skipped: ${named(cases, 'skip').join(', ')}`,
@@ -60,5 +99,5 @@ export function runBindings(model, root, { env, say }) {
     ].filter(part => part && !part.endsWith(': '));
     if (problems.length) findings.push(finding('R3', problems.join('; '), where));
   }
-  return { ledger, findings };
+  return { ledger, findings: [...findings, ...runSupport(model, root, files, { env, say })] };
 }

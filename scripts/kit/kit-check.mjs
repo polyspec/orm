@@ -21,6 +21,19 @@ export function vendoredDirectories(root) {
   return readJson(root, 'kit.json').vendored;
 }
 
+/**
+ * The single vendored files of kit.json: `vendoredFiles` maps the path of a file in the checkout to its source file in kit.
+ * Both are relative paths that stay inside their repository.
+ */
+export function vendoredFilesOf(kit) {
+  return Object.entries(kit.vendoredFiles ?? {}).map(([file, from]) => {
+    for (const value of [file, from]) {
+      if (path.isAbsolute(value) || value.split("/").includes("..") || value.includes("\\")) throw new Error(`vendoredFiles path ${JSON.stringify(value)} is not a relative path inside its repository`);
+    }
+    return { file, from };
+  });
+}
+
 /** Every file below `directory` (relative to root), sorted; a missing directory has none. */
 export function walk(root, directory) {
   const absolute = path.join(root, directory);
@@ -73,7 +86,9 @@ export function check(root) {
   if (!existsSync(lockFile)) return [...config, `${LOCK}: the lock is missing. Fix: make kit-sync KIT_TAG=<tag>`];
   const lock = readJson(lockFile);
   const found = [];
+  const kit = readJson(root, "kit.json");
   const present = new Set(vendoredDirectories(root).flatMap(directory => walk(root, directory)));
+  for (const { file } of vendoredFilesOf(kit)) if (existsSync(path.join(root, file))) present.add(file);
   if (existsSync(path.join(root, 'kit.json'))) present.add('kit.json');
   for (const [file, expected] of Object.entries(lock.files)) {
     if (!present.has(file)) {

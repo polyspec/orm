@@ -71,10 +71,12 @@ const { appendFileSync, readFileSync } = require('node:fs');
 const url = process.argv.slice(2).at(-1);
 appendFileSync(process.env.STUB_LOG, 'curl ' + process.argv.slice(2).join(' ') + '\\n');
 const registry = JSON.parse(readFileSync(process.env.STUB_REGISTRY, 'utf8'));
-const name = /^https:\\/\\/pypi\\.org\\/pypi\\/(.+)\\/json$/.exec(url)?.[1];
+const match = /^https:\\/\\/pypi\\.org\\/pypi\\/([^/]+)(?:\\/([^/]+))?\\/json$/.exec(url);
+const [, name, version] = match ?? [];
 const releases = registry.pypi?.[name];
-if (!releases) { console.error('404 ' + url); process.exit(22); }
-console.log(JSON.stringify({ info: { version: Object.keys(releases).at(-1) }, releases }));
+if (!releases || (version !== undefined && !releases[version])) { console.error('404 ' + url); process.exit(22); }
+if (version === undefined) console.log(JSON.stringify({ info: { version: Object.keys(releases).at(-1) }, releases }));
+else console.log(JSON.stringify({ info: { version }, vulnerabilities: registry.pypiVulnerabilities?.[name]?.[version] ?? [] }));
 `;
 
 const GO_STUB = `#!/usr/bin/env node
@@ -126,6 +128,6 @@ export const FIXTURE_REGISTRY = {
   npm: { 'is-number': ['7.0.0'], semver: ['7.6.0'] },
   composer: { 'fixture-php': { 'psr/log': '3.0.2' } },
   composerAudit: { 'fixture-php': { advisories: [], abandoned: [] } },
-  pypi: { setuptools: { '84.0.0': [{}] }, ruff: { '0.16.10': [{}] } },
+  pypi: { setuptools: { '84.0.0': [{}] }, ruff: { '0.16.10': [{}] }, click: { '8.1.7': [{}] } },
   go: { 'github.com/google/uuid': ['v1.5.0', 'v1.6.0'] },
 };
