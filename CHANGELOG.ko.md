@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 59ccf4df43012fa3812c3fe9d723427c3fc9ee9b486c76949b3862b7421dbb28 -->
+<!-- source-sha256: 51d905d47d5af0b70d3d1fadee288944072f059a706943c4e716c0e0505ca81c -->
 # 변경 이력
 
 ## Unreleased
+- T74: 모든 client의 codec decode가 정확하다. 공백이 있는 `base64`와 `hex` text, 소문자 `hex`는 `CODEC_DECODE`로 실패한다. MySQL hex cell은 client에서 decode한다. Go는 다른 client의 host decode에 대응하는 `orm.HostDecode`를 export한다. `tests/codec/decode-vectors.json`이 저장 cell을 고정하고, docs/codec.md가 규칙을 적는다.
 - T73: 모든 구현의 `ir.Validate`가 column 대 column 조건의 `ref` 경로(root, join된 relation, subquery 안에서만 `^`)를 풀고 그 column을 요구하며, 없으면 `COLUMN_UNKNOWN`이다. 최상위 group과 group의 첫 항목의 `conn`은 `IR_INVALID`로 거절한다. `tests/ir/validate.json`이 case를 고정한다.
 - T78-1: client test lane의 검사 case(`scripts/check/continue.test.mjs`)가 손으로 적은 개수와 비교하지 않고 기대하는 명령을 `scripts/client-db-test.sh`의 PHP lane과 `scripts/typescript/sqlite-test.sh`에서 읽으므로, lane에 test file을 더해도 case가 깨지지 않는다. Python driver error test의 frame double은 `TxFrame.run`의 `faultable` 인자를 받고 SQLite row lock이 statement fault를 소비하지 않는지 확인한다.
 - T119: dbspec `store` setting이 non-null `date`나 `datetime` column에 시간 shard 절 `shard <column> year|month|day`를 받는다. 여섯 구현이 같게 parse, emit, 검사, hash하고 SQL backend는 무시하며, block table, self foreign key가 있는 table, `order`가 있는 table에서는 거부한다.
