@@ -65,6 +65,19 @@ export function opAllowed(c: Column, op: string): boolean {
   return opsByType[c.type]?.includes(op) ?? false;
 }
 
+/**
+ * Whether the column comparison `op` may compare `left` with `right`: its base operator (eq for eq_col) must be one of
+ * the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
+ * operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
+ * dialect's same stored form.
+ */
+function colPairOpAllowed(left: Column, right: Column, op: string): boolean {
+  const base = op.replace(/_col$/, '');
+  if (left.stages.length === 0 && right.stages.length === 0) return opsByType[left.type]?.includes(base) ?? false;
+  const isIP = (c: Column): boolean => c.stages.length === 1 && c.stages[0] === 'ip';
+  return isIP(left) && isIP(right) && (base === 'eq' || base === 'not_eq');
+}
+
 class Validator {
   /** `root` is the request's own query, the only one that may group. */
   public constructor(private readonly m: RuntimeModel, private readonly n: number, private readonly root: RequestQuery) {}
@@ -94,7 +107,7 @@ class Validator {
    * statement root, "^" the query around a subquery (only inside one), and any
    * other path the join names from the root joined by "/". The target has the column.
    */
-  private ref(s: Scope, path: string, column: string): void {
+  private ref(s: Scope, path: string, column: string): Column {
     let root = s;
     while (root.parent) root = root.parent;
     let target = root;
@@ -104,7 +117,7 @@ class Validator {
       for (const seg of path.split('/')) target = target.joins.get(seg) ?? fail('ENTITY_NOT_JOINED', `${target.name}.${seg}`);
     }
     const ent = target.ent ?? fail('ENTITY_UNKNOWN', target.name);
-    if (!columnOf(ent, column)) fail('COLUMN_UNKNOWN', `${target.name}.${column}`);
+    return columnOf(ent, column) ?? fail('COLUMN_UNKNOWN', `${target.name}.${column}`);
   }
 
   public assign(ent: Entity, r: Request, a: Assignment): void {
@@ -319,7 +332,8 @@ class Validator {
       const path: unknown = p.ref.path ?? '';
       const refColumn: unknown = p.ref.column;
       if (typeof path !== 'string' || typeof refColumn !== 'string') fail('IR_INVALID', `${op} ref path and column must be strings`);
-      this.ref(s, path, refColumn);
+      const other = this.ref(s, path, refColumn);
+      if (!colPairOpAllowed(c, other, op)) fail('OPERATOR_NOT_ALLOWED', `${op} on ${ent.name}.${column} (${c.type}) and ${path}.${refColumn} (${other.type})`);
       return;
     }
     if (p.p === undefined) fail('IR_INVALID', `${op} ${ent.name}.${column} needs a value (p)`);

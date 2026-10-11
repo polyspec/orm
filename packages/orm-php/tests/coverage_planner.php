@@ -95,4 +95,8 @@ runCoverageCases($argv, [
     'planner_insert_on_duplicate_plus' => fn() => plannerCase($root, $fixture, 'planner_insert_on_duplicate_plus'),
     'planner_rejects_insert_set_plus' => fn() => plannerCase($root, $fixture, 'planner_rejects_insert_set_plus'),
     'planner_rejects_insert_set_minus' => fn() => plannerCase($root, $fixture, 'planner_rejects_insert_set_minus'),
+    'planner_ip_eq_col_ip' => fn() => plannerCase($root, $fixture, 'planner_ip_eq_col_ip'),
+    'planner_rejects_bool_gt_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_bool_gt_col'),
+    'planner_rejects_ip_gt_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_ip_gt_col'),
+    'planner_rejects_aes_eq_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_aes_eq_col'),
 ]);

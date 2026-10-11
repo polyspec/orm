@@ -76,4 +76,8 @@ await runCases('coverage_planner.mjs', {
   async planner_insert_on_duplicate_plus() { compileCase('planner_insert_on_duplicate_plus'); },
   async planner_rejects_insert_set_plus() { compileCase('planner_rejects_insert_set_plus'); },
   async planner_rejects_insert_set_minus() { compileCase('planner_rejects_insert_set_minus'); },
+  async planner_ip_eq_col_ip() { compileCase('planner_ip_eq_col_ip'); },
+  async planner_rejects_bool_gt_col() { compileCase('planner_rejects_bool_gt_col'); },
+  async planner_rejects_ip_gt_col() { compileCase('planner_rejects_ip_gt_col'); },
+  async planner_rejects_aes_eq_col() { compileCase('planner_rejects_aes_eq_col'); },
 }, 60_000);

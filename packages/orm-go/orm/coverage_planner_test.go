@@ -307,3 +307,27 @@ func TestCoveragePlannerRejectsInsertSetMinus(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_insert_set_minus")
 }
+
+// TestCoveragePlannerIpEqColIp는 ip eq col ip case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerIpEqColIp(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ip_eq_col_ip")
+}
+
+// TestCoveragePlannerRejectsBoolGtCol는 rejects bool gt col case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsBoolGtCol(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_bool_gt_col")
+}
+
+// TestCoveragePlannerRejectsIpGtCol는 rejects ip gt col case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsIpGtCol(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_ip_gt_col")
+}
+
+// TestCoveragePlannerRejectsAesEqCol는 rejects aes eq col case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsAesEqCol(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_aes_eq_col")
+}

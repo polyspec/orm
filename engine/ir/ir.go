@@ -447,7 +447,7 @@ func (v *validator) scopes(q *Query, parent, outer *scope) *scope {
 // ref는 planner의 resolvePath처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
 // "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
 // "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
-func (v *validator) ref(s *scope, r *ColRef) error {
+func (v *validator) ref(s *scope, r *ColRef) (*runtimemodel.Field, error) {
 	root := s
 	for root.parent != nil {
 		root = root.parent
@@ -457,25 +457,39 @@ func (v *validator) ref(s *scope, r *ColRef) error {
 	case "":
 	case "^":
 		if root.outer == nil {
-			return errf("IR_INVALID", "^ reference outside a subquery")
+			return nil, errf("IR_INVALID", "^ reference outside a subquery")
 		}
 		target = root.outer
 	default:
 		for _, seg := range strings.Split(r.Path, "/") {
 			next, ok := target.joins[seg]
 			if !ok {
-				return errf("ENTITY_NOT_JOINED", "%s.%s", target.name, seg)
+				return nil, errf("ENTITY_NOT_JOINED", "%s.%s", target.name, seg)
 			}
 			target = next
 		}
 	}
 	if target.ent == nil {
-		return errf("ENTITY_UNKNOWN", "%s", target.name)
+		return nil, errf("ENTITY_UNKNOWN", "%s", target.name)
 	}
-	if target.ent.Field(r.Column) == nil {
-		return errf("COLUMN_UNKNOWN", "%s.%s", target.name, r.Column)
+	c := target.ent.Field(r.Column)
+	if c == nil {
+		return nil, errf("COLUMN_UNKNOWN", "%s.%s", target.name, r.Column)
 	}
-	return nil
+	return c, nil
+}
+
+// colPairOpAllowed reports whether the column comparison op may compare the columns left and right: its base operator
+// (eq for eq_col) must be one of the left column's type, and neither column may have a codec, since a codec's stored
+// form is not the value the operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col,
+// because both sides are the dialect's same stored form.
+func colPairOpAllowed(left, right *runtimemodel.Field, op string) bool {
+	base := strings.TrimSuffix(op, "_col")
+	if len(left.Codec) == 0 && len(right.Codec) == 0 {
+		return slices.Contains(opsByType[left.Type], base)
+	}
+	isIP := func(f *runtimemodel.Field) bool { return len(f.Codec) == 1 && f.Codec[0] == "ip" }
+	return isIP(left) && isIP(right) && (base == "eq" || base == "not_eq")
 }
 
 func (v *validator) params(ps []int) error {
@@ -887,7 +901,14 @@ func (v *validator) pred(s *scope, p *Pred) error {
 			if p.Ref == nil {
 				return errf("IR_INVALID", "%s needs ref", p.Op)
 			}
-			return v.ref(s, p.Ref)
+			other, err := v.ref(s, p.Ref)
+			if err != nil {
+				return err
+			}
+			if !colPairOpAllowed(c, other, p.Op) {
+				return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s) and %s.%s (%s)", p.Op, ent.Name, p.Column, c.Type, p.Ref.Path, p.Ref.Column, other.Type)
+			}
+			return nil
 		}
 		if p.P == nil {
 			return errf("IR_INVALID", "%s %s.%s needs a value (p)", p.Op, ent.Name, p.Column)

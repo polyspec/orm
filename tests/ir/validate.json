@@ -55,6 +55,12 @@
     {"name": "update-identity-key", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service", "set": [{"column": "seq", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
     {"name": "restore-soft-delete-column", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "set": [{"column": "deleted_at", "null": true}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
     {"name": "restore-primary-key", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "set": [{"column": "seq", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
-    {"name": "restore-plain", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true}
+    {"name": "restore-plain", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true},
+    {"name": "col-op-integers-order", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "service_seq", "op": "lt_col", "ref": {"column": "user_seq"}}}]}}, "valid": true},
+    {"name": "col-op-ip-with-ip", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "ip", "op": "eq_col", "ref": {"column": "ip"}}}]}}, "valid": true},
+    {"name": "col-op-ip-with-ip-not-eq", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "ip", "op": "not_eq_col", "ref": {"column": "ip"}}}]}}, "valid": true},
+    {"name": "col-op-bool-order", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "is_close", "op": "gt_col", "ref": {"column": "is_display"}}}]}}, "error": "OPERATOR_NOT_ALLOWED"},
+    {"name": "col-op-ip-order", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "ip", "op": "gt_col", "ref": {"column": "ip"}}}]}}, "error": "OPERATOR_NOT_ALLOWED"},
+    {"name": "col-op-aes-equality", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "author", "where": {"items": [{"pred": {"column": "aes_hex_email", "op": "eq_col", "ref": {"column": "aes_hex_phone"}}}]}}, "error": "OPERATOR_NOT_ALLOWED"}
   ]
 }
