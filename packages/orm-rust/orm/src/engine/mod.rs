@@ -16,8 +16,9 @@ pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
     Error::Engine { code: code.into(), msg: msg.into() }
 }
 
-/// Validates a request and plans it for a dialect.
-pub(crate) fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
+/// Validates a request against the manifest and plans it for a dialect. A step of the plan that
+/// reads no rows runs with [`crate::Db::execute`] (docs/usage.md "Execute a compiled statement").
+pub fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
     validate::validate(m, r)?;
     planner::Planner { m, d }.compile(r)
 }

@@ -38,6 +38,11 @@ fn quote_with(q: &str, ident: &str) -> String {
     ident.split('.').map(|part| format!("{q}{}{q}", part.replace(q, &format!("{q}{q}")))).collect::<Vec<_>>().join(".")
 }
 
+/// text를 SQL 문자열 literal로 quote한다.
+fn literal(text: &str) -> String {
+    format!("'{}'", text.replace('\'', "''"))
+}
+
 fn tuple_in(cols: &[String], rows: &[Vec<String>], negate: bool, values: bool) -> String {
     let parts: Vec<String> = rows.iter().map(|r| format!("({})", r.join(", "))).collect();
     let op = if negate { " NOT IN " } else { " IN " };
@@ -293,6 +298,37 @@ impl Dialect {
 
     pub fn tuple_in(self, cols: &[String], rows: &[Vec<String>], negate: bool) -> String {
         tuple_in(cols, rows, negate, self == Dialect::Sqlite)
+    }
+
+    /// table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면
+    /// 다음 key는 1이다.
+    /// - MySQL: InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한
+    ///   값으로 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+    /// - PostgreSQL: identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어
+    ///   다음 nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로
+    ///   quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
+    /// - SQLite: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장
+    ///   큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는 이미
+    ///   가장 큰 key 다음이다.
+    pub fn restart_identity(self, table: &str, column: &str) -> String {
+        match self {
+            Dialect::MySql => format!("ALTER TABLE {} AUTO_INCREMENT = 1", quote_with("`", table)),
+            Dialect::Postgres => {
+                let t = quote_with("\"", table);
+                format!(
+                    "SELECT setval(pg_get_serial_sequence({}, {}), COALESCE(MAX({}), 0) + 1, false) FROM {t}",
+                    literal(&t),
+                    literal(column),
+                    quote_with("\"", column)
+                )
+            }
+            Dialect::Sqlite => format!(
+                "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX({}), 0) FROM {}) WHERE name = {}",
+                quote_with("\"", column),
+                quote_with("\"", table),
+                literal(table)
+            ),
+        }
     }
 
     pub fn random(self) -> &'static str {

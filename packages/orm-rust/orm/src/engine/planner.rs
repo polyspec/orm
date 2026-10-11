@@ -377,6 +377,7 @@ impl<'m> Planner<'m> {
             "update" => steps.push(self.update_step(r)?),
             "delete" => steps.push(self.delete_step(r)?),
             "restore" => steps.push(self.restore_step(r)?),
+            "restart_identity" => steps.push(self.restart_identity_step(r)?),
             other => return Err(err(codes::IR_INVALID, format!("unknown kind {other:?}"))),
         }
         for (i, st) in steps.iter_mut().enumerate() {
@@ -1088,13 +1089,19 @@ impl<'m> Planner<'m> {
         validate_aes_assignments(ent, &set, false)?;
         validate_audit_assignment(ent, &set)?;
         validate_required_assignments(ent, &set)?;
+        // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        if let Some(identity) = ent.identity.as_deref().filter(|_| r.load) {
+            if !set.iter().any(|a| a.column == identity && a.p.is_some()) {
+                return Err(err(codes::IR_INVALID, format!("load of {} needs a value for the identity column {identity}", ent.name)));
+            }
+        }
         let version = aes_version_column(ent);
         let audited = audit_column(ent);
         let mut cols = Vec::new();
         let mut vals = Vec::new();
         for a in &set {
             let col = self.column_of(ent, &a.column)?;
-            if col.identity {
+            if col.identity && !r.load {
                 return Err(err(codes::IR_INVALID, format!("cannot set identity column {}", a.column)));
             }
             cols.push(self.d.quote(&a.column));
@@ -1307,6 +1314,18 @@ impl<'m> Planner<'m> {
         let sql = format!("UPDATE {} SET {} WHERE {where_}", b.table(&ent.table), sets.join(", "));
         b.checked()?;
         Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() })
+    }
+
+    /// entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성
+    /// key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+    fn restart_identity_step(&self, r: &ir::Request) -> Result<Step> {
+        let ent = self.entity(&r.query.entity)?;
+        let Some(identity) = ent.identity.as_deref() else {
+            return Err(err(codes::IR_INVALID, format!("restart_identity of {}, which has no identity column", ent.name)));
+        };
+        let mut b = Builder::new(self.d);
+        b.table(&ent.table);
+        Ok(Step { role: "main".into(), sql: self.d.restart_identity(&ent.table, identity), tables: b.tables(), ..Default::default() })
     }
 }
 

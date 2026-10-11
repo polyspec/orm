@@ -187,7 +187,10 @@ impl<'a> Sent<'a> {
 /// planner가 쓴 statement의 kind다: SQL의 첫 단어다.
 pub(crate) fn statement_kind(sql: &str) -> &'static str {
     let verb = sql.trim_start().split(|c: char| c.is_whitespace()).next().unwrap_or("");
-    if verb.eq_ignore_ascii_case("INSERT") {
+    if verb.eq_ignore_ascii_case("ALTER") {
+        // MySQL identity restart의 schema statement다.
+        KIND_SCHEMA
+    } else if verb.eq_ignore_ascii_case("INSERT") {
         KIND_INSERT
     } else if verb.eq_ignore_ascii_case("UPDATE") {
         KIND_UPDATE

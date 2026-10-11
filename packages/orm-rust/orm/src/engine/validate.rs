@@ -83,8 +83,20 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.manifest_hash != m.manifest_hash {
         return Err(err(codes::SCHEMA_HASH_MISMATCH, format!("client {}, engine {}", r.manifest_hash, m.manifest_hash)));
     }
-    if !matches!(r.kind.as_str(), "one" | "all" | "count" | "group_count" | "sum" | "avg" | "paginate" | "insert" | "update" | "delete" | "restore") {
+    if !matches!(
+        r.kind.as_str(),
+        "one" | "all" | "count" | "group_count" | "sum" | "avg" | "paginate" | "insert" | "update" | "delete" | "restore" | "restart_identity"
+    ) {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
+    }
+    if r.load && (r.kind != "insert" || !r.on_duplicate.is_empty()) {
+        return Err(err(codes::IR_INVALID, "load is only valid on insert without on_duplicate"));
+    }
+    // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+    if r.kind == "restart_identity"
+        && (!r.set.is_empty() || !r.rows.is_empty() || !r.on_duplicate.is_empty() || r.query.where_.is_some() || r.optimistic.is_some())
+    {
+        return Err(err(codes::IR_INVALID, "restart_identity takes no set, rows, on_duplicate, where or optimistic"));
     }
     let v = Validator { m, n: r.n_params };
     let root = v.scopes(&r.query);
