@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 7f2697fb9036b57cab09c746c436da6d1aa2ee5d92198f97e56f11fa122849f5 -->
+<!-- source-sha256: e96e7c65d5f3552939f09ebaebf88497d02127efb415580eeed776bfd6892939 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -184,7 +184,7 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | PHP | `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)` | `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다 |
 | Python | `polyspec.orm.testing.fail_next_statement(db, code, message)` | `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다 |
 
-PHP 확장 `orm_dbspec`은 연결과 statement runner가 없으므로 statement fault가 없다. 위의 다섯 클라이언트만 `Db` 연결을 가진다.
+statement fault는 `Db`에 설정되며 `Db`가 실행하는 statement를 센다. 모든 구현의 dbspec apply, recover, rollback, finalize와 introspection은 호출자가 넘긴 driver 연결 위에서 `Db` 밖에서 실행하므로 이를 소비하지 않는다: Go `engine/dbspec/apply.go:138,159,200,282`(`Execer`)와 `engine/dbspec/introspect.go:37`(`Querier`), Rust `packages/orm-rust/orm/src/dbspec/apply.rs:296,313,331,347`(`ApplyConnection`)와 `packages/orm-rust/orm/src/dbspec.rs:52`(`CatalogQuerier`), TypeScript `packages/orm-npm/src/dbspec/apply.ts:720,737,768,820`(`Connection`)와 `packages/orm-npm/src/dbspec/introspect.ts:33`, Python `packages/orm-python/src/polyspec/orm/dbspec/apply.py:703,718,743,802`와 `packages/orm-python/src/polyspec/orm/dbspec/introspect.py:16`(`Connection`), PHP `packages/orm-php/src/Dbspec/PlanApply.php:102,118,149,212`와 `packages/orm-php/src/Dbspec/Dbspec.php:161,588`(`\PDO`), PHP 확장 `orm_dbspec`은 `packages/orm-php-extension/stubs/orm_dbspec.stub.php:553,591,594,597,600`(`\PDO`)이며 구현은 `packages/orm-php-extension/src/apply.c`와 `introspect.c`에 있다.
 
 ## 4. 클라이언트 안의 계획
 
