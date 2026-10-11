@@ -422,3 +422,29 @@ fn read_triggers(results: &Results, c: &mut Catalog) -> Result<(), String> {
     c.recognize_triggers(Dialect::MySql, triggers);
     Ok(())
 }
+
+#[cfg(test)]
+mod show_create_tests {
+    use super::shown_checks;
+    use std::time::Duration;
+
+    /// Every case of tests/dbspec/show-create.json reads to its expected body, or to no body for a name the statement lacks (T62-4-8).
+    #[test]
+    fn every_show_create_case_reads_to_its_expected_body() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(Duration::from_secs(10)));
+        let data: serde_json::Value =
+            serde_json::from_str(include_str!("../../../../../../tests/dbspec/show-create.json")).expect("tests/dbspec/show-create.json is valid JSON");
+        let cases = data["cases"].as_array().expect("cases is an array");
+        assert!(!cases.is_empty(), "tests/dbspec/show-create.json has no cases");
+        for case in cases {
+            let id = case["id"].as_str().expect("case id is a string");
+            let lines: Vec<&str> =
+                case["create"].as_array().expect("create is an array").iter().map(|line| line.as_str().expect("create line is a string")).collect();
+            let name = case["name"].as_str().expect("case name is a string");
+            let expected = case["expected"].as_str().expect("expected is a string");
+            let create = format!("{}\n", lines.join("\n"));
+            let got = shown_checks(&create).get(name).cloned().unwrap_or_else(|| "not found".to_owned());
+            assert_eq!(got, expected, "case {id}: the reader of check {name}");
+        }
+    }
+}

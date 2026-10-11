@@ -627,7 +627,7 @@
   "packages/orm-npm/src/dbspec/introspect_check.ts::readSQLString": "function readSQLString(dialect: DbspecDialect, text: string): [ string, number ]",
   "packages/orm-npm/src/dbspec/introspect_check.ts::unescapeMySQLClause": "function unescapeMySQLClause(text: string): string",
   "packages/orm-npm/src/dbspec/introspect_check.ts::unscaledDecimal": "export function unscaledDecimal(text: string, scale: number): string",
-  "packages/orm-npm/src/dbspec/introspect_mysql.ts::createChecks": "function createChecks(create: string): Map\u003cstring, string\u003e",
+  "packages/orm-npm/src/dbspec/introspect_mysql.ts::createChecks": "export function createChecks(create: string): Map\u003cstring, string\u003e",
   "packages/orm-npm/src/dbspec/introspect_mysql.ts::hasNonAscii": "function hasNonAscii(clause: string): boolean",
   "packages/orm-npm/src/dbspec/introspect_mysql.ts::mysqlDefault": "function mysqlDefault(value: string, type: DbspecType): string",
   "packages/orm-npm/src/dbspec/introspect_mysql.ts::mysqlNow": "function mysqlNow(text: string, type: DbspecType): boolean",

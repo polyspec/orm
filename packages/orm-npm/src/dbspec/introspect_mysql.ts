@@ -222,7 +222,7 @@ async function shownCheck(
 }
 
 /** SHOW CREATE TABLE 문장의 모든 CHECK 본문을 이름별로 CHECK_CLAUSE 형식으로 돌려준다. */
-function createChecks(create: string): Map<string, string> {
+export function createChecks(create: string): Map<string, string> {
   const checks = new Map<string, string>();
   const pattern = /CONSTRAINT `([^`]+)` CHECK \(/g;
   for (let m = pattern.exec(create); m !== null; m = pattern.exec(create)) {
