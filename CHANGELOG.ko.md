@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: af4f29d4d16da1de2ffafb502cd59aaf93e42f0df4908afe25e4254746df5cd7 -->
+<!-- source-sha256: a5abe034d3ac79b2b1aad6defd74078b2a42f0af98a598f3de940055d14a091a -->
 # 변경 이력
 
 ## Unreleased
 
+- T66: Rust client가 markdown DSN으로 corpus에 접속하고 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다. identity load test는 markdown pool을 다룬다.
 - T64: PHP client가 markdown DSN으로 corpus에 접속하며 `Db`마다 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.
 - T63: Go client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 corpus에 접속한다. flowmark server에 연결해 모든 IR 종류와 transaction, savepoint를 그것으로 실행하고, `WRITE_CONFLICT`는 재시도 없이 돌려주며, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다.
 - T124: Python은 필수 구현이 아니다. parity profile `dbspec`과 `client`가 Python을 빼므로 suite는 Python binding 없이 green이다. Python package와 wheel은 출하 코드로 남는다.
