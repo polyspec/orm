@@ -1,0 +1,448 @@
+{
+  "schema": 1,
+  "comment": "The implementations of orm, the one source of its language set, and the shared vector suites and the error catalog that each of them holds, as the tree stands. scripts/kit/parity.mjs reads it (make parity-declarations-check, make parity-check; docs/tool-inventory of kit, Language parity). A missing binding stays missing so that the check reports it.",
+  "implementations": [
+    {
+      "name": "go",
+      "runner": "go",
+      "roots": ["packages/orm-go", "engine", "generator", "cmd", "internal", "contracts"],
+      "tests": ["packages/orm-go/**/coverage_*_test.go"],
+      "errors": { "file": "packages/orm-go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
+    },
+    {
+      "name": "php",
+      "runner": "php",
+      "roots": ["packages/orm-php"],
+      "tests": ["packages/orm-php/tests/coverage_*.php"],
+      "errors": { "file": "packages/orm-php/src/Code.php", "pattern": "^    public const (\\w+) = '\\w+';$" }
+    },
+    {
+      "name": "php-extension",
+      "runner": "php",
+      "roots": ["packages/orm-php-extension"],
+      "tests": ["packages/orm-php-extension/tests/coverage_*.php"],
+      "args": ["-d", "extension=.runtime/parity/php-extension/orm_dbspec.so"]
+    },
+    {
+      "name": "typescript",
+      "runner": "node",
+      "roots": ["packages/orm-npm"],
+      "tests": ["packages/orm-npm/tests/coverage_*.mjs"]
+    },
+    {
+      "name": "python",
+      "runner": "python",
+      "roots": ["packages/orm-python"],
+      "tests": ["packages/orm-python/tests/coverage_*.py"],
+      "command": "packages/orm-python/.venv/bin/python",
+      "env": [{ "name": "PYTHONPATH", "value": "../ordered-json/packages/ordered-json-python/src:packages/orm-python/src" }]
+    },
+    {
+      "name": "rust",
+      "runner": "cargo",
+      "roots": ["packages/orm-rust"],
+      "tests": ["packages/orm-rust/**/tests/**/coverage_*.rs"],
+      "errors": { "file": "packages/orm-rust/orm/src/codes.rs", "pattern": "^pub const (\\w+): &str = \"\\w+\";$" }
+    }
+  ],
+  "profiles": [
+    { "name": "dbspec", "implementations": ["go", "php", "php-extension", "typescript", "python", "rust"] },
+    {
+      "name": "client",
+      "implementations": ["go", "php", "typescript", "python", "rust"],
+      "reason": "The PHP extension orm_dbspec implements only the dbspec surface of the PHP client (Polyspec\\Orm\\Dbspec\\Native): it has no query client, codec, DSN, statement events or error codes."
+    }
+  ],
+  "suites": [
+    "contracts/fixtures/**/*.json",
+    "tests/codec/*.json",
+    "tests/conformance/*.json",
+    "tests/dbspec/*.json",
+    "tests/dsn/*.json",
+    "tests/events/*.json"
+  ],
+  "comparators": ["tests/conformance/check", "tests/interfaces/check"],
+  "testPatterns": [
+    { "runner": "go", "globs": ["packages/**/*_test.go", "engine/**/*_test.go", "generator/**/*_test.go", "cmd/**/*_test.go", "internal/**/*_test.go", "contracts/**/*_test.go", "tests/**/*_test.go"] },
+    { "runner": "cargo", "globs": ["packages/**/tests/**/*.rs", "tests/**/*.rs"] },
+    { "runner": "node", "globs": ["packages/orm-npm/tests/**/*.mjs", "tests/*/**/*.mjs"] },
+    { "runner": "php", "globs": ["packages/orm-php/tests/**/*.php", "packages/orm-php-extension/tests/**/*.php", "tests/**/*.php"] },
+    { "runner": "python", "globs": ["packages/orm-python/tests/**/*.py", "tests/**/*.py"] }
+  ],
+  "units": [
+    {
+      "id": "aggregate-numeric", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/aggregate_numeric.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/conversion_error_test.go", "symbol": "TestAggregateNumericFixture" },
+        { "implementation": "php", "test": "packages/orm-php/tests/aggregate_numeric.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/aggregate_numeric.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/src/value.rs", "symbol": "value::checked_value_tests::aggregate_numbers_follow_shared_binary64_cases_without_changing_checked_values" }
+      ]
+    },
+    {
+      "id": "authenticated-encryption", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/authenticated_encryption.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/coverage_authenticated_encryption_test.go", "symbol": "TestCoverageAesEnvelopeDecrypt" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_authenticated_encryption.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_authenticated_encryption.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/coverage_authenticated_encryption.rs", "symbol": "coverage_aes_envelope_decrypt" }
+      ]
+    },
+    {
+      "id": "decimal-model", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/decimal_model.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/decimal_model_test.go", "symbol": "TestDecimalModelFixture" },
+        { "implementation": "php", "test": "packages/orm-php/tests/decimal_model.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/decimal_model.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/decimal_model.rs", "symbol": "decimal_model_fixture" }
+      ]
+    },
+    {
+      "id": "planner", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/planner.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/coverage_planner_test.go", "symbol": "TestCoveragePlannerStatement" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_planner.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_planner.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/unit/coverage_planner.rs", "symbol": "engine::coverage_planner::coverage_planner_statement" }
+      ]
+    },
+    {
+      "id": "schema-definition", "kind": "suite", "profile": "dbspec",
+      "file": "contracts/fixtures/schema_definition.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageDbspecEmitRoundTrip" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_schema_definition.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_schema_definition.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/coverage_schema_definition.rs", "symbol": "coverage_dbspec_emit_round_trip" }
+      ]
+    },
+    {
+      "id": "styled-column-states", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/styled_column_states.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/styled_state_test.go", "symbol": "TestStyledColumnStateFixture" },
+        { "implementation": "php", "test": "packages/orm-php/tests/styled_value_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/styled-value.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/src/codec.rs", "symbol": "codec::tests::styled_column_state_fixture_preserves_stored_values" }
+      ]
+    },
+    {
+      "id": "install-changed-database", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/install/changed_database.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/install_test.go", "symbol": "TestInstallVerifiesTheDatabase" },
+        { "implementation": "php", "test": "packages/orm-php/tests/schema_set_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/schema-set.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/install.rs", "symbol": "install_verifies_the_database" }
+      ]
+    },
+    {
+      "id": "codec", "kind": "suite", "profile": "client",
+      "file": "tests/codec/vectors.json", "cases": "$.vectors[*].name",
+      "bindings": [
+        { "implementation": "php", "test": "tests/codec/check.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/codec-vector.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/codec_vector.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/src/codec.rs", "symbol": "codec::tests::vectors" }
+      ]
+    },
+    {
+      "id": "codec-aes", "kind": "suite", "profile": "client",
+      "file": "tests/codec/aes-vectors.json", "cases": "$.vectors[*].key",
+      "bindings": [
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/codec-vector.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/codec_vector.py" }
+      ]
+    },
+    {
+      "id": "conformance-mysql", "kind": "suite", "profile": "client",
+      "file": "tests/conformance/vectors.json", "cases": "$.vectors[*].name",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_conformance_verification.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+      ]
+    },
+    {
+      "id": "conformance-postgres", "kind": "suite", "profile": "client",
+      "file": "tests/conformance/vectors.postgres.json", "cases": "$.vectors[*].name",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_conformance_verification.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+      ]
+    },
+    {
+      "id": "conformance-sqlite", "kind": "suite", "profile": "client",
+      "file": "tests/conformance/vectors.sqlite.json", "cases": "$.vectors[*].name",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/model/coverage_conformance_verification_test.go", "symbol": "TestCoverageConformanceVector" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_conformance_verification.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_conformance_verification.mjs" },
+        { "implementation": "python", "test": "tests/conformance/runner_python.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/tests/tests/coverage_conformance_verification.rs", "symbol": "coverage_conformance_vector" }
+      ]
+    },
+    {
+      "id": "dbspec-canonical", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.canonical[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-normalize", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.normalize[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-invalid", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.invalid[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestSharedVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-hashes", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.hashes[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/manifest_test.go", "symbol": "TestManifestVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_manifest_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_manifest.rs", "symbol": "manifest_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-sets", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.sets[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/manifest_test.go", "symbol": "TestDocumentSets" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_manifest_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_manifest.rs", "symbol": "set_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-files", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.files[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestFileVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_files" }
+      ]
+    },
+    {
+      "id": "dbspec-ddl", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/ddl.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/render_test.go", "symbol": "TestRenderVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_render_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-render.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_ddl.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_render.rs", "symbol": "render_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-introspect", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/introspect.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "tests/dialects/introspect_physical_test.go", "symbol": "TestIntrospectUnsupported" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_introspect_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_introspect_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-introspect.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_introspect.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/dbspec_introspect.rs", "symbol": "introspect_unsupported" }
+      ]
+    },
+    {
+      "id": "dbspec-show-create", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/show-create.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/show_create_test.go", "symbol": "TestMySQLShownCheckVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_show_create_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_show_create_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-show-create.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_dbspec_show_create.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/src/dbspec/introspect/mysql.rs", "symbol": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body" }
+      ]
+    },
+    {
+      "id": "dbspec-mermaid-export", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/mermaid.json", "cases": "$.export[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_mermaid_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_mermaid_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-mermaid.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_mermaid.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-mermaid-import", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/mermaid.json", "cases": "$.import[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_mermaid_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_mermaid_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-mermaid.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_mermaid.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-mermaid-invalid", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/mermaid.json", "cases": "$.invalid[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_mermaid_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_mermaid_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-mermaid.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_mermaid.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-mermaid-round-trip", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/mermaid.json", "cases": "$.round_trip[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/mermaid_test.go", "symbol": "TestMermaidVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_mermaid_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_mermaid_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-mermaid.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_mermaid.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_mermaid.rs", "symbol": "mermaid_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-plans", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/plans.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_plan_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_plan_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-plan.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_plans.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_plan.rs", "symbol": "plan_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-plans-invalid", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/plans.json", "cases": "$.invalid[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_plan_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_plan_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-plan.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_plans.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_plan.rs", "symbol": "plan_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-plan-chains", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/plans.json", "cases": "$.chains[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanChains" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_plan_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_plan_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-plan.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_plans.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_plan.rs", "symbol": "plan_chains" }
+      ]
+    },
+    {
+      "id": "dbspec-plan-parse", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/plans.json", "cases": "$.parse[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestPlanParseErrors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_plan_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_plan_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-plan.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_plans.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_plan.rs", "symbol": "plan_parse_errors" }
+      ]
+    },
+    {
+      "id": "dbspec-plan-comparisons", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/plans.json", "cases": "$.comparisons[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/plan_test.go", "symbol": "TestCompareSchemas" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_plan_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_plan_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-plan.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_plans.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_plan.rs", "symbol": "plan_comparisons" }
+      ]
+    },
+    {
+      "id": "sqlite-paths", "kind": "suite", "profile": "client",
+      "file": "tests/dsn/sqlite-paths.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/sqlite_path_test.go", "symbol": "TestSQLitePathCases" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dsn.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dsn.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/sqlite_file_name.rs", "symbol": "sqlite_path_cases" }
+      ]
+    },
+    {
+      "id": "statement-events", "kind": "suite", "profile": "client",
+      "file": "tests/events/vectors.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/coverage_statement_events_test.go", "symbol": "TestCoverageStatementEvents" },
+        { "implementation": "php", "test": "packages/orm-php/tests/coverage_statement_events.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_statement_events.mjs" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/statement_events.rs", "symbol": "coverage_statement_events" }
+      ]
+    }
+  ],
+  "errors": {
+    "profile": "client",
+    "catalog": { "file": "docs/errors.yaml", "pattern": "^codes:$|^  - code: (\\w+)(?:\\s+#.*)?$|^    origin: \\w+$" }
+  },
+  "languageLists": [
+    { "file": "contracts/validate.go", "pattern": "^var languages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
+    { "file": "scripts/features/build.mjs", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/check.mjs", "pattern": "^const clients = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/features/coverage.mjs", "pattern": "^export const languages = \\[(.*)\\];$", "profile": "client" },
+    { "file": "scripts/decimal-physical-check.mjs", "pattern": "^const languages = \\[(.*)\\];$", "profile": "client" },
+    { "file": "tests/conformance/check/main.go", "pattern": "^var requiredLanguages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
+    { "file": "tests/conformance/check/result_physical_test.go", "pattern": "^var resultRunnerLanguages = \\[\\]string\\{(.*)\\}$", "profile": "client" },
+    { "file": "tests/dialects/apply_clients_physical_test.go", "pattern": "^var applyClients = \\[\\]string\\{(.*)\\}$", "profile": "dbspec" }
+  ],
+  "documents": {
+    "globs": ["AGENTS.md", "AGENTS.ko.md", "README.md", "README.ko.md", "docs/*.md", "tests/**/README*.md", "packages/**/README*.md"],
+    "nouns": ["languages", "implementations", "clients", "planners", "runners", "언어", "구현", "client", "planner", "runner"]
+  }
+}
