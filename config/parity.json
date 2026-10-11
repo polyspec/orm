@@ -104,6 +104,17 @@
       ]
     },
     {
+      "id": "identity-load", "kind": "suite", "profile": "client",
+      "file": "contracts/fixtures/identity_load.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/identity_load_test.go", "symbol": "TestIdentityLoad" },
+        { "implementation": "php", "test": "packages/orm-php/tests/identity_load_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/identity-load.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_identity_load.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/identity_load.rs", "symbol": "identity_load" }
+      ]
+    },
+    {
       "id": "planner", "kind": "suite", "profile": "client",
       "file": "contracts/fixtures/planner.json", "cases": "$.cases[*].id",
       "bindings": [

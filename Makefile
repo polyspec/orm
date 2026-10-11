@@ -801,7 +801,7 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- ./scripts/php-without-mysql.sh
 
-client-db-check: lease-tool python-statement-fault-check
+client-db-check: lease-tool python-statement-fault-check python-identity-load-check
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel ./scripts/client-db-test.sh
 
@@ -810,6 +810,13 @@ client-db-check: lease-tool python-statement-fault-check
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
 	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/statement_fault.py
+
+# python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
+# with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
+# test-servers (WITH_TEST_ENV).
+.PHONY: python-identity-load-check
+python-identity-load-check: python-venv-check
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/test_identity_load.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,

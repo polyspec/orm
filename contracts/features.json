@@ -1109,6 +1109,8 @@
         "contracts/fixtures/decimal_model.json",
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/clock_mark.dbs",
+        "contracts/fixtures/identity_load.dbs",
+        "contracts/fixtures/identity_load.json",
         "packages/orm-go/model/coverage_helpers_test.go",
         "packages/orm-php/tests/coverage_cases.php",
         "packages/orm-rust/tests/src/coverage_env.rs",
@@ -1149,11 +1151,17 @@
         "contracts/fixtures/clock.dbs",
         "contracts/fixtures/clock_mark.dbs",
         "contracts/fixtures/styled_column_states.json",
-        "packages/orm-rust/orm/tests/restore.rs"
+        "packages/orm-rust/orm/tests/restore.rs",
+        "packages/orm-go/orm/identity_load_test.go",
+        "packages/orm-php/tests/identity_load_test.php",
+        "packages/orm-npm/tests/identity-load.mjs",
+        "packages/orm-python/tests/test_identity_load.py",
+        "packages/orm-rust/orm/tests/identity_load.rs"
       ],
       "docs": [
         "docs/dsl.md",
-        "docs/usage.md"
+        "docs/usage.md",
+        "docs/protocol.md"
       ],
       "verification": [
         {
@@ -1328,6 +1336,56 @@
             "packages/orm-npm/src/clock.ts",
             "contracts/fixtures/clock.dbs",
             "contracts/fixtures/clock_mark.dbs"
+          ]
+        },
+        {
+          "id": "identity-load-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -run '^TestIdentityLoad$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-go/orm/identity_load_test.go",
+            "contracts/fixtures/identity_load.dbs",
+            "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "identity-load-php",
+          "command": "php packages/orm-php/tests/identity_load_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-php/tests/identity_load_test.php",
+            "contracts/fixtures/identity_load.dbs",
+            "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "identity-load-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs identity-load-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test identity_load",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/tests/identity_load.rs",
+            "contracts/fixtures/identity_load.dbs",
+            "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "identity-load-python",
+          "command": "make python-identity-load-check",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-python/tests/test_identity_load.py",
+            "contracts/fixtures/identity_load.dbs",
+            "contracts/fixtures/identity_load.json"
+          ]
+        },
+        {
+          "id": "identity-load-typescript",
+          "command": "node --conditions=orm-test packages/orm-npm/tests/identity-load.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-npm/tests/identity-load.mjs",
+            "contracts/fixtures/identity_load.dbs",
+            "contracts/fixtures/identity_load.json"
           ]
         }
       ],
