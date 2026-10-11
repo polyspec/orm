@@ -1,0 +1,68 @@
+{
+  "comment": "The markdown IR executor conformance (README.md): each client runs every case, in this order, on one corpus installed from corpus/ and served by the flowmark build that flowmark.version pins; a case's result is the JSON value the README defines for it, compared with expect.",
+  "cases": [
+    { "id": "insert_one", "expect": { "id": "P1" } },
+    { "id": "insert_rows", "expect": 2 },
+    { "id": "insert_rows_tasks", "expect": 3 },
+    { "id": "insert_identity", "expect": { "id": 1 } },
+    { "id": "one", "expect": { "id": "P1", "name": "Ann", "email": "ann@example.com", "age": 30, "active": true, "score": "1.50" } },
+    { "id": "one_no_rows", "expect": { "error": "NO_ROWS" } },
+    {
+      "id": "all",
+      "expect": [
+        { "id": "P3", "name": "Cara", "age": null },
+        { "id": "P2", "name": "Bob", "age": 25 },
+        { "id": "P1", "name": "Ann", "age": 30 }
+      ]
+    },
+    { "id": "count", "expect": 2 },
+    {
+      "id": "group_count",
+      "expect": [
+        { "owner": "P1", "row_count": 2 },
+        { "owner": "P2", "row_count": 1 }
+      ]
+    },
+    { "id": "sum", "expect": 16 },
+    { "id": "avg", "expect": 27.5 },
+    { "id": "paginate", "expect": { "items": [{ "id": "P3", "name": "Cara" }], "total_count": 3, "total_pages": 2 } },
+    {
+      "id": "join",
+      "expect": [
+        { "id": "T2", "owner": "P1", "title": "review", "people_model": { "id": "P1", "name": "Ann" } },
+        { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } },
+        { "id": "T1", "owner": "P1", "title": "write spec", "people_model": { "id": "P1", "name": "Ann" } }
+      ]
+    },
+    {
+      "id": "relation_many",
+      "expect": {
+        "id": "P1",
+        "name": "Ann",
+        "tasks_models": [
+          { "id": "T2", "owner": "P1", "due": null },
+          { "id": "T1", "owner": "P1", "due": "2026-10-01 00:00:00.000000" }
+        ]
+      }
+    },
+    { "id": "relation_one", "expect": { "id": "T3", "owner": "P2", "title": "ship", "people_model": { "id": "P2", "name": "Bob" } } },
+    { "id": "update", "expect": { "id": "P2", "age": 26 } },
+    { "id": "update_optimistic_conflict", "expect": { "error": "OPTIMISTIC_LOCK" } },
+    { "id": "insert_on_duplicate", "expect": { "created": "P1", "name": "Ann B" } },
+    { "id": "delete", "expect": 2 },
+    { "id": "delete_referenced", "expect": { "error": "FOREIGN_KEY" } },
+    { "id": "soft_delete", "expect": 2 },
+    { "id": "restore", "expect": { "id": "P3", "name": "Cara", "count": 3 } },
+    { "id": "transaction_commit", "expect": 2 },
+    { "id": "transaction_rollback", "expect": 2 },
+    { "id": "savepoint_rollback", "expect": ["started", "committed", "outer"] },
+    { "id": "read_only_write", "expect": { "error": "READ_ONLY" } },
+    { "id": "lock_update", "expect": { "id": "P1" } },
+    { "id": "lock_nowait", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
+    { "id": "get_query", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
+    { "id": "isolation", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
+    { "id": "write_conflict", "expect": { "error": "WRITE_CONFLICT", "name": "Ann B" } },
+    { "id": "connect_corpus_mismatch", "expect": { "error": "CONFIG" } },
+    { "id": "connect_token_mismatch", "expect": { "error": "CONFIG" } }
+  ]
+}
