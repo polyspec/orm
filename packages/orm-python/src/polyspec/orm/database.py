@@ -14,8 +14,8 @@ from polyspec.orm.core import Core, SetSpec
 from polyspec.orm.decimal import decimal_scaled, normalize_decimal
 from polyspec.orm.engine.dialect import dialect_of
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
-from polyspec.orm.engine.planner import Planner
-from polyspec.orm.engine.validate import IR_VERSION, validate
+from polyspec.orm.engine import Engine
+from polyspec.orm.engine.validate import IR_VERSION
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
 from polyspec.orm.model import Model, register_model
@@ -664,7 +664,7 @@ class Db:
         self.aes_version = options.get('aesVersion', 1)
         self.aes_keyring = options.get('aesKeyring')
         self.audit_source = options.get('auditSource')
-        self.engines: dict[str, Planner] = {}
+        self.engines: dict[str, Engine] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get('planCacheSize', 1024)
         self.events = Subscribers()
@@ -703,7 +703,7 @@ class Db:
         from polyspec.orm.engine.model import model_of_manifest
         model = model_of_manifest(schema.manifest_text, schema.manifest_hash,
                                   schema.external_text)
-        self.engines[schema.manifest_hash] = Planner(model, self.dialect)
+        self.engines[schema.manifest_hash] = Engine(model, self.driver)
         return self
 
     @property
@@ -735,7 +735,6 @@ class Db:
         cached = self.plans.get(key)
         if cached is not None:
             return cached
-        validate(engine.m, request)
         plan = engine.compile(request)
         entry = {'plan': plan, 'id': _plan_id(key)}
         self.plans[key] = entry
@@ -809,7 +808,31 @@ class Db:
                 raise OrmError('INTERNAL', f'bind from {source}')
         return {'values': values, 'masked': masked}
 
-    def execute(self, ex: Executor, cached: dict, sql: str, step: dict, params, parents=None):
+    def execute(self, step: dict, params: list) -> None:
+        """Runs one compiled statement step, a step of a plan of Engine.compile, with the request
+        parameters params, on the connection or on its active transaction. Its bind slots are resolved
+        as a model statement's are: host styles, decimals, SQLite time values, the AES key and key
+        version, the clock and the audit of the transaction. A step that reads rows (it has an
+        assemble) and a param slot past params fail with IR_INVALID before any statement runs
+        (docs/usage.md "Execute a compiled statement")."""
+        if self._closed:
+            raise OrmError('CONFIG', 'database is closed')
+        ex = Executor(self, self.active_frame())
+
+        def work():
+            if step.get('assemble') is not None:
+                raise OrmError('IR_INVALID', 'execute runs a statement without rows; the statement is a read')
+            for i, slot in enumerate(step['bind_slots']):
+                if slot['from'] == 'param' and not 0 <= slot['param'] < len(params):
+                    raise OrmError('IR_INVALID', f'bind slot {i} reads parameter {slot["param"]}, '
+                                                 f'but execute has {len(params)} parameters')
+            self._send_step(ex, step['sql'], step, params)
+
+        _guarded(ex, work)
+
+    def _send_step(self, ex: Executor, sql: str, step: dict, params, parents=None):
+        """plan step 하나를 executor의 연결(활성 transaction이면 그 연결)에서 실행하고 statement
+        event를 publish한다."""
         resolved = self.args(step, params, parents,
                              ex.frame.audit if ex.frame is not None else None)
         connection = ex.frame.connection if ex.frame is not None else self._connection
@@ -908,7 +931,7 @@ class Db:
                                      'connection has no audit source: set the '
                                      'auditSource connect option')
         tables = sorted({entity.audit_record for engine in self.engines.values()
-                         for entity in engine.m.entities.values()
+                         for entity in engine.model.entities.values()
                          if entity.audit_record != ''})
         if not tables:
             raise OrmError('CONFIG', 'the transaction has audit values but no set of '
@@ -920,9 +943,9 @@ class Db:
         table = tables[0]
         target = None
         for engine in self.engines.values():
-            for entity in engine.m.entities.values():
+            for entity in engine.model.entities.values():
                 if entity.table == table:
-                    target = (engine.m, entity)
+                    target = (engine.model, entity)
         if target is None:
             raise OrmError('CONFIG', f'the audit record table {table} is not a table of '
                                      f'a set registered on the connection')
@@ -1240,7 +1263,7 @@ def _select(ex: Executor, cached: dict, step: dict, params, parents=None):
     values: list = []
     if parents is not None:
         sql, values = _expand_parent(step, parents)
-    result = ex.db.execute(ex, cached, sql, step, params, values)
+    result = ex.db._send_step(ex, sql, step, params, values)
     for row in result['rows']:
         _decode_assembly(row, step['assemble'], ex.db)
     return result['rows']
@@ -1472,11 +1495,11 @@ def scalar(ex: Executor, request: dict, params):
             for part in parts:
                 part_plan = db.plan(part)
                 step = part_plan['plan']['steps'][0]
-                result = db.execute(ex, part_plan, step['sql'], step, params)
+                result = db._send_step(ex, step['sql'], step, params)
                 total += int((result['rows'][0] or [0])[0] if result['rows'] else 0)
             return total
         step = cached['plan']['steps'][0]
-        result = db.execute(ex, cached, step['sql'], step, params)
+        result = db._send_step(ex, step['sql'], step, params)
         return result['rows'][0][0] if result['rows'] else None
 
     return _guarded(ex, work)
@@ -1492,7 +1515,7 @@ def paginate(ex: Executor, request: dict, params):
         step = next((s for s in cached['plan']['steps'] if s['role'] == 'count'), None)
         if step is None:
             raise OrmError('INTERNAL', 'paginate plan has no count step')
-        counted = db.execute(ex, cached, step['sql'], step, params)
+        counted = db._send_step(ex, step['sql'], step, params)
         total = int(counted['rows'][0][0] if counted['rows'] else 0)
         return {'result': result, 'total': total}
 
@@ -1506,7 +1529,7 @@ def write(ex: Executor, request: dict, params):
         db = ex.db
         cached = db.plan(request)
         step = cached['plan']['steps'][0]
-        result = db.execute(ex, cached, step['sql'], step, params)
+        result = db._send_step(ex, step['sql'], step, params)
         if request['kind'] == 'insert' and ' RETURNING ' in step['sql']:
             return {'id': int(result['rows'][0][0]), 'affected': 1}
         if request['kind'] == 'update' and request.get('optimistic') \

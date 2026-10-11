@@ -11,7 +11,7 @@ __all__ = ['IR_VERSION', 'validate']
 IR_VERSION = 1
 
 _KINDS = frozenset({'one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate',
-                    'insert', 'update', 'delete', 'restore'})
+                    'insert', 'update', 'delete', 'restore', 'restart_identity'})
 
 
 def _fail(code: str, message: str):
@@ -415,6 +415,13 @@ def validate(m: RuntimeModel, r: dict) -> None:
               f'client {r.get("manifest_hash")}, engine {m.manifest_hash}')
     if r['kind'] not in _KINDS:
         _fail('IR_INVALID', f'unknown kind "{r["kind"]}"')
+    if r.get('load') and (r['kind'] != 'insert' or r.get('on_duplicate')):
+        _fail('IR_INVALID', 'load is only valid on insert without on_duplicate')
+    # restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+    if r['kind'] == 'restart_identity' and (r.get('set') or r.get('rows') or r.get('on_duplicate')
+                                            or r.get('where') is not None
+                                            or r.get('optimistic') is not None):
+        _fail('IR_INVALID', 'restart_identity takes no set, rows, on_duplicate, where or optimistic')
     v = _Validator(m, r.get('n_params') or 0)
     root = v.scopes(r)
     v.query(r, {'root': root, 'outer': None, 'node': root}, False, False)

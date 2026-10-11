@@ -95,11 +95,11 @@ class SchemaUtils:
         """Registers the generated set on this connection. A text that does not hash to its declared
         hash fails with CONFIG before anything is registered; a set that is registered already changes
         nothing (docs/schema.md "Schema registration")."""
-        from polyspec.orm.engine.planner import Planner
+        from polyspec.orm.engine import Engine
         model = _schema_model(schema)
         if schema.manifest_hash in self.db.engines:
             return
-        self.db.engines[schema.manifest_hash] = Planner(model, self.db.dialect)
+        self.db.engines[schema.manifest_hash] = Engine(model, self.db.driver)
 
     def add_tables_and_columns(self, schema: Schema) -> list[str]:
         """Takes an installed set to a newer schema version by adding its tables and the columns that

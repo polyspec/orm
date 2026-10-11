@@ -29,6 +29,7 @@ class IRRequest(IRQuery):
     ir_version: int
     manifest_hash: str
     kind: str
+    load: NotRequired[bool]
     set: NotRequired[list[IRAssign]]
     on_duplicate: NotRequired[list[IRAssign]]
     optimistic: NotRequired[IROptimist]

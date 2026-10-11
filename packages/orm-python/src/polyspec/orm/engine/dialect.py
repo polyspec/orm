@@ -1,8 +1,8 @@
 # database별 SQL 조각 (docs/dialects.md). planner는 quote나 placeholder를 직접
 # 쓰지 않는다.
 __all__ = ['MysqlDialect', 'PostgresDialect', 'SqliteDialect', 'column_function_arity',
-           'column_function_types', 'dialect_of', 'is_value_function', 'value_function_units',
-           'quote_with']
+           'column_function_types', 'dialect_of', 'is_value_function', 'literal',
+           'value_function_units', 'quote_with']
 
 # 각 column 함수가 받는 column type.
 column_function_types = {
@@ -30,6 +30,11 @@ def is_value_function(name: str) -> bool:
 
 def quote_with(q: str, ident: str) -> str:
     return '.'.join(q + part.replace(q, q + q) + q for part in ident.split('.'))
+
+
+def literal(text: str) -> str:
+    """text를 SQL 문자열 literal로 quote한다."""
+    return "'" + text.replace("'", "''") + "'"
 
 
 def _lock_suffix(mode: str):
@@ -112,6 +117,9 @@ class _Dialect:
     def random(self) -> str:
         return 'random()'
 
+    # restart_identity(table, column)은 dialect마다 정의한다: table의 identity column을 가장 큰 key
+    # 다음 값에서 다시 시작하는 statement이며, 빈 table이면 다음 key는 1이다.
+
 
 class MysqlDialect(_Dialect):
     """AES는 host 쪽이라 row의 key version이 key를 고르고, hex와 ip는 SQL 쪽이다."""
@@ -179,6 +187,11 @@ class MysqlDialect(_Dialect):
     def random(self):
         return 'RAND()'
 
+    def restart_identity(self, table, column):
+        # InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한 값으로
+        # 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+        return f'ALTER TABLE {quote_with("`", table)} AUTO_INCREMENT = 1'
+
 
 class PostgresDialect(_Dialect):
     """모든 codec stage가 host 쪽이다: ip 값은 bytea column에 bytes로 저장한다."""
@@ -219,6 +232,14 @@ class PostgresDialect(_Dialect):
         cast = 'double precision' if field == 'secs' else 'integer'
         sign = ' + ' if name.endswith('_later') else ' - '
         return f'(now(){sign}make_interval({field} => CAST({arg()} AS {cast})))'
+
+    def restart_identity(self, table, column):
+        # identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음
+        # nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로
+        # quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
+        quoted = quote_with('"', table)
+        return (f'SELECT setval(pg_get_serial_sequence({literal(quoted)}, {literal(column)}), '
+                f'COALESCE(MAX({quote_with(chr(34), column)}), 0) + 1, false) FROM {quoted}')
 
 
 class SqliteDialect(_Dialect):
@@ -279,6 +300,13 @@ class SqliteDialect(_Dialect):
 
     def tuple_in(self, cols, rows, negate):
         return _tuple_in(cols, rows, negate, True)
+
+    def restart_identity(self, table, column):
+        # AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장 큰
+        # key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는
+        # 이미 가장 큰 key 다음이다.
+        return (f'UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX({quote_with(chr(34), column)}), 0) '
+                f'FROM {quote_with(chr(34), table)}) WHERE name = {literal(table)}')
 
 
 def dialect_of(name: str):
