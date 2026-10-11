@@ -1347,12 +1347,14 @@
         "StatementSubscriber"
       ],
       "output": "Unsubscribe",
-      "errors": [],
-      "state": "Registers a subscriber that receives the event of every statement the connection sends, after the statement and before the operation continues; the returned value removes it (docs/usage.md \"Statement events\")",
+      "errors": [
+        "CAPABILITY_UNSUPPORTED"
+      ],
+      "state": "Registers a subscriber that receives the event of every statement the connection sends, after the statement and before the operation continues; the returned value removes it (docs/usage.md \"Statement events\"); a markdown connection sends no statement and refuses it (docs/dialects.md \"Markdown IR executor\")",
       "native": {
         "go": {
           "symbol": "packages/orm-go/orm/events.go::DB.Subscribe",
-          "signature": "receiver=*DB func(fn Subscriber) (unsubscribe func())"
+          "signature": "receiver=*DB func(fn Subscriber) (unsubscribe func(), err error)"
         },
         "php": {
           "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::subscribe",

@@ -132,14 +132,14 @@ func pinnedFlowmark(t *testing.T) string {
 	pin := strings.TrimSpace(string(b))
 	bin := os.Getenv("FLOWMARK")
 	if bin == "" {
-		t.Fatalf("FLOWMARK is not set; run make markdown-conformance-check, which builds the flowmark %s pinned in tests/markdown/flowmark.version and passes its path", pin)
+		t.Fatalf("FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark %s pinned in tests/markdown/flowmark.version", pin)
 	}
 	info, err := buildinfo.ReadFile(bin)
 	if err != nil {
-		t.Fatalf("FLOWMARK %s is no Go build (%v); run make flowmark-build, which builds the flowmark %s pinned in tests/markdown/flowmark.version", bin, err, pin)
+		t.Fatalf("FLOWMARK %s is no Go build (%v); run make install-flowmark, which installs the flowmark %s pinned in tests/markdown/flowmark.version", bin, err, pin)
 	}
 	if info.Main.Path != flowmarkModule || info.Main.Version != pin {
-		t.Fatalf("FLOWMARK %s is %s %s, not the pinned %s %s; run make flowmark-build with FLOWMARK_CHECKOUT at the pinned revision", bin, info.Main.Path, info.Main.Version, flowmarkModule, pin)
+		t.Fatalf("FLOWMARK %s is %q %q, not the pinned %s %s; run make install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision", bin, info.Main.Path, info.Main.Version, flowmarkModule, pin)
 	}
 	return bin
 }

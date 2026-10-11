@@ -23,6 +23,8 @@ type parsedDSN struct {
 	// 인증서가 이름으로 가져야 하는 host 이름이다. TLS가 없으면 둘 다 비어 있다.
 	sslCA   string
 	sslHost string
+	// markdown은 markdown:// DSN의 server 주소, corpus, token이다. 다른 scheme에서는 비어 있다.
+	markdown markdownDSN
 }
 
 // parseDSN reads the DSN URI; the scheme is the only database selector.
@@ -33,7 +35,7 @@ type parsedDSN struct {
 func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme == "" {
-		return parsedDSN{}, configErr("dsn must be a URI using mysql://, postgres://, or sqlite://")
+		return parsedDSN{}, configErr("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://")
 	}
 	q := u.Query()
 	out := parsedDSN{driver: strings.ToLower(u.Scheme), location: time.UTC}
@@ -116,8 +118,12 @@ func parseDSN(raw string, statementTimeoutMs int) (parsedDSN, error) {
 		// SQLite는 file: URI의 path를 다시 percent-decode하므로, decode한 path를
 		// escape해 %, #, ? 같은 글자가 그대로 file 이름에 남게 한다.
 		out.native = "file:" + (&url.URL{Path: path}).EscapedPath() + "?" + q.Encode()
+	case "markdown":
+		if out.markdown, err = parseMarkdownDSN(u, q); err != nil {
+			return parsedDSN{}, err
+		}
 	default:
-		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, or sqlite", u.Scheme)
+		return parsedDSN{}, configErr("unsupported DSN scheme %q; want mysql, postgres, sqlite, or markdown", u.Scheme)
 	}
 	return out, nil
 }

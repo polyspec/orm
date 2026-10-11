@@ -48,6 +48,9 @@ type txConn struct {
 	// conn은 transaction이 끝날 때까지 잡아 두는 pool connection이다. rollback이
 	// 실패하면 driver가 그 connection을 닫았는지 확인한다.
 	conn *sql.Conn
+	// md는 markdown 연결의 transaction이 끝날 때까지 잡아 두는 flowmark session이다.
+	// SQL 연결에서는 nil이고 conn이 그 자리다.
+	md *mdSession
 	// number는 연결에서 이 transaction의 번호다. statement event가 싣는다.
 	number     int64
 	ctx        context.Context
@@ -416,6 +419,11 @@ func (d *DB) Transaction(fn func() error, options ...TransactionOption) error {
 	if o.timeoutMs < 0 {
 		return configErr("transaction timeoutMs must not be negative")
 	}
+	if o.auditSet {
+		if err := d.unsupportedOnMarkdown("a transaction with audit values"); err != nil {
+			return err
+		}
+	}
 	if o.auditSet && activeFor(d) == nil {
 		record, err := d.auditRecord(o.audit)
 		if err != nil {
@@ -522,6 +530,9 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	if o.timeoutMs > 0 && d.driver != "postgres" {
 		return nil, &ir.Error{Code: CodeCapabilityUnsupported, Msg: "transaction timeoutMs is supported only by postgres"}
 	}
+	if d.md != nil {
+		return d.beginMarkdown(o)
+	}
 	level := ""
 	switch o.isolation {
 	case "":
@@ -615,6 +626,9 @@ func (t *txConn) rollback() error {
 	if t.finished.Load() {
 		return nil
 	}
+	if t.md != nil {
+		return t.endMarkdown("rollback")
+	}
 	if t.ctx.Err() != nil {
 		if t.db.driver != "sqlite" {
 			t.finished.Store(true)
@@ -677,6 +691,9 @@ func (t *txConn) commit() error {
 	if err := t.ctx.Err(); err != nil {
 		return t.rollbackAfter(&ir.Error{Code: CodeCanceled, Msg: err.Error()})
 	}
+	if t.md != nil {
+		return t.endMarkdown("commit")
+	}
 	if err := t.finishSQLiteMode(); err != nil {
 		t.unclean = true
 		return t.rollbackAfter(err)
@@ -709,7 +726,11 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 	t.savepoints++
 	name := fmt.Sprintf("orm_sp_%d", t.savepoints)
 	defer func() { t.savepoints-- }()
-	if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
+	if t.md != nil {
+		if err := t.savepointMarkdown("savepoint", name); err != nil {
+			return err
+		}
+	} else if _, err := t.run().exec(t.ctx, KindSavepoint, nil, "SAVEPOINT "+name); err != nil {
 		return err
 	}
 	pushFrame(t)
@@ -741,20 +762,31 @@ func (t *txConn) savepoint(fn func() error) (err error) {
 		}
 		return err
 	}
-	return t.endSavepoint(KindRelease, "RELEASE SAVEPOINT "+name)
+	return t.endSavepoint(KindRelease, name)
 }
 
 // rollbackSavepoint는 savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두
 // statement를 모두 시도하고 실패를 모두 돌려준다.
 func (t *txConn) rollbackSavepoint(name string) error {
-	return errors.Join(t.endSavepoint(KindRollbackTo, "ROLLBACK TO SAVEPOINT "+name), t.endSavepoint(KindRelease, "RELEASE SAVEPOINT "+name))
+	return errors.Join(t.endSavepoint(KindRollbackTo, name), t.endSavepoint(KindRelease, name))
 }
 
-// endSavepoint는 savepoint를 끝내는 statement를 실행한다. transaction의
-// context가 취소되면 database/sql이 transaction 전체를 rollback했으므로
-// savepoint도 함께 끝났고 실패가 아니다. 그 밖의 실패는 보고한다.
-func (t *txConn) endSavepoint(kind, statement string) error {
-	_, err := t.run().exec(t.ctx, kind, nil, statement)
+// endSavepoint는 savepoint name을 끝낸다: kind가 KindRelease이면 풀고 KindRollbackTo이면
+// 그 뒤의 작업을 되돌린다. SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control
+// message를 보낸다. transaction의 context가 취소되면 database/sql이(markdown은 끊긴 연결의
+// server가) transaction 전체를 rollback했으므로 savepoint도 함께 끝났고 실패가 아니다. 그 밖의
+// 실패는 보고한다.
+func (t *txConn) endSavepoint(kind, name string) error {
+	var err error
+	if t.md != nil {
+		err = t.savepointMarkdown(kind, name)
+	} else {
+		statement := "RELEASE SAVEPOINT " + name
+		if kind == KindRollbackTo {
+			statement = "ROLLBACK TO SAVEPOINT " + name
+		}
+		_, err = t.run().exec(t.ctx, kind, nil, statement)
+	}
 	if err == nil || t.ctx.Err() != nil && ErrorCode(err) != CodeSubscriber {
 		return nil
 	}
