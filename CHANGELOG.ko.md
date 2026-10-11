@@ -1,10 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f09282485f0ae69a6cad6db03ee361155aa65db7d81d12a0dfada4c6c603749a -->
+<!-- source-sha256: c47ab1cac018b41e92b202f21baa4364760e01cbe0d0fe8c5dfb6d41af5f1aa3 -->
 # 변경 이력
 
 ## Unreleased
 
-- T65: Python executor는 통합하지 않았다. Python은 필수 구현이 아니므로(T124) 항목은 재시도 조건과 함께 우회되고 T69는 더 이상 이를 요구하지 않는다. executor commit은 tag `markdown-python-executor-T65`에 남는다.
 - T67: TypeScript client가 markdown DSN으로 corpus에 접속하며 pool이 server session을 유지하고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.
 - T66: Rust client가 markdown DSN으로 corpus에 접속하고 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다. identity load test는 markdown pool을 다룬다.
 - T64: PHP client가 markdown DSN으로 corpus에 접속하며 `Db`마다 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.

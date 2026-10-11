@@ -3,7 +3,6 @@
 
 ## Unreleased
 
-- T65: the Python executor is not integrated: Python is not a required implementation (T124), so the item is bypassed with its retry condition and T69 no longer requires it; the executor commits stay under the tag `markdown-python-executor-T65`.
 - T67: the TypeScript client reaches a corpus through the markdown DSN, a pool keeping the server sessions, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T66: the Rust client reaches a corpus through the markdown DSN and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build; the identity load test covers the markdown pool.
 - T64: the PHP client reaches a corpus through the markdown DSN, one connection per `Db`, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
