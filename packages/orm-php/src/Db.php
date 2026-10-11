@@ -17,30 +17,13 @@ final class Db
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
-    /** 연결의 PDO handle이다. close한 연결은 null이고, 그 PDO가 해제되면 연결이 닫힌다. */
-    private ?\PDO $pdo;
-
-    /** @var array<string, \PDOStatement> */
-    private array $stmts = [];
-    /** @var list<string> */
-    private array $stmtOrder = [];
-    private bool $closed = false;
+    /** 한 연결의 모든 handle이 공유하는 상태다: PDO handle, statement cache, 등록한 set, subscriber, test fault. */
+    private readonly DbState $state;
     /** @var array<int, string> masked bind positions of the last args() result */
     private array $masks = [];
     private bool $typed = false;
-    /** Polyspec\Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
-    private bool $rollbackFault = false;
-    /** Polyspec\Orm\Testing\Faults::failNextStatement가 설정하는 test fault다. 다음 statement 하나를 보내지 않고 이 오류로 끝낸다. 그 test entry point만 설정한다. */
-    private ?OrmException $statementFault = null;
-    /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
-    private array $sets = [];
-    /** @var array<int, \Closure(StatementEvent): void> statement event subscriber다. 등록 순서이고 key는 등록 번호다. */
-    private array $subscribers = [];
-    private int $subscriberSeq = 0;
-    /** 연결의 바깥 transaction 번호다. 바깥 begin마다 하나 늘린다. */
-    private int $transactions = 0;
-    /** SQLite row lock table을 이 연결에서 만들었는지다. 연결의 첫 transaction 전에 한 번 만든다. */
-    private bool $rowLockReady = false;
+    /** @var (\Closure(Request): void)|null 이 handle의 request hook이다. 없으면 null이다. */
+    private ?\Closure $requestHook = null;
 
     /**
      * @internal Orm::connect creates connections. A SQL connection has its PDO handle; a markdown
@@ -53,8 +36,8 @@ final class Db
         private readonly \DateTimeZone $zone,
         private readonly ?MarkdownSession $md = null,
     ) {
+        $this->state = new DbState();
         if ($pdo === null) {
-            $this->pdo = null;
             return;
         }
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -67,7 +50,7 @@ final class Db
             $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
         }
         $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
-        $this->pdo = $pdo;
+        $this->state->pdo = $pdo;
     }
 
     /**
@@ -78,7 +61,7 @@ final class Db
     {
         $schema->verify();
         Registry::schema($schema);
-        $this->sets[$schema->manifestHash] = true;
+        $this->state->sets[$schema->manifestHash] = true;
     }
 
     /**
@@ -93,7 +76,7 @@ final class Db
     /** @internal the flowmark session of a markdown connection; CONFIG once the connection is closed */
     public function markdownSession(): MarkdownSession
     {
-        if ($this->closed || $this->md === null) {
+        if ($this->state->closed || $this->md === null) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         return $this->md;
@@ -117,7 +100,7 @@ final class Db
      */
     public function registeredModel(string $hash): RuntimeModel
     {
-        if (!isset($this->sets[$hash])) {
+        if (!isset($this->state->sets[$hash])) {
             throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
         }
         return Registry::model($hash);
@@ -147,14 +130,14 @@ final class Db
      */
     private function handle(): \PDO
     {
-        if ($this->closed) {
+        if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         $this->unsupportedOnMarkdown('a SQL statement');
-        if ($this->pdo === null) {
+        if ($this->state->pdo === null) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
-        return $this->pdo;
+        return $this->state->pdo;
     }
 
     /** @internal 이 연결의 driver 오류를 error catalog의 code로 보고한다. */
@@ -175,25 +158,53 @@ final class Db
      */
     public function close(): void
     {
-        if ($this->closed) {
+        if ($this->state->closed) {
             return;
         }
         if ($this->md !== null) {
-            $this->closed = true;
+            $this->state->closed = true;
             $this->md->close();
             return;
         }
         try {
-            foreach ($this->stmts as $st) {
+            foreach ($this->state->stmts as $st) {
                 $st->closeCursor();
             }
         } catch (\PDOException $e) {
             throw $this->driverError($e);
         } finally {
-            $this->closed = true;
-            $this->stmts = [];
-            $this->stmtOrder = [];
-            $this->pdo = null;
+            $this->state->closed = true;
+            $this->state->stmts = [];
+            $this->state->stmtOrder = [];
+            $this->state->pdo = null;
+        }
+    }
+
+    /**
+     * Returns a handle on the same connection whose hook receives each request of the handle right
+     * before the client plans it (docs/usage.md "Request hook"). The handle shares the PDO connection,
+     * the statement cache, the registered sets, the statement event subscribers and the active
+     * transactions; closing either closes the connection. The hook changes $r->ir in place and adds a
+     * parameter with $r->param($value); the planner then validates the request as any other. A
+     * handle carries one hook: withRequestHook on a hooked handle returns a handle with the new hook.
+     *
+     * @param \Closure(Request): void $hook
+     */
+    public function withRequestHook(\Closure $hook): Db
+    {
+        $handle = clone $this;
+        $handle->requestHook = $hook;
+        return $handle;
+    }
+
+    /**
+     * 이 handle의 request hook을 $r에 적용한다. hook이 없으면 아무것도 부르지 않는다. n_params는
+     * plan할 때 Request::shape가 parameter 수로 정하고, hook의 예외는 그대로 전한다.
+     */
+    private function hook(Request $r): void
+    {
+        if ($this->requestHook !== null) {
+            ($this->requestHook)($r);
         }
     }
 
@@ -215,17 +226,17 @@ final class Db
     public function subscribe(\Closure $subscriber): \Closure
     {
         $this->unsupportedOnMarkdown('statement events');
-        $id = $this->subscriberSeq++;
-        $this->subscribers[$id] = $subscriber;
+        $id = $this->state->subscriberSeq++;
+        $this->state->subscribers[$id] = $subscriber;
         return function () use ($id): void {
-            unset($this->subscribers[$id]);
+            unset($this->state->subscribers[$id]);
         };
     }
 
     /** @internal 새 바깥 transaction의 번호다. */
     public function nextTransaction(): int
     {
-        return ++$this->transactions;
+        return ++$this->state->transactions;
     }
 
     /** @internal 연결의 진행 중인 transaction 번호다. transaction 밖이면 null이다. */
@@ -244,7 +255,7 @@ final class Db
      */
     public function publish(string $kind, array $tables, ?int $transaction, string $sql, array $binds, int $start, ?OrmException $error): void
     {
-        if ($this->subscribers === []) {
+        if ($this->state->subscribers === []) {
             return;
         }
         $elapsed = (hrtime(true) - $start) / 1e9;
@@ -255,7 +266,7 @@ final class Db
         }
         $event = new StatementEvent($sql, array_values($binds), $kind, $tables, $elapsed, $transaction, $error);
         // 목록의 복사본을 돈다. subscriber가 구독을 풀어도 이번 event의 순서는 그대로다.
-        foreach ($this->subscribers as $subscriber) {
+        foreach ($this->state->subscribers as $subscriber) {
             try {
                 $subscriber($event);
             } catch (\Throwable $e) {
@@ -311,9 +322,9 @@ final class Db
     private function send(\Closure $send, \Closure $done, bool $control = false): mixed
     {
         $start = hrtime(true);
-        if (!$control && $this->statementFault !== null) {
-            $fault = $this->statementFault;
-            $this->statementFault = null;
+        if (!$control && $this->state->statementFault !== null) {
+            $fault = $this->state->statementFault;
+            $this->state->statementFault = null;
             $done($start, $fault);
             throw $fault;
         }
@@ -386,17 +397,17 @@ final class Db
     private function stmt(string $sql): \PDOStatement
     {
         $pdo = $this->handle();
-        if (isset($this->stmts[$sql])) {
-            return $this->stmts[$sql];
+        if (isset($this->state->stmts[$sql])) {
+            return $this->state->stmts[$sql];
         }
         // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
         $st = $pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
-        $this->stmts[$sql] = $st;
-        $this->stmtOrder[] = $sql;
-        while (count($this->stmtOrder) > $this->config->statementCacheSize) {
-            $oldest = array_shift($this->stmtOrder);
-            $this->stmts[$oldest]->closeCursor();
-            unset($this->stmts[$oldest]);
+        $this->state->stmts[$sql] = $st;
+        $this->state->stmtOrder[] = $sql;
+        while (count($this->state->stmtOrder) > $this->config->statementCacheSize) {
+            $oldest = array_shift($this->state->stmtOrder);
+            $this->state->stmts[$oldest]->closeCursor();
+            unset($this->state->stmts[$oldest]);
         }
         return $st;
     }
@@ -407,7 +418,7 @@ final class Db
     public static function activeFor(Db $db): ?TxFrame
     {
         for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
-            if (self::$frames[$i]->db === $db) {
+            if (self::$frames[$i]->db->state === $db->state) {
                 return self::$frames[$i];
             }
         }
@@ -422,7 +433,7 @@ final class Db
     public static function resolve(?Db $conn): array
     {
         if ($conn !== null) {
-            if ($conn->closed) {
+            if ($conn->state->closed) {
                 throw new OrmException(Code::CONFIG, 'database is closed');
             }
             return [$conn, self::activeFor($conn)];
@@ -519,7 +530,7 @@ final class Db
     {
         $source = $this->config->auditSource ?? throw new OrmException(Code::CONFIG, 'the transaction has audit values but the connection has no audit source: set Config auditSource');
         $models = [];
-        foreach (array_keys($this->sets) as $hash) {
+        foreach (array_keys($this->state->sets) as $hash) {
             $models[$hash] = Registry::model($hash);
         }
         $tables = [];
@@ -610,8 +621,8 @@ final class Db
                 // callback 오류와 transaction 끝의 오류를 함께 보고한다(docs/interfaces.md).
                 throw OrmException::rollback($failure, $cleanup);
             }
-            if ($this->rollbackFault) {
-                $this->rollbackFault = false;
+            if ($this->state->rollbackFault) {
+                $this->state->rollbackFault = false;
                 throw OrmException::rollback($failure, new OrmException(Code::FAULT, 'test fault: the rollback of the transaction ran and is reported as failed'));
             }
             throw $failure;
@@ -623,7 +634,7 @@ final class Db
 
     private function begin(string $isolation, bool $readOnly, int $timeoutMs): TxFrame
     {
-        if ($this->closed) {
+        if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
@@ -704,11 +715,11 @@ final class Db
     /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
     private function ensureRowLockTable(): void
     {
-        if ($this->rowLockReady) {
+        if ($this->state->rowLockReady) {
             return;
         }
         $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null, 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))', true);
-        $this->rowLockReady = true;
+        $this->state->rowLockReady = true;
     }
 
     /**
@@ -866,7 +877,7 @@ final class Db
 
     private function enter(?TxFrame $frame, array $ir): void
     {
-        if ($this->closed) {
+        if ($this->state->closed) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         if ($frame !== null && $frame->finished) {
@@ -897,6 +908,7 @@ final class Db
     /** @internal @return array{0: array, 1: array} the plan and its positional result */
     public function select(?TxFrame $frame, Request $r): array
     {
+        $this->hook($r);
         $this->enter($frame, $r->ir);
         if ($this->md !== null) {
             [$plan, $result] = Markdown::read($this, $r);
@@ -927,6 +939,7 @@ final class Db
     /** @internal */
     public function scalarOf(?TxFrame $frame, Request $r): mixed
     {
+        $this->hook($r);
         $this->enter($frame, $r->ir);
         if ($this->md !== null) {
             return Markdown::scalar($this, $r);
@@ -949,6 +962,7 @@ final class Db
     /** @internal @return array{0: array, 1: array, 2: int} */
     public function paginate(?TxFrame $frame, Request $r): array
     {
+        $this->hook($r);
         $this->enter($frame, $r->ir);
         if ($this->md !== null) {
             return Markdown::read($this, $r);
@@ -971,6 +985,7 @@ final class Db
      */
     public function writeOf(?TxFrame $frame, Request $r): array
     {
+        $this->hook($r);
         $this->enter($frame, $r->ir);
         if ($this->md !== null) {
             [$keys, $affected] = Markdown::write($this, $r);
@@ -1045,6 +1060,7 @@ final class Db
     public function statement(Request $r): array
     {
         $this->unsupportedOnMarkdown('getQuery');
+        $this->hook($r);
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params);
         foreach ($this->masks as $i => $mask) {

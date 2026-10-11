@@ -58,6 +58,7 @@ php_lane() {
   keep php packages/orm-php/tests/driver_error_test.php
   keep php packages/orm-php/tests/rollback_test.php
   keep php packages/orm-php/tests/statement_fault_test.php
+  keep php packages/orm-php/tests/request_hook_test.php
   keep php packages/orm-php/tests/mysql_tls.php
   finish php
 }
