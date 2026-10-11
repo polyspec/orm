@@ -174,3 +174,40 @@ func TestCoveragePlannerRejectsTopNot(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_top_not")
 }
+
+// TestCoveragePlannerRejectsTopGroupConn는 top-level where group의 conn이 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsTopGroupConn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_top_group_conn")
+}
+
+// TestCoveragePlannerRejectsFirstItemConn는 group 첫 item의 conn and가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsFirstItemConn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_first_item_conn")
+}
+
+// TestCoveragePlannerColumnRefs는 join path와 subquery 안의 "^" ref를 쓰는 column 비교를 compile한다.
+func TestCoveragePlannerColumnRefs(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_column_refs")
+}
+
+// TestCoveragePlannerRejectsRefUnknownColumn는 count가 실행하지 않는 relation의 ref도 검증해 없는 column을
+// COLUMN_UNKNOWN으로 거절하는지 확인한다.
+func TestCoveragePlannerRejectsRefUnknownColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_ref_unknown_column")
+}
+
+// TestCoveragePlannerRejectsOuterRefOutsideSubquery는 subquery 밖의 "^" ref가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsOuterRefOutsideSubquery(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_outer_ref_outside_subquery")
+}
+
+// TestCoveragePlannerRejectsUnjoinedRef는 statement에 join되지 않은 path의 ref가 ENTITY_NOT_JOINED인지 확인한다.
+func TestCoveragePlannerRejectsUnjoinedRef(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_unjoined_ref")
+}

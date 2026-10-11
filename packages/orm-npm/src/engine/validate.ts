@@ -38,6 +38,20 @@ const numericTypes = new Set(['i16', 'i32', 'i64', 'f64', 'decimal']);
 function fail(code: string, message: string): never { throw new OrmError(code, message); }
 
 /**
+ * One entity place of a statement (its root or a join), as the planner's scope:
+ * column-to-column refs resolve against it. A relation and a subquery are the
+ * roots of statements of their own.
+ */
+interface Scope {
+  readonly name: string;
+  readonly ent: Entity | undefined;
+  readonly parent: Scope | undefined;
+  /** The scope a subquery root appears in ("^" refs). */
+  readonly outer: Scope | undefined;
+  readonly joins: Map<string, Scope>;
+}
+
+/**
  * Reports whether op is valid for a column of the given type and codec
  * stages: an AES column compares through its blind index, a column of host
  * stages only by equality, and any other codec only by NULL.
@@ -64,6 +78,34 @@ class Validator {
     return entityOf(this.m, name) ?? fail('ENTITY_UNKNOWN', name);
   }
 
+  /** The scope tree of q and its joins, built before any condition is checked, as the planner's buildScopes. */
+  public scopes(q: RequestQuery, parent: Scope | undefined, outer: Scope | undefined): Scope {
+    const s: Scope = { name: q.entity, ent: entityOf(this.m, q.entity), parent, outer, joins: new Map() };
+    for (const j of q.joins ?? []) {
+      if (s.joins.has(j.rel) || !j.query) continue;
+      s.joins.set(j.rel, this.scopes(j.query, s, undefined));
+    }
+    return s;
+  }
+
+  /**
+   * Resolves a column-to-column ref as the planner's resolvePath: path "" is the
+   * statement root, "^" the query around a subquery (only inside one), and any
+   * other path the join names from the root joined by "/". The target has the column.
+   */
+  private ref(s: Scope, path: string, column: string): void {
+    let root = s;
+    while (root.parent) root = root.parent;
+    let target = root;
+    if (path === '^') {
+      target = root.outer ?? fail('IR_INVALID', '^ reference outside a subquery');
+    } else if (path !== '') {
+      for (const seg of path.split('/')) target = target.joins.get(seg) ?? fail('ENTITY_NOT_JOINED', `${target.name}.${seg}`);
+    }
+    const ent = target.ent ?? fail('ENTITY_UNKNOWN', target.name);
+    if (!columnOf(ent, column)) fail('COLUMN_UNKNOWN', `${target.name}.${column}`);
+  }
+
   public assign(ent: Entity, r: Request, a: Assignment): void {
     const c = columnOf(ent, a.column) ?? fail('COLUMN_UNKNOWN', `${r.entity}.${a.column}`);
     const n = [a.p !== undefined, a.null === true, a.plus_p !== undefined, a.minus_p !== undefined].filter(Boolean).length;
@@ -76,7 +118,7 @@ class Validator {
     for (const idx of [a.p, a.plus_p, a.minus_p]) if (idx !== undefined) this.params([idx]);
   }
 
-  public query(q: RequestQuery, isJoin: boolean, isRelation: boolean): void {
+  public query(q: RequestQuery, s: Scope, isJoin: boolean, isRelation: boolean): void {
     const ent = this.entity(q.entity);
     if (q.columns) {
       const cols = q.columns;
@@ -92,7 +134,7 @@ class Validator {
       for (const [out, sub] of Object.entries(cols.sub ?? {})) {
         if (columnOf(ent, out) || outputs.has(out)) fail('COLUMN_ALIAS_CONFLICT', `${q.entity}.${out} is already a row name`);
         outputs.add(out);
-        this.sub(sub, true);
+        this.sub(sub, true, s);
       }
     }
     const joined = new Map<string, Join>();
@@ -104,13 +146,17 @@ class Validator {
       if (!columnOf(ent, j.left)) fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
       if (!columnOf(target, j.right)) fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
       joined.set(j.rel, j);
-      this.query(j.query, true, false);
+      this.query(j.query, s.joins.get(j.rel)!, true, false);
     }
     if (!isJoin && q.on) fail('IR_INVALID', 'on[] is only valid on join children');
     if (q.on?.not || q.where?.not) fail('IR_INVALID', 'not applies to a nested group');
-    if (q.on) this.group(ent, q.on, joined);
+    // top-level group 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+    for (const top of [q.on, q.where]) {
+      if (top && (top.conn ?? '') !== '') fail('IR_INVALID', `the top-level group takes no conn ("${top.conn}")`);
+    }
+    if (q.on) this.group(s, q.on, joined);
     if (q.where) {
-      this.group(ent, q.where, joined);
+      this.group(s, q.where, joined);
       joinedRefs(q.where, new Set());
     }
     const relationNames = new Set<string>();
@@ -137,7 +183,7 @@ class Validator {
       if (r.query.flatten && kind !== 'one') fail('IR_INVALID', `relation ${r.rel}: flatten needs a one relation`);
       if ((r.query.key_by ?? '') !== '' && kind !== 'many') fail('IR_INVALID', `relation ${r.rel}: key_by needs a many relation`);
       if (r.query.if_parent && !columnOf(ent, r.query.if_parent.column)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.query.if_parent.column} (if_parent)`);
-      this.query(r.query, false, true);
+      this.query(r.query, this.scopes(r.query, undefined, undefined), false, true);
     }
     if ((q.key_by ?? '') !== '' && !columnOf(ent, q.key_by!)) fail('COLUMN_UNKNOWN', `${q.entity}.${q.key_by}`);
     if (q.if_parent) this.params([q.if_parent.p]);
@@ -166,26 +212,29 @@ class Validator {
     if ((q.force_index ?? '') !== '' && !ent.indexes.includes(q.force_index!)) fail('INDEX_UNKNOWN', `${q.entity}.${q.force_index}`);
   }
 
-  private group(ent: Entity, g: Group, joined: ReadonlyMap<string, Join>): void {
+  private group(s: Scope, g: Group, joined: ReadonlyMap<string, Join>): void {
     g.items.forEach((it, i) => {
       const present = [it.pred, it.group, it.joined].filter(v => v !== undefined);
       if (present.length !== 1) fail('IR_INVALID', 'where item must be exactly one of pred/group/joined');
       const conn = present[0]!.conn ?? '';
       if (conn !== '' && conn !== 'and' && conn !== 'or') fail('IR_INVALID', `conn "${conn}"`);
       if (i === 0 && conn === 'or') fail('OR_AT_GROUP_START', 'a group may not start with OR');
+      // group 의 첫 item 은 앞 형제가 없으므로 conn 을 갖지 않는다.
+      if (i === 0 && conn !== '') fail('IR_INVALID', `the first item of a group takes no conn ("${conn}")`);
       if (it.joined) {
         const j = joined.get(it.joined.join) ?? fail('ENTITY_NOT_JOINED', `${it.joined.join} is not joined in this statement`);
         if (!j.query.where || j.query.where.items.length === 0) fail('IR_INVALID', `joined ${it.joined.join} has no conditions`);
       } else if (it.pred) {
-        this.pred(ent, it.pred);
+        this.pred(s, it.pred);
       } else if (it.group) {
         if (it.group.items.length === 0) fail('IR_INVALID', 'empty group');
-        this.group(ent, it.group, joined);
+        this.group(s, it.group, joined);
       }
     });
   }
 
-  private pred(ent: Entity, p: Predicate): void {
+  private pred(s: Scope, p: Predicate): void {
+    const ent = s.ent!;
     this.params(p.ps);
     if (p.p !== undefined) this.params([p.p]);
     const ps = p.ps ?? [];
@@ -206,7 +255,7 @@ class Validator {
       if (!columnOf(ent, column)) fail('COLUMN_UNKNOWN', `${ent.name}.${column}`);
       if (p.op !== 'in' && p.op !== 'not_in') fail('IR_INVALID', 'subquery needs in or not_in');
       if (p.p !== undefined || ps.length > 0 || p.fn || p.value) fail('IR_INVALID', 'subquery pred may not carry values');
-      this.sub(p.sub, false);
+      this.sub(p.sub, false, s);
       return;
     }
     if (p.fn || p.value) {
@@ -254,6 +303,7 @@ class Validator {
     }
     if (columnOps.has(op)) {
       if (!p.ref) fail('IR_INVALID', `${op} needs ref`);
+      this.ref(s, p.ref.path, p.ref.column);
       return;
     }
     if (p.p === undefined) fail('IR_INVALID', `${op} ${ent.name}.${column} needs a value (p)`);
@@ -266,7 +316,8 @@ class Validator {
     this.params(f.ps);
   }
 
-  private sub(s: Subquery | undefined, scalar: boolean): void {
+  /** Checks a subquery; outer is the scope it appears in, which its "^" refs name. */
+  private sub(s: Subquery | undefined, scalar: boolean, outer: Scope): void {
     if (!s || !s.query) fail('IR_INVALID', 'subquery needs a query');
     const ent = this.entity(s.query.entity);
     const column = s.column ?? '';
@@ -290,7 +341,7 @@ class Validator {
     if (s.query.limit || (s.query.relations ?? []).length > 0 || (s.query.lock ?? '') !== '' || s.query.columns) {
       fail('IR_INVALID', 'subquery may not use limit, relations, lock or columns');
     }
-    this.query(s.query, false, false);
+    this.query(s.query, this.scopes(s.query, undefined, outer), false, false);
   }
 }
 
@@ -317,7 +368,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.manifest_hash !== m.manifestHash) fail('SCHEMA_HASH_MISMATCH', `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail('IR_INVALID', `unknown kind "${r.kind}"`);
   const v = new Validator(m, r.n_params);
-  v.query(r, false, false);
+  v.query(r, v.scopes(r, undefined, undefined), false, false);
   if ((r.lock ?? '') !== '' && r.kind !== 'one' && r.kind !== 'all') fail('IR_INVALID', 'row lock is only valid on one or all');
   const ent = v.entity(r.entity);
   if (r.kind === 'sum' || r.kind === 'avg') {

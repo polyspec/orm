@@ -3069,7 +3069,8 @@
           "command": "php packages/orm-php/tests/engine_test.php",
           "shard": "other",
           "inputs": [
-            "packages/orm-php/tests/engine_test.php"
+            "packages/orm-php/tests/engine_test.php",
+            "tests/ir/validate.json"
           ]
         },
         {
@@ -3435,6 +3436,7 @@
       },
       "fixtures": [
         "contracts/fixtures/planner.json",
+        "tests/ir/validate.json",
         "packages/orm-go/orm/coverage_fixture_test.go",
         "packages/orm-php/tests/coverage_cases.php",
         "packages/orm-npm/tests/coverage_case.mjs"
@@ -3458,7 +3460,10 @@
         "packages/orm-php/tests/coverage_planner.php",
         "packages/orm-rust/orm/tests/unit/coverage_planner.rs",
         "packages/orm-npm/tests/coverage_planner.mjs",
-        "engine/planner/restore_test.go"
+        "engine/planner/restore_test.go",
+        "packages/orm-python/tests/test_planner_fixture.py",
+        "engine/ir/validate_test.go",
+        "packages/orm-python/tests/test_ir_validate.py"
       ],
       "docs": [
         "docs/protocol.md",
@@ -3492,7 +3497,9 @@
           "shard": "other",
           "inputs": [
             "engine/ir/fuzz_test.go",
-            "engine/ir/operators_test.go"
+            "engine/ir/operators_test.go",
+            "engine/ir/validate_test.go",
+            "tests/ir/validate.json"
           ]
         },
         {
@@ -3524,7 +3531,8 @@
           "command": "php packages/orm-php/tests/engine_test.php",
           "shard": "other",
           "inputs": [
-            "packages/orm-php/tests/engine_test.php"
+            "packages/orm-php/tests/engine_test.php",
+            "tests/ir/validate.json"
           ]
         },
         {
@@ -3532,7 +3540,18 @@
           "command": "node packages/orm-npm/tests/engine.mjs",
           "shard": "other",
           "inputs": [
-            "packages/orm-npm/tests/engine.mjs"
+            "packages/orm-npm/tests/engine.mjs",
+            "tests/ir/validate.json"
+          ]
+        },
+        {
+          "id": "planner-rust-validate",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs planner-rust-validate -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib engine::validate::",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/src/engine/validate.rs",
+            "packages/orm-rust/orm/tests/unit/coverage_planner.rs",
+            "tests/ir/validate.json"
           ]
         }
       ],
@@ -3550,7 +3569,13 @@
           "planner_bind_types_insert",
           "planner_parent_key_types",
           "planner_not_group",
-          "planner_rejects_top_not"
+          "planner_rejects_top_not",
+          "planner_rejects_top_group_conn",
+          "planner_rejects_first_item_conn",
+          "planner_column_refs",
+          "planner_rejects_ref_unknown_column",
+          "planner_rejects_outer_ref_outside_subquery",
+          "planner_rejects_unjoined_ref"
         ],
         "owners": {
           "go": {
@@ -3578,7 +3603,13 @@
                     "planner_bind_types_insert",
                     "planner_parent_key_types",
                     "planner_not_group",
-                    "planner_rejects_top_not"
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3592,7 +3623,13 @@
                     "planner_parent_key_types": "TestCoveragePlannerParentKeyTypes",
                     "planner_tables": "TestCoveragePlannerTables",
                     "planner_not_group": "TestCoveragePlannerNotGroup",
-                    "planner_rejects_top_not": "TestCoveragePlannerRejectsTopNot"
+                    "planner_rejects_top_not": "TestCoveragePlannerRejectsTopNot",
+                    "planner_rejects_top_group_conn": "TestCoveragePlannerRejectsTopGroupConn",
+                    "planner_rejects_first_item_conn": "TestCoveragePlannerRejectsFirstItemConn",
+                    "planner_column_refs": "TestCoveragePlannerColumnRefs",
+                    "planner_rejects_ref_unknown_column": "TestCoveragePlannerRejectsRefUnknownColumn",
+                    "planner_rejects_outer_ref_outside_subquery": "TestCoveragePlannerRejectsOuterRefOutsideSubquery",
+                    "planner_rejects_unjoined_ref": "TestCoveragePlannerRejectsUnjoinedRef"
                   }
                 }
               ]
@@ -3623,7 +3660,13 @@
                     "planner_bind_types_insert",
                     "planner_parent_key_types",
                     "planner_not_group",
-                    "planner_rejects_top_not"
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref"
                   ]
                 }
               ]
@@ -3654,7 +3697,13 @@
                     "planner_bind_types_insert",
                     "planner_parent_key_types",
                     "planner_not_group",
-                    "planner_rejects_top_not"
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3668,7 +3717,13 @@
                     "planner_parent_key_types": "engine::coverage_planner::coverage_planner_parent_key_types",
                     "planner_tables": "engine::coverage_planner::coverage_planner_tables",
                     "planner_not_group": "engine::coverage_planner::coverage_planner_not_group",
-                    "planner_rejects_top_not": "engine::coverage_planner::coverage_planner_rejects_top_not"
+                    "planner_rejects_top_not": "engine::coverage_planner::coverage_planner_rejects_top_not",
+                    "planner_rejects_top_group_conn": "engine::coverage_planner::coverage_planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn": "engine::coverage_planner::coverage_planner_rejects_first_item_conn",
+                    "planner_column_refs": "engine::coverage_planner::coverage_planner_column_refs",
+                    "planner_rejects_ref_unknown_column": "engine::coverage_planner::coverage_planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery": "engine::coverage_planner::coverage_planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref": "engine::coverage_planner::coverage_planner_rejects_unjoined_ref"
                   }
                 }
               ]
@@ -3699,7 +3754,13 @@
                     "planner_bind_types_insert",
                     "planner_parent_key_types",
                     "planner_not_group",
-                    "planner_rejects_top_not"
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref"
                   ]
                 }
               ]

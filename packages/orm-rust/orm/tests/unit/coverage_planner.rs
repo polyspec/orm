@@ -19,7 +19,7 @@ fn repository() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../..")
 }
 
-fn bench() -> Manifest {
+pub(super) fn bench() -> Manifest {
     let path = repository().join("schema/bench.dbs");
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let document = crate::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", path.display()));
@@ -103,13 +103,23 @@ fn group(value: &Value, at: &str) -> ir::Group {
         .enumerate()
         .map(|(i, item)| {
             let at = format!("{at}.items[{i}]");
-            if let Some(nested) = members(item, &at, &["pred", "group"]).get("group") {
+            if let Some(nested) = members(item, &at, &["pred", "group", "joined"]).get("group") {
                 return ir::Item::Group { group: group(nested, &format!("{at}.group")) };
             }
+            if let Some(joined) = members(item, &at, &["pred", "group", "joined"]).get("joined") {
+                let at = format!("{at}.joined");
+                let joined = members(joined, &at, &["conn", "join"]);
+                return ir::Item::Joined {
+                    joined: ir::JoinedRef {
+                        conn: joined.get("conn").map(|_| string(joined, &at, "conn")).unwrap_or_default(),
+                        join: string(joined, &at, "join"),
+                    },
+                };
+            }
             let pred = members(
-                members(item, &at, &["pred", "group"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
+                members(item, &at, &["pred", "group", "joined"]).get("pred").unwrap_or_else(|| panic!("{at}: expected pred")),
                 &format!("{at}.pred"),
-                &["conn", "column", "op", "p", "ps", "sub", "fn", "value"],
+                &["conn", "column", "op", "p", "ps", "sub", "fn", "value", "ref"],
             );
             let at = format!("{at}.pred");
             ir::Item::Pred {
@@ -124,6 +134,11 @@ fn group(value: &Value, at: &str) -> ir::Group {
                         .unwrap_or_default(),
                     r#fn: pred.get("fn").map(|f| func(f, &format!("{at}.fn"))),
                     value: pred.get("value").map(|f| func(f, &format!("{at}.value"))),
+                    r#ref: pred.get("ref").map(|r| {
+                        let at = format!("{at}.ref");
+                        let object = members(r, &at, &["path", "column"]);
+                        ir::ColRef { path: string(object, &at, "path"), column: string(object, &at, "column") }
+                    }),
                     sub: pred.get("sub").map(|sub| {
                         let at = format!("{at}.sub");
                         let object = members(sub, &at, &["query", "column", "agg"]);
@@ -147,7 +162,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
 
 /// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
 fn query(value: &Value, at: &str) -> ir::Query {
-    let object = members(value, at, &["entity", "where", "joins", "relations", "order", "limit"]);
+    let object = members(value, at, &["entity", "on", "where", "joins", "relations", "order", "limit"]);
     let limit = object.get("limit").map(|limit| {
         let at = format!("{at}.limit");
         let limit = members(limit, &at, &["count", "offset"]);
@@ -215,6 +230,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
         .collect();
     ir::Query {
         entity: string(object, at, "entity"),
+        on: object.get("on").map(|g| group(g, &format!("{at}.on"))),
         where_: object.get("where").map(|w| group(w, &format!("{at}.where"))),
         joins,
         relations,
@@ -226,7 +242,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
 
 /// fixture의 request를 IR로 읽는다. 지원하지 않는 member는 거부하고, 읽은 IR을 다시 직렬화한
 /// 값이 manifest hash를 더한 입력과 같아야 한다.
-fn request(input: &Value, manifest_hash: &str) -> ir::Request {
+pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
     let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where", "joins", "relations", "set", "optimistic"]);
     let mut query_input = input.clone();
@@ -382,4 +398,46 @@ fn coverage_planner_not_group() {
 fn coverage_planner_rejects_top_not() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_top_not");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_top_group_conn() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_top_group_conn");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_first_item_conn() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_first_item_conn");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_column_refs() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_column_refs");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_ref_unknown_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_ref_unknown_column");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_outer_ref_outside_subquery() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_outer_ref_outside_subquery");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_unjoined_ref() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_unjoined_ref");
 }

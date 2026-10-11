@@ -53,4 +53,10 @@ await runCases('coverage_planner.mjs', {
   async planner_parent_key_types() { compileCase('planner_parent_key_types'); },
   async planner_not_group() { compileCase('planner_not_group'); },
   async planner_rejects_top_not() { compileCase('planner_rejects_top_not'); },
+  async planner_rejects_top_group_conn() { compileCase('planner_rejects_top_group_conn'); },
+  async planner_rejects_first_item_conn() { compileCase('planner_rejects_first_item_conn'); },
+  async planner_column_refs() { compileCase('planner_column_refs'); },
+  async planner_rejects_ref_unknown_column() { compileCase('planner_rejects_ref_unknown_column'); },
+  async planner_rejects_outer_ref_outside_subquery() { compileCase('planner_rejects_outer_ref_outside_subquery'); },
+  async planner_rejects_unjoined_ref() { compileCase('planner_rejects_unjoined_ref'); },
 }, 60_000);

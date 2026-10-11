@@ -11,6 +11,7 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Validator;
 
 $root = dirname(__DIR__, 3);
 $model = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));
@@ -253,6 +254,18 @@ foreach ([
     'a table without soft_delete' => $restoreRequest('plain', ['column' => 'id', 'op' => 'eq']),
 ] as $name => $ir) {
     expect(code(fn() => $restoreEngine->compile($ir)) === Code::IR_INVALID, "restore rejects $name: " . code(fn() => $restoreEngine->compile($ir)));
+}
+
+// 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
+// 받아들이는지나 기대한 오류 code로 실패하는지 본다.
+$validateFile = json_decode((string) file_get_contents("$root/tests/ir/validate.json"), true, 512, JSON_THROW_ON_ERROR);
+expect($validateFile['schema'] === 'schema/bench.dbs' && $validateFile['cases'] !== [], 'validate.json names schema/bench.dbs and has cases');
+$validateModel = RuntimeModel::build(RuntimeModel::files(["$root/{$validateFile['schema']}"]));
+$validator = new Validator($validateModel);
+foreach ($validateFile['cases'] as $case) {
+    $got = code(fn() => $validator->validate($case['request'] + ['manifest_hash' => $validateModel->manifestHash]));
+    $want = !empty($case['valid']) ? 'no error' : $case['error'];
+    expect($got === $want, "validate.json {$case['name']}: got $got, want $want");
 }
 
 if ($failures > 0) {

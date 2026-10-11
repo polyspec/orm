@@ -63,4 +63,10 @@ runCoverageCases($argv, [
     'planner_parent_key_types' => fn() => plannerCase($root, $fixture, 'planner_parent_key_types'),
     'planner_not_group' => fn() => plannerCase($root, $fixture, 'planner_not_group'),
     'planner_rejects_top_not' => fn() => plannerCase($root, $fixture, 'planner_rejects_top_not'),
+    'planner_rejects_top_group_conn' => fn() => plannerCase($root, $fixture, 'planner_rejects_top_group_conn'),
+    'planner_rejects_first_item_conn' => fn() => plannerCase($root, $fixture, 'planner_rejects_first_item_conn'),
+    'planner_column_refs' => fn() => plannerCase($root, $fixture, 'planner_column_refs'),
+    'planner_rejects_ref_unknown_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_ref_unknown_column'),
+    'planner_rejects_outer_ref_outside_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_outer_ref_outside_subquery'),
+    'planner_rejects_unjoined_ref' => fn() => plannerCase($root, $fixture, 'planner_rejects_unjoined_ref'),
 ]);
