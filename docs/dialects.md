@@ -385,35 +385,43 @@ SQLite reads table items from the `CREATE TABLE` text. A column definition is re
 
 ## Markdown IR executor
 
-The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL dialect ([protocol](protocol.md#_5-ir-executors)). The executor builds no SQL text, so each surface of the client is either supported, with the rule stated here, or rejected with the code of its row. The rulings are those of the flowmark capability table for the same surfaces.
+The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL dialect ([protocol](protocol.md#_5-ir-executors)). The executor builds no SQL text, so each surface of the client is either supported, with the rule stated here, or rejected with the code of its row. The table mirrors the capability table of flowmark's [spec 60](https://github.com/polyspec/flowmark/blob/main/docs/spec/60-dialect.md) at the version of `tests/markdown/flowmark.version`, one row per row with its ruling split at the first top-level `;`, `:`, ` — ` or `. ` into the Result and the Rule; `make markdown-table-check` compares the two and fails on a difference.
 
 | Surface | Result | Rule |
 |---|---|---|
-| `one`, `all`, `count`, `group_count`, `sum`, `avg` | supported | rows are read from the in-memory corpus; `group_count` groups NULLs together |
-| ordering | supported | an IR `order` sorts by the column's type; a read without one returns storage order |
-| `paginate` | supported | one request reads one consistent corpus |
-| `insert` (single and multi-row) | supported | `identity`, `key_prefix` and `order` columns are executor-assigned and may be omitted; defaults are written explicitly |
-| `update` | supported | a target changed since it was read fails with `WRITE_CONFLICT`, never an overwrite |
-| `delete`, `restore` | supported | `restore` clears the soft delete column and holds unique keys while the row is deleted; deleting a referenced row is `FOREIGN_KEY` |
-| `optimistic` | supported | no match is `OPTIMISTIC_LOCK` |
-| `on_duplicate` | supported | the conflict target is the one key that can meet the inserted row; an insert with `on_duplicate` that more than one key can meet, or that does not assign every column of its key, is `IR_INVALID`, so the three databases agree |
-| `lock` `update`, `share` | supported | accepted as no-ops: a server transaction already holds the corpus lock |
-| `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` | |
-| relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | supported | assembled by the executor |
-| subqueries (`tuple_in`, `tuple_not_in`, scalar `Sub` aggregates) | supported | |
-| `now`, `default now`, `updated`, `soft_delete` | supported | the request's `now` ([clock](protocol.md#_2-plan)) |
-| codec columns | supported | applied by the client, as for SQL ([protocol](protocol.md#_5-ir-executors)) |
-| indexes | supported | accepted and derived in memory |
-| `select explicit`, `entity`, `navigation` | supported | client-side; no storage effect |
-| `aes`, `aes_version`, `blind_index` | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; the key never leaves the client |
-| `audit`, `immutable` settings | `SCHEMA_INVALID` | rejected by the executor when it loads a corpus catalog; use `state_machine … history` instead |
-| transactions | supported | `begin` to `commit` or `rollback` over the session; `readOnly` is sent as `read_only` on `begin`, takes the lock, and every write of the transaction is `READ_ONLY` |
-| savepoints | supported | nested stages |
-| `orderByRandom` | supported | the order is not seeded |
-| a transaction with audit values | `CAPABILITY_UNSUPPORTED` | |
-| `isolation`, `timeoutMs` options, the `statementTimeoutMs` setting | `CAPABILITY_UNSUPPORTED` | |
+| `one`, `all`, `count`, `group_count`, `sum`, `avg` | Supported over the in-memory corpus | `group_count` groups NULLs together |
+| ordering | An IR `order` sorts by the column's type, NULL before every value ascending and after every value descending, ties in storage order | also for the groups of `group_count` and the ranking of `limit_per_parent`; a read without one returns storage order ([document model](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/20-document-model.md)). Grounding: MySQL and SQLite put NULL first ascending and PostgreSQL last; MySQL has no `NULLS FIRST`, so NULL-smallest is the one rule all three render without emulation |
+| `group_by` | Valid on the root of `count` and `group_count` only, elsewhere `IR_INVALID` | with it, an `order` item names a group column, a column function of one, or `random` (`IR_INVALID` otherwise) — orm's rule. Grounding: every row read selects the primary key, so a grouped row read is MySQL 1055, PostgreSQL 42803 and an arbitrary row on SQLite, and so is an order by a column that is not grouped |
+| `paginate` | Supported | one request reads one consistent corpus |
+| `insert` (single and multi-row) | Supported | `identity`, `key_prefix` and `order` columns are executor-assigned and may be omitted; defaults are written explicitly; an insert assigns by value or NULL — `plus_p` and `minus_p` are `IR_INVALID` there and valid in `on_duplicate` (orm's rule). Grounding: MySQL computes such an assignment from the default and PostgreSQL and SQLite refuse it |
+| `update` | Supported | a target changed since it was read fails `WRITE_CONFLICT`, never an overwrite; an assignment of the primary key or an identity column is `IR_INVALID` ([document model](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/20-document-model.md)) |
+| `delete`, `restore` | Supported | `restore` keeps its SQL shape (soft-delete column cleared, unique keys held while deleted); a referenced row's delete is `FOREIGN_KEY`, also when the same delete removes the referencing row ([constraints](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/50-constraints.md)); a `restore` that assigns the primary key, an identity or the soft delete column is `IR_INVALID` |
+| `optimistic` | Supported | no match is `OPTIMISTIC_LOCK` |
+| `on_duplicate` | Supported when exactly one key | the primary key, unless the insert leaves it to `identity` or `key_prefix`, and each unique key — can meet the inserted row and the insert assigns all its columns; that key is the conflict target, and any other `on_duplicate` is `IR_INVALID` (orm's rule, which makes MySQL's any-key rule and the PostgreSQL and SQLite conflict target the same key); the primary key meets a row as its comparison below states. Grounding: MySQL meets a row on any unique key, in its own key order, while PostgreSQL and SQLite name one conflict target and answer another key's meeting `DUPLICATE_KEY`; with one key that can meet the row the three are the same by construction |
+| primary key comparison | Without regard to the case of A–Z, unlike orm's binary collation on SQL, because a key is a file name and an anchor ([document model](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/20-document-model.md)) | an insert whose key equals another without regard to case is `DUPLICATE_KEY`, and an `on_duplicate` insert whose conflict key is the primary key meets that row — the byte-equal key first, else the least in byte order — which keeps its key. Grounding: `ON DUPLICATE KEY UPDATE` and `ON CONFLICT` fire on the duplicate the conflict key's index reports, by that index's comparison |
+| `lock` `update`, `share` | Accepted as documented no-ops | a server transaction already holds the corpus lock |
+| `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` |  |
+| relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | Supported | assembled by the executor, a `flatten` relation answered as a `one` relation, which the client model merges into the parent's array and JSON forms (orm's rule); `key_by` names a non-null column (`IR_INVALID` otherwise). Grounding: orm places the merge in the client model's array and JSON forms, where a name the parent holds keeps the parent's value; a merged answer would hand the client a row it cannot tell from the parent's own columns. A NULL collection key answers differently by client language, so a nullable `key_by` is refused by its shape |
+| subqueries (`tuple_in`, `tuple_not_in`, scalar `Sub` aggregates) | Supported |  |
+| a scalar column subquery (`columns.sub` without `agg`) | Valid with `limit` count 1 and an `order` that includes every primary key column of its entity and no `random`, otherwise `IR_INVALID` (orm's rule) | its value is the column of that row, NULL when none matches. Grounding: a scalar subquery of several rows is MySQL 1242, PostgreSQL 21000 and the first row on SQLite, so only a shape that yields one row has one result |
+| column comparisons (`*_col`, `in` a subquery, join `left`/`right`, relation keys) | Two columns meet as dbspec's check operands do | integers with integers, `decimal` of one scale, `f64`, `varchar` and `text`, `time` or `datetime` of one precision, and `uuid`, `date`, `bool` or `bytes` each with itself; another pair is `OPERATOR_NOT_ALLOWED` (orm's rule). Grounding: PostgreSQL refuses `integer = varchar`, MySQL coerces and SQLite compares by affinity, and `date = datetime`, decimals of two scales and an integer with an `f64` near 2^53 disagree across the three |
+| `contains` (the `Lk` operator) | Supported | true when the column's text holds the parameter's text as a substring, the ASCII letters A–Z and a–z compared without regard to case and every other character by code point; a NULL column or parameter is unknown, and `%`, `_` and `\` in the parameter are literal. Grounding: SQL parity — PostgreSQL `ILIKE` under orm's `COLLATE "C"`, SQLite `LIKE` and orm's MySQL ASCII fold give this result |
+| `contains_binary` (the `Lb` operator) | Supported | true when the column's text holds the parameter's text as a substring, compared by code point; a NULL column or parameter is unknown, and `%`, `_` and `\` in the parameter are literal. Grounding: MySQL `LIKE` under `utf8mb4_0900_bin`, PostgreSQL `LIKE` under `COLLATE "C"` and SQLite `instr` agree |
+| `now`, `default now`, `updated`, `soft_delete` | The request's `now`, one value per request | truncated to p digits when written into `datetime(p)`, six digits when compared ([operations](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/40-ops.md)); a relative time function whose result lies outside 0001-01-01 to 9999-12-31 23:59:59.999999, or whose interval cannot be represented, is NULL (orm's rule). Grounding: MySQL and SQLite give NULL past the range, and NULL is the one result the other dialect can be guarded to |
+| `soft_delete` | Every read excludes soft-deleted rows | the root, each join child (in its join condition, so a left join binds null), each relation and each subquery; `restore` alone matches one. Grounding: orm's rule that reads always exclude soft-deleted rows |
+| codec columns | Applied by the client on an orm request | a write the engine originates (CLI, MCP, sidecar, history) applies the codec through orm's Go codec package, and validation decodes with the same package; the stored value is the encoded one, a byte-producing stage as base64 |
+| indexes | Accepted | derived in memory |
+| `select explicit`, `entity`, `navigation` | Client-side | no storage effect |
+| `aes`, `aes_version`, `blind_index` | Schema error on a corpus | the key never leaves the client |
+| `audit`, `immutable` settings | Schema error on a corpus | `state_machine … history` instead |
+| transactions | `begin` to `commit`/`rollback` over the session | `readOnly` honoured and takes the lock |
+| savepoints | Nested stages |  |
+| `orderByRandom` | Supported | the order is not seeded |
+| a transaction with audit values | `CAPABILITY_UNSUPPORTED` |  |
+| `isolation`, `timeoutMs` options | `CAPABILITY_UNSUPPORTED` |  |
 | `getQuery()`, statement events, `subscribe()` | `CAPABILITY_UNSUPPORTED` | there is no SQL text |
 | `force_index` | `CAPABILITY_UNSUPPORTED` | indexes are derived, not named |
-| `fulltext`, the `Lb` operator | `OPERATOR_NOT_ALLOWED` | |
-| lock, local-setting, privilege and AES-rotation utilities | `CAPABILITY_UNSUPPORTED` | |
-| schema install, dbplan chains | `CAPABILITY_UNSUPPORTED` | `flowmark install` creates a corpus; schema evolution follows the flowmark migration rules |
+| `fulltext` | `OPERATOR_NOT_ALLOWED` | SQLite has no full-text index on a table (orm dialects.md) |
+| lock, local-setting, privilege and AES-rotation utilities | `CAPABILITY_UNSUPPORTED` |  |
+| schema install, dbplan chains | `CAPABILITY_UNSUPPORTED` | `flowmark install` creates a corpus ([schema](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/30-schema.md)), and evolution follows [migration](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/80-migration.md) |
+| an unavailable table (a file with `format.block`, `format.section`, `format.encoding` or a `parent.cycle` among its rows, two rows with byte-for-byte equal keys, or a `corpus.walk` entry at its place) | every request that needs its rows, read or write, fails `CONSTRAINT`, naming the file and the diagnostic | no answer comes from the other files' rows alone ([canonical format](https://github.com/polyspec/flowmark/blob/444f27f6c091/docs/spec/10-canonical-format.md)) |
