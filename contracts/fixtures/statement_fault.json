@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "code": "DRIVER",
+  "message": "the insert is refused",
+  "cases": [
+    "refused_insert",
+    "consumed_by_one_statement",
+    "refused_in_transaction",
+    "empty_argument_refused"
+  ]
+}

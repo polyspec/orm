@@ -43,7 +43,7 @@ finish() {
 
 go_lane() {
   keep node tests/go-test.mjs -v -timeout 0 -count=1 ./packages/orm-go/...
-  keep node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^TestRollbackFault' ./packages/orm-go/orm
+  keep node tests/go-test.mjs -v -timeout 0 -count=1 -tags ormtest -run '^Test(RollbackFault|StatementFault)' ./packages/orm-go/orm
   finish go
 }
 php_lane() {
@@ -57,6 +57,7 @@ php_lane() {
   keep php packages/orm-php/tests/clock_test.php
   keep php packages/orm-php/tests/driver_error_test.php
   keep php packages/orm-php/tests/rollback_test.php
+  keep php packages/orm-php/tests/statement_fault_test.php
   keep php packages/orm-php/tests/mysql_tls.php
   finish php
 }
