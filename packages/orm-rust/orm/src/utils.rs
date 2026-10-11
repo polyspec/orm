@@ -647,7 +647,7 @@ where
     for step in &planned.steps {
         // effect에 table이 없는 step은 table을 싣지 않는다.
         let tables: Vec<String> = Some(step.effect.table.clone()).filter(|t| !t.is_empty()).into_iter().collect();
-        events::raw(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &step.statement)).await?;
+        events::raw_schema(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &step.statement)).await?;
     }
     // step을 실행한 database가 set과 같은지 다시 읽어 확인한다.
     if !planned.steps.is_empty() {
@@ -686,7 +686,7 @@ where
     if present.is_empty() {
         for statement in statements {
             let tables = [statement.table.clone()];
-            events::raw(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &statement.sql)).await?;
+            events::raw_schema(on.db, &mut *conn, Sent::bare(KIND_SCHEMA, &tables, on.transaction, &statement.sql)).await?;
         }
         live = introspect_on(on, &mut *conn, dialect).await?;
     }
@@ -717,9 +717,7 @@ async fn introspect_on<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, dialect:
 
 /// catalog query 하나를 실행하고 그 행의 값을 돌려준다. 실행은 statement 관찰에 기록된다.
 async fn fetch_catalog<C: CatalogFetch>(on: Observed<'_>, conn: &mut C, query: &str) -> Result<Vec<Vec<dbspec::CatalogValue>>> {
-    let start = std::time::Instant::now();
-    let rows = conn.fetch(query).await.map_err(Error::from);
-    let rows = on.db.statement_done(Sent::bare(KIND_SCHEMA, &[], on.transaction, query), start, rows)?;
+    let rows = events::guarded(on.db, Sent::bare(KIND_SCHEMA, &[], on.transaction, query), async { conn.fetch(query).await.map_err(Error::from) }).await?;
     C::values(&rows).map_err(Error::from)
 }
 
@@ -763,7 +761,7 @@ fn invalid(errors: Vec<dbspec::Diagnostic>) -> Error {
 /// "Apply"의 SQLite 다시 만들기).
 async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target: &Document, documents: &[&Document]) -> Result<Vec<String>> {
     let outside = |sql| Sent::bare(KIND_UTILITY, &[], None, sql);
-    events::raw(db, &mut *conn, outside("PRAGMA foreign_keys = OFF")).await?;
+    events::raw_schema(db, &mut *conn, outside("PRAGMA foreign_keys = OFF")).await?;
     // 이 transaction도 연결의 바깥 transaction이므로 번호를 하나 받는다.
     let number = Some(db.next_transaction());
     let inside = |kind, sql| Sent::bare(kind, &[], number, sql);
@@ -773,9 +771,10 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
             let on = Observed { db, transaction: number };
             let added = add_tables_and_columns_on(on, &mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
             let check = "SELECT COUNT(*) FROM pragma_foreign_key_check";
-            let start = std::time::Instant::now();
-            let broken = sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from);
-            let broken = db.statement_done(inside(KIND_SCHEMA, check), start, broken)?;
+            let broken = events::guarded(db, inside(KIND_SCHEMA, check), async {
+                sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from)
+            })
+            .await?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
             }
@@ -794,7 +793,7 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
         }
     }
     .await;
-    let restored = events::raw(db, &mut *conn, outside("PRAGMA foreign_keys = ON")).await;
+    let restored = events::raw_schema(db, &mut *conn, outside("PRAGMA foreign_keys = ON")).await;
     match (result, restored) {
         (result, Ok(())) => result,
         (Ok(_), Err(e)) => Err(e),

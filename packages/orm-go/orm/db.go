@@ -130,6 +130,10 @@ type dbMutable struct {
 	// rollbackFault는 FailNextRollback이 설정하는 test fault다. build tag
 	// ormtest가 있는 build만 설정할 수 있다.
 	rollbackFault atomic.Bool
+
+	// statementFault는 FailNextStatement이 설정하는 test fault다. 다음 statement가
+	// 소비하면 nil로 바꾼다. build tag ormtest가 있는 build만 설정할 수 있다.
+	statementFault atomic.Pointer[stmtFault]
 }
 
 // engineFor는 이 연결에 등록된 schema의 engine을 반환한다. 요청의 generated

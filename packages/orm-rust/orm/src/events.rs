@@ -198,14 +198,46 @@ pub(crate) fn statement_kind(sql: &str) -> &'static str {
     }
 }
 
-/// statement 하나를 `executor`에서 bind 없이 실행하고 그 event를 publish한다.
+/// statement 하나를 `executor`에서 bind 없이 실행하고 그 event를 publish한다. transaction 제어와
+/// 설정 statement가 쓴다. test statement fault는 이 경로를 막지 않는다.
 pub(crate) async fn raw<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
 where
     E: sqlx::Executor<'c, Database = DB>,
     DB: sqlx::Database,
 {
-    let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(s.sql.to_owned()));
     let start = Instant::now();
-    let result = sqlx::raw_sql(statement).execute(executor).await.map(drop).map_err(Error::from);
+    let result = send_raw(executor, s.sql).await;
+    db.statement_done(s, start, result)
+}
+
+/// schema statement 하나를 `executor`에서 bind 없이 실행한다. 설정된 statement fault가 있으면
+/// 보내지 않고 그 오류로 끝난다.
+pub(crate) async fn raw_schema<'c, E, DB>(db: &Db, executor: E, s: Sent<'_>) -> Result<()>
+where
+    E: sqlx::Executor<'c, Database = DB>,
+    DB: sqlx::Database,
+{
+    guarded(db, s, send_raw(executor, s.sql)).await
+}
+
+/// `sql`을 bind 없이 `executor`에서 실행한다.
+async fn send_raw<'c, E, DB>(executor: E, sql: &str) -> Result<()>
+where
+    E: sqlx::Executor<'c, Database = DB>,
+    DB: sqlx::Database,
+{
+    let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(sql.to_owned()));
+    sqlx::raw_sql(statement).execute(executor).await.map(drop).map_err(Error::from)
+}
+
+/// schema statement 하나의 결과를 event로 publish한다. `send`가 statement를 보내며, 설정된
+/// statement fault가 있으면 `send`를 기다리지 않고 그 오류를 event로 publish한 뒤 돌려준다.
+pub(crate) async fn guarded<T>(db: &Db, s: Sent<'_>, send: impl std::future::Future<Output = Result<T>>) -> Result<T> {
+    let start = Instant::now();
+    #[cfg(feature = "test-faults")]
+    if let Some(error) = crate::testing::take_statement_fault(db) {
+        return db.statement_done::<T>(s, start, Err(error));
+    }
+    let result = send.await;
     db.statement_done(s, start, result)
 }

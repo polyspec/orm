@@ -608,15 +608,21 @@ class TxFrame:
         self.locals: dict = {}
         self.connection = None
 
-    def run(self, sql: str, values=None, kind: str = 'utility', binds=None, tables=()):
+    def run(self, sql: str, values=None, kind: str = 'utility', binds=None, tables=(),
+            faultable: bool = True):
         """statement를 실행하고 그 event를 남긴다; kind는 이 statement의
-        종류다."""
+        종류다. faultable=False는 transaction control statement이며 statement fault를
+        소비하지 않는다."""
         if self.connection is None:
             raise OrmError('CONFIG', 'transaction already finished')
         values = values if values is not None else []
+
+        def send():
+            if faultable:
+                return self.db._sent(lambda: self.connection.execute(sql, values))
+            return self.connection.execute(sql, values)
         return self.db.events.send(kind, tables, self.number,
-                                   list(values) if binds is None else binds, sql,
-                                   lambda: self.connection.execute(sql, values))
+                                   list(values) if binds is None else binds, sql, send)
 
 
 class Executor:
@@ -662,6 +668,8 @@ class Db:
         self._row_lock_ready = False
         # test entry point의 fail_next_rollback이 설정하는 test fault다.
         self._rollback_fault = False
+        # test entry point의 fail_next_statement이 설정하는 test fault: (code, message)다.
+        self._statement_fault = None
         self._connection = self._open()
 
     def utils(self) -> Utils:
@@ -804,7 +812,18 @@ class Db:
         transaction = ex.frame.number if ex.frame is not None else None
         return self.events.send(statement_kind(sql), step.get('tables', ()), transaction,
                                 resolved['masked'], sql,
-                                lambda: connection.execute(sql, resolved['values']))
+                                lambda: self._sent(lambda: connection.execute(sql, resolved['values'])))
+
+    def _sent(self, run):
+        """Runs one statement that the statement runner sends. An armed statement fault (test entry
+        point fail_next_statement) is consumed here: the statement is not sent and raises the fault's
+        OrmError, so the statement event of the statement carries it. Transaction control statements
+        do not call this (TxFrame.run with faultable=False)."""
+        fault = self._statement_fault
+        if fault is None:
+            return run()
+        self._statement_fault = None
+        raise OrmError(fault[0], fault[1])
 
     # --- transaction ---
 
@@ -970,7 +989,7 @@ class Db:
         no_wait = mode.endswith('_nowait')
 
         def run(sql: str, values=None, tables=()):
-            return frame.run(sql, values, 'utility', tables=tables)
+            return frame.run(sql, values, 'utility', tables=tables, faultable=False)
 
         previous = 0
         if no_wait:
@@ -1031,7 +1050,7 @@ class Db:
         began = False
         try:
             for kind, sql in steps:
-                frame.run(sql, [], kind)
+                frame.run(sql, [], kind, faultable=False)
                 if kind == 'begin':
                     began = True
         except BaseException as error:
@@ -1051,9 +1070,9 @@ class Db:
         frame.finished = True
         errors: list = []
 
-        def attempt(sql: str, values=None):
+        def attempt(sql: str, values=None, faultable: bool = False):
             try:
-                return frame.run(sql, values, 'utility')
+                return frame.run(sql, values, 'utility', faultable=faultable)
             except Exception as error:  # noqa: BLE001
                 errors.append(error)
                 return None
@@ -1065,7 +1084,7 @@ class Db:
                 attempt('PRAGMA read_uncommitted = 0')
         locks, frame.locks = frame.locks, []
         for key in locks:
-            released = attempt('SELECT RELEASE_LOCK(?)', [key])
+            released = attempt('SELECT RELEASE_LOCK(?)', [key], faultable=True)
             # 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
             if released is not None and int((released['rows'] or [[0]])[0][0]) != 1:
                 errors.append(OrmError('CONFIG', f'lock {key} was not held at '
@@ -1076,23 +1095,25 @@ class Db:
                 attempt(f'SET @`orm.{key}` = NULL')
         try:
             if commit and not errors:
-                frame.run('COMMIT', [], 'commit')
+                frame.run('COMMIT', [], 'commit', faultable=False)
                 return
-            frame.run('ROLLBACK', [], 'rollback')
-            if errors:
-                raise errors[0]
+            frame.run('ROLLBACK', [], 'rollback', faultable=False)
         except BaseException as error:
             if commit:
                 raise rollback_failed(errors[0] if errors else error, error) from None
             raise
         finally:
             frame.connection = None
+        # The rollback ran; a cleanup error (a lock that was not held or a refused release) is the
+        # transaction's error alone.
+        if errors:
+            raise errors[0]
 
     def _savepoint(self, frame: TxFrame, callback):
         frame.savepoints += 1
         name = f'orm_sp_{frame.savepoints}'
         try:
-            frame.run(f'SAVEPOINT {name}', [], 'savepoint')
+            frame.run(f'SAVEPOINT {name}', [], 'savepoint', faultable=False)
             try:
                 result = callback()
             except BaseException as error:
@@ -1100,13 +1121,13 @@ class Db:
                 for kind, sql in (('rollback_to', f'ROLLBACK TO SAVEPOINT {name}'),
                                   ('release', f'RELEASE SAVEPOINT {name}')):
                     try:
-                        frame.run(sql, [], kind)
+                        frame.run(sql, [], kind, faultable=False)
                     except Exception as failure:  # noqa: BLE001
                         rollback_errors.append(failure)
                 if rollback_errors:
                     raise rollback_failed(error, rollback_errors[0]) from None
                 raise
-            frame.run(f'RELEASE SAVEPOINT {name}', [], 'release')
+            frame.run(f'RELEASE SAVEPOINT {name}', [], 'release', faultable=False)
             return result
         finally:
             frame.savepoints -= 1
@@ -1166,6 +1187,12 @@ def _arm_rollback_fault(db: Db) -> None:
     """connection의 rollback fault를 설정한다. test entry point polyspec.orm.testing만
     부르며 package entry point는 export하지 않는다."""
     db._rollback_fault = True
+
+
+def _arm_statement_fault(db: Db, code: str, message: str) -> None:
+    """connection의 statement fault를 설정한다. 이미 설정된 fault는 대체된다. test entry point
+    polyspec.orm.testing만 부르며 package entry point는 export하지 않는다."""
+    db._statement_fault = (code, message)
 
 
 def _subscriber_error(error) -> bool:

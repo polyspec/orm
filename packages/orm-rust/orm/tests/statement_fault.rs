@@ -124,7 +124,7 @@ fn check_fault(driver: &str, error: &polyspec_orm::Error, subject: &str) {
 async fn refused_insert(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message).expect("the arguments are valid");
+    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
     let error = create(&db, "refused").await.expect_err("the insert is refused");
     check_fault(driver, &error, "insert");
     assert_eq!(count(&db).await, 0, "{driver}: the refused insert leaves the table unchanged");
@@ -136,7 +136,7 @@ async fn refused_insert(driver: &str, dsn: &str) {
 async fn consumed_by_one_statement(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message).expect("the arguments are valid");
+    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
     let error = create(&db, "refused").await.expect_err("the insert is refused");
     check_fault(driver, &error, "first insert");
     create(&db, "kept").await.unwrap_or_else(|e| panic!("{driver}: the second insert after the consumed fault: {e}"));
@@ -152,7 +152,7 @@ async fn consumed_by_one_statement(driver: &str, dsn: &str) {
 async fn refused_in_transaction(driver: &str, dsn: &str) {
     let fixture = fixture();
     let db = installed(driver, dsn).await;
-    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message).expect("the arguments are valid");
+    polyspec_orm::testing::fail_next_statement(&db, &fixture.code, &fixture.message);
     let error = db
         .transaction(async || create(&db, "refused").await)
         .retry(0)

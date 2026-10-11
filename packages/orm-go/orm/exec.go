@@ -648,6 +648,9 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		return nil, err
 	}
 	start := time.Now()
+	if err := d.takeStatementFault(); err != nil {
+		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
+	}
 	rows, err := stmt.QueryContext(ctx, args...)
 	err = mapDriverErr(err)
 	if err != nil {
@@ -882,6 +885,9 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	}
 	var v cell
 	start := time.Now()
+	if err := d.takeStatementFault(); err != nil {
+		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
+	}
 	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&v))
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
@@ -951,6 +957,9 @@ func write(ex executor, r *request) (lastID, affected int64, err error) {
 		return 0, 0, err
 	}
 	start := time.Now()
+	if err := d.takeStatementFault(); err != nil {
+		return 0, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
+	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
 		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {

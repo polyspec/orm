@@ -9,6 +9,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/polyspec/orm/internal/testcase"
 	"github.com/polyspec/orm/packages/orm-go/orm"
 )
 
@@ -181,11 +182,14 @@ func TestStatementFaultCases(t *testing.T) {
 }
 
 func TestStatementFaultSQLite(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	statementFault(t, "sqlite")
 }
 func TestStatementFaultMySQL(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	statementFault(t, "mysql")
 }
 func TestStatementFaultPostgres(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	statementFault(t, "postgres")
 }

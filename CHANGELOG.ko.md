@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b3903bbb99583c321af5e64aa8cd27b55bdbbde047eda4c65418d1d21e8d5c10 -->
+<!-- source-sha256: 0738b5c9131e4563e6aaecb9a44855536edc87c146eba6034b45fda05998d44f -->
 # 변경 이력
 
 ## Unreleased
+- T78: 모든 client의 test entry point가 연결의 다음 statement를 주어진 code와 message로 실패하게 한다. Go `orm.FailNextStatement`, Rust `polyspec_orm::testing::fail_next_statement`, TypeScript testing subpath의 `failNextStatement`, PHP `Polyspec\Orm\Testing\Faults::failNextStatement`, Python `polyspec.orm.testing.fail_next_statement`다. statement는 보내지 않고, 클라이언트는 driver 오류가 가는 statement 종료 지점에서 그 code와 message의 `OrmException`(ORM 오류)으로 보고하며, fault는 그 statement가 소비한다. transaction 장치의 statement는 fault를 소비하지 않는다(protocol 3.2). PHP 확장은 연결이 없으므로 statement fault가 없다.
 - T76: AGENTS가 설계 원칙을 적는다. 하위 호환은 유지하지 않고(오래된 경로는 호환 layer, fallback, migration 뒤에 남기지 않고 지운다), 현재 요구사항을 완전히 충족하는 가장 단순한 구현을 고르며 불확실한 미래를 위한 추상화, 설정, 간접 계층을 두지 않는다. component는 관심사를 분리한 module로 나누고, architecture는 장기적으로 정하며 임시방편을 받아들이지 않는다.
 - T62-4-10: T62-4-8의 `SHOW CREATE TABLE` reader test가 `contracts/features.json`의 기능 `schema_definition`에 속한다. `tests/dbspec/show-create.json`은 그 fixture이고, Go, PHP, PHP 확장, TypeScript test는 그 test이며, fixture와 각 test는 그것을 실행하는 검사(`dbspec-go-check`, `dbspec-php-check`, `dbspec-php-extension-check`, `dbspec-ts-check`, `dbspec-rust-check`, `python-check`)의 입력이다. 그래서 `features/contracts`와 `feature-unit-check`가 다시 통과한다.
 - T62-4-9: introspection이 모든 client에서 생성 컬럼을 생성 컬럼으로 보고한다. MySQL과 PostgreSQL reader는 type보다 먼저 생성 여부를 보고, `type ... has no dbspec type` 대신 SQLite reader의 문구인 `a generated column has no dbspec definition`을 적는다. `tests/dbspec/introspect.json`의 공유 case `mysql-generated-column`과 `postgres-generated-column`이 이를 고정하며, 미지원 항목은 사유가 포함해야 하는 rule을 네 번째 원소로 가질 수 있고 Go, PHP, PHP 확장, TypeScript, Rust harness가 이를 검사한다. `make dbspec-introspect-python-check`가 공유 case를 Python client로 MySQL, PostgreSQL, SQLite에서 실행하며, Python runner는 `make dbspec-introspect-compare-check`에 들어갔다.

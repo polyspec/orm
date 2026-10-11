@@ -151,8 +151,10 @@ export class Utils {
    */
   public async read(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<unknown[][]> {
     const frame = activeFor(this.db);
-    if (frame) return (await frame.run(kind, tables, sql, params)).rows;
-    return (await this.db.pool.execute(sql, params, undefined, this.db.statementDone(kind, tables, null, params))).rows;
+    if (frame) return (await frame.statement(kind, tables, sql, params)).rows;
+    const done = this.db.statementDone(kind, tables, null, params);
+    this.db.checkStatementFault(sql, done);
+    return (await this.db.pool.execute(sql, params, undefined, done)).rows;
   }
 
   /** Takes a named lock that is released when the transaction ends. */
@@ -161,13 +163,13 @@ export class Utils {
     if (!validKey(key)) throw config(`lock key ${key} is invalid`);
     switch (this.db.driver) {
       case 'mysql': {
-        const got = (await frame.run('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
+        const got = (await frame.statement('utility', [], 'SELECT GET_LOCK(?, 50)', [key])).rows[0]?.[0];
         if (Number(got) !== 1) throw new OrmError('DEADLOCK', `lock ${key} was not acquired`);
         frame.locks.push(key);
         return;
       }
       case 'postgres':
-        await frame.run('utility', [], 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+        await frame.statement('utility', [], 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
         return;
       default:
         await this.db.rowLock(frame, 'update');
@@ -184,10 +186,10 @@ export class Utils {
     if (!validKey(key)) throw config(`local key ${key} is invalid`);
     switch (this.db.driver) {
       case 'postgres':
-        await frame.run('utility', [], 'SELECT set_config($1, $2, true)', [key, value]);
+        await frame.statement('utility', [], 'SELECT set_config($1, $2, true)', [key, value]);
         break;
       case 'mysql':
-        await frame.run('utility', [], `SET @\`orm.${key}\` = ?`, [value]);
+        await frame.statement('utility', [], `SET @\`orm.${key}\` = ?`, [value]);
         break;
     }
     frame.locals.set(key, value);
@@ -262,7 +264,7 @@ export class SchemaUtils {
     };
     const db = this.u.db;
     if (driver === 'mysql') await db.withSession(session => apply(db.runner(session, null)));
-    else await this.u.run(frame => apply((kind, tables, sql, params) => frame.run(kind, tables, sql, params)));
+    else await this.u.run(frame => apply((kind, tables, sql, params) => frame.statement(kind, tables, sql, params)));
     registerSet(this.u.db, model);
   }
 
@@ -295,7 +297,7 @@ export class SchemaUtils {
       return [...added];
     };
     const db = this.u.db;
-    if (driver === 'postgres') return this.u.run(frame => apply((kind, tables, sql, params) => frame.run(kind, tables, sql, params)));
+    if (driver === 'postgres') return this.u.run(frame => apply((kind, tables, sql, params) => frame.statement(kind, tables, sql, params)));
     if (activeFor(this.u.db)) throw config(`${driver} adds tables and columns outside a transaction: MySQL commits schema statements implicitly and SQLite turns foreign keys off to rebuild a table`);
     if (driver === 'mysql') return db.withSession(session => apply(db.runner(session, null)));
     return db.withSession(session => withoutForeignKeys(db, session, apply));
@@ -356,8 +358,8 @@ export class PrivilegeUtils {
     const qualified = this.table(table);
     const r = this.role(role);
     await this.u.run(async frame => {
-      await frame.run('utility', [table], `GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
-      await frame.run('utility', [table], `GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
+      await frame.statement('utility', [table], `GRANT USAGE ON SCHEMA ${qualified.slice(0, qualified.indexOf('.'))} TO ${r}`);
+      await frame.statement('utility', [table], `GRANT SELECT, INSERT, UPDATE, DELETE ON ${qualified} TO ${r}`);
     });
   }
 
@@ -366,7 +368,7 @@ export class PrivilegeUtils {
     const r = this.role(role);
     const upper = privilege.trim().toUpperCase();
     if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE'].includes(upper)) throw config(`unsupported table privilege ${privilege}`);
-    await this.u.run(async frame => { await frame.run('utility', [table], `REVOKE ${upper} ON ${qualified} FROM ${r}`); });
+    await this.u.run(async frame => { await frame.statement('utility', [table], `REVOKE ${upper} ON ${qualified} FROM ${r}`); });
   }
 
   public async inspectTable(table: string): Promise<TablePrivileges> {
@@ -427,7 +429,7 @@ export class AesUtils {
     return this.u.run(async frame => {
       let rotated = 0;
       for (;;) {
-        const rows = (await frame.run('utility', [spec.table], select, [keyring.currentVersion])).rows;
+        const rows = (await frame.statement('utility', [spec.table], select, [keyring.currentVersion])).rows;
         if (rows.length === 0) return rotated;
         for (const values of rows) {
           const before: Record<string, unknown> = {};
@@ -437,7 +439,7 @@ export class AesUtils {
           spec.columns.forEach((c, i) => { before[c.name] = values[spec.keys.length + 1 + i]; });
           const after = keyring.rotateRow(before, spec.version, spec.columns, keyring.currentVersion, codec);
           const params = [...spec.columns.map(c => after[c.name]), keyring.currentVersion, ...spec.keys.map(k => before[k]), version] as DriverValue[];
-          const result = await frame.run('utility', [spec.table], updateSql, params);
+          const result = await frame.statement('utility', [spec.table], updateSql, params);
           if (result.affected !== 1) throw new OrmError('DEADLOCK', `aes rotation of ${spec.table} changed ${result.affected} rows`);
           rotated++;
         }

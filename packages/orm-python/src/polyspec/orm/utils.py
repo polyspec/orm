@@ -263,7 +263,7 @@ class AesUtils:
                  f'GROUP BY {version} ORDER BY {version}')
         status = AesRotationStatus(current=keyring.current_version)
         rows = db.events.send('utility', [entity.table], None, [], query,
-                              lambda: db._connection.execute(query, [])['rows'])
+                              lambda: db._sent(lambda: db._connection.execute(query, [])['rows']))
         for stored, count in rows:
             status.versions[int(stored)] = count
             status.total += count
@@ -355,7 +355,7 @@ def _frame_runner(db):
 def _session_runner(db):
     """Runs a statement outside any transaction (MySQL schema statements)."""
     def run(kind, tables, sql, values):
-        return db._connection.execute(sql, list(values))['rows']
+        return db._sent(lambda: db._connection.execute(sql, list(values)))['rows']
     return run
 
 
@@ -365,13 +365,13 @@ def _sqlite_without_foreign_keys(db, apply):
     from polyspec.orm.errors import OrmError
 
     def outside(sql: str):
-        return db._connection.execute(sql, [])['rows']
+        return db._sent(lambda: db._connection.execute(sql, [])['rows'])
     outside('PRAGMA foreign_keys = OFF')
     try:
         db._connection.execute('BEGIN IMMEDIATE', [])
         try:
             result = apply(_session_runner(db))
-            broken = db._connection.execute('SELECT COUNT(*) FROM pragma_foreign_key_check', [])['rows'][0][0]
+            broken = db._sent(lambda: db._connection.execute('SELECT COUNT(*) FROM pragma_foreign_key_check', [])['rows'])[0][0]
             if int(broken) != 0:
                 raise OrmError('INTERNAL', f'the rebuilt tables break {broken} foreign keys')
             db._connection.execute('COMMIT', [])

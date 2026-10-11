@@ -112,6 +112,14 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 // run은 transaction 연결에서 statement를 보내고 그 event를 publish한다.
 func (t *txConn) run() runner { return runner{d: t.db, q: t.conn, tx: t.number} }
 
+// machinery는 transaction을 여는 설정, SQLite mode 설정, transaction 끝의 정리
+// statement의 runner다. 이 statement는 statement fault를 소비하지 않는다.
+func (t *txConn) machinery() runner {
+	r := t.run()
+	r.machinery = true
+	return r
+}
+
 func (t *txConn) closeStatements() {
 	t.stmMu.Lock()
 	defer t.stmMu.Unlock()
@@ -577,7 +585,7 @@ func (d *DB) begin(o txOptions) (*txConn, error) {
 	}
 	began := false
 	for _, step := range steps {
-		if _, err := t.run().exec(ctx, step.kind, nil, step.sql); err != nil {
+		if _, err := t.machinery().exec(ctx, step.kind, nil, step.sql); err != nil {
 			if began {
 				return nil, t.rollbackAfter(err)
 			}
@@ -786,12 +794,12 @@ func (t *txConn) recordInserted(entity string, key int64) {
 func (t *txConn) beginSQLiteMode() error {
 	t.sqliteMode = t.isolation == ReadUncommitted || t.readOnly
 	if t.isolation == ReadUncommitted {
-		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 1"); err != nil {
+		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 1"); err != nil {
 			return err
 		}
 	}
 	if t.readOnly {
-		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 1"); err != nil {
+		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 1"); err != nil {
 			return err
 		}
 	}
@@ -808,12 +816,12 @@ func (t *txConn) finishSQLiteMode() error {
 	t.sqliteMode = false
 	var errs []error
 	if t.readOnly {
-		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 0"); err != nil {
+		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "PRAGMA query_only = 0"); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if t.isolation == ReadUncommitted {
-		if _, err := t.run().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 0"); err != nil {
+		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "PRAGMA read_uncommitted = 0"); err != nil {
 			errs = append(errs, err)
 		}
 	}
