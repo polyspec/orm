@@ -111,6 +111,7 @@ classDiagram
         close()
         stats()
         subscribe()
+        execute()
     }
     class TransactionFlow {
         List_TransactionFrame frames
