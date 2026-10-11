@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: afa1514a8e383c3ac79f7c5a8ccae79d64bab2c26530d48502b4b9f625cce2d4 -->
+<!-- source-sha256: 22679eff1bdb89ea4c9556cf5907e30d1b2ef478af494f322000f249f7fd6961 -->
 # 변경 이력
 
 ## Unreleased
 
+- T63: Go client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 corpus에 접속한다. flowmark server에 연결해 모든 IR 종류와 transaction, savepoint를 그것으로 실행하고, `WRITE_CONFLICT`는 재시도 없이 돌려주며, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다.
 - T124: Python은 필수 구현이 아니다. parity profile `dbspec`과 `client`가 Python을 빼므로 suite는 Python binding 없이 green이다. Python package와 wheel은 출하 코드로 남는다.
 - T92(일부): SQLite에서 `datetime(p)`와 `time(p)` 값은 정확히 p자리 소수로 bind된다. 모든 구현의 planner가 parameter slot에 column의 precision을 싣고, Go client는 p자리 뒤의 0을 버리며 0이 아닌 자리는 `CODEC_ENCODE`로 거절한다.
 - T115-3: Python 3.15가 저장소가 test하는 Python이다. `.python-version`, `config/toolchain.json`(python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15`, README가 이를 선언한다.
