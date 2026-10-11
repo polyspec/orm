@@ -475,7 +475,12 @@ func runOne(c *testcase.Case, root, output, language string) error {
 		}
 		return runCommand(c, root, output, runnerDeadline, goRunner, goFlags...)
 	case "php":
-		return runCommand(c, root, output, runnerDeadline, "php", append([]string{"tests/conformance/runner.php"}, flags...)...)
+		// PHP는 TZ를 읽지 않고 date.timezone을 읽는다. 다른 runner처럼 TZ의 시간대로 실행한다.
+		args := []string{"tests/conformance/runner.php"}
+		if zone := os.Getenv("TZ"); zone != "" {
+			args = append([]string{"-d", "date.timezone=" + zone}, args...)
+		}
+		return runCommand(c, root, output, runnerDeadline, "php", append(args, flags...)...)
 	case "typescript":
 		return runCommand(c, root, output, runnerDeadline, "node", append([]string{"tests/conformance/runner_typescript.mjs"}, flags...)...)
 	case "rust":

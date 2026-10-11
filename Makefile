@@ -71,7 +71,14 @@ include scripts/kit/kit.mk
 # WITH_TEST_ENV는 또 이 줄의 shell이 끝날 때까지 server의 shared lease(tests/lease)를 가진다. lease
 # directory는 TEST_ENV의 ORM_TEST_SERVERS_LEASES다. 서버의 정지, 새 시작, MySQL migration은 exclusive
 # lease를 요구하므로 이 줄이 실행되는 동안 거부되고, 보유자로 이 줄을 적는다.
-WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ &&
+# WITH_TEST_ENV는 마지막으로 database client를 실행하는 process의 시간대를 TEST_TZ로 정한다: TZ를 export하고,
+# TZ를 읽지 않는 PHP에는 date.timezone을 ${TZ}로 정하는 tests/timezone/date.ini를 PHP_INI_SCAN_DIR의 앞
+# 구분자 뒤에 더한다(PHP의 기본 scan directory는 그대로 읽힌다).
+WITH_TEST_ENV = test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }; . $(abspath $(TEST_ENV)) && $(BUILD_LEASE) && "$(LEASE)" hold "$${ORM_TEST_SERVERS_LEASES:?$(abspath $(TEST_ENV)) names no lease directory; run make test-servers to rewrite it}" shared --pid $$$$ && export TZ=$(TEST_TZ) PHP_INI_SCAN_DIR=:$(abspath tests/timezone) &&
+# TEST_TZ는 database client를 실행하는 검사의 process 시간대다. UTC가 아닌 시간대로 실행해야 client가 database의
+# 시간대 없는 datetime을 process의 지역 시각으로 읽는 결함이 UTC인 CI runner에서도 드러난다. 모든 client는 연결의
+# 시간대(+00:00)로 읽고 쓰므로 결과는 이 값과 무관해야 한다(docs/dialects.md).
+TEST_TZ = Asia/Seoul
 
 # GO_TEST는 Go test를 case마다 보고하게 실행한다. tests/go-test.mjs는 먼저 같은 package와 build
 # tag의 build를 기한 없는 장기 작업 `go-build/<packages>`로 실행하고 그 뒤 go test를 실행한다. -v는 각
@@ -825,7 +832,7 @@ conformance-result-check/python: python-venv-check
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) TZ=$(CONFORMANCE_TZ) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
 conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
@@ -865,11 +872,6 @@ PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
 python-model-check: python-venv-check
 	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
 
-# CONFORMANCE_TZ는 conformance runner가 실행되는 process의 시간대다. UTC가 아닌 시간대로 실행해야 client가
-# database의 시간대 없는 datetime을 machine의 지역 시각으로 읽는 결함이 CI(UTC runner)에서도 드러난다. 모든 client는
-# 연결의 시간대(+00:00)로 읽고 쓰므로 결과는 이 값과 무관해야 한다(docs/dialects.md).
-CONFORMANCE_TZ = Asia/Seoul
-
 # CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
 # 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은
 # sibling checkout의 packages/ordered-json-python/src에서 읽는다(docs/plans/execution-checklist.md T43.5-1).
@@ -886,7 +888,7 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 conformance-check/run: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) TZ=$(CONFORMANCE_TZ) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
