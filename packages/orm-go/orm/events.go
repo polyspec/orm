@@ -67,8 +67,12 @@ type subscribers struct {
 
 // Subscribe registers fn for the statement events of the connection and of
 // every handle derived from it. Subscribers run in registration order. The
-// returned function removes the subscription.
-func (d *DB) Subscribe(fn Subscriber) (unsubscribe func()) {
+// returned function removes the subscription. A markdown connection sends no
+// statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
+func (d *DB) Subscribe(fn Subscriber) (unsubscribe func(), err error) {
+	if err := d.unsupportedOnMarkdown("statement events"); err != nil {
+		return nil, err
+	}
 	s := &subscription{fn: fn}
 	d.m.subs.mu.Lock()
 	var list []*subscription
@@ -90,7 +94,7 @@ func (d *DB) Subscribe(fn Subscriber) (unsubscribe func()) {
 			}
 		}
 		d.m.subs.list.Store(&kept)
-	}
+	}, nil
 }
 
 // nextTransaction은 새 바깥 transaction의 번호다.

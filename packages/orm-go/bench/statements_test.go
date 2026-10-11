@@ -22,12 +22,14 @@ func TestNativeStatementsEqualClient(t *testing.T) {
 	defer db.Close()
 	var mu sync.Mutex
 	var seen []string
-	db.Subscribe(func(e orm.StatementEvent) error {
+	if _, err := db.Subscribe(func(e orm.StatementEvent) error {
 		mu.Lock()
 		defer mu.Unlock()
 		seen = append(seen, e.SQL)
 		return nil
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := model.Author().Connect(db).GetBySeq(42); err != nil {
 		t.Fatal(err)
 	}

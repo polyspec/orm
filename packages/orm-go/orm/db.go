@@ -87,7 +87,10 @@ func (s *Schema) Model() (*runtimemodel.Model, error) {
 // cache. A DB value is a handle: WithContext copies it with another context, and
 // every copy shares one connection through dbMutable.
 type DB struct {
-	sql      *sql.DB
+	sql *sql.DB
+	// md는 markdown:// 연결의 flowmark session pool이다. SQL 연결에서는 nil이고 sql이 그
+	// 자리다.
+	md       *mdPool
 	ctx      context.Context
 	root     *DB
 	m        *dbMutable
@@ -157,6 +160,20 @@ func (d *DB) engineFor(s *Schema) (*engine.Engine, error) {
 	return eng, nil
 }
 
+// registeredModel은 이 연결에 등록된 schema의 runtime model이다. SQL 연결은 그 engine의
+// model이고, plan하지 않는 markdown 연결은 등록한 set의 model이다. 등록되지 않았으면
+// SCHEMA_HASH_MISMATCH다.
+func (d *DB) registeredModel(s *Schema) (*runtimemodel.Model, error) {
+	if d.md != nil {
+		return d.markdownModel(s)
+	}
+	eng, err := d.engineFor(s)
+	if err != nil {
+		return nil, err
+	}
+	return eng.M, nil
+}
+
 // registered는 등록할 schema의 runtime model이다. text가 선언한 hash로 hash되지
 // 않으면 어떤 statement보다 먼저 CONFIG이고, text가 manifest가 아니면 SCHEMA_INVALID다.
 func (s *Schema) registered() (*runtimemodel.Model, error) {
@@ -178,7 +195,12 @@ func (d *DB) register(s *Schema) error {
 	}
 	d.m.engineMu.Lock()
 	defer d.m.engineMu.Unlock()
-	if d.m.engines[s.Hash] != nil {
+	if d.m.schemas[s.Hash] != nil {
+		return nil
+	}
+	// markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 set만 등록한다.
+	if d.md != nil {
+		d.m.schemas[s.Hash] = s
 		return nil
 	}
 	eng, err := engine.New(m, d.driver)
@@ -195,6 +217,11 @@ func (d *DB) register(s *Schema) error {
 // orchestration capability; non-PostgreSQL adapters have no equivalent
 // backend view and return false without exposing driver SQL to callers.
 func (d *DB) BackendWaitingForLock(ctx context.Context) (bool, error) {
+	if d != nil {
+		if err := d.unsupportedOnMarkdown("backendWaitingForLock"); err != nil {
+			return false, err
+		}
+	}
 	if d == nil || d.sql == nil {
 		return false, configErr("database connection is required")
 	}
@@ -278,6 +305,9 @@ func open(ctx context.Context, dsn parsedDSN, cfg Config) (*DB, error) {
 	}
 	if cfg.PlanCacheSize < 1 || cfg.StatementCacheSize < 1 {
 		return nil, configErr("cache sizes must be positive")
+	}
+	if dsn.driver == "markdown" {
+		return openMarkdown(ctx, dsn, cfg)
 	}
 	sqlDriver, ok := lookupDriver(dsn.driver)
 	if !ok {
@@ -399,6 +429,10 @@ func (d *DB) Close() error {
 		d.stmts = map[string]*sql.Stmt{}
 		d.m.stmtOrder = nil
 		d.m.stmMu.Unlock()
+		if d.md != nil {
+			d.md.close()
+			return
+		}
 		if err := d.sql.Close(); err != nil && d.m.closeErr == nil {
 			d.m.closeErr = err
 		}
@@ -408,11 +442,15 @@ func (d *DB) Close() error {
 
 // Stats returns the connection pool state.
 func (d *DB) Stats() DBStats {
+	if d.md != nil {
+		return d.md.stats()
+	}
 	stats := d.sql.Stats()
 	return DBStats{MaxOpenConnections: stats.MaxOpenConnections, OpenConnections: stats.OpenConnections, InUse: stats.InUse, Idle: stats.Idle}
 }
 
-// Driver is the database of the connection: mysql, postgres, or sqlite.
+// Driver is the database of the connection: mysql, postgres, sqlite, or
+// markdown, a corpus that a flowmark server serves.
 func (d *DB) Driver() string { return d.driver }
 
 // Drivers other than MySQL live in their own packages so a MySQL-only program

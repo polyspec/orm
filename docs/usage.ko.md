@@ -417,7 +417,7 @@ $b->getJsonSetting()['a'];
 
 | Client | 등록과 해제 | Event |
 |---|---|---|
-| Go | `unsubscribe := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`. `Elapsed`는 `time.Duration`, `Transaction`은 transaction 밖에서 0 |
+| Go | `unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`. `Elapsed`는 `time.Duration`, `Transaction`은 transaction 밖에서 0 |
 | PHP | `$unsubscribe = $db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`?int`), `error`(`?OrmException`)를 가진 `Polyspec\Orm\StatementEvent` |
 | Rust | `let subscription = db.subscribe(\|e: &polyspec_orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `polyspec_orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`. `elapsed`는 `Duration`, `transaction`은 `Option<u64>`, `error`는 `Option<&polyspec_orm::Error>` |
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(`number \| null`), `error`(`OrmError \| null`)를 가진 `StatementEvent` |

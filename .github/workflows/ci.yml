@@ -91,6 +91,13 @@ jobs:
         id: go-modules
         if: ${{ !cancelled() }}
         run: make install-go
+      # make markdown-conformance-check runs the Go client on the flowmark
+      # build that tests/markdown/flowmark.version pins; make install-flowmark
+      # installs it.
+      - name: flowmark build of tests/markdown/flowmark.version
+        id: flowmark
+        if: ${{ !cancelled() && steps.group-needs.outputs.flowmark == 'true' }}
+        run: make install-flowmark
       - name: install Node dependencies
         id: node-modules
         if: ${{ !cancelled() && steps.group-needs.outputs.node-modules == 'true' }}
