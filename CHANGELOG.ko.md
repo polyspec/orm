@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 39f6ace744b263d3e631eca5182aecc3c3ed2cc6002cceec3165da7f64ea11de -->
+<!-- source-sha256: cde17df41e81505240e1fa9f36a618c1064fb5d8be4fa33a302800462226a4fe -->
 # 변경 이력
 
 ## Unreleased
 
+- T97: 열 비교 연산자(`eq_col` 등)는 왼쪽 컬럼의 type과 두 컬럼 모두 codec이 없다는 것으로 허용되며, `ip` 컬럼 둘은 `eq_col`과 `not_eq_col`도 받는다. `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다.
 - T94: `ir.Validate`와 그 네 짝이 `update`와 `restore`의 primary key나 identity 할당(`restore`는 soft delete 컬럼도)을 `IR_INVALID`로 거절하므로, 계획하지 않는 IR 실행기도 planner만 갖던 규칙을 본다. planner의 도달할 수 없게 된 검사는 지웠다.
 - T99: `insert`는 `p` 또는 `null`로 할당한다. `set`의 `plus_p`와 `minus_p`는 모든 구현에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다(MySQL은 `VALUES` 목록에서 default를 읽었고 PostgreSQL과 SQLite는 문장을 거절했다).
 - T86: `key_by`는 자식의 non-null 컬럼을 가리킨다. nullable 컬럼은 모든 구현에서 `IR_INVALID`이다. NULL 컬렉션 키는 언어마다 답이 달랐기 때문이다.

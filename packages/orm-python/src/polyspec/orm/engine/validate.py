@@ -4,7 +4,7 @@ from polyspec.orm.engine.dialect import (column_function_arity, column_function_
                                          is_value_function, value_function_units)
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
 from polyspec.orm.errors import OrmError
-from polyspec.orm.names import COLUMN_OPS, NUMERIC_TYPES, op_allowed
+from polyspec.orm.names import COLUMN_OPS, NUMERIC_TYPES, OPS_BY_TYPE, op_allowed
 
 __all__ = ['IR_VERSION', 'validate']
 
@@ -21,6 +21,17 @@ def _fail(code: str, message: str):
 def _is_safe(value) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) \
         and 0 <= value <= 9007199254740991
+
+
+def _col_pair_op_allowed(left: Field, right: Field, op: str) -> bool:
+    """Whether the column comparison op may compare left with right: its base operator (eq for eq_col) must be one of
+    the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
+    operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
+    dialect's same stored form."""
+    base = op[:-len('_col')]
+    if not left.stages and not right.stages:
+        return base in OPS_BY_TYPE.get(left.type, ())
+    return tuple(left.stages) == ('ip',) and tuple(right.stages) == ('ip',) and base in ('eq', 'not_eq')
 
 
 class _Validator:
@@ -69,7 +80,7 @@ class _Validator:
                 s['joins'][j.get('rel')] = self.scopes(j['query'])
         return s
 
-    def ref(self, at: dict, ref: dict) -> None:
+    def ref(self, at: dict, ref: dict) -> Field:
         """planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. at은 조건의 자리다: root는
         statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 None), node는
         조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는 root에서
@@ -92,8 +103,10 @@ class _Validator:
                 target = target['joins'][seg]
         if target['ent'] is None:
             _fail('ENTITY_UNKNOWN', target['name'])
-        if field_of(target['ent'], column) is None:
+        found = field_of(target['ent'], column)
+        if found is None:
             _fail('COLUMN_UNKNOWN', f'{target["name"]}.{column}')
+        return found
 
     def query(self, q: dict, at: dict, is_join: bool, is_relation: bool) -> None:
         """q를 검사한다. at은 q의 자리다(ref 참고)."""
@@ -360,7 +373,9 @@ class _Validator:
         if op in COLUMN_OPS:
             if not p.get('ref'):
                 _fail('IR_INVALID', f'{op} needs ref')
-            self.ref(at, p['ref'])
+            other = self.ref(at, p['ref'])
+            if not _col_pair_op_allowed(c, other, op):
+                _fail('OPERATOR_NOT_ALLOWED', f'{op} on {ent.name}.{column} ({c.type}) and {p["ref"]["column"]} ({other.type})')
             return
         if 'p' not in p:
             _fail('IR_INVALID', f'{op} {ent.name}.{column} needs a value (p)')

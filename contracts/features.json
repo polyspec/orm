@@ -3732,7 +3732,11 @@
           "planner_insert_by_value",
           "planner_insert_on_duplicate_plus",
           "planner_rejects_insert_set_plus",
-          "planner_rejects_insert_set_minus"
+          "planner_rejects_insert_set_minus",
+          "planner_ip_eq_col_ip",
+          "planner_rejects_bool_gt_col",
+          "planner_rejects_ip_gt_col",
+          "planner_rejects_aes_eq_col"
         ],
         "owners": {
           "go": {
@@ -3781,7 +3785,11 @@
                     "planner_insert_by_value",
                     "planner_insert_on_duplicate_plus",
                     "planner_rejects_insert_set_plus",
-                    "planner_rejects_insert_set_minus"
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3816,7 +3824,11 @@
                     "planner_insert_by_value": "TestCoveragePlannerInsertByValue",
                     "planner_insert_on_duplicate_plus": "TestCoveragePlannerInsertOnDuplicatePlus",
                     "planner_rejects_insert_set_plus": "TestCoveragePlannerRejectsInsertSetPlus",
-                    "planner_rejects_insert_set_minus": "TestCoveragePlannerRejectsInsertSetMinus"
+                    "planner_rejects_insert_set_minus": "TestCoveragePlannerRejectsInsertSetMinus",
+                    "planner_ip_eq_col_ip": "TestCoveragePlannerIpEqColIp",
+                    "planner_rejects_bool_gt_col": "TestCoveragePlannerRejectsBoolGtCol",
+                    "planner_rejects_ip_gt_col": "TestCoveragePlannerRejectsIpGtCol",
+                    "planner_rejects_aes_eq_col": "TestCoveragePlannerRejectsAesEqCol"
                   }
                 }
               ]
@@ -3868,7 +3880,11 @@
                     "planner_insert_by_value",
                     "planner_insert_on_duplicate_plus",
                     "planner_rejects_insert_set_plus",
-                    "planner_rejects_insert_set_minus"
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col"
                   ]
                 }
               ]
@@ -3920,7 +3936,11 @@
                     "planner_insert_by_value",
                     "planner_insert_on_duplicate_plus",
                     "planner_rejects_insert_set_plus",
-                    "planner_rejects_insert_set_minus"
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3955,7 +3975,11 @@
                     "planner_insert_by_value": "engine::coverage_planner::coverage_planner_insert_by_value",
                     "planner_insert_on_duplicate_plus": "engine::coverage_planner::coverage_planner_insert_on_duplicate_plus",
                     "planner_rejects_insert_set_plus": "engine::coverage_planner::coverage_planner_rejects_insert_set_plus",
-                    "planner_rejects_insert_set_minus": "engine::coverage_planner::coverage_planner_rejects_insert_set_minus"
+                    "planner_rejects_insert_set_minus": "engine::coverage_planner::coverage_planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip": "engine::coverage_planner::coverage_planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col": "engine::coverage_planner::coverage_planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col": "engine::coverage_planner::coverage_planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col": "engine::coverage_planner::coverage_planner_rejects_aes_eq_col"
                   }
                 }
               ]
@@ -4007,7 +4031,11 @@
                     "planner_insert_by_value",
                     "planner_insert_on_duplicate_plus",
                     "planner_rejects_insert_set_plus",
-                    "planner_rejects_insert_set_minus"
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col"
                   ]
                 }
               ]

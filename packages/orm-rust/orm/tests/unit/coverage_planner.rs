@@ -635,3 +635,31 @@ fn coverage_planner_rejects_insert_set_minus() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_insert_set_minus");
 }
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_ip_eq_col_ip() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_ip_eq_col_ip");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_bool_gt_col() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_bool_gt_col");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_ip_gt_col() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_ip_gt_col");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_aes_eq_col() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_aes_eq_col");
+}

@@ -50,6 +50,18 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     ops_by_type(c.ty.name()).contains(&op)
 }
 
+/// Whether the column comparison `op` may compare `left` with `right`: its base operator (eq for eq_col) must be one
+/// of the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
+/// operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
+/// dialect's same stored form.
+fn col_pair_op_allowed(left: &Field, right: &Field, op: &str) -> bool {
+    let base = op.trim_end_matches("_col");
+    if left.codec.is_empty() && right.codec.is_empty() {
+        return ops_by_type(left.ty.name()).contains(&base);
+    }
+    left.codec == ["ip"] && right.codec == ["ip"] && matches!(base, "eq" | "not_eq")
+}
+
 fn unknown_column(ent: &str, col: &str) -> crate::Error {
     err(codes::COLUMN_UNKNOWN, format!("{ent}.{col}"))
 }
@@ -222,7 +234,7 @@ impl<'m> Validator<'m> {
     /// planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
     /// "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
     /// "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
-    fn column_ref(&self, at: At<'_, 'm>, r: &ir::ColRef) -> Result<()> {
+    fn column_ref(&self, at: At<'_, 'm>, r: &ir::ColRef) -> Result<&'m Field> {
         let mut target = at.root;
         if r.path == "^" {
             target = at.outer.ok_or_else(|| err(codes::IR_INVALID, "^ reference outside a subquery"))?;
@@ -237,10 +249,7 @@ impl<'m> Validator<'m> {
             }
         }
         let ent = target.ent.ok_or_else(|| err(codes::ENTITY_UNKNOWN, target.name.clone()))?;
-        if ent.field(&r.column).is_none() {
-            return Err(unknown_column(&target.name, &r.column));
-        }
-        Ok(())
+        ent.field(&r.column).ok_or_else(|| unknown_column(&target.name, &r.column))
     }
 
     fn query(&self, q: &ir::Query, at: At<'_, 'm>, is_join: bool, is_relation: bool) -> Result<()> {
@@ -564,7 +573,13 @@ impl<'m> Validator<'m> {
             }
             op if col_op(op) => {
                 let r = p.r#ref.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("{op} needs ref")))?;
-                self.column_ref(at, r)?;
+                let other = self.column_ref(at, r)?;
+                if !col_pair_op_allowed(c, other, op) {
+                    return Err(err(
+                        codes::OPERATOR_NOT_ALLOWED,
+                        format!("{op} on {}.{} ({}) and {} ({})", ent.name, p.column, c.ty.render(), r.column, other.ty.render()),
+                    ));
+                }
             }
             op => {
                 if p.p.is_none() {

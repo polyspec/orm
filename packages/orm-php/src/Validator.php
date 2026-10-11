@@ -448,7 +448,7 @@ final class Validator
      * node는 조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는
      * root에서 join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
      */
-    private function ref(array $at, array $ref): void
+    private function ref(array $at, array $ref): array
     {
         $path = $ref['path'] ?? '';
         $column = $ref['column'] ?? '';
@@ -461,9 +461,22 @@ final class Validator
             }
         }
         $ent = $target['ent'] ?? throw self::err(Code::ENTITY_UNKNOWN, $target['name']);
-        if (RuntimeModel::column($ent, $column) === null) {
-            throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$column");
+        return RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$column");
+    }
+
+    /**
+     * Whether the column comparison $op may compare $left with $right: its base operator (eq for eq_col) must be one of
+     * the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
+     * operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
+     * dialect's same stored form.
+     */
+    private static function colPairOpAllowed(array $left, array $right, string $op): bool
+    {
+        $base = substr($op, 0, -4);
+        if ($left['codec'] === [] && $right['codec'] === []) {
+            return in_array($base, self::OPS_BY_TYPE[$left['type']], true);
         }
+        return $left['codec'] === ['ip'] && $right['codec'] === ['ip'] && ($base === 'eq' || $base === 'not_eq');
     }
 
     /** query는 q를 검사한다. $at은 q의 자리다(ref 참고). */
@@ -817,7 +830,10 @@ final class Validator
             if (!isset($p['ref'])) {
                 throw self::err(Code::IR_INVALID, "$op needs ref");
             }
-            $this->ref($at, $p['ref']);
+            $other = $this->ref($at, $p['ref']);
+            if (!self::colPairOpAllowed($c, $other, $op)) {
+                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})");
+            }
             return;
         }
         if (!isset($p['p'])) {
