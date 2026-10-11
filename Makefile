@@ -818,7 +818,7 @@ python-statement-fault-check: python-venv-check
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/test_identity_load.py
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/identity_load.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
