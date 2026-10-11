@@ -43,7 +43,9 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             }
             "base64" => {
                 let text = std::str::from_utf8(&cur).map_err(|_| err(CODEC_DECODE, "base64 input is not UTF-8"))?;
-                cur = base64::engine::general_purpose::STANDARD.decode(text.trim()).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
+                // 저장 cell은 encoder가 쓰는 형태로만 decode한다(docs/codec.md). STANDARD는 공백, 빠진 padding,
+                // 0이 아닌 padding bit를 거절한다.
+                cur = base64::engine::general_purpose::STANDARD.decode(text).map_err(|e| err(CODEC_DECODE, format!("base64: {e}")))?;
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
             "yaml" => {
@@ -543,9 +545,10 @@ pub fn hex_upper(b: &[u8]) -> String {
     s
 }
 
-/// `UNHEX(...)`: either case; whitespace around the text is ignored.
+/// `UNHEX(...)`: either case. The text is decoded exactly: white space or any
+/// other byte outside the hex digits is `CODEC_DECODE` (docs/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
-    let s = s.trim().as_bytes();
+    let s = s.as_bytes();
     if !s.len().is_multiple_of(2) {
         return Err(err(CODEC_DECODE, "hex: odd length"));
     }
@@ -663,6 +666,42 @@ mod tests {
             Value::Object(m) => Value::Object(m.iter().map(|(k, x)| (k.clone(), norm(x))).collect()),
             _ => v.clone(),
         }
+    }
+
+    /// 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고
+    /// 그 밖의 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 `host_decode`로, 나머지는
+    /// `decode`로 읽는다.
+    #[test]
+    fn decode_vectors() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let root = polyspec_orm_testcase::manifest_dir().join("../../../tests/codec");
+        let src = std::fs::read(root.join("decode-vectors.json")).expect("decode-vectors.json");
+        let f: Value = serde_json::from_slice(&src).unwrap();
+        let vectors = f["vectors"].as_array().expect("vectors");
+        assert!(!vectors.is_empty(), "decode-vectors.json has no vectors");
+        let mut wrong = Vec::new();
+        for v in vectors {
+            let name = v["name"].as_str().unwrap();
+            let styles: Vec<String> = v["styles"].as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_owned()).collect();
+            let raw = match (v["stored"].as_str(), v["stored_hex"].as_str()) {
+                (Some(text), _) => Val::Str(text.to_owned()),
+                (None, Some(hex)) => Val::Bytes(hex_decode(hex).unwrap()),
+                _ => panic!("{name}: no stored cell"),
+            };
+            let host = styles.iter().all(|s| s == "hex" || s == "ip");
+            let got = if host { host_decode(&raw, &styles, "") } else { decode(&styles, &raw) };
+            let text = |val: &Val| match val {
+                Val::Str(s) => Some(s.clone()),
+                Val::Json(Value::String(s)) => Some(s.clone()),
+                _ => None,
+            };
+            match (&got, v["error"].as_str(), v["value"].as_str()) {
+                (Err(e), Some(code), _) if e.code() == code => {}
+                (Ok(val), None, Some(want)) if text(val).as_deref() == Some(want) => {}
+                _ => wrong.push(format!("{name}: got {got:?}, want {}", v.get("error").or(v.get("value")).unwrap())),
+            }
+        }
+        assert!(wrong.is_empty(), "Rust decode vectors:\n{}", wrong.join("\n"));
     }
 
     /// Every PHP-produced vector decodes to the same value; deterministic styles re-encode

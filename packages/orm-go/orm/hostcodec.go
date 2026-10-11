@@ -186,8 +186,11 @@ func HostEncode(v any, styles []string, aesKey string) (any, error) {
 	return cur, nil
 }
 
-// hostDecode undoes hostEncode on a read cell (styles in write order, applied in reverse).
-func hostDecode(raw any, styles []string, aesKey string) (any, error) {
+// HostDecode undoes HostEncode on a read cell: styles are the host stages in
+// write order, applied in reverse. A list without aes needs no key. A cell
+// decodes only in the form HostEncode writes; anything else, surrounding white
+// space included, is CODEC_DECODE (docs/codec.md).
+func HostDecode(raw any, styles []string, aesKey string) (any, error) {
 	var cur []byte
 	switch x := raw.(type) {
 	case nil:
@@ -203,7 +206,7 @@ func hostDecode(raw any, styles []string, aesKey string) (any, error) {
 		var err error
 		switch styles[i] {
 		case "hex":
-			if cur, err = hex.DecodeString(strings.TrimSpace(string(cur))); err != nil {
+			if cur, err = hex.DecodeString(string(cur)); err != nil {
 				return nil, codecErr(CodeCodecDecode, "hex: %v", err)
 			}
 		case "aes":

@@ -3,6 +3,7 @@ package orm
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
@@ -42,6 +43,69 @@ func canonStyled(t *testing.T, v StyledValue) string {
 		return "null"
 	}
 	return canon(t, data)
+}
+
+// decodeVector는 tests/codec/decode-vectors.json의 case 하나다: 쓰기 순서의 stage, text나 byte의 hex인
+// 저장 cell, decode한 값이나 오류 code.
+type decodeVector struct {
+	Name      string   `json:"name"`
+	Styles    []string `json:"styles"`
+	Stored    *string  `json:"stored"`
+	StoredHex *string  `json:"stored_hex"`
+	Value     *string  `json:"value"`
+	Error     string   `json:"error"`
+}
+
+// TestCodecDecodeVectors는 공유 decode vector를 읽는다. 저장 cell은 encoder가 쓰는 형태로만 decode되고
+// 둘레의 공백이나 다른 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 HostDecode로,
+// 나머지는 Decode로 읽는다.
+func TestCodecDecodeVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	src, err := os.ReadFile("../../../tests/codec/decode-vectors.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct{ Vectors []decodeVector }
+	if err := json.Unmarshal(src, &f); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Vectors) == 0 {
+		t.Fatal("decode-vectors.json has no vectors")
+	}
+	for _, v := range f.Vectors {
+		var raw any
+		switch {
+		case v.Stored != nil:
+			raw = *v.Stored
+		case v.StoredHex != nil:
+			b, err := hex.DecodeString(*v.StoredHex)
+			if err != nil {
+				t.Fatalf("%s: stored_hex: %v", v.Name, err)
+			}
+			raw = b
+		default:
+			t.Fatalf("%s: no stored cell", v.Name)
+		}
+		var got any
+		codec, host := splitHost(v.Styles)
+		if len(codec) == 0 {
+			got, err = HostDecode(raw, host, "")
+		} else {
+			var styled StyledValue
+			styled, err = Decode(v.Styles, raw)
+			got, _ = styled.Data()
+		}
+		switch {
+		case v.Error != "":
+			if err == nil || ErrorCode(err) != v.Error {
+				t.Errorf("%s: got %#v, %v; want %s", v.Name, got, err, v.Error)
+			}
+		case err != nil:
+			t.Errorf("%s: %v", v.Name, err)
+		case v.Value == nil || got != *v.Value:
+			t.Errorf("%s: got %#v, want %v", v.Name, got, v.Value)
+		}
+	}
 }
 
 // TestCodecVectors: every PHP-produced vector decodes to the same value, and

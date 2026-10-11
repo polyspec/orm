@@ -137,7 +137,8 @@ def host_decode(raw, styles, aes_key: str):
     current = raw.encode('utf-8') if isinstance(raw, str) else bytes(raw)
     for style in reversed(styles):
         if style == 'hex':
-            source = current.decode('utf-8', 'replace').strip()
+            # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백이나 hex 숫자 밖의 byte는 CODEC_DECODE다.
+            source = current.decode('utf-8', 'replace')
             if len(source) % 2 != 0 or re.fullmatch(r'[0-9a-fA-F]*', source) is None:
                 raise CodecError('CODEC_DECODE', 'hex: odd length or non-hex input')
             current = bytes.fromhex(source)
@@ -172,11 +173,16 @@ def _text(data: bytes, operation: str) -> str:
 
 
 def _decode_base64(data: bytes) -> bytes:
-    source = _text(data, 'decode').strip()
+    # 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding bit는
+    # CODEC_DECODE다(docs/codec.md). 다시 encode한 text가 같아야 encoder가 쓴 형태다.
+    source = _text(data, 'decode')
     if len(source) % 4 != 0 or re.fullmatch(
             r'(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?', source) is None:
         raise CodecError('CODEC_DECODE', 'base64: bad input')
-    return base64.b64decode(source)
+    decoded = base64.b64decode(source)
+    if base64.b64encode(decoded).decode('ascii') != source:
+        raise CodecError('CODEC_DECODE', 'base64: bad input')
+    return decoded
 
 
 def _validate_codec_value(value, operation: str):

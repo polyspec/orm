@@ -49,7 +49,11 @@ final class Codec
                     }
                     break;
                 case 'base64':
-                    $v = base64_decode(trim($v), true);
+                    // 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding
+                    // bit는 CODEC_DECODE다(docs/codec.md). PHP의 strict mode도 공백과 빠진 padding을 받으므로 다시
+                    // encode한 text가 같은지 본다.
+                    $decoded = base64_decode($v, true);
+                    $v = $decoded !== false && base64_encode($decoded) === $v ? $decoded : false;
                     if ($v === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'base64: bad input');
                     }
@@ -266,7 +270,7 @@ final class Codec
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             switch ($styles[$i]) {
                 case 'hex':
-                    $cur = @hex2bin(trim($cur));
+                    $cur = strlen($cur) % 2 === 0 && strspn($cur, '0123456789abcdefABCDEF') === strlen($cur) ? hex2bin($cur) : false;
                     if ($cur === false) {
                         throw new OrmException(Code::CODEC_DECODE, 'hex: odd length or non-hex input');
                     }

@@ -731,7 +731,7 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 		case slices.Contains(sc.host, "aes"):
 			v, err = HostDecodeVersioned(v, sc.host, version, keyring)
 		case len(sc.host) > 0:
-			v, err = hostDecode(v, sc.host, "")
+			v, err = HostDecode(v, sc.host, "")
 		}
 		if err != nil {
 			return fmt.Errorf("%s.%s: %w", st.Assemble.Entity, sc.name, err)
