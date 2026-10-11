@@ -85,4 +85,7 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_in_subquery_integer_varchar() { compileCase('planner_rejects_in_subquery_integer_varchar'); },
   async planner_rejects_join_integer_varchar() { compileCase('planner_rejects_join_integer_varchar'); },
   async planner_rejects_relation_integer_varchar() { compileCase('planner_rejects_relation_integer_varchar'); },
+  async planner_rejects_upsert_primary_and_unique_key() { compileCase('planner_rejects_upsert_primary_and_unique_key'); },
+  async planner_rejects_upsert_unique_key_not_assigned() { compileCase('planner_rejects_upsert_unique_key_not_assigned'); },
+  async planner_rejects_upsert_without_a_key() { compileCase('planner_rejects_upsert_without_a_key'); },
 }, 60_000);

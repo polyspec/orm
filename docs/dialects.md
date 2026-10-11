@@ -14,7 +14,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
-| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (any unique key) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the first declared unique key fully covered by the inserted columns, else the PK | same as PostgreSQL |
+| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (meets only the one conflict key the validator allows) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the one conflict key the validator allows (an upsert has exactly one key that can meet the inserted row) | same as PostgreSQL |
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |
@@ -395,7 +395,7 @@ The DSN scheme `markdown://` selects the flowmark IR executor instead of a SQL d
 | `update` | supported | a target changed since it was read fails with `WRITE_CONFLICT`, never an overwrite |
 | `delete`, `restore` | supported | `restore` clears the soft delete column and holds unique keys while the row is deleted; deleting a referenced row is `FOREIGN_KEY` |
 | `optimistic` | supported | no match is `OPTIMISTIC_LOCK` |
-| `on_duplicate` | supported | the conflict target is any unique key (the MySQL rule); on a table with several unique keys this diverges from the PostgreSQL and SQLite target rule |
+| `on_duplicate` | supported | the conflict target is the one key that can meet the inserted row; an insert with `on_duplicate` that more than one key can meet, or that does not assign every column of its key, is `IR_INVALID`, so the three databases agree |
 | `lock` `update`, `share` | supported | accepted as no-ops: a server transaction already holds the corpus lock |
 | `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` | |
 | relations (`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | supported | assembled by the executor |

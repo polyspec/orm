@@ -3,6 +3,7 @@
 # (docs/protocol.md).
 from polyspec.orm.engine.dialect import value_function_units
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
+from polyspec.orm.engine.validate import conflict_key
 from polyspec.orm.errors import OrmError
 
 __all__ = ['Planner']
@@ -194,11 +195,8 @@ def _blind_index_source(ent: Entity, target: str) -> Field | None:
 
 
 def _conflict_target(ent: Entity, assignments) -> list:
-    inserted = {a['column'] for a in assignments}
-    for unique in ent.uniques:
-        if all(column in inserted for column in unique):
-            return list(unique)
-    return list(ent.primary_key)
+    """The columns of the one key an upsert conflicts on, which the validator has checked."""
+    return conflict_key(ent, assignments)
 
 
 def _style_input_type(style: str) -> str:

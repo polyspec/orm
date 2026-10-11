@@ -698,3 +698,24 @@ fn coverage_planner_rejects_relation_integer_varchar() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_relation_integer_varchar");
 }
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_upsert_primary_and_unique_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_upsert_primary_and_unique_key");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_upsert_unique_key_not_assigned() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_upsert_unique_key_not_assigned");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_upsert_without_a_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_upsert_without_a_key");
+}

@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 33221f9e46f39a3061232d8192d8f75ad76c3898edbec23879bc4ce002da3a6a -->
+<!-- source-sha256: 1cb929f859bc0317f3ad872a0ca02581391cbb115add4a77c4021f8981b689a7 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -14,7 +14,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | `Fulltext` / `FulltextBoolean` | `MATCH … AGAINST (… IN NATURAL LANGUAGE/BOOLEAN MODE)`, boolean value normalized (`+a +b*`) | `to_tsvector('simple', coalesce(a,'') || ' ' || …) @@ plainto_tsquery / websearch_to_tsquery('simple', ?)`, value trimmed only | **rejected** (FTS5 needs virtual tables) |
 | `forceIndex<Name>` | `FORCE INDEX (name)` | ignored (no hints) | `INDEXED BY "name"` |
 | insert id | `LAST_INSERT_ID()` (upsert adds `pk = LAST_INSERT_ID(pk)`) | `RETURNING pk` | `RETURNING pk` |
-| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (any unique key) | `ON CONFLICT (cols) DO UPDATE SET` — conflict target = the first declared unique key fully covered by the inserted columns, else the PK | same as PostgreSQL |
+| `duplication(model)` | `ON DUPLICATE KEY UPDATE` (validator가 허용한 충돌 key 하나만 만난다) | `ON CONFLICT (cols) DO UPDATE SET` — 충돌 대상은 validator가 허용한 충돌 key 하나다(upsert에는 삽입 행을 만날 수 있는 key가 정확히 하나다) | PostgreSQL과 같다 |
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |
@@ -390,7 +390,7 @@ DSN scheme `markdown://`은 SQL dialect 대신 flowmark IR executor를 고른다
 | `update` | 지원 | 읽은 뒤 대상이 바뀌었으면 `WRITE_CONFLICT`로 실패하며, 덮어쓰지 않는다 |
 | `delete`, `restore` | 지원 | `restore`는 soft delete column을 비우고, row가 삭제된 동안 unique key를 유지한다. 참조되는 row의 삭제는 `FOREIGN_KEY`다 |
 | `optimistic` | 지원 | 맞는 row가 없으면 `OPTIMISTIC_LOCK`이다 |
-| `on_duplicate` | 지원 | 충돌 대상은 임의의 unique key다(MySQL 규칙). unique key가 여럿인 table에서는 PostgreSQL과 SQLite의 대상 규칙과 다르다 |
+| `on_duplicate` | 지원 | 충돌 대상은 삽입 행을 만날 수 있는 key 하나다. 둘 이상의 key가 만날 수 있거나 그 key의 모든 컬럼을 할당하지 않는 `on_duplicate` insert는 `IR_INVALID`이므로 세 database가 일치한다 |
 | `lock` `update`, `share` | 지원 | 무동작으로 받아들인다. server 트랜잭션이 이미 corpus lock을 잡고 있다 |
 | `lock` `update_nowait`, `share_nowait` | `CAPABILITY_UNSUPPORTED` | |
 | 관계(`limit_per_parent`, `if_parent`, `flatten`, `key_by`, `no_cascade_delete`) | 지원 | executor가 조립한다 |

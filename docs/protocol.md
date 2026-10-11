@@ -39,7 +39,7 @@ Values never appear in the request. Every value is a parameter index into the cl
 | `load` | `insert` writes rows with their stored keys: it takes a value for the identity column ([load](#_1-6-load)) |
 | `set` | assignments of `insert` and `update` |
 | `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
-| `on_duplicate` | assignments applied when an inserted row meets an existing unique key |
+| `on_duplicate` | assignments applied when an inserted row meets an existing key; an insert with `on_duplicate` has exactly one key that can meet the inserted row (the primary key, unless the insert leaves it out, and each unique key) and assigns every column of it, else `IR_INVALID` "on_duplicate needs exactly one conflict key; %s can meet the row", because MySQL updates the row met on any unique key while PostgreSQL and SQLite name one target |
 | `optimistic` | `update` matches only when the column still equals the parameter; no match returns `OPTIMISTIC_LOCK` |
 | `lock` | root row selection only; the client allows it only inside a transaction |
 

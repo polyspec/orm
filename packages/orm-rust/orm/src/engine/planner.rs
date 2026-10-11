@@ -301,15 +301,9 @@ fn blind_index_source<'e>(ent: &'e Entity, target: &str) -> Option<&'e Field> {
     ent.fields.iter().find(|c| c.blind_index.as_deref() == Some(target))
 }
 
-/// The unique key an upsert conflicts on: the first declared unique key whose
-/// columns are all inserted, else the primary key.
+/// The columns of the one key an upsert conflicts on, which the validator has checked.
 fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Vec<String> {
-    for uk in &ent.uniques {
-        if uk.columns.iter().all(|c| assigned(set, c)) {
-            return uk.columns.clone();
-        }
-    }
-    ent.primary_key.clone()
+    super::validate::conflict_key(ent, set).unwrap_or_default()
 }
 
 /// column 값 slot이 싣는 precision과 scale이다: decimal(p,s), time(p), datetime(p).
