@@ -49,7 +49,8 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
     switch (styles[index]) {
       case 'hex': {
         const source = current.toString();
-        if (source.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(source)) throw new CodecError('CODEC_DECODE', 'hex: odd length or non-hex input');
+        // encoder와 MySQL HEX()는 대문자 hex만 쓴다.
+        if (source.length % 2 !== 0 || !/^[0-9A-F]*$/.test(source)) throw new CodecError('CODEC_DECODE', 'hex: odd length or non-hex input');
         current = Buffer.from(source, 'hex');
         break;
       }

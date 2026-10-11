@@ -545,8 +545,9 @@ pub fn hex_upper(b: &[u8]) -> String {
     s
 }
 
-/// `UNHEX(...)`: either case. The text is decoded exactly: white space or any
-/// other byte outside the hex digits is `CODEC_DECODE` (docs/codec.md).
+/// Reads the upper-case hex text that `hex_upper` and MySQL `HEX()` write. The
+/// text is decoded exactly: a lower-case letter, white space or any other byte
+/// outside the upper-case hex digits is `CODEC_DECODE` (docs/codec.md).
 pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
     let s = s.as_bytes();
     if !s.len().is_multiple_of(2) {
@@ -555,7 +556,6 @@ pub fn hex_decode(s: &str) -> Result<Vec<u8>> {
     let nibble = |c: u8| -> Result<u8> {
         match c {
             b'0'..=b'9' => Ok(c - b'0'),
-            b'a'..=b'f' => Ok(c - b'a' + 10),
             b'A'..=b'F' => Ok(c - b'A' + 10),
             _ => Err(err(CODEC_DECODE, format!("hex: invalid byte {c:#x}"))),
         }
@@ -685,7 +685,7 @@ mod tests {
             let styles: Vec<String> = v["styles"].as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_owned()).collect();
             let raw = match (v["stored"].as_str(), v["stored_hex"].as_str()) {
                 (Some(text), _) => Val::Str(text.to_owned()),
-                (None, Some(hex)) => Val::Bytes(hex_decode(hex).unwrap()),
+                (None, Some(hex)) => Val::Bytes(hex_decode(&hex.to_ascii_uppercase()).unwrap()),
                 _ => panic!("{name}: no stored cell"),
             };
             let host = styles.iter().all(|s| s == "hex" || s == "ip");
