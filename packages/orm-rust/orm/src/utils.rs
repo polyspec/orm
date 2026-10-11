@@ -771,10 +771,9 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
             let on = Observed { db, transaction: number };
             let added = add_tables_and_columns_on(on, &mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
             let check = "SELECT COUNT(*) FROM pragma_foreign_key_check";
-            let broken = events::guarded(db, inside(KIND_SCHEMA, check), async {
-                sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from)
-            })
-            .await?;
+            let broken =
+                events::guarded(db, inside(KIND_SCHEMA, check), async { sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from) })
+                    .await?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
             }
