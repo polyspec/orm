@@ -92,7 +92,7 @@ Index, unique key, foreign key and check names are unique in the whole schema, a
 
 Every character column uses one binary collation: MySQL `utf8mb4_0900_bin`, PostgreSQL `COLLATE "C"`, SQLite `BINARY`. Every connection reads and writes `datetime` in UTC. SQLite tables are not STRICT, and every SQLite connection enables `foreign_keys`. The exact CHECK texts belong to the renderer version and are listed in [dialects](dialects.md#schema-definitions).
 
-Not supported: 8-bit and 24-bit integers, unsigned types, `f32`, `char(n)`, `binary(n)`, `varbinary(n)`, native enums (use `varchar(n)` with an `in` check), native JSON (use `text` with the `ordered_json` codec), time zone instants, generated columns, and expression defaults other than `now`.
+Not supported: 8-bit and 24-bit integers, unsigned types, `f32`, `char(n)`, `binary(n)`, `varbinary(n)`, native enums (use `varchar(n)` with an `in` check), native JSON (use `text` with the `ordered_json` codec), time zone instants, generated columns, and expression defaults other than `now`. A column line takes only `name type [null] [identity] [default value]` (`engine/dbspec/parse.go`), so no document produces a generated column. Introspection reports a column that has a generation expression as unsupported, with the reason of its type, and no client reads the expression text; the MySQL double encoding of a non-ASCII literal in `GENERATION_EXPRESSION` therefore reaches no client (see [dialects](dialects.md)).
 
 ### Keys and indexes
 
