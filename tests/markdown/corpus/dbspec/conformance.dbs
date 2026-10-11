@@ -1,0 +1,51 @@
+dbspec 1 conformance
+
+table people {
+  id varchar(32)
+  name varchar(64)
+  email varchar(64) null
+  age i32 null
+  active bool default true
+  score decimal(6,2) default 0.00
+  joined datetime(0) default now
+  deleted_at datetime(6) null
+  updated_at datetime(6) null
+  primary key (id)
+  unique uq_people_email (email)
+  settings {
+    key_prefix 'P'
+    store document table
+    title name
+    soft_delete deleted_at
+    updated updated_at
+  }
+}
+
+table tasks {
+  id varchar(32)
+  owner varchar(32)
+  title varchar(255)
+  points i32
+  due date null
+  done bool default false
+  primary key (id)
+  index ix_tasks_owner (owner)
+  foreign key fk_tasks_owner (owner) references people (id) on delete restrict on update restrict
+  settings {
+    key_prefix 'T'
+    store document table
+    title title
+  }
+}
+
+table logs {
+  id i64 identity
+  task varchar(32)
+  note varchar(255)
+  primary key (id)
+  index ix_logs_task (task)
+  foreign key fk_logs_task (task) references tasks (id) on delete restrict on update restrict
+  settings {
+    store document table
+  }
+}
