@@ -34,7 +34,7 @@ func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 	for _, c := range []struct{ name, plain string }{
 		{"aes_hex_email", "email@example.test"}, {"aes_hex_phone", "01012345678"},
 	} {
-		decoded, err := hostDecode(rotated[c.name], []string{"aes", "hex"}, "new")
+		decoded, err := HostDecode(rotated[c.name], []string{"aes", "hex"}, "new")
 		if err != nil || decoded != c.plain {
 			t.Fatalf("%s = %q, %v", c.name, decoded, err)
 		}

@@ -78,7 +78,12 @@ func Decode(styles []string, raw any) (StyledValue, error) {
 				return StyledValue{}, codecErr(CodeCodecDecode, "gz: %v", closeErr)
 			}
 		case "base64":
-			v, err = base64.StdEncoding.DecodeString(strings.TrimSpace(string(cur)))
+			// 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌
+			// padding bit는 CODEC_DECODE다(docs/codec.md). Go의 decoder는 \r과 \n을 건너뛰므로 따로 거절한다.
+			if bytes.ContainsAny(cur, "\r\n") {
+				return StyledValue{}, codecErr(CodeCodecDecode, "base64: line break in stored text")
+			}
+			v, err = base64.StdEncoding.Strict().DecodeString(string(cur))
 			if err != nil {
 				return StyledValue{}, codecErr(CodeCodecDecode, "base64: %v", err)
 			}

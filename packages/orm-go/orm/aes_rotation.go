@@ -34,7 +34,7 @@ func HostDecodeVersioned(raw any, styles []string, version int32, keyring AESKey
 	if !ok {
 		return nil, fmt.Errorf("aes key version %d is not declared", version)
 	}
-	return hostDecode(raw, styles, key)
+	return HostDecode(raw, styles, key)
 }
 
 // NewAESKeyring validates a non-empty key for every declared version and a
@@ -91,7 +91,7 @@ func RotateAESRow(row map[string]any, versionColumn string, columns []AESRotatio
 		if !exists {
 			return nil, fmt.Errorf("aes column %s is missing", column.Name)
 		}
-		plain, err := hostDecode(value, column.Styles, oldKey)
+		plain, err := HostDecode(value, column.Styles, oldKey)
 		if err != nil {
 			return nil, fmt.Errorf("aes column %s: %w", column.Name, err)
 		}

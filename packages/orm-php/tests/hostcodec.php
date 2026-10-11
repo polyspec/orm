@@ -77,8 +77,29 @@ try {
     check($e->code_ === Code::CODEC_UNSUPPORTED, 'codec style as host stage → CODEC_UNSUPPORTED');
 }
 
+// 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고 그 밖의
+// 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 hostDecode로, 나머지는 decode로 읽는다.
+$decodeVectors = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/tests/codec/decode-vectors.json'), true, 512, JSON_THROW_ON_ERROR)['vectors'];
+check($decodeVectors !== [], 'decode-vectors.json has vectors');
+foreach ($decodeVectors as $v) {
+    $raw = array_key_exists('stored', $v) ? $v['stored'] : (string) hex2bin($v['stored_hex']);
+    $host = array_diff($v['styles'], ['hex', 'ip']) === [];
+    $got = null;
+    $code = '';
+    try {
+        $got = $host ? Codec::hostDecode($raw, $v['styles'], '') : Codec::decode($v['styles'], $raw)->payload();
+    } catch (OrmException $e) {
+        $code = $e->code_;
+    }
+    if (array_key_exists('error', $v)) {
+        check($code === $v['error'], "{$v['name']}: got " . ($code !== '' ? $code : json_encode($got)) . ", want {$v['error']}");
+    } else {
+        check($code === '' && $got === $v['value'], "{$v['name']}: got " . ($code !== '' ? $code : json_encode($got)) . ', want ' . json_encode($v['value']));
+    }
+}
+
 if ($fail > 0) {
     throw new RuntimeException("$fail check(s) failed; each FAIL line above names one");
 }
-testcase_step("$n authenticated AES vectors and IP packing checked");
+testcase_step("$n authenticated AES vectors, IP packing and " . count($decodeVectors) . ' decode vectors checked');
 testcase_end();

@@ -151,4 +151,26 @@ await suite.run('codec-vector', COMPUTE, async () => {
   }
   if (failures > 0) throw new Error(`TypeScript codec vectors: ${failures} failure(s)`);
 });
+// 공유 decode vector(tests/codec/decode-vectors.json): 저장 cell은 encoder가 쓰는 형태로만 decode되고 그 밖의
+// 형태는 CODEC_DECODE다. aes가 없는 host stage 목록은 key 없는 hostDecode로, 나머지는 decodeCodec로 읽는다.
+const decodeVectors = JSON.parse(await readFile('tests/codec/decode-vectors.json', 'utf8')).vectors;
+await suite.run('codec-decode-vector', COMPUTE, async () => {
+  if (decodeVectors.length === 0) throw new Error('decode-vectors.json has no vectors');
+  const wrong = [];
+  for (const vector of decodeVectors) {
+    const raw = vector.stored !== undefined ? Buffer.from(vector.stored, 'utf8') : Buffer.from(vector.stored_hex, 'hex');
+    const host = vector.styles.every(style => style === 'hex' || style === 'ip');
+    let got;
+    let code = '';
+    try {
+      got = host ? hostDecode(vector.stored ?? raw, vector.styles, '') : decodeCodec(vector.styles, raw).payload();
+    } catch (error) {
+      code = error instanceof CodecError ? error.code : String(error);
+    }
+    if (vector.error !== undefined ? code !== vector.error : (code !== '' || got !== vector.value)) {
+      wrong.push(`${vector.name}: got ${code || JSON.stringify(got)}, want ${vector.error ?? JSON.stringify(vector.value)}`);
+    }
+  }
+  if (wrong.length > 0) throw new Error(`TypeScript decode vectors:\n${wrong.join('\n')}`);
+});
 suite.finish();

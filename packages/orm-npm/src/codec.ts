@@ -48,7 +48,7 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
   for (let index = styles.length - 1; index >= 0; index--) {
     switch (styles[index]) {
       case 'hex': {
-        const source = current.toString().trim();
+        const source = current.toString();
         if (source.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(source)) throw new CodecError('CODEC_DECODE', 'hex: odd length or non-hex input');
         current = Buffer.from(source, 'hex');
         break;
@@ -132,11 +132,15 @@ function string(value: Uint8Array, operation: 'decode' | 'encode'): string {
 }
 
 function decodeBase64(value: Uint8Array): Uint8Array {
-  const source = string(value, 'decode').trim();
-  if (source.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(source)) {
+  // 저장 cell은 encoder가 쓰는 형태로만 decode한다: 공백, 줄바꿈, 빠진 padding, 0이 아닌 padding bit는
+  // CODEC_DECODE다(docs/codec.md). 다시 encode한 text가 같아야 encoder가 쓴 형태다. byte를 그대로 읽어야
+  // UTF-8 decoder가 앞의 BOM을 지우지 않는다.
+  const source = Buffer.from(value).toString('latin1');
+  const bytes = Buffer.from(source, 'base64');
+  if (!/^[A-Za-z0-9+/=]*$/.test(source) || bytes.toString('base64') !== source) {
     throw new CodecError('CODEC_DECODE', 'base64: bad input');
   }
-  return new Uint8Array(Buffer.from(source, 'base64'));
+  return new Uint8Array(bytes);
 }
 
 /**

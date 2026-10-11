@@ -18,7 +18,7 @@
     "docs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "go-model-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/orm-go/model/generate.go", "generator/*.go", "cmd/orm-gen/*.go"]},
-    "client-unit-check": {"scope": "owner", "needs": ["php", "composer"], "inputs": ["packages/orm-php/tests/dsn.php", "packages/orm-php/tests/relation_keys.php", "packages/orm-php/tests/hostcodec.php", "packages/orm-php/tests/engine_test.php", "tests/ir/validate.json", "packages/orm-php/tests/runtime_model_test.php", "packages/orm-php/tests/orm_gen_test.php", "packages/orm-php/tests/perf_extensions_test.php"]},
+    "client-unit-check": {"scope": "owner", "needs": ["php", "composer"], "inputs": ["packages/orm-php/tests/dsn.php", "packages/orm-php/tests/relation_keys.php", "packages/orm-php/tests/hostcodec.php", "tests/codec/decode-vectors.json", "packages/orm-php/tests/engine_test.php", "tests/ir/validate.json", "packages/orm-php/tests/runtime_model_test.php", "packages/orm-php/tests/orm_gen_test.php", "packages/orm-php/tests/perf_extensions_test.php"]},
     "php-min-check": {"scope": "owner", "needs": ["php-min", "composer"], "inputs": ["scripts/php/php-min.sh"]},
     "ts-check": {"scope": "suite", "needs": ["go", "node-modules", "databases"]},
     "ts-min-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["scripts/typescript/node-min.sh"]},
@@ -64,7 +64,7 @@
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
-    "python-check": {"scope": "owner", "needs": ["python"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "contracts/fixtures/planner.json", "tests/ir/validate.json"]}
+    "python-check": {"scope": "owner", "needs": ["python"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},

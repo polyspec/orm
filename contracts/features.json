@@ -4068,6 +4068,7 @@
       "fixtures": [
         "tests/codec/aes-vectors.json",
         "tests/codec/vectors.json",
+        "tests/codec/decode-vectors.json",
         "contracts/fixtures/authenticated_encryption.json",
         "packages/orm-go/orm/coverage_fixture_test.go",
         "packages/orm-php/tests/coverage_cases.php",
@@ -4091,7 +4092,8 @@
         "packages/orm-php/tests/coverage_authenticated_encryption.php",
         "packages/orm-rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/orm-npm/tests/coverage_authenticated_encryption.mjs",
-        "contracts/fixtures/secret_config.dbs"
+        "contracts/fixtures/secret_config.dbs",
+        "packages/orm-python/tests/test_codec_decode_vectors.py"
       ],
       "docs": [
         "docs/codec.md",
@@ -4110,6 +4112,7 @@
             "packages/orm-go/orm/coverage_authenticated_encryption_test.go",
             "packages/orm-go/orm/hostcodec_test.go",
             "tests/codec/vectors.json",
+            "tests/codec/decode-vectors.json",
             "contracts/fixtures/authenticated_encryption.json"
           ]
         },
@@ -4126,7 +4129,8 @@
           "command": "php packages/orm-php/tests/hostcodec.php",
           "shard": "other",
           "inputs": [
-            "packages/orm-php/tests/hostcodec.php"
+            "packages/orm-php/tests/hostcodec.php",
+            "tests/codec/decode-vectors.json"
           ]
         },
         {
@@ -4136,7 +4140,8 @@
           "inputs": [
             "packages/orm-npm/tests/codec-vector.mjs",
             "tests/codec/aes-vectors.json",
-            "tests/codec/vectors.json"
+            "tests/codec/vectors.json",
+            "tests/codec/decode-vectors.json"
           ]
         },
         {
@@ -4144,7 +4149,8 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs encryption-codec-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" codec",
           "shard": "rust",
           "inputs": [
-            "packages/orm-rust/orm/src/codec.rs"
+            "packages/orm-rust/orm/src/codec.rs",
+            "tests/codec/decode-vectors.json"
           ]
         },
         {

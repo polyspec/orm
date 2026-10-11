@@ -1,0 +1,33 @@
+{
+  "comment": "Decoding of a stored cell is exact: a cell decodes only in the form the encoder writes, and anything else is CODEC_DECODE (docs/codec.md, Decoding is exact). A case gives the stage list in write order, the stored cell as text (stored) or as the hex of its bytes (stored_hex), and the decoded value or the error code. A list of host stages without aes (hex, ip) decodes with the host decode of the client and no key; any other list decodes with the codec decode. Base64 is the padded standard alphabet with zero padding bits, without white space or line breaks; hex accepts both letter cases, as MySQL UNHEX does on the SQL side of the same stage.",
+  "vectors": [
+    {"name": "base64/exact", "styles": ["serialize", "base64"], "stored": "czoyOiJoaSI7", "value": "hi"},
+    {"name": "base64/exact-padded", "styles": ["serialize", "base64"], "stored": "czoxOiJoIjs=", "value": "h"},
+    {"name": "base64/leading-space", "styles": ["serialize", "base64"], "stored": " czoyOiJoaSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/trailing-space", "styles": ["serialize", "base64"], "stored": "czoyOiJoaSI7 ", "error": "CODEC_DECODE"},
+    {"name": "base64/trailing-newline", "styles": ["serialize", "base64"], "stored": "czoyOiJoaSI7\n", "error": "CODEC_DECODE"},
+    {"name": "base64/leading-nul", "styles": ["serialize", "base64"], "stored": "\u0000czoyOiJoaSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/leading-form-feed", "styles": ["serialize", "base64"], "stored": "\fczoyOiJoaSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/leading-file-separator", "styles": ["serialize", "base64"], "stored": "\u001cczoyOiJoaSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/leading-byte-order-mark", "styles": ["serialize", "base64"], "stored": "﻿czoyOiJoaSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/inner-newline", "styles": ["serialize", "base64"], "stored": "czoyOiJo\naSI7", "error": "CODEC_DECODE"},
+    {"name": "base64/missing-padding", "styles": ["serialize", "base64"], "stored": "czoxOiJoIjs", "error": "CODEC_DECODE"},
+    {"name": "base64/non-alphabet", "styles": ["serialize", "base64"], "stored": "czoyOiJo*SI7", "error": "CODEC_DECODE"},
+    {"name": "base64/non-canonical-bits", "styles": ["serialize", "base64"], "stored": "czoxOiJoIjt=", "error": "CODEC_DECODE"},
+    {"name": "hex/exact", "styles": ["hex"], "stored": "6869", "value": "hi"},
+    {"name": "hex/lowercase", "styles": ["hex"], "stored": "6a6b", "value": "jk"},
+    {"name": "hex/exact-4f", "styles": ["hex"], "stored": "4F", "value": "O"},
+    {"name": "hex/leading-space", "styles": ["hex"], "stored": " 4F", "error": "CODEC_DECODE"},
+    {"name": "hex/trailing-newline", "styles": ["hex"], "stored": "4F\n", "error": "CODEC_DECODE"},
+    {"name": "hex/leading-nul", "styles": ["hex"], "stored": "\u00004F", "error": "CODEC_DECODE"},
+    {"name": "hex/leading-form-feed", "styles": ["hex"], "stored": "\f4F", "error": "CODEC_DECODE"},
+    {"name": "hex/leading-file-separator", "styles": ["hex"], "stored": "\u001c4F", "error": "CODEC_DECODE"},
+    {"name": "hex/leading-byte-order-mark", "styles": ["hex"], "stored": "﻿4F", "error": "CODEC_DECODE"},
+    {"name": "hex/trailing-space", "styles": ["hex"], "stored": "6869 ", "error": "CODEC_DECODE"},
+    {"name": "hex/odd-length", "styles": ["hex"], "stored": "686", "error": "CODEC_DECODE"},
+    {"name": "hex/non-hex", "styles": ["hex"], "stored": "68zz", "error": "CODEC_DECODE"},
+    {"name": "ip/v4", "styles": ["ip"], "stored_hex": "7f000001", "value": "127.0.0.1"},
+    {"name": "ip/v6", "styles": ["ip"], "stored_hex": "00000000000000000000000000000001", "value": "::1"},
+    {"name": "ip/short", "styles": ["ip"], "stored_hex": "7f0000", "error": "CODEC_DECODE"}
+  ]
+}
