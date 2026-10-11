@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: faf456a26ee93f3760ad7170803a91deb3219a07406fd59c87689b38f8cec685 -->
+<!-- source-sha256: 25e99dbd2b2cb920c1a53ff487618897aaf434963b6620669ce85dbf83c0a738 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -893,4 +893,5 @@
 - [ ] T109 `ip` encoder는 공백이 있는 입력을 잘라 내지 않고 거절한다. 원인: protocol 결함 수정. encoder들은 `ip` 입력을 pack하기 전에 둘레의 공백을 지운다. 그래서 서로 다른 두 입력이 같은 byte로 저장되고, 저장된 값이 입력으로 되돌아오지 않는다. T74는 decode 쪽에서 이를 거절한다(T74에서 발견). 완료 기준: 앞, 뒤, 안쪽 공백을 가진 공유 case가 여섯 구현 모두에서 `CODEC_ENCODE`로 끝난다. 먼저 red. docs/codec.md(EN과 ko)가 이를 적는다.
 - [ ] T111 PHP 확장이 자기가 구현하는 dbspec 공유 suite를 실행한다. 원인: protocol 결함 수정. PHP 확장은 dbspec 표면을 구현하지만 schema-definition suite와 `tests/dbspec/cases.json`의 `sets` 절에 대한 binding이 없어서, 그 parse와 set 결과가 다른 다섯 구현과 비교되지 않는다(T77의 선언에서 발견). 완료 기준: 확장이 두 suite를 자기 package에서 실행하고, 어긋나면 먼저 red를 보이며, parity 검사가 확장에 대해 빠진 binding을 보고하지 않는다.
 - [ ] T112 모든 공유 vector case는 모든 runner가 보고할 수 있는 이름을 가진다. 원인: protocol 결함 수정. `tests/codec/vectors.json`은 Go subtest가 보고할 수 없는 `/`로 case 이름을 짓고(`json/null`), `tests/codec/aes-vectors.json`에는 case 이름이 없다. 그래서 Go codec binding을 선언할 수 없고, AES case는 key로 이름이 붙는다(T77의 선언에서 발견). 완료 기준: `/`와 공백이 없는 case 이름, 모든 AES vector의 명시적 `name`, 여섯 구현의 reader가 이를 따르며, parity 선언이 Go를 codec suite에 binding한다.
+- [ ] T113 Python은 어느 기계에서나 database datetime을 UTC로 읽는다. 원인: protocol 결함 수정. PyMySQL과 psycopg는 `datetime`과 `timestamp` column을 naive 값으로 돌려주는데, `_time_form`(`packages/orm-python/src/polyspec/orm/database.py`)이 거기에 `astimezone(utc)`를 부르고, Python은 그 값을 기계의 local 시각으로 읽는다. 그래서 +0900 기계에서 읽은 `updated_ts`가 아홉 시간 이르게 돌아온다. 그 결과 `write_cycle`의 낙관적 update가 어떤 행에도 맞지 않아 MySQL과 PostgreSQL에서 `OPTIMISTIC_LOCK`으로 실패하고, SQLite(text)는 통과한다. UTC 기계의 CI에서는 드러나지 않는다(T74 검증 중 발견). 완료 기준: conformance runner를 UTC가 아닌 `TZ`로 실행해 먼저 Python에서 MySQL과 PostgreSQL이 red임을 보이고, 모든 client가 naive database datetime을 UTC로 읽으며, 다섯 client가 그 `TZ`에서 모든 conformance case에 일치한다. docs/dialects.md(EN과 ko)가 이를 적는다.
 - [ ] T69 Release 0.0.8. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.8의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
