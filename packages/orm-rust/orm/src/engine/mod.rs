@@ -27,6 +27,10 @@ pub(crate) fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan>
 mod coverage_planner;
 
 #[cfg(test)]
+#[path = "../../tests/unit/param_uses.rs"]
+mod param_uses_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
