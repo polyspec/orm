@@ -122,6 +122,7 @@ func (s *shape) request(r *ir.Request) {
 	s.int(r.IRVersion)
 	s.str(r.ManifestHash)
 	s.str(r.Kind)
+	s.bool(r.Load)
 	s.query(&r.Query)
 	s.assigns(r.Set)
 	s.assigns(r.OnDuplicate)

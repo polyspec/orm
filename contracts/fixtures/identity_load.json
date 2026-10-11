@@ -1,0 +1,827 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `load_probe` (`seq`, `label`) VALUES (?, ?)",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES ($1, $2) RETURNING \"seq\"",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES (?, ?) RETURNING \"seq\"",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ]
+      },
+      "id": "load_insert",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 2,
+        "set": [
+          {
+            "column": "seq",
+            "p": 0
+          },
+          {
+            "column": "label",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `load_probe` (`seq`, `label`) VALUES (?, ?), (?, ?)",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES ($1, $2), ($3, $4)",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_probe\" (\"seq\", \"label\") VALUES (?, ?), (?, ?)",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ]
+      },
+      "id": "load_insert_rows",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 4,
+        "rows": [
+          [
+            2,
+            3
+          ]
+        ],
+        "set": [
+          {
+            "column": "seq",
+            "p": 0
+          },
+          {
+            "column": "label",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO `load_note` (`code`, `body`) VALUES (?, ?)",
+            "tables": [
+              "load_note"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_note\" (\"code\", \"body\") VALUES ($1, $2)",
+            "tables": [
+              "load_note"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "INSERT INTO \"load_note\" (\"code\", \"body\") VALUES (?, ?)",
+            "tables": [
+              "load_note"
+            ]
+          }
+        ]
+      },
+      "id": "load_insert_without_identity",
+      "input": {
+        "entity": "load_note",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 2,
+        "set": [
+          {
+            "column": "code",
+            "p": 0
+          },
+          {
+            "column": "body",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "cannot set identity column seq"
+      },
+      "id": "insert_refuses_identity",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 2,
+        "set": [
+          {
+            "column": "seq",
+            "p": 0
+          },
+          {
+            "column": "label",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "load of load_probe needs a value for the identity column seq"
+      },
+      "id": "load_needs_identity_value",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 1,
+        "set": [
+          {
+            "column": "label",
+            "p": 0
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "set load_probe.seq to null but column is NOT NULL"
+      },
+      "id": "load_refuses_null_identity",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 1,
+        "set": [
+          {
+            "column": "seq",
+            "null": true
+          },
+          {
+            "column": "label",
+            "p": 0
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "load is only valid on insert without on_duplicate"
+      },
+      "id": "load_only_on_insert",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "update",
+        "load": true,
+        "n_params": 2,
+        "set": [
+          {
+            "column": "label",
+            "p": 0
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "eq",
+                "p": 1
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "load is only valid on insert without on_duplicate"
+      },
+      "id": "load_refuses_on_duplicate",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "insert",
+        "load": true,
+        "n_params": 2,
+        "on_duplicate": [
+          {
+            "column": "label",
+            "p": 1
+          }
+        ],
+        "set": [
+          {
+            "column": "seq",
+            "p": 0
+          },
+          {
+            "column": "label",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "ALTER TABLE `load_probe` AUTO_INCREMENT = 1",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT setval(pg_get_serial_sequence('\"load_probe\"', 'seq'), COALESCE(MAX(\"seq\"), 0) + 1, false) FROM \"load_probe\"",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(\"seq\"), 0) FROM \"load_probe\") WHERE name = 'load_probe'",
+            "tables": [
+              "load_probe"
+            ]
+          }
+        ]
+      },
+      "id": "restart_identity",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "restart_identity",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "restart_identity of load_note, which has no identity column"
+      },
+      "id": "restart_identity_needs_identity",
+      "input": {
+        "entity": "load_note",
+        "ir_version": 1,
+        "kind": "restart_identity",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID",
+        "message": "restart_identity takes no set, rows, on_duplicate, where or optimistic"
+      },
+      "id": "restart_identity_takes_only_entity",
+      "input": {
+        "entity": "load_probe",
+        "ir_version": 1,
+        "kind": "restart_identity",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "seq",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "rows": [
+          [
+            3,
+            "b"
+          ],
+          [
+            7,
+            "a"
+          ],
+          [
+            8,
+            "c"
+          ]
+        ]
+      },
+      "id": "execute_load_then_restart",
+      "operation": "execute",
+      "steps": [
+        {
+          "params": [
+            7,
+            "a"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "load": true,
+            "n_params": 2,
+            "set": [
+              {
+                "column": "seq",
+                "p": 0
+              },
+              {
+                "column": "label",
+                "p": 1
+              }
+            ]
+          }
+        },
+        {
+          "params": [
+            3,
+            "b"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "load": true,
+            "n_params": 2,
+            "set": [
+              {
+                "column": "seq",
+                "p": 0
+              },
+              {
+                "column": "label",
+                "p": 1
+              }
+            ]
+          }
+        },
+        {
+          "params": [],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "restart_identity",
+            "n_params": 0
+          }
+        },
+        {
+          "params": [
+            "c"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "expected": {
+        "rows": [
+          [
+            1,
+            "a"
+          ],
+          [
+            2,
+            "b"
+          ],
+          [
+            3,
+            "d"
+          ]
+        ]
+      },
+      "id": "execute_restart_after_delete",
+      "operation": "execute",
+      "steps": [
+        {
+          "params": [
+            "a"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        },
+        {
+          "params": [
+            "b"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        },
+        {
+          "params": [
+            "c"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        },
+        {
+          "params": [
+            3
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "delete",
+            "n_params": 1,
+            "where": {
+              "items": [
+                {
+                  "pred": {
+                    "column": "seq",
+                    "op": "eq",
+                    "p": 0
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "params": [],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "restart_identity",
+            "n_params": 0
+          }
+        },
+        {
+          "params": [
+            "d"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "expected": {
+        "rows": [
+          [
+            1,
+            "a"
+          ]
+        ]
+      },
+      "id": "execute_restart_of_empty_table",
+      "operation": "execute",
+      "steps": [
+        {
+          "params": [],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "restart_identity",
+            "n_params": 0
+          }
+        },
+        {
+          "params": [
+            "a"
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "n_params": 1,
+            "set": [
+              {
+                "column": "label",
+                "p": 0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "expected": {
+        "rows": []
+      },
+      "id": "execute_refuses_read",
+      "operation": "execute",
+      "steps": [
+        {
+          "error": "IR_INVALID",
+          "message": "execute runs a statement without rows; the statement is a read",
+          "params": [],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "all",
+            "n_params": 0
+          }
+        }
+      ]
+    },
+    {
+      "expected": {
+        "rows": []
+      },
+      "id": "execute_refuses_missing_parameter",
+      "operation": "execute",
+      "steps": [
+        {
+          "error": "IR_INVALID",
+          "message": "bind slot 1 reads parameter 1, but execute has 1 parameters",
+          "params": [
+            7
+          ],
+          "request": {
+            "entity": "load_probe",
+            "ir_version": 1,
+            "kind": "insert",
+            "load": true,
+            "n_params": 2,
+            "set": [
+              {
+                "column": "seq",
+                "p": 0
+              },
+              {
+                "column": "label",
+                "p": 1
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "feature": "identity_load",
+  "fixture": "contracts/fixtures/identity_load.dbs",
+  "read": {
+    "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
+    "postgres": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\"",
+    "sqlite": "SELECT \"seq\", \"label\" FROM \"load_probe\" ORDER BY \"seq\""
+  }
+}

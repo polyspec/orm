@@ -23,8 +23,11 @@ type Request struct {
 	IRVersion int `json:"ir_version"`
 	// ManifestHash는 request를 만든 generated code의 manifestHash다.
 	ManifestHash string `json:"manifest_hash"`
-	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete restore
+	Kind         string `json:"kind"` // one all count group_count sum avg paginate insert update delete restore restart_identity
 	Query
+	// Load은 insert가 행을 저장된 key 그대로 적재한다는 뜻이다: identity column의 값을
+	// 받고, identity가 있는 table이면 그 값을 요구한다. on_duplicate와 함께 쓰지 않는다.
+	Load        bool     `json:"load,omitempty"`
 	Set         []Assign `json:"set,omitempty"`
 	OnDuplicate []Assign `json:"on_duplicate,omitempty"` // insert: assignments applied when the unique key already exists
 	// Rows holds the parameters of each additional inserted row, in the
@@ -308,9 +311,16 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("SCHEMA_HASH_MISMATCH", "client %s, engine %s", r.ManifestHash, m.ManifestHash)
 	}
 	switch r.Kind {
-	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete", "restore":
+	case "one", "all", "count", "group_count", "sum", "avg", "paginate", "insert", "update", "delete", "restore", "restart_identity":
 	default:
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
+	}
+	if r.Load && (r.Kind != "insert" || len(r.OnDuplicate) > 0) {
+		return errf("IR_INVALID", "load is only valid on insert without on_duplicate")
+	}
+	// restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+	if r.Kind == "restart_identity" && (len(r.Set) > 0 || len(r.Rows) > 0 || len(r.OnDuplicate) > 0 || r.Where != nil || r.Optimistic != nil) {
+		return errf("IR_INVALID", "restart_identity takes no set, rows, on_duplicate, where or optimistic")
 	}
 	v := &validator{m: m, n: r.NParams}
 	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false); err != nil {

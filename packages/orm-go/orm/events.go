@@ -124,10 +124,13 @@ func (d *DB) statementDone(kind string, tables []string, tx int64, sqlText strin
 	return err
 }
 
-// statementKind는 planner가 쓴 statement의 kind다: SQL의 첫 단어다.
+// statementKind는 planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는
+// MySQL identity restart의 schema statement다.
 func statementKind(sqlText string) string {
 	verb, _, _ := strings.Cut(strings.TrimSpace(sqlText), " ")
 	switch strings.ToUpper(verb) {
+	case "ALTER":
+		return KindSchema
 	case "INSERT":
 		return KindInsert
 	case "UPDATE":

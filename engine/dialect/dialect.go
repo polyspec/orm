@@ -56,6 +56,14 @@ type Dialect interface {
 	TupleIn(cols []string, rows [][]string, negate bool) string
 	// Random renders the random ordering function.
 	Random() string
+	// RestartIdentity은 table의 identity column을 가장 큰 key 다음 값에서 다시
+	// 시작하는 statement다. 빈 table이면 다음 key는 1이다.
+	RestartIdentity(table, column string) string
+}
+
+// Literal은 text를 SQL 문자열 literal로 quote한다.
+func Literal(text string) string {
+	return "'" + strings.ReplaceAll(text, "'", "''") + "'"
 }
 
 // QuoteWith is a helper for dialects using a single quote character.
