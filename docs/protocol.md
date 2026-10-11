@@ -9,7 +9,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
 {
   "ir_version": 1,
   "manifest_hash": "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -21,6 +21,7 @@ A client renders the model built with the [DSL](dsl.md) into the request below, 
   "force_index": "ix_service",
   "lock": "update | share | update_nowait | share_nowait",
   "agg": "read_count",
+  "load": true,
   "set": [Assign],
   "rows": [[4, 5], [6, 7]],
   "on_duplicate": [Assign],
@@ -34,7 +35,8 @@ Values never appear in the request. Every value is a parameter index into the cl
 | Field | Rule |
 |---|---|
 | `manifest_hash` | the `manifestHash` of the document set the generated code carries: `sha256:` followed by 64 lower-case hexadecimal digits ([manifest and hashes](dbspec.md#manifest-and-hashes)). A request whose hash differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`. The field replaces `schema_hash`; the error code keeps its name |
-| `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows, and `restore` clears the soft delete column of one deleted row ([restore](#_1-5-restore)) |
+| `kind` | `one` and `all` read rows, `count` counts rows or groups, `group_count` returns grouped rows with `row_count`, `sum` and `avg` aggregate `agg`, `paginate` returns the page statement and a count statement, `insert`, `update`, and `delete` write rows, `restore` clears the soft delete column of one deleted row ([restore](#_1-5-restore)), and `restart_identity` restarts the identity of a table past its largest key ([load](#_1-6-load)) |
+| `load` | `insert` writes rows with their stored keys: it takes a value for the identity column ([load](#_1-6-load)) |
 | `set` | assignments of `insert` and `update` |
 | `rows` | parameters of each additional inserted row in the column order of `set`; every `set` item is then a value assignment and `on_duplicate` is not allowed |
 | `on_duplicate` | assignments applied when an inserted row meets an existing unique key |
@@ -117,6 +119,21 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 ```
 
 The step writes the new values, clears the soft delete column and, on a table with an `audit` setting, writes the audit column; like a soft delete it does not assign the `updated` column. A row that is not deleted and a missing row match no row, so the statement changes nothing, the new values included. A request on a table without `soft_delete`, a predicate of another form, a column outside the key or a key that is named only in part fails with `IR_INVALID`. Reads always exclude soft-deleted rows; `restore` is the only request that matches one. The model method `restore` runs the step and then reads the row by the same key ([usage](usage.md#restore-a-soft-deleted-row)).
+
+### 1.6 Load
+
+Loading rows that already exist elsewhere into a database (a rebuild or an export) must keep their keys, which other rows reference. An ordinary `insert` refuses a value for the identity column, because the database generates every identity key ([dsl](dsl.md)). A load writes the keys itself and then restarts each identity:
+
+- An `insert` with `"load": true` takes a value for the identity column. On a table with an identity column, its `set` assigns that column a parameter (`p`); a load that leaves it out fails with `IR_INVALID` `load of <entity> needs a value for the identity column <column>`, and one that assigns it `null` fails as any `null` for a non-null column does. Every other rule and the statement are those of an `insert`, `rows` included; a load of a table without an identity column is an ordinary `insert`. `load` on another kind or with `on_duplicate` fails with `IR_INVALID` `load is only valid on insert without on_duplicate`. A request without `load` that assigns the identity column still fails with `cannot set identity column <column>`.
+- A `restart_identity` request names one entity and nothing else: a `set`, `rows`, `on_duplicate`, `where` or `optimistic` fails with `IR_INVALID` `restart_identity takes no set, rows, on_duplicate, where or optimistic`, and an entity without an identity column fails with `IR_INVALID` `restart_identity of <entity>, which has no identity column`. Its plan is one `main` step without bind slots whose `tables` is the table. After it the next generated key is the largest key of the table plus one, or 1 for an empty table, also when the counter stood past it:
+
+| Dialect | Statement |
+|---|---|
+| MySQL | ``ALTER TABLE `load_probe` AUTO_INCREMENT = 1``: InnoDB sets a value at or below the largest key to the largest key plus one |
+| PostgreSQL | `SELECT setval(pg_get_serial_sequence('"load_probe"', 'seq'), COALESCE(MAX("seq"), 0) + 1, false) FROM "load_probe"` |
+| SQLite | `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX("seq"), 0) FROM "load_probe") WHERE name = 'load_probe'`; a table that never took a row has no `sqlite_sequence` row, and its next key is already past its largest key |
+
+PostgreSQL identity does not advance past an explicit key, so without the restart the next generated key collides with a loaded one; MySQL and SQLite advance their counters past an explicit key, and the restart gives every dialect the same next key. The MySQL statement is DDL, which commits an open transaction, so a load runs the restart after its rows are committed. A client runs both with its execute call ([usage](usage.md#execute-a-compiled-statement)); the shared cases `contracts/fixtures/identity_load.json` state the statements, the errors and the keys after a load on MySQL, PostgreSQL and SQLite.
 
 ## 2. Plan
 

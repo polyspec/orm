@@ -401,6 +401,7 @@ The same statement produces the same result on all three databases, although sta
 | Compare schema with the live database | introspect the database and compare its schema text with the document set ([schema.md](schema.md#_2-schema-operations)) |
 | Check generated files | `git diff --exit-code` after the language generator runs |
 | Statement events | `subscribe` on the connection; every statement the client sends ([statement events](#statement-events)) |
+| Execute a compiled statement, such as a load with its keys | `execute` on the connection ([execute a compiled statement](#execute-a-compiled-statement)) |
 | View SQL without executing | `getQuery()` on a connected model ([dsl.md](dsl.md)) |
 | Error constants | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | Install a schema | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
@@ -441,6 +442,24 @@ Every client sends the same transaction control statements:
 `<level>` is `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ` or `SERIALIZABLE`. Before the first transaction of a SQLite connection the client creates the row-lock table with `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))` outside the transaction. A nested transaction sends `SAVEPOINT orm_sp_<depth>` and `RELEASE SAVEPOINT orm_sp_<depth>`, or after a failed callback `ROLLBACK TO SAVEPOINT orm_sp_<depth>` and then the `RELEASE`. Before the end of a MySQL transaction the client releases its named locks with `SELECT RELEASE_LOCK(?)` and clears its local values with ``SET @`orm.<key>` = NULL`` in key order. When the context or signal of a MySQL or PostgreSQL transaction is cancelled, the client closes the session instead of sending `ROLLBACK`; a cancelled SQLite transaction still resets its `PRAGMA` modes and ends with `ROLLBACK`.
 
 The statements that open a physical connection (session settings such as the time zone, the SQLite version read), the preparation of a statement and protocol-level cancellation are not events.
+
+### Execute a compiled statement
+
+A program that compiles requests itself, such as a load that writes rows with their identity keys and then restarts each identity ([protocol](protocol.md#_1-6-load)), runs each statement with `execute` on the connection: one step of a plan that the client's planner compiled, and the request parameters that its bind slots read.
+
+| Client | Compile | Execute |
+|---|---|---|
+| Go | `engine.New(model, dialect)` then `Compile(requestJSON)`, or `(&planner.Planner{M: model, D: dialect}).Compile(request)` | `err := db.Execute(&plan.Steps[0], params)` |
+| PHP | `(new Polyspec\Orm\Engine($model, $dialect, $cacheSize))->compile($request)` | `$db->execute($plan['steps'][0], $params)` |
+| Rust | `polyspec_orm::engine::compile(&manifest, dialect, &request)` | `db.execute(&plan.steps[0], &params).await?` |
+| TypeScript | `new Engine(model, dialect).compile(request)` | `await db.execute(plan.steps[0], params)` |
+| Python | `Engine(model, dialect).compile(request)` of `polyspec.orm.engine` | `db.execute(plan['steps'][0], params)` |
+
+- The statement runs where a model write runs: on the active transaction of the connection, or on the connection. Its bind slots take their values as a model statement's do: the request parameter with its host styles, a decimal, a SQLite date or time, the AES key and key version from the configuration, the client clock, and the audit of the transaction.
+- It publishes its statement event with the kind of its verb, `insert`, `update`, `delete` or `select`, and `schema` for the MySQL `ALTER TABLE` of an identity restart ([statement events](#statement-events)); a driver error has the code a model statement would report.
+- A step that reads rows (it has an `assemble`) fails with `IR_INVALID` `execute runs a statement without rows; the statement is a read`, and a `param` slot past the parameters fails with `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`; neither sends a statement.
+- `execute` returns nothing. A load reads back what it needs with a model or a query.
+- The PHP extension `orm_dbspec` implements only the dbspec surface and holds no query connection, so it has no `execute`; the PHP client runs both.
 
 ## 11. Common errors
 
