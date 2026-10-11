@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T74: codec decode is exact in every client: `base64` and `hex` text with white space, and lower-case `hex`, fail with `CODEC_DECODE`; MySQL hex cells decode in the client; Go exports `orm.HostDecode`, the counterpart of the other clients' host decode; `tests/codec/decode-vectors.json` pins the stored cells, and docs/codec.md states the rule.
 - T73: `ir.Validate` resolves a column-to-column predicate's `ref` path (the root, a joined relation, `^` only inside a subquery) and requires its column, else `COLUMN_UNKNOWN`, and refuses `conn` on the top group and on a group's first item as `IR_INVALID`, in every implementation; `tests/ir/validate.json` pins the cases.
 - T78-1: the checker case of the client test lanes (`scripts/check/continue.test.mjs`) reads the commands it expects from the PHP lane of `scripts/client-db-test.sh` and from `scripts/typescript/sqlite-test.sh` instead of comparing counts written by hand, so a test file added to a lane no longer breaks it; the frame double of the Python driver error test takes the `faultable` argument of `TxFrame.run` and checks that the SQLite row lock does not consume the statement fault.
 - T119: the dbspec `store` setting takes a time shard clause, `shard <column> year|month|day`, on a non-null `date` or `datetime` column; all six implementations parse, emit, check and hash it alike, SQL backends ignore it, and it is rejected on a block table, a table with a self foreign key, and a table with `order`.
