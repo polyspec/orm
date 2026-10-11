@@ -882,6 +882,42 @@ final class Db
         return [$id, $affected];
     }
 
+    /**
+     * Runs one compiled statement $step, a step of a plan of the engine (Engine::compile), with
+     * the request parameters $params, on the connection or on its active transaction. Its bind
+     * slots are resolved as a model statement's are: host styles, decimals, SQLite time values,
+     * the AES key and key version, the clock and the audit of the transaction. A step that reads
+     * rows (it has an assemble) and a param slot past $params fail with IR_INVALID before any
+     * statement runs (docs/usage.md "Execute a compiled statement").
+     *
+     * @param list<mixed> $params
+     */
+    public function execute(array $step, array $params): void
+    {
+        $frame = self::activeFor($this);
+        $this->enter($frame, []);
+        if (isset($step['assemble'])) {
+            throw new OrmException(Code::IR_INVALID, 'execute runs a statement without rows; the statement is a read');
+        }
+        $params = array_values($params);
+        foreach ($step['bind_slots'] ?? [] as $i => $b) {
+            if ($b['from'] === 'param' && ($b['param'] < 0 || $b['param'] >= count($params))) {
+                throw new OrmException(Code::IR_INVALID, sprintf('bind slot %d reads parameter %d, but execute has %d parameters', $i, $b['param'], count($params)));
+            }
+        }
+        $args = $this->args($step, $params, [], $frame);
+        $this->send(function () use ($step, $args): void {
+            $st = $this->stmt($step['sql']);
+            try {
+                $this->exec($st, $args);
+                // RETURNING이나 PostgreSQL setval처럼 행을 돌려주는 statement의 결과는 읽지 않는다.
+                $st->closeCursor();
+            } catch (\PDOException $e) {
+                throw self::failed($st, $e);
+            }
+        }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
+    }
+
     /** @internal @return array{sql: string, binds: list<mixed>} */
     public function statement(Request $r): array
     {
@@ -1092,10 +1128,11 @@ final class Db
         $this->publish(self::statementKind($step['sql']), $step['tables'], $this->transactionNumber(), $sql, $args, $start, $err);
     }
 
-    /** planner가 쓴 statement의 kind다: SQL의 첫 단어다. */
+    /** planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는 MySQL identity restart의 schema statement다. */
     private static function statementKind(string $sql): string
     {
         return match (strtoupper(explode(' ', ltrim($sql), 2)[0])) {
+            'ALTER' => StatementEvent::SCHEMA,
             'INSERT' => StatementEvent::INSERT,
             'UPDATE' => StatementEvent::UPDATE,
             'DELETE' => StatementEvent::DELETE,

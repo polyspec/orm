@@ -25,7 +25,7 @@ final class Validator
     /** Field types of every record: int, string, bool, list<T>, map<T>, or a record name. */
     private const RECORDS = [
         'Request' => self::QUERY + [
-            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'set' => 'list<Assign>',
+            'ir_version' => 'int', 'manifest_hash' => 'string', 'kind' => 'string', 'load' => 'bool', 'set' => 'list<Assign>',
             'on_duplicate' => 'list<Assign>', 'rows' => 'list<list<int>>', 'optimistic' => 'Optimist', 'agg' => 'string', 'n_params' => 'int',
         ],
         'Query' => self::QUERY,
@@ -96,8 +96,15 @@ final class Validator
             throw self::err(Code::SCHEMA_HASH_MISMATCH, 'client ' . ($r['manifest_hash'] ?? '') . ", engine {$this->m->manifestHash}");
         }
         $kind = $r['kind'] ?? '';
-        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore'], true)) {
+        if (!in_array($kind, ['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity'], true)) {
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
+        }
+        if (($r['load'] ?? false) && ($kind !== 'insert' || ($r['on_duplicate'] ?? []) !== [])) {
+            throw self::err(Code::IR_INVALID, 'load is only valid on insert without on_duplicate');
+        }
+        // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+        if ($kind === 'restart_identity' && (($r['set'] ?? []) !== [] || ($r['rows'] ?? []) !== [] || ($r['on_duplicate'] ?? []) !== [] || isset($r['where']) || isset($r['optimistic']))) {
+            throw self::err(Code::IR_INVALID, 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
         }
         $this->n = $r['n_params'] ?? 0;
         $root = $this->scopes($r);
