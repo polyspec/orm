@@ -22,7 +22,7 @@ final class Faults
     public static function failNextRollback(Db $db): void
     {
         (\Closure::bind(static function (Db $db): void {
-            $db->rollbackFault = true;
+            $db->state->rollbackFault = true;
         }, null, Db::class))($db);
     }
 
@@ -41,7 +41,7 @@ final class Faults
             throw new \InvalidArgumentException('failNextStatement needs a nonempty message');
         }
         (\Closure::bind(static function (Db $db) use ($code, $message): void {
-            $db->statementFault = new OrmException($code, $message);
+            $db->state->statementFault = new OrmException($code, $message);
         }, null, Db::class))($db);
     }
 }
