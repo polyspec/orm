@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c80053e5d8d7c07ca33ceb556c682a7b029b2a47e5b479db828ce35bcd9e98ab -->
+<!-- source-sha256: 77680dec4a2653c1e61cad9cf4eb04a82356339fb08371c9984b928df267dbce -->
 # 변경 이력
 
 ## Unreleased
 
+- T92(일부): SQLite에서 `datetime(p)`와 `time(p)` 값은 정확히 p자리 소수로 bind된다. 모든 구현의 planner가 parameter slot에 column의 precision을 싣고, Go client는 p자리 뒤의 0을 버리며 0이 아닌 자리는 `CODEC_ENCODE`로 거절한다.
 - T115-3: Python 3.15가 저장소가 test하는 Python이다. `.python-version`, `config/toolchain.json`(python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15`, README가 이를 선언한다.
 ## 0.0.8
 
