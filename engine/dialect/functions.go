@@ -66,6 +66,8 @@ func (MySQL) TupleIn(cols []string, rows [][]string, negate bool) string {
 
 func (MySQL) Random() string { return "RAND()" }
 
+func (MySQL) NullsOrder(bool) string { return "" }
+
 func (MySQL) ContainsBinary(col string, value func(string) string) string {
 	return col + " LIKE BINARY " + value("like_contains")
 }
@@ -113,6 +115,13 @@ func (Postgres) TupleIn(cols []string, rows [][]string, negate bool) string {
 }
 
 func (Postgres) Random() string { return "random()" }
+
+func (Postgres) NullsOrder(desc bool) string {
+	if desc {
+		return " NULLS LAST"
+	}
+	return " NULLS FIRST"
+}
 
 func (Postgres) ContainsBinary(col string, value func(string) string) string {
 	return col + " LIKE " + value("like_contains")
@@ -164,6 +173,8 @@ func (SQLite) TupleIn(cols []string, rows [][]string, negate bool) string {
 }
 
 func (SQLite) Random() string { return "random()" }
+
+func (SQLite) NullsOrder(bool) string { return "" }
 
 // ContainsBinary uses instr because SQLite LIKE ignores case for ASCII.
 func (SQLite) ContainsBinary(col string, value func(string) string) string {

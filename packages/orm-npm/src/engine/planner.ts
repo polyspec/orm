@@ -389,7 +389,9 @@ export class Planner {
     const parts = order.map(o => {
       if (o.random) return this.d.random();
       const target = o.fn ? this.columnFunction(b, root, o.column!, o.fn) : this.qcol(root, o.column!);
-      return target + (o.desc ? ' DESC' : ' ASC');
+      // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+      const nulls = columnOf(root.ent!, o.column!)!.nullable ? this.d.nullsOrder(o.desc === true) : '';
+      return target + (o.desc ? ' DESC' : ' ASC') + nulls;
     });
     return ` ORDER BY ${parts.join(', ')}`;
   }

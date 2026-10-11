@@ -201,6 +201,12 @@ final class Dialect
         return $this->name === 'mysql' ? 'RAND()' : 'random()';
     }
 
+    /** The clause that sorts NULL before every value ascending and after every value descending; PostgreSQL alone needs it. */
+    public function nullsOrder(bool $desc): string
+    {
+        return $this->name === 'postgres' ? ($desc ? ' NULLS LAST' : ' NULLS FIRST') : '';
+    }
+
     /**
      * @param list<string> $cols
      * @param list<list<string>> $rows

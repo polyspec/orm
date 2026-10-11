@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 1cb929f859bc0317f3ad872a0ca02581391cbb115add4a77c4021f8981b689a7 -->
+<!-- source-sha256: 7b07f3b5cea7a5ee9806c46eab8482a5dea98afb87d370d8d341608a03624951 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -18,6 +18,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 | `groupLimit(n)` | `ROW_NUMBER() OVER (…)` | same | same |
 | `tuple<ColA>With<ColB>` | `(a, b) IN ((?, ?), …)` | same | `(a, b) IN (VALUES (?, ?), …)` |
 | `orderByRandom()` | `RAND()` | `random()` | `random()` |
+| nullable 컬럼의 `orderBy<Col>Asc()` / `Desc()` | 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 | `ASC NULLS FIRST` / `DESC NULLS LAST` | 기본: 오름차순 NULL 먼저, 내림차순 NULL 나중 |
 | ORM 함수 | [DSL](dsl.ko.md) 10절 참고 | | |
 | `aes`/`hex` styles | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 | 실행기에서 인증된 AES-256-GCM v2 처리 후 `hex`가 있으면 hex text로 변환 |
 | `ip` style | `INET6_ATON` / `INET6_NTOA` | `(?)::inet` / `host(col)` | client-side (16-byte packed) |

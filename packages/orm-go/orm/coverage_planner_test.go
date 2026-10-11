@@ -379,3 +379,33 @@ func TestCoveragePlannerRejectsUpsertWithoutAKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_upsert_without_a_key")
 }
+
+// TestCoveragePlannerOrderNullableColumn는 order nullable column case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerOrderNullableColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_order_nullable_column")
+}
+
+// TestCoveragePlannerOrderNotNullColumn는 order not null column case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerOrderNotNullColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_order_not_null_column")
+}
+
+// TestCoveragePlannerOrderNullableColumnFunction는 order nullable column function case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerOrderNullableColumnFunction(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_order_nullable_column_function")
+}
+
+// TestCoveragePlannerOrderNullableGroupCount는 order nullable group count case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerOrderNullableGroupCount(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_order_nullable_group_count")
+}
+
+// TestCoveragePlannerOrderNullableLimitPerParent는 order nullable limit per parent case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerOrderNullableLimitPerParent(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_order_nullable_limit_per_parent")
+}

@@ -456,7 +456,9 @@ class Planner:
                 target = self._column_function(b, root, o['column'], o['fn'])
             else:
                 target = self._qcol(root, o['column'])
-            parts.append(target + (' DESC' if o.get('desc') else ' ASC'))
+            # A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+            nulls = self.d.nulls_order(bool(o.get('desc'))) if field_of(root.ent, o['column']).nullable else ''
+            parts.append(target + (' DESC' if o.get('desc') else ' ASC') + nulls)
         return f' ORDER BY {", ".join(parts)}'
 
     def _render_group_by(self, root: _Scope, q: dict) -> str:

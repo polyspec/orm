@@ -56,6 +56,9 @@ type Dialect interface {
 	TupleIn(cols []string, rows [][]string, negate bool) string
 	// Random renders the random ordering function.
 	Random() string
+	// NullsOrder renders the clause that sorts NULL before every value ascending and after every value descending:
+	// MySQL and SQLite do so natively and render nothing, PostgreSQL sorts NULL last ascending and needs it.
+	NullsOrder(desc bool) string
 	// RestartIdentity은 table의 identity column을 가장 큰 key 다음 값에서 다시
 	// 시작하는 statement다. 빈 table이면 다음 key는 1이다.
 	RestartIdentity(table, column string) string

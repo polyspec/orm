@@ -88,4 +88,9 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_upsert_primary_and_unique_key() { compileCase('planner_rejects_upsert_primary_and_unique_key'); },
   async planner_rejects_upsert_unique_key_not_assigned() { compileCase('planner_rejects_upsert_unique_key_not_assigned'); },
   async planner_rejects_upsert_without_a_key() { compileCase('planner_rejects_upsert_without_a_key'); },
+  async planner_order_nullable_column() { compileCase('planner_order_nullable_column'); },
+  async planner_order_not_null_column() { compileCase('planner_order_not_null_column'); },
+  async planner_order_nullable_column_function() { compileCase('planner_order_nullable_column_function'); },
+  async planner_order_nullable_group_count() { compileCase('planner_order_nullable_group_count'); },
+  async planner_order_nullable_limit_per_parent() { compileCase('planner_order_nullable_limit_per_parent'); },
 }, 60_000);

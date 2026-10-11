@@ -248,7 +248,9 @@ final class Planner
                 continue;
             }
             $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn']) : $this->qcol($root, $o['column']);
-            $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC');
+            // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+            $nulls = RuntimeModel::column($root->ent, $o['column'])['nullable'] ? $this->d->nullsOrder(!empty($o['desc'])) : '';
+            $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC') . $nulls;
         }
         return $parts === [] ? '' : ' ORDER BY ' . implode(', ', $parts);
     }

@@ -481,6 +481,10 @@ func (p *Planner) renderOrder(b *builder, root *scope, q *ir.Query) (string, err
 		} else {
 			sb.WriteString(" ASC")
 		}
+		// A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+		if root.ent.Field(o.Column).Null {
+			sb.WriteString(p.D.NullsOrder(o.Desc))
+		}
 	}
 	return sb.String(), nil
 }

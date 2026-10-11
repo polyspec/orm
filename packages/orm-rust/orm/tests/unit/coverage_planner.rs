@@ -221,7 +221,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
 
 /// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
 fn query(value: &Value, at: &str) -> ir::Query {
-    let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit", "key_by"]);
+    let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit", "key_by", "limit_per_parent"]);
     let columns = object.get("columns").map(|c| {
         let at = format!("{at}.columns");
         let c = members(c, &at, &["mode", "add", "remove"]);
@@ -310,6 +310,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
         order,
         limit,
         key_by: object.get("key_by").map(|_| string(object, at, "key_by")).unwrap_or_default(),
+        limit_per_parent: object.get("limit_per_parent").map(|n| count(Some(n), &format!("{at}.limit_per_parent"))).unwrap_or_default(),
         ..Default::default()
     }
 }
@@ -718,4 +719,39 @@ fn coverage_planner_rejects_upsert_unique_key_not_assigned() {
 fn coverage_planner_rejects_upsert_without_a_key() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_upsert_without_a_key");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_order_nullable_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_order_nullable_column");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_order_not_null_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_order_not_null_column");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_order_nullable_column_function() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_order_nullable_column_function");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_order_nullable_group_count() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_order_nullable_group_count");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_order_nullable_limit_per_parent() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_order_nullable_limit_per_parent");
 }

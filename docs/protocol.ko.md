@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: a06d7884276939166ca912c82dcd95e680057809e28eb78d60f02bd58243e224 -->
+<!-- source-sha256: 0b75fc4a3fb0c4f93786b0ca8fdd63c38057e26c5aeef855a8aa0c06dae140ad -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -110,6 +110,8 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true}
 Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"column", "minus_p"}
 ```
+
+order 항목은 오름차순에서 NULL을 모든 값 앞에, 내림차순에서 모든 값 뒤에 놓는다. MySQL과 SQLite는 기본으로 그렇게 하고, 오름차순에서 NULL을 마지막에 놓는 PostgreSQL은 NULL일 수 있는 order 식(nullable 컬럼이나 그 컬럼 함수)에 `ASC NULLS FIRST`와 `DESC NULLS LAST`를 렌더한다. NOT NULL 컬럼은 btree 순서를 그대로 쓴다. 이는 root order, `limit_per_parent`의 `ROW_NUMBER()` order, `group_count` order에 모두 적용된다.
 
 `group_by`가 있으면 order 항목은 group 컬럼, 그 컬럼의 함수, `random` 중 하나여야 하고, 다른 컬럼은 `IR_INVALID`("order by %s, which is not a group column")로 실패한다. group에는 그 컬럼의 단일 값이 없기 때문이다(MySQL 1055, PostgreSQL 42803, SQLite는 임의의 행).
 
