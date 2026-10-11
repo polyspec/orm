@@ -135,7 +135,14 @@ type ISetting = { readonly kw: Tk; readonly comments: string[] } & (
       readonly lists: readonly { readonly kw: Tk; readonly columns: readonly Tk[] }[];
     }
   | { readonly kind: 'markdown'; readonly column: Tk }
-  | { readonly kind: 'store'; readonly storage: Tk; readonly foreignKey: Tk | null; readonly shape: Tk | null }
+  | {
+      readonly kind: 'store';
+      readonly storage: Tk;
+      readonly foreignKey: Tk | null;
+      readonly shape: Tk | null;
+      /** `shard <column> <period>`: the shard keyword token, the column and the period, or null without the clause. */
+      readonly shard: { readonly at: Tk; readonly column: Tk; readonly period: Tk } | null;
+    }
   | { readonly kind: 'key_prefix'; readonly prefix: Tk }
   | { readonly kind: 'title' | 'body' | 'order'; readonly column: Tk }
   | { readonly kind: 'checkbox'; readonly column: Tk; readonly state: Tk; readonly glyph: Tk }
@@ -1380,11 +1387,25 @@ class DocumentParser {
       shape = word;
       i++;
     }
+    // shard 절은 block에서도 읽는다: block table의 shard는 setting error다.
+    let shard: { at: Tk; column: Tk; period: Tk } | null = null;
+    const at = toks[i];
+    if (at !== undefined && at.k === K.Word && at.t === 'shard') {
+      const column = this.settingWord(toks, i + 1, line, 'the shard column');
+      if (column === null) return null;
+      const period = toks[i + 2];
+      if (period === undefined || period.k !== K.Word || !['year', 'month', 'day'].includes(period.t)) {
+        this.syntax(toks, i + 2, line, "expected 'year', 'month' or 'day'");
+        return null;
+      }
+      shard = { at, column, period };
+      i += 3;
+    }
     if (i < toks.length) {
       this.syntax(toks, i, line, 'expected the end of the line');
       return null;
     }
-    return { kw, comments, kind: 'store', storage, foreignKey, shape };
+    return { kw, comments, kind: 'store', storage, foreignKey, shape, shard };
   }
 
   /**
@@ -2094,6 +2115,7 @@ class DocumentParser {
           break;
         case 'store':
           if (s.storage.t === 'block' && s.foreignKey !== null) this.checkForeignKeyName(table, s.foreignKey);
+          this.checkStoreShard(table, s, entries.some(e => e.kind === 'order'));
           break;
         case 'key_prefix':
           this.checkKeyPrefix(table, s);
@@ -2168,6 +2190,23 @@ class DocumentParser {
     if (c && ((c.type !== null && c.type.kind !== 'varchar' && c.type.kind !== 'text') || c.nullable)) {
       this.at('setting', s.column, `${s.kw.t} needs a non-null varchar or text column`);
     }
+  }
+
+  /**
+   * The shard clause of store names a non-null date or datetime column; a block table, a table with a self foreign
+   * key and a table with order reject it.
+   */
+  private checkStoreShard(table: ITable, s: Extract<ISetting, { kind: 'store' }>, order: boolean): void {
+    if (s.shard === null) return;
+    const c = this.columnRef(table, s.shard.column);
+    if (c && ((c.type !== null && c.type.kind !== 'date' && c.type.kind !== 'datetime') || c.nullable)) {
+      this.at('setting', s.shard.column, 'store shard needs a non-null date or datetime column');
+    }
+    if (s.storage.t === 'block') this.at('setting', s.shard.at, 'store shard is rejected on a block table');
+    if (table.fks.some(fk => fk.table.t === table.name.t)) {
+      this.at('setting', s.shard.at, 'store shard is rejected on a table with a self foreign key');
+    }
+    if (order) this.at('setting', s.shard.at, 'store shard is rejected on a table with order');
   }
 
   /** The order column is a non-null i32 or i64 column with no default, in no key, index or check. */
@@ -2693,6 +2732,7 @@ function settingOf(s: ISetting): DbspecSetting {
         storage: s.storage.t as 'files' | 'document' | 'block',
         foreignKey: s.foreignKey?.t ?? null,
         shape: (s.shape?.t ?? null) as 'list' | 'table' | null,
+        shard: s.shard === null ? null : { column: s.shard.column.t, period: s.shard.period.t as 'year' | 'month' | 'day' },
       };
       break;
     case 'key_prefix':

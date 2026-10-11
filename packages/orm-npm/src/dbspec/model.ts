@@ -95,6 +95,12 @@ export interface DbspecCheck {
   readonly expression: string;
 }
 
+/** The time shard of a store setting: a non-null date or datetime column and its period. SQL backends ignore it. */
+export interface DbspecStoreShard {
+  readonly column: string;
+  readonly period: 'year' | 'month' | 'day';
+}
+
 /** One `state_machine` line after the column: an initial or terminal state, a transition, a history row or a row limit. */
 export type DbspecStateLine =
   | { readonly form: 'initial'; readonly state: string }
@@ -119,12 +125,16 @@ export type DbspecSetting = { readonly comments: readonly string[] } & (
   | { readonly kind: 'blind_index'; readonly column: string; readonly indexColumn: string }
   | { readonly kind: 'navigation'; readonly foreignKey: string; readonly childName: string; readonly parentName: string }
   | { readonly kind: 'markdown'; readonly column: string }
-  /** store files (no shape), store document list|table, or store block <foreign key> list|table. */
+  /**
+   * store files (no shape), store document list|table, or store block <foreign key> list|table, each optionally
+   * followed by `shard <column> <period>`; shard is null without that clause.
+   */
   | {
       readonly kind: 'store';
       readonly storage: 'files' | 'document' | 'block';
       readonly foreignKey: string | null;
       readonly shape: 'list' | 'table' | null;
+      readonly shard: DbspecStoreShard | null;
     }
   | { readonly kind: 'key_prefix'; readonly prefix: string }
   | { readonly kind: 'title' | 'body' | 'order'; readonly column: string }
