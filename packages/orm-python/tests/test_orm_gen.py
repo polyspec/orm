@@ -36,10 +36,10 @@ class OrmGenTest(unittest.TestCase):
     def test_generated_module_imports_and_builds_the_model(self):
         import models
         self.assertEqual(models.MANIFEST_HASH,
-                         'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa')
+                         'sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322')
         author = models.Author()
         self.assertEqual(author.entity_def.entity.name, 'author')
-        self.assertEqual(len(models.model.entities), 12)
+        self.assertEqual(len(models.model.entities), 13)
         self.assertTrue(models.SCHEMA.manifest_text.startswith('dbspec 1 bench'))
 
     def test_fixed_column_methods(self):
