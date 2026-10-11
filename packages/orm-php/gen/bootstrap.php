@@ -11,7 +11,7 @@ use Polyspec\Orm\Registry;
 use Polyspec\Orm\Schema;
 
 /** The manifestHash of the document set the models were generated from. */
-const MANIFEST_HASH = 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa';
+const MANIFEST_HASH = 'sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322';
 
 /** The manifest text of the document set the models were generated from. */
 const MANIFEST_TEXT = 'dbspec 1 bench
@@ -171,6 +171,16 @@ table task {
   primary key (seq)
   check ck_task_state (state in (\'open\', \'done\'))
 }
+
+table hex_cell {
+  seq i64 identity
+  label varchar(32)
+  value varchar(64) null
+  primary key (seq)
+  settings {
+    codec value hex
+  }
+}
 ';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
@@ -198,3 +208,4 @@ Registry::register(Account::class);
 Registry::register(Project::class);
 Registry::register(AccountProject::class);
 Registry::register(Task::class);
+Registry::register(HexCell::class);

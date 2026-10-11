@@ -30,3 +30,7 @@ SELECT CONCAT('author-', i), CONCAT('desc-', i, ' ', REPEAT('x', 200)),
   i % 10 + 1, i % 5000 + 1, '2026-06-01', '2026-12-31', UUID(), i % 4 = 0, i % 97,
   1, NULL, NULL, NULL, NULL
 FROM n;
+
+-- hex_cell holds raw hex cells that no encoder writes: decoding each one is CODEC_DECODE
+-- (vector hex_malformed, docs/codec.md "Decoding is exact").
+INSERT INTO `hex_cell` (`seq`, `label`, `value`) VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');

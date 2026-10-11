@@ -159,9 +159,19 @@ table task {
   primary key (seq)
   check ck_task_state (state in ('open', 'done'))
 }
+
+table hex_cell {
+  seq i64 identity
+  label varchar(32)
+  value varchar(64) null
+  primary key (seq)
+  settings {
+    codec value hex
+  }
+}
 `;
 
-export const MANIFEST_HASH = 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa';
+export const MANIFEST_HASH = 'sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322';
 
 /** The generated schema value: install takes it to create the tables and register the set. */
 export const SCHEMA: Schema = { manifestText: MANIFEST_TEXT, manifestHash: MANIFEST_HASH };
@@ -543,7 +553,7 @@ export interface Author {
   andNeReadCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
   andServiceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   andStartDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
-  andSuccessCountLtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
+  andSuccessCountLtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
   andUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   betweenReadCount(v0: readonly [number, number]): this;
   betweenStartDt(v0: readonly [string | Date, string | Date]): this;
@@ -558,11 +568,11 @@ export interface Author {
   gtStartDt(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]): this;
   isClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   isDisplay(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
-  joinServiceMemberSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  joinServiceSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  joinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  leftJoinServiceRegionSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
-  leftJoinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
+  joinServiceMemberSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
+  joinServiceSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
+  joinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
+  leftJoinServiceRegionSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
+  leftJoinUserSeqWithSeq(child: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
   matchSeqWithUserSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
   nePhotoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
@@ -571,12 +581,12 @@ export interface Author {
   orderByReadCountDescAndSeqAsc(): this;
   photoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   readCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
+  readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   startDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
   userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
-  userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task): this;
+  userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
@@ -1229,6 +1239,66 @@ export class Task extends Model {
   public orderByStateDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('state', true, fn); return this; }
 }
 export interface Task {
+  /** Returns the value or relation result named AesHexEmail. */
+  getAesHexEmail<T = unknown>(): T;
+  /** Returns the author relation result; T is its model type. */
+  getAuthorModels<T = unknown>(): T;
+  /** Returns the value or relation result named Members. */
+  getMembers<T = unknown>(): T;
+  /** Returns the value or relation result named Module. */
+  getModule<T = unknown>(): T;
+  /** Returns the value or relation result named Name. */
+  getName<T = unknown>(): T;
+  /** Returns the value or relation result named Owner. */
+  getOwner<T = unknown>(): T;
+  /** Returns the value or relation result named ReadTotal. */
+  getReadTotal<T = unknown>(): T;
+  /** Returns the service_member relation result; T is its model type. */
+  getServiceMemberModels<T = unknown>(): T;
+  /** Returns the service_region relation result; T is its model type. */
+  getServiceRegionModel<T = unknown>(): T;
+  /** Returns the value or relation result named StartMonth. */
+  getStartMonth<T = unknown>(): T;
+  /** Returns the user relation result; T is its model type. */
+  getUserModel<T = unknown>(): T;
+  /** Returns the value or relation result named Writer. */
+  getWriter<T = unknown>(): T;
+}
+
+/** A hex_cell model or row. */
+export class HexCell extends Model {
+  public static readonly entity: EntityDef = { model, entity: model.entities.get('hex_cell')!, create: core => new HexCell(core) };
+  public getSeq(): number { return this[CORE].column('seq') as number; }
+  public setSeq(value: number): this { this[CORE].setValue('seq', value); return this; }
+  public addColumnSeq(): this { this[CORE].addColumn('seq'); return this; }
+  public removeColumnSeq(): this { this[CORE].removeColumn('seq'); return this; }
+  public groupBySeq(): this { this[CORE].groupBy.push('seq'); return this; }
+  public keyNameSeq(): this { this[CORE].keyName = 'seq'; return this; }
+  public orderBySeqAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', false, fn); return this; }
+  public orderBySeqDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('seq', true, fn); return this; }
+  public plusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, plus: true }); return this; }
+  public minusSeq(n: number): this { this[CORE].putSet({ column: 'seq', value: n, minus: true }); return this; }
+  public sumSeq(): this { this[CORE].aggregate('sum', 'seq'); return this; }
+  public avgSeq(): this { this[CORE].aggregate('avg', 'seq'); return this; }
+  public getLabel(): string { return this[CORE].column('label') as string; }
+  public setLabel(value: string): this { this[CORE].setValue('label', value); return this; }
+  public addColumnLabel(): this { this[CORE].addColumn('label'); return this; }
+  public removeColumnLabel(): this { this[CORE].removeColumn('label'); return this; }
+  public groupByLabel(): this { this[CORE].groupBy.push('label'); return this; }
+  public keyNameLabel(): this { this[CORE].keyName = 'label'; return this; }
+  public orderByLabelAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', false, fn); return this; }
+  public orderByLabelDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('label', true, fn); return this; }
+  public getValue(): string | null { return this[CORE].column('value') as string | null; }
+  public setValue(value: string | null): this { this[CORE].setValue('value', value); return this; }
+  public addColumnValue(): this { this[CORE].addColumn('value'); return this; }
+  public removeColumnValue(): this { this[CORE].removeColumn('value'); return this; }
+  public groupByValue(): this { this[CORE].groupBy.push('value'); return this; }
+  public keyNameValue(): this { this[CORE].keyName = 'value'; return this; }
+  public orderByValueAsc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', false, fn); return this; }
+  public orderByValueDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('value', true, fn); return this; }
+}
+export interface HexCell {
+  getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */

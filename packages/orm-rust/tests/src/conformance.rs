@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 polyspec_orm::models!();
 
-use model::{Author, CompositeAccount, Service, ServiceMember, ServiceRegion, SoftRecord, Task, User};
+use model::{Author, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, Task, User};
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
@@ -700,6 +700,12 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
         let mut versions: Vec<String> = status.versions.iter().map(|(v, n)| format!("{v}:{n}")).collect();
         versions.sort();
         Ok::<Value, polyspec_orm::Error>(json!({"current": status.current, "pending": status.pending, "versions": versions.join(",")}))
+    });
+    // the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+    run!("hex_malformed", async {
+        let white_space = code_of(HexCell::new().connect(db).get_by_seq(1).await);
+        let odd_length = code_of(HexCell::new().connect(db).get_by_seq(2).await);
+        Ok::<Value, polyspec_orm::Error>(json!({"white_space": white_space, "odd_length": odd_length}))
     });
     out
 }

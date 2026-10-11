@@ -27,7 +27,7 @@ final class Project extends Model
             ],
             'unique' => [],
             'indexes' => [],
-            'manifest_hash' => 'sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa',
+            'manifest_hash' => 'sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322',
         ];
     }
 
