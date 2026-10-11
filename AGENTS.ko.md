@@ -1,10 +1,14 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: d78b52b058afd78f3647de43b41960620c3d50df346987b0093ec962f9df50ff -->
+<!-- source-sha256: ebb1008b68ab10b16cd4d7f631b1ab83511a1c031f0c1259f5033fd5ff6bca7f -->
 # 개발 규칙
 
 [English](AGENTS.md)
 
 - 사용자 지시가 우선이다. 로컬에서 개발하고, GitHub 원격 저장소에는 아래 push 규칙이 허용할 때만 push한다.
+- 하위 호환성을 유지하지 않는다. 호환 layer, fallback, migration을 더하는 대신 오래된 경로를 지운다. 현재 요구사항을
+  완전히 충족하는 가장 단순한 구현을 고르고, 불확실한 미래를 위한 추상화, 설정, 간접 계층은 두지 않는다. component를
+  module로 나누고 관심사마다 명확히 분리하며, architecture는 장기적인 관점에서 정한다. 당장만 작동하고 나중에 교체해야
+  하는 임시방편은 받아들이지 않는다.
 - 기본은 `main`에서 바로 작업한다. 에이전트나 병렬 작업에 필요할 때 브랜치와 워크트리를 쓴다. merge 뒤 남은
   브랜치나 워크트리는 디스크를 차지하고 폴더를 흩뜨리며 merge 여부를 헷갈리게 한다.
 - 0.x workflow에는 pull request, merge queue, ruleset이 없다. 항목마다 로컬에서 작업한다: 항목은 commit한 tree에서 그

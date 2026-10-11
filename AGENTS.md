@@ -5,6 +5,11 @@
 
 - The user's instructions take precedence. Develop locally; the GitHub remote receives a push only
   as the push rule below allows.
+- Do not keep backward compatibility: remove an old path instead of adding a compatibility layer,
+  a fallback or a migration. Choose the simplest implementation that fully meets the current
+  requirements, with no abstraction, setting or indirection for an uncertain future. Keep
+  components modular, each concern clearly separated, and decide architecture for the long term:
+  a stopgap that works now and must be replaced later is not accepted.
 - Work on `main` directly by default; use a branch and worktree when agents or parallel work need
   one. A branch or worktree left after its merge takes disk space, scatters folders and makes the
   merge state unclear.

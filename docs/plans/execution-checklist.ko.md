@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: bbe84b2f7d5338c7391c0e712c3f1010d63f2dae9d92f6abb1ae5d3e882abade -->
+<!-- source-sha256: 2f4ce5890092de05e6f9a90ae3b6733fa7faa44e8d190f416350428c5972cabf -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -845,4 +845,5 @@
 - [ ] T73 `ir.Validate`가 저장된 filter의 모든 규칙을 지킨다. 원인: flowmark의 view 검증(그 T12.3-1)에서 `ir.Validate`가 column 대 column 술어의 `ref` 경로와 column을 해석하지 않으며(planner의 `renderPred`만 한다), 최상위 group과 group의 첫 항목의 `conn`을 받아들이고, parameter가 묶는 type을 알 길이 없다는 것이 드러났다. 그 type은 planner의 `functionType`과 `valueFunctionArgType`이 계산한다. 완료 기준: `ir.Validate`가 `Ref.Path`(root, join된 relation, subquery 안에서만 `^`)를 해석하고 대상 column을 요구하며 아니면 `COLUMN_UNKNOWN`이다. 최상위 group과 group 첫 항목의 `conn`은 `IR_INVALID`로 거절한다. 같은 규칙을 모든 구현의 validator가 지키며, 공유 vector로 고정한다. red 다음 green test. export된 parameter 사용 목록은 이 항목에 들지 않는다. 그것은 모든 client가 지키는 `CODEC_ENCODE` 표준과 함께, 별도 항목으로만 orm에 들어온다.
 - [ ] T74 codec decode는 모든 구현에서 엄격하고 공개 표면이 하나다. 원인: Go의 host stage `hex`와 `ip`는 export되지 않은 `hostDecode`에 있지만 다른 client는 그에 해당하는 것을 공개한다. 그리고 client마다 공백 처리가 다르다. Go는 hex와 `base64` 주위를 잘라 내고(`strings.TrimSpace`), 다른 구현도 저마다 다르다. 저장된 값은 encoder의 정확한 출력이므로, 공백을 잘라 내면 어떤 encoder도 쓰지 않은 값을 받아들이게 된다. 완료 기준: 공유 vector가 먼저 여섯 구현 모두에서 그 불일치를 red로 재현한다. 그다음 모든 구현이 `hex`와 `base64` text 주위와 안의 공백을 거절하고, Go는 다른 구현에 대응하는 `HostDecode`를 export한다. 문서(EN과 ko)가 그 규칙을 적는다. 한 소비자를 위한, 모든 stage의 key 없는 decode는 orm에 들지 않는다.
 - [ ] T75 `make dbspec-apply-stress-mysql`가 macOS에서 실행된다. 원인: 그 명령은 `make feature-owner-check`만 설정하는 `TEST_ENV="$ORM_OWNER_TEST_ENV"`를 넘기므로, macOS의 `sh`가 file 이름 없는 `.`을 거절한다(exit 2). Linux CI는 7ea3932b에서 통과했다(T62-4-10에서 발견). 완료 기준: helper가 모든 플랫폼에서 선언된 출처에서 환경을 읽고, macOS와 Linux에서 실행된다.
+- [o] T76 AGENTS가 설계 원칙을 적는다. 원인: 모든 저장소에 대한 사용자 규칙(하위 호환 없음, 현재 요구사항을 완전히 충족하는 가장 단순한 구현, 관심사를 분리한 module 구성, 장기적 architecture와 임시방편 금지)이 flowmark의 AGENTS에는 있었지만 이 저장소의 AGENTS에는 없었다. 완료 기준: AGENTS.md와 AGENTS.ko.md가 이를 적고, `make documents-check`가 통과한다.
 - [ ] T69 Release 0.0.8. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.8의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
