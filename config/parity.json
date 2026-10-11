@@ -7,6 +7,7 @@
       "runner": "go",
       "roots": ["packages/orm-go", "engine", "generator", "cmd", "internal", "contracts"],
       "tests": ["packages/orm-go/**/coverage_*_test.go"],
+      "args": ["-tags", "physical,ormtest"],
       "errors": { "file": "packages/orm-go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
     },
     {
@@ -42,6 +43,7 @@
       "runner": "cargo",
       "roots": ["packages/orm-rust"],
       "tests": ["packages/orm-rust/**/tests/**/coverage_*.rs"],
+      "args": ["--features", "test-faults"],
       "errors": { "file": "packages/orm-rust/orm/src/codes.rs", "pattern": "^pub const (\\w+): &str = \"\\w+\";$" }
     }
   ],
@@ -434,7 +436,7 @@
         { "implementation": "php", "test": "packages/orm-php/tests/statement_fault_test.php" },
         { "implementation": "typescript", "test": "packages/orm-npm/tests/statement_fault.mjs" },
         { "implementation": "python", "test": "packages/orm-python/tests/test_statement_fault.py" },
-        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_sqlite" }
+        { "implementation": "rust", "test": "packages/orm-rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_cases" }
       ]
     }
   ],
