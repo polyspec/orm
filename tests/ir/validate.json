@@ -42,6 +42,8 @@
     {"name": "group-by-paginate", "request": {"ir_version": 1, "n_params": 0, "entity": "author", "kind": "paginate", "group_by": ["service_seq"], "limit": {"offset": 0, "count": 2}}, "error": "IR_INVALID"},
     {"name": "group-by-sum", "request": {"ir_version": 1, "n_params": 0, "entity": "author", "kind": "sum", "agg": "read_count", "group_by": ["service_seq"]}, "error": "IR_INVALID"},
     {"name": "group-by-avg", "request": {"ir_version": 1, "n_params": 0, "entity": "author", "kind": "avg", "agg": "read_count", "group_by": ["service_seq"]}, "error": "IR_INVALID"},
-    {"name": "group-by-order-not-a-group-column", "request": {"ir_version": 1, "n_params": 0, "entity": "author", "kind": "group_count", "group_by": ["service_seq"], "order": [{"column": "user_seq"}]}, "error": "IR_INVALID"}
+    {"name": "group-by-order-not-a-group-column", "request": {"ir_version": 1, "n_params": 0, "entity": "author", "kind": "group_count", "group_by": ["service_seq"], "order": [{"column": "user_seq"}]}, "error": "IR_INVALID"},
+    {"name": "key-by-non-null-column", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq", "right": "user_seq"}], "query": {"entity": "author", "key_by": "name"}}]}, "valid": true},
+    {"name": "key-by-nullable-column", "request": {"ir_version": 1, "n_params": 0, "kind": "all", "entity": "user", "relations": [{"rel": "writers", "kind": "many", "keys": [{"left": "seq", "right": "user_seq"}], "query": {"entity": "author", "key_by": "description"}}]}, "error": "IR_INVALID"}
   ]
 }

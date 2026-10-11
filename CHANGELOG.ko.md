@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 19ea28a350fd547250e404159278e89fe7ad566d221e7148068897bcf621faf4 -->
+<!-- source-sha256: 5583325f40b59578851dfcf291b2eb7e2013eb399a1b10478edb26c12c38bbf7 -->
 # 변경 이력
 
 ## Unreleased
 
+- T86: `key_by`는 자식의 non-null 컬럼을 가리킨다. nullable 컬럼은 모든 구현에서 `IR_INVALID`이다. NULL 컬렉션 키는 언어마다 답이 달랐기 때문이다.
 - T83: `group_by`는 `count`와 `group_count`의 root에서만 유효하고 그 아래 order 항목은 group 컬럼, 그 함수, `random`을 가리킨다. 그 밖의 쓰임은 모든 구현에서 `IR_INVALID`이다(MySQL과 PostgreSQL은 planner가 만든 SQL을 거절했고 SQLite는 임의의 행을 답했다). 도달할 수 없게 된 planner 경로는 지웠다.
 - T67: TypeScript client가 markdown DSN으로 corpus에 접속하며 pool이 server session을 유지하고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.
 - T66: Rust client가 markdown DSN으로 corpus에 접속하고 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다. identity load test는 markdown pool을 다룬다.

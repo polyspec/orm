@@ -192,8 +192,13 @@ class _Validator:
             scope = self.scopes(relation['query'])
             self.query(relation['query'], {'root': scope, 'outer': None, 'node': scope},
                        False, True)
-        if q.get('key_by') is not None and field_of(ent, q['key_by']) is None:
-            _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{q["key_by"]}')
+        if q.get('key_by') is not None:
+            key_column = field_of(ent, q['key_by'])
+            if key_column is None:
+                _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{q["key_by"]}')
+            # A NULL collection key has no answer that every language shares.
+            if key_column.nullable:
+                _fail('IR_INVALID', f'key_by {q["key_by"]} is nullable')
         if q.get('if_parent'):
             self.params([q['if_parent']['p']])
         if not is_relation and (q.get('key_by') is not None or q.get('flatten')

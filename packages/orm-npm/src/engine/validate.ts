@@ -186,7 +186,11 @@ class Validator {
       if (r.query.if_parent && !columnOf(ent, r.query.if_parent.column)) fail('COLUMN_UNKNOWN', `${q.entity}.${r.query.if_parent.column} (if_parent)`);
       this.query(r.query, this.scopes(r.query, undefined, undefined), false, true);
     }
-    if ((q.key_by ?? '') !== '' && !columnOf(ent, q.key_by!)) fail('COLUMN_UNKNOWN', `${q.entity}.${q.key_by}`);
+    if ((q.key_by ?? '') !== '') {
+      const keyColumn = columnOf(ent, q.key_by!) ?? fail('COLUMN_UNKNOWN', `${q.entity}.${q.key_by}`);
+      // A NULL collection key has no answer that every language shares.
+      if (keyColumn.nullable) fail('IR_INVALID', `key_by ${q.key_by} is nullable`);
+    }
     if (q.if_parent) this.params([q.if_parent.p]);
     if (!isRelation && ((q.key_by ?? '') !== '' || q.flatten || (q.limit_per_parent ?? 0) > 0 || q.if_parent || q.no_cascade_delete)) {
       fail('IR_INVALID', `relation-only options on ${q.entity}`);

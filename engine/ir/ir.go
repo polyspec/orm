@@ -619,6 +619,10 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 		if col == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, q.KeyBy)
 		}
+		// A NULL collection key has no answer that every language shares.
+		if col.Null {
+			return errf("IR_INVALID", "key_by %s is nullable", q.KeyBy)
+		}
 	}
 	if q.IfParent != nil {
 		if err := v.params([]int{q.IfParent.P}); err != nil {
