@@ -99,4 +99,9 @@ runCoverageCases($argv, [
     'planner_rejects_bool_gt_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_bool_gt_col'),
     'planner_rejects_ip_gt_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_ip_gt_col'),
     'planner_rejects_aes_eq_col' => fn() => plannerCase($root, $fixture, 'planner_rejects_aes_eq_col'),
+    'planner_col_pair_integers' => fn() => plannerCase($root, $fixture, 'planner_col_pair_integers'),
+    'planner_rejects_col_pair_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_col_pair_integer_varchar'),
+    'planner_rejects_in_subquery_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_in_subquery_integer_varchar'),
+    'planner_rejects_join_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_join_integer_varchar'),
+    'planner_rejects_relation_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_relation_integer_varchar'),
 ]);

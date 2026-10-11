@@ -331,3 +331,33 @@ func TestCoveragePlannerRejectsAesEqCol(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_aes_eq_col")
 }
+
+// TestCoveragePlannerColPairIntegers는 col pair integers case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerColPairIntegers(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_col_pair_integers")
+}
+
+// TestCoveragePlannerRejectsColPairIntegerVarchar는 rejects col pair integer varchar case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsColPairIntegerVarchar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_col_pair_integer_varchar")
+}
+
+// TestCoveragePlannerRejectsInSubqueryIntegerVarchar는 rejects in subquery integer varchar case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsInSubqueryIntegerVarchar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_in_subquery_integer_varchar")
+}
+
+// TestCoveragePlannerRejectsJoinIntegerVarchar는 rejects join integer varchar case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsJoinIntegerVarchar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_join_integer_varchar")
+}
+
+// TestCoveragePlannerRejectsRelationIntegerVarchar는 rejects relation integer varchar case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsRelationIntegerVarchar(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_relation_integer_varchar")
+}

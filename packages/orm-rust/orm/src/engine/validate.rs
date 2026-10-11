@@ -50,6 +50,24 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     ops_by_type(c.ty.name()).contains(&op)
 }
 
+/// Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
+/// decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
+/// bytes with bytes.
+fn meets(a: &Field, b: &Field) -> bool {
+    use polyspec_orm_schema::dbspec::Type;
+    let integer = |t: &Type| matches!(t, Type::I16 | Type::I32 | Type::I64);
+    match (&a.ty, &b.ty) {
+        (x, y) if integer(x) => integer(y),
+        (Type::Decimal(_, s), Type::Decimal(_, t)) => s == t,
+        (Type::Decimal(..), _) => false,
+        (Type::Varchar(_) | Type::Text, Type::Varchar(_) | Type::Text) => true,
+        (Type::Varchar(_) | Type::Text, _) => false,
+        (Type::Time(p), Type::Time(q)) | (Type::DateTime(p), Type::DateTime(q)) => p == q,
+        (Type::Time(_) | Type::DateTime(_), _) => false,
+        (x, y) => x.name() == y.name(),
+    }
+}
+
 /// Whether the column comparison `op` may compare `left` with `right`: its base operator (eq for eq_col) must be one
 /// of the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
 /// operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
@@ -299,6 +317,9 @@ impl<'m> Validator<'m> {
             if target.field(&j.right).is_none() {
                 return Err(unknown_column(&target.name, &j.right));
             }
+            if !meets(ent.field(&j.left).unwrap(), target.field(&j.right).unwrap()) {
+                return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("join {}: {}.{} does not meet {}.{}", j.rel, ent.name, j.left, target.name, j.right)));
+            }
             joined.push((&j.rel, j));
             let node = at
                 .node
@@ -352,6 +373,9 @@ impl<'m> Validator<'m> {
                 }
                 if target.field(&k.right).is_none() {
                     return Err(unknown_column(&target.name, &k.right));
+                }
+                if !meets(ent.field(&k.left).unwrap(), target.field(&k.right).unwrap()) {
+                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("relation {}: {}.{} does not meet {}.{}", r.rel, q.entity, k.left, target.name, k.right)));
                 }
                 // 한 column이 두 성분에 나오면 key가 아니다.
                 if lefts.contains(&k.left) || rights.contains(&k.right) {
@@ -517,7 +541,15 @@ impl<'m> Validator<'m> {
             if p.p.is_some() || !p.ps.is_empty() || p.r#fn.is_some() || p.value.is_some() {
                 return Err(err(codes::IR_INVALID, "subquery pred may not carry values"));
             }
-            return self.sub(sub, false, at.node);
+            self.sub(sub, false, at.node)?;
+            // sub checked the subquery column; it meets the compared column as check operands do.
+            let sub_entity = self.m.entity(&sub.query.entity)?;
+            if let Some(sub_column) = sub_entity.field(&sub.column) {
+                if !meets(ent.field(&p.column).unwrap(), sub_column) {
+                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{}.{} does not meet the subquery column {}.{}", ent.name, p.column, sub.query.entity, sub.column)));
+                }
+            }
+            return Ok(());
         }
         if p.r#fn.is_some() || p.value.is_some() {
             let c = ent.field(&p.column).ok_or_else(|| unknown_column(&ent.name, &p.column))?;
@@ -574,6 +606,9 @@ impl<'m> Validator<'m> {
             op if col_op(op) => {
                 let r = p.r#ref.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("{op} needs ref")))?;
                 let other = self.column_ref(at, r)?;
+                if !meets(c, other) {
+                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{}.{} does not meet {}", ent.name, p.column, r.column)));
+                }
                 if !col_pair_op_allowed(c, other, op) {
                     return Err(err(
                         codes::OPERATOR_NOT_ALLOWED,

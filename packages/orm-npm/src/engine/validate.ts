@@ -66,6 +66,20 @@ export function opAllowed(c: Column, op: string): boolean {
 }
 
 /**
+ * Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
+ * decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and bytes
+ * with bytes.
+ */
+function meets(a: Column, b: Column): boolean {
+  const integer = (t: string): boolean => t === 'i16' || t === 'i32' || t === 'i64';
+  if (integer(a.type)) return integer(b.type);
+  if (a.type === 'decimal') return b.type === 'decimal' && a.scale === b.scale;
+  if (a.type === 'varchar' || a.type === 'text') return b.type === 'varchar' || b.type === 'text';
+  if (a.type === 'time' || a.type === 'datetime') return b.type === a.type && a.precision === b.precision;
+  return a.type === b.type;
+}
+
+/**
  * Whether the column comparison `op` may compare `left` with `right`: its base operator (eq for eq_col) must be one of
  * the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
  * operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
@@ -159,6 +173,7 @@ class Validator {
       const target = this.entity(j.query.entity);
       if (!columnOf(ent, j.left)) fail('COLUMN_UNKNOWN', `${ent.name}.${j.left}`);
       if (!columnOf(target, j.right)) fail('COLUMN_UNKNOWN', `${target.name}.${j.right}`);
+      if (!meets(columnOf(ent, j.left)!, columnOf(target, j.right)!)) fail('OPERATOR_NOT_ALLOWED', `join ${j.rel}: ${ent.name}.${j.left} does not meet ${target.name}.${j.right}`);
       joined.set(j.rel, j);
       this.query(j.query, s.joins.get(j.rel)!, true, false);
     }
@@ -188,6 +203,7 @@ class Validator {
         if (!k.left || !k.right) fail('IR_INVALID', `relation ${r.rel}: every key needs left and right`);
         if (!columnOf(ent, k.left)) fail('COLUMN_UNKNOWN', `${q.entity}.${k.left}`);
         if (!columnOf(target, k.right)) fail('COLUMN_UNKNOWN', `${target.name}.${k.right}`);
+        if (!meets(columnOf(ent, k.left)!, columnOf(target, k.right)!)) fail('OPERATOR_NOT_ALLOWED', `relation ${r.rel}: ${q.entity}.${k.left} does not meet ${target.name}.${k.right}`);
         // 한 column이 두 성분에 나오면 key가 아니다.
         if (lefts.has(k.left) || rights.has(k.right)) fail('IR_INVALID', `relation ${r.rel}: key column ${k.left} or ${k.right} is used twice`);
         lefts.add(k.left);
@@ -281,6 +297,9 @@ class Validator {
       if (p.op !== 'in' && p.op !== 'not_in') fail('IR_INVALID', 'subquery needs in or not_in');
       if (p.p !== undefined || ps.length > 0 || p.fn || p.value) fail('IR_INVALID', 'subquery pred may not carry values');
       this.sub(p.sub, false, s);
+      // sub checked the subquery column; it meets the compared column as check operands do.
+      const subColumn = columnOf(this.entity(p.sub.query.entity), p.sub.column ?? '');
+      if (subColumn && !meets(columnOf(ent, column)!, subColumn)) fail('OPERATOR_NOT_ALLOWED', `${ent.name}.${column} does not meet the subquery column ${p.sub.query.entity}.${p.sub.column}`);
       return;
     }
     if (p.fn || p.value) {
@@ -333,6 +352,7 @@ class Validator {
       const refColumn: unknown = p.ref.column;
       if (typeof path !== 'string' || typeof refColumn !== 'string') fail('IR_INVALID', `${op} ref path and column must be strings`);
       const other = this.ref(s, path, refColumn);
+      if (!meets(c, other)) fail('OPERATOR_NOT_ALLOWED', `${ent.name}.${column} does not meet ${path}.${refColumn}`);
       if (!colPairOpAllowed(c, other, op)) fail('OPERATOR_NOT_ALLOWED', `${op} on ${ent.name}.${column} (${c.type}) and ${path}.${refColumn} (${other.type})`);
       return;
     }

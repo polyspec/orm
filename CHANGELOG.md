@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T96 (in part): the two columns of a column comparison, of a column `in`/`not_in` a subquery column, of a join's `left`/`right` and of each relation key pair must meet as dbspec check operands do, else `OPERATOR_NOT_ALLOWED` in every implementation (PostgreSQL refuses `integer = varchar`, MySQL coerces, SQLite compares by affinity); the conformance vector over the three databases follows.
 - T97: a column-comparison operator (`eq_col` and the others) is allowed by the left column's type and by the absence of a codec on both columns, with `eq_col` and `not_eq_col` also for two `ip` columns; `bool gt_col`, `bytes gt_col` and an `aes` column's `eq_col` are `OPERATOR_NOT_ALLOWED` in every implementation.
 - T94: `ir.Validate` and its four counterparts refuse a primary key or identity assignment in `update` and `restore` (and the soft delete column in `restore`) with `IR_INVALID`, so an IR executor that does not plan sees the rule the planners alone held; the planners' unreachable checks are deleted.
 - T99: an `insert` assigns by `p` or `null`; `plus_p` and `minus_p` in its `set` are `IR_INVALID` in every implementation and stay valid in `on_duplicate` and `update` (MySQL read the default in a `VALUES` list, PostgreSQL and SQLite refused the statement).

@@ -465,6 +465,29 @@ final class Validator
     }
 
     /**
+     * Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
+     * decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
+     * bytes with bytes.
+     */
+    private static function meets(array $a, array $b): bool
+    {
+        $integer = static fn (string $t): bool => $t === 'i16' || $t === 'i32' || $t === 'i64';
+        if ($integer($a['type'])) {
+            return $integer($b['type']);
+        }
+        if ($a['type'] === 'decimal') {
+            return $b['type'] === 'decimal' && $a['scale'] === $b['scale'];
+        }
+        if ($a['type'] === 'varchar' || $a['type'] === 'text') {
+            return $b['type'] === 'varchar' || $b['type'] === 'text';
+        }
+        if ($a['type'] === 'time' || $a['type'] === 'datetime') {
+            return $b['type'] === $a['type'] && $a['precision'] === $b['precision'];
+        }
+        return $a['type'] === $b['type'];
+    }
+
+    /**
      * Whether the column comparison $op may compare $left with $right: its base operator (eq for eq_col) must be one of
      * the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
      * operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col, because both sides are the
@@ -537,6 +560,9 @@ final class Validator
             if (RuntimeModel::column($target, $right) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
+            if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
+                throw self::err(Code::OPERATOR_NOT_ALLOWED, "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right");
+            }
             $joined[$rel] = $j;
             $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'], 'node' => $at['node']['joins'][$rel]], true, false);
         }
@@ -590,6 +616,9 @@ final class Validator
                 }
                 if (RuntimeModel::column($target, $right) === null) {
                     throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
+                }
+                if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
+                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "relation $rel: $entity.$left does not meet {$target['entity']}.$right");
                 }
                 // 한 column이 두 성분에 나오면 key가 아니다.
                 if (isset($lefts[$left]) || isset($rights[$right])) {
@@ -760,6 +789,12 @@ final class Validator
                 throw self::err(Code::IR_INVALID, 'subquery pred may not carry values');
             }
             $this->sub($p['sub'], false, $at['node']);
+            // sub checked the subquery column; it meets the compared column as check operands do.
+            $subEntity = $this->m->entities[$p['sub']['query']['entity']];
+            $subColumn = RuntimeModel::column($subEntity, $p['sub']['column'] ?? '');
+            if ($subColumn !== null && !self::meets(RuntimeModel::column($ent, $column), $subColumn)) {
+                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$name.$column does not meet the subquery column {$p['sub']['query']['entity']}.{$p['sub']['column']}");
+            }
             return;
         }
         if (isset($p['fn']) || isset($p['value'])) {
@@ -831,6 +866,9 @@ final class Validator
                 throw self::err(Code::IR_INVALID, "$op needs ref");
             }
             $other = $this->ref($at, $p['ref']);
+            if (!self::meets($c, $other)) {
+                throw self::err(Code::OPERATOR_NOT_ALLOWED, "$name.$column does not meet {$p['ref']['column']}");
+            }
             if (!self::colPairOpAllowed($c, $other, $op)) {
                 throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$column ({$c['type']}) and {$p['ref']['column']} ({$other['type']})");
             }

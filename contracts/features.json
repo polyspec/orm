@@ -3736,7 +3736,12 @@
           "planner_ip_eq_col_ip",
           "planner_rejects_bool_gt_col",
           "planner_rejects_ip_gt_col",
-          "planner_rejects_aes_eq_col"
+          "planner_rejects_aes_eq_col",
+          "planner_col_pair_integers",
+          "planner_rejects_col_pair_integer_varchar",
+          "planner_rejects_in_subquery_integer_varchar",
+          "planner_rejects_join_integer_varchar",
+          "planner_rejects_relation_integer_varchar"
         ],
         "owners": {
           "go": {
@@ -3789,7 +3794,12 @@
                     "planner_ip_eq_col_ip",
                     "planner_rejects_bool_gt_col",
                     "planner_rejects_ip_gt_col",
-                    "planner_rejects_aes_eq_col"
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3828,7 +3838,12 @@
                     "planner_ip_eq_col_ip": "TestCoveragePlannerIpEqColIp",
                     "planner_rejects_bool_gt_col": "TestCoveragePlannerRejectsBoolGtCol",
                     "planner_rejects_ip_gt_col": "TestCoveragePlannerRejectsIpGtCol",
-                    "planner_rejects_aes_eq_col": "TestCoveragePlannerRejectsAesEqCol"
+                    "planner_rejects_aes_eq_col": "TestCoveragePlannerRejectsAesEqCol",
+                    "planner_col_pair_integers": "TestCoveragePlannerColPairIntegers",
+                    "planner_rejects_col_pair_integer_varchar": "TestCoveragePlannerRejectsColPairIntegerVarchar",
+                    "planner_rejects_in_subquery_integer_varchar": "TestCoveragePlannerRejectsInSubqueryIntegerVarchar",
+                    "planner_rejects_join_integer_varchar": "TestCoveragePlannerRejectsJoinIntegerVarchar",
+                    "planner_rejects_relation_integer_varchar": "TestCoveragePlannerRejectsRelationIntegerVarchar"
                   }
                 }
               ]
@@ -3884,7 +3899,12 @@
                     "planner_ip_eq_col_ip",
                     "planner_rejects_bool_gt_col",
                     "planner_rejects_ip_gt_col",
-                    "planner_rejects_aes_eq_col"
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar"
                   ]
                 }
               ]
@@ -3940,7 +3960,12 @@
                     "planner_ip_eq_col_ip",
                     "planner_rejects_bool_gt_col",
                     "planner_rejects_ip_gt_col",
-                    "planner_rejects_aes_eq_col"
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3979,7 +4004,12 @@
                     "planner_ip_eq_col_ip": "engine::coverage_planner::coverage_planner_ip_eq_col_ip",
                     "planner_rejects_bool_gt_col": "engine::coverage_planner::coverage_planner_rejects_bool_gt_col",
                     "planner_rejects_ip_gt_col": "engine::coverage_planner::coverage_planner_rejects_ip_gt_col",
-                    "planner_rejects_aes_eq_col": "engine::coverage_planner::coverage_planner_rejects_aes_eq_col"
+                    "planner_rejects_aes_eq_col": "engine::coverage_planner::coverage_planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers": "engine::coverage_planner::coverage_planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_relation_integer_varchar"
                   }
                 }
               ]
@@ -4035,7 +4065,12 @@
                     "planner_ip_eq_col_ip",
                     "planner_rejects_bool_gt_col",
                     "planner_rejects_ip_gt_col",
-                    "planner_rejects_aes_eq_col"
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar"
                   ]
                 }
               ]
