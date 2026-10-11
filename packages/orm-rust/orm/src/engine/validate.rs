@@ -600,7 +600,7 @@ fn joined_refs<'g>(g: &'g ir::Group, seen: &mut Vec<&'g str>) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::coverage_planner::{bench, request};
+    use super::super::coverage_planner::{bench, request, REJECTED};
     use super::validate;
     use serde_json::Value;
 
@@ -618,10 +618,21 @@ mod tests {
         let mut wrong = Vec::new();
         for c in cases {
             let name = c["name"].as_str().expect("name");
-            let got = validate(&manifest, &request(&c["request"], &manifest.manifest_hash));
+            // typed request가 담을 수 없는 member type은 request를 만들 수 없으므로 IR_INVALID다(REJECTED).
+            let built = std::panic::catch_unwind(|| request(&c["request"], &manifest.manifest_hash));
+            let got: std::result::Result<(), String> = match built {
+                Ok(r) => validate(&manifest, &r).map_err(|e| e.code().to_owned()),
+                Err(payload) => {
+                    let message = payload.downcast_ref::<String>().cloned().unwrap_or_default();
+                    match message.strip_prefix(REJECTED) {
+                        Some(_) => Err("IR_INVALID".to_owned()),
+                        None => std::panic::resume_unwind(payload),
+                    }
+                }
+            };
             match (&got, c["valid"].as_bool().unwrap_or(false), c["error"].as_str()) {
                 (Ok(()), true, None) => {}
-                (Err(e), false, Some(code)) if e.code() == code => {}
+                (Err(code), false, Some(want)) if code == want => {}
                 _ => wrong.push(format!("{name}: got {got:?}, want {}", c.get("error").cloned().unwrap_or(Value::from("valid")))),
             }
         }

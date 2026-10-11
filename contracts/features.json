@@ -3575,7 +3575,8 @@
           "planner_column_refs",
           "planner_rejects_ref_unknown_column",
           "planner_rejects_outer_ref_outside_subquery",
-          "planner_rejects_unjoined_ref"
+          "planner_rejects_unjoined_ref",
+          "planner_ref_path_absent"
         ],
         "owners": {
           "go": {
@@ -3609,7 +3610,8 @@
                     "planner_column_refs",
                     "planner_rejects_ref_unknown_column",
                     "planner_rejects_outer_ref_outside_subquery",
-                    "planner_rejects_unjoined_ref"
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3629,7 +3631,8 @@
                     "planner_column_refs": "TestCoveragePlannerColumnRefs",
                     "planner_rejects_ref_unknown_column": "TestCoveragePlannerRejectsRefUnknownColumn",
                     "planner_rejects_outer_ref_outside_subquery": "TestCoveragePlannerRejectsOuterRefOutsideSubquery",
-                    "planner_rejects_unjoined_ref": "TestCoveragePlannerRejectsUnjoinedRef"
+                    "planner_rejects_unjoined_ref": "TestCoveragePlannerRejectsUnjoinedRef",
+                    "planner_ref_path_absent": "TestCoveragePlannerRefPathAbsent"
                   }
                 }
               ]
@@ -3666,7 +3669,8 @@
                     "planner_column_refs",
                     "planner_rejects_ref_unknown_column",
                     "planner_rejects_outer_ref_outside_subquery",
-                    "planner_rejects_unjoined_ref"
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent"
                   ]
                 }
               ]
@@ -3703,7 +3707,8 @@
                     "planner_column_refs",
                     "planner_rejects_ref_unknown_column",
                     "planner_rejects_outer_ref_outside_subquery",
-                    "planner_rejects_unjoined_ref"
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3723,7 +3728,8 @@
                     "planner_column_refs": "engine::coverage_planner::coverage_planner_column_refs",
                     "planner_rejects_ref_unknown_column": "engine::coverage_planner::coverage_planner_rejects_ref_unknown_column",
                     "planner_rejects_outer_ref_outside_subquery": "engine::coverage_planner::coverage_planner_rejects_outer_ref_outside_subquery",
-                    "planner_rejects_unjoined_ref": "engine::coverage_planner::coverage_planner_rejects_unjoined_ref"
+                    "planner_rejects_unjoined_ref": "engine::coverage_planner::coverage_planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent": "engine::coverage_planner::coverage_planner_ref_path_absent"
                   }
                 }
               ]
@@ -3760,7 +3766,8 @@
                     "planner_column_refs",
                     "planner_rejects_ref_unknown_column",
                     "planner_rejects_outer_ref_outside_subquery",
-                    "planner_rejects_unjoined_ref"
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent"
                   ]
                 }
               ]

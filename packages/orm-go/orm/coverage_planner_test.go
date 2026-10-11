@@ -206,6 +206,12 @@ func TestCoveragePlannerRejectsOuterRefOutsideSubquery(t *testing.T) {
 	compilePlannerCase(t, "planner_rejects_outer_ref_outside_subquery")
 }
 
+// TestCoveragePlannerRefPathAbsent는 path 없는 ref가 statement의 root를 가리키는지 확인한다.
+func TestCoveragePlannerRefPathAbsent(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_ref_path_absent")
+}
+
 // TestCoveragePlannerRejectsUnjoinedRef는 statement에 join되지 않은 path의 ref가 ENTITY_NOT_JOINED인지 확인한다.
 func TestCoveragePlannerRejectsUnjoinedRef(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
