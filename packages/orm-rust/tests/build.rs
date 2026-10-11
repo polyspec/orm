@@ -10,4 +10,9 @@ fn main() {
         .scan("src/decimal_physical.rs")
         .out_dir(out.join("decimal"))
         .generate();
+    // markdown executor conformance(tests/markdown)의 corpus catalog model이다.
+    polyspec_orm_build::Builder::new(["../../../tests/markdown/corpus/dbspec/conformance.dbs"])
+        .scan("tests/markdown_conformance.rs")
+        .out_dir(out.join("markdown"))
+        .generate();
 }
