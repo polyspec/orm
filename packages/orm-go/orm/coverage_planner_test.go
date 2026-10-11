@@ -25,10 +25,12 @@ type plannerStatement struct {
 // plannerSlot은 bind slot 하나의 출처와 type이다. param slot은 request 값의
 // 번호를, parent slot은 key의 type을, 나머지 slot은 type을 싣는다.
 type plannerSlot struct {
-	From     string   `json:"from"`
-	Param    *int     `json:"param,omitempty"`
-	Type     string   `json:"type,omitempty"`
-	KeyTypes []string `json:"key_types,omitempty"`
+	From  string `json:"from"`
+	Param *int   `json:"param,omitempty"`
+	Type  string `json:"type,omitempty"`
+	// Precision is the fraction digits of a datetime or time slot.
+	Precision *int     `json:"precision,omitempty"`
+	KeyTypes  []string `json:"key_types,omitempty"`
 }
 
 // compilePlannerCase는 planner fixture case의 input에 schema/bench.dbs의
@@ -89,6 +91,10 @@ func compilePlannerCase(t *testing.T, id string) {
 					s.KeyTypes = slot.KeyTypes
 				default:
 					s.Type = slot.ColType
+				}
+				if slot.ColType == "datetime" || slot.ColType == "time" {
+					precision := slot.Precision
+					s.Precision = &precision
 				}
 				slots = append(slots, s)
 			}

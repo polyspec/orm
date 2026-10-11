@@ -1159,6 +1159,10 @@ final class PlanBinds
             $slot['host_styles'] = $hostStyles;
         }
         $slot['col_type'] = $type;
+        // A datetime or time compared with a function's argument or result is text of six fraction digits.
+        if ($type === 'datetime' || $type === 'time') {
+            $slot['precision'] = 6;
+        }
         return $this->typed($slot);
     }
 
@@ -1181,7 +1185,7 @@ final class PlanBinds
         if ($col['type'] === 'decimal') {
             $slot['precision'] = $col['precision'];
             $slot['scale'] = $col['scale'];
-        } elseif ($col['type'] === 'datetime') {
+        } elseif ($col['type'] === 'datetime' || $col['type'] === 'time') {
             $slot['precision'] = $col['precision'];
         }
         return $this->typed($slot);

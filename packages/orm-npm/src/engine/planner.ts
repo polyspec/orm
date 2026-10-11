@@ -66,7 +66,12 @@ class Builder {
     return this.push(s);
   }
   /** The value Params[i] whose dbspec type is type. */
-  public param(i: number, type: string): string { return this.typed(slot({ from: 'param', param: i, col_type: type })); }
+  public param(i: number, type: string): string {
+    const s = slot({ from: 'param', param: i, col_type: type });
+    // A datetime or time compared with a function's argument or result is text of six fraction digits.
+    if (type === 'datetime' || type === 'time') s.precision = 6;
+    return this.typed(s);
+  }
   /** The value Params[i] compared with or assigned to col: col's type, with the digits of a decimal, time or datetime. */
   public colParam(i: number, col: Column, transform = ''): string {
     const s = slot({ from: 'param', param: i, transform, col_type: col.type });

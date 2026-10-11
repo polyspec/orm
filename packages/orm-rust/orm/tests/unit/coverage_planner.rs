@@ -362,10 +362,19 @@ fn run(id: &str) {
                         let slots: Vec<Value> = step
                             .bind_slots
                             .iter()
-                            .map(|slot| match slot.from.as_str() {
-                                "param" => json!({"from": slot.from, "param": slot.param, "type": slot.col_type}),
-                                "parent" => json!({"from": slot.from, "key_types": slot.key_types}),
-                                _ => json!({"from": slot.from, "type": slot.col_type}),
+                            .map(|slot| {
+                                if slot.from == "parent" {
+                                    return json!({"from": slot.from, "key_types": slot.key_types});
+                                }
+                                let mut out = json!({"from": slot.from, "type": slot.col_type});
+                                if slot.from == "param" {
+                                    out["param"] = json!(slot.param);
+                                }
+                                // A datetime or time slot carries its fraction digits.
+                                if slot.col_type == "datetime" || slot.col_type == "time" {
+                                    out["precision"] = json!(slot.precision);
+                                }
+                                out
                             })
                             .collect();
                         json!({"role": step.role, "sql": step.sql, "slots": slots, "tables": step.tables})

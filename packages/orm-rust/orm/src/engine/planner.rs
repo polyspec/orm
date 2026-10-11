@@ -145,7 +145,9 @@ impl Builder {
 
     /// request 값 Params[i]의 placeholder다. `ty`는 그 값의 dbspec type이다.
     fn param(&mut self, i: usize, ty: &str) -> String {
-        self.slot(BindSlot { from: "param".into(), param: i, col_type: ty.into(), ..Default::default() })
+        // A datetime or time compared with a function's argument or result is text of six fraction digits.
+        let precision = if ty == "datetime" || ty == "time" { 6 } else { 0 };
+        self.slot(BindSlot { from: "param".into(), param: i, col_type: ty.into(), precision, ..Default::default() })
     }
 
     /// column `col`과 비교하거나 `col`에 할당하는 값 Params[i]의 placeholder다. type은 `col`의

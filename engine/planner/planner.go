@@ -95,15 +95,24 @@ func (b *builder) slot(s plan.BindSlot) string {
 
 // param은 request 값 Params[i]의 placeholder다. typ은 그 값의 dbspec type이다.
 func (b *builder) param(i int, typ string) string {
-	return b.slot(plan.BindSlot{From: "param", Param: i, ColType: typ})
+	slot := plan.BindSlot{From: "param", Param: i, ColType: typ}
+	// 함수 인자나 결과와 비교하는 datetime과 time 값은 여섯 자리 text다.
+	if typ == "datetime" || typ == "time" {
+		slot.Precision = 6
+	}
+	return b.slot(slot)
 }
 
 // colParam은 column col과 비교하거나 col에 할당하는 값 Params[i]의
 // placeholder다. type은 col의 type이고 decimal은 그 자릿수를 싣는다.
 func (b *builder) colParam(i int, col *runtimemodel.Field, transform string) string {
 	s := plan.BindSlot{From: "param", Param: i, Transform: transform, ColType: col.Type}
-	if col.Type == "decimal" {
+	switch col.Type {
+	case "decimal":
 		s.Precision, s.Scale = col.Precision, col.Scale
+	case "datetime", "time":
+		// 값은 column의 소수 자리 수만큼의 자리로 bind된다. 0은 소수 자리가 없다는 뜻이다.
+		s.Precision = col.Precision
 	}
 	return b.slot(s)
 }

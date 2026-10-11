@@ -16,9 +16,11 @@ const dialects = ['mysql', 'postgres', 'sqlite'];
 
 /** A bind slot's source and type: the request value number of a param slot, the key types of a parent slot. */
 function plannerSlot(slot) {
-  if (slot.from === 'param') return { from: slot.from, param: slot.param, type: slot.col_type };
   if (slot.from === 'parent') return { from: slot.from, key_types: slot.key_types };
-  return { from: slot.from, type: slot.col_type };
+  const out = slot.from === 'param' ? { from: slot.from, param: slot.param, type: slot.col_type } : { from: slot.from, type: slot.col_type };
+  // A datetime or time slot carries its fraction digits.
+  if (slot.col_type === 'datetime' || slot.col_type === 'time') out.precision = slot.precision ?? 0;
+  return out;
 }
 
 /** Compiles the request of a fixture case in every dialect and compares the expectation. */
