@@ -1647,14 +1647,27 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
         if (str_eqc(kind.text, "block") && !take_name(c, SL("a foreign key name"), args)) {
             return false;
         }
-        if (str_eqc(kind.text, "files")) {
-            return sc_end(c);
+        if (!str_eqc(kind.text, "files")) {
+            token shape;
+            if (!sc_oneof(c, SL("`list` or `table`"), shapes, 2, &shape)) {
+                return false;
+            }
+            PUSH(*args, shape);
         }
-        token shape;
-        if (!sc_oneof(c, SL("`list` or `table`"), shapes, 2, &shape)) {
-            return false;
+        /* shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다. */
+        if (sc_is(c, "shard")) {
+            static const char *const periods[] = {"year", "month", "day"};
+            PUSH(*args, c->t->v[c->i]);
+            c->i++;
+            if (!take_name(c, SL("the shard column"), args)) {
+                return false;
+            }
+            token period;
+            if (!sc_oneof(c, SL("`year`, `month` or `day`"), periods, 3, &period)) {
+                return false;
+            }
+            PUSH(*args, period);
         }
-        PUSH(*args, shape);
         return sc_end(c);
     }
     if (str_eqc(keyword, "key_prefix")) {
@@ -1754,6 +1767,12 @@ static bool new_setting_kind(str keyword)
 }
 
 /* state_machine 줄의 형식이 쓰는 token 수다(column과 형식 낱말을 포함하고 require 목록 앞까지). */
+/* store 종류마다 shard 절 앞의 token 수다(kind 포함, Setting::STORE_ARGUMENTS). */
+static size_t store_arguments(str kind)
+{
+    return str_eqc(kind, "files") ? 1 : str_eqc(kind, "document") ? 2 : 3;
+}
+
 static size_t machine_fixed(str form)
 {
     if (str_eqc(form, "history")) {
@@ -1807,8 +1826,12 @@ static void new_setting(parser *p, token keyword)
             }
         }
     } else {
+        /* store의 `shard` token은 인자가 아니다: 인자는 kind의 인자 뒤의 column과 period다. */
+        size_t shard = str_eqc(kind, "store") ? store_arguments(args.v[0].text) : args.n;
         for (size_t i = 0; i < args.n; i++) {
-            PUSH(s->args, args.v[i].text);
+            if (i != shard) {
+                PUSH(s->args, args.v[i].text);
+            }
         }
     }
     PUSH(p->settings_block->list, s);
@@ -2321,6 +2344,33 @@ static void order_check(parser *p, const tsetting_rec *s)
     }
 }
 
+/* store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가 있는 table과
+ * order가 있는 table에서는 거절한다. */
+static void store_shard_check(parser *p, const tsetting_rec *s, bool order)
+{
+    size_t at = store_arguments(s->args.v[0].text);
+    if (s->args.n <= at) {
+        return;
+    }
+    const token *shard = &s->args.v[at], *name = &s->args.v[at + 1];
+    column *c = column_ref(p, SL("store"), s->line, name);
+    if (c != NULL && ((col_valid(c) && !str_eqc(c->type->name, "date") && !str_eqc(c->type->name, "datetime")) || c->nullable)) {
+        error(p, "setting", s->line, name->column, SL("store shard needs a non-null date or datetime column"));
+    }
+    if (str_eqc(s->args.v[0].text, "block")) {
+        error(p, "setting", s->line, shard->column, SL("store shard is rejected on a block table"));
+    }
+    for (size_t i = 0; i < p->table->fks.n; i++) {
+        if (str_eq(p->table->fks.v[i]->table, p->table->name)) {
+            error(p, "setting", s->line, shard->column, SL("store shard is rejected on a table with a self foreign key"));
+            break;
+        }
+    }
+    if (order) {
+        error(p, "setting", s->line, shard->column, SL("store shard is rejected on a table with order"));
+    }
+}
+
 /* title, body와 markdown의 column 검사다. markdown은 null을 허용하고 title과 body는 허용하지 않는다. */
 static void text_setting_check(parser *p, const tsetting_rec *s)
 {
@@ -2687,6 +2737,7 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (str_eqc(a->v[0].text, "block")) {
                 foreign_key_ref(p, line, &a->v[1]);
             }
+            store_shard_check(p, s, smap_has(&kinds, SL("order")));
         } else if (str_eqc(kind, "key_prefix")) {
             key_prefix_check(p, line, at);
         } else if (str_eqc(kind, "order")) {

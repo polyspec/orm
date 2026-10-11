@@ -145,9 +145,17 @@ static str setting_text(const setting *s, const table *t, dbs_view view)
     if (str_eqc(s->kind, "checkbox")) {
         return fmt("checkbox %S %S %S", s->args.v[0], s->args.v[1], literal_quote(s->args.v[2]));
     }
+    /* store는 kind의 인자 뒤에 shard 절의 column과 period가 있으면 그 앞에 `shard`를 쓴다(Setting::STORE_ARGUMENTS). */
+    size_t shard = s->args.n;
+    if (str_eqc(s->kind, "store")) {
+        shard = str_eqc(s->args.v[0], "files") ? 1 : str_eqc(s->args.v[0], "document") ? 2 : 3;
+    }
     strs parts = {0};
     PUSH(parts, s->kind);
     for (size_t i = 0; i < s->args.n; i++) {
+        if (i == shard) {
+            PUSH(parts, SL("shard"));
+        }
         PUSH(parts, s->args.v[i]);
     }
     return strs_join(&parts, " ");

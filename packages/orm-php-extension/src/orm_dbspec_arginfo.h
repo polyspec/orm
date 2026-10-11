@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 3c8d16907e44e4706977e277e53e718d997706ea */
+ * Stub hash: ed963a347a8db089fdd75ed8d47fbf80c80fbbd8 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)

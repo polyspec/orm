@@ -1752,11 +1752,14 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     static const char *const kinds[] = {"entity", "updated", "soft_delete", "select_explicit", "codec", "aes_version", "blind_index", "navigation", "markdown", "store",
         "key_prefix", "title", "body", "order", "checkbox", "state_machine", "immutable", "audit"};
     static const char *const stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip"};
+    static const char *const store_kinds[] = {"files", "document", "block"};
+    static const zend_long store_arguments[] = {1, 2, 3};
     array_constant(dbs_ce_ColumnType, "SIMPLE", simple, NULL, COUNT(simple));
     array_constant(dbs_ce_ColumnType, "PARAMETERIZED", parameterized, arity, COUNT(parameterized));
     array_constant(dbs_ce_ForeignKey, "ACTIONS", actions, NULL, COUNT(actions));
     array_constant(dbs_ce_Setting, "KINDS", kinds, NULL, COUNT(kinds));
     array_constant(dbs_ce_Setting, "CODEC_STAGES", stages, NULL, COUNT(stages));
+    array_constant(dbs_ce_Setting, "STORE_ARGUMENTS", store_kinds, store_arguments, COUNT(store_kinds));
     effect_queries_constant();
     return SUCCESS;
 }
