@@ -412,6 +412,26 @@ function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0;
 }
 
+/**
+ * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while PostgreSQL
+ * and SQLite name one target and a meeting on another key is a unique violation, so no order of keys reproduces both:
+ * an upsert has exactly one key that can meet the inserted row, and the insert assigns every column of it. The
+ * candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor assigns), and
+ * each unique key; a blind index column counts as assigned with its AES source.
+ */
+export function conflictKey(ent: Entity, set: readonly Assignment[]): readonly string[] {
+  const assigned = new Set(set.map(a => a.column));
+  for (const f of ent.fields) if (f.blindIndex !== '' && assigned.has(f.name)) assigned.add(f.blindIndex);
+  const candidates: { name: string; columns: readonly string[] }[] = [];
+  if (ent.primaryKey.some(c => assigned.has(c))) candidates.push({ name: `primary key (${ent.primaryKey.join(', ')})`, columns: ent.primaryKey });
+  for (const u of ent.uniques) candidates.push({ name: `unique (${u.join(', ')})`, columns: u });
+  if (candidates.length === 0) fail('IR_INVALID', 'on_duplicate needs exactly one conflict key; no key can meet the row');
+  if (candidates.length !== 1) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidates.map(k => k.name).join(', ')} can meet the row`);
+  const missing = candidates[0]!.columns.find(c => !assigned.has(c));
+  if (missing !== undefined) fail('IR_INVALID', `on_duplicate needs exactly one conflict key; ${candidates[0]!.name} can meet the row but the insert does not assign ${missing}`);
+  return candidates[0]!.columns;
+}
+
 /** Checks a request against the manifest. */
 export function validate(m: RuntimeModel, r: Request): void {
   if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${r.ir_version}, engine ${IR_VERSION}`);
@@ -460,6 +480,7 @@ export function validate(m: RuntimeModel, r: Request): void {
       const c = columnOf(ent, a.column)!;
       if (c.primary || c.identity) fail('IR_INVALID', `on_duplicate cannot assign ${r.entity}.${a.column}`);
     }
+    conflictKey(ent, r.set ?? []);
   }
   if (r.optimistic) {
     if (!columnOf(ent, r.optimistic.column)) fail('COLUMN_UNKNOWN', `${r.entity}.${r.optimistic.column}`);

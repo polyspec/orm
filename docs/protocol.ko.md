@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: b12c54c88462a180bce43b4d9d58ad6f85cca04622fde86fb6b62e249dc5683d -->
+<!-- source-sha256: 34acdf00064b22747f44b110e23620aa26b9fff4c4293e4ad010a0d4a2b1acf5 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -40,7 +40,7 @@
 | `load` | `insert`가 행을 저장된 key 그대로 쓴다. identity 컬럼의 값을 받는다([적재](#_1-6-load)) |
 | `set` | `insert`와 `update`의 할당 |
 | `rows` | 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다 |
-| `on_duplicate` | 삽입한 행이 기존 고유 키와 겹칠 때 적용하는 할당 |
+| `on_duplicate` | 삽입한 행이 기존 key와 겹칠 때 적용하는 할당. `on_duplicate`가 있는 insert에는 삽입 행을 만날 수 있는 key(primary key는 insert가 빼먹지 않았을 때만, 그리고 모든 unique key)가 정확히 하나여야 하고 insert가 그 모든 컬럼을 할당해야 하며, 아니면 `IR_INVALID` "on_duplicate needs exactly one conflict key; %s can meet the row"이다. MySQL은 만난 아무 unique key의 행을 갱신하지만 PostgreSQL과 SQLite는 대상 하나를 지정하기 때문이다 |
 | `optimistic` | `update`는 컬럼 값이 매개변수와 같을 때만 일치한다. 일치하는 행이 없으면 `OPTIMISTIC_LOCK`을 반환한다 |
 | `lock` | 루트 행 조회에만 사용하며 클라이언트는 트랜잭션 안에서만 허용한다 |
 

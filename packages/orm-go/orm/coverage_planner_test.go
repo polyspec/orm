@@ -361,3 +361,21 @@ func TestCoveragePlannerRejectsRelationIntegerVarchar(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_relation_integer_varchar")
 }
+
+// TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey는 rejects upsert primary and unique key case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_upsert_primary_and_unique_key")
+}
+
+// TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned는 rejects upsert unique key not assigned case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_upsert_unique_key_not_assigned")
+}
+
+// TestCoveragePlannerRejectsUpsertWithoutAKey는 rejects upsert without a key case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsUpsertWithoutAKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_upsert_without_a_key")
+}

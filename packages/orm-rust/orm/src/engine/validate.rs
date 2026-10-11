@@ -50,6 +50,42 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     ops_by_type(c.ty.name()).contains(&op)
 }
 
+/// The one key an insert with `on_duplicate` conflicts on. MySQL updates the row met on any unique key, while
+/// PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
+/// reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
+/// of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor
+/// assigns), and each unique key; a blind index column counts as assigned with its AES source.
+pub(super) fn conflict_key(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<String>> {
+    let mut assigned: Vec<&str> = set.iter().map(|a| a.column.as_str()).collect();
+    for f in &ent.fields {
+        if let Some(bi) = &f.blind_index {
+            if assigned.contains(&f.name.as_str()) {
+                assigned.push(bi);
+            }
+        }
+    }
+    let mut candidates: Vec<(String, &Vec<String>)> = Vec::new();
+    if ent.primary_key.iter().any(|c| assigned.contains(&c.as_str())) {
+        candidates.push((format!("primary key ({})", ent.primary_key.join(", ")), &ent.primary_key));
+    }
+    for u in &ent.uniques {
+        candidates.push((format!("unique ({})", u.columns.join(", ")), &u.columns));
+    }
+    match candidates.as_slice() {
+        [] => Err(err(codes::IR_INVALID, "on_duplicate needs exactly one conflict key; no key can meet the row")),
+        [(name, columns)] => {
+            if let Some(missing) = columns.iter().find(|c| !assigned.contains(&c.as_str())) {
+                return Err(err(codes::IR_INVALID, format!("on_duplicate needs exactly one conflict key; {name} can meet the row but the insert does not assign {missing}")));
+            }
+            Ok((*columns).clone())
+        }
+        many => {
+            let names: Vec<&str> = many.iter().map(|(n, _)| n.as_str()).collect();
+            Err(err(codes::IR_INVALID, format!("on_duplicate needs exactly one conflict key; {} can meet the row", names.join(", "))))
+        }
+    }
+}
+
 /// Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
 /// decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
 /// bytes with bytes.
@@ -194,6 +230,7 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
                 return Err(err(codes::IR_INVALID, format!("on_duplicate cannot assign {}.{}", q.entity, a.column)));
             }
         }
+        conflict_key(ent, &r.set)?;
     }
     if let Some(o) = &r.optimistic {
         if ent.field(&o.column).is_none() {

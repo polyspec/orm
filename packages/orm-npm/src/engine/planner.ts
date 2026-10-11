@@ -5,6 +5,7 @@ import type { Assemble, Assignment, BindSlot, Child, Group, KeyReference, OrmFun
 import { OrmError } from '../runtime_error.js';
 import { type Dialect, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
+import { conflictKey } from './validate.js';
 
 /** One entity occurrence in a statement (root or join) with its alias. */
 interface Scope {
@@ -179,11 +180,9 @@ function blindIndexSource(ent: Entity, target: string): Column | undefined {
   return ent.fields.find(c => c.blindIndex === target);
 }
 
-/** The unique key an upsert conflicts on: the first unique key fully inserted, else the primary key. */
+/** The columns of the one key an upsert conflicts on, which the validator has checked. */
 function conflictTarget(ent: Entity, set: readonly Assignment[]): readonly string[] {
-  const inserted = new Set(set.map(a => a.column));
-  for (const uk of ent.uniques) if (uk.every(c => inserted.has(c))) return uk;
-  return ent.primaryKey;
+  return conflictKey(ent, set);
 }
 
 /** The type of the value a SQL-side style function takes from its placeholder: hex takes bytes, ip takes text. */

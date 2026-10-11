@@ -730,16 +730,10 @@ final class Planner
         return null;
     }
 
-    /** The unique key an upsert conflicts on: the first one fully inserted, else the primary key. */
+    /** The columns of the one key an upsert conflicts on, which the validator has checked. */
     private static function conflictTarget(array $ent, array $set): array
     {
-        $inserted = array_column($set, 'column');
-        foreach ($ent['unique'] as $uk) {
-            if (array_diff($uk, $inserted) === []) {
-                return $uk;
-            }
-        }
-        return $ent['pk'];
+        return Validator::conflictKey($ent, $set);
     }
 
     private function renderAssign(PlanBinds $b, array $ent, array $col, array $a): string

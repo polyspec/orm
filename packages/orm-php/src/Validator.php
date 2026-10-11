@@ -175,6 +175,7 @@ final class Validator
                     throw self::err(Code::IR_INVALID, "on_duplicate cannot assign $entity.{$a['column']}");
                 }
             }
+            self::conflictKey($ent, $r['set'] ?? []);
         }
         if (isset($r['optimistic'])) {
             $column = $r['optimistic']['column'] ?? '';
@@ -462,6 +463,48 @@ final class Validator
         }
         $ent = $target['ent'] ?? throw self::err(Code::ENTITY_UNKNOWN, $target['name']);
         return RuntimeModel::column($ent, $column) ?? throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$column");
+    }
+
+    /**
+     * The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while
+     * PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
+     * reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
+     * of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor
+     * assigns), and each unique key; a blind index column counts as assigned with its AES source.
+     *
+     * @param list<array<string, mixed>> $set
+     * @return list<string>
+     */
+    public static function conflictKey(array $ent, array $set): array
+    {
+        $assigned = array_fill_keys(array_column($set, 'column'), true);
+        foreach ($ent['columns'] as $f) {
+            if ($f['blind_index'] !== '' && isset($assigned[$f['name']])) {
+                $assigned[$f['blind_index']] = true;
+            }
+        }
+        $candidates = [];
+        foreach ($ent['pk'] as $c) {
+            if (isset($assigned[$c])) {
+                $candidates[] = ['name' => 'primary key (' . implode(', ', $ent['pk']) . ')', 'columns' => $ent['pk']];
+                break;
+            }
+        }
+        foreach ($ent['unique'] as $u) {
+            $candidates[] = ['name' => 'unique (' . implode(', ', $u) . ')', 'columns' => $u];
+        }
+        if ($candidates === []) {
+            throw self::err(Code::IR_INVALID, 'on_duplicate needs exactly one conflict key; no key can meet the row');
+        }
+        if (count($candidates) !== 1) {
+            throw self::err(Code::IR_INVALID, 'on_duplicate needs exactly one conflict key; ' . implode(', ', array_column($candidates, 'name')) . ' can meet the row');
+        }
+        foreach ($candidates[0]['columns'] as $c) {
+            if (!isset($assigned[$c])) {
+                throw self::err(Code::IR_INVALID, "on_duplicate needs exactly one conflict key; {$candidates[0]['name']} can meet the row but the insert does not assign $c");
+            }
+        }
+        return $candidates[0]['columns'];
     }
 
     /**

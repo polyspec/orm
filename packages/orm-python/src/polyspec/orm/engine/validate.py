@@ -460,6 +460,29 @@ def _joined_refs(g: dict, seen: set) -> None:
             _joined_refs(item['group'], seen)
 
 
+def conflict_key(ent: Entity, assignments) -> list:
+    """The one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique key, while
+    PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of keys
+    reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every column
+    of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR executor
+    assigns), and each unique key; a blind index column counts as assigned with its AES source."""
+    assigned = {a['column'] for a in assignments}
+    assigned |= {f.blind_index for f in ent.fields if f.blind_index and f.name in assigned}
+    candidates = []
+    if any(c in assigned for c in ent.primary_key):
+        candidates.append((f'primary key ({", ".join(ent.primary_key)})', list(ent.primary_key)))
+    candidates.extend((f'unique ({", ".join(u)})', list(u)) for u in ent.uniques)
+    if not candidates:
+        _fail('IR_INVALID', 'on_duplicate needs exactly one conflict key; no key can meet the row')
+    if len(candidates) != 1:
+        _fail('IR_INVALID', f'on_duplicate needs exactly one conflict key; {", ".join(n for n, _ in candidates)} can meet the row')
+    name, columns = candidates[0]
+    for c in columns:
+        if c not in assigned:
+            _fail('IR_INVALID', f'on_duplicate needs exactly one conflict key; {name} can meet the row but the insert does not assign {c}')
+    return columns
+
+
 def validate(m: RuntimeModel, r: dict) -> None:
     """request를 manifest에 대해 검사한다."""
     if r.get('ir_version') != IR_VERSION:
@@ -525,6 +548,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
             c = field_of(ent, a['column'])
             if c.primary or c.identity:
                 _fail('IR_INVALID', f'on_duplicate cannot assign {r["entity"]}.{a["column"]}')
+        conflict_key(ent, r.get('set') or [])
     if r.get('optimistic'):
         if field_of(ent, r['optimistic']['column']) is None:
             _fail('COLUMN_UNKNOWN', f'{r["entity"]}.{r["optimistic"]["column"]}')

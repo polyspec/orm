@@ -3741,7 +3741,10 @@
           "planner_rejects_col_pair_integer_varchar",
           "planner_rejects_in_subquery_integer_varchar",
           "planner_rejects_join_integer_varchar",
-          "planner_rejects_relation_integer_varchar"
+          "planner_rejects_relation_integer_varchar",
+          "planner_rejects_upsert_primary_and_unique_key",
+          "planner_rejects_upsert_unique_key_not_assigned",
+          "planner_rejects_upsert_without_a_key"
         ],
         "owners": {
           "go": {
@@ -3799,7 +3802,10 @@
                     "planner_rejects_col_pair_integer_varchar",
                     "planner_rejects_in_subquery_integer_varchar",
                     "planner_rejects_join_integer_varchar",
-                    "planner_rejects_relation_integer_varchar"
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3843,7 +3849,10 @@
                     "planner_rejects_col_pair_integer_varchar": "TestCoveragePlannerRejectsColPairIntegerVarchar",
                     "planner_rejects_in_subquery_integer_varchar": "TestCoveragePlannerRejectsInSubqueryIntegerVarchar",
                     "planner_rejects_join_integer_varchar": "TestCoveragePlannerRejectsJoinIntegerVarchar",
-                    "planner_rejects_relation_integer_varchar": "TestCoveragePlannerRejectsRelationIntegerVarchar"
+                    "planner_rejects_relation_integer_varchar": "TestCoveragePlannerRejectsRelationIntegerVarchar",
+                    "planner_rejects_upsert_primary_and_unique_key": "TestCoveragePlannerRejectsUpsertPrimaryAndUniqueKey",
+                    "planner_rejects_upsert_unique_key_not_assigned": "TestCoveragePlannerRejectsUpsertUniqueKeyNotAssigned",
+                    "planner_rejects_upsert_without_a_key": "TestCoveragePlannerRejectsUpsertWithoutAKey"
                   }
                 }
               ]
@@ -3904,7 +3913,10 @@
                     "planner_rejects_col_pair_integer_varchar",
                     "planner_rejects_in_subquery_integer_varchar",
                     "planner_rejects_join_integer_varchar",
-                    "planner_rejects_relation_integer_varchar"
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key"
                   ]
                 }
               ]
@@ -3965,7 +3977,10 @@
                     "planner_rejects_col_pair_integer_varchar",
                     "planner_rejects_in_subquery_integer_varchar",
                     "planner_rejects_join_integer_varchar",
-                    "planner_rejects_relation_integer_varchar"
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -4009,7 +4024,10 @@
                     "planner_rejects_col_pair_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_col_pair_integer_varchar",
                     "planner_rejects_in_subquery_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_in_subquery_integer_varchar",
                     "planner_rejects_join_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_join_integer_varchar",
-                    "planner_rejects_relation_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_relation_integer_varchar"
+                    "planner_rejects_relation_integer_varchar": "engine::coverage_planner::coverage_planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key": "engine::coverage_planner::coverage_planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned": "engine::coverage_planner::coverage_planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key": "engine::coverage_planner::coverage_planner_rejects_upsert_without_a_key"
                   }
                 }
               ]
@@ -4070,7 +4088,10 @@
                     "planner_rejects_col_pair_integer_varchar",
                     "planner_rejects_in_subquery_integer_varchar",
                     "planner_rejects_join_integer_varchar",
-                    "planner_rejects_relation_integer_varchar"
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key"
                   ]
                 }
               ]

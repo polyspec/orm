@@ -104,4 +104,7 @@ runCoverageCases($argv, [
     'planner_rejects_in_subquery_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_in_subquery_integer_varchar'),
     'planner_rejects_join_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_join_integer_varchar'),
     'planner_rejects_relation_integer_varchar' => fn() => plannerCase($root, $fixture, 'planner_rejects_relation_integer_varchar'),
+    'planner_rejects_upsert_primary_and_unique_key' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_primary_and_unique_key'),
+    'planner_rejects_upsert_unique_key_not_assigned' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_unique_key_not_assigned'),
+    'planner_rejects_upsert_without_a_key' => fn() => plannerCase($root, $fixture, 'planner_rejects_upsert_without_a_key'),
 ]);

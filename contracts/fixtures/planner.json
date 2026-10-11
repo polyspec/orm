@@ -2151,112 +2151,6 @@
     },
     {
       "expected": {
-        "mysql": [
-          {
-            "role": "main",
-            "slots": [
-              {
-                "from": "param",
-                "param": 0,
-                "type": "i64"
-              },
-              {
-                "from": "param",
-                "param": 1,
-                "type": "varchar"
-              },
-              {
-                "from": "param",
-                "param": 2,
-                "type": "i64"
-              }
-            ],
-            "sql": "INSERT INTO `service_region` (`service_seq`, `name`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `service_seq` = `service_region`.`service_seq` + ?, `seq` = LAST_INSERT_ID(`seq`)",
-            "tables": [
-              "service_region"
-            ]
-          }
-        ],
-        "postgres": [
-          {
-            "role": "main",
-            "slots": [
-              {
-                "from": "param",
-                "param": 0,
-                "type": "i64"
-              },
-              {
-                "from": "param",
-                "param": 1,
-                "type": "varchar"
-              },
-              {
-                "from": "param",
-                "param": 2,
-                "type": "i64"
-              }
-            ],
-            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES ($1, $2) ON CONFLICT (\"seq\") DO UPDATE SET \"service_seq\" = \"service_region\".\"service_seq\" + $3 RETURNING \"seq\"",
-            "tables": [
-              "service_region"
-            ]
-          }
-        ],
-        "sqlite": [
-          {
-            "role": "main",
-            "slots": [
-              {
-                "from": "param",
-                "param": 0,
-                "type": "i64"
-              },
-              {
-                "from": "param",
-                "param": 1,
-                "type": "varchar"
-              },
-              {
-                "from": "param",
-                "param": 2,
-                "type": "i64"
-              }
-            ],
-            "sql": "INSERT INTO \"service_region\" (\"service_seq\", \"name\") VALUES (?, ?) ON CONFLICT (\"seq\") DO UPDATE SET \"service_seq\" = \"service_region\".\"service_seq\" + ? RETURNING \"seq\"",
-            "tables": [
-              "service_region"
-            ]
-          }
-        ]
-      },
-      "id": "planner_insert_on_duplicate_plus",
-      "input": {
-        "entity": "service_region",
-        "ir_version": 1,
-        "kind": "insert",
-        "n_params": 3,
-        "on_duplicate": [
-          {
-            "column": "service_seq",
-            "plus_p": 2
-          }
-        ],
-        "set": [
-          {
-            "column": "service_seq",
-            "p": 0
-          },
-          {
-            "column": "name",
-            "p": 1
-          }
-        ]
-      },
-      "operation": "compile"
-    },
-    {
-      "expected": {
         "error": "IR_INVALID"
       },
       "id": "planner_rejects_insert_set_plus",
@@ -2591,6 +2485,389 @@
               "entity": "author"
             },
             "rel": "writers"
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i32"
+              }
+            ],
+            "sql": "INSERT INTO `author` (`uuid`, `name`, `user_seq`, `service_seq`, `service_region_seq`, `service_member_seq`, `start_dt`, `end_dt`, `aes_key_version`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `read_count` = `author`.`read_count` + ?, `seq` = LAST_INSERT_ID(`seq`)",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i32"
+              }
+            ],
+            "sql": "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (\"uuid\") DO UPDATE SET \"read_count\" = \"author\".\"read_count\" + $10 RETURNING \"seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "i64"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 3,
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "config",
+                "type": "i32"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "now",
+                "precision": 6,
+                "type": "datetime"
+              },
+              {
+                "from": "param",
+                "param": 4,
+                "type": "i32"
+              }
+            ],
+            "sql": "INSERT INTO \"author\" (\"uuid\", \"name\", \"user_seq\", \"service_seq\", \"service_region_seq\", \"service_member_seq\", \"start_dt\", \"end_dt\", \"aes_key_version\", \"created_ts\", \"updated_ts\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (\"uuid\") DO UPDATE SET \"read_count\" = \"author\".\"read_count\" + ? RETURNING \"seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_insert_on_duplicate_plus",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 5,
+        "on_duplicate": [
+          {
+            "column": "read_count",
+            "plus_p": 4
+          }
+        ],
+        "set": [
+          {
+            "column": "uuid",
+            "p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          },
+          {
+            "column": "user_seq",
+            "p": 2
+          },
+          {
+            "column": "service_seq",
+            "p": 2
+          },
+          {
+            "column": "service_region_seq",
+            "p": 2
+          },
+          {
+            "column": "service_member_seq",
+            "p": 2
+          },
+          {
+            "column": "start_dt",
+            "p": 3
+          },
+          {
+            "column": "end_dt",
+            "p": 3
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_upsert_primary_and_unique_key",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 5,
+        "on_duplicate": [
+          {
+            "column": "name",
+            "p": 1
+          }
+        ],
+        "set": [
+          {
+            "column": "seq",
+            "p": 2
+          },
+          {
+            "column": "uuid",
+            "p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
+          },
+          {
+            "column": "user_seq",
+            "p": 2
+          },
+          {
+            "column": "service_seq",
+            "p": 2
+          },
+          {
+            "column": "service_region_seq",
+            "p": 2
+          },
+          {
+            "column": "service_member_seq",
+            "p": 2
+          },
+          {
+            "column": "start_dt",
+            "p": 3
+          },
+          {
+            "column": "end_dt",
+            "p": 3
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_upsert_unique_key_not_assigned",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 5,
+        "on_duplicate": [
+          {
+            "column": "read_count",
+            "plus_p": 4
+          }
+        ],
+        "set": [
+          {
+            "column": "name",
+            "p": 1
+          },
+          {
+            "column": "user_seq",
+            "p": 2
+          },
+          {
+            "column": "service_seq",
+            "p": 2
+          },
+          {
+            "column": "service_region_seq",
+            "p": 2
+          },
+          {
+            "column": "service_member_seq",
+            "p": 2
+          },
+          {
+            "column": "start_dt",
+            "p": 3
+          },
+          {
+            "column": "end_dt",
+            "p": 3
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_upsert_without_a_key",
+      "input": {
+        "entity": "service_region",
+        "ir_version": 1,
+        "kind": "insert",
+        "n_params": 5,
+        "on_duplicate": [
+          {
+            "column": "name",
+            "p": 1
+          }
+        ],
+        "set": [
+          {
+            "column": "service_seq",
+            "p": 0
+          },
+          {
+            "column": "name",
+            "p": 1
           }
         ]
       },

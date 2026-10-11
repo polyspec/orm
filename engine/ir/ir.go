@@ -396,6 +396,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 				return errf("IR_INVALID", "on_duplicate cannot assign %s.%s", r.Entity, a.Column)
 			}
 		}
+		if _, err := ConflictKey(ent, r.Set); err != nil {
+			return err
+		}
 	}
 	if r.Optimistic != nil {
 		if ent.Field(r.Optimistic.Column) == nil {
@@ -477,6 +480,49 @@ func (v *validator) ref(s *scope, r *ColRef) (*runtimemodel.Field, error) {
 		return nil, errf("COLUMN_UNKNOWN", "%s.%s", target.name, r.Column)
 	}
 	return c, nil
+}
+
+// ConflictKey returns the one key an insert with on_duplicate conflicts on. MySQL updates the row met on any unique
+// key, while PostgreSQL and SQLite name one target and a meeting on another key is a unique violation, so no order of
+// keys reproduces both: an upsert has exactly one key that can meet the inserted row, and the insert assigns every
+// column of it. The candidates are the primary key, unless the insert leaves it out (an identity, or a key an IR
+// executor assigns), and each unique key; a blind index column counts as assigned with its AES source.
+func ConflictKey(ent *runtimemodel.Entity, set []Assign) (runtimemodel.Key, error) {
+	assigned := map[string]bool{}
+	for _, a := range set {
+		assigned[a.Column] = true
+	}
+	for _, f := range ent.Fields {
+		if f.BlindIndex != "" && assigned[f.Name] {
+			assigned[f.BlindIndex] = true
+		}
+	}
+	var candidates []runtimemodel.Key
+	for _, c := range ent.PK {
+		if assigned[c] {
+			candidates = append(candidates, runtimemodel.Key{Name: "primary key (" + strings.Join(ent.PK, ", ") + ")", Columns: ent.PK})
+			break
+		}
+	}
+	for _, u := range ent.Uniques {
+		candidates = append(candidates, runtimemodel.Key{Name: "unique (" + strings.Join(u.Columns, ", ") + ")", Columns: u.Columns})
+	}
+	if len(candidates) == 0 {
+		return runtimemodel.Key{}, errf("IR_INVALID", "on_duplicate needs exactly one conflict key; no key can meet the row")
+	}
+	if len(candidates) != 1 {
+		names := make([]string, len(candidates))
+		for i, k := range candidates {
+			names[i] = k.Name
+		}
+		return runtimemodel.Key{}, errf("IR_INVALID", "on_duplicate needs exactly one conflict key; %s can meet the row", strings.Join(names, ", "))
+	}
+	for _, c := range candidates[0].Columns {
+		if !assigned[c] {
+			return runtimemodel.Key{}, errf("IR_INVALID", "on_duplicate needs exactly one conflict key; %s can meet the row but the insert does not assign %s", candidates[0].Name, c)
+		}
+	}
+	return candidates[0], nil
 }
 
 // meets reports whether two columns compare alike on the three databases, as dbspec's check operands do: integers with

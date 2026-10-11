@@ -1240,26 +1240,10 @@ func assigned(set []ir.Assign, col string) bool {
 	return false
 }
 
-// conflictTarget picks the unique key an upsert conflicts on for dialects that
-// need one named (ON CONFLICT): the first declared unique key whose columns are
-// all being inserted, else the primary key.
+// conflictTarget returns the columns of the one key an upsert conflicts on, which ir.Validate has checked.
 func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) []string {
-	inserted := map[string]bool{}
-	for _, a := range set {
-		inserted[a.Column] = true
-	}
-	for _, uk := range ent.Uniques {
-		all := true
-		for _, c := range uk.Columns {
-			if !inserted[c] {
-				all = false
-			}
-		}
-		if all {
-			return uk.Columns
-		}
-	}
-	return ent.PK
+	key, _ := ir.ConflictKey(ent, set)
+	return key.Columns
 }
 
 func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error) {
