@@ -1,12 +1,14 @@
 <?php
 declare(strict_types=1);
-// Test autoloader: Polyspec\Orm\ → packages/orm-php/src, Polyspec\Orm\Tests\Model\ → packages/orm-php/gen.
+// Test autoloader: Polyspec\Orm\ → packages/orm-php/src, Polyspec\Orm\Tests\Model\ → packages/orm-php/gen,
+// Polyspec\Orm\Tests\MarkdownModel\ → packages/orm-php/markdownmodel.
 $root = dirname(__DIR__, 3);
 require_once "$root/vendor-php/autoload.php";
 spl_autoload_register(static function (string $class) use ($root): void {
     // 더 긴 prefix를 먼저 본다: test model의 namespace는 library namespace 아래에 있다.
     $files = [
         'Polyspec\\Orm\\Tests\\Model\\' => ['dir' => "$root/packages/orm-php/gen/", 'shared' => []],
+        'Polyspec\\Orm\\Tests\\MarkdownModel\\' => ['dir' => "$root/packages/orm-php/markdownmodel/", 'shared' => []],
         'Polyspec\\Orm\\' => [
             'dir' => "$root/packages/orm-php/src/",
             'shared' => [
