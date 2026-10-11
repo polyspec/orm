@@ -167,11 +167,15 @@ final class Settings
     public function __construct(array $comments = []) {}
 }
 
-/** One setting line; `audit` holds the history table, the audit column, the audit record table, the action and previous columns. */
+/**
+ * One setting line; `audit` holds the history table, the audit column, the audit record table, the action and previous columns;
+ * `store` holds its kind, its foreign key and shape (STORE_ARGUMENTS counts them), then the column and period of its shard clause.
+ */
 final class Setting
 {
     public const array KINDS = ['entity', 'updated', 'soft_delete', 'select_explicit', 'codec', 'aes_version', 'blind_index', 'navigation', 'markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine', 'immutable', 'audit'];
     public const array CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
+    public const array STORE_ARGUMENTS = ['files' => 1, 'document' => 2, 'block' => 3];
 
     public string $kind;
     public array $arguments;
