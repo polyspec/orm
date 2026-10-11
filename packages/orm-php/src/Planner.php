@@ -260,7 +260,7 @@ final class Planner
         $parts = [];
         foreach ($s->q['group_by'] ?? [] as $name) {
             $col = RuntimeModel::column($s->ent, $name);
-            $expr = $this->d->readExpr($this->qcol($s, $name), $this->sqlStyles($col));
+            $expr = $this->d->readExpr($this->qcol($s, $name), $this->readSqlStyles($col));
             $out = $s->alias . '__' . $name;
             $parts[] = $expr . ' AS ' . $this->d->quote($out);
             $outNames[] = $out;
@@ -310,7 +310,7 @@ final class Planner
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
                 $type = $this->subType($c['sub']);
             } else {
-                $expr = $this->d->readExpr($this->qcol($s, $c['column']), $this->sqlStyles($col));
+                $expr = $this->d->readExpr($this->qcol($s, $c['column']), $this->readSqlStyles($col));
                 $styles = $this->clientStyles($col);
             }
             $parts[] = $expr . ' AS ' . $this->d->quote($s->alias . '__' . $c['name']);
@@ -625,9 +625,15 @@ final class Planner
         return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->handlesStyle($s)));
     }
 
+    /** 읽기에서 dialect가 SQL로 푸는 stage다. clientStyles는 나머지를 executor에 남긴다. */
+    private function readSqlStyles(array $col): array
+    {
+        return array_values(array_filter($col['codec'], fn(string $s): bool => $this->d->decodesStyle($s)));
+    }
+
     private function clientStyles(array $col): array
     {
-        return array_values(array_filter($col['codec'], fn(string $s): bool => !$this->d->handlesStyle($s)));
+        return array_values(array_filter($col['codec'], fn(string $s): bool => !$this->d->decodesStyle($s)));
     }
 
     private static function hasAes(array $ent): bool

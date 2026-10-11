@@ -29,9 +29,13 @@ type Dialect interface {
 	// Now은 precision 자리 소수 초로 column에 쓰는 database clock을 render한다:
 	// MySQL은 p > 0이면 CURRENT_TIMESTAMP(p), 나머지는 CURRENT_TIMESTAMP다.
 	Now(precision int) string
-	// HandlesStyle은 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
+	// HandlesStyle은 쓰기에서 codec stage를 이 dialect의 SQL에서 적용하는지 알린다
 	// (MySQL: hex, ip). 나머지 stage는 executor가 적용한다.
 	HandlesStyle(style string) bool
+	// DecodesStyle은 읽기에서 codec stage를 이 dialect의 SQL에서 푸는지 알린다(MySQL: ip).
+	// hex는 어느 dialect도 SQL에서 풀지 않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을
+	// 내므로, executor가 HostDecode로 정확히 읽는다(docs/codec.md).
+	DecodesStyle(style string) bool
 	// HostNow reports that the database has no sub-second clock function, so
 	// timestamps written by the ORM (updated_ts) come from the executor (a `now` slot).
 	HostNow() bool

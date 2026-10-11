@@ -492,7 +492,7 @@ func (p *Planner) selectGroupCountList(b *builder, sb *strings.Builder, s *scope
 		if *idx > 0 {
 			sb.WriteString(", ")
 		}
-		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.sqlStyles(col.Codec), func() string { return b.secret("aes") })
+		expr, _ := p.D.ReadExpr(p.qcol(s, name), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
 		out := s.alias + "__" + name
 		sb.WriteString(expr + " AS " + p.D.Quote(out))
 		*outNames = append(*outNames, out)
@@ -546,7 +546,7 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 			expr = "(" + e + ")"
 			typ = p.subType(c.sub)
 		default:
-			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.sqlStyles(col.Codec), func() string { return b.secret("aes") })
+			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
 			expr = e
 			styles = p.clientStyles(col.Codec)
 		}
@@ -1458,8 +1458,8 @@ func cmp(op string) string {
 	panic("cmp: " + op)
 }
 
-// sqlStyles keeps only the stages the dialect applies in SQL; clientStyles the
-// rest, in write order, for the executor (docs/codec.md).
+// sqlStyles keeps only the stages the dialect applies in SQL on write
+// (docs/codec.md).
 func (p *Planner) sqlStyles(styles []string) []string {
 	var out []string
 	for _, s := range styles {
@@ -1470,10 +1470,22 @@ func (p *Planner) sqlStyles(styles []string) []string {
 	return out
 }
 
+// readSQLStyles keeps the stages the dialect decodes in SQL on read;
+// clientStyles the rest, in write order, for the executor.
+func (p *Planner) readSQLStyles(styles []string) []string {
+	var out []string
+	for _, s := range styles {
+		if p.D.DecodesStyle(s) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func (p *Planner) clientStyles(styles []string) []string {
 	var out []string
 	for _, s := range styles {
-		if !p.D.HandlesStyle(s) {
+		if !p.D.DecodesStyle(s) {
 			out = append(out, s)
 		}
 	}

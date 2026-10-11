@@ -42,8 +42,14 @@ export interface Dialect {
   writeExpr(ph: string, stages: readonly string[]): string;
   /** column에 쓰는 database clock이며 precision은 column의 소수 자리다. */
   now(precision: number): string;
-  /** The codec stage runs in SQL; every other stage runs in the executor. */
+  /** On write, the codec stage runs in SQL; every other stage runs in the executor. */
   handlesStage(stage: string): boolean;
+  /**
+   * On read, the codec stage is decoded in SQL (MySQL: ip). No dialect decodes hex in SQL:
+   * UNHEX takes odd-length text and yields NULL for white space, so the executor decodes
+   * hex exactly (docs/codec.md).
+   */
+  decodesStage(stage: string): boolean;
   /** The database has no sub-second clock; the executor binds the time. */
   hostNow: boolean;
   /** A row lock suffix; undefined when the mode is unknown. */
@@ -92,8 +98,7 @@ export const mysql: Dialect = {
   readExpr(col, stages) {
     let expr = col;
     for (let i = stages.length - 1; i >= 0; i--) {
-      if (stages[i] === 'hex') expr = `UNHEX(${expr})`;
-      else if (stages[i] === 'ip') expr = `INET6_NTOA(${expr})`;
+      if (stages[i] === 'ip') expr = `INET6_NTOA(${expr})`;
     }
     return expr;
   },
@@ -107,6 +112,7 @@ export const mysql: Dialect = {
   },
   now: precision => precision > 0 ? `CURRENT_TIMESTAMP(${precision})` : 'CURRENT_TIMESTAMP',
   handlesStage: s => s === 'hex' || s === 'ip',
+  decodesStage: s => s === 'ip',
   hostNow: false,
   rowLock: lockSuffix,
   columnFunction(name, col, arg) {
@@ -144,6 +150,7 @@ export const postgres: Dialect = {
   writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
+  decodesStage: () => false,
   hostNow: false,
   rowLock: lockSuffix,
   columnFunction(name, col, arg) {
@@ -186,6 +193,7 @@ export const sqlite: Dialect = {
   writeExpr: ph => ph,
   now: () => 'CURRENT_TIMESTAMP',
   handlesStage: () => false,
+  decodesStage: () => false,
   hostNow: true,
   // The executor takes an ORM-owned lock row; the SQL suffix stays empty.
   rowLock: mode => lockSuffix(mode) === undefined ? undefined : '',

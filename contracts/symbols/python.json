@@ -428,6 +428,7 @@
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect": "class MysqlDialect(_Dialect)",
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.column_function": "def column_function(self, name, col, arg)",
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.contains_binary": "def contains_binary(self, col, value)",
+  "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.decodes_stage": "def decodes_stage(self, stage)",
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.force_index": "def force_index(self, name)",
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.handles_stage": "def handles_stage(self, stage)",
   "packages/orm-python/src/polyspec/orm/engine/dialect.py::MysqlDialect.like": "def like(self, col, ph)",

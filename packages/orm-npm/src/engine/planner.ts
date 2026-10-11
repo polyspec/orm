@@ -251,7 +251,10 @@ export class Planner {
 
   private sqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.handlesStage(s)); }
 
-  private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.handlesStage(s)); }
+  /** The stages the dialect decodes in SQL on read; clientStyles holds the rest for the executor. */
+  private readSqlStyles(list: readonly string[]): string[] { return list.filter(s => this.d.decodesStage(s)); }
+
+  private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.decodesStage(s)); }
 
   private selectStep(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined): PlanStep {
     const b = new Builder(this.d);
@@ -397,7 +400,7 @@ export class Planner {
     for (const name of s.q.group_by ?? []) {
       const col = columnOf(s.ent, name) ?? fail('COLUMN_UNKNOWN', `${s.ent.name}.${name}`);
       const out = `${s.alias}__${name}`;
-      parts.push(`${this.d.readExpr(this.qcol(s, name), this.sqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
+      parts.push(`${this.d.readExpr(this.qcol(s, name), this.readSqlStyles(styles(col)))} AS ${this.d.quote(out)}`);
       outNames.push(out);
       asm.columns.push({ index: idx.n++, name, column: name, type: col.type, styles: this.clientStyles(styles(col)), hidden: false });
     }
@@ -426,7 +429,7 @@ export class Planner {
         expr = `(${this.subSelect(b, s, c.sub)})`;
         type = this.subType(c.sub);
       } else {
-        expr = this.d.readExpr(this.qcol(s, c.column), this.sqlStyles(styles(col!)));
+        expr = this.d.readExpr(this.qcol(s, c.column), this.readSqlStyles(styles(col!)));
         colStyles = this.clientStyles(styles(col!));
       }
       const out = `${s.alias}__${c.name}`;

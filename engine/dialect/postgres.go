@@ -24,6 +24,8 @@ func (Postgres) Now(int) string           { return "CURRENT_TIMESTAMP" }
 // executor가 만든다.
 func (Postgres) HandlesStyle(string) bool { return false }
 
+func (Postgres) DecodesStyle(string) bool { return false }
+
 func (Postgres) Like(col, ph string) string { return col + " ILIKE " + ph }
 
 func (Postgres) RowNumber(partition, orderBy string) string {

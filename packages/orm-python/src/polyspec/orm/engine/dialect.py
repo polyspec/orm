@@ -85,6 +85,13 @@ class _Dialect:
         return 'CURRENT_TIMESTAMP'
 
     def handles_stage(self, stage: str) -> bool:
+        """쓰기에서 codec stage를 SQL에서 적용하는지 여부다."""
+        return False
+
+    def decodes_stage(self, stage: str) -> bool:
+        """읽기에서 codec stage를 SQL에서 푸는지 여부다(MySQL: ip). hex는 어느 dialect도 SQL에서 풀지
+        않는다: UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 host_decode로
+        정확히 읽는다(docs/codec.md)."""
         return False
 
     def row_lock(self, mode: str):
@@ -129,9 +136,7 @@ class MysqlDialect(_Dialect):
     def read_expr(self, col, stages):
         expr = col
         for stage in reversed(stages):
-            if stage == 'hex':
-                expr = f'UNHEX({expr})'
-            elif stage == 'ip':
+            if stage == 'ip':
                 expr = f'INET6_NTOA({expr})'
         return expr
 
@@ -149,6 +154,9 @@ class MysqlDialect(_Dialect):
 
     def handles_stage(self, stage):
         return stage in ('hex', 'ip')
+
+    def decodes_stage(self, stage):
+        return stage == 'ip'
 
     def column_function(self, name, col, arg):
         return {'day_of_week': f'DAYOFWEEK({col})', 'year': f'YEAR({col})',

@@ -82,10 +82,19 @@ final class Dialect
         return $this->name === 'mysql' && $precision > 0 ? "CURRENT_TIMESTAMP($precision)" : 'CURRENT_TIMESTAMP';
     }
 
-    /** codec stage를 SQL에서 적용하는지 여부다. 나머지는 executor가 적용한다. */
+    /** 쓰기에서 codec stage를 SQL에서 적용하는지 여부다. 나머지는 executor가 적용한다. */
     public function handlesStyle(string $style): bool
     {
         return $this->name === 'mysql' && ($style === 'hex' || $style === 'ip');
+    }
+
+    /**
+     * 읽기에서 codec stage를 SQL에서 푸는지 여부다(MySQL: ip). hex는 어느 dialect도 SQL에서 풀지 않는다:
+     * UNHEX는 홀수 길이를 받고 공백이 있는 셀에 NULL을 내므로, executor가 hostDecode로 정확히 읽는다(docs/codec.md).
+     */
+    public function decodesStyle(string $style): bool
+    {
+        return $this->name === 'mysql' && $style === 'ip';
     }
 
     /** SQLite has no sub-second clock function; the executor binds the time. */
@@ -123,12 +132,11 @@ final class Dialect
         return ' ON CONFLICT (' . implode(', ', $q) . ') DO UPDATE SET ' . $assigns;
     }
 
-    /** column의 SQL 쪽 read stage다. handlesStyle이 고른 stage만 받는다. @param list<string> $styles */
+    /** column의 SQL 쪽 read stage다. decodesStyle이 고른 stage만 받는다. @param list<string> $styles */
     public function readExpr(string $col, array $styles): string
     {
         for ($i = count($styles) - 1; $i >= 0; $i--) {
             $col = match ($styles[$i]) {
-                'hex' => "UNHEX($col)",
                 'ip' => "INET6_NTOA($col)",
             };
         }
