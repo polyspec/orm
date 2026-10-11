@@ -6330,7 +6330,7 @@
         "scripts/decimal-physical-check.mjs"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-physical-check"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-physical-check"
     },
     {
       "id": "decimal-bench-sqlite",
@@ -6338,7 +6338,7 @@
         "scripts/decimal-bench-sqlite.sh"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-bench-sqlite"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" decimal-bench-sqlite"
     },
     {
       "id": "unselected-column-physical",
@@ -6348,7 +6348,7 @@
         "packages/orm-php/tests/unselected_column_db.php"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" unselected-column-physical-check"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" unselected-column-physical-check"
     },
     {
       "id": "case-database",
@@ -6356,7 +6356,7 @@
         "scripts/case-database-check.mjs"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" case-database-check"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" case-database-check"
     },
     {
       "id": "conformance-result",
@@ -6368,7 +6368,7 @@
       "tests": [
         "tests/conformance/result_typescript.test.mjs"
       ],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-result-check"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-result-check"
     },
     {
       "id": "conformance-runners",
@@ -6377,7 +6377,7 @@
         "tests/conformance/runner_typescript.mjs"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" conformance-check"
     },
     {
       "id": "dbspec-stress",
@@ -6388,7 +6388,7 @@
         "engine/dbspec/stress_test.go"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"
     },
     {
       "id": "dbspec-apply-stress-mysql",
@@ -6396,7 +6396,7 @@
         "tests/dialects/apply_stress_physical_test.go"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS=mysql dbspec-apply-stress-bench"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS=mysql dbspec-apply-stress-bench"
     },
     {
       "id": "dbspec-apply-stress-pg-sqlite",
@@ -6404,7 +6404,7 @@
         "tests/dialects/apply_stress_physical_test.go"
       ],
       "tests": [],
-      "command": "make --no-print-directory TEST_ENV=\"$ORM_OWNER_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"
+      "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" APPLY_STRESS_DIALECTS='postgres|sqlite' dbspec-apply-stress-bench"
     }
   ]
 }

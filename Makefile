@@ -13,6 +13,11 @@
 # and writes TEST_ENV; the database checks read TEST_ENV and fail when it is
 # missing.
 TEST_ENV = .runtime/servers/env
+# ORM_TEST_ENV는 이 make가 읽는 TEST_ENV의 절대 경로이며, DECIMAL_ENV처럼 recipe가 시작하는 process에
+# 넘긴다. make 변수는 command line으로만 Makefile의 값을 바꾸므로, 하위 make를 시작하는 명령(contracts/
+# features.json의 helper check)은 이것을 TEST_ENV="$$ORM_TEST_ENV"로 준다. make owner-check
+# (scripts/features/owners.mjs)는 자기 실행의 환경 file로 이것을 바꾼다.
+export ORM_TEST_ENV = $(abspath $(TEST_ENV))
 # DECIMAL_ENV는 decimal database의 DSN을 담은 file이다. decimal 검사와 feature-check의 decimal 명령이
 # 그것을 읽는다. 함께 쓰는 decimal database는 없다: make check, make owner-check, make run-databases가
 # 실행마다 자기 database와 file을 만들어(scripts/check/databases.sh) 이 변수와 TEST_ENV로 준다. bench
@@ -688,7 +693,7 @@ test-servers-leases-clear:
 # pre-push hook의 설치를 확인한다.
 .PHONY: feature-owner-check
 feature-owner-check: hooks-check
-	$(WITH_TEST_ENV) ORM_OWNER_TEST_ENV=$(abspath $(TEST_ENV)) node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) node scripts/features/owners.mjs $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:

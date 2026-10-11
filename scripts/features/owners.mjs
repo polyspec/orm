@@ -281,13 +281,13 @@ function headManifest(root) {
   catch { return null; }
 }
 
-// makeArguments는 target 하나를 실행하는 make 인자다. owner-check가 받은 서버 환경(ORM_OWNER_TEST_ENV,
+// makeArguments는 target 하나를 실행하는 make 인자다. owner-check가 받은 서버 환경(ORM_TEST_ENV,
 // 곧 make의 TEST_ENV)과 decimal 환경(DECIMAL_ENV)을 target에도 준다: worktree는 main checkout의 서버를 쓰고,
 // make 변수는 command line으로만 Makefile의 값을 바꾼다. Rust target directory는 각 checkout의 것이므로
 // 넘기지 않는다(AGENTS.md).
 export function makeArguments(target, env) {
   const overrides = [];
-  if (env.ORM_OWNER_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_OWNER_TEST_ENV}`);
+  if (env.ORM_TEST_ENV) overrides.push(`TEST_ENV=${env.ORM_TEST_ENV}`);
   if (env.DECIMAL_ENV) overrides.push(`DECIMAL_ENV=${env.DECIMAL_ENV}`);
   // -k: target의 독립된 부분(하위 target)은 앞 부분이 실패해도 실행한다.
   return ['--no-print-directory', '-k', ...overrides, target];
@@ -394,8 +394,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const needsDatabases = owners.length > 0 || helpers.length > 0 || targets.some(({ target }) => usesTestEnv(makefile, target));
     let databases;
     if (needsDatabases) {
-      const servers = process.env.ORM_OWNER_TEST_ENV;
-      if (!servers) throw new Error('ORM_OWNER_TEST_ENV is unset; run make owner-check');
+      const servers = process.env.ORM_TEST_ENV;
+      if (!servers) throw new Error('ORM_TEST_ENV is unset; run make owner-check, whose Makefile exports it');
       const name = `orm_owner_${process.pid}_${randomBytes(4).toString('hex')}`;
       databases = { servers, name, directory: resolve(root, '.runtime/check', name) };
       const created = await runGroup('owners/databases/create', context =>
@@ -407,7 +407,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         process.exit(1);
       }
       Object.assign(process.env, environmentFile(readFileSync(resolve(databases.directory, 'env'), 'utf8')), {
-        ORM_OWNER_TEST_ENV: resolve(databases.directory, 'env'),
+        ORM_TEST_ENV: resolve(databases.directory, 'env'),
         DECIMAL_ENV: resolve(databases.directory, 'decimal-env'),
       });
     }
