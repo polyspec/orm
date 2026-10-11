@@ -809,7 +809,7 @@ client-db-check: lease-tool python-statement-fault-check
 # needs the database variables of make test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/test_statement_fault.py
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/statement_fault.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,

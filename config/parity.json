@@ -458,7 +458,7 @@
         { "implementation": "go", "test": "packages/orm-go/orm/statement_fault_test.go", "symbol": "TestStatementFaultSQLite" },
         { "implementation": "php", "test": "packages/orm-php/tests/statement_fault_test.php" },
         { "implementation": "typescript", "test": "packages/orm-npm/tests/statement_fault.mjs" },
-        { "implementation": "python", "test": "packages/orm-python/tests/test_statement_fault.py" },
+        { "implementation": "python", "test": "packages/orm-python/tests/statement_fault.py" },
         { "implementation": "rust", "test": "packages/orm-rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_cases" }
       ]
     }
