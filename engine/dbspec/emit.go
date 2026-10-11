@@ -111,11 +111,15 @@ func (s *settingsNode) model() *Settings {
 			out.Marks = append(out.Marks, MarkSetting{Comments: line.comments, Column: args[0]})
 		case "store":
 			store := &StoreSetting{Comments: line.comments, Kind: args[0]}
+			rest := args[1:]
 			switch store.Kind {
 			case "block":
-				store.Foreign, store.Shape = args[1], args[2]
+				store.Foreign, store.Shape, rest = args[1], args[2], args[3:]
 			case "document":
-				store.Shape = args[1]
+				store.Shape, rest = args[1], args[2:]
+			}
+			if len(rest) > 0 {
+				store.Shard = &StoreShard{Column: rest[1], Period: rest[2]}
 			}
 			out.Store = store
 		case "key_prefix":
@@ -347,14 +351,17 @@ func (e *emitter) mappingSettings(s *Settings) {
 		e.line(2, m.Comments, "markdown "+m.Column)
 	}
 	if st := s.Store; st != nil {
+		text := "store " + st.Kind
 		switch st.Kind {
-		case "files":
-			e.line(2, st.Comments, "store files")
 		case "document":
-			e.line(2, st.Comments, "store document "+st.Shape)
+			text += " " + st.Shape
 		case "block":
-			e.line(2, st.Comments, "store block "+st.Foreign+" "+st.Shape)
+			text += " " + st.Foreign + " " + st.Shape
 		}
+		if st.Shard != nil {
+			text += " shard " + st.Shard.Column + " " + st.Shard.Period
+		}
+		e.line(2, st.Comments, text)
 	}
 	if k := s.KeyPrefix; k != nil {
 		e.line(2, k.Comments, "key_prefix "+quote(k.Prefix))

@@ -194,6 +194,15 @@ type StoreSetting struct {
 	Kind     string
 	Foreign  string
 	Shape    string
+	// Shard는 `shard <column> <period>` 절이며, 절이 없으면 nil이다. SQL backend는 읽지 않는다.
+	Shard *StoreShard
+}
+
+// StoreShard는 저장의 시간 shard다: Column은 non-null date 또는 datetime column이고
+// Period는 year, month 또는 day다.
+type StoreShard struct {
+	Column string
+	Period string
 }
 
 // KeyPrefixSetting은 `key_prefix '<p>'`다: 문자 primary key의 할당 접두사다.

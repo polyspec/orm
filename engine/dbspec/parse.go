@@ -985,6 +985,18 @@ func (p *parser) settingsLine(c *cursor) {
 				line.args = append(line.args, shape)
 			}
 		}
+		// shard 절은 kind 뒤에 오며 block에서도 읽는다: block table의 shard는 validator의 setting error다.
+		if ok && c.peekIs(tokenWord, "shard") {
+			line.args = append(line.args, c.next())
+			ok = arg("the shard column")
+			if ok {
+				var period token
+				period, ok = c.oneOf("'year', 'month' or 'day'", "year", "month", "day")
+				if ok {
+					line.args = append(line.args, period)
+				}
+			}
+		}
 	case "key_prefix":
 		var prefix token
 		prefix, ok = c.quoted("a key prefix in quotes")
