@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 
 use crate::collection::{AnyCollection, Collection, GroupRow, GroupRows, Key, Page};
 use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, SetSpec, SetValue};
-use crate::db::{Db, Executor, Statement};
+use crate::db::{apply_request_hook, Db, Executor, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
 use crate::ir;
 use crate::markdown::{markdown_read, markdown_scalar, markdown_write, MdRow};
@@ -335,7 +335,14 @@ fn val_param_key(p: &Param) -> String {
     format!("{p:?}")
 }
 
-async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
+/// model이 실행되는 handle의 request hook을 plan 전에 req에 적용한다. handle은 model이 연결된 handle이고,
+/// 연결이 없으면 transaction을 시작한 handle이다(docs/usage.md "Request hook").
+fn hook_request(conn: &Option<Db>, ex: &Executor, req: &mut Req) -> Result<()> {
+    apply_request_hook(conn.as_ref().unwrap_or_else(|| ex.db()), req)
+}
+
+async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<QueryResult> {
+    hook_request(conn, ex, req)?;
     let db = ex.db().clone();
     if db.is_markdown() {
         if !req.ir.query.lock.is_empty() && matches!(ex, Executor::Db(_)) {
@@ -559,7 +566,7 @@ fn terminal(c: &Core) -> Result<Executor> {
 async fn load(c: &Core, kind: &str) -> Result<Loaded> {
     let ex = terminal(c)?;
     let mut req = build(c, kind);
-    let res = select(&ex, &mut req).await?;
+    let res = select(&ex, &c.conn, &mut req).await?;
     assemble(c, &req, &res).await
 }
 
@@ -750,7 +757,7 @@ pub async fn gets_core<M: Model>(c: &Core, kind: &str) -> Result<Collection<M>> 
 pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
     let ex = terminal(m.core())?;
     let mut request = build(m.core(), "group_count");
-    let result = select(&ex, &mut request).await?;
+    let result = select(&ex, &m.core().conn, &mut request).await?;
     let columns = &result.plan.steps[0].assemble.as_ref().ok_or_else(|| Error::internal("group count has no assemble"))?.columns;
     let rows = result.rows();
     let mut groups = Vec::with_capacity(rows.len());
@@ -780,7 +787,7 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
     q.limit = Some((offset, per_page));
     let mut req = build(&q, "paginate");
-    let res = select(&ex, &mut req).await?;
+    let res = select(&ex, &q.conn, &mut req).await?;
     // markdown 답은 전체 행 수를 함께 답하고, SQL plan은 그것을 count step으로 센다.
     let total = match res.count {
         Some(total) => total,
@@ -809,6 +816,7 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     if kind == "sum" || kind == "avg" {
         req.ir.agg = c.agg.clone();
     }
+    hook_request(&c.conn, &ex, &mut req)?;
     let db = ex.db().clone();
     if db.is_markdown() {
         return markdown_scalar(&ex, &mut req).await;
@@ -861,6 +869,7 @@ pub async fn get_avg(c: &Core) -> Result<f64> {
 pub async fn get_query(c: &Core) -> Result<Statement> {
     let ex = terminal(c)?;
     let mut req = build(c, "all");
+    hook_request(&c.conn, &ex, &mut req)?;
     ex.db().statement(&mut req).await
 }
 
@@ -917,7 +926,8 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
 /// insert, update, delete, restore를 실행하고 insert한 행의 key와 바뀐 행 수를 돌려준다: SQL database에서는
 /// 생성된 identity, markdown executor에서는 그것이 답한 첫 key다(identity는 정수, key_prefix key는 text).
 /// key가 없으면 Null이다.
-async fn write(ex: &Executor, req: &mut Req) -> Result<(Val, u64)> {
+async fn write(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<(Val, u64)> {
+    hook_request(conn, ex, req)?;
     let db = ex.db().clone();
     let (key, affected) = if db.is_markdown() {
         let (keys, affected) = markdown_write(ex, req).await?;
@@ -965,7 +975,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
         }
     }
     req.ir.n_params = req.params.len();
-    let (key, _) = write(&ex, &mut req).await?;
+    let (key, _) = write(&ex, &c.conn, &mut req).await?;
     let mut out = M::from_core(Core::new(c.ent));
     let mut st = RowState::default();
     for s in &c.sets {
@@ -1068,7 +1078,7 @@ pub async fn creates<M: Model>(m: &M, rows: Vec<M>) -> Result<u64> {
             }
             req.ir.n_params = req.params.len();
             let inner = resolve(&c.conn)?;
-            let (_, n) = write(&inner, &mut req).await?;
+            let (_, n) = write(&inner, &c.conn, &mut req).await?;
             total += n;
         }
         Ok(total)
@@ -1179,7 +1189,7 @@ pub async fn update<M: Model>(m: &mut M, optimistic: bool) -> Result<()> {
         req.ir.optimistic = Some(ir::Optimist { column: column.clone(), p });
     }
     req.ir.n_params = req.params.len();
-    write(&ex, &mut req).await?;
+    write(&ex, &c.conn, &mut req).await?;
     let c = m.core_mut();
     if loaded {
         let changes: Vec<(String, Param)> = c
@@ -1224,7 +1234,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
         req.ir.set.push(assigned);
     }
     req.ir.n_params = req.params.len();
-    let (id, _) = write(ex, &mut req).await?;
+    let (id, _) = write(ex, &None, &mut req).await?;
     let pk = &ent.primary_key[0];
     let key = if ent.identity.as_deref() == Some(pk.as_str()) {
         Param::I64(id.as_i64()?)
@@ -1282,7 +1292,7 @@ pub async fn restore<M: Model>(m: &M) -> Result<M> {
         req.ir.set.push(a);
     }
     req.ir.n_params = req.params.len();
-    write(&ex, &mut req).await?;
+    write(&ex, &c.conn, &mut req).await?;
     get_core(&q).await
 }
 
@@ -1323,7 +1333,7 @@ pub(crate) async fn delete_row(m: &dyn AnyModel, recursive: bool) -> Result<()> 
     let keys = key_values(c, &ent)?;
     key_where(&mut req, &ent, &keys);
     req.ir.n_params = req.params.len();
-    write(&ex, &mut req).await?;
+    write(&ex, &c.conn, &mut req).await?;
     Ok(())
 }
 
