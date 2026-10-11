@@ -602,8 +602,15 @@ impl<'s, 'd> TableRules<'s, 'd> {
                         }
                     }
                 }
-                Setting::Store { kind, foreign: Some(foreign), .. } if kind.text == "block" => self.foreign_key_name(foreign),
-                Setting::Store { .. } => {}
+                Setting::Store { kind, foreign, shard, .. } => {
+                    if let (Some(foreign), "block") = (foreign, kind.text.as_str()) {
+                        self.foreign_key_name(foreign);
+                    }
+                    if let Some(shard) = shard {
+                        let order = settings.lines.iter().any(|l| matches!(l.setting, Setting::Order(_)));
+                        self.store_shard(kind, shard, order);
+                    }
+                }
                 Setting::KeyPrefix(_) => self.key_prefix(line.pos),
                 Setting::Title(name) | Setting::Body(name) => self.text_column(name),
                 Setting::Order(name) => self.order(name),
@@ -685,6 +692,26 @@ impl<'s, 'd> TableRules<'s, 'd> {
     }
 
     /// `order` names a non-null i32 or i64 column with no default that no key, index, foreign key or check names.
+    /// The shard clause of `store` names a non-null date or datetime column; a block table, a table with a
+    /// self foreign key and a table with `order` reject it.
+    fn store_shard(&mut self, kind: &Name, shard: &StoreShard, order: bool) {
+        if let Some(column) = self.setting_column(&shard.column) {
+            if !matches!(column.ty, Type::Date | Type::DateTime(_)) || column.nullable {
+                self.report(shard.column.pos, "setting", "store shard needs a non-null date or datetime column");
+            }
+        }
+        if kind.text == "block" {
+            self.report(shard.keyword.pos, "setting", "store shard is rejected on a block table");
+        }
+        let table = self.own.table;
+        if table.foreign_keys.iter().any(|k| k.table.text == table.name.text) {
+            self.report(shard.keyword.pos, "setting", "store shard is rejected on a table with a self foreign key");
+        }
+        if order {
+            self.report(shard.keyword.pos, "setting", "store shard is rejected on a table with order");
+        }
+    }
+
     fn order(&mut self, name: &Name) {
         let Some(column) = self.setting_column(name) else { return };
         if !matches!(column.ty, Type::I32 | Type::I64) || column.nullable || self.default_of(&name.text).is_some() {

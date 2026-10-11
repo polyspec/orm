@@ -303,11 +303,13 @@ pub enum Setting {
     /// `markdown <column>`: the prose column of the manifest.
     Markdown(Name),
     /// `store files`, `store document <shape>` or `store block <foreign key> <shape>`. `kind` is
-    /// `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`.
+    /// `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;
+    /// `shard` is the optional `shard <column> <period>` clause.
     Store {
         kind: Name,
         foreign: Option<Name>,
         shape: Option<Name>,
+        shard: Option<StoreShard>,
     },
     /// `key_prefix '<prefix>'`. The name holds the prefix without its quotes.
     KeyPrefix(Name),
@@ -361,6 +363,15 @@ pub struct History {
     pub from: Name,
     pub to: Name,
     pub at: Name,
+}
+
+/// store의 `shard <column> <period>` 절: `keyword`는 `shard`이고, column은 non-null date 또는 datetime
+/// column, period는 `year`, `month` 또는 `day`다. SQL backend는 읽지 않는다.
+#[derive(Clone, Debug)]
+pub struct StoreShard {
+    pub keyword: Name,
+    pub column: Name,
+    pub period: Name,
 }
 
 /// audit의 `exclude (<column>, ...)`나 `include (<column>, ...)` 목록. `keyword`는 `exclude`나 `include`다.

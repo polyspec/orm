@@ -1226,12 +1226,21 @@ impl Parser {
         }
     }
 
-    /// `store files`, `store document <shape>` or `store block <foreign key> <shape>`.
+    /// `store files`, `store document <shape>` or `store block <foreign key> <shape>`, each with an optional
+    /// `shard <column> <period>`. The clause is read after `block` too: the validator rejects it there.
     fn store(&mut self, cursor: &mut Cursor) -> Option<Setting> {
         let kind = self.one_of(cursor, &["files", "document", "block"])?;
         let foreign = if kind.text == "block" { Some(self.name(cursor)?) } else { None };
         let shape = if kind.text == "files" { None } else { Some(self.one_of(cursor, &["list", "table"])?) };
-        Some(Setting::Store { kind, foreign, shape })
+        let shard = if cursor.peek_is("shard") {
+            let keyword = self.word(cursor)?;
+            let column = self.name(cursor)?;
+            let period = self.one_of(cursor, &["year", "month", "day"])?;
+            Some(StoreShard { keyword, column, period })
+        } else {
+            None
+        };
+        Some(Setting::Store { kind, foreign, shape, shard })
     }
 
     /// `state_machine <column> ...`: the form is read after the column, as the keywords `initial`,
