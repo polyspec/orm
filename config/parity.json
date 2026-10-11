@@ -44,7 +44,6 @@
       "runner": "cargo",
       "roots": ["packages/orm-rust"],
       "tests": ["packages/orm-rust/**/tests/**/coverage_*.rs"],
-      "args": ["--features", "test-faults"],
       "errors": { "file": "packages/orm-rust/orm/src/codes.rs", "pattern": "^pub const (\\w+): &str = \"\\w+\";$" }
     }
   ],

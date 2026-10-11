@@ -1107,6 +1107,7 @@ dependencies = [
  "libsqlite3-sys",
  "log",
  "polyspec-ordered-json",
+ "polyspec-orm",
  "polyspec-orm-case-clock",
  "polyspec-orm-case-database",
  "polyspec-orm-schema",
