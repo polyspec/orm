@@ -41,7 +41,7 @@
         "name": "Ann",
         "tasks_models": [
           { "id": "T2", "owner": "P1", "due": null },
-          { "id": "T1", "owner": "P1", "due": "2026-10-01 00:00:00.000000" }
+          { "id": "T1", "owner": "P1", "due": "2026-10-01" }
         ]
       }
     },

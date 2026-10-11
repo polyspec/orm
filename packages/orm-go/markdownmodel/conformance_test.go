@@ -325,7 +325,23 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return m.ToArray(), nil
+			// date 값은 runtime value model의 text YYYY-MM-DD다(README "Results"). Go의 array form은
+			// time.Time을 datetime text로 쓰므로 relation 행의 due를 그 text로 쓴다.
+			tasks, err := orm.RelatedAs[*orm.Collection[*markdownmodel.TasksModel]](m.Orm_(), "tasks_models")
+			if err != nil || tasks == nil {
+				return nil, fmt.Errorf("P1 has no tasks_models collection (%v)", err)
+			}
+			items := []map[string]any{}
+			for _, t := range tasks.All() {
+				item := t.ToArray()
+				if due := t.GetDue(); due != nil {
+					item["due"] = due.Format(time.DateOnly)
+				}
+				items = append(items, item)
+			}
+			out := m.ToArray()
+			out["tasks_models"] = items
+			return out, nil
 		},
 		"relation_one": func(s *served) (any, error) {
 			m, err := markdownmodel.Tasks().Connect(s.db).RemoveAllColumns().AddColumnTitle().
