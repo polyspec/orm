@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c47ab1cac018b41e92b202f21baa4364760e01cbe0d0fe8c5dfb6d41af5f1aa3 -->
+<!-- source-sha256: 32eb64a9bc2aa84c1eafc138a6c6a1eeac8a28a1a79eca7930f72f5ec442d905 -->
 # 변경 이력
 
 ## Unreleased
@@ -8,7 +8,6 @@
 - T66: Rust client가 markdown DSN으로 corpus에 접속하고 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다. identity load test는 markdown pool을 다룬다.
 - T64: PHP client가 markdown DSN으로 corpus에 접속하며 `Db`마다 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.
 - T63: Go client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 corpus에 접속한다. flowmark server에 연결해 모든 IR 종류와 transaction, savepoint를 그것으로 실행하고, `WRITE_CONFLICT`는 재시도 없이 돌려주며, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다.
-- T124: Python은 필수 구현이 아니다. parity profile `dbspec`과 `client`가 Python을 빼므로 suite는 Python binding 없이 green이다. Python package와 wheel은 출하 코드로 남는다.
 - T92(일부): SQLite에서 `datetime(p)`와 `time(p)` 값은 정확히 p자리 소수로 bind된다. 모든 구현의 planner가 parameter slot에 column의 precision을 싣고, Go client는 p자리 뒤의 0을 버리며 0이 아닌 자리는 `CODEC_ENCODE`로 거절한다.
 - T115-3: Python 3.15가 저장소가 test하는 Python이다. `.python-version`, `config/toolchain.json`(python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15`, README가 이를 선언한다.
 ## 0.0.8
