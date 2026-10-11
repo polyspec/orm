@@ -10,7 +10,7 @@ from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
                                        DbspecDiagnostic, DbspecDiagram, DbspecDocument,
                                        DbspecForeignKey, DbspecIndex, DbspecIndexColumn,
                                        DbspecPlacement, DbspecPrimaryKey, DbspecSetting,
-                                       DbspecSettings, DbspecTable, DbspecType, DbspecUnique,
+                                       DbspecSettings, DbspecStoreShard, DbspecTable, DbspecType, DbspecUnique,
                                        DbspecUse)
 from polyspec.orm.dbspec.unicode_word import _is_word_rune_code_point
 
@@ -578,6 +578,8 @@ class _Operand:
 
 FORM_SETTINGS = frozenset({'markdown', 'store', 'key_prefix', 'title', 'body', 'order',
                            'checkbox', 'state_machine'})
+# store 종류마다 shard 절 앞의 token 수다(kind 포함).
+STORE_ARGUMENTS = {'files': 1, 'document': 2, 'block': 3}
 
 
 def is_number_text(text: str) -> bool:
@@ -1418,6 +1420,14 @@ class DocumentParser:
                 shape, ok = c.one_of("'list' or 'table'", 'list', 'table')
                 if ok:
                     args.append(shape)
+            # shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다.
+            if ok and c.peek(WORD, 'shard'):
+                args.append(c.next())
+                ok = arg('the shard column')
+                if ok:
+                    period, ok = c.one_of("'year', 'month' or 'day'", 'year', 'month', 'day')
+                    if ok:
+                        args.append(period)
         elif kw.t == 'key_prefix':
             prefix, ok = c.quoted('a key prefix in quotes')
             if ok:
@@ -2171,6 +2181,7 @@ class DocumentParser:
         elif kind == 'store':
             if s.args[0].t == 'block':
                 self._foreign_key_name(table, s.args[1])
+            self._store_shard(table, s)
         elif kind == 'key_prefix':
             self._key_prefix(table, s)
         elif kind in ('title', 'body'):
@@ -2228,6 +2239,23 @@ class DocumentParser:
             return
         if self._in_key_or_check(table, s.args[0].t):
             self._at('setting', s.args[0], f'order column "{s.args[0].t}" is in a key, index or check')
+
+    def _store_shard(self, table: _Table, s: _Setting) -> None:
+        """store의 shard 절은 non-null date 또는 datetime column을 적고, block table, self foreign key가
+        있는 table과 order가 있는 table에서는 거절한다."""
+        at = STORE_ARGUMENTS[s.args[0].t]
+        if len(s.args) <= at:
+            return
+        shard, column = s.args[at], s.args[at + 1]
+        c = self._column_ref(table, column)
+        if c is not None and ((c.type is not None and c.type.kind not in ('date', 'datetime')) or c.nullable):
+            self._at('setting', column, 'store shard needs a non-null date or datetime column')
+        if s.args[0].t == 'block':
+            self._at('setting', shard, 'store shard is rejected on a block table')
+        if any(fk.table.t == table.name.t for fk in table.fks):
+            self._at('setting', shard, 'store shard is rejected on a table with a self foreign key')
+        if any(e.kind == 'order' for e in table.settings.entries):
+            self._at('setting', shard, 'store shard is rejected on a table with order')
 
     def _in_key_or_check(self, table: _Table, column: str) -> bool:
         for group in (table.pks, table.uniques, table.indexes):
@@ -2644,8 +2672,10 @@ class DocumentParser:
         if s.kind in ('markdown', 'title', 'body', 'order'):
             return DbspecSetting(column=a[0], **base)
         if s.kind == 'store':
+            at = STORE_ARGUMENTS[a[0]]
             return DbspecSetting(form=a[0], foreign_key=a[1] if a[0] == 'block' else '',
-                                 shape=a[-1] if a[0] != 'files' else '', **base)
+                                 shape=a[at - 1] if a[0] != 'files' else '',
+                                 shard=DbspecStoreShard(a[at + 1], a[at + 2]) if len(a) > at else None, **base)
         if s.kind == 'key_prefix':
             return DbspecSetting(prefix=a[0], **base)
         if s.kind == 'checkbox':

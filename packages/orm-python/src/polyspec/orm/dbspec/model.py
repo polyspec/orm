@@ -8,7 +8,7 @@ from typing import TypedDict
 
 __all__ = ['DbspecColumn', 'DbspecCheck', 'DbspecDefault', 'DbspecDiagnostic', 'DbspecDiagram',
            'DbspecDocument', 'DbspecForeignKey', 'DbspecIndex', 'DbspecIndexColumn',
-           'DbspecPlacement', 'DbspecPrimaryKey', 'DbspecSetting', 'DbspecTable', 'DbspecType',
+           'DbspecPlacement', 'DbspecPrimaryKey', 'DbspecSetting', 'DbspecStoreShard', 'DbspecTable', 'DbspecType',
            'DbspecUnique', 'DbspecUse', 'RULES']
 
 RULES = ('signature', 'header', 'syntax', 'order', 'name.format', 'name.length',
@@ -100,6 +100,13 @@ class DbspecCheck:
 
 
 @dataclass(frozen=True)
+class DbspecStoreShard:
+    """store setting의 시간 shard: non-null date 또는 datetime column과 기간(year, month, day). SQL backend는 읽지 않는다."""
+    column: str
+    period: str
+
+
+@dataclass(frozen=True)
 class DbspecSetting:
     """table setting. kind에 따라 field가 의미를 가진다."""
 
@@ -124,6 +131,8 @@ class DbspecSetting:
     # state_machine의 form은 initial, terminal, transition, history, limit이다.
     form: str = ''
     shape: str = ''
+    # store 전용: shard 절이 없으면 None이다.
+    shard: DbspecStoreShard | None = None
     prefix: str = ''
     glyph: str = ''
     state: str = ''

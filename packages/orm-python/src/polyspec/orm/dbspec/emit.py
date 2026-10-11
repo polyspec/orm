@@ -90,11 +90,12 @@ def _setting_text(setting, table: DbspecTable, view: str) -> str:
     if kind == 'markdown':
         return f'markdown {setting.column}'
     if kind == 'store':
+        shard = '' if setting.shard is None else f' shard {setting.shard.column} {setting.shard.period}'
         if setting.form == 'files':
-            return 'store files'
+            return f'store files{shard}'
         if setting.form == 'block':
-            return f'store block {setting.foreign_key} {setting.shape}'
-        return f'store document {setting.shape}'
+            return f'store block {setting.foreign_key} {setting.shape}{shard}'
+        return f'store document {setting.shape}{shard}'
     if kind == 'key_prefix':
         return f'key_prefix {quote(setting.prefix)}'
     if kind in ('title', 'body', 'order'):
