@@ -222,6 +222,7 @@ fn every_fixture_case_has_a_test_per_driver() {
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn statement_fault_cases() {
+    let _test = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for case in fixture().cases {
         let mut report = polyspec_orm_testcase::start(format!("statement-fault/{case}"), CASE_DEADLINE * 3);
         for driver in ["sqlite", "mysql", "postgres"] {

@@ -163,6 +163,7 @@ func statementEmptyArgumentRefused(t *testing.T, db *orm.DB, model func() *orm.C
 // 같은지 확인한다. 두 목록이 다르면 fixture의 case가 실행되지 않거나 실행되지 않는
 // test가 남는다.
 func TestStatementFaultCases(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	f := loadStatementFault(t)
 	named := make([]string, 0, len(statementFaultCases))
 	for name := range statementFaultCases {
