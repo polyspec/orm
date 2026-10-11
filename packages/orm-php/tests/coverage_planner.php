@@ -112,4 +112,8 @@ runCoverageCases($argv, [
     'planner_order_nullable_column_function' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_column_function'),
     'planner_order_nullable_group_count' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_group_count'),
     'planner_order_nullable_limit_per_parent' => fn() => plannerCase($root, $fixture, 'planner_order_nullable_limit_per_parent'),
+    'planner_scalar_column_subquery' => fn() => plannerCase($root, $fixture, 'planner_scalar_column_subquery'),
+    'planner_rejects_scalar_column_subquery_without_limit' => fn() => plannerCase($root, $fixture, 'planner_rejects_scalar_column_subquery_without_limit'),
+    'planner_rejects_scalar_column_subquery_without_key_order' => fn() => plannerCase($root, $fixture, 'planner_rejects_scalar_column_subquery_without_key_order'),
+    'planner_rejects_in_subquery_limit' => fn() => plannerCase($root, $fixture, 'planner_rejects_in_subquery_limit'),
 ]);

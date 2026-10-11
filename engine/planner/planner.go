@@ -1594,6 +1594,14 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
+	// A scalar column subquery is ordered and limited to one row, which the validator has checked.
+	if sub.Agg == "" && sub.Query.Limit != nil {
+		order, err := p.renderOrder(b, root, sub.Query)
+		if err != nil {
+			return "", err
+		}
+		sb.WriteString(order + p.D.Limit(sub.Query.Limit.Offset, sub.Query.Limit.Count))
+	}
 	return sb.String(), nil
 }
 

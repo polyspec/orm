@@ -388,8 +388,20 @@ class Validator {
         fail('IR_INVALID', `subquery agg "${s.agg}"`);
     }
     if (column !== '' && !columnOf(ent, column)) fail('COLUMN_UNKNOWN', `${ent.name}.${column}`);
-    if (s.query.limit || (s.query.relations ?? []).length > 0 || (s.query.lock ?? '') !== '' || s.query.columns) {
+    // A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for several
+    // rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL 1235) and an
+    // aggregate take no limit.
+    const scalarColumn = scalar && (s.agg ?? '') === '';
+    if ((s.query.relations ?? []).length > 0 || (s.query.lock ?? '') !== '' || s.query.columns || (s.query.limit && !scalarColumn)) {
       fail('IR_INVALID', 'subquery may not use limit, relations, lock or columns');
+    }
+    if (scalarColumn) {
+      if (!s.query.limit || s.query.limit.count !== 1) fail('IR_INVALID', 'a scalar column subquery needs limit with count 1');
+      const order = s.query.order ?? [];
+      if (order.some(o => o.random)) fail('IR_INVALID', 'a scalar column subquery may not order by random');
+      for (const pk of ent.primaryKey) {
+        if (!order.some(o => o.column === pk && !o.fn)) fail('IR_INVALID', `a scalar column subquery needs an order that includes the primary key column ${pk}`);
+      }
     }
     this.query(s.query, this.scopes(s.query, undefined, outer), false, false);
   }

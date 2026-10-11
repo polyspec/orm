@@ -39,6 +39,11 @@ fn case(id: &str) -> (Value, Value) {
     (case["input"].clone(), case["expected"].clone())
 }
 
+/// An object whose members are all the same kind, such as the `sub` map of `columns`: its member names are free.
+fn members_of<'a>(value: &'a Value, at: &str) -> &'a Map<String, Value> {
+    value.as_object().unwrap_or_else(|| panic!("{at}: expected an object, got {value}"))
+}
+
 /// `value`의 member를 읽는다. `allowed` 밖의 member는 그 위치와 함께 거부한다.
 fn members<'a>(value: &'a Value, at: &str, allowed: &[&str]) -> &'a Map<String, Value> {
     let object = value.as_object().unwrap_or_else(|| panic!("{at}: expected an object, got {value}"));
@@ -224,11 +229,30 @@ fn query(value: &Value, at: &str) -> ir::Query {
     let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit", "key_by", "limit_per_parent"]);
     let columns = object.get("columns").map(|c| {
         let at = format!("{at}.columns");
-        let c = members(c, &at, &["mode", "add", "remove"]);
+        let c = members(c, &at, &["mode", "add", "remove", "sub"]);
         ir::Columns {
             mode: c.get("mode").map(|_| string(c, &at, "mode")).unwrap_or_default(),
             add: strings(c, &at, "add"),
             remove: strings(c, &at, "remove"),
+            sub: c
+                .get("sub")
+                .map(|subs| {
+                    let at = format!("{at}.sub");
+                    members_of(subs, &at)
+                        .iter()
+                        .map(|(name, sub)| {
+                            let at = format!("{at}.{name}");
+                            let object = members(sub, &at, &["query", "column", "agg"]);
+                            let sub = ir::Sub {
+                                query: Box::new(query(object.get("query").unwrap_or_else(|| panic!("{at}.query: expected a query")), &format!("{at}.query"))),
+                                column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
+                                agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
+                            };
+                            (name.clone(), sub)
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
             ..Default::default()
         }
     });
@@ -754,4 +778,32 @@ fn coverage_planner_order_nullable_group_count() {
 fn coverage_planner_order_nullable_limit_per_parent() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_order_nullable_limit_per_parent");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_scalar_column_subquery() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_scalar_column_subquery");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_scalar_column_subquery_without_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_scalar_column_subquery_without_limit");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_scalar_column_subquery_without_key_order() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_scalar_column_subquery_without_key_order");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_in_subquery_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_in_subquery_limit");
 }

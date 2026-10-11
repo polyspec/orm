@@ -1049,8 +1049,31 @@ func (v *validator) sub(s *Sub, scalar bool, outer *scope) error {
 	if s.Column != "" && ent.Field(s.Column) == nil {
 		return errf("COLUMN_UNKNOWN", "%s.%s", ent.Name, s.Column)
 	}
-	if s.Query.Limit != nil || len(s.Query.Relations) > 0 || s.Query.Lock != "" || s.Query.Columns != nil {
+	// A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for
+	// several rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL 1235)
+	// and an aggregate take no limit.
+	scalarColumn := scalar && s.Agg == ""
+	if len(s.Query.Relations) > 0 || s.Query.Lock != "" || s.Query.Columns != nil || s.Query.Limit != nil && !scalarColumn {
 		return errf("IR_INVALID", "subquery may not use limit, relations, lock or columns")
+	}
+	if scalarColumn {
+		if s.Query.Limit == nil || s.Query.Limit.Count != 1 {
+			return errf("IR_INVALID", "a scalar column subquery needs limit with count 1")
+		}
+		for _, pk := range ent.PK {
+			found := false
+			for _, o := range s.Query.Order {
+				if o.Random {
+					return errf("IR_INVALID", "a scalar column subquery may not order by random")
+				}
+				if o.Column == pk && o.Fn == nil {
+					found = true
+				}
+			}
+			if !found {
+				return errf("IR_INVALID", "a scalar column subquery needs an order that includes the primary key column %s", pk)
+			}
+		}
 	}
 	return v.query(s.Query, v.scopes(s.Query, nil, outer), false, false)
 }

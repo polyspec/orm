@@ -3749,7 +3749,11 @@
           "planner_order_not_null_column",
           "planner_order_nullable_column_function",
           "planner_order_nullable_group_count",
-          "planner_order_nullable_limit_per_parent"
+          "planner_order_nullable_limit_per_parent",
+          "planner_scalar_column_subquery",
+          "planner_rejects_scalar_column_subquery_without_limit",
+          "planner_rejects_scalar_column_subquery_without_key_order",
+          "planner_rejects_in_subquery_limit"
         ],
         "owners": {
           "go": {
@@ -3815,7 +3819,11 @@
                     "planner_order_not_null_column",
                     "planner_order_nullable_column_function",
                     "planner_order_nullable_group_count",
-                    "planner_order_nullable_limit_per_parent"
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3867,7 +3875,11 @@
                     "planner_order_not_null_column": "TestCoveragePlannerOrderNotNullColumn",
                     "planner_order_nullable_column_function": "TestCoveragePlannerOrderNullableColumnFunction",
                     "planner_order_nullable_group_count": "TestCoveragePlannerOrderNullableGroupCount",
-                    "planner_order_nullable_limit_per_parent": "TestCoveragePlannerOrderNullableLimitPerParent"
+                    "planner_order_nullable_limit_per_parent": "TestCoveragePlannerOrderNullableLimitPerParent",
+                    "planner_scalar_column_subquery": "TestCoveragePlannerScalarColumnSubquery",
+                    "planner_rejects_scalar_column_subquery_without_limit": "TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit",
+                    "planner_rejects_scalar_column_subquery_without_key_order": "TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder",
+                    "planner_rejects_in_subquery_limit": "TestCoveragePlannerRejectsInSubqueryLimit"
                   }
                 }
               ]
@@ -3936,7 +3948,11 @@
                     "planner_order_not_null_column",
                     "planner_order_nullable_column_function",
                     "planner_order_nullable_group_count",
-                    "planner_order_nullable_limit_per_parent"
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit"
                   ]
                 }
               ]
@@ -4005,7 +4021,11 @@
                     "planner_order_not_null_column",
                     "planner_order_nullable_column_function",
                     "planner_order_nullable_group_count",
-                    "planner_order_nullable_limit_per_parent"
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -4057,7 +4077,11 @@
                     "planner_order_not_null_column": "engine::coverage_planner::coverage_planner_order_not_null_column",
                     "planner_order_nullable_column_function": "engine::coverage_planner::coverage_planner_order_nullable_column_function",
                     "planner_order_nullable_group_count": "engine::coverage_planner::coverage_planner_order_nullable_group_count",
-                    "planner_order_nullable_limit_per_parent": "engine::coverage_planner::coverage_planner_order_nullable_limit_per_parent"
+                    "planner_order_nullable_limit_per_parent": "engine::coverage_planner::coverage_planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery": "engine::coverage_planner::coverage_planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit": "engine::coverage_planner::coverage_planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order": "engine::coverage_planner::coverage_planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit": "engine::coverage_planner::coverage_planner_rejects_in_subquery_limit"
                   }
                 }
               ]
@@ -4126,7 +4150,11 @@
                     "planner_order_not_null_column",
                     "planner_order_nullable_column_function",
                     "planner_order_nullable_group_count",
-                    "planner_order_nullable_limit_per_parent"
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit"
                   ]
                 }
               ]

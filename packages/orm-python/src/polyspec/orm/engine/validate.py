@@ -442,9 +442,23 @@ class _Validator:
             _fail('IR_INVALID', f'subquery agg "{agg}"')
         if column != '' and field_of(ent, column) is None:
             _fail('COLUMN_UNKNOWN', f'{ent.name}.{column}')
-        if s['query'].get('limit') or s['query'].get('relations') \
-                or s['query'].get('lock') or s['query'].get('columns'):
+        # A scalar column subquery yields at most one row by its shape: MySQL answers 1242 and PostgreSQL 21000 for
+        # several rows, and SQLite returns the first, so the request makes one row certain. An in subquery (MySQL
+        # 1235) and an aggregate take no limit.
+        scalar_column = scalar and not agg
+        query = s['query']
+        if query.get('relations') or query.get('lock') or query.get('columns') \
+                or (query.get('limit') and not scalar_column):
             _fail('IR_INVALID', 'subquery may not use limit, relations, lock or columns')
+        if scalar_column:
+            if not query.get('limit') or query['limit']['count'] != 1:
+                _fail('IR_INVALID', 'a scalar column subquery needs limit with count 1')
+            order = query.get('order') or []
+            if any(o.get('random') for o in order):
+                _fail('IR_INVALID', 'a scalar column subquery may not order by random')
+            for pk in ent.primary_key:
+                if not any(o.get('column') == pk and not o.get('fn') for o in order):
+                    _fail('IR_INVALID', f'a scalar column subquery needs an order that includes the primary key column {pk}')
         scope = self.scopes(s['query'])
         self.query(s['query'], {'root': scope, 'outer': outer, 'node': scope}, False, False)
 

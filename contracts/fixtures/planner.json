@@ -3201,6 +3201,213 @@
         ]
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, (SELECT `s1`.`name` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`seq` ORDER BY `s1`.`description` ASC, `s1`.`seq` ASC LIMIT 0, 1) AS `a__first_author` FROM `user` AS `a`",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"seq\" ORDER BY \"s1\".\"description\" ASC NULLS FIRST, \"s1\".\"seq\" ASC LIMIT 1 OFFSET 0) AS \"a__first_author\" FROM \"user\" AS \"a\"",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", (SELECT \"s1\".\"name\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"seq\" ORDER BY \"s1\".\"description\" ASC, \"s1\".\"seq\" ASC LIMIT 1 OFFSET 0) AS \"a__first_author\" FROM \"user\" AS \"a\"",
+            "tables": [
+              "author",
+              "user"
+            ]
+          }
+        ]
+      },
+      "id": "planner_scalar_column_subquery",
+      "input": {
+        "columns": {
+          "sub": {
+            "first_author": {
+              "column": "name",
+              "query": {
+                "entity": "author",
+                "limit": {
+                  "count": 1,
+                  "offset": 0
+                },
+                "order": [
+                  {
+                    "column": "description"
+                  },
+                  {
+                    "column": "seq"
+                  }
+                ],
+                "where": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "user_seq",
+                        "op": "eq_col",
+                        "ref": {
+                          "column": "seq",
+                          "path": "^"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_scalar_column_subquery_without_limit",
+      "input": {
+        "columns": {
+          "sub": {
+            "first_author": {
+              "column": "name",
+              "query": {
+                "entity": "author",
+                "order": [
+                  {
+                    "column": "seq"
+                  }
+                ],
+                "where": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "user_seq",
+                        "op": "eq_col",
+                        "ref": {
+                          "column": "seq",
+                          "path": "^"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_scalar_column_subquery_without_key_order",
+      "input": {
+        "columns": {
+          "sub": {
+            "first_author": {
+              "column": "name",
+              "query": {
+                "entity": "author",
+                "limit": {
+                  "count": 1,
+                  "offset": 0
+                },
+                "order": [
+                  {
+                    "column": "created_ts"
+                  }
+                ],
+                "where": {
+                  "items": [
+                    {
+                      "pred": {
+                        "column": "user_seq",
+                        "op": "eq_col",
+                        "ref": {
+                          "column": "seq",
+                          "path": "^"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 1
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_in_subquery_limit",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "user_seq",
+                "op": "in",
+                "sub": {
+                  "column": "seq",
+                  "query": {
+                    "entity": "user",
+                    "limit": {
+                      "count": 1,
+                      "offset": 0
+                    },
+                    "order": [
+                      {
+                        "column": "seq"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

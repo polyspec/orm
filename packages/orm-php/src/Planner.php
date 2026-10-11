@@ -1050,6 +1050,10 @@ final class Planner
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
+        // A scalar column subquery is ordered and limited to one row, which the validator has checked.
+        if (($sub['agg'] ?? '') === '' && isset($q['limit'])) {
+            $sql .= $this->renderOrder($b, $root, $q) . $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
+        }
         return $sql;
     }
 

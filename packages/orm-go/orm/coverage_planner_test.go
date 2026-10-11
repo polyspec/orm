@@ -409,3 +409,27 @@ func TestCoveragePlannerOrderNullableLimitPerParent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_order_nullable_limit_per_parent")
 }
+
+// TestCoveragePlannerScalarColumnSubquery는 scalar column subquery case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerScalarColumnSubquery(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_scalar_column_subquery")
+}
+
+// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit는 rejects scalar column subquery without limit case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsScalarColumnSubqueryWithoutLimit(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_scalar_column_subquery_without_limit")
+}
+
+// TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder는 rejects scalar column subquery without key order case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsScalarColumnSubqueryWithoutKeyOrder(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_scalar_column_subquery_without_key_order")
+}
+
+// TestCoveragePlannerRejectsInSubqueryLimit는 rejects in subquery limit case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsInSubqueryLimit(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_in_subquery_limit")
+}
