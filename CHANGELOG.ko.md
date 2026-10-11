@@ -4,6 +4,7 @@
 
 ## Unreleased
 
+- T65: Python client가 markdown DSN으로 corpus에 접속하며 `Db`마다 server 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다. rebase에서 main 밖으로 빠졌던 executor module을 다시 추적한다.
 - T102: dialects.md의 "Markdown IR executor" 표가 flowmark의 spec 60을 행마다 그대로 옮긴다. 행마다 판정을 결과와 규칙으로 나누고, `tests/markdown/flowmark.version`이 고정한 flowmark 판(이제 flowmark `444f27f`)에 맞춘다. `make markdown-table-check`가 둘을 비교해 다르면 실패한다.
 - T84: 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 모양만으로 많아야 한 행을 낸다. count가 1인 `limit`과 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가져야 하며, 아니면 모든 구현에서 `IR_INVALID`이다(여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답했고 SQLite는 첫 행을 돌려주었다). planner는 그에 `ORDER BY … LIMIT …`을 렌더한다. conformance vector는 `T84-1`이다.
 - T82: order 항목은 모든 database에서 오름차순에 NULL을 모든 값 앞에, 내림차순에 모든 값 뒤에 놓는다. PostgreSQL은 NULL일 수 있는 order 식에 `ASC NULLS FIRST`와 `DESC NULLS LAST`를 렌더한다(이전에는 오름차순에서 NULL이 마지막이었다). root order, `limit_per_parent`, `group_count`에 적용된다. probe와 conformance vector는 `T82-1`이다.

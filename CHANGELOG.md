@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T65: the Python client reaches a corpus through the markdown DSN, one server connection per `Db`, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build; its executor module, lost from main in a rebase, is tracked again.
 - T102: the table "Markdown IR executor" of dialects.md mirrors flowmark's spec 60 row by row, one row per row with its ruling split into Result and Rule, at the flowmark version pinned in `tests/markdown/flowmark.version` (now flowmark `444f27f`); `make markdown-table-check` compares the two and fails on a difference.
 - T84: a scalar column subquery (`columns.sub` with no `agg`) yields at most one row by its shape: it has `limit` with count 1 and an `order` that includes every primary key column and no `random` item, else `IR_INVALID` in every implementation (MySQL answered 1242 and PostgreSQL 21000 for several rows, SQLite returned the first); the planners render `ORDER BY … LIMIT …` for it. The conformance vector is `T84-1`.
 - T82: an order item sorts NULL before every value ascending and after every value descending on every database: PostgreSQL renders `ASC NULLS FIRST` and `DESC NULLS LAST` on an order expression that can be NULL (it sorted NULL last ascending), in the root order, `limit_per_parent` and `group_count`. The probes and the conformance vector are `T82-1`.
