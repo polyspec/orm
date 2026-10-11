@@ -331,6 +331,33 @@ function expandFunctions(command) {
   return command.replace(/\$\(addprefix ([^,()]*),([^()]*)\)/g, (whole, prefix, words) => words.trim().split(/\s+/).filter(Boolean).map(word => `${prefix}${word}`).join(' '));
 }
 
+// exportedVariables는 Makefile이 recipe의 process에 넘기는 변수다: `export NAME`, `export NAME = …`, `export A B`.
+export function exportedVariables(makefile) {
+  const names = new Set();
+  for (const match of makefile.matchAll(/^export\s+(.+)$/gm)) {
+    const assigned = /^([A-Za-z_][A-Za-z0-9_]*)\s*[:?]?=/.exec(match[1]);
+    for (const name of assigned ? [assigned[1]] : match[1].trim().split(/\s+/)) names.add(name);
+  }
+  return names;
+}
+
+// helperEnvironmentErrors는 contracts/features.json의 helper check 가운데 make를 시작하는 명령이 Makefile이 export하지 않는
+// shell 변수(`$NAME`, `${NAME}`)를 쓸 때마다 오류 하나를 돌려준다. helper는 feature-helper-check, stress target과 make
+// owner-check가 실행하며, 그 셋이 다 주는 환경은 Makefile이 export한 변수뿐이다. 한 실행 경로만 설정하는 변수는 다른
+// 경로에서 빈 값이 되어, 그 값을 file 이름으로 읽는 target이 실패한다.
+export function helperEnvironmentErrors(manifest, makefile) {
+  const exported = exportedVariables(makefile);
+  const errors = [];
+  for (const helper of manifest.helpers ?? []) {
+    if (!/^make\s/.test(helper.command.trim())) continue;
+    for (const match of helper.command.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g)) {
+      if (!exported.has(match[1]))
+        errors.push(`contracts/features.json helper ${helper.id} reads $${match[1]}, which the Makefile does not export; export it from the Makefile, as ORM_TEST_ENV and DECIMAL_ENV are, so that every make target that runs the helper passes it`);
+    }
+  }
+  return errors;
+}
+
 // helperRunErrors는 make check가 contracts/features.json의 helper check를 한 번이 아니게 실행하는 helper마다 오류 하나를
 // 돌려준다. helper check를 실행하는 곳은 셋이다: CHECK_TARGETS의 recipe가 `node scripts/features/check.mjs --run`으로 그
 // helper를 고르는 target, helper의 명령이 `make ... <target>`이고 그 target이 make check의 target이나 그 선행 target인 경우의

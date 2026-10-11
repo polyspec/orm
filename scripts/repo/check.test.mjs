@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, matrixIncludes, expand, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, matrixIncludes, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -550,6 +550,21 @@ caseTest('make check runs the check of every helper once', COMPUTE, () => {
   ]);
   assert.deepEqual(helperRunErrors(manifest, make('suite nested seed', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
     twice('stress', 'make helper-check; make stress-check'),
+  ]);
+});
+
+// helper 환경 case는 helper check의 make 명령이 읽는 shell 변수를 Makefile이 export하는지 본다: 저장소의 contracts/features.json과
+// Makefile, 그리고 한 실행 경로만 설정하던 변수(ORM_OWNER_TEST_ENV)를 읽는 최소 manifest다.
+caseTest('every variable a helper make command reads is exported by the Makefile', COMPUTE, () => {
+  assert.deepEqual(helperEnvironmentErrors(JSON.parse(text('contracts/features.json')), text('Makefile')), []);
+  const makefile = 'export ORM_TEST_ENV = $(abspath $(TEST_ENV))\nDECIMAL_ENV =\nexport DECIMAL_ENV\nexport A B\n';
+  const manifest = { helpers: [
+    { id: 'exported', command: 'make --no-print-directory TEST_ENV="$ORM_TEST_ENV" DECIMAL_ENV="${DECIMAL_ENV}" A="$A" B="$B" x-check' },
+    { id: 'owner-only', command: 'make --no-print-directory TEST_ENV="$ORM_OWNER_TEST_ENV" x-check' },
+    { id: 'script', command: 'sh scripts/x.sh "$HOME"' },
+  ] };
+  assert.deepEqual(helperEnvironmentErrors(manifest, makefile), [
+    'contracts/features.json helper owner-only reads $ORM_OWNER_TEST_ENV, which the Makefile does not export; export it from the Makefile, as ORM_TEST_ENV and DECIMAL_ENV are, so that every make target that runs the helper passes it',
   ]);
 });
 
