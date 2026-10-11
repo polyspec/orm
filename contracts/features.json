@@ -1199,7 +1199,7 @@
         "packages/orm-go/orm/identity_load_test.go",
         "packages/orm-php/tests/identity_load_test.php",
         "packages/orm-npm/tests/identity-load.mjs",
-        "packages/orm-python/tests/test_identity_load.py",
+        "packages/orm-python/tests/identity_load.py",
         "packages/orm-rust/orm/tests/identity_load.rs",
         "packages/orm-go/orm/time_precision_test.go"
       ],
@@ -1418,7 +1418,7 @@
           "command": "make python-identity-load-check",
           "shard": "other",
           "inputs": [
-            "packages/orm-python/tests/test_identity_load.py",
+            "packages/orm-python/tests/identity_load.py",
             "contracts/fixtures/identity_load.dbs",
             "contracts/fixtures/identity_load.json"
           ]
