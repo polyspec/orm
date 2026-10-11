@@ -406,6 +406,44 @@
         ]
       },
       "main": "wiki"
+    },
+    {
+      "id": "store-shard",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_at datetime(6)",
+          "  kind varchar(32)",
+          "  primary key (id)",
+          "  settings {",
+          "    store document table shard happened_at month",
+          "  }",
+          "}",
+          "",
+          "table visit {",
+          "  id varchar(64)",
+          "  visited_on date",
+          "  primary key (id)",
+          "  settings {",
+          "    store files shard visited_on day",
+          "    key_prefix 'visit-'",
+          "  }",
+          "}",
+          "",
+          "table booking {",
+          "  id i64 identity",
+          "  booked_on date",
+          "  primary key (id)",
+          "  settings {",
+          "    store document list shard booked_on year",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log"
     }
   ],
   "normalize": [
@@ -6409,6 +6447,194 @@
       ]
     },
     {
+      "id": "store-shard-column-nullable",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_at datetime(6) null",
+          "  primary key (id)",
+          "  settings {",
+          "    store document table shard happened_at month",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 8,
+          "column": 32,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-column-not-time",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  kind varchar(32)",
+          "  primary key (id)",
+          "  settings {",
+          "    store files shard kind month",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 8,
+          "column": 23,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-column-missing",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_on date",
+          "  primary key (id)",
+          "  settings {",
+          "    store files shard missing_on month",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 8,
+          "column": 23,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-period-unknown",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_on date",
+          "  primary key (id)",
+          "  settings {",
+          "    store files shard happened_on week",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 8,
+          "column": 35,
+          "rule": "syntax"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-self-foreign-key",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_on date",
+          "  parent i64 null",
+          "  primary key (id)",
+          "  index ix_event_parent (parent)",
+          "  foreign key fk_event_parent (parent) references event (id) on delete restrict on update restrict",
+          "  settings {",
+          "    store files shard happened_on year",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 11,
+          "column": 17,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-with-order",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_on date",
+          "  position i32",
+          "  primary key (id)",
+          "  settings {",
+          "    store document list shard happened_on day",
+          "    order position",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 9,
+          "column": 25,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "store-shard-block-table",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table page {",
+          "  id varchar(64)",
+          "  primary key (id)",
+          "}",
+          "",
+          "table note {",
+          "  id varchar(64)",
+          "  page_id varchar(64)",
+          "  written_on date",
+          "  primary key (id)",
+          "  index ix_note_page (page_id)",
+          "  foreign key fk_note_page (page_id) references page (id) on delete restrict on update restrict",
+          "  settings {",
+          "    store block fk_note_page list shard written_on month",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "log",
+      "errors": [
+        {
+          "line": 16,
+          "column": 35,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
       "id": "order-nullable",
       "documents": {
         "wiki": [
@@ -11656,6 +11882,70 @@
       ],
       "manifestHash": "sha256:bc797bed76d4d5d370a96a64d890f01af6107693350ea3d12ee3818291a190d0",
       "schemaHash": "sha256:5a9225deda771ceebd5dcf9c439e9970c709de2e20eb823590e342df1dfb67cc"
+    },
+    {
+      "id": "store-shard-manifest-and-schema",
+      "documents": {
+        "log": [
+          "dbspec 1 log",
+          "",
+          "table event {",
+          "  id i64 identity",
+          "  happened_at datetime(6)",
+          "  primary key (id)",
+          "  settings {",
+          "    store document table shard happened_at month",
+          "  }",
+          "}",
+          "",
+          "table visit {",
+          "  id varchar(64)",
+          "  visited_on date",
+          "  primary key (id)",
+          "  settings {",
+          "    store files shard visited_on day",
+          "  }",
+          "}"
+        ]
+      },
+      "manifestText": [
+        "dbspec 1 log",
+        "",
+        "table event {",
+        "  id i64 identity",
+        "  happened_at datetime(6)",
+        "  primary key (id)",
+        "  settings {",
+        "    store document table shard happened_at month",
+        "  }",
+        "}",
+        "",
+        "table visit {",
+        "  id varchar(64)",
+        "  visited_on date",
+        "  primary key (id)",
+        "  settings {",
+        "    store files shard visited_on day",
+        "  }",
+        "}"
+      ],
+      "schemaText": [
+        "dbspec 1 schema",
+        "",
+        "table event {",
+        "  id i64 identity",
+        "  happened_at datetime(6)",
+        "  primary key (id)",
+        "}",
+        "",
+        "table visit {",
+        "  id varchar(64)",
+        "  visited_on date",
+        "  primary key (id)",
+        "}"
+      ],
+      "manifestHash": "sha256:c03e62f0a085505d0499cb2b51496591b3b51fcf3cdebe6f68de808dcfbe464f",
+      "schemaHash": "sha256:182ea8ad350b149976d17d103d3be1574d23a01d98da96779dd09cb97f45e7dd"
     }
   ],
   "sets": [
