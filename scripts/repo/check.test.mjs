@@ -517,7 +517,7 @@ caseTest('make check runs the check of every helper once', COMPUTE, () => {
   assert.deepEqual(helperRunErrors(JSON.parse(text('contracts/features.json')), text('Makefile'), text('scripts/check/databases.sh')), []);
   const manifest = { features: [], helpers: [
     { id: 'plain', command: 'php tests/plain_test.php' },
-    { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_OWNER_TEST_ENV" suite-check' },
+    { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_TEST_ENV" suite-check' },
     { id: 'nested', command: 'make --no-print-directory nested-check' },
     { id: 'seed', command: 'sh scripts/seed.sh' },
     { id: 'stress', command: 'make stress-bench' },

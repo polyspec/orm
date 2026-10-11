@@ -123,7 +123,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
 // target directory에 build한다(AGENTS.md).
 caseTest('a selected make target runs with the environments of owner-check and the target directory of its checkout', 5000, async () => {
   assert.deepEqual(makeArguments('docs-check', {}), ['--no-print-directory', '-k', 'docs-check']);
-  assert.deepEqual(makeArguments('client-db-check', { ORM_OWNER_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', CARGO_TARGET_DIR: '/main/cargo-target' }),
+  assert.deepEqual(makeArguments('client-db-check', { ORM_TEST_ENV: '/main/.runtime/servers/env', DECIMAL_ENV: '/main/.runtime/decimal-env', CARGO_TARGET_DIR: '/main/cargo-target' }),
     ['--no-print-directory', '-k', 'TEST_ENV=/main/.runtime/servers/env', 'DECIMAL_ENV=/main/.runtime/decimal-env', 'client-db-check']);
 });
 
