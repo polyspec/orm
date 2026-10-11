@@ -1045,6 +1045,10 @@ func write(ex executor, r *request) (key any, affected int64, err error) {
 		return nil, 0, err
 	}
 	affected, _ = res.RowsAffected()
+	if r.ir.Kind == "insert" && len(r.ir.OnDuplicate) > 0 {
+		// An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+		affected = 1
+	}
 	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 {
 		lastID, _ = res.LastInsertId()
 	}

@@ -930,6 +930,8 @@ async fn write(ex: &Executor, req: &mut Req) -> Result<(Val, u64)> {
             return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
         }
         let (id, affected) = ex.execute(st, &req.params).await?;
+        // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+        let affected = if req.ir.kind == "insert" && !req.ir.on_duplicate.is_empty() { 1 } else { affected };
         let key =
             if req.ir.kind == "insert" { Val::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?) } else { Val::Null };
         (key, affected)

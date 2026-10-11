@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c3740c0fd8be799bb9b41f6a1cdf469c08ad7497af84af55f6147f528a662d9c -->
+<!-- source-sha256: b12a3a763eadbcd38998ac66e807f3ccf136f844cf38450f9684c31e753d234c -->
 # 변경 이력
 
 ## Unreleased
 
+- T88: 쓰기 `affected`는 쓴 row를 하나씩 센다. `on_duplicate`가 있는 insert는 삽입이든 갱신이든 모든 client에서 1이고(MySQL은 갱신을 2로 셌다), update는 모든 MySQL 설정에서 일치한 row를 센다(Python client는 바뀐 row만 셌고 이제 found rows를 요청한다). conformance vector는 `T88-1`이다.
 - T87: `on_duplicate`가 있는 insert에는 삽입 행을 만날 수 있는 key(primary key는 insert가 빼먹지 않았을 때만, 그리고 모든 unique key)가 정확히 하나여야 하고 insert가 그 모든 컬럼을 할당해야 하며, 아니면 모든 구현에서 `IR_INVALID`이다. planner의 충돌 대상이 그 key이므로, MySQL이 만난 아무 unique key의 행을 갱신하던 곳에서 세 database가 일치한다. probe와 conformance vector는 `T87-1`이다.
 - T96: 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`/`right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로 만나야 하고, 아니면 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). 세 database의 conformance vector는 `T96-1`이다.
 - T97: 열 비교 연산자(`eq_col` 등)는 왼쪽 컬럼의 type과 두 컬럼 모두 codec이 없다는 것으로 허용되며, `ip` 컬럼 둘은 `eq_col`과 `not_eq_col`도 받는다. `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다.
