@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: a743e692ca3c038377e0436f2c3bb6231554ccfe09327477ee66699ca9f70212 -->
+<!-- source-sha256: 9dc77ddfcce1d287159a6419f7c103e617ddb6882e89fd8c6aff64b38c8b0412 -->
 # dbspec
 
 [English](dbspec.md)
@@ -165,6 +165,7 @@ codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 s
 | `state_machine <column> <from> -> <to> [require (<column>, ...)]`, `state_machine <column> terminal <state> [require (<column>, ...)]` | non-null varchar 또는 text column 하나의 row 상태 기계다. 각 줄은 하나의 전환이거나 하나의 terminal 상태이고, table마다 한 column에서 순서와 섞임에 제한 없이 쓴다. `require`는 전환이나 terminal이 기록하는 column을 명명하고, terminal 상태를 벗어나는 전환은 거부한다. database는 기계를 강제하지 않고 row를 소유한 executor가 강제한다 | manifest |
 | `markdown <column>` | column이 markdown 산문을 담는다. column마다 반복 가능하고 임의의 nullability varchar 또는 text column에 쓴다. database는 이를 위해 아무것도 render하지 않고 문서를 소유한 도구가 읽는다 | manifest |
 | `store files`, `store document list\|table`, `store block <foreign key> list\|table` | table의 markdown corpus 저장이다. `files`는 행마다 file 하나를, `document`는 모든 행을 문서 하나에, `block`은 지정한 foreign key가 가리키는 부모 행 안에 행을 쓴다. `list`나 `table`이 모양이다. table마다 정확히 하나를 쓴다 | manifest |
+| `store files shard <column> <period>`, `store document list\|table shard <column> <period>` | 저장의 시간 shard다. corpus는 column의 기간마다 행을 따로 둔다. column은 non-null `date` 또는 `datetime` column이고 기간은 `year`, `month` 또는 `day`다. `store block` table, self foreign key가 있는 table, `order`가 있는 table은 이를 거부한다. SQL backend는 이를 무시한다: 아무것도 render하지 않고 introspection도 복원하지 않는다 | manifest |
 | `key_prefix '<p>'` | executor가 varchar primary key를 `<p><n + 1>`로 할당한다. n은 그 꼴 key 가운데 가장 큰 10진 suffix다. primary key는 varchar column 하나여야 한다 | manifest |
 | `title <column>`, `body <column>` | 행의 제목과 본문이다. 각각 non-null varchar 또는 text column이다 | manifest |
 | `order <column>` | 형제 행 사이의 위치이며 executor가 할당한다. default가 없고 어떤 key, index, check에도 없는 non-null `i32` 또는 `i64` column이다 | manifest |
