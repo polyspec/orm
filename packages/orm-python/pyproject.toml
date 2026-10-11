@@ -7,7 +7,7 @@ name = "polyspec-orm"
 version = "0.0.8"
 description = "Python ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite"
 license = "MIT"
-requires-python = ">=3.15"
+requires-python = ">=3.14"
 # wheel은 CPython만 지원한다(docs/packaging.md, Python client release). toolchain은 python-build-standalone CPython이다.
 classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
