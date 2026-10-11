@@ -136,6 +136,13 @@ export function registerModel(manifestText: string, manifestHash: string, extern
   return model;
 }
 
+/**
+ * The hook of a connection handle (Db.withRequestHook): it receives a request of the handle right
+ * before planning and returns the request to plan. addParam appends a value to the parameters of
+ * the request and returns its index.
+ */
+export type RequestHook = (request: Request, addParam: (value: unknown) => number) => Request;
+
 /** The options of an outermost transaction. */
 interface BeginOptions { isolation?: Isolation; readOnly?: boolean; timeoutMs: number; }
 
@@ -400,6 +407,8 @@ export class Db {
   // 만들었는지다.
   private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
+  /** The hook of the handle (withRequestHook); a connection has none. */
+  public readonly requestHook: RequestHook | undefined = undefined;
   /** The audit values of the current request; the connection and its handles share it. */
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
@@ -546,9 +555,26 @@ export class Db {
    * handle closes the connection.
    */
   public withSignal(signal: AbortSignal): Db {
+    return this.derive('signal', signal);
+  }
+
+  /**
+   * Returns a handle on the same connection whose hook receives each request of the handle right
+   * before it is planned (docs/usage.md "Request hook"). The hook returns the request to plan and adds
+   * a parameter with addParam, which returns its index; the client then plans the request as any
+   * other, so the planner validates what the hook changed. The handle keeps the signal of this
+   * handle, and transactions started on it keep the hook for the models of their callback.
+   */
+  public withRequestHook(hook: RequestHook): Db {
+    if (typeof hook !== 'function') throw new OrmError('CONFIG', 'withRequestHook takes a function of the request and addParam');
+    return this.derive('requestHook', hook);
+  }
+
+  /** 같은 연결의 handle 이다: 상태를 공유하고 property 하나만 value 로 바꾼다. */
+  private derive(property: 'signal' | 'requestHook', value: unknown): Db {
     const handle: Db = Object.create(Db.prototype) as Db;
     Object.assign(handle, this);
-    Object.defineProperty(handle, 'signal', { value: signal, enumerable: true, writable: false });
+    Object.defineProperty(handle, property, { value, enumerable: true, writable: false });
     Object.defineProperty(handle, 'rootDb', { value: this.root(), enumerable: false, writable: false });
     return handle;
   }
@@ -1132,7 +1158,26 @@ function checkLock(ex: Executor, request: Request): void {
 
 function driverLimit(driver: string): number { return driver === 'sqlite' ? 999 : 65535; }
 
-export async function query(ex: Executor, request: Request, params: readonly unknown[]): Promise<Result> {
+/** A request with its parameters, as the request hook of the handle left them. */
+interface Hooked { request: Request; params: readonly unknown[]; }
+
+/**
+ * executor handle 의 request hook 을 plan 전에 적용한다. hook 은 parameter 목록의 사본에 addParam 으로 값을
+ * 더하고, client 는 hook 이 돌려준 request 의 n_params 를 그 길이로 쓴다. validation 은 plan 이 한다. hook 이
+ * 없는 handle 은 request 와 params 를 그대로 돌려준다.
+ */
+function hooked(ex: Executor, request: Request, params: readonly unknown[]): Hooked {
+  const hook = ex.db.requestHook;
+  if (hook === undefined) return { request, params };
+  const values = [...params];
+  const out = hook(request, (value: unknown) => values.push(value) - 1);
+  if (out === null || typeof out !== 'object' || Array.isArray(out)) throw new OrmError('CONFIG', 'the request hook returns the request to plan');
+  out.n_params = values.length;
+  return { request: out, params: values };
+}
+
+export async function query(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<Result> {
+  const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
@@ -1215,7 +1260,8 @@ export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void
   for (const child of assemble.children) if (child.kind === 'join' && child.assemble) decodeAssembly(row, child.assemble, db);
 }
 
-export async function scalar(ex: Executor, request: Request, params: readonly unknown[]): Promise<unknown> {
+export async function scalar(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<unknown> {
+  const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
@@ -1236,7 +1282,8 @@ export async function scalar(ex: Executor, request: Request, params: readonly un
   });
 }
 
-export async function paginate(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ result: Result; total: number }> {
+export async function paginate(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ result: Result; total: number }> {
+  const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
@@ -1255,7 +1302,8 @@ export async function paginate(ex: Executor, request: Request, params: readonly 
  * Runs an insert, update, delete, or restore and returns the key of the inserted row and the affected row count:
  * the generated identity on a SQL database, the first key the markdown executor answers.
  */
-export async function write(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ key: number | string | null; affected: number }> {
+export async function write(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ key: number | string | null; affected: number }> {
+  const { request, params } = hooked(ex, given, givenParams);
   return guarded(ex, async () => {
     const db = ex.db;
     if (db.md !== undefined) {
@@ -1275,8 +1323,9 @@ export async function write(ex: Executor, request: Request, params: readonly unk
 }
 
 /** Returns the statement of a select request without executing it. */
-export async function statement(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
+export async function statement(ex: Executor, given: Request, givenParams: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
   ex.db.unsupportedOnMarkdown('getQuery');
+  const { request, params } = hooked(ex, given, givenParams);
   const cached = await ex.db.plan(request);
   const step = cached.plan.steps[0]!;
   return { sql: step.sql, binds: ex.db.args(step, params).masked };
