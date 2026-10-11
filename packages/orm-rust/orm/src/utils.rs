@@ -134,12 +134,14 @@ impl<'a> Utils<'a> {
 
     /// text bind만 받는 존재 확인 statement를 실행한다.
     async fn exists(&self, sql: &str, params: &[Param]) -> Result<bool> {
+        self.db.unsupported_on_markdown("schema inspection")?;
         let rows = self.query(&self.read(), KIND_SCHEMA, &[], sql.to_owned(), params, &vec!["text"; params.len()]).await?;
         Ok(rows.first().and_then(|r| r.first()).map(truthy).unwrap_or(false))
     }
 
     /// Takes a named lock released when the transaction ends.
     pub async fn lock(&self, key: &str) -> Result<()> {
+        self.db.unsupported_on_markdown("lock")?;
         let t = self.active("lock")?;
         if !valid_key(key) {
             return Err(Error::Config(format!("lock key {key:?} is invalid")));
@@ -164,6 +166,7 @@ impl<'a> Utils<'a> {
 
     /// Sets a transaction-local value.
     pub async fn set_local(&self, key: &str, value: &str) -> Result<()> {
+        self.db.unsupported_on_markdown("set_local")?;
         let t = self.active("set_local")?;
         if !valid_key(key) {
             return Err(Error::Config(format!("local key {key:?} is invalid")));
@@ -186,6 +189,7 @@ impl<'a> Utils<'a> {
 
     /// A value set with set_local; NO_ROWS when it is missing.
     pub fn local(&self, key: &str) -> Result<String> {
+        self.db.unsupported_on_markdown("local")?;
         let t = self.active("local")?;
         let v = t.locals.lock().unwrap().get(key).cloned();
         v.ok_or_else(|| Error::Engine { code: codes::NO_ROWS.into(), msg: format!("local value {key} is not set") })
@@ -233,6 +237,7 @@ impl SchemaUtils<'_> {
     /// 적용하므로 실패한 install은 아무것도 남기지 않는다. MySQL은 schema statement를 암묵적으로
     /// commit하므로 transaction 밖에서 적용하고, transaction 안에서는 CONFIG다.
     pub async fn install(&self, schema: &Schema) -> Result<()> {
+        self.u.db.unsupported_on_markdown("schema install (flowmark install creates a corpus)")?;
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
@@ -284,6 +289,7 @@ impl SchemaUtils<'_> {
     /// 않으므로, 둘 다 transaction 밖에서 적용하고 안에서는 CONFIG다. 만든 table은 "table", 더한
     /// column은 "table.column"으로 table 이름, column 순서로 돌려준다.
     pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>> {
+        self.u.db.unsupported_on_markdown("add_tables_and_columns (schema evolution follows the flowmark migration rules)")?;
         schema.registered()?;
         let documents = schema.documents()?;
         let refs: Vec<&Document> = documents.iter().collect();
@@ -320,6 +326,7 @@ impl SchemaUtils<'_> {
                 }
                 result
             }
+            crate::db::Pool::Markdown(_) => Err(Error::internal("add_tables_and_columns reached a markdown connection")),
         }
     }
 
@@ -521,6 +528,7 @@ pub struct AesUtils<'a> {
 
 impl AesUtils<'_> {
     fn spec<M: Model>(&self, _m: &M) -> Result<AesSpec> {
+        self.u.db.unsupported_on_markdown("aes rotation")?;
         let name = M::entity().name;
         let ent = M::entity().entity_schema()?;
         let columns: Vec<(String, Vec<String>)> =
@@ -771,10 +779,9 @@ async fn without_foreign_keys(db: &Db, conn: &mut sqlx::SqliteConnection, target
             let on = Observed { db, transaction: number };
             let added = add_tables_and_columns_on(on, &mut *conn, dbspec::Dialect::Sqlite, target, documents).await?;
             let check = "SELECT COUNT(*) FROM pragma_foreign_key_check";
-            let broken = events::guarded(db, inside(KIND_SCHEMA, check), async {
-                sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from)
-            })
-            .await?;
+            let broken =
+                events::guarded(db, inside(KIND_SCHEMA, check), async { sqlx::query_scalar::<_, i64>(check).fetch_one(&mut *conn).await.map_err(Error::from) })
+                    .await?;
             if broken != 0 {
                 return Err(Error::internal(format!("the rebuilt tables break {broken} foreign keys")));
             }

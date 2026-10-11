@@ -44,6 +44,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
             .await
             .unwrap(),
         Pool::Sqlite(p) => sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?").bind(table).fetch_one(p).await.unwrap(),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     };
     count > 0
 }

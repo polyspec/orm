@@ -184,7 +184,13 @@ async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     std::fs::copy(conformance_dir().join("corpus/dbspec/conformance.dbs"), dir.join("dbspec/conformance.dbs")).unwrap();
     polyspec_orm_testcase::step(format_args!("flowmark install {}", dir.display()));
     let install = Command::new(bin).arg("install").arg(&dir).output().unwrap();
-    assert!(install.status.success(), "flowmark install: {}\n{}{}", install.status, String::from_utf8_lossy(&install.stdout), String::from_utf8_lossy(&install.stderr));
+    assert!(
+        install.status.success(),
+        "flowmark install: {}\n{}{}",
+        install.status,
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
     polyspec_orm_testcase::step(format_args!("flowmark serve {} --port 0", dir.display()));
     let mut child = Command::new(bin).arg("serve").arg(&dir).args(["--port", "0"]).stdout(Stdio::piped()).stderr(Stdio::inherit()).spawn().unwrap();
     let stdout = child.stdout.take().unwrap();
@@ -232,7 +238,8 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
     let db = &s.db;
     Ok(match id {
         "insert_one" => {
-            let m = People::new().connect(db).set_name("Ann").set_email(Some("ann@example.com".to_owned())).set_age(Some(30)).set_score("1.50")?.create().await?;
+            let m =
+                People::new().connect(db).set_name("Ann").set_email(Some("ann@example.com".to_owned())).set_age(Some(30)).set_score("1.50")?.create().await?;
             json!({ "id": m.get_id()? })
         }
         "insert_rows" => {
@@ -315,7 +322,13 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             Value::Null
         }
         "insert_on_duplicate" => {
-            let m = People::new().connect(db).set_name("Ann B").set_email(Some("ann@example.com".to_owned())).duplication(People::new().set_name("Ann B")).create().await?;
+            let m = People::new()
+                .connect(db)
+                .set_name("Ann B")
+                .set_email(Some("ann@example.com".to_owned()))
+                .duplication(People::new().set_name("Ann B"))
+                .create()
+                .await?;
             let read = People::new().connect(db).id("P1").get().await?;
             json!({ "created": m.get_id()?, "name": read.get_name()? })
         }

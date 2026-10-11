@@ -18,6 +18,7 @@ use crate::driver::{
 pub use crate::driver::{NOW_MASK, SECRET_MASK};
 use crate::engine::{self, Dialect};
 use crate::events::{statement_kind, Sent, Subscribers, KIND_UTILITY};
+use crate::markdown::{open_markdown, parse_markdown_dsn, MarkdownDsn, MdPool};
 use crate::plan::{Plan, Step};
 use crate::request::Req;
 use crate::row::DriverRow;
@@ -116,6 +117,8 @@ pub enum ConnectOptions {
     MySql(MySqlConnectOptions),
     Postgres(PgConnectOptions),
     Sqlite(SqliteConnectOptions),
+    /// A corpus that a flowmark server serves (docs/protocol.md §5 "IR executors").
+    Markdown(MarkdownDsn),
 }
 
 /// A DSN URI split into driver options and the connection time zone. The
@@ -131,6 +134,7 @@ impl ParsedDsn {
             ConnectOptions::MySql(_) => "mysql",
             ConnectOptions::Postgres(_) => "postgres",
             ConnectOptions::Sqlite(_) => "sqlite",
+            ConnectOptions::Markdown(_) => "markdown",
         }
     }
 }
@@ -138,10 +142,9 @@ impl ParsedDsn {
 /// Milliseconds a SQLite connection waits for a lock when the DSN sets no `_pragma=busy_timeout(ms)`.
 const SQLITE_BUSY_TIMEOUT_MS: u64 = 5000;
 
-/// Parses a DSN URI.
-/// sqlite:// DSN의 path를 UTF-8로 percent-decode한다. 두 hex 자리가 없는 `%`,
-/// NUL byte, UTF-8이 아닌 결과는 다른 file을 열게 되므로 `CONFIG`다.
-fn sqlite_path(raw: &str) -> Result<String> {
+/// DSN의 path를 UTF-8로 percent-decode한다. 두 hex 자리가 없는 `%`, NUL byte, UTF-8이 아닌 결과는 다른
+/// file이나 corpus를 가리키게 되므로 `CONFIG`다. `scheme`은 오류가 이름하는 DSN이다.
+fn decoded_path(raw: &str, scheme: &str) -> Result<String> {
     let bytes = raw.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
@@ -154,19 +157,20 @@ fn sqlite_path(raw: &str) -> Result<String> {
         let digit = |at: usize| bytes.get(at).and_then(|&b| char::from(b).to_digit(16));
         match (digit(i + 1), digit(i + 2)) {
             (Some(high), Some(low)) => out.push((high * 16 + low) as u8),
-            _ => return Err(Error::Config("sqlite DSN path has a % without two hexadecimal digits".into())),
+            _ => return Err(Error::Config(format!("{scheme} DSN path has a % without two hexadecimal digits"))),
         }
         i += 3;
     }
     if out.contains(&0) {
-        return Err(Error::Config("sqlite DSN path must not contain a NUL byte".into()));
+        return Err(Error::Config(format!("{scheme} DSN path must not contain a NUL byte")));
     }
-    String::from_utf8(out).map_err(|_| Error::Config("sqlite DSN path must be UTF-8 after percent-decoding".into()))
+    String::from_utf8(out).map_err(|_| Error::Config(format!("{scheme} DSN path must be UTF-8 after percent-decoding")))
 }
 
+/// Parses a DSN URI.
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
-    let url = url::Url::parse(dsn).map_err(|_| bad("dsn must be a URI using mysql://, postgres://, or sqlite://".into()))?;
+    let url = url::Url::parse(dsn).map_err(|_| bad("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://".into()))?;
     let mut zone_text = None;
     let mut pragmas = Vec::new();
     let mut rest = url.clone();
@@ -209,7 +213,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             ConnectOptions::Postgres(o)
         }
         "sqlite" => {
-            let path = sqlite_path(url.path())?;
+            let path = decoded_path(url.path(), "sqlite")?;
             if !path.starts_with('/') || path.len() < 2 {
                 return Err(bad("sqlite DSN must include an absolute database path".into()));
             }
@@ -230,17 +234,20 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             }
             ConnectOptions::Sqlite(o)
         }
-        other => return Err(bad(format!("unsupported DSN scheme {other:?}; want mysql, postgres, or sqlite"))),
+        "markdown" => ConnectOptions::Markdown(parse_markdown_dsn(&url, &decoded_path(url.path(), "markdown")?, &pairs)?),
+        other => return Err(bad(format!("unsupported DSN scheme {other:?}; want mysql, postgres, sqlite, or markdown"))),
     };
     Ok(ParsedDsn { options, zone })
 }
 
-/// The connection pool of a database.
+/// The connection pool of a database, or of the flowmark server connections of
+/// a markdown corpus.
 #[derive(Clone)]
 pub enum Pool {
     MySql(MySqlPool),
     Postgres(PgPool),
     Sqlite(SqlitePool),
+    Markdown(Arc<MdPool>),
 }
 
 impl Pool {
@@ -250,6 +257,7 @@ impl Pool {
             Pool::MySql(p) => p.num_idle(),
             Pool::Postgres(p) => p.num_idle(),
             Pool::Sqlite(p) => p.num_idle(),
+            Pool::Markdown(p) => p.stats().idle as usize,
         }
     }
 }
@@ -259,13 +267,14 @@ static NEXT_DB: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct DbInner {
     pub(crate) id: u64,
     pub(crate) pool: Pool,
-    pub(crate) dialect: Dialect,
+    /// SQL 연결이 plan하는 dialect다. plan하지 않는 markdown 연결에는 없다.
+    pub(crate) dialect: Option<Dialect>,
     pub(crate) cfg: Config,
     pub(crate) zone: Zone,
     plans: Mutex<HashMap<u64, Arc<Plan>>>,
     plan_order: Mutex<VecDeque<u64>>,
     /// 이 연결에 등록된 set의 manifest hash.
-    sets: std::sync::RwLock<std::collections::HashSet<String>>,
+    pub(crate) sets: std::sync::RwLock<std::collections::HashSet<String>>,
     /// 등록한 set의 schema. audit 기록은 그 table을 가진 set으로 삽입한다.
     pub(crate) schemas: std::sync::RwLock<Vec<&'static Schema>>,
     pub(crate) closed: AtomicBool,
@@ -385,10 +394,11 @@ impl Db {
         let idle = if cfg.pool_idle_size == 0 { pool_size } else { cfg.pool_idle_size };
         let owner = PoolOwner::default();
         let parsed = parse_dsn(dsn)?;
-        let dialect = Dialect::parse(parsed.driver()).expect("known driver");
+        let dialect = Dialect::parse(parsed.driver());
         let cache = cfg.statement_cache_size;
         let timeout = cfg.statement_timeout_ms;
         let pool = match parsed.options {
+            ConnectOptions::Markdown(dsn) => Pool::Markdown(open_markdown(dsn, pool_size, idle, &cfg).await?),
             // MySQL bounds SELECT statements with max_execution_time;
             // PostgreSQL bounds every statement with statement_timeout.
             ConnectOptions::MySql(o) => Pool::MySql(
@@ -454,12 +464,14 @@ impl Db {
         self.inner.id
     }
 
-    /// The database of the connection: mysql, postgres, or sqlite.
+    /// The database of the connection: mysql, postgres, sqlite, or markdown, a
+    /// corpus that a flowmark server serves.
     pub fn driver(&self) -> &'static str {
         match &self.inner.pool {
             Pool::MySql(_) => "mysql",
             Pool::Postgres(_) => "postgres",
             Pool::Sqlite(_) => "sqlite",
+            Pool::Markdown(_) => "markdown",
         }
     }
 
@@ -474,6 +486,7 @@ impl Db {
             Pool::MySql(p) => (p.options().get_max_connections(), p.size(), p.num_idle()),
             Pool::Postgres(p) => (p.options().get_max_connections(), p.size(), p.num_idle()),
             Pool::Sqlite(p) => (p.options().get_max_connections(), p.size(), p.num_idle()),
+            Pool::Markdown(p) => return p.stats(),
         };
         DbStats { max_open_connections: max, open_connections: size, idle: idle as u32 }
     }
@@ -487,6 +500,7 @@ impl Db {
             Pool::MySql(pool) => pool.close().await,
             Pool::Postgres(pool) => pool.close().await,
             Pool::Sqlite(pool) => pool.close().await,
+            Pool::Markdown(pool) => pool.close(),
         }
     }
 
@@ -506,11 +520,12 @@ impl Db {
                 msg: format!("manifest {} is not registered on this connection: connect through its generated models or install it", req.schema.hash()),
             });
         }
+        let Some(dialect) = self.inner.dialect else { return Err(Error::internal("a markdown connection plans no request")) };
         let key = req.shape_key();
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
-        let mut plan = engine::compile(&manifest, self.inner.dialect, &req.ir)?;
+        let mut plan = engine::compile(&manifest, dialect, &req.ir)?;
         for st in &mut plan.steps {
             st.plan_id = key;
         }
@@ -534,7 +549,7 @@ impl Db {
     /// offset because its columns store instants.
     pub(crate) fn now_text(&self) -> String {
         let now = self.inner.zone.now();
-        if self.inner.dialect == Dialect::Postgres {
+        if self.inner.dialect == Some(Dialect::Postgres) {
             return now.format("%Y-%m-%d %H:%M:%S%.6f%:z").to_string();
         }
         now.format(SQLITE_DATETIME).to_string()
@@ -758,6 +773,7 @@ impl Db {
             Target::Tx(TxInner::Sqlite(t)) => {
                 fetch_sqlite(&sql, &args, &mut **t).await.map(|v| v.into_iter().map(DriverRow::Sqlite).collect()).map_err(Error::from)
             }
+            Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
         };
         self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), start, r)
     }
@@ -786,12 +802,14 @@ impl Db {
             Target::Tx(TxInner::Postgres(t)) => exec_pg(sql, &args, &arg_types(st, 0), &mut **t).await,
             Target::Pool(Pool::Sqlite(p)) => exec_sqlite_pool(sql, &args, p).await.map_err(Error::from),
             Target::Tx(TxInner::Sqlite(t)) => exec_sqlite(sql, &args, &mut **t).await.map_err(Error::from),
+            Target::Pool(Pool::Markdown(_)) | Target::Tx(TxInner::Markdown(_)) => Err(Error::internal("a markdown connection sends no statement")),
         };
         self.step_done(st, origin, sql, || self.shown(st, &args, 0), start, r)
     }
 
     /// The statement of a request without executing it.
     pub(crate) async fn statement(&self, req: &mut Req) -> Result<Statement> {
+        self.unsupported_on_markdown("get_query")?;
         let plan = self.plan(req).await?;
         let st = &plan.steps[0];
         let audit = crate::tx::active_for(self).and_then(|t| t.audit());

@@ -176,7 +176,7 @@ impl EventRun {
                             return Err("subscriber refused the event".into());
                         }
                         Ok(())
-                    });
+                    })?;
                     *self.failing.lock().unwrap() = Some(failing);
                     Ok(())
                 }
@@ -226,10 +226,12 @@ async fn run_case(driver: &'static str, case: &Value) {
         }
         let recorded = Arc::new(Mutex::new(Recorded::default()));
         let sink = recorded.clone();
-        let recording = db.subscribe(move |e: &StatementEvent<'_>| {
-            record(&sink, e);
-            Ok(())
-        });
+        let recording = db
+            .subscribe(move |e: &StatementEvent<'_>| {
+                record(&sink, e);
+                Ok(())
+            })
+            .unwrap();
         let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
         for s in case["steps"].as_array().expect("case steps") {
             let _ = r.checked(s).await;
@@ -330,10 +332,12 @@ async fn statement_events_server_transactions() {
         let cost = probe().await - first;
         let recorded = Arc::new(Mutex::new(Recorded::default()));
         let sink = recorded.clone();
-        let recording = db.subscribe(move |e: &StatementEvent<'_>| {
-            record(&sink, e);
-            Ok(())
-        });
+        let recording = db
+            .subscribe(move |e: &StatementEvent<'_>| {
+                record(&sink, e);
+                Ok(())
+            })
+            .unwrap();
         let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
         let mut before = probe().await;
         let mut failures = Vec::new();

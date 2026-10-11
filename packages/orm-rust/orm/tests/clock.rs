@@ -209,6 +209,7 @@ async fn clock_soft_delete_microseconds(driver: &str, dsn: &str) {
         Pool::MySql(p) => sqlx::query_scalar("SELECT DATE_FORMAT(deleted_at, '%Y-%m-%d %H:%i:%s.%f') FROM clock_mark ORDER BY seq").fetch_all(p).await,
         Pool::Postgres(p) => sqlx::query_scalar("SELECT to_char(deleted_at, 'YYYY-MM-DD HH24:MI:SS.US') FROM clock_mark ORDER BY seq").fetch_all(p).await,
         Pool::Sqlite(p) => sqlx::query_scalar("SELECT deleted_at FROM clock_mark ORDER BY seq").fetch_all(p).await,
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
     .unwrap_or_else(|e| panic!("{driver}: read deleted_at: {e}"));
     assert_eq!(stamps.len(), 16, "{driver}: rows");
