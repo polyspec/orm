@@ -272,7 +272,7 @@ rows, err := model.Product().Connect(slave1).
 
 Attribute changes are cleared after a successful write.
 
-- `create()` and `creates()` reject a value for the identity column, and `update()` and the changes of a `duplication` model reject a primary key or identity column, with `IR_INVALID` before any statement runs. The database generates every identity key, because PostgreSQL identity does not advance past an explicit key and its next generated key would collide.
+- `create()` and `creates()` reject a value for the identity column, and `update()` and the changes of a `duplication` model reject a primary key or identity column, with `IR_INVALID` before any statement runs. The database generates every identity key, because PostgreSQL identity does not advance past an explicit key and its next generated key would collide. Only a load writes identity keys: an `insert` request with `load` and then a `restart_identity` request, run with `execute` on the connection ([protocol](protocol.md#_1-6-load)).
 - `new<Name>` attaches data that the row carries to its output, such as a computed amount or a flag for a view. The value is not used in `INSERT`, `UPDATE`, or `SELECT` statements. `get<Name>()`, `toArray()`, and JSON output include it after reads and writes; a model returned by `create()` keeps the attached values.
 - A real column name in `new<Name>` is rejected; stored column values use `set<Col>`.
 - Go and Rust generate `New<Name>` and `Get<Name>` for the names that the scanned source code calls. The value type is `any` in Go and the common value type in Rust.

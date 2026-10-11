@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 5742394268ac5886f285425104eb8c3e8e707fb93d78b30987640a2ce05d229a -->
+<!-- source-sha256: ef6b7c8e47f10481c2d64c8f38705421ea2d3eddea53a7bc8aaf931b6c4a229b -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -10,7 +10,7 @@
 {
   "ir_version": 1,
   "manifest_hash": "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322",
-  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore",
+  "kind": "one | all | count | group_count | sum | avg | paginate | insert | update | delete | restore | restart_identity",
   "entity": "author",
   "columns": Columns,
   "where": Group,
@@ -22,6 +22,7 @@
   "force_index": "ix_service",
   "lock": "update | share | update_nowait | share_nowait",
   "agg": "read_count",
+  "load": true,
   "set": [Assign],
   "rows": [[4, 5], [6, 7]],
   "on_duplicate": [Assign],
@@ -35,7 +36,8 @@
 | 필드 | 규칙 |
 |---|---|
 | `manifest_hash` | generated code가 가진 document set의 `manifestHash`다. `sha256:` 뒤에 소문자 16진수 64자리가 온다([manifest와 hash](dbspec.ko.md#manifest-and-hashes)). 클라이언트가 읽은 모델과 hash가 다른 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. 이 필드는 `schema_hash`를 대신하며 오류 코드 이름은 그대로다 |
-| `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓰고, `restore`는 지워진 행 하나의 soft delete 컬럼을 비운다([restore](#_1-5-restore)) |
+| `kind` | `one`과 `all`은 행을 읽고, `count`는 행이나 그룹 수를 계산하며, `group_count`는 `row_count`를 가진 그룹 행을 반환한다. `sum`과 `avg`는 `agg`를 집계하고, `paginate`는 페이지 문장과 개수 문장을 반환하며, `insert`, `update`, `delete`는 행을 쓰고, `restore`는 지워진 행 하나의 soft delete 컬럼을 비우며([restore](#_1-5-restore)), `restart_identity`는 테이블의 identity를 가장 큰 key 다음에서 다시 시작한다([적재](#_1-6-load)) |
+| `load` | `insert`가 행을 저장된 key 그대로 쓴다. identity 컬럼의 값을 받는다([적재](#_1-6-load)) |
 | `set` | `insert`와 `update`의 할당 |
 | `rows` | 추가로 삽입할 각 행의 매개변수를 `set` 컬럼 순서로 나열한다. 이때 `set`의 모든 항목은 값 할당이어야 하며 `on_duplicate`는 사용할 수 없다 |
 | `on_duplicate` | 삽입한 행이 기존 고유 키와 겹칠 때 적용하는 할당 |
@@ -118,6 +120,21 @@ UPDATE `link` SET `note` = ?, `deleted_at` = NULL, `audit_seq` = ? WHERE `link`.
 ```
 
 이 step은 새 값을 쓰고, soft delete 컬럼을 비우며, `audit` setting이 있는 테이블에서는 audit 컬럼을 쓴다. soft delete처럼 `updated` 컬럼은 할당하지 않는다. 지워지지 않은 행과 없는 행은 어떤 행과도 맞지 않으므로 문장은 새 값을 포함해 아무것도 바꾸지 않는다. `soft_delete`가 없는 테이블의 요청, 다른 형태의 predicate, key 밖의 컬럼, key의 일부만 지정한 요청은 `IR_INVALID`로 실패한다. 읽기는 언제나 soft delete한 행을 빼며, soft delete한 행과 맞는 요청은 `restore`뿐이다. 모델 메서드 `restore`는 이 step을 실행한 뒤 같은 key로 행을 읽는다([사용법](usage.ko.md#restore-a-soft-deleted-row)).
+
+### 1.6 적재 {#_1-6-load}
+
+다른 곳에 이미 있는 행을 데이터베이스에 적재하는 일(재구성이나 export)은 다른 행이 참조하는 key를 지켜야 한다. 보통의 `insert`는 identity 컬럼의 값을 거부한다. identity key는 모두 데이터베이스가 만들기 때문이다([dsl](dsl.md)). 적재는 key를 직접 쓰고 그 뒤 각 identity를 다시 시작한다:
+
+- `"load": true`인 `insert`는 identity 컬럼의 값을 받는다. identity 컬럼이 있는 테이블에서는 `set`이 그 컬럼에 매개변수(`p`)를 할당한다. 그 컬럼을 빼먹은 적재는 `IR_INVALID` `load of <entity> needs a value for the identity column <column>`으로 실패하고, `null`을 할당한 적재는 non-null 컬럼에 `null`을 할당한 다른 요청처럼 실패한다. 나머지 규칙과 문장은 `rows`를 포함해 `insert`의 것과 같다. identity 컬럼이 없는 테이블의 적재는 보통의 `insert`다. 다른 kind나 `on_duplicate`와 함께 쓴 `load`는 `IR_INVALID` `load is only valid on insert without on_duplicate`로 실패한다. `load` 없이 identity 컬럼을 할당한 요청은 여전히 `cannot set identity column <column>`으로 실패한다.
+- `restart_identity` 요청은 엔티티 하나만 지정한다. `set`, `rows`, `on_duplicate`, `where`, `optimistic`이 있으면 `IR_INVALID` `restart_identity takes no set, rows, on_duplicate, where or optimistic`으로, identity 컬럼이 없는 엔티티는 `IR_INVALID` `restart_identity of <entity>, which has no identity column`으로 실패한다. plan은 bind slot이 없는 `main` step 하나이고 `tables`는 그 테이블이다. 이 step 뒤 다음 생성 key는 테이블의 가장 큰 key에 1을 더한 값이며, 빈 테이블이면 1이다. counter가 그보다 앞서 있었어도 같다:
+
+| Dialect | 문장 |
+|---|---|
+| MySQL | ``ALTER TABLE `load_probe` AUTO_INCREMENT = 1``: InnoDB는 가장 큰 key 이하의 값을 가장 큰 key에 1을 더한 값으로 정한다 |
+| PostgreSQL | `SELECT setval(pg_get_serial_sequence('"load_probe"', 'seq'), COALESCE(MAX("seq"), 0) + 1, false) FROM "load_probe"` |
+| SQLite | `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX("seq"), 0) FROM "load_probe") WHERE name = 'load_probe'`. 행을 받은 적이 없는 테이블은 `sqlite_sequence` 행이 없고, 그 다음 key는 이미 가장 큰 key 다음이다 |
+
+PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 시작하지 않으면 다음 생성 key가 적재한 key와 충돌한다. MySQL과 SQLite는 명시한 key를 지나 counter를 옮기며, 다시 시작하면 모든 dialect가 같은 다음 key를 가진다. MySQL 문장은 DDL이라 열린 transaction을 commit하므로, 적재는 행을 commit한 뒤 다시 시작한다. 클라이언트는 둘 다 execute 호출로 실행한다([사용법](usage.ko.md#execute-a-compiled-statement)). 공유 case `contracts/fixtures/identity_load.json`이 MySQL, PostgreSQL, SQLite에서 문장, 오류, 적재 뒤의 key를 적는다.
 
 ## 2. Plan
 

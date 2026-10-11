@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 521c168d053ae55d0249c9e2f7a5ed4c7ec47ce3624ac84f52e0e76eff0fd171 -->
+<!-- source-sha256: 628d11a36c9466291207a24f9619e6f5e3825a8ae4dcef679600cc8edc7c9916 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -402,6 +402,7 @@ $b->getJsonSetting()['a'];
 | 스키마가 라이브 DB와 같은지 | 데이터베이스를 introspect하고 schema text를 document set과 비교한다([schema.md](schema.md#_2-schema-operations)) |
 | 생성물이 최신인지 | 언어별 생성기 실행 후 `git diff --exit-code` |
 | Statement event | 연결의 `subscribe`. client가 보내는 모든 statement([statement event](#statement-events)) |
+| key를 지킨 적재처럼 compile한 statement 실행 | 연결의 `execute`([compile한 statement 실행](#execute-a-compiled-statement)) |
 | 실행 없이 SQL 보기 | 연결한 모델의 `getQuery()` ([dsl.md](dsl.md)) |
 | 에러 코드 상수 | `orm-gen errors --lang go\|php\|rust --out …` ([errors.yaml](errors.yaml)) |
 | 스키마 설치 | `connection.utils().schema().install(...)` ([schema.md](schema.md#_4-schema-installation)) |
@@ -442,6 +443,24 @@ client는 statement가 끝난 뒤 operation이 이어지기 전에 subscriber를
 `<level>`은 `READ UNCOMMITTED`, `READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE` 중 하나다. SQLite 연결의 첫 transaction 전에 client는 transaction 밖에서 `CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))`로 row lock table을 만든다. 중첩 transaction은 `SAVEPOINT orm_sp_<depth>`와 `RELEASE SAVEPOINT orm_sp_<depth>`를 실행하고, callback이 실패하면 `ROLLBACK TO SAVEPOINT orm_sp_<depth>` 다음 `RELEASE`를 실행한다. MySQL transaction이 끝나기 전에 client는 이름 lock을 `SELECT RELEASE_LOCK(?)`로 풀고 지역 값을 key 순서로 ``SET @`orm.<key>` = NULL``로 지운다. MySQL이나 PostgreSQL transaction의 context나 signal이 취소되면 client는 `ROLLBACK` 대신 session을 닫는다. 취소된 SQLite transaction은 그래도 `PRAGMA` mode를 되돌리고 `ROLLBACK`으로 끝난다.
 
 물리 연결을 여는 statement(time zone 같은 session 설정, SQLite version 읽기), statement의 준비, protocol 수준의 취소는 event가 아니다.
+
+### Compile한 statement 실행 {#execute-a-compiled-statement}
+
+request를 직접 compile하는 program은, 예를 들어 행을 identity key와 함께 쓰고 그 뒤 각 identity를 다시 시작하는 적재는([protocol](protocol.ko.md#_1-6-load)), 각 statement를 연결의 `execute`로 실행한다. client의 planner가 compile한 plan의 step 하나와, 그 bind slot이 읽는 request 매개변수를 넘긴다.
+
+| Client | Compile | 실행 |
+|---|---|---|
+| Go | `engine.New(model, dialect)` 다음 `Compile(requestJSON)`, 또는 `(&planner.Planner{M: model, D: dialect}).Compile(request)` | `err := db.Execute(&plan.Steps[0], params)` |
+| PHP | `(new Polyspec\Orm\Engine($model, $dialect, $cacheSize))->compile($request)` | `$db->execute($plan['steps'][0], $params)` |
+| Rust | `polyspec_orm::engine::compile(&manifest, dialect, &request)` | `db.execute(&plan.steps[0], &params).await?` |
+| TypeScript | `new Engine(model, dialect).compile(request)` | `await db.execute(plan.steps[0], params)` |
+| Python | `polyspec.orm.engine`의 `Engine(model, dialect).compile(request)` | `db.execute(plan['steps'][0], params)` |
+
+- statement는 model 쓰기가 실행되는 곳에서 실행된다: 연결의 활성 transaction, 없으면 연결이다. bind slot은 model statement와 같은 방식으로 값을 받는다: host style을 거친 request 매개변수, decimal, SQLite 날짜와 시각, 설정의 AES key와 key version, client 시각, transaction의 audit이다.
+- 동사의 kind인 `insert`, `update`, `delete`, `select`로 statement event를 publish하며, identity를 다시 시작하는 MySQL `ALTER TABLE`은 `schema`다([statement event](#statement-events)). driver 오류는 model statement가 보고할 code를 가진다.
+- 행을 읽는 step(`assemble`이 있는 step)은 `IR_INVALID` `execute runs a statement without rows; the statement is a read`로, 매개변수 밖을 읽는 `param` slot은 `IR_INVALID` `bind slot <i> reads parameter <p>, but execute has <n> parameters`로 실패하며, 둘 다 statement를 보내지 않는다.
+- `execute`는 아무것도 돌려주지 않는다. 적재가 필요한 값은 model이나 query로 다시 읽는다.
+- PHP extension `orm_dbspec`은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다.
 
 ## 11. 자주 나는 에러
 
