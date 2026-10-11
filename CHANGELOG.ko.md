@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d0aff86a56ad1bc7b37990c141354ed568f59fd9b08b9b6113bdc2e17592ee77 -->
+<!-- source-sha256: 874f367fdfa64eed6342821af1fbfa3f14c328ab5918b9b9cc828be9994bdaa4 -->
 # 변경 이력
 
 ## Unreleased
+- T113: Python client는 driver가 zone 없이 돌려주는 date-time(PyMySQL, psycopg)을 연결 zone의 벽시계로 읽으므로, 읽은 `datetime`이 어느 기계에서나 정확하다. 모든 client의 test가 `TEST_TZ`(Asia/Seoul)에서 실행되고, docs/dialects.md가 규칙을 적는다.
 - T75: `make dbspec-apply-stress-mysql`와 다른 helper가 선언된 원천에서 server 환경을 읽으므로 Linux처럼 macOS에서도 실행된다. repository 검사는 선언되지 않은 helper 환경 변수 이름을 거절한다.
 - T74: 모든 client의 codec decode가 정확하다. 공백이 있는 `base64`와 `hex` text, 소문자 `hex`는 `CODEC_DECODE`로 실패한다. MySQL hex cell은 client에서 decode한다. Go는 다른 client의 host decode에 대응하는 `orm.HostDecode`를 export한다. `tests/codec/decode-vectors.json`이 저장 cell을 고정하고, docs/codec.md가 규칙을 적는다.
 - T73: 모든 구현의 `ir.Validate`가 column 대 column 조건의 `ref` 경로(root, join된 relation, subquery 안에서만 `^`)를 풀고 그 column을 요구하며, 없으면 `COLUMN_UNKNOWN`이다. 최상위 group과 group의 첫 항목의 `conn`은 `IR_INVALID`로 거절한다. `tests/ir/validate.json`이 case를 고정한다.
