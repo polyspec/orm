@@ -59,10 +59,17 @@ export interface Dialect {
   containsBinary(col: string, value: (transform: string) => string): string;
   tupleIn(cols: readonly string[], rows: readonly (readonly string[])[], negate: boolean): string;
   random(): string;
+  /** table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면 다음 key는 1이다. */
+  restartIdentity(table: string, column: string): string;
 }
 
 export function quoteWith(q: string, ident: string): string {
   return ident.split('.').map(part => q + part.replaceAll(q, q + q) + q).join('.');
+}
+
+/** text를 SQL 문자열 literal로 quote한다. */
+export function literal(text: string): string {
+  return `'${text.replaceAll("'", "''")}'`;
 }
 
 function lockSuffix(mode: string): string | undefined {
@@ -134,6 +141,9 @@ export const mysql: Dialect = {
   containsBinary: (col, value) => `${col} LIKE BINARY ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'RAND()',
+  // InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한 값으로 정하므로 1은
+  // 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+  restartIdentity: table => `ALTER TABLE ${quoteWith('`', table)} AUTO_INCREMENT = 1`,
 };
 
 /** Every codec stage is host-side: an ip value is stored as bytes in a bytea column. */
@@ -174,6 +184,13 @@ export const postgres: Dialect = {
   containsBinary: (col, value) => `${col} LIKE ${value('like_contains')}`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, false),
   random: () => 'random()',
+  // identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로 두어 다음 nextval이 그 값을
+  // 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로 읽히므로 quote한 table 이름이고, 둘째
+  // 인자는 column 이름 그대로다.
+  restartIdentity(table, column) {
+    const q = quoteWith('"', column);
+    return `SELECT setval(pg_get_serial_sequence(${literal(quoteWith('"', table))}, ${literal(column)}), COALESCE(MAX(${q}), 0) + 1, false) FROM ${quoteWith('"', table)}`;
+  },
 };
 
 /** Every codec stage is host-side. */
@@ -223,6 +240,9 @@ export const sqlite: Dialect = {
   containsBinary: (col, value) => `instr(${col}, ${value('')}) > 0`,
   tupleIn: (cols, rows, negate) => tupleIn(cols, rows, negate, true),
   random: () => 'random()',
+  // AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를 가장 큰 key로 정한다.
+  // table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음 key는 이미 가장 큰 key 다음이다.
+  restartIdentity: (table, column) => `UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(${quoteWith('"', column)}), 0) FROM ${quoteWith('"', table)}) WHERE name = ${literal(table)}`,
 };
 
 export function dialectOf(name: string): Dialect | undefined {

@@ -81,6 +81,8 @@ export class Subscribers {
 export function statementKind(sql: string): StatementKind {
   const verb = sql.trimStart().split(' ', 1)[0]!.toUpperCase();
   switch (verb) {
+    // ALTER는 MySQL identity restart의 schema statement다.
+    case 'ALTER': return 'schema';
     case 'INSERT': return 'insert';
     case 'UPDATE': return 'update';
     case 'DELETE': return 'delete';

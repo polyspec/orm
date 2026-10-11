@@ -360,7 +360,7 @@ function joinedRefs(g: Group, seen: Set<string>): void {
   }
 }
 
-const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore']);
+const kinds = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate', 'insert', 'update', 'delete', 'restore', 'restart_identity']);
 
 function hasGroupBy(q: RequestQuery): boolean {
   return (q.group_by ?? []).length > 0;
@@ -371,6 +371,11 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.ir_version !== IR_VERSION) fail('VERSION_MISMATCH', `ir_version ${r.ir_version}, engine ${IR_VERSION}`);
   if (r.manifest_hash !== m.manifestHash) fail('SCHEMA_HASH_MISMATCH', `client ${r.manifest_hash}, engine ${m.manifestHash}`);
   if (!kinds.has(r.kind)) fail('IR_INVALID', `unknown kind "${r.kind}"`);
+  if (r.load === true && (r.kind !== 'insert' || (r.on_duplicate ?? []).length > 0)) fail('IR_INVALID', 'load is only valid on insert without on_duplicate');
+  // restart_identity은 entity 하나의 identity만 다시 시작하므로 행이나 값을 받지 않는다.
+  if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {
+    fail('IR_INVALID', 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
+  }
   const v = new Validator(m, r.n_params);
   v.query(r, v.scopes(r, undefined, undefined), false, false);
   if ((r.lock ?? '') !== '' && r.kind !== 'one' && r.kind !== 'all') fail('IR_INVALID', 'row lock is only valid on one or all');

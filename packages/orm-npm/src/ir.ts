@@ -1,6 +1,6 @@
 // Value-free request and plan types (docs/protocol.md).
 
-export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore';
+export type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore' | 'restart_identity';
 
 export interface RequestQuery {
   entity: string;
@@ -25,6 +25,11 @@ export interface Request extends RequestQuery {
   ir_version: 1;
   manifest_hash: string;
   kind: QueryKind;
+  /**
+   * insert가 행을 저장된 key 그대로 적재한다는 뜻이다: identity column의 값을 받고, identity가 있는
+   * table이면 그 값을 요구한다. on_duplicate와 함께 쓰지 않는다.
+   */
+  load?: boolean;
   set?: Assignment[];
   on_duplicate?: Assignment[];
   rows?: number[][];
