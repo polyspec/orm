@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T67: the TypeScript client reaches a corpus through the markdown DSN, a pool keeping the server sessions, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T66: the Rust client reaches a corpus through the markdown DSN and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build; the identity load test covers the markdown pool.
 - T64: the PHP client reaches a corpus through the markdown DSN, one connection per `Db`, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T63: the Go client reaches a corpus through the DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`: it connects to a flowmark server, runs every IR kind, transactions and savepoints through it, returns `WRITE_CONFLICT` without a retry, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build.
