@@ -131,10 +131,12 @@ function settingText(setting: DbspecSetting, t: DbspecTable, view: View): string
       return 'immutable';
     case 'markdown':
       return `markdown ${setting.column}`;
-    case 'store':
-      if (setting.storage === 'files') return 'store files';
-      if (setting.storage === 'document') return `store document ${setting.shape ?? ''}`;
-      return `store block ${setting.foreignKey ?? ''} ${setting.shape ?? ''}`;
+    case 'store': {
+      const shard = setting.shard === null ? '' : ` shard ${setting.shard.column} ${setting.shard.period}`;
+      if (setting.storage === 'files') return `store files${shard}`;
+      if (setting.storage === 'document') return `store document ${setting.shape ?? ''}${shard}`;
+      return `store block ${setting.foreignKey ?? ''} ${setting.shape ?? ''}${shard}`;
+    }
     case 'key_prefix':
       return `key_prefix ${quoted(setting.prefix)}`;
     case 'title':
