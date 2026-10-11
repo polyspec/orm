@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.errors import OrmError
+from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
 
@@ -44,6 +45,7 @@ class Utils:
         self.db = db
 
     def lock(self, key: str) -> None:
+        unsupported_on_markdown(self.db, 'lock')
         frame = _active(self.db, 'lock')
         if not valid_key(key):
             raise OrmError('CONFIG', f'lock key {key!r} is invalid')
@@ -59,6 +61,7 @@ class Utils:
             self.db.row_lock(frame, 'update')
 
     def set_local(self, key: str, value: str) -> None:
+        unsupported_on_markdown(self.db, 'setLocal')
         frame = _active(self.db, 'setLocal')
         if not valid_key(key):
             raise OrmError('CONFIG', f'local key {key!r} is invalid')
@@ -69,6 +72,7 @@ class Utils:
         frame.locals[key] = value
 
     def local(self, key: str) -> str:
+        unsupported_on_markdown(self.db, 'local')
         frame = _active(self.db, 'local')
         if key not in frame.locals:
             raise OrmError('NO_ROWS', f'local value {key} is not set')
@@ -95,11 +99,7 @@ class SchemaUtils:
         """Registers the generated set on this connection. A text that does not hash to its declared
         hash fails with CONFIG before anything is registered; a set that is registered already changes
         nothing (docs/schema.md "Schema registration")."""
-        from polyspec.orm.engine.planner import Planner
-        model = _schema_model(schema)
-        if schema.manifest_hash in self.db.engines:
-            return
-        self.db.engines[schema.manifest_hash] = Planner(model, self.db.dialect)
+        self.db._register_set(schema.manifest_hash, _schema_model(schema))
 
     def add_tables_and_columns(self, schema: Schema) -> list[str]:
         """Takes an installed set to a newer schema version by adding its tables and the columns that
@@ -109,6 +109,8 @@ class SchemaUtils:
         and runs outside a transaction too (docs/schema.md "Adding tables and columns")."""
         from polyspec.orm.dbspec import add_tables_and_columns_steps, installed_differences
         from polyspec.orm.errors import OrmError
+        unsupported_on_markdown(self.db, 'addTablesAndColumns (schema evolution follows the flowmark migration '
+                                         'rules)')
         model = _schema_model(schema)
         target = _schema_target(model)
         driver = self.db.driver
@@ -145,6 +147,7 @@ class SchemaUtils:
         run in the active transaction or a new one; MySQL commits schema statements implicitly, so it
         refuses a transaction (docs/schema.md "Schema installation")."""
         from polyspec.orm.dbspec import installed_differences, render_dbspec_statements
+        unsupported_on_markdown(self.db, 'schema install (flowmark install creates a corpus)')
         model = _schema_model(schema)
         driver = self.db.driver
         rendered = render_dbspec_statements(list(model.documents), driver)
@@ -206,6 +209,7 @@ class AesUtils:
         rows are read 1000 at a time until none is left, in one transaction (docs/schema.md "AES key
         rotation")."""
         from polyspec.orm.errors import OrmError
+        unsupported_on_markdown(self.utils.db, 'aes rotation')
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError('CONFIG', f'entity {entity.name} has no AES columns with a key version')
@@ -254,6 +258,7 @@ class AesUtils:
         return db.transaction(body, {'retry': 0})
 
     def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus:
+        unsupported_on_markdown(self.utils.db, 'aes rotation')
         entity = model.entity_def.entity
         if not entity.aes_version:
             raise OrmError('CONFIG', f'entity {entity.name} has no AES columns with a key version')
