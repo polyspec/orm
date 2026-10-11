@@ -41,9 +41,9 @@
   "symbol_hashes": {
     "go": "sha256:e7431a4aa6e5858f044b5fbfcd95d4ed32abd74a99fa88b9188986d2509fedff",
     "php": "sha256:a3d1423f40ba19062dd2e71b1805ba8a6158a50b091fb7cbd329d03e68c93f6f",
-    "rust": "sha256:65f610b9254b3723d8393c8e87a44702a591a483b09d0181824abc93c7fc8a68",
-    "typescript": "sha256:9e1bb6f3540f18fe1f9547a78bdfc58fd99446ca4a23b7eb14dafea2b236b1d5",
-    "python": "sha256:e422d62a41beffffaec6da96efcdaa612a590988e1ac6cdf2cd8dbee02b14234"
+    "rust": "sha256:061502b23ee645bcf8efa9ac2904d8b9c0f41970e4d2697b018263fc434b18dd",
+    "typescript": "sha256:2cecbf2d635cea0dd71249e186c064544953792b53c05aa67e6c821beef76515",
+    "python": "sha256:255c59281cb1353fc9f906b8ed5c8a778361e65303d7831cec91c81430ab1e58"
   },
   "extensions": {
     "php-extension": {
@@ -1361,7 +1361,7 @@
         },
         "rust": {
           "symbol": "packages/orm-rust/orm/src/events.rs::Db::subscribe",
-          "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Subscription"
+          "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription>"
         },
         "typescript": {
           "symbol": "packages/orm-npm/src/database.ts::Db.subscribe",
