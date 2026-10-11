@@ -910,7 +910,7 @@ FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript install-flowmark
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
-	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
+	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php:
 	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
