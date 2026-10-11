@@ -171,6 +171,11 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		if st, err = p.restoreStep(r); err == nil {
 			ps.add(st)
 		}
+	case "restart_identity":
+		var st *plan.Step
+		if st, err = p.restartIdentityStep(r); err == nil {
+			ps.add(st)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -1023,10 +1028,14 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	if err := validateRequiredAssignments(ent, set); err != nil {
 		return nil, err
 	}
+	// load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+	if r.Load && ent.Identity != "" && !slices.ContainsFunc(set, func(a ir.Assign) bool { return a.Column == ent.Identity && a.P != nil }) {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "load of " + ent.Name + " needs a value for the identity column " + ent.Identity}
+	}
 	var cols, vals []string
 	for _, a := range set {
 		col := ent.Field(a.Column)
-		if col.Identity {
+		if col.Identity && !r.Load {
 			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot set identity column " + a.Column}
 		}
 		cols = append(cols, p.D.Quote(a.Column))
@@ -1413,6 +1422,19 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 		return nil, b.err
 	}
 	return &plan.Step{Role: "main", SQL: "UPDATE " + b.table(ent) + " SET " + strings.Join(sets, ", ") + " WHERE " + where, Tables: b.tableList(), BindSlots: b.binds}, nil
+}
+
+// restartIdentityStep은 entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시
+// 시작하는 statement다: 다음 생성 key는 가장 큰 key에 1을 더한 값이고, 빈 table이면
+// 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+func (p *Planner) restartIdentityStep(r *ir.Request) (*plan.Step, error) {
+	ent := p.M.Entities[r.Entity]
+	if ent.Identity == "" {
+		return nil, &ir.Error{Code: "IR_INVALID", Msg: "restart_identity of " + ent.Name + ", which has no identity column"}
+	}
+	b := &builder{p: p}
+	b.table(ent)
+	return &plan.Step{Role: "main", SQL: p.D.RestartIdentity(ent.Table, ent.Identity), Tables: b.tableList(), BindSlots: []plan.BindSlot{}}, nil
 }
 
 // restoreKey는 restore의 where가 primary key나 unique key 하나의 모든 column을

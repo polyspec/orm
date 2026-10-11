@@ -39,6 +39,13 @@ func (SQLite) RowNumber(partition, orderBy string) string {
 	return s + ")"
 }
 
+// RestartIdentity: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한
+// 값이므로 seq를 가장 큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에
+// 행이 없으면 다음 key는 이미 가장 큰 key 다음이다.
+func (SQLite) RestartIdentity(table, column string) string {
+	return "UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(" + QuoteWith(`"`, column) + "), 0) FROM " + QuoteWith(`"`, table) + ") WHERE name = " + Literal(table)
+}
+
 func (SQLite) Upsert(conflict []string, assigns string) string {
 	q := make([]string, len(conflict))
 	for i, c := range conflict {

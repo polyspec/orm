@@ -290,6 +290,53 @@ func (d *DB) statement(ctx context.Context, r *request) (*Statement, error) {
 	return &Statement{SQL: st.SQL, Binds: args}, nil
 }
 
+// Execute runs one compiled statement st, a step of a plan of the engine
+// (engine.Engine.Compile, planner.Planner.Compile), with the request
+// parameters params, on the connection or on its active transaction. Its bind
+// slots are resolved as a model statement's are: host styles, decimals,
+// SQLite time values, the AES key and key version, the clock and the audit of
+// the transaction. A step that reads rows (it has an assemble) and a param slot
+// past params fail with IR_INVALID before any statement runs (docs/usage.md
+// "Execute a compiled statement").
+func (d *DB) Execute(st *plan.Step, params []any) error {
+	ex, err := resolve(d)
+	if err != nil {
+		return err
+	}
+	done, err := ex.enter()
+	if err != nil {
+		return err
+	}
+	defer done()
+	if st.Assemble != nil {
+		return &ir.Error{Code: CodeIrInvalid, Msg: "execute runs a statement without rows; the statement is a read"}
+	}
+	for i, b := range st.BindSlots {
+		if b.From == "param" && (b.Param < 0 || b.Param >= len(params)) {
+			return &ir.Error{Code: CodeIrInvalid, Msg: fmt.Sprintf("bind slot %d reads parameter %d, but execute has %d parameters", i, b.Param, len(params))}
+		}
+	}
+	r := &request{params: params}
+	if t := ex.transaction(); t != nil {
+		r.audit = t.audit
+	}
+	args, masks, err := d.args(st, r, nil)
+	if err != nil {
+		return err
+	}
+	ctx := ex.context()
+	stmt, err := ex.stmt(ctx, st.SQL)
+	if err != nil {
+		return err
+	}
+	start := time.Now()
+	if err := d.takeStatementFault(); err != nil {
+		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
+	}
+	_, err = stmt.ExecContext(ctx, args...)
+	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErr(err))
+}
+
 // modelDone은 model statement의 event를 publish하고 operation이 받을 오류를
 // 돌려준다. bind는 비밀과 시각 slot을 가린 값이다.
 func (d *DB) modelDone(ex executor, st *plan.Step, sqlText string, args []any, masks map[int]string, start time.Time, err error) error {

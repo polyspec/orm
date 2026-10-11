@@ -51,6 +51,13 @@ func (MySQL) RowNumber(partition, orderBy string) string {
 	return s + ")"
 }
 
+// RestartIdentity: InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장
+// 큰 값에 1을 더한 값으로 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린
+// transaction을 commit한다.
+func (MySQL) RestartIdentity(table, _ string) string {
+	return "ALTER TABLE " + QuoteWith("`", table) + " AUTO_INCREMENT = 1"
+}
+
 func (MySQL) Upsert(_ []string, assigns string) string {
 	return " ON DUPLICATE KEY UPDATE " + assigns
 }
