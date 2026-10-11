@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use chrono::NaiveDateTime;
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, StatementEvent, Val};
 
-static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:74501d5f3aa5050f7af67198114fa4a56292d725e7a244d5901750271b2c41fa");
+static SCHEMA: Schema = Schema::new(include_str!("../../../../schema/bench.dbs"), "sha256:27675b7fddd99bfdcb47f88bd4050552b25c1c345d84908a29b1b6d339d91322");
 
 static ENTITY: Entity = Entity {
     name: "soft_record",
