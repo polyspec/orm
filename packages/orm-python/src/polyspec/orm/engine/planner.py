@@ -677,7 +677,8 @@ class Planner:
                 return f'{lhs} {_cmp(op)} {self._render_blind_index_value(b, field_of(s.ent, col.blind_index), pr["p"])}'
             return f'{lhs} {_cmp(op)} {self._render_value(b, col, pr["p"])}'
         if op in ('eq_col', 'not_eq_col', 'gt_col', 'gte_col', 'lt_col', 'lte_col'):
-            rs = self._resolve_path(s, pr['ref']['path'])
+            # 없거나 null인 path는 statement의 root다(검증기와 같다).
+            rs = self._resolve_path(s, pr['ref'].get('path') or '')
             if field_of(rs.ent, pr['ref']['column']) is None:
                 _fail('COLUMN_UNKNOWN', f'{rs.ent.name}.{pr["ref"]["column"]}')
             return f'{lhs} {_cmp(op[:-4])} {self._qcol(rs, pr["ref"]["column"])}'

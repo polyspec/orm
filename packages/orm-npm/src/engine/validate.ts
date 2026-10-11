@@ -303,7 +303,11 @@ class Validator {
     }
     if (columnOps.has(op)) {
       if (!p.ref) fail('IR_INVALID', `${op} needs ref`);
-      this.ref(s, p.ref.path, p.ref.column);
+      // 없거나 null인 path는 root다. 문자열이 아닌 path나 column은 request의 형태가 틀린 것이다.
+      const path: unknown = p.ref.path ?? '';
+      const refColumn: unknown = p.ref.column;
+      if (typeof path !== 'string' || typeof refColumn !== 'string') fail('IR_INVALID', `${op} ref path and column must be strings`);
+      this.ref(s, path, refColumn);
       return;
     }
     if (p.p === undefined) fail('IR_INVALID', `${op} ${ent.name}.${column} needs a value (p)`);

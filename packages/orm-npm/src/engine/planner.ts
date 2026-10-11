@@ -582,7 +582,8 @@ export class Planner {
         return `${lhs} ${cmp(op)} ${this.renderValue(b, col, pr.p!)}`;
       }
       case 'eq_col': case 'not_eq_col': case 'gt_col': case 'gte_col': case 'lt_col': case 'lte_col': {
-        const rs = this.resolvePath(s, pr.ref!.path);
+        // 없거나 null인 path는 statement의 root다(검증기와 같다).
+        const rs = this.resolvePath(s, pr.ref!.path ?? '');
         if (!columnOf(rs.ent, pr.ref!.column)) fail('COLUMN_UNKNOWN', `${rs.ent.name}.${pr.ref!.column}`);
         return `${lhs} ${cmp(op.slice(0, -4))} ${this.qcol(rs, pr.ref!.column)}`;
       }

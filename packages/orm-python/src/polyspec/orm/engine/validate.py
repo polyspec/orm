@@ -74,8 +74,12 @@ class _Validator:
         statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 None), node는
         조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는 root에서
         join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다."""
-        path = ref.get('path') or ''
-        column = ref.get('column') or ''
+        # 없거나 null인 path는 root다. 문자열이 아닌 path나 column은 request의 형태가 틀린 것이다.
+        path = ref.get('path')
+        path = '' if path is None else path
+        column = ref.get('column')
+        if not isinstance(path, str) or not isinstance(column, str):
+            _fail('IR_INVALID', 'ref path and column must be strings')
         target = at['root']
         if path == '^':
             if at['outer'] is None:
