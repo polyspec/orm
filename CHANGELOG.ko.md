@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8a3811fe1d37afbf0baecc474cf363293b88fa67c3b3dde50767b7617f36d6fb -->
+<!-- source-sha256: e013eb495f68666a914fb2d75903f129b83368cddbc3b885806e8589022f7e8b -->
 # 변경 이력
 
 ## Unreleased
+- T78-2: Python statement fault test의 이름을 `statement_fault.py`로 바꿔, `make python-unit-check`(`unittest discover -p 'test_*.py'`)가 database가 필요한 test를 더 실행하지 않는다. `make python-statement-fault-check`가 이를 실행한다.
 - T115: Python client가 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release된다. `Requires-Dist`는 registry package를 `name==version`으로 고정하고 `polyspec-ordered-json`을 sha256을 붙인 release asset으로 가리킨다. `packages/orm-python/pylock.toml`이 모든 의존성을 hash와 함께 고정하고, release proof는 그 lock을 설치한 뒤 wheel을 offline으로 설치하고 import한다.
 - T113: Python client는 driver가 zone 없이 돌려주는 date-time(PyMySQL, psycopg)을 연결 zone의 벽시계로 읽으므로, 읽은 `datetime`이 어느 기계에서나 정확하다. 모든 client의 test가 `TEST_TZ`(Asia/Seoul)에서 실행되고, docs/dialects.md가 규칙을 적는다.
 - T75: `make dbspec-apply-stress-mysql`와 다른 helper가 선언된 원천에서 server 환경을 읽으므로 Linux처럼 macOS에서도 실행된다. repository 검사는 선언되지 않은 helper 환경 변수 이름을 거절한다.

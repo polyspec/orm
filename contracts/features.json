@@ -1612,7 +1612,7 @@
         "packages/orm-php/tests/statement_fault_test.php",
         "packages/orm-rust/orm/tests/statement_fault.rs",
         "packages/orm-npm/tests/statement_fault.mjs",
-        "packages/orm-python/tests/test_statement_fault.py",
+        "packages/orm-python/tests/statement_fault.py",
         "packages/orm-rust/orm/src/tx.rs",
         "packages/orm-rust/orm/src/tx_send_tests.rs"
       ],
@@ -1712,7 +1712,7 @@
           "command": "make python-statement-fault-check",
           "shard": "other",
           "inputs": [
-            "packages/orm-python/tests/test_statement_fault.py",
+            "packages/orm-python/tests/statement_fault.py",
             "contracts/fixtures/statement_fault.json"
           ]
         },
