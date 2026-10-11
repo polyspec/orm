@@ -38,5 +38,6 @@
         "make ts-min-check"
       ]
     }
-  ]
+  ],
+  "pythonLocks": []
 }

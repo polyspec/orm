@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mjs';
-import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, matrixIncludes, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
+import { AFTER_GROUP_CHECK, CI_PASSED_STEP, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, matrixIncludes, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, serverVariables, stepTimeoutErrors } from './ci.mjs';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -569,9 +569,21 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 });
 
 // runner case는 저장소의 .github/runner와 workflow, 그리고 최소 workflow를 검사한다.
+// kit.json의 vendoredFiles가 나열한 workflow는 kit가 소유하고 make kit-check가 byte 단위로 지키므로, 이 저장소의 workflow 규칙은
+// 그 file을 검사하지 않는다(T115). 이 저장소가 kit의 release.yml과 다른 runner를 원하면 그것은 kit의 변경이다.
+const vendoredFiles = JSON.parse(text('kit.json')).vendoredFiles;
+
+caseTest('the workflow rules skip the workflows that kit.json vendors', COMPUTE, () => {
+  assert.deepEqual(Object.keys(vendoredFiles), ['.github/workflows/release.yml']);
+  const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b' };
+  assert.deepEqual(ownWorkflows(all, vendoredFiles), { '.github/workflows/ci.yml': 'a' });
+  assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, vendoredFiles), { 'ci.yml': 'a' });
+  assert.throws(() => ownWorkflows(all, undefined), /kit.json declares no vendoredFiles/);
+});
+
 caseTest('every workflow job runs on the runner of .github/runner', COMPUTE, () => {
   assert.equal(text('.github/runner'), 'ubuntu-26.04-arm\n');
-  assert.deepEqual(runnerErrors(text('.github/runner'), workflows), []);
+  assert.deepEqual(runnerErrors(text('.github/runner'), ownWorkflows(workflows, vendoredFiles)), []);
 });
 
 caseTest('a job on another runner fails', COMPUTE, () => {
@@ -1513,7 +1525,7 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   assert.deepEqual(concurrencyErrors({ 'd.yml': workflow('  push:') }).map(error => error.split(' ')[0]), ['d.yml']);
   const root = new URL('../..', import.meta.url).pathname;
   const directory = join(root, '.github/workflows');
-  assert.deepEqual(concurrencyErrors(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')]))), []);
+  assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), vendoredFiles)), []);
 });
 
 const goWorkflow = '    steps:\n      - uses: actions/setup-go@v6\n        with: { go-version-file: .go-version }\n      - run: make check\n';

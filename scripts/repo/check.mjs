@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CI_SETUP, groupSetupErrors, RUNNER_STEPS } from '../check/ci-setup.mjs';
-import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps } from './ci.mjs';
+import { ciGroups, ciPassedErrors, chainedCommandErrors, concurrencyErrors, workflowTriggerErrors, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, helperEnvironmentErrors, helperRunErrors, expand, featureCommands, makeVariables, runnerErrors, stepTimeoutErrors, workflowSteps, ownWorkflows } from './ci.mjs';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mjs';
 import { fixlessMessageErrors, messageFiles } from './messages.mjs';
 import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './target.mjs';
@@ -58,15 +58,18 @@ failures.push(...toolingLanguageErrors(tracked));
 // 검사를 실행하는 Node는 .node-version이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
 const nodeVersionPath = join(root, '.node-version');
 const workflowDirectory = join(root, '.github/workflows');
-const workflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
+// allWorkflows는 .github/workflows의 모든 workflow다. kit.json의 vendoredFiles가 나열한 workflow는 kit가 소유하고 make kit-check가
+// byte 단위로 지키므로, workflow를 쓰는 방식의 규칙(workflows)에서 뺀다. 어떤 trigger의 workflow가 있어야 하는지는 모든 workflow로 판정한다(T115).
+const allWorkflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
+const workflows = ownWorkflows(allWorkflows, JSON.parse(readFileSync(join(root, 'kit.json'), 'utf8')).vendoredFiles);
 // CI의 모든 step은 make target을 실행한다(summary만 예외다).
 failures.push(...ciMakeErrors(workflows));
 // push로 실행하는 workflow는 새 push가 앞 실행을 끝내도록 concurrency를 선언한다.
 failures.push(...concurrencyErrors(workflows));
 // ci.yml, push-gate.yml과 docs-pages.yml은 선언한 event에서만 실행하고, 다른 workflow는 push, pull_request, merge_group으로
 // 실행하지 않는다.
-failures.push(...workflowTriggerErrors(workflows));
+failures.push(...workflowTriggerErrors(allWorkflows));
 // CHECK_TARGETS의 모든 target은 contracts/check-inputs.json에 scope를 선언하고, owner target은 make
 // owner-check가 고를 입력도 선언한다.
 const checkInputs = JSON.parse(readFileSync(join(root, 'contracts/check-inputs.json'), 'utf8')).targets;

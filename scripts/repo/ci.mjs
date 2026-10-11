@@ -401,6 +401,14 @@ export function helperRunErrors(manifest, makefile, setupScript) {
   return errors;
 }
 
+// ownWorkflows는 workflows({path: text}, path는 `.github/workflows/<name>` 또는 `<name>`)에서 kit.json의 vendoredFiles가 나열한
+// file을 뺀다. 그 file은 kit가 소유하고 make kit-check가 byte 단위로 지키므로, 이 저장소의 workflow 규칙은 그 file에 적용하지 않는다.
+export function ownWorkflows(workflows, vendoredFiles) {
+  if (vendoredFiles === null || typeof vendoredFiles !== 'object') throw new Error('kit.json declares no vendoredFiles; make kit-sync writes it');
+  const vendored = new Set(Object.keys(vendoredFiles));
+  return Object.fromEntries(Object.entries(workflows).filter(([path]) => !vendored.has(path) && !vendored.has(`.github/workflows/${path}`)));
+}
+
 // runnerErrors는 workflow의 job이 .github/runner가 선언한 runner 하나가 아닌 곳마다 오류 하나를
 // 돌려준다. declared는 .github/runner의 내용(runner label 하나와 줄 끝), workflows는 {path: text}다.
 // 모든 job이 같은 Linux runner에서 실행한다.
