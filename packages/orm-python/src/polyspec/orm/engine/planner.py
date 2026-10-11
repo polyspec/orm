@@ -272,6 +272,8 @@ class Planner:
             add(self._delete_step(r))
         elif kind == 'restore':
             add(self._restore_step(r))
+        elif kind == 'restart_identity':
+            add(self._restart_identity_step(r))
         else:
             _fail('IR_INVALID', f'unknown request kind {kind}')
         return {'manifest_hash': self.m.manifest_hash, 'kind': kind, 'steps': steps}
@@ -845,12 +847,17 @@ class Planner:
         assignments = _add_blind_index_assignments(ent, input_set)
         _validate_aes_assignments(ent, assignments, False)
         _validate_required_assignments(ent, assignments)
+        load = r.get('load') is True
+        # load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        if load and ent.identity != '' \
+                and not any(a['column'] == ent.identity and 'p' in a for a in assignments):
+            _fail('IR_INVALID', f'load of {ent.name} needs a value for the identity column {ent.identity}')
         version = ent.aes_version
         cols: list[str] = []
         vals: list[str] = []
         for a in assignments:
             col = field_of(ent, a['column'])
-            if col.identity:
+            if col.identity and not load:
                 _fail('IR_INVALID', f'cannot set identity column {a["column"]}')
             cols.append(self.d.quote(a['column']))
             vals.append(self._render_assign(b, ent, col, a))
@@ -985,6 +992,18 @@ class Planner:
         where = f'{self._render_group(b, root, r["where"], True)} AND {self._qcol(root, ent.soft_delete)} IS NOT NULL'
         return {'role': 'main', 'sql': f'UPDATE {b.table(ent)} SET {", ".join(sets)} WHERE {where}',
                 'tables': b.tables(), 'bind_slots': [s.as_dict() for s in b.binds]}
+
+    def _restart_identity_step(self, r: dict) -> dict:
+        """entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음
+        생성 key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을
+        적재한 뒤 실행한다."""
+        ent = self._entity(r['entity'])
+        if ent.identity == '':
+            _fail('IR_INVALID', f'restart_identity of {ent.name}, which has no identity column')
+        b = _Builder(self.d)
+        b.table(ent)
+        return {'role': 'main', 'sql': self.d.restart_identity(ent.table, ent.identity),
+                'tables': b.tables(), 'bind_slots': []}
 
     @staticmethod
     def _restore_key(ent: Entity, where: dict) -> None:

@@ -8,8 +8,11 @@ __all__ = ['StatementEvent', 'Subscribers', 'statement_kind']
 
 
 def statement_kind(sql: str) -> str:
-    """planner가 쓴 statement의 kind다: SQL의 첫 단어다."""
+    """planner가 쓴 statement의 kind다: SQL의 첫 단어다. ALTER는 MySQL identity restart의 schema
+    statement다."""
     verb = sql.lstrip().split(' ', 1)[0].upper()
+    if verb == 'ALTER':
+        return 'schema'
     if verb == 'INSERT':
         return 'insert'
     if verb == 'UPDATE':
