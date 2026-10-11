@@ -164,6 +164,7 @@ fn counted(db: &polyspec_orm::Db, runs: &std::sync::Arc<std::sync::atomic::Atomi
         runs.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     })
+    .expect("a SQL connection accepts a subscriber")
 }
 
 /// A request of a set that is not registered on its connection fails with

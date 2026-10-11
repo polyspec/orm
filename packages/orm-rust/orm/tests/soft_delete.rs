@@ -81,10 +81,12 @@ async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let db = Db::connect(&dsn, 1, config).await.unwrap();
     db.utils().schema().install(&SCHEMA).await.unwrap();
     // model statement만 모으도록 install 뒤에 구독한다.
-    let _logging = db.subscribe(move |e: &StatementEvent<'_>| {
-        hook.lock().unwrap().push(e.sql.to_owned());
-        Ok(())
-    });
+    let _logging = db
+        .subscribe(move |e: &StatementEvent<'_>| {
+            hook.lock().unwrap().push(e.sql.to_owned());
+            Ok(())
+        })
+        .unwrap();
     let mut keep = record(&db);
     keep.core_mut().set("name", Param::Str("keep".into()));
     polyspec_orm::model::create(&mut keep).await.unwrap();

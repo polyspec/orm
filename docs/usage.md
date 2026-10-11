@@ -418,7 +418,7 @@ Every client publishes one event for each statement it sends to the database: th
 |---|---|---|
 | Go | `unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error { …; return nil })`; `unsubscribe()` | `orm.StatementEvent{SQL, Binds, Kind, Tables, Elapsed, Transaction, Err}`, `Elapsed` a `time.Duration`, `Transaction` 0 outside a transaction |
 | PHP | `$unsubscribe = $db->subscribe(function (Polyspec\Orm\StatementEvent $e): void { … })`; `$unsubscribe()` | `Polyspec\Orm\StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`?int`), `error` (`?OrmException`) |
-| Rust | `let subscription = db.subscribe(\|e: &polyspec_orm::StatementEvent<'_>\| Ok(()));`; `subscription.unsubscribe()` | `polyspec_orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`, `elapsed` a `Duration`, `transaction` an `Option<u64>`, `error` an `Option<&polyspec_orm::Error>` |
+| Rust | `let subscription = db.subscribe(\|e: &polyspec_orm::StatementEvent<'_>\| Ok(()))?;`; `subscription.unsubscribe()` | `polyspec_orm::StatementEvent { sql, binds, kind, tables, elapsed, transaction, error }`, `elapsed` a `Duration`, `transaction` an `Option<u64>`, `error` an `Option<&polyspec_orm::Error>` |
 | TypeScript | `const unsubscribe = db.subscribe(e => { … })`; `unsubscribe()` | `StatementEvent` with `sql`, `binds`, `kind`, `tables`, `elapsed` (seconds), `transaction` (`number \| null`), `error` (`OrmError \| null`) |
 
 - `sql` is the statement as sent; a relation step carries its expanded `IN` list.

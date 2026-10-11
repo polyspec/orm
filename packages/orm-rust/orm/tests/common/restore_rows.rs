@@ -107,6 +107,7 @@ pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
         Pool::MySql(p) => read!(p),
         Pool::Postgres(p) => read!(p),
         Pool::Sqlite(p) => read!(p),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 

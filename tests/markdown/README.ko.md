@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 2c0d80ae422ee69a3218f26c8d61946109e2f2a6fc70fd5e229d2a2ed482d6d3 -->
+<!-- source-sha256: 0e5e880abe8b05cc497b57bf5d4d0ebe3f57fd87f6f5c3113bba80236e35ae88 -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -14,6 +14,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `packages/orm-go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
 | `packages/orm-php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/orm-php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
 | `packages/orm-python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
+| `packages/orm-rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
 
 ## 실행
 
@@ -43,9 +44,8 @@ case의 결과는 JSON 값이며, 결과와 `expect`를 모두 JSON으로 읽은
 
 - model은 그 배열 형태(`toArray`)이고, collection은 collection 순서의 배열 형태 목록이며, 묶은 개수는 그 group 행의
   목록이다.
-- `date`나 `datetime` 값은 `YYYY-MM-DD HH:MM:SS.ffffff`, 곧 Go 배열 형태가 자기 `time.Time`에 쓰는 text다. 배열
-  형태가 값 모델 text를 가진 클라이언트(Python은 date를 `YYYY-MM-DD`로, `datetime(p)`를 p자리 소수로 쓴다)는 비교를
-  위해 값을 그 형태로 쓴다.
+- `date` 값은 클라이언트가 어떤 type으로 갖든 runtime value model의 text `YYYY-MM-DD`([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))다.
+  배열 형태가 date를 datetime으로 쓰는 클라이언트는 그 text로 쓴다.
 - 개수, 합, 평균, 쓰기의 행 수는 숫자이고, `paginate`는 `{"items", "total_count", "total_pages"}`다.
 - 실패한 case는 `{"error": <code>}`, 곧 오류의 orm code이며, `write_conflict`는 `{"error": <code>, "name": <name>}`,
   곧 commit의 code와 그 뒤에 읽은 `P1`의 이름이다.

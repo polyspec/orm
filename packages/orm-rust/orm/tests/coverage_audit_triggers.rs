@@ -31,6 +31,7 @@ async fn table_exists(db: &Db, table: &str) -> bool {
             .await
             .unwrap(),
         Pool::Sqlite(p) => sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?").bind(table).fetch_one(p).await.unwrap(),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     };
     count > 0
 }
@@ -164,6 +165,7 @@ async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
         Pool::MySql(p) => read!(p),
         Pool::Postgres(p) => read!(p),
         Pool::Sqlite(p) => read!(p),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 
@@ -185,6 +187,7 @@ async fn drop_columns_tables(db: &Db, driver: &str) {
             Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
             Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
             Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
+            Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
         };
         done.unwrap_or_else(|e| panic!("{statement}: {e}"));
     }
@@ -257,6 +260,7 @@ async fn columns_of(db: &Db, table: &str) -> Vec<String> {
         Pool::MySql(_) => format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' ORDER BY ORDINAL_POSITION"),
         Pool::Postgres(_) => format!("SELECT column_name::text FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = '{table}' ORDER BY ordinal_position"),
         Pool::Sqlite(_) => format!("SELECT name FROM pragma_table_info('{table}') ORDER BY cid"),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     };
     text_rows(db, &query).await.into_iter().map(|r| r[0].clone()).collect()
 }

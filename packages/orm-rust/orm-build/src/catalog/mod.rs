@@ -53,6 +53,9 @@ impl CatalogConnection {
                         .map_err(|e| e.to_string())?,
                 )
             }
+            ConnectOptions::Markdown(_) => {
+                return Err("CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN".into());
+            }
         };
         let connection = Conn::acquire(&pool).await.map_err(|e| e.to_string())?;
         Ok(Self { connection, pool, dialect })
@@ -121,6 +124,8 @@ impl CatalogConnection {
             Pool::MySql(pool) => pool.close().await,
             Pool::Postgres(pool) => pool.close().await,
             Pool::Sqlite(pool) => pool.close().await,
+            // connect는 markdown DSN을 거절하므로 catalog 연결은 markdown pool을 갖지 않는다.
+            Pool::Markdown(_) => unreachable!("a catalog connection holds a SQL pool"),
         }
     }
 }

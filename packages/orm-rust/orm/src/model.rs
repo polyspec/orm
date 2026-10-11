@@ -13,6 +13,7 @@ use crate::core::{config, CondGroup, CondKind, CondNode, Core, PredSpec, PredVal
 use crate::db::{Db, Executor, Statement};
 use crate::driver::{child_keys, first_cell, parent_values, positional, relation_chunks, same_scalar};
 use crate::ir;
+use crate::markdown::{markdown_read, markdown_scalar, markdown_write, MdRow};
 use crate::plan::{Assemble, Plan};
 use crate::request::{build, result_name, Req};
 use crate::schema::Schema;
@@ -201,9 +202,39 @@ struct QueryResult {
     main: Vec<Vec<Val>>,
     steps: HashMap<u32, StepRows>,
     params: Vec<Param>,
+    /// markdown 답의 행이다: 행마다 그 join과 relation의 행을 가진다. SQL 결과에서는 None이고 `main`과
+    /// `steps`가 그 자리다.
+    markdown: Option<Vec<MdRow>>,
+    /// markdown paginate 답의 전체 행 수다.
+    count: Option<i64>,
+}
+
+/// 결과의 행 하나: SQL 결과의 위치 행이거나 markdown 답의 행이다.
+#[derive(Clone, Copy)]
+enum RowRef<'r> {
+    Sql(&'r [Val]),
+    Markdown(&'r MdRow),
+}
+
+impl<'r> RowRef<'r> {
+    /// node의 column 값이다.
+    fn vals(self) -> &'r [Val] {
+        match self {
+            RowRef::Sql(vals) => vals,
+            RowRef::Markdown(row) => &row.vals,
+        }
+    }
 }
 
 impl QueryResult {
+    /// root 행들이다.
+    fn rows(&self) -> Vec<RowRef<'_>> {
+        match &self.markdown {
+            Some(rows) => rows.iter().map(RowRef::Markdown).collect(),
+            None => self.main.iter().map(|row| RowRef::Sql(row)).collect(),
+        }
+    }
+
     fn related(&self, ch: &crate::plan::Child, parent: &[Val]) -> Result<Vec<&[Val]>> {
         let Some(sr) = self.steps.get(&ch.step) else { return Ok(Vec::new()) };
         let st = &self.plan.steps[ch.step as usize];
@@ -306,6 +337,20 @@ fn val_param_key(p: &Param) -> String {
 
 async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
     let db = ex.db().clone();
+    if db.is_markdown() {
+        if !req.ir.query.lock.is_empty() && matches!(ex, Executor::Db(_)) {
+            return Err(Error::Config("row locks are allowed only inside a transaction".into()));
+        }
+        let read = markdown_read(ex, req).await?;
+        return Ok(QueryResult {
+            plan: read.plan,
+            main: Vec::new(),
+            steps: HashMap::new(),
+            params: req.params.clone(),
+            markdown: Some(read.rows),
+            count: read.count,
+        });
+    }
     let plan = db.plan(req).await?;
     let st = &plan.steps[0];
     let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
@@ -329,7 +374,7 @@ async fn select(ex: &Executor, req: &mut Req) -> Result<QueryResult> {
             }
         }
     }
-    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone() };
+    let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), markdown: None, count: None };
     for st in plan.steps.iter().skip(1) {
         if st.role != "relation" {
             continue;
@@ -373,7 +418,8 @@ struct Built {
 }
 
 impl<'a> Assembler<'a> {
-    fn model(&mut self, b: &Core, asm: &Assemble, row: &[Val]) -> Result<Built> {
+    fn model(&mut self, b: &Core, asm: &Assemble, row_ref: RowRef<'_>) -> Result<Built> {
+        let row = row_ref.vals();
         let mut m = (b.ent.new)(Core::new(b.ent));
         {
             let core = m.core_dyn_mut();
@@ -420,12 +466,15 @@ impl<'a> Assembler<'a> {
                     .map(|j| j.child.as_ref())
                     .ok_or_else(|| Error::internal(format!("join result {} without a model", ch.rel)))?;
                 let casm = ch.assemble.as_ref().expect("join child has an assemble");
-                let present = casm.columns.first().map(|c| !row[c.index].is_null()).unwrap_or(false);
-                let value = if present {
-                    let built = self.model(child, casm, row)?;
-                    Some(Arc::from(built.model))
-                } else {
-                    None
+                // SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이 NULL이면 행이 없다. markdown 답에서는
+                // 부모 행이 join 행을 가진다.
+                let joined = match row_ref {
+                    RowRef::Sql(vals) => casm.columns.first().is_some_and(|c| !vals[c.index].is_null()).then_some(row_ref),
+                    RowRef::Markdown(md) => md.joins.get(&ch.rel).and_then(Option::as_ref).map(RowRef::Markdown),
+                };
+                let value = match joined {
+                    Some(joined) => Some(Arc::from(self.model(child, casm, joined)?.model)),
+                    None => None,
                 };
                 st.related.insert(ch.rel.clone(), Related { value: RelatedValue::One(value), cascade: false, flat: false });
                 continue;
@@ -436,20 +485,30 @@ impl<'a> Assembler<'a> {
                 .find(|r| result_name(&r.child, r.many) == ch.rel)
                 .map(|r| (r.child.as_ref(), r.many))
                 .ok_or_else(|| Error::internal(format!("relation result {} without a model", ch.rel)))?;
-            let rows: Vec<Vec<Val>> = self.res.related(ch, row)?.into_iter().map(|r| r.to_vec()).collect();
-            let casm = self.res.plan.steps[ch.step as usize].assemble.clone().expect("relation step has an assemble");
+            // SQL 결과에서는 relation step의 행을 key로 찾고, markdown 답에서는 부모 행이 relation 행을 가진다.
+            let res = self.res;
+            let (rows, casm): (Vec<RowRef<'_>>, Arc<Assemble>) = match row_ref {
+                RowRef::Sql(vals) => (
+                    res.related(ch, vals)?.into_iter().map(RowRef::Sql).collect(),
+                    res.plan.steps[ch.step as usize].assemble.clone().expect("relation step has an assemble"),
+                ),
+                RowRef::Markdown(md) => (
+                    md.rels.get(&ch.rel).map(|rows| rows.iter().map(RowRef::Markdown).collect()).unwrap_or_default(),
+                    ch.assemble.clone().expect("a markdown relation has an assemble"),
+                ),
+            };
             if many {
                 let mut items = Vec::new();
-                for cr in &rows {
+                for &cr in &rows {
                     let built = self.model(child, &casm, cr)?;
-                    let key = collection_key(child, built.model.as_ref(), &casm, cr)?;
+                    let key = collection_key(child, built.model.as_ref(), &casm, cr.vals())?;
                     items.push((key, built.model));
                 }
                 let coll = (child.ent.collect)(items, HashMap::new());
                 st.related.insert(ch.rel.clone(), Related { value: RelatedValue::Many(coll), cascade: ch.cascade, flat: false });
             } else {
                 let value = match rows.first() {
-                    Some(cr) => Some(Arc::from(self.model(child, &casm, cr)?.model)),
+                    Some(&cr) => Some(Arc::from(self.model(child, &casm, cr)?.model)),
                     None => None,
                 };
                 st.related.insert(ch.rel.clone(), Related { value: RelatedValue::One(value), cascade: ch.cascade, flat: ch.flatten });
@@ -508,9 +567,9 @@ async fn assemble(c: &Core, req: &Req, res: &QueryResult) -> Result<Loaded> {
     let asm = res.plan.steps[0].assemble.clone().expect("select plan has an assemble");
     let mut a = Assembler { res, conn: c.conn.clone() };
     let mut items = Vec::new();
-    for row in &res.main {
+    for row in res.rows() {
         let built = a.model(c, &asm, row)?;
-        let key = collection_key(c, built.model.as_ref(), &asm, row)?;
+        let key = collection_key(c, built.model.as_ref(), &asm, row.vals())?;
         items.push((key, built.model, built.builder));
     }
     let mut out: Vec<(Key, Box<dyn AnyModel>)> = Vec::new();
@@ -693,12 +752,13 @@ pub async fn gets_count<M: Model>(m: &M) -> Result<GroupRows> {
     let mut request = build(m.core(), "group_count");
     let result = select(&ex, &mut request).await?;
     let columns = &result.plan.steps[0].assemble.as_ref().ok_or_else(|| Error::internal("group count has no assemble"))?.columns;
-    let mut groups = Vec::with_capacity(result.main.len());
-    for row in &result.main {
+    let rows = result.rows();
+    let mut groups = Vec::with_capacity(rows.len());
+    for row in rows {
         let mut values = Vec::with_capacity(columns.len());
         for column in columns {
             if !column.hidden {
-                values.push((column.name.clone(), row.get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?));
+                values.push((column.name.clone(), row.vals().get(column.index).cloned().ok_or_else(|| Error::internal("group result column is missing"))?));
             }
         }
         groups.push(GroupRow::new(values)?);
@@ -720,16 +780,20 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     let offset = (page - 1).checked_mul(per_page).ok_or_else(|| config("page offset exceeds u32 range"))?;
     q.limit = Some((offset, per_page));
     let mut req = build(&q, "paginate");
-    let db = ex.db().clone();
     let res = select(&ex, &mut req).await?;
-    let count = res.plan.steps.iter().find(|s| s.role == "count").ok_or_else(|| Error::internal("paginate plan has no count step"))?.clone();
-    let rows = ex.query(&count, &req.params, Vec::new()).await?;
-    let total = first_cell(&rows, ex.db().inner.zone)?.as_i64()?;
+    // markdown 답은 전체 행 수를 함께 답하고, SQL plan은 그것을 count step으로 센다.
+    let total = match res.count {
+        Some(total) => total,
+        None => {
+            let count = res.plan.steps.iter().find(|s| s.role == "count").ok_or_else(|| Error::internal("paginate plan has no count step"))?.clone();
+            let rows = ex.query(&count, &req.params, Vec::new()).await?;
+            first_cell(&rows, ex.db().inner.zone)?.as_i64()?
+        }
+    };
     if total < 0 {
         return Err(Error::internal("negative row count"));
     }
     let loaded = assemble(&q, &req, &res).await?;
-    let _ = db;
     Ok(Page {
         items: Collection::from_boxes(loaded.items, loaded.fetched),
         total_count: total,
@@ -746,6 +810,9 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
         req.ir.agg = c.agg.clone();
     }
     let db = ex.db().clone();
+    if db.is_markdown() {
+        return markdown_scalar(&ex, &mut req).await;
+    }
     let plan = db.plan(&mut req).await?;
     let st = &plan.steps[0];
     let parts = root_in_parts(&req, st.bind_slots.len(), db.driver())?;
@@ -847,19 +914,30 @@ fn assign(r: &mut Req, ent: &dbspec::Entity, s: &SetSpec) -> Result<ir::Assign> 
     Ok(a)
 }
 
-async fn write(ex: &Executor, req: &mut Req) -> Result<(u64, u64)> {
+/// insert, update, delete, restore를 실행하고 insert한 행의 key와 바뀐 행 수를 돌려준다: SQL database에서는
+/// 생성된 identity, markdown executor에서는 그것이 답한 첫 key다(identity는 정수, key_prefix key는 text).
+/// key가 없으면 Null이다.
+async fn write(ex: &Executor, req: &mut Req) -> Result<(Val, u64)> {
     let db = ex.db().clone();
-    let plan = db.plan(req).await?;
-    let st = &plan.steps[0];
-    if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
-        let rows = ex.query(st, &req.params, Vec::new()).await?;
-        return Ok((u64::try_from(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).map_err(|_| Error::internal("negative row count"))?, 1));
-    }
-    let (id, affected) = ex.execute(st, &req.params).await?;
+    let (key, affected) = if db.is_markdown() {
+        let (keys, affected) = markdown_write(ex, req).await?;
+        (keys.into_iter().next().unwrap_or(Val::Null), affected)
+    } else {
+        let plan = db.plan(req).await?;
+        let st = &plan.steps[0];
+        if req.ir.kind == "insert" && st.sql.contains(" RETURNING ") {
+            let rows = ex.query(st, &req.params, Vec::new()).await?;
+            return Ok((Val::I64(first_cell(&rows, ex.db().inner.zone)?.as_i64()?), 1));
+        }
+        let (id, affected) = ex.execute(st, &req.params).await?;
+        let key =
+            if req.ir.kind == "insert" { Val::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?) } else { Val::Null };
+        (key, affected)
+    };
     if req.ir.kind == "update" && req.ir.optimistic.is_some() && affected == 0 {
         return Err(Error::OptimisticLock);
     }
-    Ok((id, affected))
+    Ok((key, affected))
 }
 
 /// Inserts the model and returns the created model.
@@ -885,7 +963,7 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
         }
     }
     req.ir.n_params = req.params.len();
-    let (id, _) = write(&ex, &mut req).await?;
+    let (key, _) = write(&ex, &mut req).await?;
     let mut out = M::from_core(Core::new(c.ent));
     let mut st = RowState::default();
     for s in &c.sets {
@@ -906,10 +984,17 @@ pub async fn create<M: Model>(m: &mut M) -> Result<M> {
             _ => {}
         }
     }
-    if let Some(identity) = &ent.identity {
-        st.add_name(identity);
-        let id = i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?;
-        assign_model(&mut out, identity, Val::I64(id))?;
+    // 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
+    // 않은 하나뿐인 primary key column이다.
+    let assigned_key = match (&ent.identity, ent.primary_key.as_slice()) {
+        (Some(identity), _) => Some(identity),
+        (None, [pk]) if ex.db().is_markdown() && !key.is_null() && !c.sets.iter().any(|s| &s.column == pk) => Some(pk),
+        _ => None,
+    };
+    if let Some(column) = assigned_key {
+        st.add_name(column);
+        let value = if ent.identity.is_some() { Val::I64(key.as_i64()?) } else { key };
+        assign_model(&mut out, column, value)?;
     }
     st.loaded = true;
     for pk in &ent.primary_key {
@@ -1140,7 +1225,7 @@ pub(crate) async fn insert_audit(ex: &Executor, a: &crate::tx::AuditInsert) -> R
     let (id, _) = write(ex, &mut req).await?;
     let pk = &ent.primary_key[0];
     let key = if ent.identity.as_deref() == Some(pk.as_str()) {
-        Param::I64(i64::try_from(id).map_err(|_| Error::internal("generated id is outside i64 range"))?)
+        Param::I64(id.as_i64()?)
     } else {
         match a.values.iter().find(|(c, _)| c == pk) {
             Some((_, v)) if !matches!(v, Param::Null) => v.clone(),
