@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2542cbbe4f40df5990f15d54dc2cf5d592158811e0f30f4c7fb722cf8e5dbdab -->
+<!-- source-sha256: 14c2ce39cb645d35500e0bacdd074eda2475f1c274ce3b77d3621421326fcd11 -->
 # 변경 이력
 
 ## Unreleased
 
-- T96 (일부): 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`/`right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로 만나야 하고, 아니면 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). 세 database의 conformance vector는 뒤따른다.
+- T96: 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`/`right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로 만나야 하고, 아니면 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). 세 database의 conformance vector는 `T96-1`이다.
 - T97: 열 비교 연산자(`eq_col` 등)는 왼쪽 컬럼의 type과 두 컬럼 모두 codec이 없다는 것으로 허용되며, `ip` 컬럼 둘은 `eq_col`과 `not_eq_col`도 받는다. `bool gt_col`, `bytes gt_col`, `aes` 컬럼의 `eq_col`은 모든 구현에서 `OPERATOR_NOT_ALLOWED`이다.
 - T94: `ir.Validate`와 그 네 짝이 `update`와 `restore`의 primary key나 identity 할당(`restore`는 soft delete 컬럼도)을 `IR_INVALID`로 거절하므로, 계획하지 않는 IR 실행기도 planner만 갖던 규칙을 본다. planner의 도달할 수 없게 된 검사는 지웠다.
 - T99: `insert`는 `p` 또는 `null`로 할당한다. `set`의 `plus_p`와 `minus_p`는 모든 구현에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다(MySQL은 `VALUES` 목록에서 default를 읽었고 PostgreSQL과 SQLite는 문장을 거절했다).
