@@ -41,13 +41,22 @@ final class Db
     private int $transactions = 0;
     /** SQLite row lock table을 이 연결에서 만들었는지다. 연결의 첫 transaction 전에 한 번 만든다. */
     private bool $rowLockReady = false;
-    /** @internal Orm::connect creates connections. */
+
+    /**
+     * @internal Orm::connect creates connections. A SQL connection has its PDO handle; a markdown
+     * connection has no PDO handle and its flowmark session $md instead (docs/protocol.md §5).
+     */
     public function __construct(
-        \PDO $pdo,
+        ?\PDO $pdo,
         private readonly string $driver,
         private readonly Config $config,
         private readonly \DateTimeZone $zone,
+        private readonly ?MarkdownSession $md = null,
     ) {
+        if ($pdo === null) {
+            $this->pdo = null;
+            return;
+        }
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         // MySQL uses emulated prepares: a request runs most statement shapes once.
         $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
@@ -72,10 +81,46 @@ final class Db
         $this->sets[$schema->manifestHash] = true;
     }
 
-    /** The database of the connection: mysql, postgres, or sqlite. */
+    /**
+     * The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a
+     * flowmark server serves.
+     */
     public function driver(): string
     {
         return $this->driver;
+    }
+
+    /** @internal the flowmark session of a markdown connection; CONFIG once the connection is closed */
+    public function markdownSession(): MarkdownSession
+    {
+        if ($this->closed || $this->md === null) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        return $this->md;
+    }
+
+    /**
+     * @internal markdown 연결이면 SQL 전용 surface $surface를 CAPABILITY_UNSUPPORTED로 거절한다
+     * (docs/dialects.md "Markdown IR executor"). 다른 연결에서는 아무것도 하지 않는다.
+     */
+    public function unsupportedOnMarkdown(string $surface): void
+    {
+        if ($this->md !== null) {
+            throw Markdown::unsupported($surface);
+        }
+    }
+
+    /**
+     * @internal 이 연결에 등록된 set의 runtime model이다. 등록되지 않은 manifest는
+     * SCHEMA_HASH_MISMATCH다: 요청이 실행될 수 있는 대상은 process가 읽은 code가 아니라 연결이 쓰는
+     * database가 정한다.
+     */
+    public function registeredModel(string $hash): RuntimeModel
+    {
+        if (!isset($this->sets[$hash])) {
+            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
+        }
+        return Registry::model($hash);
     }
 
     /** @internal the connection time zone */
@@ -96,10 +141,17 @@ final class Db
         return $this->handle();
     }
 
-    /** 연결의 PDO handle이다. close한 연결은 CONFIG다. */
+    /**
+     * 연결의 PDO handle이다. close한 연결은 CONFIG다. markdown 연결은 SQL statement를 보내지 않으므로
+     * CAPABILITY_UNSUPPORTED다.
+     */
     private function handle(): \PDO
     {
-        if ($this->closed || $this->pdo === null) {
+        if ($this->closed) {
+            throw new OrmException(Code::CONFIG, 'database is closed');
+        }
+        $this->unsupportedOnMarkdown('a SQL statement');
+        if ($this->pdo === null) {
             throw new OrmException(Code::CONFIG, 'database is closed');
         }
         return $this->pdo;
@@ -126,6 +178,11 @@ final class Db
         if ($this->closed) {
             return;
         }
+        if ($this->md !== null) {
+            $this->closed = true;
+            $this->md->close();
+            return;
+        }
         try {
             foreach ($this->stmts as $st) {
                 $st->closeCursor();
@@ -149,13 +206,15 @@ final class Db
      * continues. A subscriber must not throw: an exception fails the
      * operation with SUBSCRIBER, whose previous exception it is, and the
      * statement keeps its effect. The returned closure removes the
-     * subscription.
+     * subscription. A markdown connection sends no statement, so it refuses
+     * a subscriber with CAPABILITY_UNSUPPORTED.
      *
      * @param \Closure(StatementEvent): void $subscriber
      * @return \Closure(): void
      */
     public function subscribe(\Closure $subscriber): \Closure
     {
+        $this->unsupportedOnMarkdown('statement events');
         $id = $this->subscriberSeq++;
         $this->subscribers[$id] = $subscriber;
         return function () use ($id): void {
@@ -415,6 +474,9 @@ final class Db
         if (!in_array($isolation, ['', 'read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'], true)) {
             throw new OrmException(Code::CONFIG, "unsupported transaction isolation $isolation");
         }
+        if ($audit !== null) {
+            $this->unsupportedOnMarkdown('a transaction with audit values');
+        }
         $outer = self::activeFor($this);
         if ($audit !== null && $outer === null) {
             $record = $this->auditRecord($audit);
@@ -567,6 +629,9 @@ final class Db
         if ($timeoutMs > 0 && $this->driver !== 'postgres') {
             throw new OrmException(Code::CAPABILITY_UNSUPPORTED, 'transaction timeoutMs is supported only by postgres');
         }
+        if ($this->md !== null) {
+            return $this->beginMarkdown($isolation, $readOnly);
+        }
         $level = strtoupper(str_replace('_', ' ', $isolation));
         if ($this->driver === 'sqlite') {
             // SQLite의 row lock table은 연결의 첫 transaction 전에 transaction 밖에서 한 번 만든다.
@@ -622,6 +687,20 @@ final class Db
         return $frame;
     }
 
+    /**
+     * markdown transaction을 연다: 연결의 session에 begin을 보낸다. 읽기 전용 transaction은
+     * read_only를 보낸다. isolation option은 executor가 받지 않는다.
+     */
+    private function beginMarkdown(string $isolation, bool $readOnly): TxFrame
+    {
+        if ($isolation !== '') {
+            throw Markdown::unsupported('the transaction isolation option');
+        }
+        $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
+        $this->markdownSession()->call(['op' => 'begin'] + ($readOnly ? ['read_only' => true] : []));
+        return $frame;
+    }
+
     /** SQLite 연결의 row lock table을 연결에서 처음 한 번 만든다. */
     private function ensureRowLockTable(): void
     {
@@ -641,6 +720,12 @@ final class Db
     private function finish(TxFrame $frame, bool $commit): void
     {
         $frame->finished = true;
+        if ($this->md !== null) {
+            // markdown transaction은 session에 남는 상태가 없다: commit이나 rollback message 하나가
+            // 끝낸다. 실패한 commit은 server가 transaction을 끝냈으므로 rollback을 보내지 않는다.
+            $this->markdownSession()->call(['op' => $commit ? 'commit' : 'rollback']);
+            return;
+        }
         $failure = self::joined($this->cleanup($frame));
         if ($commit && $failure === null) {
             try {
@@ -723,7 +808,7 @@ final class Db
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
         try {
-            $this->control(StatementEvent::SAVEPOINT, $frame->number, "SAVEPOINT $name");
+            $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
             self::$frames[] = $frame;
             try {
                 $v = $fn();
@@ -732,13 +817,13 @@ final class Db
                 $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
                 // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
                 $ended = self::joined(array_values(array_filter([
-                    $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, "ROLLBACK TO SAVEPOINT $name"),
-                    $this->endSavepoint($frame, StatementEvent::RELEASE, "RELEASE SAVEPOINT $name"),
+                    $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
+                    $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
                 ])));
                 throw $ended === null ? $failure : OrmException::rollback($failure, $ended);
             }
             array_pop(self::$frames);
-            $released = $this->endSavepoint($frame, StatementEvent::RELEASE, "RELEASE SAVEPOINT $name");
+            $released = $this->endSavepoint($frame, StatementEvent::RELEASE, $name);
             if ($released !== null) {
                 throw $released;
             }
@@ -748,15 +833,33 @@ final class Db
         }
     }
 
-    /** savepoint를 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
-    private function endSavepoint(TxFrame $frame, string $kind, string $statement): ?\Throwable
+    /** savepoint name을 끝내는 statement를 실행하고 실패하면 그 오류를 돌려준다. */
+    private function endSavepoint(TxFrame $frame, string $kind, string $name): ?\Throwable
     {
         try {
-            $this->control($kind, $frame->number, $statement);
+            $this->savepointControl($frame, $kind, $name);
             return null;
         } catch (OrmException $e) {
             return $e;
         }
+    }
+
+    /**
+     * savepoint name을 만들거나(SAVEPOINT) 풀거나(RELEASE) 그 뒤의 작업을 되돌린다(ROLLBACK_TO).
+     * SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control message를 보낸다.
+     */
+    private function savepointControl(TxFrame $frame, string $kind, string $name): void
+    {
+        [$op, $statement] = match ($kind) {
+            StatementEvent::SAVEPOINT => ['savepoint', "SAVEPOINT $name"],
+            StatementEvent::RELEASE => ['release', "RELEASE SAVEPOINT $name"],
+            StatementEvent::ROLLBACK_TO => ['rollback_to', "ROLLBACK TO SAVEPOINT $name"],
+        };
+        if ($this->md !== null) {
+            $this->markdownSession()->call(['op' => $op, 'name' => $name]);
+            return;
+        }
+        $this->control($kind, $frame->number, $statement);
     }
 
     // ---- execution ----
@@ -776,12 +879,9 @@ final class Db
 
     private function plan(Request $r): array
     {
-        // 연결은 자기에게 등록된 set만 plan한다. 요청이 실행될 수 있는 대상은 process가
-        // 읽은 code가 아니라 연결이 쓰는 database가 정한다.
+        // 연결은 자기에게 등록된 set만 plan한다.
         $hash = $r->ir['manifest_hash'];
-        if (!isset($this->sets[$hash])) {
-            throw new OrmException(Code::SCHEMA_HASH_MISMATCH, "manifest $hash is not registered on this connection: connect through its generated code or install it");
-        }
+        $this->registeredModel($hash);
         $engine = Engine::for($hash, $this->driver, $this->config->planCacheSize);
         $shape = $r->shape();
         if (count($r->params) <= self::bindLimit($this->driver)) {
@@ -798,6 +898,10 @@ final class Db
     public function select(?TxFrame $frame, Request $r): array
     {
         $this->enter($frame, $r->ir);
+        if ($this->md !== null) {
+            [$plan, $result] = Markdown::read($this, $r);
+            return [$plan, $result];
+        }
         $plan = $this->plan($r);
         $this->acquireSQLiteRowLock((string) ($r->ir['lock'] ?? ''));
         $parts = $this->rootInParts($r, $plan['steps'][0]);
@@ -824,6 +928,9 @@ final class Db
     public function scalarOf(?TxFrame $frame, Request $r): mixed
     {
         $this->enter($frame, $r->ir);
+        if ($this->md !== null) {
+            return Markdown::scalar($this, $r);
+        }
         $plan = $this->plan($r);
         $parts = $this->rootInParts($r, $plan['steps'][0]);
         if ($parts !== []) {
@@ -843,6 +950,9 @@ final class Db
     public function paginate(?TxFrame $frame, Request $r): array
     {
         $this->enter($frame, $r->ir);
+        if ($this->md !== null) {
+            return Markdown::read($this, $r);
+        }
         $plan = $this->plan($r);
         $main = $this->query($plan['steps'][0], $r->params);
         $result = $this->relations($plan, $r->params, $main);
@@ -854,10 +964,21 @@ final class Db
         throw new OrmException(Code::INTERNAL, 'paginate plan has no count step');
     }
 
-    /** @internal @return array{0: int|string|null, 1: int} the generated id and the affected rows */
+    /**
+     * @internal @return array{0: int|float|string|null, 1: int} the key of the inserted row and the
+     *     affected rows: the generated identity on a SQL database, the first key the markdown executor
+     *     answers
+     */
     public function writeOf(?TxFrame $frame, Request $r): array
     {
         $this->enter($frame, $r->ir);
+        if ($this->md !== null) {
+            [$keys, $affected] = Markdown::write($this, $r);
+            if (isset($r->ir['optimistic']) && $affected === 0) {
+                throw new OrmException(Code::OPTIMISTIC_LOCK, 'the row changed after it was read');
+            }
+            return [$keys[0] ?? null, $affected];
+        }
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params, [], $frame);
         $insert = $r->ir['kind'] === 'insert';
@@ -885,6 +1006,7 @@ final class Db
     /** @internal @return array{sql: string, binds: list<mixed>} */
     public function statement(Request $r): array
     {
+        $this->unsupportedOnMarkdown('getQuery');
         $step = $this->plan($r)['steps'][0];
         $args = $this->args($step, $r->params);
         foreach ($this->masks as $i => $mask) {

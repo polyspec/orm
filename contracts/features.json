@@ -64,7 +64,8 @@
       "fixtures": [
         "packages/orm-go/orm/test_helpers_test.go",
         "packages/orm-go/orm/coverage_fixture_test.go",
-        "packages/orm-php/tests/coverage_cases.php"
+        "packages/orm-php/tests/coverage_cases.php",
+        "packages/orm-php/tests/markdown_fake_server.php"
       ],
       "tests": [
         "packages/orm-go/orm/dsn_test.go",
@@ -90,7 +91,8 @@
         "packages/orm-rust/orm/tests/mysql_tls.rs",
         "packages/orm-npm/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
-        "packages/orm-go/orm/markdown_test.go"
+        "packages/orm-go/orm/markdown_test.go",
+        "packages/orm-php/tests/markdown_test.php"
       ],
       "docs": [
         "docs/config.md",
@@ -106,6 +108,16 @@
           "inputs": [
             "packages/orm-go/orm/markdown_test.go",
             "packages/orm-go/orm/markdown.go"
+          ]
+        },
+        {
+          "id": "markdown-session-php",
+          "command": "php packages/orm-php/tests/markdown_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-php/tests/markdown_test.php",
+            "packages/orm-php/tests/markdown_fake_server.php",
+            "packages/orm-php/src/Markdown.php"
           ]
         },
         {
@@ -5786,6 +5798,7 @@
       ],
       "tests": [
         "packages/orm-go/markdownmodel/conformance_test.go",
+        "packages/orm-php/tests/markdown_conformance.php",
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",
@@ -6343,6 +6356,17 @@
       ],
       "tests": [],
       "command": "node tests/run-long.mjs go-markdown-model -- sh -c 'cd packages/orm-go/markdownmodel && go generate ./ && git diff --exit-code -- .'"
+    },
+    {
+      "id": "php-markdown-model-generated",
+      "paths": [
+        "packages/orm-php/markdownmodel/bootstrap.php",
+        "packages/orm-php/markdownmodel/Logs.php",
+        "packages/orm-php/markdownmodel/People.php",
+        "packages/orm-php/markdownmodel/Tasks.php"
+      ],
+      "tests": [],
+      "command": "vendor-php/bin/orm-gen gen --check --out packages/orm-php/markdownmodel --namespace 'Polyspec\\Orm\\Tests\\MarkdownModel' tests/markdown/corpus/dbspec/conformance.dbs"
     },
     {
       "id": "stmtdiff",
