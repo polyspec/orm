@@ -100,7 +100,8 @@ final class Validator
             throw self::err(Code::IR_INVALID, "unknown kind \"$kind\"");
         }
         $this->n = $r['n_params'] ?? 0;
-        $this->query($r, '', false, false);
+        $root = $this->scopes($r);
+        $this->query($r, ['root' => $root, 'outer' => null, 'node' => $root], false, false);
         if (($r['lock'] ?? '') !== '' && $kind !== 'one' && $kind !== 'all') {
             throw self::err(Code::IR_INVALID, 'row lock is only valid on one or all');
         }
@@ -259,7 +260,49 @@ final class Validator
         return ($q['group_by'] ?? []) !== [];
     }
 
-    private function query(array $q, string $path, bool $isJoin, bool $isRelation): void
+    /**
+     * scopes는 q와 그 join의 scope tree다(name, ent, joins). planner의 buildScopes처럼 조건을 검사하기
+     * 전에 모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다. manifest에 없는 entity의 ent는 null이다.
+     */
+    private function scopes(array $q): array
+    {
+        $entity = $q['entity'] ?? '';
+        $s = ['name' => $entity, 'ent' => $this->m->entities[$entity] ?? null, 'joins' => []];
+        foreach ($q['joins'] ?? [] as $j) {
+            $rel = $j['rel'] ?? '';
+            if (!isset($s['joins'][$rel]) && isset($j['query'])) {
+                $s['joins'][$rel] = $this->scopes($j['query']);
+            }
+        }
+        return $s;
+    }
+
+    /**
+     * ref는 planner의 resolvePath처럼 column-to-column 조건의 ref를 푼다. $at은 조건이 놓인 자리다:
+     * root는 statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 null),
+     * node는 조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는
+     * root에서 join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+     */
+    private function ref(array $at, array $ref): void
+    {
+        $path = $ref['path'] ?? '';
+        $column = $ref['column'] ?? '';
+        $target = $at['root'];
+        if ($path === '^') {
+            $target = $at['outer'] ?? throw self::err(Code::IR_INVALID, '^ reference outside a subquery');
+        } elseif ($path !== '') {
+            foreach (explode('/', $path) as $seg) {
+                $target = $target['joins'][$seg] ?? throw self::err(Code::ENTITY_NOT_JOINED, "{$target['name']}.$seg");
+            }
+        }
+        $ent = $target['ent'] ?? throw self::err(Code::ENTITY_UNKNOWN, $target['name']);
+        if (RuntimeModel::column($ent, $column) === null) {
+            throw self::err(Code::COLUMN_UNKNOWN, "{$target['name']}.$column");
+        }
+    }
+
+    /** query는 q를 검사한다. $at은 q의 자리다(ref 참고). */
+    private function query(array $q, array $at, bool $isJoin, bool $isRelation): void
     {
         $entity = $q['entity'] ?? '';
         $ent = $this->m->entities[$entity] ?? throw self::err(Code::ENTITY_UNKNOWN, $entity);
@@ -290,7 +333,7 @@ final class Validator
                     throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
                 }
                 $outputs[$out] = true;
-                $this->sub($sub, true);
+                $this->sub($sub, true, $at['node']);
             }
         }
         $joined = [];
@@ -317,7 +360,7 @@ final class Validator
                 throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
             }
             $joined[$rel] = $j;
-            $this->query($j['query'], self::joinPath($path, $rel), true, false);
+            $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'], 'node' => $at['node']['joins'][$rel]], true, false);
         }
         if (!$isJoin && isset($q['on'])) {
             throw self::err(Code::IR_INVALID, 'on[] is only valid on join children');
@@ -325,11 +368,17 @@ final class Validator
         if (!empty($q['on']['not']) || !empty($q['where']['not'])) {
             throw self::err(Code::IR_INVALID, 'not applies to a nested group');
         }
+        // top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        foreach (['on', 'where'] as $top) {
+            if (($q[$top]['conn'] ?? '') !== '') {
+                throw self::err(Code::IR_INVALID, "the top-level group takes no conn (\"{$q[$top]['conn']}\")");
+            }
+        }
         if (isset($q['on'])) {
-            $this->group($ent, $q['on'], $joined);
+            $this->group($at, $q['on'], $joined);
         }
         if (isset($q['where'])) {
-            $this->group($ent, $q['where'], $joined);
+            $this->group($at, $q['where'], $joined);
             $seen = [];
             self::joinedRefs($q['where'], $seen);
         }
@@ -383,7 +432,8 @@ final class Validator
             if (isset($child['if_parent']) && RuntimeModel::column($ent, $child['if_parent']['column'] ?? '') === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity." . ($child['if_parent']['column'] ?? '') . ' (if_parent)');
             }
-            $this->query($child, self::joinPath($path, $rel), false, true);
+            $scope = $this->scopes($child);
+            $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true);
         }
         $keyBy = $q['key_by'] ?? '';
         if ($keyBy !== '' && RuntimeModel::column($ent, $keyBy) === null) {
@@ -431,12 +481,7 @@ final class Validator
         }
     }
 
-    private static function joinPath(string $path, string $rel): string
-    {
-        return $path === '' ? $rel : "$path/$rel";
-    }
-
-    private function group(array $ent, array $g, array $joined): void
+    private function group(array $at, array $g, array $joined): void
     {
         foreach ($g['items'] ?? [] as $i => $it) {
             $n = 0;
@@ -456,6 +501,10 @@ final class Validator
             if ($i === 0 && $conn === 'or') {
                 throw self::err(Code::OR_AT_GROUP_START, 'a group may not start with OR');
             }
+            // group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            if ($i === 0 && $conn !== '') {
+                throw self::err(Code::IR_INVALID, "the first item of a group takes no conn (\"$conn\")");
+            }
             if (isset($it['joined'])) {
                 $name = $it['joined']['join'] ?? '';
                 $j = $joined[$name] ?? throw self::err(Code::ENTITY_NOT_JOINED, "$name is not joined in this statement");
@@ -463,18 +512,19 @@ final class Validator
                     throw self::err(Code::IR_INVALID, "joined $name has no conditions");
                 }
             } elseif (isset($it['pred'])) {
-                $this->pred($ent, $it['pred']);
+                $this->pred($at, $it['pred']);
             } else {
                 if (($it['group']['items'] ?? []) === []) {
                     throw self::err(Code::IR_INVALID, 'empty group');
                 }
-                $this->group($ent, $it['group'], $joined);
+                $this->group($at, $it['group'], $joined);
             }
         }
     }
 
-    private function pred(array $ent, array $p): void
+    private function pred(array $at, array $p): void
     {
+        $ent = $at['node']['ent'];
         $this->params($p['ps'] ?? []);
         if (isset($p['p'])) {
             $this->params([$p['p']]);
@@ -515,7 +565,7 @@ final class Validator
             if (isset($p['p']) || ($p['ps'] ?? []) !== [] || isset($p['fn']) || isset($p['value'])) {
                 throw self::err(Code::IR_INVALID, 'subquery pred may not carry values');
             }
-            $this->sub($p['sub'], false);
+            $this->sub($p['sub'], false, $at['node']);
             return;
         }
         if (isset($p['fn']) || isset($p['value'])) {
@@ -586,6 +636,7 @@ final class Validator
             if (!isset($p['ref'])) {
                 throw self::err(Code::IR_INVALID, "$op needs ref");
             }
+            $this->ref($at, $p['ref']);
             return;
         }
         if (!isset($p['p'])) {
@@ -606,7 +657,8 @@ final class Validator
         $this->params($f['ps'] ?? []);
     }
 
-    private function sub(array $s, bool $scalar): void
+    /** sub는 subquery를 검사한다. $outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다. */
+    private function sub(array $s, bool $scalar, array $outer): void
     {
         $q = $s['query'] ?? throw self::err(Code::IR_INVALID, 'subquery needs a query');
         $ent = $this->m->entities[$q['entity'] ?? ''] ?? throw self::err(Code::ENTITY_UNKNOWN, $q['entity'] ?? '');
@@ -642,7 +694,8 @@ final class Validator
         if (isset($q['limit']) || ($q['relations'] ?? []) !== [] || ($q['lock'] ?? '') !== '' || isset($q['columns'])) {
             throw self::err(Code::IR_INVALID, 'subquery may not use limit, relations, lock or columns');
         }
-        $this->query($q, '', false, false);
+        $scope = $this->scopes($q);
+        $this->query($q, ['root' => $scope, 'outer' => $outer, 'node' => $scope], false, false);
     }
 
     private static function joinedRefs(array $g, array &$seen): void

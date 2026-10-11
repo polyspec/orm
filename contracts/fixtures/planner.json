@@ -1376,6 +1376,279 @@
         }
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_top_group_conn",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "conn": "and",
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_first_item_conn",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "conn": "and",
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` INNER JOIN `service` AS `service` ON `a`.`service_seq` = `service`.`seq` WHERE `a`.`service_seq` = `service`.`seq` AND `a`.`seq` IN (SELECT `s1`.`seq` FROM `author` AS `s1` WHERE `s1`.`user_seq` = `a`.`user_seq`)",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" WHERE \"a\".\"service_seq\" = \"service\".\"seq\" AND \"a\".\"seq\" IN (SELECT \"s1\".\"seq\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"user_seq\")",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" INNER JOIN \"service\" AS \"service\" ON \"a\".\"service_seq\" = \"service\".\"seq\" WHERE \"a\".\"service_seq\" = \"service\".\"seq\" AND \"a\".\"seq\" IN (SELECT \"s1\".\"seq\" FROM \"author\" AS \"s1\" WHERE \"s1\".\"user_seq\" = \"a\".\"user_seq\")",
+            "tables": [
+              "author",
+              "service"
+            ]
+          }
+        ]
+      },
+      "id": "planner_column_refs",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "joins": [
+          {
+            "kind": "inner",
+            "left": "service_seq",
+            "query": {
+              "entity": "service"
+            },
+            "rel": "service",
+            "right": "seq"
+          }
+        ],
+        "kind": "count",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq_col",
+                "ref": {
+                  "column": "seq",
+                  "path": "service"
+                }
+              }
+            },
+            {
+              "pred": {
+                "column": "seq",
+                "conn": "and",
+                "op": "in",
+                "sub": {
+                  "column": "seq",
+                  "query": {
+                    "entity": "author",
+                    "where": {
+                      "items": [
+                        {
+                          "pred": {
+                            "column": "user_seq",
+                            "op": "eq_col",
+                            "ref": {
+                              "column": "user_seq",
+                              "path": "^"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "COLUMN_UNKNOWN"
+      },
+      "id": "planner_rejects_ref_unknown_column",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "user_seq",
+                "right": "seq"
+              }
+            ],
+            "kind": "one",
+            "query": {
+              "entity": "user",
+              "where": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "seq",
+                      "op": "eq_col",
+                      "ref": {
+                        "column": "nope",
+                        "path": ""
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "writer"
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_outer_ref_outside_subquery",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "user_seq",
+                "right": "seq"
+              }
+            ],
+            "kind": "one",
+            "query": {
+              "entity": "user",
+              "where": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "seq",
+                      "op": "eq_col",
+                      "ref": {
+                        "column": "seq",
+                        "path": "^"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "writer"
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "ENTITY_NOT_JOINED"
+      },
+      "id": "planner_rejects_unjoined_ref",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "user_seq",
+                "right": "seq"
+              }
+            ],
+            "kind": "one",
+            "query": {
+              "entity": "user",
+              "where": {
+                "items": [
+                  {
+                    "pred": {
+                      "column": "seq",
+                      "op": "eq_col",
+                      "ref": {
+                        "column": "seq",
+                        "path": "service"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "rel": "writer"
+          }
+        ]
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

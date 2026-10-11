@@ -58,7 +58,41 @@ class _Validator:
         self.params([i for i in (a.get('p'), a.get('plus_p'), a.get('minus_p'))
                      if i is not None])
 
-    def query(self, q: dict, is_join: bool, is_relation: bool) -> None:
+    def scopes(self, q: dict) -> dict:
+        """q와 그 join의 scope tree(name, ent, joins)다. planner의 scope처럼 조건을 검사하기 전에
+        모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다. manifest에 없는 entity의 ent는
+        None이다."""
+        s = {'name': q.get('entity', ''), 'ent': entity_of(self.m, q.get('entity', '')),
+             'joins': {}}
+        for j in q.get('joins') or []:
+            if j.get('rel') not in s['joins'] and 'query' in j:
+                s['joins'][j.get('rel')] = self.scopes(j['query'])
+        return s
+
+    def ref(self, at: dict, ref: dict) -> None:
+        """planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. at은 조건의 자리다: root는
+        statement의 root scope, outer는 subquery를 둘러싼 query의 scope(subquery가 아니면 None), node는
+        조건의 scope다. path ""는 root, "^"는 outer이며 subquery 안에서만 쓰고, 그 밖의 path는 root에서
+        join 이름을 "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다."""
+        path = ref.get('path') or ''
+        column = ref.get('column') or ''
+        target = at['root']
+        if path == '^':
+            if at['outer'] is None:
+                _fail('IR_INVALID', '^ reference outside a subquery')
+            target = at['outer']
+        elif path != '':
+            for seg in path.split('/'):
+                if seg not in target['joins']:
+                    _fail('ENTITY_NOT_JOINED', f'{target["name"]}.{seg}')
+                target = target['joins'][seg]
+        if target['ent'] is None:
+            _fail('ENTITY_UNKNOWN', target['name'])
+        if field_of(target['ent'], column) is None:
+            _fail('COLUMN_UNKNOWN', f'{target["name"]}.{column}')
+
+    def query(self, q: dict, at: dict, is_join: bool, is_relation: bool) -> None:
+        """q를 검사한다. at은 q의 자리다(ref 참고)."""
         ent = self.entity(q['entity'])
         cols = q.get('columns')
         if cols is not None:
@@ -81,7 +115,7 @@ class _Validator:
                 if field_of(ent, out) is not None or out in outputs:
                     _fail('COLUMN_ALIAS_CONFLICT', f'{q["entity"]}.{out} is already a row name')
                 outputs.add(out)
-                self.sub(sub, True)
+                self.sub(sub, True, at['node'])
         joined: dict[str, dict] = {}
         for j in q.get('joins') or []:
             if j['kind'] not in ('inner', 'left'):
@@ -96,15 +130,19 @@ class _Validator:
             if field_of(target, j['right']) is None:
                 _fail('COLUMN_UNKNOWN', f'{target.name}.{j["right"]}')
             joined[j['rel']] = j
-            self.query(j['query'], True, False)
+            self.query(j['query'], dict(at, node=at['node']['joins'][j['rel']]), True, False)
         if not is_join and q.get('on') is not None:
             _fail('IR_INVALID', 'on[] is only valid on join children')
         if (q.get('on') or {}).get('not') or (q.get('where') or {}).get('not'):
             _fail('IR_INVALID', 'not applies to a nested group')
+        # top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        for top in ('on', 'where'):
+            if (q.get(top) or {}).get('conn'):
+                _fail('IR_INVALID', f'the top-level group takes no conn ("{q[top]["conn"]}")')
         if q.get('on') is not None:
-            self.group(ent, q['on'], joined)
+            self.group(at, q['on'], joined)
         if q.get('where') is not None:
-            self.group(ent, q['where'], joined)
+            self.group(at, q['where'], joined)
             _joined_refs(q['where'], set())
         relation_names: set[str] = set()
         for relation in q.get('relations') or []:
@@ -147,7 +185,9 @@ class _Validator:
             if_parent = relation['query'].get('if_parent')
             if if_parent is not None and field_of(ent, if_parent['column']) is None:
                 _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{if_parent["column"]} (if_parent)')
-            self.query(relation['query'], False, True)
+            scope = self.scopes(relation['query'])
+            self.query(relation['query'], {'root': scope, 'outer': None, 'node': scope},
+                       False, True)
         if q.get('key_by') is not None and field_of(ent, q['key_by']) is None:
             _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{q["key_by"]}')
         if q.get('if_parent'):
@@ -188,7 +228,7 @@ class _Validator:
         if q.get('force_index') and q['force_index'] not in ent.indexes:
             _fail('INDEX_UNKNOWN', f'{q["entity"]}.{q["force_index"]}')
 
-    def group(self, ent: Entity, g: dict, joined) -> None:
+    def group(self, at: dict, g: dict, joined) -> None:
         for i, item in enumerate(g['items']):
             present = [item.get(key) for key in ('pred', 'group', 'joined')
                        if item.get(key) is not None]
@@ -199,6 +239,9 @@ class _Validator:
                 _fail('IR_INVALID', f'conn "{conn}"')
             if i == 0 and conn == 'or':
                 _fail('OR_AT_GROUP_START', 'a group may not start with OR')
+            # group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            if i == 0 and conn != '':
+                _fail('IR_INVALID', f'the first item of a group takes no conn ("{conn}")')
             if item.get('joined'):
                 if item['joined']['join'] not in joined:
                     _fail('ENTITY_NOT_JOINED', f'{item["joined"]["join"]} is not joined in '
@@ -207,13 +250,14 @@ class _Validator:
                 if not where or not where.get('items'):
                     _fail('IR_INVALID', f'joined {item["joined"]["join"]} has no conditions')
             elif item.get('pred'):
-                self.pred(ent, item['pred'])
+                self.pred(at, item['pred'])
             elif item.get('group'):
                 if not item['group'].get('items'):
                     _fail('IR_INVALID', 'empty group')
-                self.group(ent, item['group'], joined)
+                self.group(at, item['group'], joined)
 
-    def pred(self, ent: Entity, p: dict) -> None:
+    def pred(self, at: dict, p: dict) -> None:
+        ent = at['node']['ent']
         self.params(p.get('ps'))
         if 'p' in p:
             self.params([p['p']])
@@ -244,7 +288,7 @@ class _Validator:
                 _fail('IR_INVALID', 'subquery needs in or not_in')
             if 'p' in p or ps or p.get('fn') or p.get('value'):
                 _fail('IR_INVALID', 'subquery pred may not carry values')
-            self.sub(p['sub'], False)
+            self.sub(p['sub'], False, at['node'])
             return
         if p.get('fn') or p.get('value'):
             c = field_of(ent, column)
@@ -299,6 +343,7 @@ class _Validator:
         if op in COLUMN_OPS:
             if not p.get('ref'):
                 _fail('IR_INVALID', f'{op} needs ref')
+            self.ref(at, p['ref'])
             return
         if 'p' not in p:
             _fail('IR_INVALID', f'{op} {ent.name}.{column} needs a value (p)')
@@ -314,7 +359,8 @@ class _Validator:
                                 f'{column_function_arity[f["name"]]} arguments')
         self.params(f.get('ps'))
 
-    def sub(self, s, scalar: bool) -> None:
+    def sub(self, s, scalar: bool, outer: dict) -> None:
+        """subquery를 검사한다. outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다."""
         if not s or 'query' not in s:
             _fail('IR_INVALID', 'subquery needs a query')
         ent = self.entity(s['query']['entity'])
@@ -341,7 +387,8 @@ class _Validator:
         if s['query'].get('limit') or s['query'].get('relations') \
                 or s['query'].get('lock') or s['query'].get('columns'):
             _fail('IR_INVALID', 'subquery may not use limit, relations, lock or columns')
-        self.query(s['query'], False, False)
+        scope = self.scopes(s['query'])
+        self.query(s['query'], {'root': scope, 'outer': outer, 'node': scope}, False, False)
 
 
 def _joined_refs(g: dict, seen: set) -> None:
@@ -365,7 +412,8 @@ def validate(m: RuntimeModel, r: dict) -> None:
     if r['kind'] not in _KINDS:
         _fail('IR_INVALID', f'unknown kind "{r["kind"]}"')
     v = _Validator(m, r.get('n_params') or 0)
-    v.query(r, False, False)
+    root = v.scopes(r)
+    v.query(r, {'root': root, 'outer': None, 'node': root}, False, False)
     if r.get('lock') and r['kind'] not in ('one', 'all'):
         _fail('IR_INVALID', 'row lock is only valid on one or all')
     ent = v.entity(r['entity'])

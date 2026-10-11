@@ -59,6 +59,23 @@ pub(crate) struct Validator<'m> {
     n: usize,
 }
 
+/// statement 안의 entity 자리 하나(root나 join)다. planner의 scope처럼 column-to-column 조건의
+/// ref path를 푼다. relation과 subquery는 자기 statement의 root다. manifest에 없는 entity의 ent는 None이다.
+struct Scope<'m> {
+    name: String,
+    ent: Option<&'m Entity>,
+    joins: Vec<(String, Scope<'m>)>,
+}
+
+/// 조건이 놓인 자리다: root는 statement의 root scope, outer는 subquery를 둘러싼 query의 scope
+/// (subquery가 아니면 None), node는 조건의 scope다.
+#[derive(Clone, Copy)]
+struct At<'a, 'm> {
+    root: &'a Scope<'m>,
+    outer: Option<&'a Scope<'m>>,
+    node: &'a Scope<'m>,
+}
+
 pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.ir_version != IR_VERSION {
         return Err(err(codes::VERSION_MISMATCH, format!("ir_version {}, engine {IR_VERSION}", r.ir_version)));
@@ -70,7 +87,8 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         return Err(err(codes::IR_INVALID, format!("unknown kind {:?}", r.kind)));
     }
     let v = Validator { m, n: r.n_params };
-    v.query(&r.query, false, false)?;
+    let root = v.scopes(&r.query);
+    v.query(&r.query, At { root: &root, outer: None, node: &root }, false, false)?;
     let q = &r.query;
     if !q.lock.is_empty() && r.kind != "one" && r.kind != "all" {
         return Err(err(codes::IR_INVALID, "row lock is only valid on one or all"));
@@ -163,7 +181,43 @@ impl<'m> Validator<'m> {
         self.params(&singles)
     }
 
-    fn query(&self, q: &ir::Query, is_join: bool, is_relation: bool) -> Result<()> {
+    /// q와 그 join의 scope tree다. planner의 build_scopes처럼 조건을 검사하기 전에 모든 join을
+    /// 두므로, 조건은 뒤에 선언한 join의 path도 푼다.
+    fn scopes(&self, q: &ir::Query) -> Scope<'m> {
+        let mut s = Scope { name: q.entity.clone(), ent: self.m.entity(&q.entity).ok(), joins: Vec::new() };
+        for j in &q.joins {
+            if !s.joins.iter().any(|(n, _)| *n == j.rel) {
+                s.joins.push((j.rel.clone(), self.scopes(&j.query)));
+            }
+        }
+        s
+    }
+
+    /// planner의 resolve_path처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
+    /// "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
+    /// "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+    fn column_ref(&self, at: At<'_, 'm>, r: &ir::ColRef) -> Result<()> {
+        let mut target = at.root;
+        if r.path == "^" {
+            target = at.outer.ok_or_else(|| err(codes::IR_INVALID, "^ reference outside a subquery"))?;
+        } else if !r.path.is_empty() {
+            for seg in r.path.split('/') {
+                target = target
+                    .joins
+                    .iter()
+                    .find(|(n, _)| n == seg)
+                    .map(|(_, s)| s)
+                    .ok_or_else(|| err(codes::ENTITY_NOT_JOINED, format!("{}.{seg}", target.name)))?;
+            }
+        }
+        let ent = target.ent.ok_or_else(|| err(codes::ENTITY_UNKNOWN, target.name.clone()))?;
+        if ent.field(&r.column).is_none() {
+            return Err(unknown_column(&target.name, &r.column));
+        }
+        Ok(())
+    }
+
+    fn query(&self, q: &ir::Query, at: At<'_, 'm>, is_join: bool, is_relation: bool) -> Result<()> {
         let ent = self.m.entity(&q.entity)?;
         if let Some(c) = &q.columns {
             if !matches!(c.mode.as_str(), "" | "all" | "none") {
@@ -189,7 +243,7 @@ impl<'m> Validator<'m> {
             }
             for (name, sub) in &c.sub {
                 output(name, &mut names)?;
-                self.sub(sub, true)?;
+                self.sub(sub, true, at.node)?;
             }
         }
         let mut joined: Vec<(&str, &ir::Join)> = Vec::new();
@@ -211,7 +265,14 @@ impl<'m> Validator<'m> {
                 return Err(unknown_column(&target.name, &j.right));
             }
             joined.push((&j.rel, j));
-            self.query(&j.query, true, false)?;
+            let node = at
+                .node
+                .joins
+                .iter()
+                .find(|(n, _)| *n == j.rel)
+                .map(|(_, s)| s)
+                .ok_or_else(|| err(codes::IR_INVALID, format!("join {} has no scope", j.rel)))?;
+            self.query(&j.query, At { node, ..at }, true, false)?;
         }
         if !is_join && q.on.is_some() {
             return Err(err(codes::IR_INVALID, "on[] is only valid on join children"));
@@ -219,11 +280,17 @@ impl<'m> Validator<'m> {
         if q.on.as_ref().is_some_and(|g| g.not) || q.where_.as_ref().is_some_and(|g| g.not) {
             return Err(err(codes::IR_INVALID, "not applies to a nested group"));
         }
+        // top-level group은 앞 형제가 없으므로 conn을 갖지 않는다.
+        for top in [&q.on, &q.where_].into_iter().flatten() {
+            if !top.conn.is_empty() {
+                return Err(err(codes::IR_INVALID, format!("the top-level group takes no conn ({:?})", top.conn)));
+            }
+        }
         if let Some(on) = &q.on {
-            self.group(ent, on, &joined)?;
+            self.group(at, on, &joined)?;
         }
         if let Some(w) = &q.where_ {
-            self.group(ent, w, &joined)?;
+            self.group(at, w, &joined)?;
             let mut seen = Vec::new();
             joined_refs(w, &mut seen)?;
         }
@@ -273,7 +340,8 @@ impl<'m> Validator<'m> {
                     return Err(err(codes::COLUMN_UNKNOWN, format!("{}.{} (if_parent)", q.entity, ip.column)));
                 }
             }
-            self.query(&r.query, false, true)?;
+            let scope = self.scopes(&r.query);
+            self.query(&r.query, At { root: &scope, outer: None, node: &scope }, false, true)?;
         }
         if !q.key_by.is_empty() && ent.field(&q.key_by).is_none() {
             return Err(unknown_column(&q.entity, &q.key_by));
@@ -322,7 +390,7 @@ impl<'m> Validator<'m> {
         Ok(())
     }
 
-    fn group(&self, ent: &Entity, g: &ir::Group, joined: &[(&str, &ir::Join)]) -> Result<()> {
+    fn group(&self, at: At<'_, 'm>, g: &ir::Group, joined: &[(&str, &ir::Join)]) -> Result<()> {
         for (i, it) in g.items.iter().enumerate() {
             let conn = match it {
                 ir::Item::Pred { pred } => &pred.conn,
@@ -335,6 +403,10 @@ impl<'m> Validator<'m> {
             if i == 0 && conn == "or" {
                 return Err(err(codes::OR_AT_GROUP_START, "a group may not start with OR"));
             }
+            // group의 첫 item은 앞 형제가 없으므로 conn을 갖지 않는다.
+            if i == 0 && !conn.is_empty() {
+                return Err(err(codes::IR_INVALID, format!("the first item of a group takes no conn ({conn:?})")));
+            }
             match it {
                 ir::Item::Joined { joined: j } => {
                     let (_, join) = joined
@@ -345,19 +417,20 @@ impl<'m> Validator<'m> {
                         return Err(err(codes::IR_INVALID, format!("joined {} has no conditions", j.join)));
                     }
                 }
-                ir::Item::Pred { pred } => self.pred(ent, pred)?,
+                ir::Item::Pred { pred } => self.pred(at, pred)?,
                 ir::Item::Group { group } => {
                     if group.items.is_empty() {
                         return Err(err(codes::IR_INVALID, "empty group"));
                     }
-                    self.group(ent, group, joined)?;
+                    self.group(at, group, joined)?;
                 }
             }
         }
         Ok(())
     }
 
-    fn pred(&self, ent: &Entity, p: &ir::Pred) -> Result<()> {
+    fn pred(&self, at: At<'_, 'm>, p: &ir::Pred) -> Result<()> {
+        let ent = at.node.ent.ok_or_else(|| err(codes::ENTITY_UNKNOWN, at.node.name.clone()))?;
         self.params(&p.ps)?;
         if let Some(i) = p.p {
             self.params(&[i])?;
@@ -393,7 +466,7 @@ impl<'m> Validator<'m> {
             if p.p.is_some() || !p.ps.is_empty() || p.r#fn.is_some() || p.value.is_some() {
                 return Err(err(codes::IR_INVALID, "subquery pred may not carry values"));
             }
-            return self.sub(sub, false);
+            return self.sub(sub, false, at.node);
         }
         if p.r#fn.is_some() || p.value.is_some() {
             let c = ent.field(&p.column).ok_or_else(|| unknown_column(&ent.name, &p.column))?;
@@ -448,9 +521,8 @@ impl<'m> Validator<'m> {
                 }
             }
             op if col_op(op) => {
-                if p.r#ref.is_none() {
-                    return Err(err(codes::IR_INVALID, format!("{op} needs ref")));
-                }
+                let r = p.r#ref.as_ref().ok_or_else(|| err(codes::IR_INVALID, format!("{op} needs ref")))?;
+                self.column_ref(at, r)?;
             }
             op => {
                 if p.p.is_none() {
@@ -472,7 +544,8 @@ impl<'m> Validator<'m> {
         Ok(())
     }
 
-    fn sub(&self, s: &ir::Sub, scalar: bool) -> Result<()> {
+    /// subquery를 검사한다. outer는 subquery가 놓인 scope이며 그 "^" ref가 가리킨다.
+    fn sub(&self, s: &ir::Sub, scalar: bool, outer: &Scope<'m>) -> Result<()> {
         let ent = self.m.entity(&s.query.entity)?;
         match s.agg.as_str() {
             "" => {
@@ -503,7 +576,8 @@ impl<'m> Validator<'m> {
         if q.limit.is_some() || !q.relations.is_empty() || !q.lock.is_empty() || q.columns.is_some() {
             return Err(err(codes::IR_INVALID, "subquery may not use limit, relations, lock or columns"));
         }
-        self.query(q, false, false)
+        let scope = self.scopes(q);
+        self.query(q, At { root: &scope, outer: Some(outer), node: &scope }, false, false)
     }
 }
 
@@ -522,4 +596,35 @@ fn joined_refs<'g>(g: &'g ir::Group, seen: &mut Vec<&'g str>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::coverage_planner::{bench, request};
+    use super::validate;
+    use serde_json::Value;
+
+    /// 공유 검증 case(tests/ir/validate.json)를 읽는다. 각 request에 schema의 manifest_hash를 더해
+    /// 검증기에만 주고, 받아들이는지나 기대한 오류 code로 실패하는지 본다.
+    #[test]
+    fn validate_vectors() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/ir/validate.json");
+        let file: Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("validate.json")).expect("validate.json is JSON");
+        assert_eq!(file["schema"], "schema/bench.dbs", "validate.json schema");
+        let cases = file["cases"].as_array().expect("cases");
+        assert!(!cases.is_empty(), "validate.json has no cases");
+        let manifest = bench();
+        let mut wrong = Vec::new();
+        for c in cases {
+            let name = c["name"].as_str().expect("name");
+            let got = validate(&manifest, &request(&c["request"], &manifest.manifest_hash));
+            match (&got, c["valid"].as_bool().unwrap_or(false), c["error"].as_str()) {
+                (Ok(()), true, None) => {}
+                (Err(e), false, Some(code)) if e.code() == code => {}
+                _ => wrong.push(format!("{name}: got {got:?}, want {}", c.get("error").cloned().unwrap_or(Value::from("valid")))),
+            }
+        }
+        assert!(wrong.is_empty(), "Rust validate vectors:\n{}", wrong.join("\n"));
+    }
 }

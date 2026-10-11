@@ -313,7 +313,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("IR_INVALID", "unknown kind %q", r.Kind)
 	}
 	v := &validator{m: m, n: r.NParams}
-	if err := v.query(&r.Query, "", false, false); err != nil {
+	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false); err != nil {
 		return err
 	}
 	if r.Query.Lock != "" && r.Kind != "one" && r.Kind != "all" {
@@ -393,9 +393,65 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 }
 
 type validator struct {
-	m        *runtimemodel.Model
-	n        int // NParams
-	subDepth int // >0 while validating a subquery ("^" refs allowed)
+	m *runtimemodel.Model
+	n int // NParams
+}
+
+// scope는 statement 안의 entity 자리 하나(statement의 root나 join)다. planner의 scope처럼
+// column-to-column 조건의 ref path를 푼다. relation과 subquery는 자기 statement의 root다.
+type scope struct {
+	name   string
+	ent    *runtimemodel.Entity // manifest에 없는 entity면 nil
+	parent *scope               // join의 부모. statement의 root는 nil
+	outer  *scope               // subquery root를 둘러싼 query의 scope("^" ref)
+	joins  map[string]*scope
+}
+
+// scopes는 q와 그 join의 scope tree를 만든다. planner의 buildScopes처럼 where를 검사하기 전에
+// 모든 join을 두므로, 조건은 뒤에 선언한 join의 path도 푼다.
+func (v *validator) scopes(q *Query, parent, outer *scope) *scope {
+	s := &scope{name: q.Entity, ent: v.m.Entities[q.Entity], parent: parent, outer: outer, joins: map[string]*scope{}}
+	for _, j := range q.Joins {
+		if _, dup := s.joins[j.Rel]; dup || j.Query == nil {
+			continue
+		}
+		s.joins[j.Rel] = v.scopes(j.Query, s, nil)
+	}
+	return s
+}
+
+// ref는 planner의 resolvePath처럼 column-to-column 조건의 ref를 푼다. path ""는 statement의 root,
+// "^"는 subquery를 둘러싼 query이며 subquery 안에서만 쓴다. 그 밖의 path는 root에서 join 이름을
+// "/"로 이은 것이다. 대상 entity에 ref의 column이 있어야 한다.
+func (v *validator) ref(s *scope, r *ColRef) error {
+	root := s
+	for root.parent != nil {
+		root = root.parent
+	}
+	target := root
+	switch r.Path {
+	case "":
+	case "^":
+		if root.outer == nil {
+			return errf("IR_INVALID", "^ reference outside a subquery")
+		}
+		target = root.outer
+	default:
+		for _, seg := range strings.Split(r.Path, "/") {
+			next, ok := target.joins[seg]
+			if !ok {
+				return errf("ENTITY_NOT_JOINED", "%s.%s", target.name, seg)
+			}
+			target = next
+		}
+	}
+	if target.ent == nil {
+		return errf("ENTITY_UNKNOWN", "%s", target.name)
+	}
+	if target.ent.Field(r.Column) == nil {
+		return errf("COLUMN_UNKNOWN", "%s.%s", target.name, r.Column)
+	}
+	return nil
 }
 
 func (v *validator) params(ps []int) error {
@@ -407,9 +463,9 @@ func (v *validator) params(ps []int) error {
 	return nil
 }
 
-// query validates one Query and its subtrees. path is the relation path from
-// the root; joined is the set of relation names joined at this level.
-func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error {
+// query validates one Query and its subtrees. s is the scope of q in its
+// statement (v.scopes), against which column-to-column refs resolve.
+func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 	ent, ok := v.m.Entities[q.Entity]
 	if !ok {
 		return errf("ENTITY_UNKNOWN", "%s", q.Entity)
@@ -443,7 +499,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 				return errf("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", q.Entity, out)
 			}
 			outputs[out] = true
-			if err := v.sub(sub, true); err != nil {
+			if err := v.sub(sub, true, s); err != nil {
 				return err
 			}
 		}
@@ -470,7 +526,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 			return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, j.Right)
 		}
 		joined[j.Rel] = j
-		if err := v.query(j.Query, joinPath(path, j.Rel), true, false); err != nil {
+		if err := v.query(j.Query, s.joins[j.Rel], true, false); err != nil {
 			return err
 		}
 	}
@@ -478,12 +534,12 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		return errf("IR_INVALID", "on[] is only valid on join children")
 	}
 	if q.On != nil {
-		if err := v.group(ent, q.On, joined, true); err != nil {
+		if err := v.group(s, q.On, joined, true); err != nil {
 			return err
 		}
 	}
 	if q.Where != nil {
-		if err := v.group(ent, q.Where, joined, true); err != nil {
+		if err := v.group(s, q.Where, joined, true); err != nil {
 			return err
 		}
 		referenced := map[string]bool{}
@@ -540,7 +596,7 @@ func (v *validator) query(q *Query, path string, isJoin, isRelation bool) error 
 		if r.Query.IfParent != nil && ent.Field(r.Query.IfParent.Column) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s (if_parent)", q.Entity, r.Query.IfParent.Column)
 		}
-		if err := v.query(r.Query, joinPath(path, r.Rel), false, true); err != nil {
+		if err := v.query(r.Query, v.scopes(r.Query, nil, nil), false, true); err != nil {
 			return err
 		}
 	}
@@ -608,17 +664,15 @@ func hasGroupBy(q *Query) bool {
 	return len(q.GroupBy) > 0
 }
 
-func joinPath(path, rel string) string {
-	if path == "" {
-		return rel
-	}
-	return path + "/" + rel
-}
-
-// group validates connectors and operators.
-func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]*Join, top bool) error {
+// group validates connectors and operators. A top-level group (where, on) has
+// no previous sibling and the first item of a group none either, so neither
+// takes a connector.
+func (v *validator) group(s *scope, g *Group, joined map[string]*Join, top bool) error {
 	if top && g.Not {
 		return errf("IR_INVALID", "not applies to a nested group")
+	}
+	if top && g.Conn != "" {
+		return errf("IR_INVALID", "the top-level group takes no conn (%q)", g.Conn)
 	}
 	for i, it := range g.Items {
 		n := 0
@@ -644,6 +698,9 @@ func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]
 		if i == 0 && conn == "or" {
 			return errf("OR_AT_GROUP_START", "a group may not start with OR")
 		}
+		if i == 0 && conn != "" {
+			return errf("IR_INVALID", "the first item of a group takes no conn (%q)", conn)
+		}
 		switch {
 		case it.Joined != nil:
 			j, ok := joined[it.Joined.Join]
@@ -654,14 +711,14 @@ func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]
 				return errf("IR_INVALID", "joined %s has no conditions", it.Joined.Join)
 			}
 		case it.Pred != nil:
-			if err := v.pred(ent, it.Pred); err != nil {
+			if err := v.pred(s, it.Pred); err != nil {
 				return err
 			}
 		case it.Group != nil:
 			if len(it.Group.Items) == 0 {
 				return errf("IR_INVALID", "empty group")
 			}
-			if err := v.group(ent, it.Group, joined, false); err != nil {
+			if err := v.group(s, it.Group, joined, false); err != nil {
 				return err
 			}
 		}
@@ -669,7 +726,8 @@ func (v *validator) group(ent *runtimemodel.Entity, g *Group, joined map[string]
 	return nil
 }
 
-func (v *validator) pred(ent *runtimemodel.Entity, p *Pred) error {
+func (v *validator) pred(s *scope, p *Pred) error {
+	ent := s.ent
 	if err := v.params(p.Ps); err != nil {
 		return err
 	}
@@ -713,7 +771,7 @@ func (v *validator) pred(ent *runtimemodel.Entity, p *Pred) error {
 		if p.P != nil || len(p.Ps) > 0 || p.Fn != nil || p.Value != nil {
 			return errf("IR_INVALID", "subquery pred may not carry values")
 		}
-		return v.sub(p.Sub, false)
+		return v.sub(p.Sub, false, s)
 	}
 	if p.Fn != nil || p.Value != nil {
 		c := ent.Field(p.Column)
@@ -790,7 +848,7 @@ func (v *validator) pred(ent *runtimemodel.Entity, p *Pred) error {
 			if p.Ref == nil {
 				return errf("IR_INVALID", "%s needs ref", p.Op)
 			}
-			return nil
+			return v.ref(s, p.Ref)
 		}
 		if p.P == nil {
 			return errf("IR_INVALID", "%s %s.%s needs a value (p)", p.Op, ent.Name, p.Column)
@@ -814,8 +872,9 @@ func (v *validator) columnFunc(ent *runtimemodel.Entity, c *runtimemodel.Field, 
 	return v.params(f.Ps)
 }
 
-// sub validates a subquery; scalar subqueries accept an aggregate.
-func (v *validator) sub(s *Sub, scalar bool) error {
+// sub validates a subquery; scalar subqueries accept an aggregate. outer is
+// the scope the subquery appears in, which its "^" refs name.
+func (v *validator) sub(s *Sub, scalar bool, outer *scope) error {
 	if s == nil || s.Query == nil {
 		return errf("IR_INVALID", "subquery needs a query")
 	}
@@ -852,9 +911,7 @@ func (v *validator) sub(s *Sub, scalar bool) error {
 	if s.Query.Limit != nil || len(s.Query.Relations) > 0 || s.Query.Lock != "" || s.Query.Columns != nil {
 		return errf("IR_INVALID", "subquery may not use limit, relations, lock or columns")
 	}
-	v.subDepth++
-	defer func() { v.subDepth-- }()
-	return v.query(s.Query, "", false, false)
+	return v.query(s.Query, v.scopes(s.Query, nil, outer), false, false)
 }
 
 // joinedRefs checks that each join referenced by a group appears once.

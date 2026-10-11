@@ -2,6 +2,7 @@
 // Usage: node packages/orm-npm/tests/engine.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { Db, Engine, MANIFEST_HASH, MANIFEST_TEXT, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { validate } from '../dist/engine/validate.js';
 import { cases, COMPUTE } from '../../../tests/testcase.mjs';
 
 const text = await readFile(new URL('../../../schema/bench.dbs', import.meta.url), 'utf8');
@@ -235,5 +236,19 @@ table plain {
   }
 
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
+});
+// 공유 검증 case(tests/ir/validate.json): 각 request에 schema의 manifest_hash를 더해 검증기에만 주고,
+// 받아들이는지나 기대한 오류 code로 실패하는지 본다.
+await run.run('ir-validate', COMPUTE, async () => {
+  const file = JSON.parse(await readFile(new URL('../../../tests/ir/validate.json', import.meta.url), 'utf8'));
+  if (file.schema !== 'schema/bench.dbs' || file.cases.length === 0) throw new Error('validate.json names schema/bench.dbs and has cases');
+  const { manifest } = dbspecManifest([parseDbspec(await readFile(new URL(`../../../${file.schema}`, import.meta.url), 'utf8'), {}).document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
+  const wrong = [];
+  for (const c of file.cases) {
+    const got = code(() => validate(model, { ...c.request, manifest_hash: manifest.manifestHash }));
+    if (c.valid ? got !== null : got !== c.error) wrong.push(`${c.name}: got ${got ?? 'valid'}, want ${c.error ?? 'valid'}`);
+  }
+  if (wrong.length > 0) throw new Error(`TypeScript validate vectors:\n${wrong.join('\n')}`);
 });
 run.finish();
