@@ -11,8 +11,8 @@ requires-python = ">=3.14"
 # wheel은 CPython만 지원한다(docs/packaging.md, Python client release). toolchain은 python-build-standalone CPython이다.
 classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
-    # ordered-json의 Python wheel(release v0.0.8). 배포는 plain name==version만 쓴다(docs/packaging.md).
-    "polyspec-ordered-json==0.0.8",
+    # ordered-json의 Python wheel(release v0.0.8). polyspec 의존성은 release asset과 그 sha256의 direct reference다(docs/packaging.md, kit K49).
+    "polyspec-ordered-json @ https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec_ordered_json-0.0.8-py3-none-any.whl#sha256=db981125f5ed860ebe242e6afd18015c7cc29719b0ab200ceed44aedefec645a",
     "cryptography==50.0.2",
     "PyMySQL==1.2.3",
     # psycopg[binary]==3.3.6과 같은 설치: extra binary가 psycopg-binary==3.3.6을 요구한다.

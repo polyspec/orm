@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- T115: the Python client releases as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`. Its `Requires-Dist` pins registry packages as `name==version` and names `polyspec-ordered-json` by its release asset with the sha256; `packages/orm-python/pylock.toml` locks every dependency with hashes, and the release proof installs that lock, then the wheel offline, and imports it.
 - T113: the Python client reads a driver's date-time without a zone (PyMySQL, psycopg) as the wall clock of the connection's zone, so a loaded `datetime` is exact on any machine; every client's tests run in `TEST_TZ` (Asia/Seoul), and docs/dialects.md states the rule.
 - T75: `make dbspec-apply-stress-mysql` and the other helpers read their server environment from a declared source, so they run on macOS as on Linux, and the repository check refuses an undeclared helper environment name.
 - T74: codec decode is exact in every client: `base64` and `hex` text with white space, and lower-case `hex`, fail with `CODEC_DECODE`; MySQL hex cells decode in the client; Go exports `orm.HostDecode`, the counterpart of the other clients' host decode; `tests/codec/decode-vectors.json` pins the stored cells, and docs/codec.md states the rule.
