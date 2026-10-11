@@ -220,7 +220,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
 
 /// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
 fn query(value: &Value, at: &str) -> ir::Query {
-    let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit"]);
+    let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit", "key_by"]);
     let columns = object.get("columns").map(|c| {
         let at = format!("{at}.columns");
         let c = members(c, &at, &["mode", "add", "remove"]);
@@ -308,6 +308,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
         relations,
         order,
         limit,
+        key_by: object.get("key_by").map(|_| string(object, at, "key_by")).unwrap_or_default(),
         ..Default::default()
     }
 }
@@ -596,4 +597,11 @@ fn coverage_planner_rejects_group_by_subquery() {
 fn coverage_planner_rejects_group_order_non_group_column() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_group_order_non_group_column");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_nullable_key_by() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_nullable_key_by");
 }

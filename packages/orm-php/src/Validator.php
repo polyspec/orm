@@ -590,8 +590,12 @@ final class Validator
             $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true);
         }
         $keyBy = $q['key_by'] ?? '';
-        if ($keyBy !== '' && RuntimeModel::column($ent, $keyBy) === null) {
-            throw self::err(Code::COLUMN_UNKNOWN, "$entity.$keyBy");
+        if ($keyBy !== '') {
+            $keyColumn = RuntimeModel::column($ent, $keyBy) ?? throw self::err(Code::COLUMN_UNKNOWN, "$entity.$keyBy");
+            // A NULL collection key has no answer that every language shares.
+            if ($keyColumn['nullable']) {
+                throw self::err(Code::IR_INVALID, "key_by $keyBy is nullable");
+            }
         }
         if (isset($q['if_parent'])) {
             $this->params([$q['if_parent']['p'] ?? 0]);

@@ -3727,7 +3727,8 @@
           "planner_rejects_group_by_sum",
           "planner_rejects_group_by_join",
           "planner_rejects_group_by_subquery",
-          "planner_rejects_group_order_non_group_column"
+          "planner_rejects_group_order_non_group_column",
+          "planner_rejects_nullable_key_by"
         ],
         "owners": {
           "go": {
@@ -3771,7 +3772,8 @@
                     "planner_rejects_group_by_sum",
                     "planner_rejects_group_by_join",
                     "planner_rejects_group_by_subquery",
-                    "planner_rejects_group_order_non_group_column"
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by"
                   ],
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
@@ -3801,7 +3803,8 @@
                     "planner_rejects_group_by_sum": "TestCoveragePlannerRejectsGroupBySum",
                     "planner_rejects_group_by_join": "TestCoveragePlannerRejectsGroupByJoin",
                     "planner_rejects_group_by_subquery": "TestCoveragePlannerRejectsGroupBySubquery",
-                    "planner_rejects_group_order_non_group_column": "TestCoveragePlannerRejectsGroupOrderNonGroupColumn"
+                    "planner_rejects_group_order_non_group_column": "TestCoveragePlannerRejectsGroupOrderNonGroupColumn",
+                    "planner_rejects_nullable_key_by": "TestCoveragePlannerRejectsNullableKeyBy"
                   }
                 }
               ]
@@ -3848,7 +3851,8 @@
                     "planner_rejects_group_by_sum",
                     "planner_rejects_group_by_join",
                     "planner_rejects_group_by_subquery",
-                    "planner_rejects_group_order_non_group_column"
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by"
                   ]
                 }
               ]
@@ -3895,7 +3899,8 @@
                     "planner_rejects_group_by_sum",
                     "planner_rejects_group_by_join",
                     "planner_rejects_group_by_subquery",
-                    "planner_rejects_group_order_non_group_column"
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by"
                   ],
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::coverage_planner_statement",
@@ -3925,7 +3930,8 @@
                     "planner_rejects_group_by_sum": "engine::coverage_planner::coverage_planner_rejects_group_by_sum",
                     "planner_rejects_group_by_join": "engine::coverage_planner::coverage_planner_rejects_group_by_join",
                     "planner_rejects_group_by_subquery": "engine::coverage_planner::coverage_planner_rejects_group_by_subquery",
-                    "planner_rejects_group_order_non_group_column": "engine::coverage_planner::coverage_planner_rejects_group_order_non_group_column"
+                    "planner_rejects_group_order_non_group_column": "engine::coverage_planner::coverage_planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by": "engine::coverage_planner::coverage_planner_rejects_nullable_key_by"
                   }
                 }
               ]
@@ -3972,7 +3978,8 @@
                     "planner_rejects_group_by_sum",
                     "planner_rejects_group_by_join",
                     "planner_rejects_group_by_subquery",
-                    "planner_rejects_group_order_non_group_column"
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by"
                   ]
                 }
               ]

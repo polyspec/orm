@@ -358,8 +358,12 @@ impl<'m> Validator<'m> {
             let scope = self.scopes(&r.query);
             self.query(&r.query, At { root: &scope, outer: None, node: &scope }, false, true)?;
         }
-        if !q.key_by.is_empty() && ent.field(&q.key_by).is_none() {
-            return Err(unknown_column(&q.entity, &q.key_by));
+        if !q.key_by.is_empty() {
+            let key_column = ent.field(&q.key_by).ok_or_else(|| unknown_column(&q.entity, &q.key_by))?;
+            // A NULL collection key has no answer that every language shares.
+            if key_column.nullable {
+                return Err(err(codes::IR_INVALID, format!("key_by {} is nullable", q.key_by)));
+            }
         }
         if let Some(ip) = &q.if_parent {
             self.params(&[ip.p])?;

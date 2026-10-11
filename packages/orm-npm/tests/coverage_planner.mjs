@@ -71,4 +71,5 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_group_by_join() { compileCase('planner_rejects_group_by_join'); },
   async planner_rejects_group_by_subquery() { compileCase('planner_rejects_group_by_subquery'); },
   async planner_rejects_group_order_non_group_column() { compileCase('planner_rejects_group_order_non_group_column'); },
+  async planner_rejects_nullable_key_by() { compileCase('planner_rejects_nullable_key_by'); },
 }, 60_000);

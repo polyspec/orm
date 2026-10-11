@@ -2034,6 +2034,35 @@
         ]
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_nullable_key_by",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "seq",
+                "right": "user_seq"
+              }
+            ],
+            "kind": "many",
+            "query": {
+              "entity": "author",
+              "key_by": "description"
+            },
+            "rel": "writers"
+          }
+        ]
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

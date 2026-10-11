@@ -277,3 +277,9 @@ func TestCoveragePlannerRejectsGroupOrderNonGroupColumn(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_group_order_non_group_column")
 }
+
+// TestCoveragePlannerRejectsNullableKeyBy는 nullable key_by column이 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsNullableKeyBy(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_nullable_key_by")
+}

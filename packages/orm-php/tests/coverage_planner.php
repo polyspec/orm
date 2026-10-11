@@ -90,4 +90,5 @@ runCoverageCases($argv, [
     'planner_rejects_group_by_join' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_join'),
     'planner_rejects_group_by_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_subquery'),
     'planner_rejects_group_order_non_group_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_order_non_group_column'),
+    'planner_rejects_nullable_key_by' => fn() => plannerCase($root, $fixture, 'planner_rejects_nullable_key_by'),
 ]);
