@@ -663,3 +663,38 @@ fn coverage_planner_rejects_aes_eq_col() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_aes_eq_col");
 }
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_col_pair_integers() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_col_pair_integers");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_col_pair_integer_varchar() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_col_pair_integer_varchar");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_in_subquery_integer_varchar() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_in_subquery_integer_varchar");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_join_integer_varchar() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_join_integer_varchar");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_relation_integer_varchar() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_relation_integer_varchar");
+}

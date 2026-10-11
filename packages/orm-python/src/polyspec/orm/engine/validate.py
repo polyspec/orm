@@ -23,6 +23,22 @@ def _is_safe(value) -> bool:
         and 0 <= value <= 9007199254740991
 
 
+def _meets(a: Field, b: Field) -> bool:
+    """Whether two columns compare alike on the three databases, as dbspec's check operands do: integers with integers,
+    decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision, and
+    bytes with bytes."""
+    integers = ('i16', 'i32', 'i64')
+    if a.type in integers:
+        return b.type in integers
+    if a.type == 'decimal':
+        return b.type == 'decimal' and a.scale == b.scale
+    if a.type in ('varchar', 'text'):
+        return b.type in ('varchar', 'text')
+    if a.type in ('time', 'datetime'):
+        return b.type == a.type and a.precision == b.precision
+    return a.type == b.type
+
+
 def _col_pair_op_allowed(left: Field, right: Field, op: str) -> bool:
     """Whether the column comparison op may compare left with right: its base operator (eq for eq_col) must be one of
     the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
@@ -146,6 +162,8 @@ class _Validator:
                 _fail('COLUMN_UNKNOWN', f'{ent.name}.{j["left"]}')
             if field_of(target, j['right']) is None:
                 _fail('COLUMN_UNKNOWN', f'{target.name}.{j["right"]}')
+            if not _meets(field_of(ent, j['left']), field_of(target, j['right'])):
+                _fail('OPERATOR_NOT_ALLOWED', f'join {j["rel"]}: {ent.name}.{j["left"]} does not meet {target.name}.{j["right"]}')
             joined[j['rel']] = j
             self.query(j['query'], dict(at, node=at['node']['joins'][j['rel']]), True, False)
         if not is_join and q.get('on') is not None:
@@ -187,6 +205,8 @@ class _Validator:
                     _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{k["left"]}')
                 if field_of(target, k['right']) is None:
                     _fail('COLUMN_UNKNOWN', f'{target.name}.{k["right"]}')
+                if not _meets(field_of(ent, k['left']), field_of(target, k['right'])):
+                    _fail('OPERATOR_NOT_ALLOWED', f'relation {relation["rel"]}: {q["entity"]}.{k["left"]} does not meet {target.name}.{k["right"]}')
                 # 한 column이 두 성분에 나오면 key가 아니다.
                 if k['left'] in lefts or k['right'] in rights:
                     _fail('IR_INVALID', f'relation {relation["rel"]}: key column '
@@ -319,6 +339,10 @@ class _Validator:
             if 'p' in p or ps or p.get('fn') or p.get('value'):
                 _fail('IR_INVALID', 'subquery pred may not carry values')
             self.sub(p['sub'], False, at['node'])
+            # sub checked the subquery column; it meets the compared column as check operands do.
+            sub_column = field_of(self.entity(p['sub']['query']['entity']), p['sub'].get('column') or '')
+            if sub_column is not None and not _meets(field_of(ent, column), sub_column):
+                _fail('OPERATOR_NOT_ALLOWED', f'{ent.name}.{column} does not meet the subquery column {p["sub"]["query"]["entity"]}.{p["sub"].get("column")}')
             return
         if p.get('fn') or p.get('value'):
             c = field_of(ent, column)
@@ -374,6 +398,8 @@ class _Validator:
             if not p.get('ref'):
                 _fail('IR_INVALID', f'{op} needs ref')
             other = self.ref(at, p['ref'])
+            if not _meets(c, other):
+                _fail('OPERATOR_NOT_ALLOWED', f'{ent.name}.{column} does not meet {p["ref"]["column"]}')
             if not _col_pair_op_allowed(c, other, op):
                 _fail('OPERATOR_NOT_ALLOWED', f'{op} on {ent.name}.{column} ({c.type}) and {p["ref"]["column"]} ({other.type})')
             return

@@ -479,6 +479,25 @@ func (v *validator) ref(s *scope, r *ColRef) (*runtimemodel.Field, error) {
 	return c, nil
 }
 
+// meets reports whether two columns compare alike on the three databases, as dbspec's check operands do: integers with
+// integers, decimals of one scale, f64, bool, varchar and text together, uuid, date, time or datetime of one precision,
+// and bytes with bytes.
+func meets(a, b *runtimemodel.Field) bool {
+	switch {
+	case isInteger(a.Type):
+		return isInteger(b.Type)
+	case a.Type == "decimal":
+		return b.Type == "decimal" && a.Scale == b.Scale
+	case a.Type == "varchar" || a.Type == "text":
+		return b.Type == "varchar" || b.Type == "text"
+	case a.Type == "time" || a.Type == "datetime":
+		return b.Type == a.Type && a.Precision == b.Precision
+	}
+	return a.Type == b.Type
+}
+
+func isInteger(t string) bool { return t == "i16" || t == "i32" || t == "i64" }
+
 // colPairOpAllowed reports whether the column comparison op may compare the columns left and right: its base operator
 // (eq for eq_col) must be one of the left column's type, and neither column may have a codec, since a codec's stored
 // form is not the value the operator orders. Two columns whose only codec is ip compare by eq_col and not_eq_col,
@@ -563,6 +582,9 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 		if target.Field(j.Right) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, j.Right)
 		}
+		if !meets(ent.Field(j.Left), target.Field(j.Right)) {
+			return errf("OPERATOR_NOT_ALLOWED", "join %s: %s.%s (%s) does not meet %s.%s (%s)", j.Rel, ent.Name, j.Left, ent.Field(j.Left).Type, target.Name, j.Right, target.Field(j.Right).Type)
+		}
 		joined[j.Rel] = j
 		if err := v.query(j.Query, s.joins[j.Rel], true, false); err != nil {
 			return err
@@ -615,6 +637,9 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 			}
 			if target.Field(k.Right) == nil {
 				return errf("COLUMN_UNKNOWN", "%s.%s", target.Name, k.Right)
+			}
+			if !meets(ent.Field(k.Left), target.Field(k.Right)) {
+				return errf("OPERATOR_NOT_ALLOWED", "relation %s: %s.%s (%s) does not meet %s.%s (%s)", r.Rel, q.Entity, k.Left, ent.Field(k.Left).Type, target.Name, k.Right, target.Field(k.Right).Type)
 			}
 			// 한 column이 두 성분에 나오면 key가 아니다.
 			if lefts[k.Left] || rights[k.Right] {
@@ -824,7 +849,14 @@ func (v *validator) pred(s *scope, p *Pred) error {
 		if p.P != nil || len(p.Ps) > 0 || p.Fn != nil || p.Value != nil {
 			return errf("IR_INVALID", "subquery pred may not carry values")
 		}
-		return v.sub(p.Sub, false, s)
+		if err := v.sub(p.Sub, false, s); err != nil {
+			return err
+		}
+		// sub checked the subquery column; it meets the compared column as check operands do.
+		if sc := v.m.Entities[p.Sub.Query.Entity].Field(p.Sub.Column); sc != nil && !meets(c, sc) {
+			return errf("OPERATOR_NOT_ALLOWED", "%s.%s (%s) %s a subquery of %s.%s (%s)", ent.Name, p.Column, c.Type, p.Op, p.Sub.Query.Entity, p.Sub.Column, sc.Type)
+		}
+		return nil
 	}
 	if p.Fn != nil || p.Value != nil {
 		c := ent.Field(p.Column)
@@ -904,6 +936,9 @@ func (v *validator) pred(s *scope, p *Pred) error {
 			other, err := v.ref(s, p.Ref)
 			if err != nil {
 				return err
+			}
+			if !meets(c, other) {
+				return errf("OPERATOR_NOT_ALLOWED", "%s.%s (%s) does not meet %s.%s (%s)", ent.Name, p.Column, c.Type, p.Ref.Path, p.Ref.Column, other.Type)
 			}
 			if !colPairOpAllowed(c, other, p.Op) {
 				return errf("OPERATOR_NOT_ALLOWED", "%s on %s.%s (%s) and %s.%s (%s)", p.Op, ent.Name, p.Column, c.Type, p.Ref.Path, p.Ref.Column, other.Type)

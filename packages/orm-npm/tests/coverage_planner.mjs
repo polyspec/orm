@@ -80,4 +80,9 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_bool_gt_col() { compileCase('planner_rejects_bool_gt_col'); },
   async planner_rejects_ip_gt_col() { compileCase('planner_rejects_ip_gt_col'); },
   async planner_rejects_aes_eq_col() { compileCase('planner_rejects_aes_eq_col'); },
+  async planner_col_pair_integers() { compileCase('planner_col_pair_integers'); },
+  async planner_rejects_col_pair_integer_varchar() { compileCase('planner_rejects_col_pair_integer_varchar'); },
+  async planner_rejects_in_subquery_integer_varchar() { compileCase('planner_rejects_in_subquery_integer_varchar'); },
+  async planner_rejects_join_integer_varchar() { compileCase('planner_rejects_join_integer_varchar'); },
+  async planner_rejects_relation_integer_varchar() { compileCase('planner_rejects_relation_integer_varchar'); },
 }, 60_000);

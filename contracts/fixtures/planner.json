@@ -2433,6 +2433,168 @@
         }
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`seq` AS `a__seq`, `a`.`name` AS `a__name`, `a`.`created_ts` AS `a__created_ts`, `a`.`updated_ts` AS `a__updated_ts`, `a`.`is_close` AS `a__is_close`, `a`.`is_display` AS `a__is_display`, `a`.`display_start_dt` AS `a__display_start_dt`, `a`.`display_end_dt` AS `a__display_end_dt`, `a`.`is_allday` AS `a__is_allday`, `a`.`target_club_reader_count` AS `a__target_club_reader_count`, `a`.`success_count` AS `a__success_count`, `a`.`reader_count` AS `a__reader_count`, `a`.`read_count` AS `a__read_count`, `a`.`photo_url` AS `a__photo_url`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq`, `a`.`start_dt` AS `a__start_dt`, `a`.`end_dt` AS `a__end_dt`, `a`.`uuid` AS `a__uuid`, `a`.`is_single_work` AS `a__is_single_work`, `a`.`like_count` AS `a__like_count`, `a`.`aes_hex_email` AS `a__aes_hex_email`, `a`.`aes_hex_phone` AS `a__aes_hex_phone`, `a`.`price` AS `a__price`, `a`.`aes_key_version` AS `a__aes_key_version` FROM `author` AS `a` WHERE `a`.`service_seq` = `a`.`user_seq`",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = \"a\".\"user_seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"name\" AS \"a__name\", \"a\".\"created_ts\" AS \"a__created_ts\", \"a\".\"updated_ts\" AS \"a__updated_ts\", \"a\".\"is_close\" AS \"a__is_close\", \"a\".\"is_display\" AS \"a__is_display\", \"a\".\"display_start_dt\" AS \"a__display_start_dt\", \"a\".\"display_end_dt\" AS \"a__display_end_dt\", \"a\".\"is_allday\" AS \"a__is_allday\", \"a\".\"target_club_reader_count\" AS \"a__target_club_reader_count\", \"a\".\"success_count\" AS \"a__success_count\", \"a\".\"reader_count\" AS \"a__reader_count\", \"a\".\"read_count\" AS \"a__read_count\", \"a\".\"photo_url\" AS \"a__photo_url\", \"a\".\"user_seq\" AS \"a__user_seq\", \"a\".\"service_seq\" AS \"a__service_seq\", \"a\".\"service_region_seq\" AS \"a__service_region_seq\", \"a\".\"service_member_seq\" AS \"a__service_member_seq\", \"a\".\"start_dt\" AS \"a__start_dt\", \"a\".\"end_dt\" AS \"a__end_dt\", \"a\".\"uuid\" AS \"a__uuid\", \"a\".\"is_single_work\" AS \"a__is_single_work\", \"a\".\"like_count\" AS \"a__like_count\", \"a\".\"aes_hex_email\" AS \"a__aes_hex_email\", \"a\".\"aes_hex_phone\" AS \"a__aes_hex_phone\", \"a\".\"price\" AS \"a__price\", \"a\".\"aes_key_version\" AS \"a__aes_key_version\" FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = \"a\".\"user_seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_col_pair_integers",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq_col",
+                "ref": {
+                  "column": "user_seq"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_col_pair_integer_varchar",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq_col",
+                "ref": {
+                  "column": "name"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_in_subquery_integer_varchar",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "in",
+                "sub": {
+                  "column": "name",
+                  "query": {
+                    "entity": "user"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_join_integer_varchar",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "joins": [
+          {
+            "kind": "inner",
+            "left": "seq",
+            "query": {
+              "entity": "author"
+            },
+            "rel": "writers",
+            "right": "name"
+          }
+        ],
+        "kind": "all",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "OPERATOR_NOT_ALLOWED"
+      },
+      "id": "planner_rejects_relation_integer_varchar",
+      "input": {
+        "entity": "user",
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0,
+        "relations": [
+          {
+            "keys": [
+              {
+                "left": "seq",
+                "right": "name"
+              }
+            ],
+            "kind": "many",
+            "query": {
+              "entity": "author"
+            },
+            "rel": "writers"
+          }
+        ]
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"
