@@ -285,7 +285,7 @@ test('a run that stops records the run as incomplete, and rerun-failed runs its 
 
 test('an incomplete record whose process runs refuses the run; a reused process ID with another start time does not', async (t) => {
   const { work } = prepared(t);
-  const other = spawn('sleep', ['60'], { stdio: 'ignore' });
+  const other = spawn(process.execPath, ['-e', 'process.stdin.resume()'], { stdio: ['pipe', 'ignore', 'ignore'] });
   t.after(() => other.kill());
   const stopped = { tree: 'tree-old', commit: 'c0', keys: {}, result: 'incomplete', pid: other.pid, processStart: processStart(other.pid), started: '2026-10-05T01:00:00.000Z', ended: null, targets: [{ name: 'a', status: 'running' }], reruns: [] };
   mkdirSync(path.join(work, 'var'), { recursive: true });
@@ -302,7 +302,7 @@ test('an incomplete record whose process runs refuses the run; a reused process 
 
 test('a guard is refused while another process holds the lock of the record, and runs no target', async (t) => {
   const { work } = prepared(t);
-  const other = spawn('sleep', ['60'], { stdio: 'ignore' });
+  const other = spawn(process.execPath, ['-e', 'process.stdin.resume()'], { stdio: ['pipe', 'ignore', 'ignore'] });
   t.after(() => other.kill());
   mkdirSync(path.join(work, 'var'), { recursive: true });
   writeFileSync(path.join(work, LOCK), `${JSON.stringify({ checkout: work, pid: other.pid, processStart: processStart(other.pid), acquired: '2026-10-05T00:00:00.000Z', command: 'full-run run', token: 'other' })}\n`);

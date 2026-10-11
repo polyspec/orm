@@ -21,6 +21,11 @@
       "kind": "composer",
       "directory": "packages/fixture-php",
       "name": "polyspec/kit-fixture"
+    },
+    {
+      "kind": "wheel",
+      "directory": "packages/fixture-python",
+      "name": "kit-fixture"
     }
   ],
   "manifests": {
@@ -29,7 +34,7 @@
     "packages/fixture-app/package.json": "archive",
     "packages/fixture-php/composer.json": "archive",
     "packages/fixture-rust/Cargo.toml": "git-tag",
-    "packages/fixture-python/pyproject.toml": "git-tag"
+    "packages/fixture-python/pyproject.toml": "archive"
   },
   "notReleased": {
     "external/tagged/js/package.json": "the vendored copy of a tagged package",
@@ -64,19 +69,19 @@
           "require('./vendor/composer/installed.json')"
         ]
       }
-    }
-  },
-  "proof": {
-    "gitTag": {
-      "packages/fixture-python/pyproject.toml": {
-        "kind": "python",
-        "name": "kit-fixture",
-        "smoke": [
+    },
+    "wheel": {
+      "smoke": {
+        "kit-fixture": [
           "python",
           "-c",
           "import kit_fixture"
         ]
-      },
+      }
+    }
+  },
+  "proof": {
+    "gitTag": {
       "packages/fixture-rust/Cargo.toml": {
         "kind": "rust",
         "name": "kit-fixture-rust",
@@ -86,5 +91,9 @@
         ]
       }
     }
+  },
+  "buildBackend": {
+    "requirement": "setuptools==84.0.0",
+    "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
   }
 }

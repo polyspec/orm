@@ -32,15 +32,16 @@ const prove = (box, tag = box.released) => {
 test('a released tag is proven in four steps and each step runs the commands of the configuration', (t) => {
   const box = locked(t);
   assert.deepEqual(prove(box), [
-    'the release v0.0.1 lists exactly its 3 archives',
-    'downloaded [fixture-app-npm-0.0.1.tgz, fixture-lib-npm-0.0.1.tgz, polyspec-kit-fixture-php-0.0.1.zip] from the release v0.0.1',
+    'the release v0.0.1 lists exactly its 4 archives',
+    'downloaded [fixture-app-npm-0.0.1.tgz, fixture-lib-npm-0.0.1.tgz, kit_fixture-0.0.1-py3-none-any.whl, polyspec-kit-fixture-php-0.0.1.zip] from the release v0.0.1',
     'npm ci of 2 packages from tests/release-consumer/npm',
     "npm fixture-lib 0.0.1: node -e require('fixture-lib/package.json')",
     "npm fixture-app 0.0.1: node -e require('fixture-app/package.json')",
     'composer install of 1 packages from tests/release-consumer/composer',
     "composer polyspec/kit-fixture 0.0.1: node -e require('./vendor/composer/installed.json')",
-    'installed and checked 3 packages from the release assets',
-    'packages/fixture-python/pyproject.toml: pip installed kit-fixture from v0.0.1 and python -c import kit_fixture passed',
+    'wheel pip install of 1 packages',
+    'wheel kit-fixture 0.0.1: python -c import kit_fixture',
+    'installed and checked 4 packages from the release assets',
     'packages/fixture-rust/Cargo.toml: cargo resolved kit-fixture-rust from v0.0.1 and cargo check passed',
     'the Go module example.com/kit-fixture-go resolves at packages/fixture-go/v0.0.1',
   ]);
@@ -50,9 +51,9 @@ test('a released tag is proven in four steps and each step runs the commands of 
   const venv = box.calls('python3')[0];
   assert.deepEqual(venv.args.slice(0, 2), ['-m', 'venv']);
   const python = box.calls('python');
-  assert.deepEqual(python[0].args, ['-m', 'pip', 'install', '--no-input', '--disable-pip-version-check', `kit-fixture @ git+${URL}@v0.0.1#subdirectory=packages/fixture-python`]);
-  assert.deepEqual(python[1].args, ['-c', 'import kit_fixture']);
-  assert.equal(python[1].env.VIRTUAL_ENV, venv.args[2], 'the smoke command runs in the virtual environment');
+  assert.deepEqual(python[0].args.slice(0, 8), ['-m', 'pip', 'install', '--no-input', '--disable-pip-version-check', '--no-index', '--require-hashes', '--no-deps']);
+  assert.deepEqual(python.at(-1).args, ['-c', 'import kit_fixture']);
+  assert.equal(python.at(-1).env.VIRTUAL_ENV, venv.args[2], 'the smoke command runs in the virtual environment');
   const [cargo] = box.calls('cargo');
   assert.deepEqual(cargo.args, ['check']);
   assert.match(cargo.manifest, new RegExp(`\\[dependencies\\]\\nkit-fixture-rust = \\{ git = "${URL}", tag = "v0\\.0\\.1" \\}\\n$`));
@@ -65,7 +66,7 @@ test('a released tag is proven in four steps and each step runs the commands of 
 test('the proof stops when the release lists other archives than the configuration declares', (t) => {
   const box = locked(t);
   box.stub({ release: { names: box.names.slice(1).concat('extra.txt'), source: path.join(box.root, release.ASSETS) } });
-  stop(() => prove(box), /the release v0\.0\.1 lists \[extra\.txt, fixture-app-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip\], expected \[fixture-app-npm-0\.0\.1\.tgz, fixture-lib-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip\]; missing \[fixture-lib-npm-0\.0\.1\.tgz\]; unexpected \[extra\.txt\]/);
+  stop(() => prove(box), /the release v0\.0\.1 lists \[extra\.txt, fixture-app-npm-0\.0\.1\.tgz, kit_fixture-0\.0\.1-py3-none-any\.whl, polyspec-kit-fixture-php-0\.0\.1\.zip\], expected \[fixture-app-npm-0\.0\.1\.tgz, fixture-lib-npm-0\.0\.1\.tgz, kit_fixture-0\.0\.1-py3-none-any\.whl, polyspec-kit-fixture-php-0\.0\.1\.zip\]; missing \[fixture-lib-npm-0\.0\.1\.tgz\]; unexpected \[extra\.txt\]/);
   assert.equal(installs(box).length, 0, 'no install runs after a failed step');
   box.stub({ release: { names: [], source: path.join(box.root, release.ASSETS) } });
   stop(() => prove(box), /the release v0\.0\.1 lists \[\], expected \[fixture-app-npm-0\.0\.1\.tgz/);
@@ -103,21 +104,11 @@ test('the proof fails when a smoke command of an archive fails', (t) => {
 test('the proof fails when pip cannot install the tag, when the venv cannot be made and when the smoke command fails', (t) => {
   const box = locked(t);
   box.stub({ modes: { python: 'pip-fail' } });
-  stop(() => prove(box), /python -m pip install .*kit-fixture @ git\+https:\/\/example\.com\/polyspec\/kit-fixture@v0\.0\.1#subdirectory=packages\/fixture-python exited with 1: pip stub: no matching distribution/);
+  stop(() => prove(box), /python -m pip install .* --require-hashes --no-deps -r .* exited with 1: pip stub: no matching distribution/);
   box.stub({ modes: { python: 'smoke-fail' } });
   stop(() => prove(box), /python -c import kit_fixture exited with 1: python stub: ModuleNotFoundError/);
   box.stub({ modes: { python3: 'venv-fail', python: '' } });
   stop(() => prove(box), /python3 -m venv .* exited with 1: python3 stub: venv failed/);
-});
-
-test('a git-tag manifest at the repository root installs without a subdirectory', (t) => {
-  const box = locked(t);
-  const config = readJson(box.root, 'config/release.json');
-  const { ['packages/fixture-python/pyproject.toml']: entry, ...rest } = config.proof.gitTag;
-  const { ['packages/fixture-python/pyproject.toml']: mode, ...manifests } = config.manifests;
-  writeJson(box.root, 'config/release.json', { ...config, manifests: { ...manifests, 'pyproject.toml': mode }, proof: { gitTag: { ...rest, 'pyproject.toml': entry } }, notReleased: config.notReleased });
-  prove(box);
-  assert.equal(box.calls('python')[0].args.at(-1), `kit-fixture @ git+${URL}@v0.0.1`);
 });
 
 test('the proof fails when cargo cannot resolve the tag', (t) => {
@@ -131,7 +122,7 @@ test('the proof fails without a proof entry for a git-tag manifest', (t) => {
   const { proof: _, ...config } = readJson(box.root, 'config/release.json');
   writeJson(box.root, 'config/release.json', config);
   assert.equal(release.loadConfig(box.root).proof, undefined, 'the section is optional for the other release steps');
-  stop(() => prove(box), /config\/release\.json proof\.gitTag lacks packages\/fixture-python\/pyproject\.toml, which manifests releases by "git-tag"/);
+  stop(() => prove(box), /config\/release\.json proof\.gitTag lacks packages\/fixture-rust\/Cargo\.toml, which manifests releases by "git-tag"/);
 });
 
 test('the proof fails when the tag of a Go module is not on the remote', (t) => {
@@ -175,7 +166,7 @@ test('the proof removes its temporary directory and changes nothing in the check
   prove(box);
   assert.equal(git(box.root, 'status', '--porcelain', '--ignored'), before);
   const folder = path.dirname(path.dirname(box.calls('python3')[0].args[2]));
-  assert.match(path.basename(folder), /^kit-release-proof-/);
+  assert.match(path.basename(folder), /^kit-release-consumer-/);
   assert.equal(existsSync(folder), false);
 });
 
@@ -186,7 +177,7 @@ test('the command line prints one line for each step and the exit status', (t) =
   const run = argv => proof.main(argv, { root: box.root, env: box.env, print: line => lines.push(line), error: line => errors.push(line) });
   assert.equal(run(['v0.0.1']), 0);
   assert.ok(lines.every(line => line.startsWith('✔ ')), lines.join('\n'));
-  assert.equal(lines.length, 12);
+  assert.equal(lines.length, 13);
   assert.equal(lines.at(-1), '✔ v0.0.1 is proven from outside the repository');
   box.stub({ modes: { go: 'fail' } });
   assert.equal(run(['v0.0.1']), 1);

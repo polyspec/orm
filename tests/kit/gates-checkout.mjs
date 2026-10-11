@@ -12,6 +12,8 @@ const FIXTURE = path.join(HERE, 'fixture');
 
 export const CHECKLIST = 'docs/plans/execution-checklist.md';
 export const TRANSLATION = 'docs/plans/execution-checklist.ko.md';
+// The commit rules of the checkout: the same rules as the kit repository's config/commits.json.
+export const COMMITS = { schema: 1, types: ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore'], subjectMax: 50, bodyMax: 72 };
 
 export function run(cwd, command, args, options = {}) {
   return spawnSync(command, args, { cwd, encoding: 'utf8', ...options });
@@ -56,6 +58,7 @@ export function checkout(t, { state = '[ ]', config = null, files = {} } = {}) {
   cpSync(path.join(ROOT, 'scripts/kit'), path.join(work, 'scripts/kit'), { recursive: true });
   mkdirSync(path.join(work, 'config'));
   cpSync(path.join(FIXTURE, 'config/checklist.json'), path.join(work, 'config/checklist.json'));
+  writeFileSync(path.join(work, 'config/commits.json'), JSON.stringify(COMMITS));
   if (config) writeFileSync(path.join(work, 'config/checklist.json'), JSON.stringify(config));
   mkdirSync(path.join(work, 'docs/plans'), { recursive: true });
   const { english, korean } = checklists(state);
@@ -77,6 +80,6 @@ export function prepared(t, options) {
   const made = checkout(t, options);
   const installed = run(made.work, process.execPath, ['scripts/kit/git-hooks.mjs', 'install']);
   if (installed.status !== 0) throw new Error(`git-hooks install failed: ${installed.stderr}`);
-  commitAll(made.work, 'checklist');
+  commitAll(made.work, 'docs(checklist): Add the checklist (#T1)');
   return made;
 }

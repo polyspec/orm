@@ -31,10 +31,11 @@ export default class ProgressReporter extends Transform {
     return [data.file, data.nesting, data.name, data.line, data.column].join('\0');
   }
 
-  // A test's position: its file, then the names of its enclosing tests.
+  // A test's position: its file, then the names of its enclosing tests. node names a file group relative to its working
+  // directory (--cwd of run-tests), so the group is matched after resolving that name against the same directory.
   id(data) {
     const file = data.file ? path.relative(ROOT, data.file) : '';
-    if (data.nesting === 0 && (data.name === file || data.name === data.file)) return { id: file, group: true };
+    if (data.nesting === 0 && data.file && path.resolve(process.cwd(), data.name) === data.file) return { id: file, group: true };
     const trail = this.names.get(file) ?? [];
     trail.length = data.nesting;
     trail[data.nesting] = data.name;

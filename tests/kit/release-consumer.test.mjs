@@ -45,13 +45,12 @@ test('the configuration rules name each inconsistent consumer and proof entry', 
   stop(load((c) => { c.consumers.npm.smoke = {}; return c; }), /consumers\.npm\.smoke needs one entry per installed package/);
   stop(load((c) => { c.consumers.composer.directory = c.consumers.npm.directory; return c; }), /consumers\.composer\.directory tests\/release-consumer\/npm is also the directory of another consumer/);
   stop(load(c => ({ ...c, packages: c.packages.filter(item => item.kind === 'npm'), manifests: Object.fromEntries(Object.entries(c.manifests).filter(([file]) => !file.endsWith('composer.json'))) })), /consumers\.composer is set but packages lists no composer package/);
-  delete original.proof.gitTag['packages/fixture-rust/Cargo.toml'];
-  stop(load(c => c), /proof\.gitTag lacks packages\/fixture-rust\/Cargo\.toml, which manifests releases by "git-tag"/);
+  stop(load(c => ({ ...c, proof: { gitTag: {} } })), /proof\.gitTag lacks packages\/fixture-rust\/Cargo\.toml, which manifests releases by "git-tag"/);
   stop(load((c) => { c.proof.gitTag['packages/fixture-lib/package.json'] = { kind: 'python', name: 'x', smoke: ['python'] }; return c; }), /proof\.gitTag\.packages\/fixture-lib\/package\.json is not a manifest with the mode "git-tag"/);
-  stop(load((c) => { c.proof.gitTag['packages/fixture-python/pyproject.toml'].kind = 'rust'; return c; }), /kind rust installs a Cargo\.toml, not a pyproject\.toml/);
-  stop(load((c) => { c.proof.gitTag['packages/fixture-python/pyproject.toml'].kind = 'ruby'; return c; }), /kind is "ruby", the allowed values are python, rust/);
-  stop(load((c) => { c.proof.gitTag['packages/fixture-python/pyproject.toml'].name = ''; return c; }), /\.name needs the package name/);
-  stop(load((c) => { c.proof.gitTag['packages/fixture-python/pyproject.toml'].smoke = [1]; return c; }), /\.smoke needs a command/);
+  stop(load((c) => { c.proof.gitTag['packages/fixture-rust/Cargo.toml'].kind = 'ruby'; return c; }), /kind is "ruby", the allowed values are rust/);
+  stop(load((c) => { c.proof.gitTag['packages/fixture-rust/Cargo.toml'].kind = 'python'; return c; }), /kind is "python", the allowed values are rust/);
+  stop(load((c) => { c.proof.gitTag['packages/fixture-rust/Cargo.toml'].name = ''; return c; }), /\.name needs the package name/);
+  stop(load((c) => { c.proof.gitTag['packages/fixture-rust/Cargo.toml'].smoke = [1]; return c; }), /\.smoke needs a command/);
 });
 
 test('lock writes the manifests and locks of the archives of the tag, without the hashes of the archives, and a second run changes nothing', (t) => {
@@ -93,7 +92,7 @@ test('lock runs npm and Composer from clean projects outside the repository with
 test('lock needs the archives of the tag and a committed manifest', (t) => {
   const box = consumerSandbox(t);
   const tag = box.tag('v0.0.2');
-  stop(() => consumer.lockConsumers(box.ctx(), tag), /var\/release\/assets holds \[.*0\.0\.1.*\], the archives of 0\.0\.2 are \[fixture-app-npm-0\.0\.2\.tgz, fixture-lib-npm-0\.0\.2\.tgz, polyspec-kit-fixture-php-0\.0\.2\.zip\]/);
+  stop(() => consumer.lockConsumers(box.ctx(), tag), /var\/release\/assets holds \[.*0\.0\.1.*\], the archives of 0\.0\.2 are \[fixture-app-npm-0\.0\.2\.tgz, fixture-lib-npm-0\.0\.2\.tgz, kit_fixture-0\.0\.2-py3-none-any\.whl, polyspec-kit-fixture-php-0\.0\.2\.zip\]/);
   stop(() => consumer.lockConsumers(box.ctx(), 'packages/fixture-go/v0.0.1'), /packages\/fixture-go\/v0\.0\.1 is a Go module tag/);
   git(box.root, 'rm', '--quiet', '-f', '--', `${NPM}/package.json`);
   stop(() => box.lock(), /tests\/release-consumer\/npm\/package\.json is missing; commit the manifest of the npm consumer project/);
@@ -104,13 +103,15 @@ test('install runs npm ci and composer install in clean projects outside the rep
   box.lock();
   const steps = [];
   const count = consumer.installConsumers(box.ctx(), box.version, path.join(box.root, release.ASSETS), text => steps.push(text));
-  assert.equal(count, 3);
+  assert.equal(count, 4);
   assert.deepEqual(steps, [
     'npm ci of 2 packages from tests/release-consumer/npm',
     "npm fixture-lib 0.0.1: node -e require('fixture-lib/package.json')",
     "npm fixture-app 0.0.1: node -e require('fixture-app/package.json')",
     'composer install of 1 packages from tests/release-consumer/composer',
     "composer polyspec/kit-fixture 0.0.1: node -e require('./vendor/composer/installed.json')",
+    'wheel pip install of 1 packages',
+    "wheel kit-fixture 0.0.1: python -c import kit_fixture",
   ]);
   const [ci] = box.calls('npm').slice(-1);
   assert.deepEqual(ci.args, ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--fetch-retries=0']);
@@ -137,7 +138,7 @@ test('install points the scope of an npm package of the repository at an unreach
       edit(root, 'packages/fixture-app/package.json', manifest => ({ ...manifest, dependencies: { '@kit/fixture-lib': '0.0.1' } }));
     },
   });
-  assert.deepEqual(box.names, ['kit-fixture-lib-npm-0.0.1.tgz', 'fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip']);
+  assert.deepEqual(box.names, ['kit-fixture-lib-npm-0.0.1.tgz', 'fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip', 'kit_fixture-0.0.1-py3-none-any.whl']);
   box.lock();
   install(box);
   assert.deepEqual(box.calls('npm').map(call => call.args.filter(arg => arg.includes('registry'))), [['--@kit:registry=http://127.0.0.1:9/'], ['--@kit:registry=http://127.0.0.1:9/']]);
@@ -218,8 +219,8 @@ test('the command line locks, installs, ends a Go module tag without an install 
   assert.deepEqual(lines, [`[release-consumer] v0.0.1: wrote ${NPM}/package.json and package-lock.json for v0.0.1`, `[release-consumer] v0.0.1: wrote ${COMPOSER}/composer.json and composer.lock for v0.0.1`]);
   lines.length = 0;
   assert.equal(run(['install', 'v0.0.1']), 0);
-  assert.equal(lines.at(-1), '[release-consumer] v0.0.1: installed and checked 3 packages from var/release/assets');
-  assert.equal(lines.length, 6);
+  assert.equal(lines.at(-1), '[release-consumer] v0.0.1: installed and checked 4 packages from var/release/assets');
+  assert.equal(lines.length, 8);
   lines.length = 0;
   assert.equal(run(['install', 'packages/fixture-go/v0.0.1']), 0);
   assert.deepEqual(lines, ['[release-consumer] packages/fixture-go/v0.0.1: a Go module tag releases no archive; nothing to install']);
@@ -241,7 +242,7 @@ test('make release-consumer-lock and release-consumer take the tag of the enviro
   assert.equal(locked.status, 0, locked.stderr);
   const installed = make('release-consumer', 'TAG=v0.0.1');
   assert.equal(installed.status, 0, installed.stderr);
-  assert.match(installed.stdout, /installed and checked 3 packages from var\/release\/assets/);
+  assert.match(installed.stdout, /installed and checked 4 packages from var\/release\/assets/);
 });
 
 // The real npm and Composer install archives that the release tool builds from a committed tree. The tools are required:
@@ -256,6 +257,13 @@ test('the real npm ci and composer install install the archives of a tag from th
     mutate(root) {
       edit(root, 'packages/fixture-lib/package.json', ({ dependencies, ...manifest }) => manifest);
       edit(root, 'packages/fixture-php/composer.json', ({ require, config, ...manifest }) => manifest);
+      // The wheel needs the Python of the machine, which this case does not run: the case covers npm and Composer only.
+      edit(root, 'config/release.json', ({ buildBackend, consumers: { wheel, ...consumers }, packages, manifests, ...config }) => ({
+        ...config,
+        consumers,
+        packages: packages.filter(item => item.kind !== 'wheel'),
+        manifests: Object.fromEntries(Object.entries(manifests).filter(([file]) => file !== 'packages/fixture-python/pyproject.toml')),
+      }));
     },
   });
   const tag = box.release('0.0.1');
@@ -277,7 +285,7 @@ test('the real npm ci and composer install install the archives of a tag from th
 test('the consumer tests leave no temporary entry of the npm stub in TMPDIR', (t) => {
   const directory = mkdtempSync(path.join(realpathSync(tmpdir()), 'kit-consumer-tmp-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const result = spawnSync(process.execPath, ['--test', '--test-name-pattern=/lock writes the manifests and locks|lock runs npm and Composer/', 'tests/kit/release-consumer.test.mjs'], { encoding: 'utf8', env: { ...process.env, NODE_TEST_CONTEXT: undefined, TMPDIR: directory } });
+  const result = spawnSync(process.execPath, ['--test', '--test-name-pattern=/lock writes the manifests and locks|lock runs npm and Composer/', 'tests/kit/release-consumer.test.mjs'], { encoding: 'utf8', env: { ...process.env, NODE_TEST_CONTEXT: undefined, TMPDIR: directory, NO_COLOR: '1', FORCE_COLOR: '0' } });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /ℹ tests 2\n/);
   assert.deepEqual(readdirSync(directory).filter(entry => entry.startsWith('stub-npm-')), []);

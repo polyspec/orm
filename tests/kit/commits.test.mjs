@@ -1,12 +1,13 @@
-// Tests of scripts/kit/check-commits.mjs: each rule of a commit message has a passing and a failing case, and the command
-// reads a range, a message file and the configuration.
+// Tests of scripts/kit/check-commits.mjs: each rule of a commit message has a passing and a failing case, the rules of the
+// checklist items that a commit changes have a passing and a failing case, and the command reads a range, a message file
+// and the configuration.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { fileMessage, messageFindings, rangeFindings } from '../../scripts/kit/check-commits.mjs';
+import { fileMessage, indexItemFindings, messageFindings, rangeFindings } from '../../scripts/kit/check-commits.mjs';
 import { put, tree } from './tree.mjs';
 
 const KIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../scripts/kit');
@@ -119,4 +120,61 @@ test('config/commits.json is validated against its schema', async () => {
     '$.types[0] is "Feat", the schema requires a match of ^[a-z]+$',
     '$.subjectMax is 0, the schema requires at least 1',
   ]);
+});
+
+const TRACKED = { schema: 1, types: ['feat', 'fix', 'docs'], subjectMax: 50, bodyMax: 72, changelog: { path: 'CHANGELOG.md', translation: 'CHANGELOG.ko.md' } };
+const CHECKLIST = { schema: 1, hooks: ['pre-push'], trackers: [{ path: 'plan.md', format: 'table', states: ['[ ]', '[~]', '[o]'], active: '[~]', done: '[o]' }] };
+const plan = rows => `# Plan\n\n| ID | Task | State |\n|---|---|---|\n${rows.map(([id, state]) => `| ${id} | Task ${id} | ${state} |`).join('\n')}\n`;
+
+function tracked(t, steps) {
+  const root = tree(t, { 'config/commits.json': JSON.stringify(TRACKED), 'config/checklist.json': JSON.stringify(CHECKLIST) });
+  cpSync(KIT, path.join(root, 'scripts/kit'), { recursive: true });
+  const git = (...args) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd: root, encoding: 'utf8' });
+  for (const [message, files] of steps) {
+    put(root, files);
+    git('add', '-A');
+    const result = git('commit', '-q', '-m', message);
+    assert.equal(result.status, 0, result.stderr);
+  }
+  return { root, git };
+}
+
+test('commit-changelog: a commit that moves an item to its done state also changes the changelog in both languages', (t) => {
+  const { root } = tracked(t, [
+    ['docs(plan): Add the tasks (#S1)', { 'plan.md': plan([['S1', '[~]'], ['S2', '[ ]']]), 'CHANGELOG.md': '# Changelog\n', 'CHANGELOG.ko.md': '# 변경 기록\n' }],
+    ['feat(core): Finish S1 (#S1)', { 'plan.md': plan([['S1', '[o]'], ['S2', '[ ]']]), 'CHANGELOG.md': '# Changelog\n\n- S1\n' }],
+    ['feat(core): Finish S2 (#S2)', { 'plan.md': plan([['S1', '[o]'], ['S2', '[o]']]), 'CHANGELOG.md': '# Changelog\n\n- S1\n- S2\n', 'CHANGELOG.ko.md': '# 변경 기록\n\n- S2\n' }],
+  ]);
+  const findings = rangeFindings(root, 'HEAD~2..HEAD', TRACKED);
+  assert.equal(findings.length, 1, findings.join('\n'));
+  assert.match(findings[0], /: commit-changelog: the commit moves S1 to \[o\] in plan\.md but does not change CHANGELOG\.ko\.md; record the item in the changelog of both languages$/);
+});
+
+test('commit-items: a commit changes the state of at most one item, and a row it adds is not a change', (t) => {
+  const { root } = tracked(t, [
+    ['docs(plan): Add the tasks (#S1)', { 'plan.md': plan([['S1', '[ ]'], ['S2', '[ ]']]) }],
+    ['docs(plan): Start two tasks (#S1)', { 'plan.md': plan([['S1', '[~]'], ['S2', '[~]'], ['S3', '[ ]'], ['S4', '[o]']]) }],
+    ['docs(plan): Add a sub-task (#S1)', { 'plan.md': plan([['S1', '[~]'], ['S2', '[~]'], ['S3', '[ ]'], ['S4', '[o]'], ['S1-1', '[o]']]) }],
+  ]);
+  const findings = rangeFindings(root, 'HEAD~2..HEAD', TRACKED);
+  assert.equal(findings.length, 1, findings.join('\n'));
+  assert.match(findings[0], /: commit-items: the commit changes the state of 2 items \(S1 \[ \] → \[~\], S2 \[ \] → \[~\]\); change one item per commit$/);
+});
+
+test('the item rules of the commit-msg hook compare the index with HEAD', (t) => {
+  const { root, git } = tracked(t, [['docs(plan): Add the tasks (#S1)', { 'plan.md': plan([['S1', '[~]']]), 'CHANGELOG.md': '# Changelog\n', 'CHANGELOG.ko.md': '# 변경 기록\n' }]]);
+  put(root, { 'plan.md': plan([['S1', '[o]']]) });
+  git('add', '-A');
+  assert.deepEqual(indexItemFindings(root, TRACKED).map(found => found.message.split(' does not change ')[1]), ['CHANGELOG.md; record the item in the changelog of both languages', 'CHANGELOG.ko.md; record the item in the changelog of both languages']);
+  put(root, { 'CHANGELOG.md': '# Changelog\n\n- S1\n', 'CHANGELOG.ko.md': '# 변경 기록\n\n- S1\n' });
+  git('add', '-A');
+  assert.deepEqual(indexItemFindings(root, TRACKED), []);
+});
+
+test('a repository without a changelog keeps the one item rule', (t) => {
+  const { root } = tracked(t, [
+    ['docs(plan): Add the tasks (#S1)', { 'plan.md': plan([['S1', '[~]']]) }],
+    ['feat(core): Finish S1 (#S1)', { 'plan.md': plan([['S1', '[o]']]) }],
+  ]);
+  assert.deepEqual(rangeFindings(root, 'HEAD~1..HEAD', CONFIG), []);
 });

@@ -10,6 +10,16 @@
     "comment": { "type": "string" },
     "types": { "description": "The allowed types of the subject.", "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z]+$" } },
     "subjectMax": { "description": "The most characters of the Subject, the part between the colon and the (#id).", "type": "integer", "minimum": 1 },
-    "bodyMax": { "description": "The most characters of a line of the body; a single word longer than this, such as a URL, is allowed.", "type": "integer", "minimum": 1 }
+    "bodyMax": { "description": "The most characters of a line of the body; a single word longer than this, such as a URL, is allowed.", "type": "integer", "minimum": 1 },
+    "changelog": {
+      "description": "The changelog that a commit changes when it moves a checklist item to the done state of its tracker.",
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "description": "The English changelog, relative to the repository root.", "type": "string", "pattern": "^[^/].*[^/]$" },
+        "translation": { "description": "The Korean twin of the changelog.", "type": "string", "pattern": "^[^/].*[^/]$" }
+      }
+    }
   }
 }

@@ -29,6 +29,7 @@ export function run(command, args, options, print) {
 
 // The arguments that make a tool of var/tools print its release, and the pattern that reads the release from the output.
 export const RELEASE_OUTPUT = {
+  python: { args: ['--version'], pattern: /^Python (\d+\.\d+\.\d+)$/m },
   ruff: { args: ['--version'], pattern: /^ruff (\d+\.\d+\.\d+)$/m },
   cargoAudit: { args: ['--version'], pattern: /^cargo-audit (\d+\.\d+\.\d+)$/m },
   govulncheck: { args: ['-version'], pattern: /^Scanner: govulncheck@v(\d+\.\d+\.\d+)$/m },

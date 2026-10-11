@@ -8,67 +8,113 @@
 // never sees a partial record. One process holds a lock at a time. Another process fails with the record of the holder.
 // The start time identifies the holder: a process ID that the system reuses has another start time, so the lock of an
 // ended holder is not taken for a running one. A lock whose holder has ended is reported and stays until `clear` removes
-// it. Only the holder releases the lock; the release checks the token first.
+// it; `clear` claims the lock by a hard link before it removes it and never moves the lock of a running holder. Only the
+// holder releases the lock; the release checks the token first.
 //
 //   node scripts/kit/holder-lock.mjs run <lock> -- <command> [arguments...]
 //     holds the lock while the command runs and exits with the status of the command (128 + n for signal n)
 //   node scripts/kit/holder-lock.mjs clear <lock>
 //     removes the lock when its holder has ended, and fails while the holder runs
-import { execFileSync, spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:os';
-import { linkSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { linkSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isMain, ROOT } from './paths.mjs';
+import { execute } from './process.mjs';
 
 const SCRIPT = fileURLToPath(import.meta.url);
 const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
-/**
- * The start time of a process from the text of `/proc/<pid>/stat` and the boot time of `/proc/stat`: field 22 counts clock
- * ticks from the boot. The command name in parentheses may hold spaces, so the fields are counted after its closing
- * parenthesis.
- */
-export function procStart(stat, systemStat) {
-  const ticks = stat.slice(stat.lastIndexOf(')') + 2).split(' ')[19];
-  const boot = /^btime (\d+)$/m.exec(systemStat)?.[1];
-  if (!/^\d+$/.test(ticks ?? '')) throw new Error(`/proc/<pid>/stat holds no start time: ${JSON.stringify(stat)}`);
-  if (!boot) throw new Error('/proc/stat holds no boot time');
-  return `${ticks} clock ticks after the boot at ${new Date(Number(boot) * 1000).toISOString()}`;
-}
+/** The start time of a process that runs but whose start time this process cannot read; such a holder counts as running. */
+const START_UNREADABLE = Symbol('start time unreadable');
 
 /**
- * The start time of a running process, or null when no such process runs: from `/proc` on Linux, whose minimal container
- * images have no `ps`, and as `ps` prints it elsewhere.
+ * The system calls that processStart makes: the platform, kill(pid, 0), the reading of a file and the running of a command.
+ * A test passes another host to follow the path of another platform.
  */
-export function processStart(pid) {
+export const HOST = { platform: process.platform, kill: pid => process.kill(pid, 0), readFile: file => readFileSync(file, 'utf8'), execute };
+
+/**
+ * The start time of a process from the text of `/proc/<pid>/stat` and the text of `/proc/sys/kernel/random/boot_id`: field
+ * 22 counts clock ticks from the boot, and the boot ID names the boot. `btime` of `/proc/stat` is not used: it is derived
+ * from the wall clock, so it moves when the clock is set. The command name in parentheses may hold spaces, so the fields
+ * are counted after its closing parenthesis.
+ */
+export function procStart(stat, bootId) {
+  const ticks = stat.slice(stat.lastIndexOf(')') + 2).split(' ')[19];
+  const boot = bootId.trim();
+  if (!/^\d+$/.test(ticks ?? '')) throw new Error(`/proc/<pid>/stat holds no start time: ${JSON.stringify(stat)}`);
+  if (!boot) throw new Error('/proc/sys/kernel/random/boot_id holds no boot ID');
+  return `${ticks} clock ticks after the boot ${boot}`;
+}
+
+/** Whether a process has the ID: kill(pid, 0) succeeds or fails with EPERM for an existing process and with ESRCH for none. */
+function processExists(pid, host) {
   try {
-    process.kill(pid, 0);
+    host.kill(pid);
+    return true;
   } catch (error) {
-    if (error.code === 'ESRCH') return null;
-    if (error.code !== 'EPERM') throw error;
-  }
-  if (process.platform === 'linux') {
-    let stat;
-    try {
-      stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-    } catch (error) {
-      if (error.code === 'ENOENT') return null;
-      throw error;
-    }
-    return procStart(stat, readFileSync('/proc/stat', 'utf8'));
-  }
-  try {
-    return execFileSync('ps', ['-o', 'lstart=', '-p', String(pid)], { encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' }, stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
-  } catch (error) {
-    if (error.status === 1) return null;
+    if (error.code === 'ESRCH') return false;
+    if (error.code === 'EPERM') return true;
     throw error;
   }
 }
 
+// The creation time of a process on Windows. Node has no call that reads it (GetProcessTimes) without a native addon, so
+// Windows PowerShell 5.1, which every supported Windows ships as powershell.exe, reads it: Process.StartTime of .NET calls
+// GetProcessTimes, and ToFileTimeUtc gives it as a FILETIME, exact and free of the time zone. wmic is not used: it is
+// deprecated and no longer installed by default on Windows 11. The exit status 3 means no process has the ID, and 4 that
+// the creation time cannot be read (a process of another user without the right to query it).
+const windowsStartScript = pid => `$p = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($null -eq $p) { exit 3 }; try { $t = $p.StartTime; if ($null -eq $t) { exit 4 }; $t.ToFileTimeUtc() } catch { exit 4 }`;
+
+// Runs a command that prints the start time; `statuses` maps an exit status other than 0 to its result.
+function commandStart(host, command, args, statuses, env) {
+  const result = host.execute(command, args, { env });
+  if (result.error) throw new Error(`${command} could not start: ${result.error.message}`);
+  if (result.status in statuses) return statuses[result.status];
+  if (result.status !== 0) throw new Error(`${command} exited with ${result.status}: ${result.stderr.trim()}`);
+  return result.stdout.trim() || null;
+}
+
+/**
+ * The start time of a running process; null when no such process runs, and START_UNREADABLE when the process runs and its
+ * start time cannot be read.
+ *
+ * - Linux: the boot ID with the start ticks, from `/proc`, since minimal container images have no `ps`. When
+ *   `/proc/<pid>/stat` cannot be read (`hidepid` hides the processes of other users), kill(pid, 0) is asked again: ESRCH
+ *   means the process ended, otherwise it runs.
+ * - Windows: the creation time from PowerShell (windowsStartScript); Windows has no `ps`.
+ * - macOS and other systems: `lstart` of `ps` in the C locale. Node reads the start time of another process on macOS only
+ *   through sysctl `kern.proc.pid.<pid>` or `proc_pidinfo`, which need a native addon, and macOS has no `/proc`; `ps` is
+ *   part of the base system.
+ */
+export function processStart(pid, host = HOST) {
+  if (!processExists(pid, host)) return null;
+  if (host.platform === 'linux') {
+    let stat;
+    try {
+      stat = host.readFile(`/proc/${pid}/stat`);
+    } catch (error) {
+      if (!['ENOENT', 'EACCES', 'EPERM', 'ESRCH'].includes(error.code)) throw error;
+      return processExists(pid, host) ? START_UNREADABLE : null;
+    }
+    return procStart(stat, host.readFile('/proc/sys/kernel/random/boot_id'));
+  }
+  if (host.platform === 'win32') {
+    const created = commandStart(host, 'powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', windowsStartScript(pid)], { 3: null, 4: START_UNREADABLE });
+    if (typeof created === 'string' && !/^\d+$/.test(created)) throw new Error(`powershell.exe printed no creation time: ${JSON.stringify(created)}`);
+    return typeof created === 'string' ? `${created} (the Windows FILETIME of the creation)` : created;
+  }
+  return commandStart(host, 'ps', ['-o', 'lstart=', '-p', String(pid)], { 1: null }, { ...process.env, LC_ALL: 'C' });
+}
+
 /** Whether the process that wrote the record still runs; a reused process ID has another start time. */
-export const holderRunning = record => processStart(record.pid) === record.processStart;
+export function holderRunning(record, host = HOST) {
+  const start = processStart(record.pid, host);
+  return start === START_UNREADABLE || start === record.processStart;
+}
 
 /** Describes a holder by its process, its checkout and the time it took the lock. */
 export const describeHolder = record => `process ${record.pid} (started ${record.processStart}) of the checkout ${record.checkout}, held since ${record.acquired} for ${JSON.stringify(record.command)}`;
@@ -83,8 +129,9 @@ export class HolderLockRefused extends Error {
 }
 
 /** The record of a lock file; a file that holds no record is an error and never a free lock. */
-export function readLockRecord(lock) {
-  const text = readFileSync(lock, 'utf8');
+export const readLockRecord = lock => parseLockRecord(lock, readFileSync(lock, 'utf8'));
+
+function parseLockRecord(lock, text) {
   let record;
   try {
     record = JSON.parse(text);
@@ -112,7 +159,7 @@ export function acquireHolderLock(lock, { checkout = process.cwd(), command = pr
   if (!path.isAbsolute(lock)) throw new Error(`the lock file ${lock} must be an absolute path`);
   mkdirSync(path.dirname(lock), { recursive: true });
   const start = processStart(process.pid);
-  if (!start) throw new Error(`the start time of process ${process.pid} is unknown`);
+  if (typeof start !== 'string') throw new Error(`the start time of process ${process.pid} is unknown`);
   const record = { checkout: path.resolve(checkout), pid: process.pid, processStart: start, acquired: new Date().toISOString(), command, token: randomBytes(16).toString('hex') };
   const pending = `${lock}.${process.pid}.${record.token}`;
   writeFileSync(pending, `${JSON.stringify(record)}\n`, { flag: 'wx' });
@@ -151,26 +198,41 @@ export function acquireHolderLock(lock, { checkout = process.cwd(), command = pr
 }
 
 /**
- * Removes a lock whose holder has ended and returns its record; a running holder is refused. The lock is renamed aside
- * before its record is read again, so a lock that a new holder took in the meantime is put back and not removed.
+ * Removes a lock whose holder has ended and returns its record; a running holder is refused.
+ *
+ * 1. Read the record R and refuse a running holder.
+ * 2. Claim the lock: link it to `<lock>.<first 32 hex digits of the SHA-256 of R>.clearing`. EEXIST refuses: the claim is
+ *    another clear of the same holder, running or interrupted.
+ * 3. Read the claim. A record other than R means that a new holder took the lock after another clear removed it: remove the
+ *    claim and refuse.
+ * 4. Otherwise remove the lock, then the claim.
+ *
+ * Only the holder and the one clear that holds the claim remove the lock, so between the claim and the removal the lock
+ * still holds R, and the lock of a running holder is never moved. `afterCheck` and `afterClaim` run after steps 1 and 2; a
+ * test interleaves other clears and holders there.
  */
-export function removeDeadLock(lock) {
+export function removeDeadLock(lock, { afterCheck = () => {}, afterClaim = () => {} } = {}) {
   if (!path.isAbsolute(lock)) throw new Error(`the lock file ${lock} must be an absolute path`);
-  const record = readLockRecord(lock);
+  const text = readFileSync(lock, 'utf8');
+  const record = parseLockRecord(lock, text);
   if (holderRunning(record)) throw refusal(lock, record);
-  const aside = `${lock}.removing.${process.pid}.${randomBytes(8).toString('hex')}`;
-  renameSync(lock, aside);
-  const moved = readLockRecord(aside);
-  if (moved.token !== record.token) {
-    try {
-      linkSync(aside, lock);
-    } catch (error) {
-      throw new Error(`${lock} was taken by ${describeHolder(moved)} during the removal and another process took it before it was restored; the record of that holder is in ${aside}`, { cause: error });
-    }
-    unlinkSync(aside);
-    throw refusal(lock, moved);
+  afterCheck();
+  const claim = `${lock}.${createHash('sha256').update(text).digest('hex').slice(0, 32)}.clearing`;
+  try {
+    linkSync(lock, claim);
+  } catch (error) {
+    if (error.code === 'EEXIST') throw new Error(`${claim} exists: another clear of this holder is running or was interrupted; remove ${claim} after checking that no clear runs`, { cause: error });
+    if (error.code === 'ENOENT') throw new Error(`${lock} was removed during the clear`, { cause: error });
+    throw error;
   }
-  unlinkSync(aside);
+  afterClaim();
+  const claimed = readFileSync(claim, 'utf8');
+  if (claimed !== text) {
+    unlinkSync(claim);
+    throw refusal(lock, parseLockRecord(lock, claimed));
+  }
+  unlinkSync(lock);
+  unlinkSync(claim);
   return record;
 }
 

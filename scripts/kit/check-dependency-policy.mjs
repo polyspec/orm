@@ -8,7 +8,7 @@
 //   node scripts/kit/check-dependency-policy.mjs [--root <checkout>]
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { POLICY, RECORD, NPM_LOCK, UPDATE, dependencyKey, readState } from './dependency-state.mjs';
+import { POLICY, RECORD, UPDATE, dependencyKey, localSpecDirectory, readState } from './dependency-state.mjs';
 import { isPrerelease, older } from './version.mjs';
 import { isMain, ROOT } from './paths.mjs';
 import { execute } from './process.mjs';
@@ -22,7 +22,7 @@ export const RULES = {
   composerPackage: 'each published Composer manifest of packages/ is valid, as composer validate reads it without a lock and without a network',
   local: 'a package of this repository is required at its own version and locked at it',
   tagged: 'a polyspec package taken from a GitHub tag is linked to the checkout of its tag, has the version of that tag and is locked at it',
-  npmLock: `${NPM_LOCK} records the dependencies of every npm manifest`,
+  npmLock: 'each npm lock that the policy names records the dependencies of every npm manifest that it resolves',
   record: 'every registry dependency and every lock has an entry in the review record that matches the committed manifests and locks',
   latest: 'a registry dependency is locked at the latest stable release known at its review, unless the policy holds an exception for it',
   stale: 'an exception names a dependency that its review found at the latest stable release',
@@ -45,8 +45,8 @@ export function check(root, { composer = 'composer' } = {}) {
   const add = (rule, subject, problem, fix) => findings.push({ rule, subject, problem, fix });
 
   const policy = readJson(root, POLICY);
-  if (policy.schema !== 1 || !Array.isArray(policy.composerPlatforms) || !Array.isArray(policy.pythonManifests) || !Array.isArray(policy.exceptions)) {
-    add('policy', POLICY, 'the schema is not 1 with composerPlatforms, pythonManifests and exceptions', `restore the schema of ${POLICY}`);
+  if (policy.schema !== 1 || !Array.isArray(policy.composerPlatforms) || !Array.isArray(policy.pythonManifests) || !Array.isArray(policy.npmLocks) || !Array.isArray(policy.exceptions)) {
+    add('policy', POLICY, 'the schema is not 1 with composerPlatforms, pythonManifests, npmLocks and exceptions', `restore the schema of ${POLICY}`);
     return findings;
   }
   const state = readState(root, policy);
@@ -92,10 +92,10 @@ export function check(root, { composer = 'composer' } = {}) {
   for (const item of state.local) {
     const subject = `${item.manifest} ${item.package}`;
     if (item.ecosystem === 'npm') {
-      if (item.directory === null) add('local', subject, `${NPM_LOCK} links it to no package of this repository`, 'run npm install');
+      if (item.directory === null) add('local', subject, `${item.lock} links it to no package of this repository`, 'run npm install');
       else if (item.name !== item.package) add('local', subject, `${item.directory} is the package ${item.name ?? 'without a name'}`, 'run npm install');
-      else if (item.spec !== item.version && item.spec !== `file:${item.directory}`) add('local', subject, `the manifest requires ${item.spec}, ${item.directory} has version ${item.version}`, `require ${item.version} and run npm install`);
-      else if (item.lockVersion !== item.version) add('local', subject, `${NPM_LOCK} records version ${item.lockVersion ?? 'none'}, ${item.directory} has version ${item.version}`, 'run npm install');
+      else if (item.spec !== item.version && localSpecDirectory(item.base, item.spec) !== item.directory) add('local', subject, `the manifest requires ${item.spec}, ${item.directory} has version ${item.version}`, `require ${item.version} and run npm install`);
+      else if (item.lockVersion !== item.version) add('local', subject, `${item.lock} records version ${item.lockVersion ?? 'none'}, ${item.directory} has version ${item.version}`, 'run npm install');
     } else if (item.lockVersion !== item.version) {
       add('local', subject, `the lock records version ${item.lockVersion}, the manifest requires ${item.version}`, `run composer update --lock in ${path.posix.dirname(item.manifest)}`);
     }
@@ -104,21 +104,21 @@ export function check(root, { composer = 'composer' } = {}) {
   for (const item of state.tagged) {
     const subject = `${item.manifest} ${item.package}`;
     const { directory, repository, tag, version } = item.release;
-    if (item.spec !== `file:${directory}`) add('tagged', subject, `the manifest requires ${item.spec}, the checkout of ${repository} ${tag} is ${directory}`, `require file:${directory} and run npm install`);
-    else if (item.directory !== directory) add('tagged', subject, `${NPM_LOCK} links it to ${item.directory ?? 'no directory'}, the checkout of ${repository} ${tag} is ${directory}`, 'run npm install');
+    if (localSpecDirectory(item.base, item.spec) !== directory) add('tagged', subject, `the manifest requires ${item.spec}, the checkout of ${repository} ${tag} is ${directory}`, `require file:${path.posix.relative(item.base, directory)} and run npm install`);
+    else if (item.directory !== directory) add('tagged', subject, `${item.lock} links it to ${item.directory ?? 'no directory'}, the checkout of ${repository} ${tag} is ${directory}`, 'run npm install');
     else if (item.version !== version) add('tagged', subject, `${directory} has version ${item.version ?? 'none'}, the tag ${tag} has version ${version}`, item.release.fix);
     else if (item.name !== item.package) add('tagged', subject, `${directory} is the package ${item.name ?? 'without a name'}`, `require the package that ${directory} names and run npm install`);
-    else if (item.lockVersion !== version) add('tagged', subject, `${NPM_LOCK} records version ${item.lockVersion ?? 'none'}, the tag ${tag} has version ${version}`, 'run npm install');
+    else if (item.lockVersion !== version) add('tagged', subject, `${item.lock} records version ${item.lockVersion ?? 'none'}, the tag ${tag} has version ${version}`, 'run npm install');
   }
 
-  for (const { directory, manifest: manifestPath } of state.manifests) {
+  for (const { directory, manifest: manifestPath, lock } of state.manifests) {
     const manifest = readJson(root, manifestPath);
-    const lockEntry = state.npmLock.packages?.[directory === '.' ? '' : directory] ?? {};
+    const lockEntry = state.npmLocks.get(lock).packages?.[directory === '.' ? '' : directory] ?? {};
     for (const kind of ['dependencies', 'devDependencies']) {
       const inManifest = manifest[kind] ?? {};
       const inLock = lockEntry[kind] ?? {};
       for (const name of new Set([...Object.keys(inManifest), ...Object.keys(inLock)])) {
-        if (inManifest[name] !== inLock[name]) add('npmLock', `${NPM_LOCK} ${directory} ${kind} ${name}`, `the lock records ${inLock[name] ?? 'nothing'}, ${manifestPath} declares ${inManifest[name] ?? 'nothing'}`, 'run npm install');
+        if (inManifest[name] !== inLock[name]) add('npmLock', `${lock} ${directory} ${kind} ${name}`, `the lock records ${inLock[name] ?? 'nothing'}, ${manifestPath} declares ${inManifest[name] ?? 'nothing'}`, 'run npm install');
       }
     }
   }

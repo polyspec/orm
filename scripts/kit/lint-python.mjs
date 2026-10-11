@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Lints and format-checks the Python package whose pyproject.toml `ruff.pyproject` of config/toolchain.json names, with the
-// ruff of var/tools (`make lint-python`): `ruff check <directory>` and `ruff format --check <directory>`. The rules and the
-// target version are the `[tool.ruff]` tables of that pyproject.toml, so one checkout gives one result on every machine. A
-// missing declaration or a missing ruff is a failure with its fix, never a skip. Both steps run, also after a failure of the
-// first, and each prints one line.
+// Lints and format-checks the Python of the checkout with the ruff of var/tools (`make lint-python`): `ruff check` and
+// `ruff format --check` on the root, which ruff walks for the Python files and reads the `[tool.ruff]` table of the nearest
+// pyproject.toml of each file. The var directory holds the installed tools and is excluded. The rules are therefore the ones
+// of the checkout, so one checkout gives one result on every machine. A missing declaration (ruff of config/toolchain.json)
+// or a missing ruff is a failure with its fix, never a skip. Both steps run, also after a failure of the first, and each
+// prints one line.
 //
 //   node scripts/kit/lint-python.mjs
 import { existsSync } from 'node:fs';
@@ -14,14 +15,12 @@ import { toolchainConfig } from './toolchain-declared.mjs';
 
 /** The steps of the lint of `root`: `{ label, command, args }`; throws when the checkout declares no ruff or has none installed. */
 export function lintSteps(root) {
-  const declared = toolchainConfig(root).ruff?.pyproject;
-  if (!declared) throw new Error('config/toolchain.json declares no ruff.pyproject; declare the pyproject.toml of the Python package to lint');
+  if (!toolchainConfig(root).ruff) throw new Error('config/toolchain.json declares no ruff; declare ruff with its version and the sha256 of its wheels');
   const ruff = path.join(root, 'var/tools/bin/ruff');
   if (!existsSync(ruff)) throw new Error(`${path.relative(root, ruff)} is missing; run make install-tools`);
-  const directory = path.dirname(declared);
   return [
-    { label: `ruff check ${directory}`, command: ruff, args: ['check', directory] },
-    { label: `ruff format --check ${directory}`, command: ruff, args: ['format', '--check', directory] },
+    { label: 'ruff check .', command: ruff, args: ['check', '--extend-exclude', 'var', '.'] },
+    { label: 'ruff format --check .', command: ruff, args: ['format', '--check', '--extend-exclude', 'var', '.'] },
   ];
 }
 

@@ -16,6 +16,21 @@ const context = (box, extra = {}) => release.context(box.root, { env: { ...box.e
 const stop = (fn, pattern) => assert.throws(fn, error => error instanceof Stop && pattern.test(error.message), String(pattern));
 const edit = (root, file, change) => writeJson(root, file, change(readJson(root, file)));
 
+test('latest names the newest root release tag reachable from HEAD', (t) => {
+  const box = releaseSandbox(t, { version: '0.0.3' });
+  const ctx = context(box);
+  git(ctx.root, 'tag', 'v0.0.1');
+  git(ctx.root, 'tag', 'v0.0.2');
+  git(ctx.root, 'tag', 'v0.0.10');
+  git(ctx.root, 'tag', 'packages/fixture-go/v0.0.11');
+  assert.equal(release.latestTag(ctx), 'v0.0.10');
+});
+
+test('latest fails when no release tag is reachable', (t) => {
+  const ctx = context(releaseSandbox(t));
+  stop(() => release.latestTag(ctx), /no release tag is reachable from HEAD/);
+});
+
 test('a release tag is a version or a Go module directory and a version', (t) => {
   const { config } = context(releaseSandbox(t));
   assert.deepEqual(release.parseTag(config, 'v1.2.3'), [null, '1.2.3']);
@@ -75,6 +90,14 @@ test('a commit of main whose checks succeeded is verified, and the check runs ar
   assert.deepEqual(result, { commit: box.commit, checks: ['push-gate', 'ci-passed'] });
   assert.deepEqual(box.state().calls, [['api', '--paginate', `repos/${REPOSITORY}/commits/${box.commit}/check-runs?per_page=100`, '--jq', '.check_runs[] | [.id, .name, .status, .conclusion] | @json']]);
   assert.ok(lines.some(line => line.includes(`reading the check runs of ${box.commit}`)), lines.join('\n'));
+});
+
+test('a release tag is annotated: a lightweight tag fails and names the tag and its kind, an annotated tag passes', (t) => {
+  const box = releaseSandbox(t);
+  git(box.root, 'tag', 'v0.0.1', box.commit);
+  stop(() => release.verify(context(box), 'v0.0.1'), /v0\.0\.1: the commit [0-9a-f]{40}: the tag v0\.0\.1 has the object type commit, not tag; a release tag is annotated, so create it with git tag -a v0\.0\.1 -m v0\.0\.1/);
+  git(box.root, 'tag', '-d', 'v0.0.1');
+  assert.equal(release.verify(context(box), box.release('0.0.1')).commit, box.commit);
 });
 
 test('a commit that is not an ancestor of origin/main fails and names the commit', (t) => {
@@ -236,10 +259,10 @@ test('assets builds one archive per package of the configuration', (t) => {
   const tag = box.tag('v0.0.1');
   const lines = [];
   const names = release.assets(context(box, { log: line => lines.push(line) }), tag);
-  assert.deepEqual(names, ['fixture-lib-npm-0.0.1.tgz', 'fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip']);
+  assert.deepEqual(names, ['fixture-lib-npm-0.0.1.tgz', 'fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip', 'kit_fixture-0.0.1-py3-none-any.whl']);
   const target = path.join(box.root, 'var/release/assets');
   assert.deepEqual(readdirSync(target).sort(), [...names].sort());
-  assert.equal(lines.filter(line => line.includes('packing')).length, 3, lines.join('\n'));
+  assert.equal(lines.filter(line => line.includes('packing')).length, 4, lines.join('\n'));
   assert.deepEqual(box.npmCalls().map(call => path.basename(call.cwd)), ['fixture-lib', 'fixture-app']);
 });
 
@@ -249,7 +272,7 @@ test('each archive carries the manifest of its package unchanged', (t) => {
   const names = release.assets(ctx, box.tag('v0.0.1'));
   const target = path.join(box.root, 'var/release/assets');
   const sources = ['packages/fixture-lib/package.json', 'packages/fixture-app/package.json', 'packages/fixture-php/composer.json'];
-  names.forEach((name, index) => assert.equal(release.packedManifest(ctx, path.join(target, name)), readFileSync(path.join(box.root, sources[index]), 'utf8'), name));
+  names.slice(0, 3).forEach((name, index) => assert.equal(release.packedManifest(ctx, path.join(target, name)), readFileSync(path.join(box.root, sources[index]), 'utf8'), name));
   const zip = spawnSync('unzip', ['-Z1', path.join(target, names[2])], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean).sort();
   assert.deepEqual(zip, ['composer.json', 'composer.lock', 'src/', 'src/Engine.php']);
 });
@@ -320,14 +343,14 @@ test('publish creates the release with the notes and the archives', (t) => {
   assert.equal(call[6], '--notes-file');
   assert.deepEqual(call.slice(8), names.map(name => path.join(target, name)));
   assert.equal(box.state().notes, '- The first entry of 0.0.1.\n- The second entry of 0.0.1.\n');
-  assert.ok(lines.some(line => line.includes('creating the GitHub Release with 3 archives')), lines.join('\n'));
+  assert.ok(lines.some(line => line.includes('creating the GitHub Release with 4 archives')), lines.join('\n'));
 });
 
 test('publish with a missing archive fails before any request', (t) => {
   const box = releaseSandbox(t);
   const tag = box.tag('v0.0.1');
   box.checkRuns([]);
-  stop(() => release.publish(context(box), tag), /var\/release\/assets lacks \[fixture-lib-npm-0\.0\.1\.tgz, fixture-app-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip\]; make release-assets builds them/);
+  stop(() => release.publish(context(box), tag), /var\/release\/assets lacks \[fixture-lib-npm-0\.0\.1\.tgz, fixture-app-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip, kit_fixture-0\.0\.1-py3-none-any\.whl\]; make release-assets builds them/);
   assert.deepEqual(box.state().calls, []);
 });
 
@@ -398,7 +421,7 @@ test('the command line runs each step, prints a line per step and exits with 1 o
   assert.match(result.stdout, /\[release\] v0\.0\.1: every manifest of the tag declares 0\.0\.1 and CHANGELOG\.md has ## 0\.0\.1/);
   result = cli(box, ['assets', tag]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /\[release\] v0\.0\.1: built fixture-lib-npm-0\.0\.1\.tgz, fixture-app-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip in var\/release\/assets/);
+  assert.match(result.stdout, /\[release\] v0\.0\.1: built fixture-lib-npm-0\.0\.1\.tgz, fixture-app-npm-0\.0\.1\.tgz, polyspec-kit-fixture-php-0\.0\.1\.zip, kit_fixture-0\.0\.1-py3-none-any\.whl in var\/release\/assets/);
   box.checkRuns([]);
   result = cli(box, ['publish', tag]);
   assert.equal(result.status, 0, result.stderr);
@@ -458,11 +481,11 @@ test('the archive names of a repository with scoped packages differ by language 
     edit(root, 'config/release.json', c => ({
       ...c,
       packages: c.packages.map(p => (p.kind === 'npm' && p.name === 'fixture-app' ? { ...p, name: '@polyspec/fixture-app' } : p.kind === 'composer' ? { ...p, name: 'polyspec/fixture-app' } : p)),
-      consumers: { npm: { ...c.consumers.npm, smoke: { 'fixture-lib': c.consumers.npm.smoke['fixture-lib'], '@polyspec/fixture-app': c.consumers.npm.smoke['fixture-app'] } }, composer: { ...c.consumers.composer, smoke: { 'polyspec/fixture-app': c.consumers.composer.smoke['polyspec/kit-fixture'] } } },
+      consumers: { ...c.consumers, npm: { ...c.consumers.npm, smoke: { 'fixture-lib': c.consumers.npm.smoke['fixture-lib'], '@polyspec/fixture-app': c.consumers.npm.smoke['fixture-app'] } }, composer: { ...c.consumers.composer, smoke: { 'polyspec/fixture-app': c.consumers.composer.smoke['polyspec/kit-fixture'] } } },
     }));
   } });
   const { config } = context(box);
-  assert.deepEqual(release.assetNames(config, '0.0.1'), ['fixture-lib-npm-0.0.1.tgz', 'polyspec-fixture-app-npm-0.0.1.tgz', 'polyspec-fixture-app-php-0.0.1.zip']);
+  assert.deepEqual(release.assetNames(config, '0.0.1'), ['fixture-lib-npm-0.0.1.tgz', 'polyspec-fixture-app-npm-0.0.1.tgz', 'polyspec-fixture-app-php-0.0.1.zip', 'kit_fixture-0.0.1-py3-none-any.whl']);
 });
 
 test('the output of npm pack is renamed to the archive name', (t) => {
@@ -476,7 +499,7 @@ test('the output of npm pack is renamed to the archive name', (t) => {
   } });
   const ctx = context(box);
   const names = release.assets(ctx, box.tag('v0.0.1'));
-  assert.deepEqual(names, ['fixture-lib-npm-0.0.1.tgz', 'polyspec-fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip']);
+  assert.deepEqual(names, ['fixture-lib-npm-0.0.1.tgz', 'polyspec-fixture-app-npm-0.0.1.tgz', 'polyspec-kit-fixture-php-0.0.1.zip', 'kit_fixture-0.0.1-py3-none-any.whl']);
   assert.deepEqual(readdirSync(path.join(box.root, 'var/release/assets')).sort(), [...names].sort(), 'no file keeps the name that npm pack gave');
   assert.equal(JSON.parse(release.packedManifest(ctx, path.join(box.root, 'var/release/assets', names[1]))).name, '@polyspec/fixture-app');
 });

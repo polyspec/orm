@@ -36,6 +36,11 @@ test('each target runs the tool of its gate with the commit and the keys that th
   assert.deepEqual(commands(directory, 'rerun-failed', 'FULL_RUN_KEYS=--key dep=c1'), ['node scripts/kit/full-run.mjs rerun-failed --key dep=c1']);
 });
 
+test('kit-test runs the vendored tests through the test runner, as every test of a repository runs', (t) => {
+  const directory = repository(t);
+  assert.deepEqual(commands(directory, 'kit-test'), ['node scripts/kit/run-tests.mjs node -- tests/kit']);
+});
+
 test('a make invocation sets core.hooksPath in a checkout that tracks the pre-push hook, and in no other', (t) => {
   const directory = repository(t);
   commands(directory, 'hooks-check');

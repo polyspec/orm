@@ -83,5 +83,5 @@ test('the vendored fixture of kit is not a lock of the repository that holds it'
   cpSync(path.join(root, 'packages/fixture-rust'), path.join(root, 'tests/kit/fixture/packages/fixture-rust'), { recursive: true });
   const result = gate(root);
   assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stdout, /6 registry dependencies and 4 locks match the review of /);
+  assert.match(result.stdout, /5 registry dependencies and 4 locks match the review of /);
 });

@@ -17,15 +17,21 @@
 // repository by name and version only: no `integrity` for an npm entry and an empty `shasum` for a Composer entry. A lock
 // changes only with a version or a dependency, and `lock` runs on the release commit before the tag is pushed.
 // `lock` resolves version ranges, so it is the one step that reads a registry; no check runs it.
+// A `wheel` package is installed by `pip install --no-index --require-hashes --no-deps` into a clean virtual environment of
+// var/tools/bin/python3, from a requirement file that names each wheel with the sha256 of its file; the wheels have no committed lock.
 // A Go module tag releases no archive and has nothing to install. Each failure names the expected and the actual value.
+//   TAG is `latest` for the newest root release tag reachable from HEAD.
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ASSETS, assetName, assetNames, context, parseTag } from './release.mjs';
+import { ASSETS, archiveName, assetNames, context, latestTag, parseTag } from './release.mjs';
+import { fileDigest } from './digest.mjs';
+import { wheelName } from './release-wheel.mjs';
+import { toolsPath } from './tool-wrappers.mjs';
 import { readJson, writeAtomic } from './files.mjs';
 import { run, Stop } from './process.mjs';
-import { CONSUMER_KINDS } from './release-consumer-config.mjs';
+import { CONSUMER_KINDS, WHEEL_KIND } from './release-consumer-config.mjs';
 
 // A registry address that refuses every connection: port 9 of the loopback address.
 export const UNREACHABLE = 'http://127.0.0.1:9/';
@@ -37,10 +43,10 @@ const FILES = { npm: { manifest: 'package.json', lock: 'package-lock.json', exte
 const INHERITED = ['npm_config_offline', 'COMPOSER_DISABLE_NETWORK', 'COMPOSER', 'COMPOSER_VENDOR_DIR'];
 
 const json = (value, indent) => `${JSON.stringify(value, null, indent)}\n`;
-/** The package kinds that `config` has a consumer for, each with its packages: [[kind, consumer, [{ name, file }]]]. */
+/** The package kinds with a committed consumer project, each with its packages: [[kind, consumer, [{ name, file }]]]. */
 function plan(config, version) {
   if (!config.consumers) throw new Stop('config/release.json has no consumers section; it declares the consumer projects that install the archives');
-  return CONSUMER_KINDS.filter(kind => config.consumers[kind]).map(kind => [kind, config.consumers[kind], Object.keys(config.consumers[kind].smoke).map(name => ({ name, file: assetName(name, kind === 'npm' ? 'npm' : 'php', version, FILES[kind].extension) }))]);
+  return CONSUMER_KINDS.filter(kind => config.consumers[kind]).map(kind => [kind, config.consumers[kind], Object.keys(config.consumers[kind].smoke).map(name => ({ name, file: archiveName(kind, name, version) }))]);
 }
 
 /** Requires `directory` to hold exactly the archives of `version`; the names of the archives. */
@@ -56,7 +62,7 @@ export function requireArchives(config, version, directory, where) {
 /** The environment of a project command: no offline setting, and caches and homes that are empty directories of the run. */
 function environment(env, folder) {
   const clean = Object.fromEntries(Object.entries(env).filter(([name]) => !INHERITED.includes(name)));
-  return { ...clean, npm_config_cache: path.join(folder, 'npm-cache'), COMPOSER_HOME: path.join(folder, 'composer-home'), COMPOSER_CACHE_DIR: path.join(folder, 'composer-cache') };
+  return { ...clean, npm_config_cache: path.join(folder, 'npm-cache'), COMPOSER_HOME: path.join(folder, 'composer-home'), COMPOSER_CACHE_DIR: path.join(folder, 'composer-cache'), PIP_CACHE_DIR: path.join(folder, 'pip-cache') };
 }
 
 /** The scopes of the npm packages of this repository, each pointed at the unreachable registry. */
@@ -161,10 +167,48 @@ export function installConsumers(ctx, version, directory, step = () => {}) {
         installed += 1;
       }
     }
+    installed += installWheels(ctx, version, directory, folder, env, step);
     return installed;
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
+}
+
+/**
+ * Installs the wheels of `names` at `version` from `directory` into a clean virtual environment of `folder` made by the Python
+ * of `root`: `pip install --no-index --require-hashes --no-deps` from a requirement file that names each wheel with the sha256 of
+ * its file. Then each package must show `version`, and its smoke command runs in the environment. Returns the number of packages.
+ */
+export function installWheelFiles({ root, env, folder, version, directory, names, smoke, step = () => {} }) {
+  if (names.length === 0) return 0;
+  const project = path.join(folder, WHEEL_KIND);
+  const venv = path.join(project, 'venv');
+  mkdirSync(project, { recursive: true });
+  run(toolsPath(root, 'bin', 'python3'), ['-m', 'venv', venv], { cwd: project, env });
+  const bin = path.join(venv, 'bin');
+  const venvEnv = { ...env, PATH: `${bin}${path.delimiter}${env.PATH}`, VIRTUAL_ENV: venv };
+  const requirements = path.join(project, 'requirements.txt');
+  writeFileSync(requirements, names.map((name) => {
+    const file = path.join(directory, wheelName(name, version));
+    return `${file} --hash=sha256:${fileDigest(file)}\n`;
+  }).join(''));
+  run(path.join(bin, 'python'), ['-m', 'pip', 'install', '--no-input', '--disable-pip-version-check', '--no-index', '--require-hashes', '--no-deps', '-r', requirements], { cwd: project, env: venvEnv });
+  step(`wheel pip install of ${names.length} packages`);
+  for (const name of names) {
+    const shown = run(path.join(bin, 'python'), ['-m', 'pip', 'show', name], { cwd: project, env: venvEnv });
+    const actual = /^Version: (.*)$/m.exec(shown)?.[1]?.trim() ?? null;
+    if (actual !== version) throw new Stop(`wheel installed ${name} ${actual ?? 'none'}, expected ${version}`);
+    run(smoke[name][0], smoke[name].slice(1), { cwd: project, env: venvEnv });
+    step(`wheel ${name} ${version}: ${smoke[name].join(' ')}`);
+  }
+  return names.length;
+}
+
+/** The wheel packages of the configuration, installed by installWheelFiles with the smoke commands of `consumers.wheel`. */
+function installWheels(ctx, version, directory, folder, env, step) {
+  const names = ctx.config.packages.filter(item => item.kind === WHEEL_KIND).map(({ name }) => name);
+  if (names.length === 0) return 0;
+  return installWheelFiles({ root: ctx.root, env, folder, version, directory, names, smoke: ctx.config.consumers[WHEEL_KIND].smoke, step });
 }
 
 /** The lock without the hashes of the archives of this repository, which each run builds again. */
@@ -213,13 +257,15 @@ const USAGE = 'usage: node scripts/kit/release-consumer.mjs install|lock TAG';
 
 /** Runs a step of the command line; the exit status. */
 export function main(argv, { root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..'), env = process.env, print = console.log, error = console.error } = {}) {
-  const [mode, tag, ...rest] = argv;
+  const [mode, latest, ...rest] = argv;
+  let tag = latest;
   if (!['install', 'lock'].includes(mode) || !tag || rest.length) {
     error(USAGE);
     return 2;
   }
   try {
     const ctx = context(root, { env, log: print });
+    if (tag === 'latest') tag = latestTag(ctx);
     const [directory, version] = parseTag(ctx.config, tag);
     const step = text => print(`[release-consumer] ${tag}: ${text}`);
     if (mode === 'lock') {

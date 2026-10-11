@@ -6,6 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fixtureCheckout } from './checkout.mjs';
+import { sha256 } from '../../scripts/kit/digest.mjs';
+import { BACKEND_BYTES, BACKEND_FILE, PYTHON3_WHEEL_STUB } from './wheel-stubs.mjs';
 
 const GH_STUB = `#!/usr/bin/env node
 const fs = require('node:fs');
@@ -98,10 +100,12 @@ export function releaseSandbox(t, { version = '0.0.1', changelog = CHANGELOG, mu
   mkdirSync(path.join(root, 'packages/fixture-php/src'), { recursive: true });
   writeFileSync(path.join(root, 'packages/fixture-php/src/Engine.php'), '<?php\n');
   writeFileSync(path.join(root, 'CHANGELOG.md'), changelog);
+  // The build backend of the sandbox is the stand-in of the wheel tests, so the declared sha256 is the digest of the stand-in.
+  writeJson(root, 'config/release.json', { ...config, buildBackend: { ...config.buildBackend, sha256: sha256(BACKEND_BYTES) } });
   mutate(root);
   const bin = path.join(root, '.stubs/bin');
   mkdirSync(bin, { recursive: true });
-  for (const [name, source] of [['gh', GH_STUB], ['npm', NPM_STUB]]) {
+  for (const [name, source] of [['gh', GH_STUB], ['npm', NPM_STUB], ['python3', PYTHON3_WHEEL_STUB]]) {
     writeFileSync(path.join(bin, name), source);
     chmodSync(path.join(bin, name), 0o755);
   }
@@ -115,7 +119,17 @@ export function releaseSandbox(t, { version = '0.0.1', changelog = CHANGELOG, mu
   git(root, 'commit', '--quiet', '-m', 'release');
   const commit = git(root, 'rev-parse', 'HEAD');
   git(root, 'update-ref', 'refs/remotes/origin/main', commit);
-  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, STUB_STATE: state, STUB_NPM_LOG: npmLog, STUB_NPM_MODE: '' };
+  // The Python of the checkout is var/tools/bin/python3, the wrapper of install-python.mjs: it runs the pip stub, and the build
+  // backend is the stand-in file in var/tools/wheels, which release-backend.mjs writes from its pinned download.
+  const python = path.join(root, 'var/tools/bin/python3');
+  mkdirSync(path.dirname(python), { recursive: true });
+  writeFileSync(python, `#!/bin/sh\nexec '${path.join(bin, 'python3')}' "$@"\n`);
+  chmodSync(python, 0o755);
+  mkdirSync(path.join(root, 'var/tools/wheels'), { recursive: true });
+  writeFileSync(path.join(root, 'var/tools/wheels', BACKEND_FILE), BACKEND_BYTES);
+  const pythonLog = path.join(root, '.stubs/python.log');
+  writeFileSync(pythonLog, '');
+  const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, STUB_STATE: state, STUB_NPM_LOG: npmLog, STUB_NPM_MODE: '', STUB_PYTHON_LOG: pythonLog, STUB_WHEEL_REQUIRES_FILE: path.join(root, '.stubs/wheel-requires.json') };
   const box = {
     root,
     env,
@@ -135,6 +149,10 @@ export function releaseSandbox(t, { version = '0.0.1', changelog = CHANGELOG, mu
     },
     state: () => JSON.parse(readFileSync(state, 'utf8')),
     npmCalls: () => readFileSync(npmLog, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line)),
+    /** The pip calls of the Python stub, each with its arguments, its directory and the requirements of a -r argument. */
+    pipCalls: () => readFileSync(pythonLog, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line)),
+    /** Sets the Requires-Dist lines that the pip stub writes into the wheel it builds. */
+    wheelRequires: (lines) => writeFileSync(env.STUB_WHEEL_REQUIRES_FILE, JSON.stringify(lines)),
   };
   box.checkRuns([['push-gate', 'success'], ['ci-passed', 'success']]);
   return box;

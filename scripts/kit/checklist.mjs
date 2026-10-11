@@ -36,12 +36,14 @@ export function loadConfig(root) {
   return config;
 }
 
-const MARKER = /\[[ ~o!xX]\]/g;
+const MARKER = /\[[ ~o!xX-]\]/g;
 const DOCUMENT_MARKER = /^<!-- (?:doc-id|source-sha256): \S+ -->$/;
 const HEADING = /^#{1,6} \S/;
 const TABLE_BYPASS = /^\[!\] (?:cause|원인): \S.*; (?:retry|재시도): \S.*$/;
+const TABLE_IMPOSSIBLE = /^\[-\] (?:cause|원인): \S.*$/;
 const BYPASSED = '[!]';
-const FOUR_STATES = ['[ ]', '[~]', '[o]', '[!]'];
+const IMPOSSIBLE = '[-]';
+const FIVE_STATES = ['[ ]', '[~]', '[o]', '[!]', '[-]'];
 // The first cell of a task row is the task ID, which a code span may follow: `T3.2 \`parallel\``.
 const ID_CELL = /^(\S+)(?:\s+`[^`]*`)?$/;
 
@@ -65,8 +67,9 @@ export const describeFinding = finding => (finding.line ? `line ${finding.line}:
  * The strict reading (`strict: true`) is the reading of the document check. It reports the same and also that a checklist
  * holds only tasks: a line that is not a heading, a task or a document marker; a state marker that is not the state of a
  * task; a state cell that holds more than its state (a table state is alone in its cell, but `[!]` is followed by
- * `cause: <cause>; retry: <condition>`); a bypassed list item without `Cause:` and `Retry:`. The Korean labels 원인: and
- * 재시도: are accepted. Each finding has a line and a column.
+ * `cause: <cause>; retry: <condition>` and `[-]` by `cause: <cause>`); a bypassed list item without `Cause:` and
+ * `Retry:`; an impossible list item without `Cause:`. The Korean labels 원인: and 재시도: are accepted. Each finding has
+ * a line and a column.
  */
 export function readChecklist(text, tracker, { strict = false } = {}) {
   const { format, states } = tracker;
@@ -78,8 +81,8 @@ export function readChecklist(text, tracker, { strict = false } = {}) {
   const both = (line, column, rule, strictMessage, plainMessage) => finding(line, column, rule, strict ? strictMessage : plainMessage);
   const strictOnly = (...found) => { if (strict) finding(...found); };
   const plainOnly = (line, rule, message) => { if (!strict) finding(line, undefined, rule, message); };
-  const expected = states ?? FOUR_STATES;
-  const expectedCell = listOf(expected.map(known => (known === BYPASSED ? `${known} cause: <cause>; retry: <condition>` : known)));
+  const expected = states ?? FIVE_STATES;
+  const expectedCell = listOf(expected.map(known => (known === BYPASSED ? `${known} cause: <cause>; retry: <condition>` : known === IMPOSSIBLE ? `${known} cause: <cause>` : known)));
   const stateRule = (task, number, column, shown, state) => {
     if (states && !states.includes(state)) {
       both(number, column, 'checklist-state', `the state of ${task} is ${shown}; expected ${(format === 'table' ? expectedCell : listOf(expected))}`, `${task} has the state ${JSON.stringify(state)}, the states are ${states.map(known => JSON.stringify(known)).join(', ')}`);
@@ -119,7 +122,7 @@ export function readChecklist(text, tracker, { strict = false } = {}) {
             finding(number, line.length + 1, 'checklist-state', `the row of ${task} does not end with a state cell; expected a closing | after ${expectedCell}`);
           } else {
             const kept = stateOf(state);
-            const alone = !strict || state === kept || (kept === BYPASSED && TABLE_BYPASS.test(state));
+            const alone = !strict || state === kept || (kept === BYPASSED && TABLE_BYPASS.test(state)) || (kept === IMPOSSIBLE && TABLE_IMPOSSIBLE.test(state));
             if (alone) stateRule(task, number, place + 1, JSON.stringify(state), kept);
             else both(number, place + 1, 'checklist-state', `the state of ${task} is ${JSON.stringify(state)}; expected ${expectedCell}`);
             add(number, { id: task, title: row[1]?.text.trim() ?? '', state: kept });
@@ -157,11 +160,14 @@ export function readChecklist(text, tracker, { strict = false } = {}) {
       }
     }
   });
-  // A bypassed list item names its cause and its retry condition on the item or its continuation lines.
+  // A bypassed list item names its cause and its retry condition on the item or its continuation lines; an impossible one names its cause.
   if (strict) {
     for (const entry of lists.filter(candidate => candidate.state === BYPASSED)) {
       if (!/(?:cause|원인):\s*\S/i.test(entry.text)) finding(entry.line, 1, 'checklist-state', `the bypassed task ${entry.id} names no cause; write "Cause: <cause>" on the item`);
       if (!/(?:retry|재시도):\s*\S/i.test(entry.text)) finding(entry.line, 1, 'checklist-state', `the bypassed task ${entry.id} names no retry condition; write "Retry: <condition>" on the item`);
+    }
+    for (const entry of lists.filter(candidate => candidate.state === IMPOSSIBLE)) {
+      if (!/(?:cause|원인):\s*\S/i.test(entry.text)) finding(entry.line, 1, 'checklist-state', `the impossible task ${entry.id} names no cause; write "Cause: <cause>" on the item`);
     }
   }
   if (items.length === 0 && (strict || findings.length === 0)) {

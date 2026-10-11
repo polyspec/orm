@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "config/parity.json",
+  "description": "The language-parity declaration, read by scripts/kit/parity.mjs: the implementations of the repository (the one source of the language set), the profiles that group them, and the units that every implementation of a profile must hold. The facts come from the tree: the checker runs the bindings, reads the symbol snapshots and the error-code artifacts.",
+  "type": "object",
+  "required": ["schema", "implementations", "profiles", "testPatterns", "units"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "comment": { "type": "string" },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "runner", "roots", "tests"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "description": "The name of the implementation, used by the profiles, bindings and documents.", "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "runner": { "description": "How a binding runs: go (go test -json), cargo (cargo test), node, php and python (var/tools/bin/python3) run the test file and read its PASS and FAIL lines.", "type": "string", "enum": ["go", "cargo", "node", "php", "python"] },
+          "roots": { "description": "The directories that hold the implementation and its tests; the whole repository is no root.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "tests": { "description": "Globs of the test files of the implementation; each one must be the test of a binding.", "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "command": { "description": "The program of the runner: a path relative to the root of the checkout when it holds a /, else a name on PATH. Default: go, cargo, the running node, php, var/tools/bin/python3.", "type": "string" },
+          "args": { "description": "Arguments of the program: after test for go and cargo, before the test file for node, php and python.", "type": "array", "items": { "type": "string" } },
+          "env": {
+            "description": "Variables set for the runs of this implementation only, over the environment of the check.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "value"],
+              "additionalProperties": false,
+              "properties": { "name": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }, "value": { "type": "string" } }
+            }
+          },
+          "symbols": { "description": "The symbol snapshot of the extractor: a JSON object from each symbol id to an object with a boolean exported.", "type": "string" },
+          "errors": {
+            "description": "The generated error-code artifact of the implementation and the regular expression whose first group is a code.",
+            "type": "object",
+            "required": ["file", "pattern"],
+            "additionalProperties": false,
+            "properties": { "file": { "type": "string" }, "pattern": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "implementations"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "implementations": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "reason": { "description": "Why the profile omits implementations; a profile narrower than every implementation needs it, and every run prints it.", "type": "string" }
+        }
+      }
+    },
+    "suites": { "description": "Globs of the shared vector files; each one must be the file of a suite unit.", "type": "array", "items": { "type": "string" } },
+    "comparators": { "description": "The directories of the checks that compare the outputs of several implementations; a test there belongs to no implementation.", "type": "array", "items": { "type": "string" } },
+    "testPatterns": {
+      "description": "Globs of the test files of each runner across the repository; such a file lies in a root of an implementation of that runner or in a comparator root.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["runner", "globs"],
+        "additionalProperties": false,
+        "properties": {
+          "runner": { "type": "string", "enum": ["go", "cargo", "node", "php", "python"] },
+          "globs": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "profile"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "description": "The name of the unit; a harness reports a case of a suite as <id>/<case>.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+          "kind": { "type": "string", "enum": ["suite", "api"] },
+          "profile": { "type": "string" },
+          "file": { "description": "suite: the vector file.", "type": "string" },
+          "cases": { "description": "suite: the path of the case names in the file, $ followed by .<key> and [*] steps.", "type": "string", "pattern": "^\\$(\\.[A-Za-z_][A-Za-z0-9_-]*|\\[\\*\\])*$" },
+          "bindings": {
+            "description": "suite: the native test of each implementation.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["implementation", "test"],
+              "additionalProperties": false,
+              "properties": {
+                "implementation": { "type": "string" },
+                "test": { "type": "string" },
+                "symbol": { "description": "go: the test function whose subtests are the cases; cargo: the exact test path.", "type": "string" }
+              }
+            }
+          },
+          "symbols": {
+            "description": "api: the symbol id of each implementation in its snapshot.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["implementation", "symbol"],
+              "additionalProperties": false,
+              "properties": {
+                "implementation": { "type": "string" },
+                "symbol": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nativeOnly": {
+      "description": "Exported symbols that belong to one implementation only, each with its reason.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["implementation", "symbol", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "implementation": { "type": "string" },
+          "symbol": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "exclusions": {
+      "description": "A unit that an implementation of its profile does not hold yet; every exclusion is a finding until it is removed.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit", "implementation", "reason", "item"],
+        "additionalProperties": false,
+        "properties": {
+          "unit": { "type": "string" },
+          "implementation": { "type": "string" },
+          "reason": { "type": "string" },
+          "item": { "description": "The checklist item that removes the exclusion.", "type": "string" }
+        }
+      }
+    },
+    "errors": {
+      "description": "The error-code catalog that every implementation of the profile generates.",
+      "type": "object",
+      "required": ["profile", "catalog"],
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "type": "string" },
+        "catalog": {
+          "description": "The catalog file and the regular expression whose first group is a code.",
+          "type": "object",
+          "required": ["file", "pattern"],
+          "additionalProperties": false,
+          "properties": { "file": { "type": "string" }, "pattern": { "type": "string" } }
+        }
+      }
+    },
+    "languageLists": {
+      "description": "Lists of implementation names in other files, each equal to its profile.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file", "pattern", "profile"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "pattern": { "description": "A regular expression whose first group holds the list; its words are the names.", "type": "string" },
+          "profile": { "type": "string" }
+        }
+      }
+    },
+    "documents": {
+      "description": "The documents whose counts and lists of implementations must match a profile.",
+      "type": "object",
+      "required": ["globs", "nouns"],
+      "additionalProperties": false,
+      "properties": {
+        "globs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "nouns": { "description": "The words that a count of implementations precedes, such as languages or 언어.", "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}

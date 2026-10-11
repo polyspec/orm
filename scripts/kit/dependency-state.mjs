@@ -12,7 +12,8 @@
 // for them, so they are not registry dependencies. The check reads a package of this repository and a tagged package
 // against its lock entry.
 //
-// The locks are package-lock.json, the composer.lock of each Composer manifest and every Cargo.lock of the checkout;
+// The locks are the npm locks that the policy names (`npmLocks`, each read with the package.json beside it and its
+// workspaces), the composer.lock of each Composer manifest and every Cargo.lock of the checkout;
 // the review records the sha256 and the advisories of each. A Cargo lock has no registry dependencies in the review:
 // its advisories come from RustSec.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -20,11 +21,12 @@ import path from 'node:path';
 
 import { checkedFiles } from './tracked-files.mjs';
 import { readJson } from './files.mjs';
+import { toolchainConfig } from './toolchain-declared.mjs';
 
 export const POLICY = 'config/dependency-policy.json';
 export const RECORD = 'config/dependency-review.json';
 export const NPM_MANIFEST = 'package.json';
-export const NPM_LOCK = 'package-lock.json';
+export const TOOLCHAIN = 'config/toolchain.json';
 
 const LOCAL_SPEC = /^(file|link|workspace):/;
 // A lock entry that npm installed as a copy (`install-links=true`) has `resolved: file:<directory>` and no `link`.
@@ -93,20 +95,25 @@ export const cargoLocks = root => checkedFiles(root).filter(file => path.posix.b
 /** The ecosystem of a lock: npm, composer, cargo or go. */
 export const lockEcosystem = lock => ({ 'package-lock.json': 'npm', 'composer.lock': 'composer', 'Cargo.lock': 'cargo', 'go.sum': 'go' })[path.posix.basename(lock)];
 
-/** The npm manifests of the checkout: the root package.json and the package.json of each workspace directory. */
-export function npmManifests(root) {
-  const manifest = readJson(root, NPM_MANIFEST);
+/**
+ * The npm manifests of the npm project at `base` (a directory of the checkout, `.` for the root): its package.json and the
+ * package.json of each workspace directory. `directory` is relative to `base`, `manifest` to the checkout.
+ */
+export function npmManifests(root, base = '.') {
+  const own = path.posix.join(base, NPM_MANIFEST);
+  const manifest = readJson(root, own);
   const workspaces = (manifest.workspaces ?? []).flatMap((pattern) => {
-    if (!pattern.endsWith('/*')) throw new Error(`${NPM_MANIFEST}: unsupported workspace pattern ${pattern}`);
+    if (!pattern.endsWith('/*')) throw new Error(`${own}: unsupported workspace pattern ${pattern}`);
     const parent = pattern.slice(0, -2);
-    return readdirSync(path.join(root, parent), { withFileTypes: true })
-      .filter(entry => entry.isDirectory() && existsSync(path.join(root, parent, entry.name, NPM_MANIFEST)))
+    return readdirSync(path.join(root, base, parent), { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && existsSync(path.join(root, base, parent, entry.name, NPM_MANIFEST)))
       .map(entry => `${parent}/${entry.name}`);
   }).sort();
-  return ['.', ...workspaces].map(directory => ({
-    directory, manifest: directory === '.' ? NPM_MANIFEST : `${directory}/${NPM_MANIFEST}`,
-  }));
+  return ['.', ...workspaces].map(directory => ({ directory, manifest: path.posix.join(base, directory, NPM_MANIFEST) }));
 }
+
+/** The directory of the checkout that a `file:` specification of a manifest names, resolved from the directory `base` of its lock; null for another specification. */
+export const localSpecDirectory = (base, spec) => (spec.startsWith('file:') ? path.posix.join(base, spec.slice('file:'.length)) : null);
 
 /** The lock entry of the package `name` that a manifest in `directory` resolves: its own node_modules first. */
 export function npmLockEntry(lock, directory, name) {
@@ -115,47 +122,50 @@ export function npmLockEntry(lock, directory, name) {
 }
 
 /**
- * The dependency state of the checkout at `root` for the Composer manifests of `policy`: the registry dependencies
- * with their kind, range and locked version, the packages of this repository with their lock entries, and the locks.
+ * The dependency state of the checkout at `root`: the registry dependencies with their kind, range and locked version, the
+ * packages of this repository with their lock entries, the manifests of each npm lock, and the locks. Each npm lock of
+ * `policy.npmLocks` is read with the package.json beside it and that package's workspaces; a lock entry names its package
+ * relative to the directory of its lock, and `base` is that directory.
  */
 export function readState(root, policy) {
   const dependencies = [];
   const local = [];
   const tagged = [];
-  const locks = [NPM_LOCK];
+  const locks = [];
+  const manifests = [];
+  const npmLocks = new Map();
 
-  const lock = readJson(root, NPM_LOCK);
-  // A package that the root `overrides` installs from a URL (a release archive) is not in the registry: it has no review.
-  const urlOverrides = new Set(Object.entries(readJson(root, NPM_MANIFEST).overrides ?? {}).filter(([, value]) => typeof value === 'string' && URL_SPEC.test(value)).map(([name]) => name));
-  const manifests = npmManifests(root);
-  for (const { directory, manifest: manifestPath } of manifests) {
-    const manifest = readJson(root, manifestPath);
-    for (const kind of ['dependencies', 'devDependencies']) {
-      for (const [name, spec] of Object.entries(manifest[kind] ?? {})) {
-        const entry = npmLockEntry(lock, directory, name);
-        const copied = !entry?.link && entry?.resolved?.startsWith(COPY_PREFIX);
-        if (LOCAL_SPEC.test(spec) || entry?.link || copied) {
-          const target = entry?.link ? entry.resolved : copied ? entry.resolved.slice(COPY_PREFIX.length) : null;
-          const lockVersion = copied ? entry.version ?? null : target ? lock.packages?.[target]?.version ?? null : null;
-          const targetManifest = target && existsSync(path.join(root, target, NPM_MANIFEST)) ? readJson(root, `${target}/${NPM_MANIFEST}`) : null;
-          const release = taggedPackages(policy).find(item => spec === `file:${item.directory}` || target === item.directory);
-          if (release) {
-            tagged.push({
-              ecosystem: 'npm', manifest: manifestPath, package: name, spec, kind, directory: target, release,
-              lockVersion,
-              version: targetManifest?.version ?? null, name: targetManifest?.name ?? null,
-            });
+  for (const lockPath of policy.npmLocks) {
+    const base = path.posix.dirname(lockPath);
+    const lock = readJson(root, lockPath);
+    npmLocks.set(lockPath, lock);
+    locks.push(lockPath);
+    // A package that the overrides of the npm project install from a URL (a release archive) is not in the registry: it has no review.
+    const urlOverrides = new Set(Object.entries(readJson(root, path.posix.join(base, NPM_MANIFEST)).overrides ?? {}).filter(([, value]) => typeof value === 'string' && URL_SPEC.test(value)).map(([name]) => name));
+    for (const { directory, manifest: manifestPath } of npmManifests(root, base)) {
+      manifests.push({ directory, manifest: manifestPath, lock: lockPath });
+      const manifest = readJson(root, manifestPath);
+      for (const kind of ['dependencies', 'devDependencies']) {
+        for (const [name, spec] of Object.entries(manifest[kind] ?? {})) {
+          const entry = npmLockEntry(lock, directory, name);
+          const copied = !entry?.link && entry?.resolved?.startsWith(COPY_PREFIX);
+          if (LOCAL_SPEC.test(spec) || entry?.link || copied) {
+            const target = entry?.link ? entry.resolved : copied ? entry.resolved.slice(COPY_PREFIX.length) : null;
+            const packageDirectory = target ? path.posix.join(base, target) : null;
+            const lockVersion = copied ? entry.version ?? null : target ? lock.packages?.[target]?.version ?? null : null;
+            const targetManifest = packageDirectory && existsSync(path.join(root, packageDirectory, NPM_MANIFEST)) ? readJson(root, `${packageDirectory}/${NPM_MANIFEST}`) : null;
+            const item = {
+              ecosystem: 'npm', manifest: manifestPath, package: name, spec, kind, base, lock: lockPath, directory: packageDirectory,
+              lockVersion, version: targetManifest?.version ?? null, name: targetManifest?.name ?? null,
+            };
+            const release = taggedPackages(policy).find(entryRelease => entryRelease.directory === packageDirectory || localSpecDirectory(base, spec) === entryRelease.directory);
+            if (release) tagged.push({ ...item, release });
+            else local.push(item);
             continue;
           }
-          local.push({
-            ecosystem: 'npm', manifest: manifestPath, package: name, spec, kind, directory: target,
-            lockVersion,
-            version: targetManifest?.version ?? null, name: targetManifest?.name ?? null,
-          });
-          continue;
+          if (URL_SPEC.test(spec) || urlOverrides.has(name)) continue;
+          dependencies.push({ ecosystem: 'npm', manifest: manifestPath, package: name, kind, spec, version: entry?.version ?? null, lock: lockPath });
         }
-        if (URL_SPEC.test(spec) || urlOverrides.has(name)) continue;
-        dependencies.push({ ecosystem: 'npm', manifest: manifestPath, package: name, kind, spec, version: entry?.version ?? null, lock: NPM_LOCK });
       }
     }
   }
@@ -184,6 +194,9 @@ export function readState(root, policy) {
       dependencies.push({ ecosystem: 'pypi', manifest: manifestPath, ...requirement, lock: null });
     }
   }
+  // The ruff pin of config/toolchain.json is a PyPI release that the review checks like a requirement of a manifest.
+  const ruff = toolchainConfig(root).ruff;
+  if (ruff) dependencies.push({ ecosystem: 'pypi', manifest: TOOLCHAIN, package: 'ruff', kind: 'toolchain', spec: `==${ruff.version}`, version: ruff.version, lock: null });
   for (const manifestPath of goModules(root)) {
     const requirements = goRequirements(readFileSync(path.join(root, manifestPath), 'utf8'));
     if (requirements.length === 0) continue;
@@ -195,7 +208,7 @@ export function readState(root, policy) {
     }
   }
   locks.push(...cargoLocks(root));
-  return { dependencies, local, tagged, locks, manifests, npmLock: lock };
+  return { dependencies, local, tagged, locks, manifests, npmLocks };
 }
 
 // npm version ranges (https://docs.npmjs.com/cli/v11/using-npm/semver): `||` joins comparator sets, a set holds

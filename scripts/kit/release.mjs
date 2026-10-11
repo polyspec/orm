@@ -18,6 +18,7 @@
 // only) and reads the check runs of the commit from `gh api repos/<repository>/commits/<sha>/check-runs` (the repository of GITHUB_REPOSITORY): the latest run
 // of each configured check must be completed with the conclusion success. `versions` compares X.Y.Z with the version of
 // every manifest of `manifests` and requires the section `## X.Y.Z` in the change logs; for a Go module it requires the module
+//   TAG is `latest` for the newest root release tag reachable from HEAD.
 // path of the go.mod. `assets` builds one archive per package, named `<package>-<language>-<version>.<ext>` with `@scope/`
 // written `scope-` and `vendor/` `vendor-` (`@scope/x` is `scope-x-npm-1.0.0.tgz`, `vendor/x` is `vendor-x-php-1.0.0.zip`):
 // `npm pack` of an npm package, whose output is renamed to that name, and a `git archive` zip of the directory of a Composer
@@ -26,11 +27,14 @@
 // the manifest names every package of its scope by an exact version (see manifestProblems). `publish` runs `gh release
 // create TAG --verify-tag --title TAG --notes-file <notes>` with the archives; the notes are the section X.Y.Z, or one
 // line that links the section when it is longer than NOTES_LIMIT characters, the limit of a release body.
+// A `wheel` package builds its PEP 427 wheel `<distribution>-<version>-py3-none-any.whl` from the tagged commit with the build
+// backend of buildBackend (release-wheel.mjs); its metadata may hold only plain `name==version` Requires-Dist lines.
 // Each failure names the tag, the file or the check, and the expected and the actual value, and exits with status 1.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { consumerConfigProblems } from './release-consumer-config.mjs';
+import { buildWheel, metadataProblems, sourceProblems, tomlString, wheelMetadata, wheelName } from './release-wheel.mjs';
 import { readConfig } from './schema-validate.mjs';
 import { checkedFiles } from './tracked-files.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -48,7 +52,7 @@ export const PACKAGE_FILES = ['package.json', 'composer.json', 'Cargo.toml', 'py
 const MANIFEST_FILES = PACKAGE_FILES.filter(name => name !== 'go.mod');
 const TAG = /^(?:(?<directory>[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*)\/)?v(?<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/;
 const EXACT_VERSION = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/;
-const MANIFEST_OF = { npm: 'package.json', composer: 'composer.json' };
+const MANIFEST_OF = { npm: 'package.json', composer: 'composer.json', wheel: 'pyproject.toml' };
 // The language and the extension of the archive of each package kind: an npm tarball and a Composer zip.
 const ARCHIVE_FORMAT = { npm: ['npm', 'tgz'], composer: ['php', 'zip'] };
 const NPM_DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
@@ -78,8 +82,9 @@ export function loadConfig(root) {
   const names = new Set();
   const directories = new Set();
   for (const { kind, directory, name } of config.packages) {
-    const shape = kind === 'npm' ? /^(@[a-z0-9._-]+\/)?[a-z0-9._-]+$/ : /^[a-z0-9._-]+\/[a-z0-9._-]+$/;
-    if (!shape.test(name)) problems.push(`${CONFIG}: the ${kind} package ${name} is not a ${kind === 'npm' ? '`name` or `@scope/name`' : '`vendor/name`'}`);
+    const shape = { npm: /^(@[a-z0-9._-]+\/)?[a-z0-9._-]+$/, composer: /^[a-z0-9._-]+\/[a-z0-9._-]+$/, wheel: /^[a-z0-9._-]+$/ }[kind];
+    const form = { npm: '`name` or `@scope/name`', composer: '`vendor/name`', wheel: 'project name of PyPI' }[kind];
+    if (!shape.test(name)) problems.push(`${CONFIG}: the ${kind} package ${name} is not a ${form}`);
     if (names.has(`${kind}:${name}`)) problems.push(`${CONFIG}: the ${kind} package ${name} is listed twice`);
     if (directories.has(directory)) problems.push(`${CONFIG}: the directory ${directory} holds two packages`);
     names.add(`${kind}:${name}`);
@@ -87,6 +92,9 @@ export function loadConfig(root) {
     const manifest = `${directory}/${MANIFEST_OF[kind]}`;
     if (config.manifests[manifest] !== 'archive') problems.push(`${CONFIG}: the package ${name} needs manifests.${manifest} = "archive", found ${JSON.stringify(config.manifests[manifest] ?? null)}`);
   }
+  const wheels = config.packages.filter(item => item.kind === 'wheel').map(({ name }) => name);
+  if (wheels.length && !config.buildBackend) problems.push(`${CONFIG}: buildBackend is missing; the wheel packages [${wheels.join(', ')}] need a pinned build backend`);
+  if (!wheels.length && config.buildBackend) problems.push(`${CONFIG}: buildBackend is declared but no package is a wheel`);
   const archived = new Set(config.packages.map(({ directory, kind }) => `${directory}/${MANIFEST_OF[kind]}`));
   for (const [key, value] of Object.entries(config.manifests)) {
     if (value === 'archive' && !archived.has(key)) problems.push(`${CONFIG}: manifests.${key} is "archive" but no package of packages has that manifest`);
@@ -102,6 +110,18 @@ const at = ctx => ({ cwd: ctx.root, env: ctx.env });
 /** A command context: the repository root, its configuration, the environment of its commands and a log function. */
 export function context(root, { config = loadConfig(root), env = process.env, log = () => {} } = {}) {
   return { root, config, env, log };
+}
+
+/** The newest root release tag reachable from HEAD, which resolves the argument `latest` of the release
+ * commands: no release task names a version in its retry, and `make release-consumer TAG=latest` verifies the
+ * release that the tree carries. */
+export function latestTag(ctx) {
+  const list = run('git', ['tag', '--merged', 'HEAD', '--list', 'v[0-9]*'], at(ctx));
+  const tags = list.trim().split('\n').filter(Boolean);
+  if (tags.length === 0) throw new Stop('no release tag is reachable from HEAD, so latest names no release');
+  const numbers = (tag) => tag.slice(1).split('.').map(Number);
+  const compare = (a, b) => { const pa = numbers(a); const pb = numbers(b); return pa[0] - pb[0] || pa[1] - pb[1] || pa[2] - pb[2]; };
+  return tags.sort(compare).at(-1);
 }
 
 /** [Go module directory or null, version] of a release tag. */
@@ -145,6 +165,9 @@ export function verify(ctx, tag) {
   if (!repository) throw new Stop('GITHUB_REPOSITORY is not set; it names the repository <owner>/<name> whose check runs are read');
   const commit = taggedCommit(ctx, tag);
   const problems = [];
+  // A release tag is annotated: its object is a tag object that records the tagger and the time, not the commit itself.
+  const kind = run('git', ['cat-file', '-t', `refs/tags/${tag}`], at(ctx)).trim();
+  if (kind !== 'tag') problems.push(`the tag ${tag} has the object type ${kind}, not tag; a release tag is annotated, so create it with git tag -a ${tag} -m ${tag}`);
   const ancestry = execute('git', ['merge-base', '--is-ancestor', commit, MAIN], at(ctx));
   if (ancestry.status === 1) problems.push(`the commit is not on ${MAIN}; a release tags a commit of main`);
   else if (ancestry.status !== 0) throw new Stop(`git merge-base --is-ancestor ${commit} ${MAIN} exited with ${ancestry.status}: ${(ancestry.stderr ?? '').trim()}`);
@@ -175,8 +198,7 @@ export function manifestVersion(file) {
   if (name === 'VERSION') return text.trim() || null;
   const heading = name === 'Cargo.toml' ? 'package' : name === 'pyproject.toml' ? 'project' : null;
   if (heading === null) throw new Stop(`${name}: not a manifest of a release`);
-  const section = new RegExp(`^\\[${heading}\\]\\s*$([\\s\\S]*?)(?=^\\[|(?![\\s\\S]))`, 'm').exec(text);
-  return /^version\s*=\s*"([^"]*)"/m.exec(section?.[1] ?? '')?.[1] ?? null;
+  return tomlString(text, heading, 'version');
 }
 
 /** The body of the section `## version` of the change log `file`, without the anchor of the next section. */
@@ -259,9 +281,15 @@ export function assetName(name, language, version, extension) {
   return `${name.replace(/^@/, '').replaceAll('/', '-')}-${language}-${version}.${extension}`;
 }
 
+/** The file name of the archive of a package of `kind` at `version`: a wheel keeps its PEP 427 name. */
+export function archiveName(kind, name, version) {
+  if (kind === 'wheel') return wheelName(name, version);
+  return assetName(name, ARCHIVE_FORMAT[kind][0], version, ARCHIVE_FORMAT[kind][1]);
+}
+
 /** The archive names of the packages at `version`, in the order of the configuration. */
 export function assetNames(config, version) {
-  return config.packages.map(({ kind, name }) => assetName(name, ARCHIVE_FORMAT[kind][0], version, ARCHIVE_FORMAT[kind][1]));
+  return config.packages.map(({ kind, name }) => archiveName(kind, name, version));
 }
 
 const SOURCE_FORMS = [
@@ -336,6 +364,7 @@ export function assets(ctx, tag) {
   const sources = config.packages.map(({ kind, directory: folder }) => run('git', ['show', `${commit}:${folder}/${MANIFEST_OF[kind]}`], at(ctx)));
   const problems = config.packages.flatMap(({ kind, directory: folder, name }, index) => {
     const file = `${folder}/${MANIFEST_OF[kind]}`;
+    if (kind === 'wheel') return sourceProblems({ file, text: sources[index], name, requirement: config.buildBackend.requirement });
     const manifest = JSON.parse(sources[index]);
     return [
       ...(manifest.name === name ? [] : [`${file}: name ${manifest.name ?? 'none'}, ${CONFIG} declares ${name}`]),
@@ -357,6 +386,8 @@ export function assets(ctx, tag) {
         const created = readdirSync(next).filter(item => !before.has(item));
         if (created.length !== 1) throw new Stop(`npm pack of ${folder} wrote [${created.join(', ')}], not one archive`);
         renameSync(path.join(next, created[0]), path.join(next, names[index]));
+      } else if (kind === 'wheel') {
+        buildWheel({ root, env: ctx.env, commit, directory: folder, output: next, buildBackend: config.buildBackend });
       } else {
         // Stored entries, the time of the commit and TZ=UTC give the zip of a tree the same bytes on every machine and at
         // every time: `git archive` of a tree writes the current time without --mtime, and a zip stores local time.
@@ -365,7 +396,8 @@ export function assets(ctx, tag) {
     });
     const present = readdirSync(next).sort();
     if (JSON.stringify(present) !== JSON.stringify([...names].sort())) throw new Stop(`${ASSETS} holds [${present.join(', ')}], not the archives [${[...names].sort().join(', ')}]`);
-    const failures = config.packages.flatMap(({ kind, directory: folder }, index) => {
+    const failures = config.packages.flatMap(({ kind, directory: folder, name }, index) => {
+      if (kind === 'wheel') return metadataProblems(wheelMetadata(root, path.join(next, names[index]), ctx.env), name, version).map(problem => `${names[index]}: ${problem}`);
       const file = MANIFEST_OF[kind];
       const packed = packedManifest(ctx, path.join(next, names[index]));
       return [
@@ -431,7 +463,8 @@ const USAGE = 'usage: node scripts/kit/release.mjs verify|versions|assets|publis
 
 /** Runs a step of the command line; the exit status. */
 export function main(argv, { root = ROOT, env = process.env, print = console.log, error = console.error } = {}) {
-  const [mode, tag, ...rest] = argv;
+  const [mode, latest, ...rest] = argv;
+  let tag = latest;
   const tagged = ['verify', 'versions', 'assets', 'publish', 'go-tags'].includes(mode);
   if (!(tagged && tag && rest.length === 0) && !(mode === 'coverage' && tag === undefined)) {
     error(USAGE);
@@ -439,6 +472,9 @@ export function main(argv, { root = ROOT, env = process.env, print = console.log
   }
   try {
     const ctx = context(root, { env, log: print });
+    const release = tag === 'latest' ? latestTag(ctx) : tag;
+    if (release !== tag) print(`[release] latest is ${release}`);
+    tag = release;
     if (mode === 'coverage') {
       const problems = coverage(ctx);
       for (const problem of problems) error(`[release] coverage: ${problem}`);

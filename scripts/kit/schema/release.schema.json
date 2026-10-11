@@ -46,7 +46,7 @@
       }
     },
     "packages": {
-      "description": "The packages that a tag vX.Y.Z releases as one archive each.",
+      "description": "The packages that a tag vX.Y.Z releases as one archive each; a wheel is released as its PEP 427 wheel.",
       "type": "array",
       "items": {
         "type": "object",
@@ -61,7 +61,8 @@
             "type": "string",
             "enum": [
               "npm",
-              "composer"
+              "composer",
+              "wheel"
             ]
           },
           "directory": {
@@ -87,8 +88,27 @@
       "description": "Each Go module by its directory (`.` for the repository root) with its module path.",
       "type": "object"
     },
+    "buildBackend": {
+      "description": "The build backend of the wheel packages: the exact requirement of the wheel that a build uses, and the sha256 of that wheel from its PyPI release. release-backend.mjs downloads it into var/tools/wheels with the digest checked.",
+      "type": "object",
+      "required": [
+        "requirement",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+==\\d+(\\.\\d+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "consumers": {
-      "description": "The consumer projects that install the archives of a tag outside the repository (release-consumer.mjs); one per package kind that has packages.",
+      "description": "The consumer projects that install the archives of a tag outside the repository (release-consumer.mjs); one per package kind that has packages. A wheel has no committed lock.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -129,6 +149,19 @@
               "type": "object"
             }
           }
+        },
+        "wheel": {
+          "type": "object",
+          "required": [
+            "smoke"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "smoke": {
+              "description": "Each wheel package, with the command (an array of strings) that checks it in the installed virtual environment.",
+              "type": "object"
+            }
+          }
         }
       }
     },
@@ -141,7 +174,7 @@
       "additionalProperties": false,
       "properties": {
         "gitTag": {
-          "description": "Each manifest with the mode git-tag, with { kind: python|rust, name, smoke } for its install from the tag.",
+          "description": "Each manifest with the mode git-tag, with { kind: rust, name, smoke } for its install from the tag.",
           "type": "object"
         }
       }

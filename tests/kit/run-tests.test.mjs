@@ -3,14 +3,15 @@
 // PHPUnit. The runs use fixture test files in a temporary checkout and stubs of the tools on PATH; nothing needs a network.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { cargoEvents, goEvents, parseArguments, phpunitEvents, run, toolCommand } from '../../scripts/kit/run-tests.mjs';
+import { cargoEvents, goEvents, parseArguments, phpunitEvents, pythonEvents, run, toolCommand } from '../../scripts/kit/run-tests.mjs';
+import { inputsDigest } from '../../scripts/kit/tracked-files.mjs';
 import { createProgress } from '../../scripts/kit/test-progress.mjs';
-import { tree } from './tree.mjs';
+import { put, tree } from './tree.mjs';
 
 const KIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../scripts/kit');
 const SPEC = "import test from 'node:test';\n";
@@ -22,6 +23,15 @@ function checkout(t, files) {
 }
 const runner = (root, args, env = {}) => spawnSync(process.execPath, ['scripts/kit/run-tests.mjs', ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, ...env } });
 const output = result => result.stdout + result.stderr;
+// The Python of a checkout is var/tools/bin/python3, the wrapper that install-python.mjs writes: a test writes its stub there.
+function pythonStub(root, script) {
+  const file = path.join(root, 'var/tools/bin/python3');
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `#!/usr/bin/env node\n${script}\n`);
+  chmodSync(file, 0o755);
+  return root;
+}
+const pythonRoot = (t, script) => pythonStub(tree(t), script);
 
 test('a passing file prints the start and the result of each test and a summary, and exits 0', (t) => {
   const root = checkout(t, { 'tests/a.test.mjs': `${SPEC}test('adds', () => {});\ntest('group', async (t) => { await t.test('inner', () => {}); });\n` });
@@ -50,15 +60,14 @@ test('a failing test prints its failure and exits 1', (t) => {
   assert.match(result.stdout, /✔ tests\/a\.test\.mjs › fine/);
 });
 
-test('a test that outlives --timeout fails, and the run has no other limit', (t) => {
-  const root = checkout(t, { 'tests/a.test.mjs': `${SPEC}test('slow', async () => { await new Promise(resolve => setTimeout(resolve, 8000)); });\n` });
-  const started = Date.now();
+// The test never resolves, so only the runner's timeout ends it. The deadline of this test is far above the expected stop.
+test('a test that outlives --timeout fails, and the run has no other limit', { timeout: 100_000 }, (t) => {
+  const root = checkout(t, { 'tests/a.test.mjs': `${SPEC}test('slow', async () => { await new Promise(() => {}); });\n` });
   const result = runner(root, ['node', '--timeout', '1', '--', 'tests/a.test.mjs']);
   assert.equal(result.status, 1, output(result));
   assert.match(result.stdout, /\(each test 1s\)/);
   assert.match(result.stdout, /✖ tests\/a\.test\.mjs › slow/);
   assert.match(result.stdout, /timed out after 1000ms/);
-  assert.ok(Date.now() - started < 7000, 'the timeout stopped the test');
 });
 
 test('a run in which no test ran fails: a file without a test case, only skipped tests, no matching file', (t) => {
@@ -79,8 +88,9 @@ test('a run in which no test ran fails: a file without a test case, only skipped
   assert.equal(runner(root, ['node', '--', 'tests/ok.test.mjs']).status, 0);
 });
 
+// The top-level await never settles: the process ends with no live handle, before the module registers `late`.
 test('a file whose process ends before its module registered every test fails', (t) => {
-  const root = checkout(t, { 'tests/late.test.mjs': `${SPEC}test('early', () => {});\nawait new Promise(resolve => setTimeout(resolve, 300));\ntest('late', () => {});\n` });
+  const root = checkout(t, { 'tests/late.test.mjs': `${SPEC}test('early', () => {});\nawait new Promise(() => {});\ntest('late', () => {});\n` });
   const result = runner(root, ['node', '--', 'tests/late.test.mjs']);
   assert.equal(result.status, 1, output(result));
   assert.match(output(result), /the process ended before the module finished loading; tests registered later did not run/);
@@ -91,8 +101,13 @@ test('the arguments of the runner are read before the arguments of the tool', ()
   assert.deepEqual([options.tool, options.timeoutSeconds, options.cwd, options.args], ['node', 5, '/repo/sub', ['a.test.mjs', '--x']]);
   assert.equal(parseArguments(['phpunit', '--php-extension', 'ext.so'], '/repo').phpExtension, '/repo/ext.so');
   assert.equal(parseArguments(['go', './...'], '/repo').args[0], './...');
-  for (const bad of [[], ['python'], ['node', '--timeout', '0'], ['node', '--timeout', 'x'], ['node', '--php-extension', 'x'], ['node', '--cwd']]) {
-    assert.throws(() => parseArguments(bad, '/repo'), /Usage: node scripts\/kit\/run-tests\.mjs <node\|vitest\|go\|cargo\|phpunit>/, JSON.stringify(bad));
+  assert.deepEqual(parseArguments(['python', '--cwd', 'pkg', 'tests'], '/repo').args, ['tests']);
+  const recorded = parseArguments(['go', '--results', '.results/go.json', '--inputs', 'pkg', '--inputs', 'schema/a.dbs', './...'], '/repo');
+  assert.deepEqual([recorded.results, recorded.inputs, recorded.args], ['/repo/.results/go.json', ['pkg', 'schema/a.dbs'], ['./...']]);
+  assert.deepEqual(parseArguments(['go', '--results', 'r.json', '--cwd', 'pkg'], '/repo').inputs, ['pkg']);
+  assert.throws(() => parseArguments(['go', '--inputs', 'pkg'], '/repo'), /--inputs needs --results/);
+  for (const bad of [[], ['ruby'], ['go', '--results'], ['node', '--timeout', '0'], ['node', '--timeout', 'x'], ['node', '--php-extension', 'x'], ['node', '--cwd']]) {
+    assert.throws(() => parseArguments(bad, '/repo'), /Usage: node scripts\/kit\/run-tests\.mjs <node\|vitest\|go\|cargo\|phpunit\|python>/, JSON.stringify(bad));
   }
 });
 
@@ -107,6 +122,7 @@ test('each tool starts with its progress and timeout arguments and no limit on a
   assert.deepEqual(toolCommand({ tool: 'cargo', timeoutSeconds: 7, cwd: '/r', args: ['-p', 'x', '--', '--nocapture'] }, '/r').args, ['test', '-p', 'x', '--', '--test-threads=1', '--nocapture']);
   assert.deepEqual(toolCommand({ tool: 'phpunit', timeoutSeconds: 7, cwd: '/r/p', args: ['t'] }, '/r'), { command: '/r/p/vendor/bin/phpunit', args: ['--teamcity', 't'] });
   assert.deepEqual(toolCommand({ tool: 'phpunit', timeoutSeconds: 7, cwd: '/r/p', args: [], phpExtension: '/r/e.so' }, '/r').args.slice(0, 3), ['-d', 'extension=/r/e.so', '/r/p/vendor/bin/phpunit']);
+  assert.deepEqual(toolCommand({ tool: 'python', timeoutSeconds: 7, cwd: '/r', args: ['discover', '-s', 'tests'] }, '/r'), { command: path.join('/r', 'var/tools/bin/python3'), args: ['-m', 'unittest', 'discover', '-s', 'tests', '-v'] });
   process.env.COMPOSER_VENDOR_DIR = '/elsewhere';
   try {
     assert.equal(toolCommand({ tool: 'phpunit', timeoutSeconds: 7, cwd: '/r/p', args: [] }, '/r').command, '/elsewhere/bin/phpunit');
@@ -128,8 +144,11 @@ test('the progress closes a run as failed when a test failed, a group failed, th
   const progress = counts(file);
   progress.start('a'); progress.pass('a', 10);
   progress.start('b'); progress.skip('b');
-  assert.deepEqual(progress.close('suite'), { passed: 1, failed: 0, skipped: 1, timedOut: 0, ran: 1, ok: true });
-  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { passed: 1, failed: 0, skipped: 1, timedOut: 0, ran: 1, ok: true });
+  const result = progress.close('suite');
+  assert.deepEqual({ ...result, cases: undefined }, { passed: 1, failed: 0, skipped: 1, timedOut: 0, ran: 1, ok: true, cases: undefined });
+  assert.deepEqual(result.cases.map(({ id, status }) => [id, status]), [['a', 'pass'], ['b', 'skip']]);
+  assert.equal(result.cases[0].elapsedMs, 10);
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), result);
   assert.match(lines.at(-1), /✔ suite: 1 passed, 0 failed, 0 timed out, 1 skipped/);
 
   const failing = counts();
@@ -157,16 +176,27 @@ test('the progress closes a run as failed when a test failed, a group failed, th
   assert.ok(lines.some(line => line.includes('the test did not finish')));
 });
 
-test('the progress reports a test that outlives its timeout', async () => {
+// The heartbeat and the clock are driven by the test: the heartbeat at 20 ms prints the still-running line, and the
+// heartbeat at 60 ms, past the 50 ms timeout, stops the test. A real timer made the outcome depend on the load of the machine.
+test('the progress reports a test that outlives its timeout', (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  let clock = 0;
   const lines = [];
   const stopped = [];
-  const progress = createProgress({ write: text => lines.push(text), heartbeatMs: 20, timeoutMs: 50, onTimeout: id => stopped.push(id), command: 'tool run' });
+  const progress = createProgress({ write: text => lines.push(text), heartbeatMs: 20, timeoutMs: 50, onTimeout: id => stopped.push(id), command: 'tool run', now: () => clock });
   progress.start('slow');
-  await new Promise(resolve => setTimeout(resolve, 200));
+  clock = 20;
+  t.mock.timers.tick(20);
+  assert.ok(lines.some(line => line.includes('… slow still running')), lines.join(''));
+  clock = 60;
+  t.mock.timers.tick(40);
   assert.deepEqual(stopped, ['slow']);
+  progress.fail('slow', undefined, 'stopped');
   assert.ok(lines.some(line => /⏱ slow ran \d\.\ds and exceeded its 0\.1s timeout; stopping `tool run`/.test(line)), lines.join(''));
   assert.ok(lines.some(line => line.includes('… slow still running')));
-  assert.equal(progress.close('suite').timedOut, 1);
+  const closed = progress.close('suite');
+  assert.equal(closed.timedOut, 1);
+  assert.deepEqual(closed.cases.map(({ id, status }) => [id, status]), [['slow', 'timeout']]);
 });
 
 test('the go events print tests, show the output of a failing test, name build errors and skip a package without a test', () => {
@@ -229,6 +259,30 @@ test('the phpunit events pair tests, join the failure messages and print other l
   assert.equal(progress.close('phpunit').ok, false);
 });
 
+test('the python events pair each test with its outcome, keep the description id over a docstring line and print other lines', () => {
+  const lines = [];
+  const progress = createProgress({ write: text => lines.push(text), heartbeatMs: 10_000, resultFile: '' });
+  const feed = pythonEvents(progress);
+  feed('test_a (tests.test_x.T.test_a) ... ok\n');
+  feed('test_b (tests.test_x.T.test_b) ... ');
+  feed('FAIL\n');
+  feed('test_c (tests.test_x.T.test_c) ... ERROR\ntest_d (tests.test_x.T.test_d) ... skipped \'later\'\n');
+  feed('test_e (tests.test_x.T.test_e) ... expected failure\ntest_f (tests.test_x.T.test_f) ... unexpected success\n');
+  feed('test_g (tests.test_x.T.test_g)\nChecks the docstring. ... ok\n');
+  feed('======================================================================\nFAIL: test_b (tests.test_x.T.test_b)\nAssertionError: 1 != 2\n');
+  const text = lines.join('');
+  assert.match(text, /✔ test_a \(tests\.test_x\.T\.test_a\)/);
+  assert.match(text, /✖ test_b \(tests\.test_x\.T\.test_b\)/);
+  assert.match(text, /✖ test_c \(tests\.test_x\.T\.test_c\)/);
+  assert.match(text, /○ test_d \(tests\.test_x\.T\.test_d\) skipped/);
+  assert.match(text, /✔ test_e \(tests\.test_x\.T\.test_e\)/);
+  assert.match(text, /✖ test_f \(tests\.test_x\.T\.test_f\)/);
+  assert.match(text, /✔ test_g \(tests\.test_x\.T\.test_g\)/);
+  assert.doesNotMatch(text, /✔ Checks the docstring/);
+  assert.match(text, /AssertionError: 1 != 2/);
+  assert.deepEqual(progress.counts, { passed: 3, failed: 3, skipped: 1, timedOut: 0 });
+});
+
 function stubTool(t, name, script) {
   const bin = mkdtempSync(path.join(tmpdir(), 'kit-stub-'));
   t.after(() => rmSync(bin, { recursive: true, force: true }));
@@ -284,4 +338,109 @@ test('a PHP extension that is not built fails before the tool starts', async (t)
   const result = await inProcess(t, ['phpunit', '--php-extension', 'build/ext.so']);
   assert.equal(result.status, 1);
   assert.match(result.text, /the PHP extension build\/ext\.so is not built; build it before the run/);
+});
+
+// The hanging stub keeps a live timer and never ends on its own, so only the runner's timeout stops it. The deadline of this
+// test is far above the expected stop.
+test('python tests run through var/tools/bin/python3, pass, fail and stop at their timeout', { timeout: 100_000 }, async (t) => {
+  const passing = pythonRoot(t, `process.stderr.write('test_a (t.T.test_a) ... ok\\n\\n' + '-'.repeat(70) + '\\nRan 1 test in 0.001s\\n\\nOK\\n');`);
+  const passed = await inProcess(t, ['python', 'tests'], { root: passing });
+  assert.equal(passed.status, 0, passed.text);
+  assert.match(passed.text, /✔ python \. tests: 1 passed/);
+
+  const failing = pythonRoot(t, `process.stderr.write('test_a (t.T.test_a) ... FAIL\\n'); process.exitCode = 1;`);
+  const failed = await inProcess(t, ['python', 'tests'], { root: failing });
+  assert.equal(failed.status, 1, failed.text);
+  assert.match(failed.text, /✖ test_a \(t\.T\.test_a\)/);
+
+  const hanging = pythonRoot(t, `process.stderr.write('test_hang (t.T.test_hang) ... '); setInterval(() => {}, 1000);`);
+  const hung = await inProcess(t, ['python', '--timeout', '1', 'tests'], { root: hanging });
+  assert.equal(hung.status, 1, hung.text);
+  assert.match(hung.text, /⏱ test_hang \(t\.T\.test_hang\) ran [\d.]+s and exceeded its 1\.0s timeout; stopping `[^`]*var\/tools\/bin\/python3 -m unittest`/);
+
+  const empty = pythonRoot(t, `process.stderr.write('\\n' + '-'.repeat(70) + '\\nRan 0 tests in 0.000s\\n\\nNO TESTS RAN\\n'); process.exitCode = 5;`);
+  const none = await inProcess(t, ['python', 'tests'], { root: empty });
+  assert.equal(none.status, 1, none.text);
+  assert.match(none.text, /no test ran/);
+});
+
+test('a var/tools/bin/python3 that cannot start fails with the fix', async (t) => {
+  const result = await inProcess(t, ['python', 'tests'], { root: tree(t) });
+  assert.equal(result.status, 1);
+  assert.match(result.text, /✖ python \. tests: cannot start .*var\/tools\/bin\/python3: .*; declare pythonBuild in config\/toolchain\.json and run make install-tools TOOLS=python/);
+});
+
+test('inputsDigest hashes the tracked and new non-ignored files under the paths and fails on a path without files', (t) => {
+  const root = tree(t, { 'pkg/a.txt': 'a', 'pkg/out/ignored.txt': 'x', 'schema/s.dbs': 's', 'other.txt': 'o', '.gitignore': 'pkg/out/\n' });
+  const first = inputsDigest(root, ['pkg', 'schema/s.dbs']);
+  assert.match(first, /^[0-9a-f]{64}$/);
+  put(root, { 'pkg/out/ignored.txt': 'y', 'other.txt': 'p' });
+  assert.equal(inputsDigest(root, ['pkg', 'schema/s.dbs']), first, 'ignored files and files outside the paths do not count');
+  put(root, { 'pkg/a.txt': 'b' });
+  assert.notEqual(inputsDigest(root, ['pkg', 'schema/s.dbs']), first);
+  put(root, { 'pkg/new.txt': 'n' });
+  const withNew = inputsDigest(root, ['pkg', 'schema/s.dbs']);
+  put(root, { 'pkg/new.txt': null });
+  assert.notEqual(inputsDigest(root, ['pkg', 'schema/s.dbs']), withNew);
+  assert.throws(() => inputsDigest(root, ['missing']), /--inputs missing names no tracked or new file/);
+});
+
+test('--results writes the cases, the tool, the inputs and the elapsed time of a passing and of a failing run', async (t) => {
+  const root = tree(t, { 'pkg/a_test.go': 'package a' });
+  const events = [{ Action: 'start', Package: 'p' }, { Action: 'run', Package: 'p', Test: 'TestA' }, { Action: 'pass', Package: 'p', Test: 'TestA', Elapsed: 0.25 },
+    { Action: 'run', Package: 'p', Test: 'TestB' }, { Action: 'fail', Package: 'p', Test: 'TestB', Elapsed: 0.5 }, { Action: 'fail', Package: 'p', Elapsed: 1 }];
+  const bin = stubTool(t, 'go', `for (const e of ${JSON.stringify(events)}) console.log(JSON.stringify(e)); process.exitCode = 1;`);
+  const result = await inProcess(t, ['go', '--results', '.results/go.json', '--cwd', 'pkg', './...'], { root, path: `${bin}${path.delimiter}${process.env.PATH}` });
+  assert.equal(result.status, 1, result.text);
+  const record = JSON.parse(readFileSync(path.join(root, '.results/go.json'), 'utf8'));
+  assert.deepEqual(record.cases, [{ id: 'p › TestA', status: 'pass', elapsedMs: 250 }, { id: 'p › TestB', status: 'fail', elapsedMs: 500 }]);
+  assert.deepEqual([record.tool, record.inputs.paths, record.inputs.digest, record.ok], ['go', ['pkg'], inputsDigest(root, ['pkg']), false]);
+  assert.equal(typeof record.elapsedMs, 'number');
+});
+
+test('--results records the cases of node tests, which the reporter counts in its own process', (t) => {
+  const root = checkout(t, { 'tests/a.test.mjs': `${SPEC}test('adds', () => {});\ntest('later', { skip: true }, () => {});\n` });
+  const result = runner(root, ['node', '--results', '.results/node.json', '--inputs', 'tests', '--', 'tests/a.test.mjs']);
+  assert.equal(result.status, 0, output(result));
+  const record = JSON.parse(readFileSync(path.join(root, '.results/node.json'), 'utf8'));
+  assert.deepEqual(record.cases.map(({ id, status }) => [id, status]), [['tests/a.test.mjs › adds', 'pass'], ['tests/a.test.mjs › later', 'skip']]);
+  assert.equal(record.tool, 'node');
+});
+
+test('under --cwd a node file group is not a test case, and its ids name the file from the checkout root', (t) => {
+  const root = checkout(t, { 'pkg/tests/a.test.mjs': `${SPEC}test('adds', () => {});\ntest('subtracts', () => {});\n` });
+  const result = runner(root, ['node', '--cwd', 'pkg', '--results', '.results/node.json', '--', 'tests']);
+  assert.equal(result.status, 0, output(result));
+  assert.match(result.stdout, /✔ node --test: 2 passed, 0 failed, 0 timed out, 0 skipped/);
+  assert.match(result.stdout, /✔ pkg\/tests\/a\.test\.mjs › adds/);
+  const record = JSON.parse(readFileSync(path.join(root, '.results/node.json'), 'utf8'));
+  assert.deepEqual(record.cases.map(({ id, status }) => [id, status]), [['pkg/tests/a.test.mjs › adds', 'pass'], ['pkg/tests/a.test.mjs › subtracts', 'pass']]);
+});
+
+test('a node file of 89 tests reports every test when the reporter reads its events late', (t) => {
+  const tests = Array.from({ length: 89 }, (_, index) => `test('case ${index}', () => {});`).join('\n');
+  const root = checkout(t, { 'tests/many.test.mjs': `${SPEC}${tests}\n` });
+  // The reporter spends 5 ms on each event, so the reports queue up while the file's process ends.
+  const reporter = path.join(root, 'scripts/kit/node-reporter.mjs');
+  const source = readFileSync(reporter, 'utf8');
+  const lagged = source.replace('const { type, data } = event;', 'const { type, data } = event;\n    for (const end = Date.now() + 5; Date.now() < end;);');
+  assert.notEqual(lagged, source);
+  writeFileSync(reporter, lagged);
+  const result = runner(root, ['node', '--', 'tests/many.test.mjs']);
+  assert.equal(result.status, 0, output(result));
+  assert.equal(result.stdout.match(/✔ tests\/many\.test\.mjs › case \d+ /g)?.length, 89, output(result));
+  assert.match(result.stdout, /✔ node --test: 89 passed, 0 failed, 0 timed out, 0 skipped/);
+});
+
+test('python tests are read without color when FORCE_COLOR is set, since unittest colors its output then', (t) => {
+  // A stub of python3 that colors its verbose lines as Python 3.14 does under FORCE_COLOR, unless PYTHON_COLORS is 0.
+  const root = checkout(t, { 'tests/t.py': '' });
+  pythonStub(root, `
+const colored = process.env.FORCE_COLOR && process.env.PYTHON_COLORS !== '0';
+const ok = colored ? '\\x1b[32mok\\x1b[0m' : 'ok';
+process.stderr.write('test_a (t.T.test_a) ... ' + ok + '\\n\\n' + '-'.repeat(70) + '\\nRan 1 test in 0.001s\\n\\nOK\\n');`);
+  const colored = runner(root, ['python', 'tests'], { FORCE_COLOR: '3' });
+  assert.equal(colored.status, 0, output(colored));
+  assert.match(colored.stdout, /✔ test_a \(t\.T\.test_a\)/);
+  assert.match(colored.stdout, /1 passed, 0 failed/);
 });

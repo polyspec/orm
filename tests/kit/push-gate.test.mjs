@@ -29,7 +29,7 @@ test('a push whose commit has an item in progress is refused and names the file,
   assert.equal(push(work).status, 0);
   const before = remoteHead(remote);
   start(work);
-  const active = commitAll(work, 'start T1-1');
+  const active = commitAll(work, 'docs(checklist): Start T1-1 (#T1-1)');
   const pushed = push(work);
   assert.notEqual(pushed.status, 0);
   assert.match(pushed.stderr, /push refused: 2 items are in the active state \(docs\/plans\/execution-checklist\.md: only the state \[~\] blocks; \[ \], \[o\], \[!\] do not block\)/);
@@ -62,7 +62,7 @@ test('every item in progress is named, in each pushed commit and in the working 
 test('a push is refused when a pushed commit has no tracker file', (t) => {
   const { work, remote } = prepared(t);
   git(work, 'rm', '--quiet', '--cached', CHECKLIST);
-  const removed = commitIndex(work, 'remove the checklist');
+  const removed = commitIndex(work, 'docs(checklist): Remove the checklist (#T1)');
   const pushed = push(work);
   assert.notEqual(pushed.status, 0);
   assert.match(pushed.stderr, /push refused: the push gate cannot read the trackers/);
@@ -81,7 +81,7 @@ test('a document without an item or with an unknown state is unreadable and refu
 test('a translation with another state than its document refuses the push', (t) => {
   const { work, remote } = prepared(t);
   edit(work, TRANSLATION, text => text.replace(/(\| T1-1 \|[^\n]*)\| \[ \] \|/, '$1| [o] |'));
-  commitAll(work, 'translation differs');
+  commitAll(work, 'docs(checklist): Differ the translation (#T1-1)');
   const pushed = push(work);
   assert.notEqual(pushed.status, 0);
   assert.match(pushed.stderr, /push refused: the push gate cannot read the trackers/);
@@ -158,7 +158,7 @@ test('the commit command fails for an item in progress with an annotation for ea
   start(work);
   edit(work, CHECKLIST, text => text.replace('Print `a \\| b` for a union', '100% done\\|'));
   edit(work, TRANSLATION, text => text.replace('union을 `a \\| b`로 출력한다', '100% 끝'));
-  commitAll(work, 'start T1-1');
+  commitAll(work, 'docs(checklist): Start T1-1 (#T1-1)');
   const failed = gate(work, ['commit', 'HEAD'], { GITHUB_STEP_SUMMARY: summary });
   assert.equal(failed.status, 1);
   assert.match(failed.stdout, /^::error::push refused: 1 item is in the active state/m);
@@ -198,4 +198,63 @@ test('the commit command refuses a revision that is not a commit', (t) => {
   const refused = gate(work, ['commit', 'no-such-revision']);
   assert.equal(refused.status, 1);
   assert.match(refused.stdout, /^::error::push refused: no-such-revision is not a commit of this repository$/m);
+});
+
+// The commit messages of the pushed range, checked with the rules of config/commits.json (the same check as make commits-check).
+const WIDE = `${'word '.repeat(14)}abcd`; // 74 characters with a space, so the line is not a single long word
+const note = (work, name, message) => {
+  writeFileSync(path.join(work, name), `${name}\n`);
+  return commitAll(work, message);
+};
+
+test('a push is refused when a pushed commit has a body line wider than bodyMax, and names the commit and the line', (t) => {
+  const { work, remote } = prepared(t);
+  assert.equal(push(work).status, 0);
+  const before = remoteHead(remote);
+  const wide = note(work, 'wide.txt', `docs(checklist): Add the notes (#T1)\n\n${WIDE}\n`);
+  const pushed = push(work);
+  assert.notEqual(pushed.status, 0);
+  assert.match(pushed.stderr, /push refused: 1 commit finding/);
+  assert.match(pushed.stderr, new RegExp(`^  ${wide.slice(0, 7)}[0-9a-f]*: commit-width: line 3 of the message has 74 characters; expected at most 72; wrap the body$`, 'm'));
+  assert.equal(remoteHead(remote), before);
+});
+
+test('a push of a clean range is allowed, and its commit messages pass', (t) => {
+  const { work, remote } = prepared(t);
+  assert.equal(push(work).status, 0);
+  const clean = note(work, 'clean.txt', `docs(checklist): Add the notes (#T1)\n\n${'word '.repeat(14)}ab\n`);
+  const pushed = push(work);
+  assert.equal(pushed.status, 0, pushed.stderr);
+  assert.equal(remoteHead(remote), clean);
+});
+
+test('a new branch is checked for the commits that no remote ref holds', (t) => {
+  const { work, remote } = prepared(t);
+  assert.equal(push(work).status, 0);
+  const wide = note(work, 'wide.txt', `docs(checklist): Add the notes (#T1)\n\n${WIDE}\n`);
+  const refused = push(work, 'HEAD:refs/heads/other');
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, new RegExp(`^  ${wide.slice(0, 7)}[0-9a-f]*: commit-width: line 3 `, 'm'));
+  assert.equal(run(remote, 'git', ['rev-parse', '--verify', '--quiet', 'refs/heads/other']).stdout.trim(), '');
+});
+
+test('a push checks only the commits after the remote sha, so a wide commit the remote holds does not refuse', (t) => {
+  const { work, remote } = prepared(t);
+  assert.equal(push(work).status, 0);
+  note(work, 'wide.txt', `docs(checklist): Add the notes (#T1)\n\n${WIDE}\n`);
+  assert.equal(push(work, '--no-verify', 'HEAD:refs/heads/main').status, 0);
+  const clean = note(work, 'clean.txt', `docs(checklist): Add the more notes (#T1)\n\n${'word '.repeat(14)}ab\n`);
+  const pushed = push(work);
+  assert.equal(pushed.status, 0, pushed.stderr);
+  assert.equal(remoteHead(remote), clean);
+});
+
+test('a deleted ref pushes no commit and is not checked', (t) => {
+  const { work, remote } = prepared(t);
+  assert.equal(push(work).status, 0);
+  note(work, 'wide.txt', `docs(checklist): Add the notes (#T1)\n\n${WIDE}\n`);
+  assert.equal(push(work, '--no-verify', 'HEAD:refs/heads/other').status, 0);
+  const deleted = push(work, ':refs/heads/other');
+  assert.equal(deleted.status, 0, deleted.stderr);
+  assert.equal(run(remote, 'git', ['rev-parse', '--verify', '--quiet', 'refs/heads/other']).stdout.trim(), '');
 });

@@ -6,7 +6,8 @@
 //   node scripts/kit/push-gate.mjs hook          the pre-push hook .githooks/pre-push: reads the lines
 //                                                `<local ref> <local sha> <remote ref> <remote sha>` of Git on standard
 //                                                input and refuses the push while a tracker of a pushed commit or of the
-//                                                working tree has an item in the active state, or cannot be read
+//                                                working tree has an item in the active state, or cannot be read, and refuses it while a commit that the push sends has a
+//                                                finding of the commit check (check-commits.mjs, config/commits.json, as make commits-check)
 //   node scripts/kit/push-gate.mjs commit <rev>  the check of a pushed commit, for a push from a checkout without the
 //                                                hook: fails for the same reasons and when the commit does not track a
 //                                                hook of config/checklist.json with mode 100755; prints each line also as
@@ -20,12 +21,14 @@ import { blockingSentence, inspectTrackers, loadConfig } from './checklist.mjs';
 import { HOOKS_PATH } from './git-hooks.mjs';
 import { isMain, ROOT } from './paths.mjs';
 import { git, gitResult } from './git.mjs';
+import { findingLines, loadCommitRules, logMessages } from './check-commits.mjs';
 
 const USAGE = 'Usage: node scripts/kit/push-gate.mjs hook | commit <rev>';
 const NO_OBJECT = /^0+$/;
 const SHORT = 12;
 
 const RULE = 'A push happens only when no item of a tracker is in its active state; work in progress does not reach the remote.';
+const COMMIT_FIX = 'Amend each listed commit that the remote does not hold yet, then push again; this gate does not rewrite a pushed commit.';
 const FIX = 'Finish each listed item in a commit with its documentation and tests, or move it to a state that does not block, such as bypassed with its cause and retry condition; then push again.';
 
 /**
@@ -59,20 +62,38 @@ const working = root => (file) => {
   return readFileSync(path.join(root, file), 'utf8');
 };
 
+/**
+ * The finding lines of the commits that a push of `localSha` to a ref at `remoteSha` sends. A new ref (zero remote sha) sends
+ * the commits that no remote ref holds; an update sends the commits after the remote sha.
+ */
+function pushedFindings(root, localSha, remoteSha, rules) {
+  if (NO_OBJECT.test(remoteSha)) return findingLines(root, logMessages(root, [localSha, '--not', '--remotes'], `${localSha} without the remote refs`), rules);
+  return findingLines(root, logMessages(root, [`${remoteSha}..${localSha}`], `${remoteSha}..${localSha}`), rules);
+}
+
+/** The refusal lines of the commit findings of a push, empty when there is none. */
+function commitRefusal(findings) {
+  if (findings.length === 0) return [];
+  return [`push refused: ${findings.length} commit finding${findings.length === 1 ? '' : 's'} (config/commits.json)`, ...findings.map(finding => `  ${finding}`), COMMIT_FIX];
+}
+
 /** The refusal lines of a push: `input` holds the lines that Git passes to the pre-push hook. */
 export function hook(root, input) {
   const config = loadConfig(root);
+  const rules = loadCommitRules(root);
   const sources = [];
+  const findings = [];
   for (const line of input.split('\n').filter(entry => entry.trim())) {
     const fields = line.trim().split(/\s+/);
     if (fields.length !== 4) throw new Error(`the pre-push input line ${JSON.stringify(line)} is not "<local ref> <local sha> <remote ref> <remote sha>"`);
-    const [localRef, localSha] = fields;
+    const [localRef, localSha, , remoteSha] = fields;
     // A deleted ref pushes no commit.
     if (NO_OBJECT.test(localSha)) continue;
     sources.push({ where: `${localRef} ${localSha.slice(0, SHORT)}`, read: committed(root, localSha) });
+    findings.push(...pushedFindings(root, localSha, remoteSha, rules));
   }
   sources.push({ where: 'working tree', read: working(root) });
-  return inspect(config, sources);
+  return [...inspect(config, sources), ...commitRefusal(findings)];
 }
 
 /** The failure lines of the commit `rev`, or an empty array, with the commit that `rev` names. */

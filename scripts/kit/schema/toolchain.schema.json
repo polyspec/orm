@@ -29,6 +29,49 @@
       "type": "string",
       "pattern": "^\\d+\\.\\d+$"
     },
+    "pythonBuild": {
+      "description": "The exact Python release of the python minor, from a python-build-standalone release: install-tools installs its install_only archive for each platform in sha256, the digest of the archive from the SHA256SUMS of that release.",
+      "type": "object",
+      "required": [
+        "version",
+        "release",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "release": {
+          "type": "string",
+          "pattern": "^\\d{8}$"
+        },
+        "sha256": {
+          "type": "object",
+          "description": "The sha256 of the archive of each platform key (process.platform-process.arch); the install reads each digest as 64 lowercase hexadecimal digits."
+        }
+      }
+    },
+    "pythonBackend": {
+      "description": "The build backend of the Python wheels: the exact requirement of the wheel, and its sha256 from the PyPI release. install-tools downloads it into var/tools/wheels with the digest checked.",
+      "type": "object",
+      "required": [
+        "requirement",
+        "sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+==\\d+(\\.\\d+)*$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "composer": {
       "description": "The Composer release. With sha256, install-tools installs composer.phar into var/tools; without it, the Composer of the machine is verified.",
       "type": "object",
@@ -66,16 +109,21 @@
       }
     },
     "ruff": {
-      "description": "The pyproject.toml whose dev extra pins ruff==<version>; install-tools installs that release into a virtual environment of var/tools.",
+      "description": "The ruff release that install-tools installs into a virtual environment of var/tools: the exact version, and the sha256 of the wheel of each platform key (process.platform-process.arch) that the install downloads, the digest read as 64 lowercase hexadecimal digits.",
       "type": "object",
       "required": [
-        "pyproject"
+        "version",
+        "sha256"
       ],
       "additionalProperties": false,
       "properties": {
-        "pyproject": {
+        "version": {
           "type": "string",
-          "pattern": "^([^/\\\\][^\\\\]*/)?pyproject\\.toml$"
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "sha256": {
+          "type": "object",
+          "description": "The sha256 of the ruff wheel of each platform key; the install accepts a wheel of any listed digest and names the platform key of none."
         }
       }
     },

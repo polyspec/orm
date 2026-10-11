@@ -9,6 +9,9 @@
   "pythonManifests": [
     "packages/fixture-python/pyproject.toml"
   ],
+  "npmLocks": [
+    "package-lock.json"
+  ],
   "taggedNpmPackages": [
     {
       "directory": "external/tagged/js",

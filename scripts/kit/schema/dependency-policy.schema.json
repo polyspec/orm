@@ -6,6 +6,7 @@
     "schema",
     "composerPlatforms",
     "pythonManifests",
+    "npmLocks",
     "exceptions"
   ],
   "additionalProperties": false,
@@ -40,6 +41,13 @@
       "items": {
         "type": "string",
         "pattern": "^([^/\\\\][^\\\\]*/)?pyproject\\.toml$"
+      }
+    },
+    "npmLocks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^([^/\\\\][^\\\\]*/)?package-lock\\.json$"
       }
     },
     "exceptions": {

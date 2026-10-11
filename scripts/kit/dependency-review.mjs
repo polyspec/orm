@@ -20,7 +20,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { POLICY, RECORD, NPM_LOCK, UPDATE, dependencyKey, lockEcosystem, readState } from './dependency-state.mjs';
+import { POLICY, RECORD, TOOLCHAIN, UPDATE, dependencyKey, lockEcosystem, readState } from './dependency-state.mjs';
 import { cargoAuditCommand } from './install-cargo-audit.mjs';
 import { govulncheckCommand } from './install-govulncheck.mjs';
 import { isMain, ROOT } from './paths.mjs';
@@ -168,21 +168,23 @@ function latestReleases(root, state) {
   return latest;
 }
 
-/** The advisories of every lock: lock -> { advisories } or { error }. */
+/** The advisories of every lock: lock -> { advisories } or { error }. Each npm lock is audited in the directory it lies in. */
 function advisories(root, state) {
   const result = new Map();
-  const npmVersions = state.npmLock.packages ?? {};
-  const npm = query('npm', ['audit', '--json', '--package-lock-only'], root, [0, 1]);
-  if (npm.error) result.set(NPM_LOCK, { error: npm.error });
-  else {
-    const list = [];
-    for (const [name, vulnerability] of Object.entries(npm.value.vulnerabilities ?? {})) {
-      for (const via of vulnerability.via ?? []) {
-        if (typeof via !== 'object' || !NPM_SEVERITIES.has(via.severity)) continue;
-        list.push({ package: name, version: npmVersions[`node_modules/${name}`]?.version ?? vulnerability.range, id: String(via.source ?? via.url), severity: via.severity, title: via.title, url: via.url });
+  for (const lock of state.locks.filter(item => lockEcosystem(item) === 'npm')) {
+    const npmVersions = state.npmLocks.get(lock).packages ?? {};
+    const npm = query('npm', ['audit', '--json', '--package-lock-only'], path.join(root, path.posix.dirname(lock)), [0, 1]);
+    if (npm.error) result.set(lock, { error: npm.error });
+    else {
+      const list = [];
+      for (const [name, vulnerability] of Object.entries(npm.value.vulnerabilities ?? {})) {
+        for (const via of vulnerability.via ?? []) {
+          if (typeof via !== 'object' || !NPM_SEVERITIES.has(via.severity)) continue;
+          list.push({ package: name, version: npmVersions[`node_modules/${name}`]?.version ?? vulnerability.range, id: String(via.source ?? via.url), severity: via.severity, title: via.title, url: via.url });
+        }
       }
+      result.set(lock, { advisories: list });
     }
-    result.set(NPM_LOCK, { advisories: list });
   }
   // cargo-audit reads the RustSec advisory database from a clone in .tools; the first lock fetches it.
   let fetched = false;
@@ -262,7 +264,7 @@ export function review(root) {
     if (outdated && exceptions.has(key)) notes.push(`${subject} ${dependency.version} < ${answer.latest}: kept by the exception of ${POLICY}: ${exceptions.get(key).reason}`);
     else if (outdated) {
       newer.push({ ...dependency, latest: answer.latest });
-      lines.push(`${subject} ${dependency.version} < ${answer.latest}: a newer stable release exists. Fix: ${UPDATE}`);
+      lines.push(`${subject} ${dependency.version} < ${answer.latest}: a newer stable release exists. Fix: ${fixOf(dependency)}`);
     } else if (exceptions.has(key)) lines.push(`${subject} ${dependency.version}: the exception of ${POLICY} is stale, ${answer.latest} is the latest stable release. Fix: remove the exception from ${POLICY}`);
   }
   for (const lock of state.locks) {
@@ -287,6 +289,10 @@ export function review(root) {
   return { lines, notes, newer, advisories: found, record, complete };
 }
 
+// The fix of a newer release: the ruff pin of config/toolchain.json is set by hand, with the sha256 of its wheels, because
+// the sha256 is read from the registry of each platform; every other manifest is updated by `make dependency-review UPDATE=1`.
+export const fixOf = dependency => (dependency.manifest === TOOLCHAIN ? `set ruff in ${TOOLCHAIN} to ${dependency.latest} with the sha256 of each wheel, then make install-tools` : UPDATE);
+
 /** The range operator of a manifest constraint: `^`, `~` or none for an exact version. */
 const operator = spec => (/^[\^~]/.test(spec) ? spec[0] : '');
 
@@ -294,13 +300,16 @@ const operator = spec => (/^[\^~]/.test(spec) ? spec[0] : '');
 export function updatePlan({ newer, advisories: found }) {
   const plan = [];
   for (const dependency of newer) {
+    if (dependency.manifest === TOOLCHAIN) continue;
     const version = String(dependency.latest).replace(/^v/, '');
     const range = operator(dependency.spec);
     if (dependency.ecosystem === 'npm') {
-      const directory = path.posix.dirname(dependency.manifest);
+      // npm runs in the directory of the lock of the manifest, and --workspace names the manifest relative to it.
+      const base = path.posix.dirname(dependency.lock);
+      const directory = path.posix.relative(base, path.posix.dirname(dependency.manifest));
       const save = dependency.kind === 'devDependencies' ? ['--save-dev'] : ['--save'];
-      const workspace = directory === '.' ? [] : ['--workspace', directory];
-      plan.push({ command: 'npm', args: ['install', ...workspace, ...save, ...(range ? [] : ['--save-exact']), `${dependency.package}@${range}${version}`], cwd: '.' });
+      const workspace = directory === '' ? [] : ['--workspace', directory];
+      plan.push({ command: 'npm', args: ['install', ...workspace, ...save, ...(range ? [] : ['--save-exact']), `${dependency.package}@${range}${version}`], cwd: base });
     } else if (dependency.ecosystem === 'go') {
       plan.push({ command: 'go', args: ['get', `${dependency.package}@${dependency.latest}`], cwd: path.posix.dirname(dependency.manifest) });
     } else if (dependency.ecosystem === 'pypi') {
@@ -309,10 +318,12 @@ export function updatePlan({ newer, advisories: found }) {
       plan.push({ command: 'composer', args: ['require', ...(dependency.kind === 'require-dev' ? ['--dev'] : []), '--update-with-dependencies', '--no-interaction', `${dependency.package}:${range}${version}`], cwd: path.posix.dirname(dependency.manifest) });
     }
   }
-  if (found.some(advisory => advisory.lock === NPM_LOCK)) plan.push({ command: 'npm', args: ['audit', 'fix'], cwd: '.' });
-  if (plan.some(step => step.command === 'npm')) plan.push({ command: 'npm', args: ['dedupe'], cwd: '.' });
+  for (const lock of new Set(found.filter(advisory => lockEcosystem(advisory.lock) === 'npm').map(advisory => advisory.lock))) {
+    plan.push({ command: 'npm', args: ['audit', 'fix'], cwd: path.posix.dirname(lock) });
+  }
+  for (const cwd of new Set(plan.filter(step => step.command === 'npm').map(step => step.cwd))) plan.push({ command: 'npm', args: ['dedupe'], cwd });
   const affected = new Map();
-  for (const advisory of found.filter(item => item.lock !== NPM_LOCK)) {
+  for (const advisory of found.filter(item => lockEcosystem(item.lock) !== 'npm')) {
     if (!affected.has(advisory.lock)) affected.set(advisory.lock, new Set());
     affected.get(advisory.lock).add(advisory.package);
   }

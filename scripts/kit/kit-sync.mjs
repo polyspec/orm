@@ -10,6 +10,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { parseArgs } from 'node:util';
 import { LOCK, walk } from './kit-check.mjs';
 import { isMain, ROOT } from './paths.mjs';
 import { fileDigest } from './digest.mjs';
@@ -17,6 +18,35 @@ import { jsonText, readJson, writeAtomic } from './files.mjs';
 import { git } from './git.mjs';
 
 export const DEFAULT_REPOSITORY = 'https://github.com/polyspec/kit';
+
+const USAGE = 'usage: node scripts/kit/kit-sync.mjs --tag <tag> [--repository <url or path>]';
+
+/**
+ * Reads the arguments of kit-sync: `tag` is required, `repository` is DEFAULT_REPOSITORY when it is not given. Throws an
+ * Error that names the option when an option has no value, when an option is followed by another option, or when the tag
+ * is missing.
+ */
+export function parseSyncArguments(argv) {
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args: argv,
+      options: { tag: { type: 'string', multiple: true }, repository: { type: 'string', multiple: true } },
+      strict: true,
+    }));
+  } catch (error) {
+    const reason = error.message.split('\n')[0].replace(/\.?$/, '.');
+    throw new Error(`${reason} ${USAGE}`);
+  }
+  for (const name of ['tag', 'repository']) {
+    if (values[name]?.length > 1) throw new Error(`--${name} is given more than once. ${USAGE}`);
+  }
+  const [tag] = values.tag ?? [];
+  const [repository] = values.repository ?? [];
+  if (!tag) throw new Error('--tag is required. Fix: make kit-sync KIT_TAG=vX.Y.Z');
+  if (repository === '') throw new Error(`--repository has no value. ${USAGE}`);
+  return { tag, repository: repository ?? DEFAULT_REPOSITORY };
+}
 
 /**
  * Syncs the vendored files of kit at `tag` from `repository` into `root`; returns the lines that describe the changes
@@ -59,16 +89,16 @@ export function sync({ root, repository, tag }) {
 }
 
 if (isMain(import.meta.url)) {
-  const args = process.argv.slice(2);
-  const option = name => args[args.indexOf(name) + 1];
-  const tag = option('--tag');
-  const repository = option('--repository') ?? DEFAULT_REPOSITORY;
-  if (!tag) {
-    console.error('[kit-sync] --tag is required. Fix: make kit-sync KIT_TAG=vX.Y.Z');
+  let options;
+  try {
+    options = parseSyncArguments(process.argv.slice(2));
+  } catch (error) {
+    console.error(`[kit-sync] ${error.message}`);
     process.exit(2);
   }
   const root = ROOT;
   try {
+    const { tag, repository } = options;
     const changes = sync({ root, repository, tag });
     for (const line of changes) console.log(`[kit-sync] ${line}`);
     console.log(changes.length ? `[kit-sync] ${changes.length} changes from ${tag}` : `[kit-sync] unchanged: ${tag}`);

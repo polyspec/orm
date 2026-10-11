@@ -18,6 +18,8 @@ export function createProgress({ write, heartbeatMs = 5000, timeoutMs, onTimeout
   const started = now();
   const running = new Map();
   const counts = { passed: 0, failed: 0, skipped: 0, timedOut: 0 };
+  // Each test with its outcome and elapsed time, in the order they ended; a test that ran out of time is `timeout`.
+  const cases = [];
   const groupCounts = { passed: 0, failed: 0 };
   const line = text => write(`[${compactSeconds(now() - started).padStart(8)}] ${text}\n`);
   const timer = setInterval(() => {
@@ -41,10 +43,12 @@ export function createProgress({ write, heartbeatMs = 5000, timeoutMs, onTimeout
     groups.delete(id);
     return compactSeconds(time);
   };
-  const finish = (id, durationMs) => {
+  const finish = (id, durationMs, status) => {
     const test = running.get(id);
     running.delete(id);
-    return durationMs ?? (test ? now() - test.started : 0);
+    const elapsedMs = durationMs ?? (test ? now() - test.started : 0);
+    cases.push({ id, status: status === 'fail' && test?.expired ? 'timeout' : status, elapsedMs });
+    return elapsedMs;
   };
   return {
     line,
@@ -56,24 +60,25 @@ export function createProgress({ write, heartbeatMs = 5000, timeoutMs, onTimeout
     pass(id, durationMs) {
       if (groups.has(id)) { groupCounts.passed++; return line(`✔ ${id} (${groupTime(id, durationMs)})`); }
       counts.passed++;
-      line(`✔ ${id} (${compactSeconds(finish(id, durationMs))})`);
+      line(`✔ ${id} (${compactSeconds(finish(id, durationMs, 'pass'))})`);
     },
     fail(id, durationMs, message) {
       if (groups.has(id)) { groupCounts.failed++; line(`✖ ${id} (${groupTime(id, durationMs)})`); }
       else {
         counts.failed++;
-        line(`✖ ${id} (${compactSeconds(finish(id, durationMs))})`);
+        line(`✖ ${id} (${compactSeconds(finish(id, durationMs, 'fail'))})`);
       }
       for (const detail of String(message ?? '').split('\n').filter(Boolean)) write(`           ${detail}\n`);
     },
     skip(id) {
       if (groups.has(id)) { groups.delete(id); return line(`○ ${id} skipped`); }
       counts.skipped++;
-      finish(id);
+      finish(id, undefined, 'skip');
       line(`○ ${id} skipped`);
     },
     /**
-     * End the run and return `{ passed, failed, skipped, timedOut, ran, ok }`. Tests still running are failures. A failed
+     * End the run and return `{ passed, failed, skipped, timedOut, ran, ok, cases }`; `cases` holds `{ id, status, elapsedMs }`
+     * of each test, `status` being `pass`, `fail`, `timeout` or `skip`. Tests still running are failures. A failed
      * group, a nonzero `exitCode` of the tool, or a run in which no test passed, failed or ran out of time fails the run
      * even when no test failed: a run that only skipped checked nothing. When no test failed, the summary of a nonzero
      * `exitCode` names the last `errors`, the error lines of the tool, so that it says why the tool exited; it also names
@@ -94,7 +99,7 @@ export function createProgress({ write, heartbeatMs = 5000, timeoutMs, onTimeout
       const exit = exitCode === 0 ? '' : `, the tool exited with ${exitCode}${why}`;
       const built = build.length ? `; build errors: ${build.slice(0, 10).join('; ')}${build.length > 10 ? `; and ${build.length - 10} more` : ''}` : '';
       line(`${failed ? '✖' : '✔'} ${label}: ${summary}${exit}${built} (${compactSeconds(now() - started)})`);
-      const result = { ...counts, ran, ok: failed === 0 };
+      const result = { ...counts, ran, ok: failed === 0, cases };
       if (resultFile) writeFileSync(resultFile, JSON.stringify(result));
       return result;
     },

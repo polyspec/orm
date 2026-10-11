@@ -11,6 +11,8 @@ import { FIXTURE_CONFIG, fixtureConfig, toolchainCheckout } from './toolchain-ch
 
 const SCHEMA = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '../../scripts/kit/schema/toolchain.schema.json'), 'utf8'));
 const DIGEST = 'a'.repeat(128);
+// The ruff wheels of fixture config toolchain-full.json: their digests are the digests of PyPI for ruff 0.16.10.
+const RUFF_DIGESTS = { 'linux-x64': 'f33f43a864a8483eebd160e713336c8bab02c934feaff0a33cf5ccb41546d09a', 'darwin-arm64': '3031a4a2e8e7b8a46f70be45f198c35a11ece509a94b80334d8d397a33c67550' };
 
 test('the schema accepts every representative toolchain configuration', () => {
   const names = readdirSync(FIXTURE_CONFIG).filter(name => name.startsWith('toolchain-'));
@@ -39,7 +41,6 @@ test('declaredToolchain reads each declaring file of the full shape', (t) => {
     'package.json': JSON.stringify({ packageManager: `npm@12.2.0+sha512.${DIGEST}` }),
     'rust-toolchain.toml': '[toolchain]\nchannel = "1.98.1"\nprofile = "minimal"\n',
     'packages/fixture-go/go.mod': 'module example.com/fixture\n\ngo 1.27.1\n',
-    'packages/fixture-python/pyproject.toml': '[project.optional-dependencies]\ndev = ["ruff==0.16.10"]\n',
   });
   assert.deepEqual(declaredToolchain(root), {
     node: { version: '26.8.1', source: '.node-version' },
@@ -49,7 +50,7 @@ test('declaredToolchain reads each declaring file of the full shape', (t) => {
     php: { minors: ['8.2', '8.5'], source: 'config/toolchain.json php' },
     python: { minor: '3.14', source: 'config/toolchain.json python' },
     composer: { version: '2.10.3', sha256: undefined, source: 'config/toolchain.json composer' },
-    ruff: { version: '0.16.10', source: 'packages/fixture-python/pyproject.toml ruff pin' },
+    ruff: { version: '0.16.10', sha256: RUFF_DIGESTS, source: 'config/toolchain.json ruff' },
     cargoAudit: { version: '0.22.2', source: 'config/toolchain.json cargoAudit' },
     govulncheck: { version: '1.1.4', source: 'config/toolchain.json govulncheck' },
   });
@@ -81,7 +82,9 @@ test('a declaration that is malformed or contradicts another fails with the file
     [{ 'config/toolchain.json': '{ "schema": 1, "php": ["8.5"] }', '.php-version': '8.4\n' }, /\.php-version declares 8\.4, but config\/toolchain\.json php lists 8\.5/],
     [{ 'config/toolchain.json': '{ "schema": 1, "go": { "mod": "go.mod", "versionFile": ".go-version" } }', '.go-version': '1.27.0\n', 'go.mod': 'go 1.26\n' }, /go\.mod declares go 1\.26, but \.go-version declares 1\.27\.0; write go 1\.27 in go\.mod/],
     [{ 'config/toolchain.json': '{ "schema": 1, "go": { "mod": "go.mod" } }', 'go.mod': 'go 1.27\n' }, /go\.mod has no toolchain line or go directive <major>\.<minor>\.<patch>; it has "1\.27"/],
-    [{ 'config/toolchain.json': '{ "schema": 1, "ruff": { "pyproject": "pyproject.toml" } }', 'pyproject.toml': 'dev = ["ruff==0.1.0", "ruff==0.2.0"]\n' }, /pyproject\.toml must pin one ruff==<major>\.<minor>\.<patch>; it pins 0\.1\.0, 0\.2\.0/],
+    [{ 'config/toolchain.json': '{ "schema": 1, "ruff": { "version": "0.16", "sha256": {} } }' }, /config\/toolchain\.json ruff must record version as <major>\.<minor>\.<patch>; it records "0\.16"/],
+    [{ 'config/toolchain.json': '{ "schema": 1, "ruff": { "version": "0.16.10", "sha256": {} } }' }, /config\/toolchain\.json ruff must record the sha256 of the ruff wheel of each platform, for example linux-x64; it records none/],
+    [{ 'config/toolchain.json': `{ "schema": 1, "ruff": { "version": "0.16.10", "sha256": { "linux-x64": "${'a'.repeat(63)}" } } }` }, /config\/toolchain\.json ruff must record the sha256 of linux-x64 as 64 lowercase hexadecimal digits/],
   ];
   for (const [files, message] of cases) assert.throws(() => declaredToolchain(toolchainCheckout(t, files)), message);
 });

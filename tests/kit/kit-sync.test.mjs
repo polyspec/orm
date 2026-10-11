@@ -2,12 +2,29 @@
 // vendored files are copied into a consumer checkout, and the lock and the check agree. No test uses the network.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { check, LOCK } from '../../scripts/kit/kit-check.mjs';
-import { sync } from '../../scripts/kit/kit-sync.mjs';
+import { DEFAULT_REPOSITORY, parseSyncArguments, sync } from '../../scripts/kit/kit-sync.mjs';
+
+const KIT_SYNC = path.join(import.meta.dirname, '../../scripts/kit/kit-sync.mjs');
+
+// Runs the command of kit-sync with `args`. `git` is a stub on PATH that logs its arguments to STUB_LOG and fails, so no clone
+// reaches the network and `clones` holds the argument lists of the git calls that the command made.
+function syncCommand(t, args) {
+  const bin = mkdtempSync(path.join(tmpdir(), 'kit-sync-bin-'));
+  t.after(() => rmSync(bin, { recursive: true, force: true }));
+  const log = path.join(bin, 'git.log');
+  writeFileSync(path.join(bin, 'git'), '#!/usr/bin/env node\nrequire(\'node:fs\').appendFileSync(process.env.STUB_LOG, JSON.stringify(process.argv.slice(2)) + \'\\n\');\nprocess.exit(1);\n', { mode: 0o755 });
+  const result = spawnSync(process.execPath, [KIT_SYNC, ...args], {
+    encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, STUB_LOG: log },
+  });
+  const clones = existsSync(log) ? readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [];
+  return { status: result.status, stderr: result.stderr, clones };
+}
 
 const GIT = ['-c', 'user.name=kit-test', '-c', 'user.email=kit-test@example.com'];
 const git = (args, cwd) => {
@@ -98,4 +115,84 @@ test('kit-check names a changed vendored file, a missing one and an unexpected o
 
 test('kit-check fails when the lock is missing and names the fix', (t) => {
   assert.deepEqual(check(consumer(t)), [`${LOCK}: the lock is missing. Fix: make kit-sync KIT_TAG=<tag>`]);
+});
+
+test('without --repository, the tag is cloned from DEFAULT_REPOSITORY', (t) => {
+  const { status, clones } = syncCommand(t, ['--tag', 'v0.0.1']);
+  assert.equal(clones.length, 1, JSON.stringify(clones));
+  assert.equal(clones[0].at(-2), DEFAULT_REPOSITORY);
+  assert.equal(status, 1);
+});
+
+test('with --repository, the tag is cloned from the given repository', (t) => {
+  const { clones } = syncCommand(t, ['--tag', 'v0.0.1', '--repository', '/kits/local']);
+  assert.equal(clones.length, 1, JSON.stringify(clones));
+  assert.equal(clones[0].at(-2), '/kits/local');
+});
+
+test('an option without a value, or followed by another option, fails with the usage and status 2 before any clone', (t) => {
+  const usage = /usage: node scripts\/kit\/kit-sync\.mjs --tag <tag> \[--repository <url or path>\]/;
+  for (const [args, option] of [
+    [['--tag', 'v0.0.1', '--repository'], '--repository'],
+    [['--repository', '--tag', 'v0.0.1'], '--repository'],
+    [['--tag', '--repository', 'https://example.com/kit'], '--tag'],
+    [['--tag'], '--tag'],
+  ]) {
+    const { status, stderr, clones } = syncCommand(t, args);
+    assert.equal(status, 2, `${args.join(' ')}: ${stderr}`);
+    assert.ok(stderr.includes(option), `${args.join(' ')} names ${option}: ${stderr}`);
+    assert.match(stderr, usage, args.join(' '));
+    assert.deepEqual(clones, [], args.join(' '));
+  }
+});
+
+test('a missing --tag fails with status 2 before any clone', (t) => {
+  const { status, stderr, clones } = syncCommand(t, ['--repository', 'https://example.com/kit']);
+  assert.equal(status, 2);
+  assert.match(stderr, /--tag is required/);
+  assert.deepEqual(clones, []);
+});
+
+test('parseSyncArguments reads the tag, and the repository is DEFAULT_REPOSITORY unless --repository is given', () => {
+  assert.deepEqual(parseSyncArguments(['--tag', 'v0.0.1']), { tag: 'v0.0.1', repository: DEFAULT_REPOSITORY });
+  assert.deepEqual(parseSyncArguments(['--tag=v0.0.1', '--repository', '/kits/local']), { tag: 'v0.0.1', repository: '/kits/local' });
+});
+
+test('parseSyncArguments names the option that has no value, and the tag that is missing', () => {
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--repository']), /--repository/);
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--repository', '--tag']), /--repository/);
+  assert.throws(() => parseSyncArguments(['--tag', '', '--repository', 'x']), /--tag is required/);
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--repository=']), /--repository has no value/);
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--bogus']), /Unknown option '--bogus'/);
+});
+
+test('the command syncs a tag from the repository of --repository and prints the changes', (t) => {
+  const repository = kitRepository(t, { 'v0.0.1': { 'kit.json': JSON.stringify({ schema: 1, vendored: [] }) + '\n' } });
+  const root = consumer(t);
+  cpSync(path.join(import.meta.dirname, '../../scripts/kit'), path.join(root, 'scripts/kit'), { recursive: true });
+  // The script is named by its real path: Node runs a module by the path that its import.meta.url gives, after symlinks.
+  const script = path.join(realpathSync(root), 'scripts/kit/kit-sync.mjs');
+  const result = spawnSync(process.execPath, [script, '--tag', 'v0.0.1', '--repository', repository], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, `[kit-sync] added kit.json\n[kit-sync] written ${LOCK}\n[kit-sync] 2 changes from v0.0.1\n`);
+  assert.deepEqual(check(root), []);
+});
+
+test('parseSyncArguments rejects a repeated option and names it, instead of taking one of the values', () => {
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--tag', 'v0.0.2']), /--tag is given more than once\. usage:/);
+  assert.throws(() => parseSyncArguments(['--tag', 'v0.0.1', '--repository', 'a', '--repository', 'b']), /--repository is given more than once\. usage:/);
+  assert.throws(() => parseSyncArguments(['--tag=v0.0.1', '--tag=v0.0.1']), /--tag is given more than once/);
+});
+
+test('a repeated option fails with the usage and status 2 before any clone', (t) => {
+  for (const [args, option] of [
+    [['--tag', 'v0.0.1', '--tag', 'v0.0.2'], '--tag'],
+    [['--tag', 'v0.0.1', '--repository', 'a', '--repository', 'b'], '--repository'],
+  ]) {
+    const { status, stderr, clones } = syncCommand(t, args);
+    assert.equal(status, 2, `${args.join(' ')}: ${stderr}`);
+    assert.ok(stderr.includes(`${option} is given more than once`), stderr);
+    assert.match(stderr, /usage: node scripts\/kit\/kit-sync\.mjs/);
+    assert.deepEqual(clones, [], args.join(' '));
+  }
 });

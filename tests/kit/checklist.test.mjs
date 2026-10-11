@@ -103,6 +103,31 @@ test('a document that cannot be read as the tracker is an error and never an emp
   assert.match(parseTracker('- [o]T1 Done.\n', LIST).errors[0], /line 1: .* is not an item of the form "- \[state\] ID text"/);
 });
 
+test('the impossible state is a state of its own that the lenient reading accepts', () => {
+  const states = ['[ ]', '[~]', '[o]', '[!]', '[-]'];
+  const list = parseTracker('# Items\n\n- [-] T4 No form fits this grammar. Cause: the shape has no room.\n', { ...LIST, states });
+  assert.deepEqual(list.errors, []);
+  assert.deepEqual(list.items.map(({ id, state }) => [id, state]), [['T4', '[-]']]);
+  const table = parseTracker(`${TABLE_TEXT}| T4 | Impossible | [-] cause: no form fits |\n`, { ...TABLE, states });
+  assert.deepEqual(table.errors, []);
+  assert.deepEqual(table.items.at(-1), { id: 'T4', title: 'Impossible', state: '[-]', line: 11 });
+});
+
+test('the strict reading requires a cause on an impossible list item', () => {
+  const states = ['[ ]', '[~]', '[o]', '[!]', '[-]'];
+  const list = readChecklist('# Items\n\n- [-] T4 Impossible without a cause.\n', { ...LIST, states }, { strict: true });
+  assert.deepEqual(list.findings.map(({ line, rule, message }) => [line, rule, message]), [
+    [3, 'checklist-state', 'the impossible task T4 names no cause; write "Cause: <cause>" on the item'],
+  ]);
+  const table = readChecklist('| ID | Task | Done |\n|---|---|---|\n| T4 | Impossible | [-] |\n', { ...TABLE, states }, { strict: true });
+  assert.deepEqual(table.findings, []);
+});
+
+test('the strict reading reports a state marker of the impossible state outside a task', () => {
+  const strict = readChecklist('# Items\n\n- [o] T1 Done. A note names [-] in its text.\n', LIST, { strict: true });
+  assert.deepEqual(strict.findings.map(({ line, column, rule }) => [line, column, rule]), [[3, 29, 'checklist-marker']]);
+});
+
 test('a translation must hold the same IDs in the same order and the same states', () => {
   assert.deepEqual(compareTwin(TABLE_TEXT, TABLE_TEXT, TABLE), []);
   const state = TABLE_TEXT.replace('| [~] |', '| [o] |');
