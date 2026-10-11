@@ -1649,6 +1649,61 @@
         ]
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM `author` AS `a` WHERE `a`.`service_seq` = `a`.`user_seq`",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = \"a\".\"user_seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM \"author\" AS \"a\" WHERE \"a\".\"service_seq\" = \"a\".\"user_seq\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_ref_path_absent",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "service_seq",
+                "op": "eq_col",
+                "ref": {
+                  "column": "user_seq"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

@@ -69,4 +69,5 @@ runCoverageCases($argv, [
     'planner_rejects_ref_unknown_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_ref_unknown_column'),
     'planner_rejects_outer_ref_outside_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_outer_ref_outside_subquery'),
     'planner_rejects_unjoined_ref' => fn() => plannerCase($root, $fixture, 'planner_rejects_unjoined_ref'),
+    'planner_ref_path_absent' => fn() => plannerCase($root, $fixture, 'planner_ref_path_absent'),
 ]);

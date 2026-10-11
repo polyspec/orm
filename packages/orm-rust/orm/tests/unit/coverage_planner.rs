@@ -52,6 +52,59 @@ fn string(object: &Map<String, Value>, at: &str, key: &str) -> String {
     object.get(key).and_then(Value::as_str).unwrap_or_else(|| panic!("{at}.{key}: expected a string")).to_owned()
 }
 
+/// `REJECTED` 뒤의 panic은 Rust의 typed request가 담을 수 없는 member type이다. JSON을 decode하는 client가
+/// 그런 request를 IR_INVALID로 거절하듯, typed request는 그것을 만들 수 없다.
+pub(super) const REJECTED: &str = "IR_INVALID: ";
+
+/// text member다. 문자열이 아닌 값은 typed request가 담을 수 없다.
+fn text(object: &Map<String, Value>, at: &str, key: &str) -> String {
+    match object.get(key) {
+        Some(Value::String(s)) => s.clone(),
+        other => panic!("{REJECTED}{at}.{key} is {other:?}, not a string"),
+    }
+}
+
+/// 문자열 목록 member이며 없으면 비어 있다.
+fn strings(object: &Map<String, Value>, at: &str, key: &str) -> Vec<String> {
+    object
+        .get(key)
+        .map(|list| {
+            list.as_array()
+                .unwrap_or_else(|| panic!("{at}.{key}: expected an array"))
+                .iter()
+                .map(|s| s.as_str().unwrap_or_else(|| panic!("{at}.{key}: expected strings")).to_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// typed request의 직렬화가 생략하거나 채우는 값을 입력에서도 같게 한다: 빈 `conn`은 없는 것과 같고,
+/// 없거나 null인 `ref.path`는 root인 ""다.
+fn normalized(value: &Value) -> Value {
+    match value {
+        Value::Object(object) => {
+            let mut out = Map::new();
+            for (key, member) in object {
+                if key == "conn" && member == "" {
+                    continue;
+                }
+                let mut member = normalized(member);
+                if key == "ref" {
+                    if let Value::Object(r) = &mut member {
+                        if r.get("path").is_none_or(Value::is_null) {
+                            r.insert("path".into(), json!(""));
+                        }
+                    }
+                }
+                out.insert(key.clone(), member);
+            }
+            Value::Object(out)
+        }
+        Value::Array(items) => Value::Array(items.iter().map(normalized).collect()),
+        other => other.clone(),
+    }
+}
+
 fn index(value: &Value, at: &str) -> usize {
     value.as_u64().and_then(|n| usize::try_from(n).ok()).unwrap_or_else(|| panic!("{at}: expected a parameter index, got {value}"))
 }
@@ -137,7 +190,12 @@ fn group(value: &Value, at: &str) -> ir::Group {
                     r#ref: pred.get("ref").map(|r| {
                         let at = format!("{at}.ref");
                         let object = members(r, &at, &["path", "column"]);
-                        ir::ColRef { path: string(object, &at, "path"), column: string(object, &at, "column") }
+                        // 없거나 null인 path는 root다.
+                        let path = match object.get("path") {
+                            None | Some(Value::Null) => String::new(),
+                            Some(_) => text(object, &at, "path"),
+                        };
+                        ir::ColRef { path, column: text(object, &at, "column") }
                     }),
                     sub: pred.get("sub").map(|sub| {
                         let at = format!("{at}.sub");
@@ -162,7 +220,17 @@ fn group(value: &Value, at: &str) -> ir::Group {
 
 /// query 하나를 IR로 읽는다: entity, where, join, relation, order, limit.
 fn query(value: &Value, at: &str) -> ir::Query {
-    let object = members(value, at, &["entity", "on", "where", "joins", "relations", "order", "limit"]);
+    let object = members(value, at, &["entity", "columns", "on", "where", "joins", "relations", "order", "group_by", "limit"]);
+    let columns = object.get("columns").map(|c| {
+        let at = format!("{at}.columns");
+        let c = members(c, &at, &["mode", "add", "remove"]);
+        ir::Columns {
+            mode: c.get("mode").map(|_| string(c, &at, "mode")).unwrap_or_default(),
+            add: strings(c, &at, "add"),
+            remove: strings(c, &at, "remove"),
+            ..Default::default()
+        }
+    });
     let limit = object.get("limit").map(|limit| {
         let at = format!("{at}.limit");
         let limit = members(limit, &at, &["count", "offset"]);
@@ -230,6 +298,8 @@ fn query(value: &Value, at: &str) -> ir::Query {
         .collect();
     ir::Query {
         entity: string(object, at, "entity"),
+        columns,
+        group_by: strings(object, at, "group_by"),
         on: object.get("on").map(|g| group(g, &format!("{at}.on"))),
         where_: object.get("where").map(|w| group(w, &format!("{at}.where"))),
         joins,
@@ -244,9 +314,13 @@ fn query(value: &Value, at: &str) -> ir::Query {
 /// 값이 manifest hash를 더한 입력과 같아야 한다.
 pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let at = "input";
-    let object = members(input, at, &["ir_version", "kind", "entity", "n_params", "limit", "order", "where", "joins", "relations", "set", "optimistic"]);
+    let object = members(
+        input,
+        at,
+        &["ir_version", "kind", "entity", "n_params", "columns", "limit", "order", "group_by", "where", "joins", "relations", "set", "optimistic", "agg"],
+    );
     let mut query_input = input.clone();
-    for key in ["ir_version", "kind", "n_params", "set", "optimistic"] {
+    for key in ["ir_version", "kind", "n_params", "set", "optimistic", "agg"] {
         query_input.as_object_mut().expect("input object").remove(key);
     }
     let request = ir::Request {
@@ -256,6 +330,7 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         query: query(&query_input, at),
         n_params: index(object.get("n_params").unwrap_or_else(|| panic!("input.n_params: expected a count")), "input.n_params"),
         set: object.get("set").map(|set| assigns(set, "input.set")).unwrap_or_default(),
+        agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
         optimistic: object.get("optimistic").map(|o| {
             let o = members(o, "input.optimistic", &["column", "p"]);
             ir::Optimist {
@@ -265,7 +340,7 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
         }),
         ..Default::default()
     };
-    let mut with_hash = input.clone();
+    let mut with_hash = normalized(input);
     with_hash["manifest_hash"] = json!(manifest_hash);
     assert_eq!(serde_json::to_value(&request).expect("serialized request"), with_hash, "the request read from the fixture differs from its input");
     request
@@ -433,6 +508,13 @@ fn coverage_planner_rejects_ref_unknown_column() {
 fn coverage_planner_rejects_outer_ref_outside_subquery() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_outer_ref_outside_subquery");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_ref_path_absent() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_ref_path_absent");
 }
 
 #[test]

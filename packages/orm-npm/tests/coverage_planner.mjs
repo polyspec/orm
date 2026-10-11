@@ -59,4 +59,5 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_ref_unknown_column() { compileCase('planner_rejects_ref_unknown_column'); },
   async planner_rejects_outer_ref_outside_subquery() { compileCase('planner_rejects_outer_ref_outside_subquery'); },
   async planner_rejects_unjoined_ref() { compileCase('planner_rejects_unjoined_ref'); },
+  async planner_ref_path_absent() { compileCase('planner_ref_path_absent'); },
 }, 60_000);
