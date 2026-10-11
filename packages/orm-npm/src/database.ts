@@ -13,6 +13,7 @@ import { decimalScaled, normalizeDecimal } from './decimal.js';
 import { CORE, type Core } from './core.js';
 import { Model } from './model.js';
 import { fieldOf, type Entity } from './engine/model.js';
+import { MarkdownPool, MarkdownSession, beginLine, endLine, markdownRead, markdownScalar, markdownWrite, savepointLine } from './markdown.js';
 
 export interface ConnectOptions {
   /** key of aesVersion for aes writes; absent takes aesKeys[aesVersion] */
@@ -158,8 +159,22 @@ export class TxFrame {
   public readonly locks: string[] = [];
   /** The audit record of the unit of work; audited writes of the transaction write its key. */
   public audit: AuditRecord | undefined = undefined;
-  /** number는 연결에서 이 transaction의 번호다. 그 statement의 event가 싣는다. */
-  public constructor(public readonly db: Db, public readonly session: DriverSession, public readonly number: number, public readonly options: BeginOptions) {}
+  /**
+   * number는 연결에서 이 transaction의 번호다. 그 statement의 event가 싣는다. connection은 transaction이 끝날
+   * 때까지 잡아 두는 연결이다: SQL 연결의 driver session이나 markdown 연결의 flowmark session이다.
+   */
+  public constructor(public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, public readonly number: number, public readonly options: BeginOptions) {}
+
+  /** The driver session of a SQL transaction. A markdown transaction sends no statement and has none. */
+  public get session(): DriverSession {
+    if (this.connection instanceof MarkdownSession) throw new OrmError('INTERNAL', 'a markdown transaction has no SQL session');
+    return this.connection;
+  }
+
+  /** markdown transaction의 flowmark session이다. SQL transaction에서는 undefined이고 session이 그 자리다. */
+  public get md(): MarkdownSession | undefined {
+    return this.connection instanceof MarkdownSession ? this.connection : undefined;
+  }
 
   /**
    * transaction 연결에서 transaction control statement를 보내고 그 event를 publish한다. test statement
@@ -189,7 +204,7 @@ function frames(): readonly TxFrame[] { return flow.getStore() ?? []; }
 export function activeFor(db: Db): TxFrame | undefined {
   const stack = frames();
   // A signal handle is the same connection, so frames are matched by connection.
-  for (let i = stack.length - 1; i >= 0; i--) if (stack[i]!.db.pool === db.pool && !stack[i]!.finished) return stack[i];
+  for (let i = stack.length - 1; i >= 0; i--) if (stack[i]!.db.root() === db.root() && !stack[i]!.finished) return stack[i];
   return undefined;
 }
 
@@ -315,6 +330,8 @@ export interface Result {
   main: unknown[][];
   steps: Map<number, { step: PlanStep; data: unknown[][]; byKey: Map<string, number[]> }>;
   params: readonly unknown[];
+  /** markdown 답의 result임을 뜻한다: 각 행의 마지막 칸이 그 행의 join과 relation 행(MarkdownLinks)이다. */
+  markdown: boolean;
 }
 
 export function scalarKey(value: unknown): string {
@@ -387,13 +404,18 @@ export class Db {
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
   private readonly plans = new Map<string, Cached>();
   private readonly engines = new Map<string, Engine>();
+  // markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 등록한 set의 model만 둔다.
+  private readonly markdownModels = new Map<string, RuntimeModel>();
   public readonly aesKey: string;
   public readonly blindIndexKey: string;
   public readonly aesVersion: number;
   public readonly aesKeyring: AesKeyring | undefined;
   private readonly planCacheSize: number;
 
-  private constructor(public readonly pool: DriverPool, public readonly zone: string, options: ConnectOptions) {
+  /**
+   * connection은 연결의 pool이다: SQL database의 driver pool이나 markdown:// 연결의 flowmark session pool이다.
+   */
+  private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions) {
     this.blindIndexKey = options.blindIndexKey ?? '';
     this.aesVersion = options.aesVersion ?? 1;
     if (!Number.isSafeInteger(this.aesVersion) || this.aesVersion < 1) throw new OrmError('CONFIG', 'aes version must be a positive integer');
@@ -418,6 +440,9 @@ export class Db {
   public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db> {
     if (options === null || typeof options !== 'object' || Array.isArray(options)) throw new OrmError('CONFIG', 'connect takes the DSN and an options object');
     const parsed = parseDsn(dsn);
+    if (parsed.driver === 'markdown' && (options.statementTimeoutMs ?? 0) > 0) {
+      throw new OrmError('CAPABILITY_UNSUPPORTED', 'statement timeout is not supported by the markdown IR executor');
+    }
     const statementCacheSize = options.statementCacheSize ?? 256;
     if (!Number.isSafeInteger(statementCacheSize) || statementCacheSize < 1) throw new OrmError('CONFIG', 'statement cache size must be a positive integer');
     if ((options.poolSize ?? 0) < 0) throw new OrmError('CONFIG', 'pool size must not be negative');
@@ -427,7 +452,15 @@ export class Db {
     const idleSize = options.poolIdleSize ?? 0;
     if (idleSize < 0 || idleSize > size) throw new OrmError('CONFIG', `pool idle size must be between 0 and the pool size ${size}`);
     if ((options.poolLifetimeMs ?? 0) < 0) throw new OrmError('CONFIG', 'pool lifetime must not be negative');
-    const pool = openDriver(dsn, parsed, { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 }, statementCacheSize, options.statementTimeoutMs ?? 0);
+    const bounds = { size, idleSize: idleSize || size, lifetimeMs: options.poolLifetimeMs ?? 0 };
+    if (parsed.driver === 'markdown') {
+      // session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인하고 pool에 둔다.
+      const md = new MarkdownPool(parsed.markdown, bounds);
+      const db = new Db(md, parsed.zone, options);
+      md.release(await md.acquire(undefined));
+      return db;
+    }
+    const pool = openDriver(dsn, parsed, bounds, statementCacheSize, options.statementTimeoutMs ?? 0);
     const db = new Db(pool, parsed.zone, options);
     // 연결 하나를 열어 pool에 돌려준다. 연결을 확인하려고 statement를 보내지 않는다.
     try { (await pool.reserve()).release(false); } catch (error) { await pool.close(); throw error; }
@@ -448,10 +481,60 @@ export class Db {
   }
 
   public [REGISTER](model: RuntimeModel): void {
-    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.driver));
+    // markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect engine 없이 set만 등록한다.
+    if (this.md !== undefined) {
+      if (!this.markdownModels.has(model.manifestHash)) this.markdownModels.set(model.manifestHash, model);
+      return;
+    }
+    if (!this.engines.has(model.manifestHash)) this.engines.set(model.manifestHash, new Engine(model, this.pool.name));
   }
 
-  public get driver(): DriverName { return this.pool.name; }
+  /**
+   * 이 연결에 등록된 set의 runtime model이다. 등록되지 않은 manifest는 SQL 연결과 같이 SCHEMA_HASH_MISMATCH다.
+   *
+   * @internal
+   */
+  public markdownModel(manifestHash: string): RuntimeModel {
+    if (this.closed) throw new OrmError('CONFIG', 'database is closed');
+    const model = this.markdownModels.get(manifestHash);
+    if (model === undefined) {
+      throw new OrmError('SCHEMA_HASH_MISMATCH', `manifest ${manifestHash} is not registered on this connection: connect through its generated models or register it`);
+    }
+    return model;
+  }
+
+  /** The database of the connection: mysql, postgres, sqlite, or markdown, a corpus that a flowmark server serves. */
+  public get driver(): DriverName | 'markdown' { return this.md !== undefined ? 'markdown' : this.pool.name; }
+
+  /**
+   * The driver pool of a SQL connection. A markdown connection sends no statement and has none; every SQL path
+   * refuses a markdown connection before it.
+   *
+   * @internal
+   */
+  public get pool(): DriverPool {
+    if (this.connection instanceof MarkdownPool) throw new OrmError('INTERNAL', 'a markdown connection has no SQL pool');
+    return this.connection;
+  }
+
+  /**
+   * markdown:// 연결의 flowmark session pool이다. SQL 연결에서는 undefined이고 pool이 그 자리다.
+   *
+   * @internal
+   */
+  public get md(): MarkdownPool | undefined {
+    return this.connection instanceof MarkdownPool ? this.connection : undefined;
+  }
+
+  /**
+   * markdown 연결에서 SQL 전용 surface가 받는 CAPABILITY_UNSUPPORTED를 던진다(docs/dialects.md "Markdown IR
+   * executor"). 다른 연결에서는 아무것도 하지 않는다.
+   *
+   * @internal
+   */
+  public unsupportedOnMarkdown(surface: string): void {
+    if (this.md !== undefined) throw new OrmError('CAPABILITY_UNSUPPORTED', `${surface} is not supported by the markdown IR executor`);
+  }
 
   public get closed(): boolean { return this.shared.closed; }
 
@@ -479,7 +562,9 @@ export class Db {
     if (this.closed) return;
     this.shared.closed = true;
     this.plans.clear();
-    await this.pool.close();
+    const md = this.md;
+    if (md !== undefined) md.close();
+    else await this.pool.close();
   }
 
   public utils(): Utils { return new Utils(this); }
@@ -489,9 +574,11 @@ export class Db {
    * and every handle derived from it send (docs/usage.md "Statement events").
    * Subscribers run synchronously in registration order after the statement
    * ends and before the operation continues; one that throws fails the
-   * operation with SUBSCRIBER. The returned function removes the subscription.
+   * operation with SUBSCRIBER. The returned function removes the subscription. A markdown connection sends no
+   * statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
    */
   public subscribe(subscriber: (event: StatementEvent) => void): () => void {
+    this.unsupportedOnMarkdown('statement events');
     return this.shared.events.subscribe(subscriber as StatementSubscriber);
   }
 
@@ -550,7 +637,7 @@ export class Db {
     try { return await fn(session); } finally { session.release(false); }
   }
 
-  public stats(): PoolStats { return this.pool.stats(); }
+  public stats(): PoolStats { return (this.md ?? this.pool).stats(); }
 
   /**
    * Runs callback in one transaction. An exception rolls back; otherwise the
@@ -564,6 +651,7 @@ export class Db {
     const timeoutMs = options.timeoutMs ?? 0;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) throw new OrmError('CONFIG', 'transaction timeoutMs must not be negative');
     const outer = activeFor(this);
+    if (options.audit !== undefined) this.unsupportedOnMarkdown('a transaction with audit values');
     // audit 기록은 transaction 이 시작하기 전에 검사하고 시도마다 callback 앞에서 삽입한다.
     const record = options.audit !== undefined && outer === undefined ? this.auditRecord(options.audit) : undefined;
     if (outer) {
@@ -675,8 +763,9 @@ export class Db {
    * 사용자에게 가지 않도록 연결을 닫고, BEGIN 뒤에 실패하면 transaction을 rollback한다.
    */
   private async begin(options: BeginOptions): Promise<TxFrame> {
-    const driver = this.driver;
-    if (options.timeoutMs > 0 && driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    if (options.timeoutMs > 0 && this.driver !== 'postgres') throw new OrmError('CAPABILITY_UNSUPPORTED', 'transaction timeoutMs is supported only by postgres');
+    if (this.md !== undefined) return this.beginMarkdown(this.md, options);
+    const driver = this.pool.name;
     const level = options.isolation === undefined ? '' : isolationSql(options.isolation);
     if (driver === 'sqlite') await this.rowLockTable();
     const session = await this.pool.reserve();
@@ -727,6 +816,7 @@ export class Db {
    */
   private async finish(frame: TxFrame, commit: boolean): Promise<void> {
     if (frame.finished) return;
+    if (frame.md !== undefined) return this.endMarkdown(frame, frame.md, commit ? 'commit' : 'rollback');
     frame.finished = true;
     const session = frame.session;
     if (!commit && this.driver !== 'sqlite' && frame.db.signal?.aborted === true) {
@@ -788,24 +878,71 @@ export class Db {
     }
   }
 
+  /**
+   * markdown transaction을 연다: pool의 session 하나를 transaction이 끝날 때까지 잡고 begin을 보낸다. 읽기 전용
+   * transaction은 read_only를 보낸다.
+   */
+  private async beginMarkdown(md: MarkdownPool, options: BeginOptions): Promise<TxFrame> {
+    if (options.isolation !== undefined) this.unsupportedOnMarkdown('the transaction isolation option');
+    const session = await md.acquire(this.signal);
+    try {
+      await session.call(beginLine(options.readOnly === true), this.signal);
+    } catch (error) {
+      md.release(session);
+      throw error;
+    }
+    return new TxFrame(this, session, this.nextTransaction(), options);
+  }
+
+  /**
+   * markdown transaction을 commit이나 rollback으로 끝내고 session을 pool에 돌려준다. signal이 취소되었으면
+   * message를 보내지 않고 연결을 끊는다: server가 끊긴 연결의 transaction을 rollback한다.
+   */
+  private async endMarkdown(frame: TxFrame, session: MarkdownSession, op: 'commit' | 'rollback'): Promise<void> {
+    frame.finished = true;
+    try {
+      if (frame.db.signal?.aborted === true) {
+        session.close();
+        if (op === 'commit') throw new OrmError('CANCELED', 'the transaction was cancelled before its commit');
+        return;
+      }
+      await session.call(endLine(op), frame.db.signal);
+    } finally {
+      this.md!.release(session);
+    }
+  }
+
+  /**
+   * savepoint name의 단계 하나를 보낸다: savepoint, release, rollback_to. SQL 연결은 그 statement를, markdown
+   * 연결은 같은 이름의 control message를 보낸다.
+   */
+  private async savepointStep(frame: TxFrame, kind: 'savepoint' | 'release' | 'rollback_to', name: string): Promise<void> {
+    if (frame.md !== undefined) {
+      await frame.md.call(savepointLine(kind, name), frame.db.signal);
+      return;
+    }
+    const statement = kind === 'savepoint' ? `SAVEPOINT ${name}` : kind === 'release' ? `RELEASE SAVEPOINT ${name}` : `ROLLBACK TO SAVEPOINT ${name}`;
+    await frame.run(kind, [], statement);
+  }
+
   private async savepoint<T>(frame: TxFrame, callback: () => Promise<T> | T): Promise<T> {
     frame.savepoints++;
     const name = `orm_sp_${frame.savepoints}`;
     try {
-      await frame.run('savepoint', [], `SAVEPOINT ${name}`);
+      await this.savepointStep(frame, 'savepoint', name);
       let result: T;
       try {
         result = await flow.run([...frames(), frame], callback);
       } catch (error) {
-        // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 statement를 모두 시도한다.
+        // savepoint 뒤의 작업을 되돌리고 savepoint를 푸는 두 단계를 모두 시도한다.
         const errors: unknown[] = [];
-        for (const [kind, statement] of [['rollback_to', `ROLLBACK TO SAVEPOINT ${name}`], ['release', `RELEASE SAVEPOINT ${name}`]] as const) {
-          try { await frame.run(kind, [], statement); } catch (failure) { errors.push(failure); }
+        for (const kind of ['rollback_to', 'release'] as const) {
+          try { await this.savepointStep(frame, kind, name); } catch (failure) { errors.push(failure); }
         }
         if (errors.length > 0) throw rollbackFailed(error, joinedErrors(errors));
         throw error;
       }
-      await frame.run('release', [], `RELEASE SAVEPOINT ${name}`);
+      await this.savepointStep(frame, 'release', name);
       return result;
     } finally {
       frame.savepoints--;
@@ -972,6 +1109,7 @@ export async function query(ex: Executor, request: Request, params: readonly unk
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
+    if (db.md !== undefined) return (await markdownRead(ex, request, params)).result;
     const cached = await db.plan(request);
     if ((request.lock ?? '') !== '') await db.rowLock(ex.frame!, request.lock!);
     const parts = rootInParts(request, cached.plan, db.driver, params);
@@ -993,7 +1131,7 @@ export async function query(ex: Executor, request: Request, params: readonly unk
 }
 
 async function relations(ex: Executor, cached: Cached, params: readonly unknown[], main: unknown[][]): Promise<Result> {
-  const out: Result = { plan: cached.plan, main, steps: new Map(), params };
+  const out: Result = { plan: cached.plan, main, steps: new Map(), params, markdown: false };
   for (const step of cached.plan.steps.slice(1)) {
     if (step.role !== 'relation') continue;
     const parents = step.parent!.step === 0 ? main : out.steps.get(step.parent!.step)?.data ?? [];
@@ -1025,7 +1163,13 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
   return result.rows;
 }
 
-function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
+/**
+ * row의 codec column을 assemble의 style로 decode한다: host stage(aes, hex, ip)를 풀고 나머지 codec을 읽는다. join
+ * child의 column은 같은 행에 있으므로 함께 decode한다.
+ *
+ * @internal
+ */
+export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void {
   let version = db.aesKeyring?.currentVersion ?? 1;
   if (assemble.aes_version !== undefined) {
     const at = row[assemble.columns[assemble.aes_version]!.index];
@@ -1048,6 +1192,7 @@ export async function scalar(ex: Executor, request: Request, params: readonly un
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
+    if (db.md !== undefined) return markdownScalar(ex, request, params);
     const cached = await db.plan(request);
     const parts = rootInParts(request, cached.plan, db.driver, params);
     if (parts.length > 1) {
@@ -1068,6 +1213,7 @@ export async function paginate(ex: Executor, request: Request, params: readonly 
   return guarded(ex, async () => {
     checkLock(ex, request);
     const db = ex.db;
+    if (db.md !== undefined) return markdownRead(ex, request, params);
     const cached = await db.plan(request);
     const main = await select(ex, cached, cached.plan.steps[0]!, params);
     const result = await relations(ex, cached, params, main);
@@ -1078,21 +1224,30 @@ export async function paginate(ex: Executor, request: Request, params: readonly 
   });
 }
 
-export async function write(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ id: number | null; affected: number }> {
+/**
+ * Runs an insert, update, delete, or restore and returns the key of the inserted row and the affected row count:
+ * the generated identity on a SQL database, the first key the markdown executor answers.
+ */
+export async function write(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ key: number | string | null; affected: number }> {
   return guarded(ex, async () => {
     const db = ex.db;
+    if (db.md !== undefined) {
+      const { keys, affected } = await markdownWrite(ex, request, params);
+      return { key: keys[0] ?? null, affected };
+    }
     const cached = await db.plan(request);
     const step = cached.plan.steps[0]!;
     const result = await db.execute(ex, cached, step.sql, step, params);
-    if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { id: Number(result.rows[0]?.[0]), affected: 1 };
+    if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
-    const id = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
-    return { id, affected: result.affected };
+    const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
+    return { key, affected: result.affected };
   });
 }
 
 /** Returns the statement of a select request without executing it. */
 export async function statement(ex: Executor, request: Request, params: readonly unknown[]): Promise<{ sql: string; binds: unknown[] }> {
+  ex.db.unsupportedOnMarkdown('getQuery');
   const cached = await ex.db.plan(request);
   const step = cached.plan.steps[0]!;
   return { sql: step.sql, binds: ex.db.args(step, params).masked };
