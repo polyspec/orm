@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: bd17c753682156902c2f7d551aed8433d789d1806923d9e2641031c97dbb67ef -->
+<!-- source-sha256: 69c7aba5af5bc1275dc612dbe56652cd1e60bc46fbaebbae13375e3cd07e4526 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -43,7 +43,7 @@
 
 Python client인 `packages/orm-python/pyproject.toml`(배포 이름 `polyspec-orm`)은 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release되며, GitHub Release의 asset으로 npm과 Composer archive 곁에 놓인다. `make release-assets TAG=vX.Y.Z`가 tag된 commit에서 wheel을 만들고, 그때 `config/release.json`의 `buildBackend`가 고정한 build backend(`setuptools==84.0.0`, sha256을 build마다 확인)를 쓴다. wheel은 `<package>-<language>-<version>.<ext>` 형식의 archive가 아니므로 PEP 427 이름을 유지한다.
 
-wheel의 모든 `Requires-Dist`는 정확한 `name==version`이다. 의존성 `polyspec-ordered-json==0.0.8`은 어떤 package index에도 없고, 그 wheel은 ordered-json release v0.0.8의 asset이다. 따라서 설치할 때는 ordered-json release의 wheel과 orm release의 wheel을 `pip install --find-links <directory>` 하나로 함께 지정하고, 나머지 의존성은 index에서 고정된 version으로 받는다.
+wheel의 모든 `Requires-Dist`는 정확한 `name==version`이다. 의존성 `polyspec-ordered-json==0.0.8`은 어떤 package index에도 없고, 그 wheel은 ordered-json release v0.0.8의 asset이다. 따라서 설치할 때는 ordered-json release의 wheel과 orm release의 wheel을 `pip install --find-links <directory>` 하나로 함께 지정하고, 나머지 의존성은 index에서 고정된 version으로 받는다. wheel은 CPython만 지원한다: orm의 toolchain은 python-build-standalone의 CPython이며, package는 classifier `Programming Language :: Python :: Implementation :: CPython`을 선언한다. 그래서 `psycopg-binary==3.3.6` 의존성은 다른 구현을 위한 marker 없이 psycopg의 binary build를 직접 이름 붙인다.
 
 psycopg의 binary extra는 그것이 펼쳐지는 두 plain requirement `psycopg==3.3.6`과 `psycopg-binary==3.3.6`으로 적는다. 그 extra는 PyPy를 제외하는데 plain requirement로는 그것을 나타낼 수 없으므로, PyPy에서도 `psycopg-binary`를 요구한다.
 

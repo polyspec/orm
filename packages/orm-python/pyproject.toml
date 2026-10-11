@@ -8,6 +8,8 @@ version = "0.0.7"
 description = "Python ORM: model generator and native SQL assembly for MySQL, PostgreSQL, and SQLite"
 license = "MIT"
 requires-python = ">=3.11"
+# wheel은 CPython만 지원한다(docs/packaging.md, Python client release). toolchain은 python-build-standalone CPython이다.
+classifiers = ["Programming Language :: Python :: Implementation :: CPython"]
 dependencies = [
     # ordered-json의 Python wheel(release v0.0.8). 배포는 plain name==version만 쓴다(docs/packaging.md).
     "polyspec-ordered-json==0.0.8",
