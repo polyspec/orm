@@ -216,6 +216,34 @@ fn every_fixture_case_has_a_test_per_driver() {
     }
 }
 
+/// Every fixture case on SQLite, MySQL and PostgreSQL, reported as one line `statement-fault/<case>`: a case
+/// passes when it passes on every database. A panic in one database run is caught, and its message becomes
+/// the reason of the FAIL line.
+#[cfg(feature = "test-faults")]
+#[tokio::test]
+async fn statement_fault_cases() {
+    for case in fixture().cases {
+        let mut report = polyspec_orm_testcase::start(format!("statement-fault/{case}"), CASE_DEADLINE * 3);
+        for driver in ["sqlite", "mysql", "postgres"] {
+            let outcome = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(bounded(driver, &case))).await;
+            if let Err(payload) = outcome {
+                report.fail(format!("{driver}: {}", panic_reason(payload)));
+                break;
+            }
+        }
+    }
+}
+
+/// The reason of a caught panic: its message.
+#[cfg(feature = "test-faults")]
+fn panic_reason(payload: Box<dyn std::any::Any + Send>) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string()))
+        .unwrap_or_else(|| "the run panicked".to_string())
+}
+
 #[cfg(feature = "test-faults")]
 #[tokio::test]
 async fn refused_insert_sqlite() {
