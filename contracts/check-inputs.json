@@ -6,7 +6,6 @@
     "commits-check": {"scope": "owner", "needs": [], "inputs": ["config/commits.json", ".githooks/**"]},
     "kit-check": {"scope": "owner", "needs": [], "inputs": ["scripts/kit/**", ".kit/**", "kit.json", "config/*.json"]},
     "kit-test": {"scope": "owner", "needs": ["php", "composer"], "inputs": ["scripts/kit/**", "tests/kit/**", "kit.json"]},
-    "parity-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules", "python", "databases"], "inputs": ["config/parity.json", "scripts/kit/parity*.mjs", "packages/**", "engine/**", "contracts/**", "tests/**"]},
     "owner-validate": {"scope": "owner", "needs": [], "inputs": ["config/owner-checks.json", "Makefile"]},
     "release-coverage": {"scope": "owner", "needs": [], "inputs": ["config/release.json", "VERSION", "**/package.json", "**/composer.json", "**/Cargo.toml", "**/pyproject.toml", "**/go.mod"]},
     "dependency-policy-check": {"scope": "owner", "needs": ["php", "composer"], "inputs": ["config/dependency-policy.json", "config/dependency-review.json", "**/package-lock.json", "**/composer.lock", "**/Cargo.lock", "go.sum", "package.json", "packages/orm-npm/package.json", "composer.json", "**/Cargo.toml", "packages/orm-python/pyproject.toml", "go.mod"]},
