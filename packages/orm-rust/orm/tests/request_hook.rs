@@ -2,7 +2,8 @@
 //! 같은 연결을 쓰고, 그 hook은 handle의 request마다 plan 직전에 request와 `RequestParams`를 받는다.
 //! contracts/fixtures/request_hook.dbs의 공유 case 다섯 개를 SQLite case database(polyspec-orm-case-database,
 //! 끝나거나 panic하면 file을 지운다)에서 실행한다: without_hook, read_filter, insert_assign,
-//! loaded_row_writes, invalid_param.
+//! loaded_row_writes, invalid_param. `coverage_request_hook_<case>`는 같은 case를 feature-check가 고른
+//! database의 case database에서 실행한다(docs/feature-coverage.md).
 //!
 //! `cargo test -p polyspec-orm --test request_hook`
 
@@ -138,10 +139,8 @@ async fn count(db: &Db) -> i64 {
     polyspec_orm::model::get_count(item(db).core()).await.expect("count")
 }
 
-#[tokio::test]
-async fn without_hook() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("sqlite").await;
+async fn without_hook_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
     assert_eq!(labels(&db).await, ["a1", "a2", "b1"]);
@@ -156,10 +155,8 @@ async fn without_hook() {
     database.drop().await;
 }
 
-#[tokio::test]
-async fn read_filter() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("sqlite").await;
+async fn read_filter_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
     let hooked = db.with_request_hook(read_filter_hook("a"));
@@ -179,10 +176,8 @@ async fn read_filter() {
     database.drop().await;
 }
 
-#[tokio::test]
-async fn insert_assign() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("sqlite").await;
+async fn insert_assign_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     let hooked = db.with_request_hook(|request: &mut Request, params: &mut RequestParams| {
         if request.kind == "insert" {
@@ -206,10 +201,8 @@ async fn insert_assign() {
     database.drop().await;
 }
 
-#[tokio::test]
-async fn loaded_row_writes() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("sqlite").await;
+async fn loaded_row_writes_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
     let kinds: Arc<Mutex<Vec<String>>> = Arc::default();
@@ -223,7 +216,7 @@ async fn loaded_row_writes() {
         Ok(())
     });
     let rows = polyspec_orm::model::gets(&item(&hooked)).await.expect("gets");
-    let mut row = rows.models().find(|m| m.value("label") == Some(Val::Str("a1".into()))).expect("a1").clone();
+    let mut row = rows.models().find(|m| m.value("label").and_then(|v| v.as_string().ok()).as_deref() == Some("a1")).expect("a1").clone();
     row.core_mut().set("label", Param::from("changed"));
     polyspec_orm::model::update(&mut row, false).await.expect("update");
     assert_eq!(kinds.lock().unwrap().last().map(String::as_str), Some("update"), "the update of a loaded row passes the hook");
@@ -240,10 +233,8 @@ async fn loaded_row_writes() {
     database.drop().await;
 }
 
-#[tokio::test]
-async fn invalid_param() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let database = CaseDatabase::create("sqlite").await;
+async fn invalid_param_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
     seed(&db).await;
     let statements = Arc::new(Mutex::new(0usize));
@@ -264,4 +255,80 @@ async fn invalid_param() {
     assert_eq!(*statements.lock().unwrap(), 0, "no statement runs");
     db.close().await;
     database.drop().await;
+}
+
+/// feature-check가 고른 database(ORM_FEATURE_DATABASE)다. coverage case는 그 database에 자기 case database를
+/// 만들고 지우며, ORM_FEATURE_DSN의 database는 읽거나 쓰지 않는다.
+fn feature_database() -> &'static str {
+    match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
+        Ok("mysql") => "mysql",
+        Ok("postgres") => "postgres",
+        Ok("sqlite") => "sqlite",
+        _ => panic!("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run it through make feature-check, which sets it for each coverage case"),
+    }
+}
+
+#[tokio::test]
+async fn without_hook() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    without_hook_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_without_hook() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    without_hook_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn read_filter() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    read_filter_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_read_filter() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    read_filter_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn insert_assign() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    insert_assign_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_insert_assign() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    insert_assign_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn loaded_row_writes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    loaded_row_writes_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_loaded_row_writes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    loaded_row_writes_case(feature_database()).await;
+}
+
+#[tokio::test]
+async fn invalid_param() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    invalid_param_case("sqlite").await;
+}
+
+#[tokio::test]
+#[ignore = "run by feature-check"]
+async fn coverage_request_hook_invalid_param() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    invalid_param_case(feature_database()).await;
 }

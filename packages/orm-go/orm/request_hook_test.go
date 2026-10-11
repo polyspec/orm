@@ -14,11 +14,12 @@ import (
 // temp file에 설치하고 hook_item(id identity, part, label)에서 확인한다. hook은 request를 plan하기 직전에
 // 받으며, client는 hook이 하는 일을 알지 못한다.
 
-// hookFixture는 request_hook.dbs를 설치한 SQLite 연결과 hook_item entity다. file은 test가 끝나면 지워진다.
-func hookFixture(t *testing.T) (*orm.DB, *orm.Entity) {
+// hookFixture는 dsn의 database에 request_hook.dbs를 설치한 연결과 hook_item entity다. 연결은 test가 끝나면
+// 닫힌다. database를 만들고 지우는 일은 호출자가 한다.
+func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity) {
 	t.Helper()
 	s := fixtureSchema(t, "request_hook")
-	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"), s, orm.Config{})
+	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,9 +109,12 @@ func partFilter(value string) orm.RequestHook {
 	}
 }
 
-func TestRequestHook(t *testing.T) {
-	t.Run("without_hook", func(t *testing.T) {
-		db, e := hookFixture(t)
+// requestHookCases는 공유 case ID마다 그 본문이다. 각 본문은 request_hook.dbs를 설치한 빈 database의 연결을 받는다.
+var requestHookCases = []struct {
+	id  string
+	run func(t *testing.T, db *orm.DB, e *orm.Entity)
+}{
+	{"without_hook", func(t *testing.T, db *orm.DB, e *orm.Entity) {
 		seedHookItems(t, e, db)
 		if n := len(hookRows(t, e, db)); n != 3 {
 			t.Fatalf("connection reads %d rows, want 3", n)
@@ -125,10 +129,9 @@ func TestRequestHook(t *testing.T) {
 		if n := hookCount(t, e, db); n != 3 {
 			t.Fatalf("connection counts %d, want 3", n)
 		}
-	})
+	}},
 
-	t.Run("read_filter", func(t *testing.T) {
-		db, e := hookFixture(t)
+	{"read_filter", func(t *testing.T, db *orm.DB, e *orm.Entity) {
 		seedHookItems(t, e, db)
 		hooked := db.WithRequestHook(partFilter("a"))
 		rows := hookRows(t, e, hooked)
@@ -156,10 +159,9 @@ func TestRequestHook(t *testing.T) {
 		if !slices.Contains(st.Binds, any("a")) {
 			t.Fatalf("hooked getQuery binds %v carry no a", st.Binds)
 		}
-	})
+	}},
 
-	t.Run("insert_assign", func(t *testing.T) {
-		db, e := hookFixture(t)
+	{"insert_assign", func(t *testing.T, db *orm.DB, e *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
 			if r.Kind != "insert" {
 				return nil
@@ -190,10 +192,9 @@ func TestRequestHook(t *testing.T) {
 				t.Fatalf("row %v has no part h", row)
 			}
 		}
-	})
+	}},
 
-	t.Run("loaded_row_writes", func(t *testing.T) {
-		db, e := hookFixture(t)
+	{"loaded_row_writes", func(t *testing.T, db *orm.DB, e *orm.Entity) {
 		seedHookItems(t, e, db)
 		var kinds []string
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
@@ -241,10 +242,9 @@ func TestRequestHook(t *testing.T) {
 		if !slices.Equal(kinds, []string{"all"}) {
 			t.Fatalf("hook saw %v in the transaction, want [all]", kinds)
 		}
-	})
+	}},
 
-	t.Run("invalid_param", func(t *testing.T) {
-		db, e := hookFixture(t)
+	{"invalid_param", func(t *testing.T, db *orm.DB, e *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
 			p := r.NParams + 5
 			andWhere(&r.Query, ir.Pred{Column: "part", Op: "eq", P: &p})
@@ -269,5 +269,15 @@ func TestRequestHook(t *testing.T) {
 		if !errors.Is(err, failing) || statements != 0 {
 			t.Fatalf("count with a failing hook = %v after %d statements, want the hook error and none", err, statements)
 		}
-	})
+	}},
+}
+
+// TestRequestHook은 각 case를 SQLite temp file에서 실행한다. file은 test가 끝나면 지워진다.
+func TestRequestHook(t *testing.T) {
+	for _, c := range requestHookCases {
+		t.Run(c.id, func(t *testing.T) {
+			db, e := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"))
+			c.run(t, db, e)
+		})
+	}
 }

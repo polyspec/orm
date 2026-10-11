@@ -6625,6 +6625,377 @@
         },
         "dependents": []
       }
+    },
+    {
+      "id": "request_hook",
+      "title": "Request hook",
+      "title_ko": "Request hook",
+      "status": "implemented",
+      "description": "A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.",
+      "description_ko": "연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.",
+      "inputs": {
+        "type": "RequestHook",
+        "fields": [
+          "hook"
+        ]
+      },
+      "outputs": {
+        "type": "Db",
+        "fields": [
+          "connection_handle"
+        ]
+      },
+      "state": [
+        "derive a handle that shares the connection and carries the hook",
+        "call the hook on each request of the handle before planning",
+        "validate and plan the changed request"
+      ],
+      "errors": [
+        {
+          "code": "IR_INVALID",
+          "when": "the request the hook changed is invalid, such as a parameter index outside the parameters; no statement runs"
+        }
+      ],
+      "clients": {
+        "go": "pass",
+        "php": "pass",
+        "rust": "pass",
+        "typescript": "pass",
+        "python": "planned"
+      },
+      "fixtures": [
+        "contracts/fixtures/request_hook.dbs",
+        "packages/orm-npm/tests/request_hook_run.mjs",
+        "packages/orm-php/tests/request_hook_cases.php",
+        "packages/orm-php/tests/case_database.php"
+      ],
+      "tests": [
+        "packages/orm-go/orm/request_hook_test.go",
+        "packages/orm-go/orm/coverage_request_hook_test.go",
+        "packages/orm-npm/tests/request_hook.mjs",
+        "packages/orm-npm/tests/coverage_request_hook.mjs",
+        "packages/orm-npm/tests/request_hook_run.mjs",
+        "packages/orm-php/tests/request_hook_test.php",
+        "packages/orm-php/tests/coverage_request_hook.php",
+        "packages/orm-php/tests/request_hook_cases.php",
+        "packages/orm-rust/orm/tests/request_hook.rs"
+      ],
+      "docs": [
+        "docs/usage.md",
+        "docs/protocol.md"
+      ],
+      "verification": [
+        {
+          "id": "request-hook-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -run '^TestRequestHook$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-go/orm/request_hook_test.go",
+            "contracts/fixtures/request_hook.dbs"
+          ]
+        },
+        {
+          "id": "request-hook-typescript",
+          "command": "node packages/orm-npm/tests/request_hook.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-npm/tests/request_hook.mjs",
+            "packages/orm-npm/tests/request_hook_run.mjs",
+            "contracts/fixtures/request_hook.dbs"
+          ]
+        },
+        {
+          "id": "request-hook-php",
+          "command": "php packages/orm-php/tests/request_hook_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-php/tests/request_hook_test.php",
+            "packages/orm-php/tests/request_hook_cases.php",
+            "contracts/fixtures/request_hook.dbs"
+          ]
+        },
+        {
+          "id": "request-hook-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs request-hook-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test request_hook",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/tests/request_hook.rs",
+            "contracts/fixtures/request_hook.dbs"
+          ]
+        }
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "without_hook",
+          "read_filter",
+          "insert_assign",
+          "loaded_row_writes",
+          "invalid_param"
+        ],
+        "owners": {
+          "go": {
+            "part": "packages/orm-go/orm",
+            "tests": [
+              "packages/orm-go/orm/coverage_request_hook_test.go"
+            ],
+            "inputs": [
+              "packages/orm-go/orm/request_hook_test.go",
+              "contracts/fixtures/request_hook.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "packages/orm-go/orm/coverage_request_hook_test.go",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "TestCoverageRequestHookWithoutHook",
+                    "read_filter": "TestCoverageRequestHookReadFilter",
+                    "insert_assign": "TestCoverageRequestHookInsertAssign",
+                    "loaded_row_writes": "TestCoverageRequestHookLoadedRowWrites",
+                    "invalid_param": "TestCoverageRequestHookInvalidParam"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "packages/orm-go/orm/coverage_request_hook_test.go",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "TestCoverageRequestHookWithoutHook",
+                    "read_filter": "TestCoverageRequestHookReadFilter",
+                    "insert_assign": "TestCoverageRequestHookInsertAssign",
+                    "loaded_row_writes": "TestCoverageRequestHookLoadedRowWrites",
+                    "invalid_param": "TestCoverageRequestHookInvalidParam"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "packages/orm-go/orm/coverage_request_hook_test.go",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "TestCoverageRequestHookWithoutHook",
+                    "read_filter": "TestCoverageRequestHookReadFilter",
+                    "insert_assign": "TestCoverageRequestHookInsertAssign",
+                    "loaded_row_writes": "TestCoverageRequestHookLoadedRowWrites",
+                    "invalid_param": "TestCoverageRequestHookInvalidParam"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "packages/orm-php/tests",
+            "tests": [
+              "packages/orm-php/tests/coverage_request_hook.php"
+            ],
+            "inputs": [
+              "packages/orm-php/tests/request_hook_cases.php",
+              "packages/orm-php/tests/case_database.php",
+              "contracts/fixtures/request_hook.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/orm-php/tests/coverage_request_hook.php",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/orm-php/tests/coverage_request_hook.php",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/orm-php/tests/coverage_request_hook.php",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "packages/orm-rust/orm",
+            "tests": [
+              "packages/orm-rust/orm/tests/request_hook.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/request_hook.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/orm-rust/orm/tests/request_hook.rs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "coverage_request_hook_without_hook",
+                    "read_filter": "coverage_request_hook_read_filter",
+                    "insert_assign": "coverage_request_hook_insert_assign",
+                    "loaded_row_writes": "coverage_request_hook_loaded_row_writes",
+                    "invalid_param": "coverage_request_hook_invalid_param"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/orm-rust/orm/tests/request_hook.rs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "coverage_request_hook_without_hook",
+                    "read_filter": "coverage_request_hook_read_filter",
+                    "insert_assign": "coverage_request_hook_insert_assign",
+                    "loaded_row_writes": "coverage_request_hook_loaded_row_writes",
+                    "invalid_param": "coverage_request_hook_invalid_param"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/orm-rust/orm/tests/request_hook.rs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "symbols": {
+                    "without_hook": "coverage_request_hook_without_hook",
+                    "read_filter": "coverage_request_hook_read_filter",
+                    "insert_assign": "coverage_request_hook_insert_assign",
+                    "loaded_row_writes": "coverage_request_hook_loaded_row_writes",
+                    "invalid_param": "coverage_request_hook_invalid_param"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/orm-npm/tests",
+            "tests": [
+              "packages/orm-npm/tests/coverage_request_hook.mjs"
+            ],
+            "inputs": [
+              "packages/orm-npm/tests/request_hook_run.mjs",
+              "packages/orm-npm/tests/case-database.mjs",
+              "contracts/fixtures/request_hook.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "packages/orm-npm/tests/coverage_request_hook.mjs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "packages/orm-npm/tests/coverage_request_hook.mjs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "packages/orm-npm/tests/coverage_request_hook.mjs",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     }
   ],
   "helpers": [
