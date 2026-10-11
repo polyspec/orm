@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: d88024a9653986353d8c1aa50191d8d58ecb1ac73f8629ce5f5ad9babe49e747 -->
+<!-- source-sha256: 521c168d053ae55d0249c9e2f7a5ed4c7ec47ce3624ac84f52e0e76eff0fd171 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -280,6 +280,7 @@ $row->newIsMember(true);                                                        
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](config.md)).
 - 공통 실행 중 취소 메서드는 없다. `timeoutMs`가 PostgreSQL 문장 실행 시간을 제한한다.
 - test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
+- test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, code, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 데이터베이스로 가지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
 
 ```go
 err := master.Transaction(func() error {

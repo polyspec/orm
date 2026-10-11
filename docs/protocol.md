@@ -167,6 +167,24 @@ The fault exists only in the test entry point of each client. No DSN, configurat
 | PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | The class is in `testing/Faults.php` of the package, which the package autoloader does not map; a process has it only after it requires that file by its path |
 | Python | `polyspec.orm.testing.fail_next_rollback(db)` | The package `polyspec.orm.testing` is in the distribution, as the PHP class is in the package, and no module of `polyspec.orm` imports it; a process has it only after it imports `polyspec.orm.testing` by that name, and the package entry point `polyspec.orm` does not export the function |
 
+### 3.2 Test statement fault
+
+A test makes the next statement of a connection fail deterministically with a given error code and message, through the test entry point of each client, which is the same entry point as the rollback fault ([3.1](#_3-1-test-faults)). The entry point arms the fault on the connection of a handle, and every handle of that connection shares it. The arguments are the database, the `code`, a code of [errors.yaml](errors.yaml), and the `message`, a nonempty text. An empty `code` or `message` is refused with the programmer-error signal of the client and arms nothing: a panic in Go and Rust, a `TypeError` in TypeScript, an `InvalidArgumentException` in PHP, and a `ValueError` in Python.
+
+The next statement that the connection runs through its statement runner, a model read or write, a query, or a schema statement, is not sent to the database. The client reports it as an `OrmException` with the given code and message, at the same statement end that a driver error takes, so the statement event of that statement carries the error. The database is unchanged by the refused statement, and the fault is consumed by it. Transaction control statements (`BEGIN`, `SAVEPOINT`, `RELEASE`, `COMMIT`, `ROLLBACK`, and the isolation and read-only settings) do not consume it. Arming a fault while another statement fault is armed replaces it. A refused statement does not consume the rollback fault of [3.1](#_3-1-test-faults), and a rollback does not consume the statement fault.
+
+The fault exists only in the test entry point of each client. No DSN, configuration value, or environment variable arms it.
+
+| Client | Entry point | How a production build excludes it |
+|---|---|---|
+| Go | `orm.FailNextStatement(db, code, message)` | The same file as `FailNextRollback`, compiled only with the build tag `ormtest` |
+| Rust | `polyspec_orm::testing::fail_next_statement(&db, code, message)` | The same module as `fail_next_rollback`, compiled only with the cargo feature `test-faults` |
+| TypeScript | `failNextStatement(db, code, message)` of `@polyspec/orm/testing` | The same subpath as `failNextRollback`, exported only under the condition `orm-test` |
+| PHP | `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)` | The same class as `failNextRollback`, in `testing/Faults.php`, which the package autoloader does not map |
+| Python | `polyspec.orm.testing.fail_next_statement(db, code, message)` | The same package as `fail_next_rollback`, which no module of `polyspec.orm` imports |
+
+The PHP extension `orm_dbspec` has no connection and no statement runner, so it has no statement fault. The five clients above are the only clients that hold a `Db` connection.
+
 ## 4. Planning in the client
 
 Every client validates and plans requests in the calling process. No compiler service, daemon, or extension is involved.

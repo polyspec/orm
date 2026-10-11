@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 2dae2239fe80e015e9e33b20bb82826c0c8164a2f5e3118847e5e1fe606f96ec -->
+<!-- source-sha256: f98668d158c70b3ce356e01a666e41acddc04bdc34445cf9cc741ecfe050c58b -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -167,6 +167,24 @@ fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 
 | TypeScript | `@polyspec/orm/testing`의 `failNextRollback(db)` | package는 condition `orm-test`에서만 이 subpath를 export한다. `node --conditions=orm-test`가 없으면 import가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 실패하고, package entry point는 이 함수를 export하지 않는다. test의 type check는 `customConditions: ["orm-test"]`로 subpath를 찾는다 |
 | PHP | `Polyspec\Orm\Testing\Faults::failNextRollback($db)` | class는 package의 `testing/Faults.php`에 있고 package autoloader는 이 파일을 연결하지 않는다. process는 그 파일을 경로로 require한 뒤에만 class를 가진다 |
 | Python | `polyspec.orm.testing.fail_next_rollback(db)` | PHP class가 package에 있듯 package `polyspec.orm.testing`은 배포에 있고, `polyspec.orm`의 어느 module도 이것을 import하지 않는다. process는 `polyspec.orm.testing`을 직접 import한 뒤에만 이것을 가지며, package entry point `polyspec.orm`은 이 함수를 export하지 않는다 |
+
+### 3.2 Test statement fault
+
+test는 자기 클라이언트의 test entry point로 연결의 다음 statement가 주어진 오류 code와 message로 결정적으로 실패하게 한다. entry point는 3.1의 rollback fault와 같은 entry point다([3.1](#_3-1-test-faults)). entry point는 handle의 연결에 fault를 설정하고, 그 연결의 모든 handle이 이를 공유한다. 인자는 database, `code`(errors.yaml의 code)와 `message`(빈 값이 아닌 text)다. 빈 `code`나 `message`는 클라이언트의 프로그래머 오류 신호로 거절되며 fault를 설정하지 않는다. Go와 Rust는 panic, TypeScript는 `TypeError`, PHP는 `InvalidArgumentException`, Python은 `ValueError`다.
+
+연결이 statement runner로 실행하는 다음 statement(model 읽기나 쓰기, query, schema statement)는 데이터베이스로 보내지 않는다. 클라이언트는 그 statement를 주어진 code와 message의 `OrmException`으로 보고하며, driver 오류가 가는 것과 같은 statement 종료 지점을 거치므로 그 statement의 event에 오류가 실린다. 거절된 statement는 데이터베이스를 바꾸지 않고, 그 statement가 fault를 소비한다. transaction 제어 statement(`BEGIN`, `SAVEPOINT`, `RELEASE`, `COMMIT`, `ROLLBACK`과 격리 및 읽기 전용 설정)는 fault를 소비하지 않는다. statement fault가 이미 설정된 연결에 다시 설정하면 새 fault가 이전 fault를 대체한다. 거절된 statement는 3.1의 rollback fault를 소비하지 않고, rollback은 statement fault를 소비하지 않는다.
+
+fault는 각 클라이언트의 test entry point에만 있다. DSN, 설정 값, 환경 변수는 fault를 설정하지 않는다.
+
+| 클라이언트 | Entry point | production build가 제외하는 방법 |
+|---|---|---|
+| Go | `orm.FailNextStatement(db, code, message)` | `FailNextRollback`과 같은 파일이며 build tag `ormtest`가 있을 때만 compile한다 |
+| Rust | `polyspec_orm::testing::fail_next_statement(&db, code, message)` | `fail_next_rollback`과 같은 module이며 cargo feature `test-faults`가 있을 때만 compile한다 |
+| TypeScript | `@polyspec/orm/testing`의 `failNextStatement(db, code, message)` | `failNextRollback`과 같은 subpath이며 condition `orm-test`에서만 export한다 |
+| PHP | `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)` | `failNextRollback`과 같은 class이며 package autoloader가 연결하지 않는 `testing/Faults.php`에 있다 |
+| Python | `polyspec.orm.testing.fail_next_statement(db, code, message)` | `fail_next_rollback`과 같은 package이며 `polyspec.orm`의 어느 module도 import하지 않는다 |
+
+PHP 확장 `orm_dbspec`은 연결과 statement runner가 없으므로 statement fault가 없다. 위의 다섯 클라이언트만 `Db` 연결을 가진다.
 
 ## 4. 클라이언트 안의 계획
 

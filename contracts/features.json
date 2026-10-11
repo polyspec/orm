@@ -1607,6 +1607,12 @@
         "packages/orm-npm/tests/coverage_transactions.mjs",
         "packages/orm-go/orm/rollback_fault_test.go",
         "packages/orm-go/orm/rollback_fault_entry_test.go",
+        "packages/orm-go/orm/statement_fault_test.go",
+        "packages/orm-go/orm/statement_fault_entry_test.go",
+        "packages/orm-php/tests/statement_fault_test.php",
+        "packages/orm-rust/orm/tests/statement_fault.rs",
+        "packages/orm-npm/tests/statement_fault.mjs",
+        "packages/orm-python/tests/test_statement_fault.py",
         "packages/orm-rust/orm/src/tx.rs",
         "packages/orm-rust/orm/src/tx_send_tests.rs"
       ],
@@ -1658,6 +1664,56 @@
             "packages/orm-php/tests/rollback_test.php",
             "packages/orm-php/testing/Faults.php",
             "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "statement-fault-go",
+          "command": "node tests/go-test.mjs -v -timeout 0 ./packages/orm-go/orm -tags ormtest -run '^TestStatementFault' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-go/orm/statement_fault_entry_test.go",
+            "packages/orm-go/orm/statement_fault_test.go",
+            "contracts/fixtures/statement_fault.json"
+          ]
+        },
+        {
+          "id": "statement-fault-php",
+          "command": "php packages/orm-php/tests/statement_fault_test.php",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-php/tests/statement_fault_test.php",
+            "packages/orm-php/testing/Faults.php",
+            "contracts/fixtures/statement_fault.json",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "statement-fault-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs statement-fault-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test statement_fault",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/tests/statement_fault.rs",
+            "contracts/fixtures/statement_fault.json",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "statement-fault-typescript",
+          "command": "node --conditions=orm-test packages/orm-npm/tests/statement_fault.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-npm/tests/statement_fault.mjs",
+            "contracts/fixtures/statement_fault.json",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "statement-fault-python",
+          "command": "make python-statement-fault-check",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-python/tests/test_statement_fault.py",
+            "contracts/fixtures/statement_fault.json"
           ]
         },
         {

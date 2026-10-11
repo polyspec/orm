@@ -25,6 +25,7 @@ keep node packages/orm-npm/tests/add-tables-and-columns.mjs
 keep node packages/orm-npm/tests/clock.mjs
 keep node packages/orm-npm/tests/driver-error.mjs
 keep node --conditions=orm-test packages/orm-npm/tests/rollback.mjs
+keep node --conditions=orm-test packages/orm-npm/tests/statement_fault.mjs
 keep node packages/orm-npm/tests/mysql_tls.mjs
 if [ -n "$FAILED" ]; then
   printf 'sqlite-test: failed:%s\n' "$FAILED" >&2
