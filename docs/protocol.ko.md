@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 34acdf00064b22747f44b110e23620aa26b9fff4c4293e4ad010a0d4a2b1acf5 -->
+<!-- source-sha256: a06d7884276939166ca912c82dcd95e680057809e28eb78d60f02bd58243e224 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -242,7 +242,7 @@ DSN scheme은 SQL dialect 대신 IR executor를 고를 수 있다. `markdown://`
 - **매개변수.** `params`는 runtime value model JSON을 쓴다. decimal은 문자열, bytes는 base64, datetime은 UTC의 `YYYY-MM-DD HH:MM:SS.ffffff`, date는 `YYYY-MM-DD`, time은 `HH:MM:SS.ffffff`다. 매개변수가 채우는 slot이 형식을 정한다. `ir.ParamUses`가 매개변수마다 그 slot과 논리 type(비교하거나 대입하는 column, column 함수의 결과, 상대 시각 함수의 간격, `contains`의 text)을 나열하고, 클라이언트의 시각 값은 그 type의 형식으로 적는다. `hex`나 `ip` column의 slot은 SQL 데이터베이스에서처럼 인코딩한 값을 받는다.
 - **Codec.** 클라이언트가 SQL과 같이 codec 단계를 직접 적용한다. 쓰기의 값은 보내기 전에 인코딩하고, 읽기의 값은 받은 뒤에 디코딩한다.
 - **읽기.** 읽기는 요청 형태에 맞게 조립된 row를 돌려준다. 조인, 관계, `key_by`, `flatten`은 1.2절이 정의한 대로다.
-- **쓰기.** 쓰기는 `{affected, keys}`를 돌려준다. `keys`는 삽입한 row마다 그 primary key를 삽입 순서대로 담는다.
+- **쓰기.** 쓰기는 `{affected, keys}`를 돌려준다. `keys`는 삽입한 row마다 그 primary key를 삽입 순서대로 담는다. `affected`는 쓴 row를 하나씩 센다. `on_duplicate`가 있는 insert는 삽입이든 갱신이든 모든 database에서 1이고(MySQL만 갱신을 2로 센다), `update`는 바꾼 row만이 아니라 일치한 row를 센다(MySQL client는 found rows를 요청한다).
 - **오류.** 실패한 메시지는 `{"error": {"code": <code>, "message": <text>}}`로 답을 받는다. code는 [errors.yaml](errors.yaml)의 코드 하나이며, 클라이언트는 그 code와 message의 오류를 돌려준다. hash가 다르면 `SCHEMA_HASH_MISMATCH`다. 읽은 뒤 대상이 바뀐 쓰기는 `WRITE_CONFLICT`이며, 파일과 줄을 적는다. 클라이언트는 이를 재시도하지 않는다. 끝난 lock 대기는 `CANCELED`다. JSON object가 아닌 줄, 어떤 제어 메시지도 가리키지 않는 `op`, 제어 메시지가 받지 않는 필드는 `IR_INVALID`다. 끊긴 연결은 `CONNECTION_LOST`이며, server가 한도보다 오래 쉰 트랜잭션의 연결을 닫기 전에 쓰는 답도 그렇다. 호출의 context나 signal이 끝나면 클라이언트는 연결을 닫고 호출은 `CANCELED`다. server는 닫힌 연결의 트랜잭션을 rollback한다.
 - **세션.** 연결 하나가 세션이다. 제어 메시지 `{"op": "begin", "read_only"?}`, `{"op": "commit"}`, `{"op": "rollback"}`, `{"op": "savepoint" | "release" | "rollback_to", "name"}`가 트랜잭션을 시작하고, 끝내고, 중첩한다. `name`은 `savepoint`, `release`, `rollback_to`가 가리키는 savepoint의 이름이다. 클라이언트는 `readOnly` 옵션의 트랜잭션이면 `read_only` true를 쓰고, 그 밖에는 `read_only`를 쓰지 않는다. executor는 그 트랜잭션의 모든 쓰기를 `READ_ONLY`로 거절한다. 제어 메시지마다 `{"ok": true}` 또는 오류를 돌려준다. 트랜잭션은 `begin`부터 끝까지 연결 하나를 잡고, 트랜잭션 밖의 요청은 풀의 아무 연결에서 자기 트랜잭션으로 실행된다.
 - **executor가 정하는 column.** `identity`, `key_prefix`, `order` column은 executor가 값을 정하므로 insert에서 생략할 수 있다. 1.4절은 planner가 정하는 column을 정의하며, 이 column들은 executor가 정한다.

@@ -1268,7 +1268,9 @@ export async function write(ex: Executor, request: Request, params: readonly unk
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { key: Number(result.rows[0]?.[0]), affected: 1 };
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
     const key = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
-    return { key, affected: result.affected };
+    // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+    const upsert = request.kind === 'insert' && (request.on_duplicate?.length ?? 0) > 0;
+    return { key, affected: upsert ? 1 : result.affected };
   });
 }
 

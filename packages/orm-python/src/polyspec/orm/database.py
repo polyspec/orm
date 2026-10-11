@@ -514,6 +514,7 @@ class _MysqlConnection:
     def __init__(self, parsed: ParsedDsn):
         try:
             import pymysql
+            from pymysql.constants import CLIENT
         except ImportError as error:
             raise OrmError('CONFIG', f'the mysql driver needs PyMySQL: {error}') from None
         url = parsed.url
@@ -524,7 +525,9 @@ class _MysqlConnection:
                 user=_unquote(url.username or ''),
                 password=_unquote(url.password or ''),
                 database=_unquote(url.path.lstrip('/')),
-                charset='utf8mb4', autocommit=True, conv=mysql_conversions())
+                charset='utf8mb4', autocommit=True, conv=mysql_conversions(),
+                # An update counts the rows it matched, as on PostgreSQL and SQLite, not only the rows it changed.
+                client_flag=CLIENT.FOUND_ROWS)
         except Exception as error:
             _raise_driver_error('mysql', error)
         self.execute("SET time_zone = '+00:00'", [])
@@ -1538,7 +1541,9 @@ def write(ex: Executor, request: dict, params):
         insert_id = result['insert_id']
         identity_id = int(insert_id) if request['kind'] == 'insert' \
             and not request.get('rows') and insert_id is not None else None
-        return {'id': identity_id, 'affected': result['affected']}
+        # An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+        upsert = request['kind'] == 'insert' and bool(request.get('on_duplicate'))
+        return {'id': identity_id, 'affected': 1 if upsert else result['affected']}
 
     return _guarded(ex, work)
 

@@ -992,7 +992,9 @@ final class Db
                     return [$id, 1];
                 }
                 $entity = Registry::model($r->ir['manifest_hash'])->entity($r->ir['entity']);
-                return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== '' ? $this->handle()->lastInsertId() : null, $st->rowCount()];
+                // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
+                $upsert = $insert && ($r->ir['on_duplicate'] ?? []) !== [];
+                return [$insert && !isset($r->ir['rows']) && $entity['identity'] !== '' ? $this->handle()->lastInsertId() : null, $upsert ? 1 : $st->rowCount()];
             } catch (\PDOException $e) {
                 throw self::failed($st, $e);
             }
