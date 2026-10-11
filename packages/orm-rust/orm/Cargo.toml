@@ -43,6 +43,9 @@ serde_yaml_ng = "0.10.0"
 yaml-rust2 = { version = "0.13.0", default-features = false }
 
 [dev-dependencies]
+# The fault entry point exists only with the feature test-faults. The integration tests of this crate
+# enable it through their own crate, so a test target runs with the feature and the normal build does not.
+polyspec-orm = { path = ".", features = ["test-faults"] }
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
 # SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
