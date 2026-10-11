@@ -21,6 +21,7 @@ import * as testing from '@polyspec/orm/testing';
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 const { code, message } = fixture;
+const faultText = `${code}: ${message}`;
 if (fixture.schema !== 1 || typeof code !== 'string' || code === '' || typeof message !== 'string' || message === '' || !Array.isArray(fixture.cases)) {
   throw new Error('contracts/fixtures/statement_fault.json is not a schema 1 fixture with a code, a message and cases');
 }
@@ -78,11 +79,14 @@ async function connect(dsn) {
   return db;
 }
 
-/** Checks that an error is the ORM error of the armed fault: its code and its message. */
+/**
+ * Checks that an error is the ORM error of the armed fault: its code and its message. OrmError
+ * takes the message as its text and prefixes the code (`CODE: text`, runtime_error.ts).
+ */
 function checkFaultError(error, subject) {
   check(error instanceof OrmError, `${subject} raises an OrmError: ${error}`);
   check(error?.code === code, `${subject} code ${error?.code}, want ${code}`);
-  check(error?.message === message, `${subject} message ${JSON.stringify(error?.message)}, want ${JSON.stringify(message)}`);
+  check(error?.message === faultText, `${subject} message ${JSON.stringify(error?.message)}, want ${JSON.stringify(faultText)}`);
 }
 
 /** The insert is refused: the error, the statement event and the unchanged database. */
@@ -97,7 +101,7 @@ async function refusedInsert(driver, dsn) {
     checkFaultError(error, 'the refused insert');
     const failed = events.filter(event => event.error !== null);
     check(failed.length === 1, `one statement event carries the error: ${failed.length}`);
-    check(failed[0]?.error?.code === code && failed[0]?.error?.message === message, `the statement event carries the error ${failed[0]?.error?.code} ${failed[0]?.error?.message}`);
+    check(failed[0]?.error?.code === code && failed[0]?.error?.message === faultText, `the statement event carries the error ${failed[0]?.error?.code} ${failed[0]?.error?.message}`);
     unsubscribe();
     check(await countOf(db) === 0, 'the refused insert leaves the table unchanged');
   } finally { await db.close(); }

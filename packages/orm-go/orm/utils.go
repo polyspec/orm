@@ -113,7 +113,7 @@ func (t *txConn) releaseLocks() error {
 	var errs []error
 	for _, key := range locks {
 		var released sql.NullInt64
-		if err := t.run().scan(t.ctx, KindUtility, nil, "SELECT RELEASE_LOCK(?)", []any{key}, &released); err != nil {
+		if err := t.machinery().scan(t.ctx, KindUtility, nil, "SELECT RELEASE_LOCK(?)", []any{key}, &released); err != nil {
 			errs = append(errs, err)
 			continue
 		}
@@ -164,7 +164,7 @@ func (t *txConn) clearLocals() error {
 	var errs []error
 	// 값을 지우는 statement는 key 순서로 보낸다.
 	for _, key := range slices.Sorted(maps.Keys(locals)) {
-		if _, err := t.run().exec(t.ctx, KindUtility, nil, "SET @`orm."+key+"` = NULL"); err != nil {
+		if _, err := t.machinery().exec(t.ctx, KindUtility, nil, "SET @`orm."+key+"` = NULL"); err != nil {
 			errs = append(errs, err)
 		}
 	}

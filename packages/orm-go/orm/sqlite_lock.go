@@ -30,20 +30,20 @@ func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) error {
 	nowait := strings.HasSuffix(mode, "_nowait")
 	if nowait {
 		var previousBusyTimeout int
-		if err := tx.run().scan(ctx, KindUtility, nil, "PRAGMA busy_timeout", nil, &previousBusyTimeout); err != nil {
+		if err := tx.machinery().scan(ctx, KindUtility, nil, "PRAGMA busy_timeout", nil, &previousBusyTimeout); err != nil {
 			return err
 		}
-		if _, err := tx.run().exec(ctx, KindUtility, nil, "PRAGMA busy_timeout=0"); err != nil {
+		if _, err := tx.machinery().exec(ctx, KindUtility, nil, "PRAGMA busy_timeout=0"); err != nil {
 			return err
 		}
 		defer func() {
-			_, _ = tx.run().exec(context.Background(), KindUtility, nil, fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout))
+			_, _ = tx.machinery().exec(context.Background(), KindUtility, nil, fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout))
 		}()
 	}
 	if err := ensureSQLiteRowLock(ctx, tx.db); err != nil {
 		return err
 	}
-	if _, err := tx.run().exec(ctx, KindUtility, rowLockTables, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
+	if _, err := tx.machinery().exec(ctx, KindUtility, rowLockTables, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
 		if nowait && sqliteBusy(err) {
 			return &ir.Error{Code: CodeLockNotAvailable, Msg: err.Error()}
 		}
@@ -61,7 +61,7 @@ func ensureSQLiteRowLock(ctx context.Context, d *DB) error {
 	if d.m.sqliteRowLockReady.Load() {
 		return nil
 	}
-	if _, err := (runner{d: d, q: d.sql}).exec(ctx, KindUtility, rowLockTables, sqliteRowLockDDL); err != nil {
+	if _, err := (runner{d: d, q: d.sql, machinery: true}).exec(ctx, KindUtility, rowLockTables, sqliteRowLockDDL); err != nil {
 		return err
 	}
 	d.m.sqliteRowLockReady.Store(true)

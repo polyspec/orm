@@ -30,6 +30,8 @@ final class Db
     private bool $typed = false;
     /** Polyspec\Orm\Testing\Faults::failNextRollback가 설정하는 test fault다. 그 test entry point만 설정한다. */
     private bool $rollbackFault = false;
+    /** Polyspec\Orm\Testing\Faults::failNextStatement가 설정하는 test fault다. 다음 statement 하나를 보내지 않고 이 오류로 끝낸다. 그 test entry point만 설정한다. */
+    private ?OrmException $statementFault = null;
     /** @var array<string, true> 이 연결에 등록된 set의 manifest hash다. */
     private array $sets = [];
     /** @var array<int, \Closure(StatementEvent): void> statement event subscriber다. 등록 순서이고 key는 등록 번호다. */
@@ -215,25 +217,47 @@ final class Db
      */
     public function observed(string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
     {
+        return $this->observedAs(false, $kind, $tables, $transaction, $sql, $binds, $send);
+    }
+
+    /**
+     * observed의 본체다. $control이 true면 transaction 제어 statement이므로 statement fault가 그것을
+     * 막지 않는다.
+     *
+     * @template T
+     * @param list<string> $tables
+     * @param list<mixed> $binds
+     * @param \Closure(): T $send
+     * @return T
+     */
+    private function observedAs(bool $control, string $kind, array $tables, ?int $transaction, string $sql, array $binds, \Closure $send): mixed
+    {
         $this->handle();
         return $this->send($send, function (int $start, ?OrmException $error) use ($kind, $tables, $transaction, $sql, $binds): void {
             $this->publish($kind, $tables, $transaction, $sql, $binds, $start, $error);
-        });
+        }, $control);
     }
 
     /**
      * statement 하나를 보내고 그 event를 publish한다. $send는 statement를 보내 결과를 돌려주고,
      * $done은 statement를 보내기 전의 hrtime과 오류로 event를 publish한다. driver 오류는 mapping한
-     * OrmException으로 event에 싣고 던진다.
+     * OrmException으로 event에 싣고 던진다. $control이 false인 statement는 armed statement fault를
+     * 소비한다: 보내지 않고 그 오류로 끝난다(docs/protocol.md 3.2).
      *
      * @template T
      * @param \Closure(): T $send
      * @param \Closure(int, ?OrmException): void $done
      * @return T
      */
-    private function send(\Closure $send, \Closure $done): mixed
+    private function send(\Closure $send, \Closure $done, bool $control = false): mixed
     {
         $start = hrtime(true);
+        if (!$control && $this->statementFault !== null) {
+            $fault = $this->statementFault;
+            $this->statementFault = null;
+            $done($start, $fault);
+            throw $fault;
+        }
         try {
             $result = $send();
         } catch (\PDOException $e) {
@@ -251,9 +275,18 @@ final class Db
      *
      * @param list<string> $tables
      */
-    public function run(string $kind, array $tables, ?int $transaction, string $sql): void
+    public function run(string $kind, array $tables, ?int $transaction, string $sql, bool $control = false): void
     {
-        $this->observed($kind, $tables, $transaction, $sql, [], fn() => $this->handle()->exec($sql));
+        $this->observedAs($control, $kind, $tables, $transaction, $sql, [], fn() => $this->handle()->exec($sql));
+    }
+
+    /**
+     * @internal transaction 제어 statement 하나를 실행한다: BEGIN, COMMIT, ROLLBACK, SAVEPOINT,
+     * RELEASE, ROLLBACK TO와 isolation, read-only 설정이다. statement fault는 이 statement를 막지 않는다.
+     */
+    private function control(string $kind, ?int $transaction, string $sql): void
+    {
+        $this->observedAs(true, $kind, [], $transaction, $sql, [], fn() => $this->handle()->exec($sql));
     }
 
     /**
@@ -265,9 +298,9 @@ final class Db
      * @param list<mixed> $args
      * @return list<list<mixed>>
      */
-    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = []): array
+    public function fetch(string $kind, array $tables, ?int $transaction, string $sql, array $args = [], bool $control = false): array
     {
-        return $this->observed($kind, $tables, $transaction, $sql, $args, function () use ($sql, $args): array {
+        return $this->observedAs($control, $kind, $tables, $transaction, $sql, $args, function () use ($sql, $args): array {
             $text = $sql;
             $bound = $args;
             if ($this->driver === 'postgres') {
@@ -542,34 +575,36 @@ final class Db
         $frame = new TxFrame($this, $readOnly, $isolation, $this->nextTransaction());
         // transaction을 여는 statement다(docs/usage.md "Statement events"). driver의 transaction
         // API 대신 client가 이 text를 그대로 보낸다.
+        // 각 step은 [kind, sql, control]이다. control이 true인 step은 transaction 제어 statement다.
         $steps = [];
         switch ($this->driver) {
             case 'mysql':
                 if ($level !== '') {
-                    $steps[] = [StatementEvent::UTILITY, 'SET TRANSACTION ISOLATION LEVEL ' . $level];
+                    $steps[] = [StatementEvent::UTILITY, 'SET TRANSACTION ISOLATION LEVEL ' . $level, true];
                 }
-                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION'];
+                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'START TRANSACTION READ ONLY' : 'START TRANSACTION', true];
                 break;
             case 'postgres':
-                $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '') . ($readOnly ? ' READ ONLY' : '')];
+                $steps[] = [StatementEvent::BEGIN, 'BEGIN' . ($level !== '' ? ' ISOLATION LEVEL ' . $level : '') . ($readOnly ? ' READ ONLY' : ''), true];
                 if ($timeoutMs > 0) {
-                    $steps[] = [StatementEvent::UTILITY, 'SET LOCAL statement_timeout = ' . $timeoutMs];
+                    // statement_timeout은 isolation도 read-only도 아니므로 제어 statement가 아니다.
+                    $steps[] = [StatementEvent::UTILITY, 'SET LOCAL statement_timeout = ' . $timeoutMs, true];
                 }
                 break;
             default:
                 // 쓰기 transaction은 시작할 때 쓰기 lock을 잡고 busy_timeout까지 기다린다. 읽기 전용
                 // transaction은 deferred BEGIN이다.
-                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE'];
+                $steps[] = [StatementEvent::BEGIN, $readOnly ? 'BEGIN' : 'BEGIN IMMEDIATE', true];
                 if ($isolation === 'read_uncommitted') {
-                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA read_uncommitted = 1'];
+                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA read_uncommitted = 1', true];
                 }
                 if ($readOnly) {
-                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA query_only = 1'];
+                    $steps[] = [StatementEvent::UTILITY, 'PRAGMA query_only = 1', true];
                 }
         }
-        foreach ($steps as [$kind, $sql]) {
+        foreach ($steps as [$kind, $sql, $control]) {
             try {
-                $this->run($kind, [], $frame->number, $sql);
+                $this->run($kind, [], $frame->number, $sql, $control);
             } catch (OrmException $failure) {
                 // 시작한 transaction은 SQLite mode까지 되돌리고 rollback한다. BEGIN이 실행된 뒤
                 // subscriber가 실패해도 transaction은 시작했으므로 driver의 상태로 판단한다.
@@ -593,7 +628,7 @@ final class Db
         if ($this->rowLockReady) {
             return;
         }
-        $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null, 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))');
+        $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], null, 'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))', true);
         $this->rowLockReady = true;
     }
 
@@ -609,7 +644,7 @@ final class Db
         $failure = self::joined($this->cleanup($frame));
         if ($commit && $failure === null) {
             try {
-                $this->run(StatementEvent::COMMIT, [], $frame->number, 'COMMIT');
+                $this->control(StatementEvent::COMMIT, $frame->number, 'COMMIT');
                 return;
             } catch (OrmException $e) {
                 $failure = $e;
@@ -621,7 +656,7 @@ final class Db
             // rollback한다. 작업이 실패한 transaction은 언제나 rollback하며, driver나
             // server가 transaction이나 connection을 이미 끝내 실패한 rollback도 보고한다.
             if (!$commit || $this->handle()->inTransaction()) {
-                $this->run(StatementEvent::ROLLBACK, [], $frame->number, 'ROLLBACK');
+                $this->control(StatementEvent::ROLLBACK, $frame->number, 'ROLLBACK');
             }
         } catch (OrmException $e) {
             $rollback = $e;
@@ -648,7 +683,7 @@ final class Db
         };
         foreach ($frame->locks as $key) {
             $attempt(function () use ($key, $frame): void {
-                $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)', [$key])[0][0] ?? null;
+                $released = $this->fetch(StatementEvent::UTILITY, [], $frame->number, 'SELECT RELEASE_LOCK(?)', [$key], true)[0][0] ?? null;
                 // 1이 아니면 이 connection이 lock을 갖고 있지 않았다.
                 if ((string) $released !== '1') {
                     throw new OrmException(Code::CONFIG, "lock $key was not held at transaction end");
@@ -661,15 +696,15 @@ final class Db
             $keys = array_map('strval', array_keys($frame->locals));
             sort($keys, SORT_STRING);
             foreach ($keys as $key) {
-                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = NULL'));
+                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'SET @`orm.' . $key . '` = NULL', true));
             }
         }
         if ($this->driver === 'sqlite') {
             if ($frame->readOnly) {
-                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'PRAGMA query_only = 0'));
+                $attempt(fn() => $this->control(StatementEvent::UTILITY, $frame->number, 'PRAGMA query_only = 0'));
             }
             if ($frame->isolation === 'read_uncommitted') {
-                $attempt(fn() => $this->run(StatementEvent::UTILITY, [], $frame->number, 'PRAGMA read_uncommitted = 0'));
+                $attempt(fn() => $this->control(StatementEvent::UTILITY, $frame->number, 'PRAGMA read_uncommitted = 0'));
             }
         }
         return $errors;
@@ -688,7 +723,7 @@ final class Db
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
         try {
-            $this->run(StatementEvent::SAVEPOINT, [], $frame->number, "SAVEPOINT $name");
+            $this->control(StatementEvent::SAVEPOINT, $frame->number, "SAVEPOINT $name");
             self::$frames[] = $frame;
             try {
                 $v = $fn();
@@ -717,7 +752,7 @@ final class Db
     private function endSavepoint(TxFrame $frame, string $kind, string $statement): ?\Throwable
     {
         try {
-            $this->run($kind, [], $frame->number, $statement);
+            $this->control($kind, $frame->number, $statement);
             return null;
         } catch (OrmException $e) {
             return $e;
@@ -1078,12 +1113,12 @@ final class Db
         $noWait = str_ends_with($mode, '_nowait');
         $previous = 0;
         if ($noWait) {
-            $previous = (int) ($this->fetch(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout')[0][0] ?? 0);
-            $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0');
+            $previous = (int) ($this->fetch(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout', [], true)[0][0] ?? 0);
+            $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0', true);
         }
         try {
             $this->ensureRowLockTable();
-            $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
+            $this->run(StatementEvent::UTILITY, [self::ROW_LOCK_TABLE], $tx, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"', true);
         } catch (OrmException $e) {
             $driverError = $e->getPrevious();
             if ($noWait && $driverError instanceof \PDOException && (((int) ($driverError->errorInfo[1] ?? 0)) & 0xff) === 5) {
@@ -1092,7 +1127,7 @@ final class Db
             throw $e;
         } finally {
             if ($noWait) {
-                $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=' . $previous);
+                $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=' . $previous, true);
             }
         }
     }

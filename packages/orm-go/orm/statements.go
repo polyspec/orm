@@ -12,11 +12,17 @@ type runner struct {
 	d  *DB
 	q  querier
 	tx int64
+	// machinery는 transaction 기계 statement의 runner다. 이 statement는 statement
+	// fault를 소비하지 않는다(docs/protocol.md 3.2).
+	machinery bool
 }
 
 // exec는 statement 하나를 실행한다.
 func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText string, args ...any) (sql.Result, error) {
 	start := time.Now()
+	if err := r.fault(kind); err != nil {
+		return nil, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
+	}
 	res, err := r.q.ExecContext(ctx, sqlText, args...)
 	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err))
 }
@@ -24,6 +30,9 @@ func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText 
 // scan은 한 row를 돌려주는 statement를 실행하고 그 row를 dest에 읽는다.
 func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText string, args []any, dest ...any) error {
 	start := time.Now()
+	if err := r.fault(kind); err != nil {
+		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
+	}
 	err := mapDriverErr(r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...))
 	return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 }
@@ -40,6 +49,9 @@ type observed struct {
 
 func (o *observed) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	o.start = time.Now()
+	if err := o.r.fault(o.kind); err != nil {
+		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, err)
+	}
 	rows, err := o.r.q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErr(err))
@@ -67,6 +79,9 @@ func noTables(string) []string { return nil }
 // 읽었거나 실패했을 때 event를 publish한다. each의 오류는 statement의 오류가 아니다.
 func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText string, args []any, each func(scan func(dest ...any) error) error) error {
 	start := time.Now()
+	if err := r.fault(kind); err != nil {
+		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
+	}
 	rs, err := r.q.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err))

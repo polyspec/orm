@@ -4,6 +4,7 @@
 use std::sync::atomic::Ordering;
 
 use crate::Db;
+use crate::Error;
 
 /// `db`의 connection과 그 모든 clone에 test fault를 설정한다. callback이 실패한
 /// 다음 transaction의 rollback은 실행된 뒤 rollback 오류로 `FAULT` 오류를
@@ -12,4 +13,29 @@ use crate::Db;
 /// 소비할 때까지 남는다.
 pub fn fail_next_rollback(db: &Db) {
     db.inner.rollback_fault.store(true, Ordering::Release);
+}
+
+/// The statement fault of a connection: the code and the message of the error
+/// that the next statement ends with.
+pub(crate) struct StatementFault {
+    code: String,
+    message: String,
+}
+
+/// `db`의 connection과 그 모든 clone에 다음 statement의 test fault를 설정한다. 다음
+/// statement는 database로 보내지 않고 `code`와 `message`의 ORM 오류로 끝난다. transaction
+/// 제어 statement는 이 fault를 소비하지 않는다. 이미 설정된 statement fault는 바뀐다.
+///
+/// `code`나 `message`가 비었으면 panic하고 아무것도 설정하지 않는다.
+pub fn fail_next_statement(db: &Db, code: &str, message: &str) {
+    assert!(!code.is_empty(), "fail_next_statement: the code is empty");
+    assert!(!message.is_empty(), "fail_next_statement: the message is empty");
+    let fault = StatementFault { code: code.to_owned(), message: message.to_owned() };
+    *db.inner.statement_fault.lock().unwrap() = Some(fault);
+}
+
+/// `db`의 설정된 statement fault를 소비하고 그 오류를 돌려준다. fault가 없으면 None이다.
+pub(crate) fn take_statement_fault(db: &Db) -> Option<Error> {
+    let fault = db.inner.statement_fault.lock().unwrap().take()?;
+    Some(Error::Engine { code: fault.code, msg: fault.message })
 }

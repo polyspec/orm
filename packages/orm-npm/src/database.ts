@@ -161,9 +161,24 @@ export class TxFrame {
   /** number는 연결에서 이 transaction의 번호다. 그 statement의 event가 싣는다. */
   public constructor(public readonly db: Db, public readonly session: DriverSession, public readonly number: number, public readonly options: BeginOptions) {}
 
-  /** transaction 연결에서 prepare하지 않은 statement를 보내고 그 event를 publish한다. */
+  /**
+   * transaction 연결에서 transaction control statement를 보내고 그 event를 publish한다. test statement
+   * fault는 소비하지 않는다.
+   */
   public run(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
     return this.session.control(sql, params, this.db.statementDone(kind, tables, this.number, params));
+  }
+
+  /**
+   * transaction 연결에서 query나 schema statement를 보낸다. armed statement fault가 있으면 보내지 않고
+   * 그 오류로 거부한다.
+   *
+   * @internal
+   */
+  public async statement(kind: StatementKind, tables: readonly string[], sql: string, params: readonly DriverValue[] = []): Promise<DriverResult> {
+    const done = this.db.statementDone(kind, tables, this.number, params);
+    this.db.checkStatementFault(sql, done);
+    return this.session.control(sql, params, done);
   }
 }
 
@@ -348,13 +363,25 @@ export function armRollbackFault(db: Db): void {
   db['shared'].rollbackFault = true;
 }
 
+/**
+ * Arms the statement fault of the connection: the next query, model or schema
+ * statement is refused with an OrmError of code and message, and a replaced
+ * fault is dropped. test entry point `src/testing.ts`만 호출한다.
+ */
+export function armStatementFault(db: Db, code: string, message: string): void {
+  db['shared'].statementFault = { code, message };
+}
+
+/** Transaction control statement kinds, which the statement fault does not refuse. */
+const CONTROL_KINDS: ReadonlySet<StatementKind> = new Set<StatementKind>(['begin', 'commit', 'rollback', 'savepoint', 'release', 'rollback_to']);
+
 /** A database connection with its plan cache and statement cache. */
 export class Db {
   // 한 connection의 모든 handle이 공유하는 상태다. rollbackFault는 test entry
   // point의 failNextRollback이 설정하는 test fault다.
   // events는 subscriber 목록과 transaction 번호이고, rowLockTable은 SQLite row lock table을 이 연결에서
   // 만들었는지다.
-  private readonly shared = { closed: false, rollbackFault: false, events: new Subscribers(), rowLockTable: false };
+  private readonly shared: { closed: boolean; rollbackFault: boolean; statementFault: { code: string; message: string } | null; events: Subscribers; rowLockTable: boolean } = { closed: false, rollbackFault: false, statementFault: null, events: new Subscribers(), rowLockTable: false };
   public readonly signal: AbortSignal | undefined = undefined;
   /** The audit values of the current request; the connection and its handles share it. */
   private readonly auditSource: (() => Record<string, unknown>) | undefined;
@@ -491,7 +518,26 @@ export class Db {
    * @internal
    */
   public runner(session: DriverSession, transaction: number | null): Runner {
-    return (kind, tables, sql, params = []) => session.control(sql, params, this.statementDone(kind, tables, transaction, params));
+    return async (kind, tables, sql, params = []) => {
+      const done = this.statementDone(kind, tables, transaction, params);
+      if (!CONTROL_KINDS.has(kind)) this.checkStatementFault(sql, done);
+      return session.control(sql, params, done);
+    };
+  }
+
+  /**
+   * Refuses the statement with the armed statement fault: it publishes the statement event with the
+   * error at the statement end, clears the fault and throws the error. Without a fault it returns.
+   *
+   * @internal
+   */
+  public checkStatementFault(sql: string, done: StatementDone): void {
+    const fault = this.shared.statementFault;
+    if (fault === null) return;
+    this.shared.statementFault = null;
+    const error = new OrmError(fault.code, fault.message);
+    done(sql, 0, error, 'statement');
+    throw error;
   }
 
   /**
@@ -691,8 +737,11 @@ export class Db {
     let discard = false;
     try {
       const errors: unknown[] = [];
+      // 설정을 되돌리고 lock을 푸는 cleanup statement는 test fault를 소비하지 않는다(protocol 3.2).
       const attempt = async (sql: string, params: readonly DriverValue[] = []): Promise<DriverResult | undefined> => {
-        try { return await frame.run('utility', [], sql, params); } catch (error) { errors.push(error); return undefined; }
+        try {
+          return await frame.run('utility', [], sql, params);
+        } catch (error) { errors.push(error); return undefined; }
       };
       if (this.driver === 'sqlite') {
         if (frame.options.readOnly) await attempt('PRAGMA query_only = 0');
@@ -871,7 +920,9 @@ export class Db {
     const { values, masked } = this.args(step, params, parents, ex.frame?.audit);
     const connection = ex.frame?.session ?? this.pool;
     // kind는 plan step이 쓰는 SQL의 동사이고 tables는 plan step의 table이다.
-    return connection.execute(sql, values as DriverValue[], this.signal, this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked));
+    const done = this.statementDone(statementKind(step.sql), step.tables, ex.frame?.number ?? null, masked);
+    this.checkStatementFault(sql, done);
+    return connection.execute(sql, values as DriverValue[], this.signal, done);
   }
 }
 

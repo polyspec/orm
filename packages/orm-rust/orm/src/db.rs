@@ -275,6 +275,10 @@ pub(crate) struct DbInner {
     /// `polyspec_orm::testing::fail_next_rollback`이 설정하는 test fault다. feature
     /// `test-faults`가 있는 build만 설정할 수 있다.
     pub(crate) rollback_fault: AtomicBool,
+    /// `polyspec_orm::testing::fail_next_statement`이 설정하는 test fault다. feature
+    /// `test-faults`가 있는 build만 가진다.
+    #[cfg(feature = "test-faults")]
+    pub(crate) statement_fault: Mutex<Option<crate::testing::StatementFault>>,
 }
 
 /// A database connection. Cloning is cheap and keeps the identity.
@@ -438,6 +442,8 @@ impl Db {
                 sqlite_lock_ready: AtomicBool::new(false),
                 subscribers: Subscribers::default(),
                 rollback_fault: AtomicBool::new(false),
+                #[cfg(feature = "test-faults")]
+                statement_fault: Mutex::new(None),
             }),
         };
         let _ = owner.set(Arc::downgrade(&db.inner));
@@ -725,9 +731,14 @@ impl Db {
         parent_vals: Vec<Param>,
         audit: Option<&AuditKey>,
     ) -> Result<Vec<DriverRow>> {
-        self.sqlite_row_lock(&mut target, origin.transaction, &st.lock).await?;
         let (sql, parent_vals) = statement(st, parent_vals, matches!(self.inner.pool, Pool::Postgres(_)));
         let args = self.args(st, params, &parent_vals, audit)?;
+        // 설정된 statement fault는 이 statement를 보내지 않고 끝낸다. 행 잠금 statement도 보내지 않는다.
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = crate::testing::take_statement_fault(self) {
+            return self.step_done(st, origin, &sql, || self.shown(st, &args, parent_vals.len()), std::time::Instant::now(), Err(error));
+        }
+        self.sqlite_row_lock(&mut target, origin.transaction, &st.lock).await?;
         let start = std::time::Instant::now();
         let r: Result<Vec<DriverRow>> = match target {
             Target::Pool(Pool::MySql(p)) => fetch_mysql_pool(&sql, &args, p).await.map(|v| v.into_iter().map(DriverRow::MySql).collect()).map_err(Error::from),
@@ -761,6 +772,10 @@ impl Db {
     ) -> Result<(u64, u64)> {
         let args = self.args(st, params, &[], audit)?;
         let sql = st.sql.as_str();
+        #[cfg(feature = "test-faults")]
+        if let Some(error) = crate::testing::take_statement_fault(self) {
+            return self.step_done(st, origin, sql, || self.shown(st, &args, 0), std::time::Instant::now(), Err(error));
+        }
         let start = std::time::Instant::now();
         let r: Result<(u64, u64)> = match target {
             Target::Pool(Pool::MySql(p)) => exec_mysql_pool(sql, &args, p).await.map_err(Error::from),
