@@ -28,7 +28,8 @@
       "name": "typescript",
       "runner": "node",
       "roots": ["packages/orm-npm"],
-      "tests": ["packages/orm-npm/tests/coverage_*.mjs"]
+      "tests": ["packages/orm-npm/tests/coverage_*.mjs"],
+      "args": ["--conditions=orm-test"]
     },
     {
       "name": "python",
