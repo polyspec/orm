@@ -81,4 +81,13 @@ runCoverageCases($argv, [
     'planner_rejects_outer_ref_outside_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_outer_ref_outside_subquery'),
     'planner_rejects_unjoined_ref' => fn() => plannerCase($root, $fixture, 'planner_rejects_unjoined_ref'),
     'planner_ref_path_absent' => fn() => plannerCase($root, $fixture, 'planner_ref_path_absent'),
+    'planner_group_by_count' => fn() => plannerCase($root, $fixture, 'planner_group_by_count'),
+    'planner_group_count_order_column' => fn() => plannerCase($root, $fixture, 'planner_group_count_order_column'),
+    'planner_group_count_order_column_function' => fn() => plannerCase($root, $fixture, 'planner_group_count_order_column_function'),
+    'planner_group_count_order_random' => fn() => plannerCase($root, $fixture, 'planner_group_count_order_random'),
+    'planner_rejects_group_by_all' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_all'),
+    'planner_rejects_group_by_sum' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_sum'),
+    'planner_rejects_group_by_join' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_join'),
+    'planner_rejects_group_by_subquery' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_by_subquery'),
+    'planner_rejects_group_order_non_group_column' => fn() => plannerCase($root, $fixture, 'planner_rejects_group_order_non_group_column'),
 ]);

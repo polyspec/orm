@@ -143,7 +143,8 @@ final class Planner
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
-        if ($groupBy !== [] && ($kind === 'one' || $kind === 'all' || $groupCount || $kind === 'group_count')) {
+        // The validator admits group_by only on count and group_count.
+        if ($groupBy !== []) {
             $sql .= ' GROUP BY ' . $this->renderGroupBy($root, $q);
         }
         if ($groupCount) {
@@ -1055,9 +1056,6 @@ final class Planner
         $this->collectJoinWhere($b, $root, $where);
         if ($where !== []) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
-        }
-        if (($q['group_by'] ?? []) !== []) {
-            $sql .= ' GROUP BY ' . $this->renderGroupBy($root, $q);
         }
         return $sql;
     }

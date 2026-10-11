@@ -66,7 +66,8 @@ export function opAllowed(c: Column, op: string): boolean {
 }
 
 class Validator {
-  public constructor(private readonly m: RuntimeModel, private readonly n: number) {}
+  /** `root` is the request's own query, the only one that may group. */
+  public constructor(private readonly m: RuntimeModel, private readonly n: number, private readonly root: RequestQuery) {}
 
   public params(ps: readonly number[] | undefined): void {
     for (const i of ps ?? []) {
@@ -199,6 +200,13 @@ class Validator {
       } else if (o.fn) fail('IR_INVALID', 'order function needs a column');
     }
     for (const g of q.group_by ?? []) if (!columnOf(ent, g)) fail('COLUMN_UNKNOWN', `${q.entity}.${g}`);
+    if (hasGroupBy(q)) {
+      if (q !== this.root) fail('IR_INVALID', "group_by is only valid on the request's root query");
+      // An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
+      for (const o of q.order ?? []) {
+        if ((o.column ?? '') !== '' && !q.group_by!.includes(o.column!)) fail('IR_INVALID', `order by ${o.column}, which is not a group column`);
+      }
+    }
     if (q.limit && (!Number.isSafeInteger(q.limit.offset) || !Number.isSafeInteger(q.limit.count) || q.limit.offset < 0 || q.limit.count <= 0)) {
       fail('IR_INVALID', 'limit offset>=0, count>0');
     }
@@ -376,7 +384,7 @@ export function validate(m: RuntimeModel, r: Request): void {
   if (r.kind === 'restart_identity' && ((r.set ?? []).length > 0 || (r.rows ?? []).length > 0 || (r.on_duplicate ?? []).length > 0 || r.where !== undefined || r.optimistic !== undefined)) {
     fail('IR_INVALID', 'restart_identity takes no set, rows, on_duplicate, where or optimistic');
   }
-  const v = new Validator(m, r.n_params);
+  const v = new Validator(m, r.n_params, r);
   v.query(r, v.scopes(r, undefined, undefined), false, false);
   if ((r.lock ?? '') !== '' && r.kind !== 'one' && r.kind !== 'all') fail('IR_INVALID', 'row lock is only valid on one or all');
   const ent = v.entity(r.entity);
@@ -385,6 +393,7 @@ export function validate(m: RuntimeModel, r: Request): void {
     if (!numericTypes.has(c.type)) fail('OPERATOR_NOT_ALLOWED', `${r.kind} on ${r.entity}.${r.agg} (${c.type})`);
   }
   if (r.kind === 'group_count' && !hasGroupBy(r)) fail('IR_INVALID', 'group_count needs group_by');
+  if (hasGroupBy(r) && r.kind !== 'count' && r.kind !== 'group_count') fail('IR_INVALID', `group_by is only valid on count or group_count, not ${r.kind}`);
   if (r.kind === 'insert' || r.kind === 'update' || r.kind === 'restore') {
     if ((r.set ?? []).length === 0 && r.kind !== 'restore') fail('IR_INVALID', `${r.kind} needs set[]`);
     for (const a of r.set ?? []) v.assign(ent, r, a);

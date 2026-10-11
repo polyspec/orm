@@ -274,7 +274,6 @@ export class Planner {
     const outNames: string[] = [];
     const idx = { n: 0 };
     const groupCount = kind === 'count' && hasGroupBy(q);
-    const groupRows = kind === 'group_count';
     switch (kind) {
       case 'count':
         sql += groupCount ? '1' : 'COUNT(*)';
@@ -319,8 +318,8 @@ export class Planner {
     if (q.where && q.where.items.length > 0) where.push(this.renderGroup(b, root, q.where, rc === undefined));
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
-    // GROUP BY applies to row selects and group counts; scalar aggregates ignore it.
-    if (hasGroupBy(q) && (kind === 'one' || kind === 'all' || groupCount || groupRows)) {
+    // The validator admits group_by only on count and group_count.
+    if (hasGroupBy(q)) {
       sql += ` GROUP BY ${this.renderGroupBy(root, q)}`;
     }
     if (groupCount) sql = `SELECT COUNT(*) FROM (${sql}) AS ${this.d.quote('orm_g')}`;
@@ -672,7 +671,6 @@ export class Planner {
     if (sub.query.where && sub.query.where.items.length > 0) where.push(this.renderGroup(b, root, sub.query.where, true));
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
-    if ((sub.query.group_by ?? []).length > 0) sql += ` GROUP BY ${this.renderGroupBy(root, sub.query)}`;
     return sql;
   }
 

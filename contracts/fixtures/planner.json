@@ -1718,6 +1718,322 @@
         }
       },
       "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\") AS \"orm_g\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT COUNT(*) FROM (SELECT 1 FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\") AS \"orm_g\"",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_group_by_count",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`service_seq` AS `a__service_seq`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` DESC",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" DESC",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY \"a\".\"service_seq\" DESC",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_group_count_order_column",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "group_count",
+        "n_params": 0,
+        "order": [
+          {
+            "column": "service_seq",
+            "desc": true
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`created_ts` AS `a__created_ts`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`created_ts` ORDER BY YEAR(`a`.`created_ts`) ASC",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"created_ts\" AS \"a__created_ts\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"created_ts\" ORDER BY EXTRACT(YEAR FROM \"a\".\"created_ts\")::int ASC",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"created_ts\" AS \"a__created_ts\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"created_ts\" ORDER BY CAST(strftime('%Y', \"a\".\"created_ts\") AS INTEGER) ASC",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_group_count_order_column_function",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "created_ts"
+        ],
+        "ir_version": 1,
+        "kind": "group_count",
+        "n_params": 0,
+        "order": [
+          {
+            "column": "created_ts",
+            "fn": {
+              "name": "year"
+            }
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT `a`.`service_seq` AS `a__service_seq`, COUNT(*) AS `a__row_count` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY RAND()",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY random()",
+            "tables": [
+              "author"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [],
+            "sql": "SELECT \"a\".\"service_seq\" AS \"a__service_seq\", COUNT(*) AS \"a__row_count\" FROM \"author\" AS \"a\" GROUP BY \"a\".\"service_seq\" ORDER BY random()",
+            "tables": [
+              "author"
+            ]
+          }
+        ]
+      },
+      "id": "planner_group_count_order_random",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "group_count",
+        "n_params": 0,
+        "order": [
+          {
+            "random": true
+          }
+        ]
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_group_by_all",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "all",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_group_by_sum",
+      "input": {
+        "agg": "read_count",
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "sum",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_group_by_join",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "joins": [
+          {
+            "kind": "inner",
+            "left": "user_seq",
+            "query": {
+              "entity": "user",
+              "group_by": [
+                "seq"
+              ]
+            },
+            "rel": "writer",
+            "right": "seq"
+          }
+        ],
+        "kind": "count",
+        "n_params": 0
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_group_by_subquery",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 0,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "user_seq",
+                "op": "in",
+                "sub": {
+                  "agg": "column",
+                  "column": "seq",
+                  "query": {
+                    "entity": "user",
+                    "group_by": [
+                      "seq"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile"
+    },
+    {
+      "expected": {
+        "error": "IR_INVALID"
+      },
+      "id": "planner_rejects_group_order_non_group_column",
+      "input": {
+        "entity": "author",
+        "group_by": [
+          "service_seq"
+        ],
+        "ir_version": 1,
+        "kind": "group_count",
+        "n_params": 0,
+        "order": [
+          {
+            "column": "user_seq"
+          }
+        ]
+      },
+      "operation": "compile"
     }
   ],
   "feature": "planner"

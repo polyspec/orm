@@ -490,7 +490,8 @@ impl<'m> Planner<'m> {
             sb.push_str(" WHERE ");
             sb.push_str(&where_.join(" AND "));
         }
-        if grouped && matches!(kind, "one" | "all" | "group_count" | "count") && (kind != "count" || group_count) {
+        // The validator admits group_by only on count and group_count.
+        if grouped {
             sb.push_str(" GROUP BY ");
             sb.push_str(&self.render_group_by(root, q)?);
         }
@@ -1022,10 +1023,6 @@ impl<'m> Planner<'m> {
         if !where_.is_empty() {
             sb.push_str(" WHERE ");
             sb.push_str(&where_.join(" AND "));
-        }
-        if !sub.query.group_by.is_empty() {
-            sb.push_str(" GROUP BY ");
-            sb.push_str(&self.render_group_by(root, &sub.query)?);
         }
         Ok(sb)
     }

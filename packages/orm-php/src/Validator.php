@@ -124,6 +124,9 @@ final class Validator
         if ($kind === 'group_count' && !self::hasGroupBy($r)) {
             throw self::err(Code::IR_INVALID, 'group_count needs group_by');
         }
+        if (self::hasGroupBy($r) && $kind !== 'count' && $kind !== 'group_count') {
+            throw self::err(Code::IR_INVALID, "group_by is only valid on count or group_count, not $kind");
+        }
         $set = $r['set'] ?? [];
         if ($kind === 'insert' || $kind === 'update' || $kind === 'restore') {
             if ($set === [] && $kind !== 'restore') {
@@ -614,6 +617,18 @@ final class Validator
         foreach ($q['group_by'] ?? [] as $g) {
             if (RuntimeModel::column($ent, $g) === null) {
                 throw self::err(Code::COLUMN_UNKNOWN, "$entity.$g");
+            }
+        }
+        if (self::hasGroupBy($q)) {
+            // The request's own query is the only one that may group: a join, a relation and a subquery have an outer.
+            if ($isJoin || $isRelation || $at['outer'] !== null) {
+                throw self::err(Code::IR_INVALID, "group_by is only valid on the request's root query");
+            }
+            // An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
+            foreach ($q['order'] ?? [] as $o) {
+                if (($o['column'] ?? '') !== '' && !in_array($o['column'], $q['group_by'], true)) {
+                    throw self::err(Code::IR_INVALID, "order by {$o['column']}, which is not a group column");
+                }
             }
         }
         if (isset($q['limit']) && (($q['limit']['offset'] ?? 0) < 0 || ($q['limit']['count'] ?? 0) <= 0)) {

@@ -115,6 +115,9 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
     if r.kind == "group_count" && q.group_by.is_empty() {
         return Err(err(codes::IR_INVALID, "group_count needs group_by"));
     }
+    if !q.group_by.is_empty() && r.kind != "count" && r.kind != "group_count" {
+        return Err(err(codes::IR_INVALID, format!("group_by is only valid on count or group_count, not {}", r.kind)));
+    }
     if r.kind == "insert" || r.kind == "update" || r.kind == "restore" {
         if r.set.is_empty() && r.kind != "restore" {
             return Err(err(codes::IR_INVALID, format!("{} needs set[]", r.kind)));
@@ -381,6 +384,18 @@ impl<'m> Validator<'m> {
         for g in &q.group_by {
             if ent.field(g).is_none() {
                 return Err(unknown_column(&q.entity, g));
+            }
+        }
+        if !q.group_by.is_empty() {
+            // The request's own query is the only one that may group: a join, a relation and a subquery have an outer.
+            if is_join || is_relation || at.outer.is_some() {
+                return Err(err(codes::IR_INVALID, "group_by is only valid on the request's root query"));
+            }
+            // An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
+            for o in &q.order {
+                if !o.column.is_empty() && !q.group_by.contains(&o.column) {
+                    return Err(err(codes::IR_INVALID, format!("order by {}, which is not a group column", o.column)));
+                }
             }
         }
         if let Some(l) = &q.limit {
