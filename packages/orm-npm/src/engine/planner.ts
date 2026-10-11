@@ -231,6 +231,7 @@ export class Planner {
       case 'update': add(this.updateStep(r)); break;
       case 'delete': add(this.deleteStep(r)); break;
       case 'restore': add(this.restoreStep(r)); break;
+      case 'restart_identity': add(this.restartIdentityStep(r)); break;
     }
     return { manifest_hash: this.m.manifestHash, kind: r.kind, steps };
   }
@@ -737,12 +738,17 @@ export class Planner {
     const set = addBlindIndexAssignments(ent, [...input]);
     validateAESAssignments(ent, set, false);
     validateRequiredAssignments(ent, set);
+    // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+    const load = r.load === true;
+    if (load && ent.identity !== '' && !set.some(a => a.column === ent.identity && a.p !== undefined)) {
+      fail('IR_INVALID', `load of ${ent.name} needs a value for the identity column ${ent.identity}`);
+    }
     const version = aesVersionColumn(ent);
     const cols: string[] = [];
     const vals: string[] = [];
     for (const a of set) {
       const col = columnOf(ent, a.column)!;
-      if (col.identity) fail('IR_INVALID', `cannot set identity column ${a.column}`);
+      if (col.identity && !load) fail('IR_INVALID', `cannot set identity column ${a.column}`);
       cols.push(this.d.quote(a.column));
       vals.push(this.renderAssign(b, ent, col, a));
     }
@@ -847,6 +853,18 @@ export class Planner {
     if (op !== undefined) sets.push(op);
     const where = `${this.renderGroup(b, root, r.where!, true)} AND ${this.qcol(root, ent.softDelete)} IS NOT NULL`;
     return { role: 'main', sql: `UPDATE ${b.table(ent)} SET ${sets.join(', ')} WHERE ${where}`, tables: b.tables(), bind_slots: b.binds };
+  }
+
+  /**
+   * entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성 key는 가장 큰
+   * key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한 뒤 실행한다.
+   */
+  private restartIdentityStep(r: Request): Omit<PlanStep, 'id'> {
+    const ent = this.entity(r.entity);
+    if (ent.identity === '') fail('IR_INVALID', `restart_identity of ${ent.name}, which has no identity column`);
+    const b = new Builder(this.d);
+    b.table(ent);
+    return { role: 'main', sql: this.d.restartIdentity(ent.table, ent.identity), tables: b.tables(), bind_slots: [] };
   }
 }
 

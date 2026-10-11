@@ -916,7 +916,34 @@ export class Db {
     return { values, masked };
   }
 
-  public async execute(ex: Executor, cached: Cached, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
+  /**
+   * Runs one compiled statement STEP, a step of a plan of the engine (Engine.compile), with the
+   * request parameters PARAMS, on the active transaction of the connection or on the connection. Its
+   * bind slots are resolved as a model statement's are: host styles, decimals, SQLite time values,
+   * the AES key and key version, the clock and the audit of the transaction. A step that reads rows
+   * (it has an assemble) and a param slot past PARAMS fail with IR_INVALID before any statement runs
+   * (docs/usage.md "Execute a compiled statement").
+   */
+  public async execute(step: PlanStep, params: readonly unknown[]): Promise<void> {
+    const ex = resolve(this);
+    await guarded(ex, async () => {
+      if (step.assemble !== undefined) throw new OrmError('IR_INVALID', 'execute runs a statement without rows; the statement is a read');
+      step.bind_slots.forEach((slot, i) => {
+        if (slot.from === 'param' && !(slot.param >= 0 && slot.param < params.length)) {
+          throw new OrmError('IR_INVALID', `bind slot ${i} reads parameter ${slot.param}, but execute has ${params.length} parameters`);
+        }
+      });
+      await this.runStep(ex, step.sql, step, params);
+    });
+  }
+
+  /**
+   * plan step 하나를 ex에서 실행한다. sql은 보내는 statement이고(relation step은 부모 값을 펼친 SQL),
+   * parents는 parent slot의 값이다.
+   *
+   * @internal
+   */
+  public async runStep(ex: Executor, sql: string, step: PlanStep, params: readonly unknown[], parents: readonly unknown[] = []): Promise<DriverResult> {
     const { values, masked } = this.args(step, params, parents, ex.frame?.audit);
     const connection = ex.frame?.session ?? this.pool;
     // kind는 plan step이 쓰는 SQL의 동사이고 tables는 plan step의 table이다.
@@ -1020,7 +1047,7 @@ async function select(ex: Executor, cached: Cached, step: PlanStep, params: read
   let sql = step.sql;
   let values: readonly unknown[] = [];
   if (parents !== undefined) ({ sql, values } = expandParent(step, parents));
-  const result = await ex.db.execute(ex, cached, sql, step, params, values);
+  const result = await ex.db.runStep(ex, sql, step, params, values);
   for (const row of result.rows) decodeAssembly(row, step.assemble!, ex.db);
   return result.rows;
 }
@@ -1055,12 +1082,12 @@ export async function scalar(ex: Executor, request: Request, params: readonly un
       let total = 0;
       for (const part of parts) {
         const partPlan = await db.plan(part);
-        total += Number((await db.execute(ex, partPlan, partPlan.plan.steps[0]!.sql, partPlan.plan.steps[0]!, params)).rows[0]?.[0] ?? 0);
+        total += Number((await db.runStep(ex, partPlan.plan.steps[0]!.sql, partPlan.plan.steps[0]!, params)).rows[0]?.[0] ?? 0);
       }
       return total;
     }
     const step = cached.plan.steps[0]!;
-    return (await db.execute(ex, cached, step.sql, step, params)).rows[0]?.[0] ?? null;
+    return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
   });
 }
 
@@ -1073,7 +1100,7 @@ export async function paginate(ex: Executor, request: Request, params: readonly 
     const result = await relations(ex, cached, params, main);
     const step = cached.plan.steps.find(s => s.role === 'count');
     if (!step) throw new OrmError('INTERNAL', 'paginate plan has no count step');
-    const total = Number((await db.execute(ex, cached, step.sql, step, params)).rows[0]?.[0] ?? 0);
+    const total = Number((await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? 0);
     return { result, total };
   });
 }
@@ -1083,7 +1110,7 @@ export async function write(ex: Executor, request: Request, params: readonly unk
     const db = ex.db;
     const cached = await db.plan(request);
     const step = cached.plan.steps[0]!;
-    const result = await db.execute(ex, cached, step.sql, step, params);
+    const result = await db.runStep(ex, step.sql, step, params);
     if (request.kind === 'insert' && / RETURNING /.test(step.sql)) return { id: Number(result.rows[0]?.[0]), affected: 1 };
     if (request.kind === 'update' && request.optimistic && result.affected === 0) throw new OrmError('OPTIMISTIC_LOCK', 'the row changed after it was read');
     const id = request.kind === 'insert' && !request.rows && result.insertId !== null ? Number(result.insertId) : null;
