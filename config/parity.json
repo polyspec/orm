@@ -61,6 +61,7 @@
     "tests/conformance/*.json",
     "tests/dbspec/*.json",
     "tests/dsn/*.json",
+    "tests/ir/*.json",
     "tests/events/*.json"
   ],
   "comparators": ["tests/conformance/check", "tests/interfaces/check"],
@@ -158,6 +159,28 @@
       "bindings": [
         { "implementation": "typescript", "test": "packages/orm-npm/tests/codec-vector.mjs" },
         { "implementation": "python", "test": "packages/orm-python/tests/codec_vector.py" }
+      ]
+    },
+    {
+      "id": "codec-decode", "kind": "suite", "profile": "client",
+      "file": "tests/codec/decode-vectors.json", "cases": "$.vectors[*].name",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/orm/codec_test.go", "symbol": "TestCodecDecodeVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/hostcodec.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/codec-vector.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_codec_decode_vectors.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/src/codec.rs", "symbol": "codec::tests::decode_vectors" }
+      ]
+    },
+    {
+      "id": "ir-validate", "kind": "suite", "profile": "client",
+      "file": "tests/ir/validate.json", "cases": "$.cases[*].name",
+      "bindings": [
+        { "implementation": "go", "test": "engine/ir/validate_test.go", "symbol": "TestValidateVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/engine_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/engine.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_ir_validate.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm/src/engine/validate.rs", "symbol": "engine::validate::tests::validate_vectors" }
       ]
     },
     {
