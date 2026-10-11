@@ -799,7 +799,6 @@ export class Planner {
     const sets: string[] = [];
     for (const a of set) {
       const col = columnOf(ent, a.column)!;
-      if (col.primary || col.identity) fail('IR_INVALID', `cannot update ${a.column}`);
       sets.push(`${this.d.quote(a.column)} = ${this.renderAssign(b, ent, col, a)}`);
     }
     const version = aesVersionColumn(ent);

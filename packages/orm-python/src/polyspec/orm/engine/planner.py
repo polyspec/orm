@@ -919,8 +919,6 @@ class Planner:
         sets = []
         for a in assignments:
             col = field_of(ent, a['column'])
-            if col.primary or col.identity:
-                _fail('IR_INVALID', f'cannot update {a["column"]}')
             sets.append(f'{self.d.quote(a["column"])} = {self._render_assign(b, ent, col, a)}')
         version = ent.aes_version
         if version != '' and _assigns_aes(ent, assignments) \

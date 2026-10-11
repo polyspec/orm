@@ -128,6 +128,13 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
             if r.kind == "insert" && (a.plus_p.is_some() || a.minus_p.is_some()) {
                 return Err(err(codes::IR_INVALID, format!("insert cannot assign {} by plus or minus", a.column)));
             }
+            // The key and the soft delete column are the table's own: a restore clears the latter itself.
+            if r.kind == "update" || r.kind == "restore" {
+                let c = ent.field(&a.column).ok_or_else(|| unknown_column(&r.query.entity, &a.column))?;
+                if c.primary_key || c.identity || (r.kind == "restore" && ent.soft_delete.as_deref() == Some(a.column.as_str())) {
+                    return Err(err(codes::IR_INVALID, format!("cannot update {}", a.column)));
+                }
+            }
         }
     }
     if !r.rows.is_empty() {
