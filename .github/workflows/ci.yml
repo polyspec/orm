@@ -123,12 +123,8 @@ jobs:
           repository: polyspec/ordered-json
           ref: v0.0.7
           path: ordered-json
-      - uses: actions/setup-python@v5
-        id: python
-        if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
-        # .python-version declares the Python release of the Python checks, which requires-python of the client states.
-        with:
-          python-version-file: .python-version
+      # make install-python installs the Python of config/toolchain.json pythonBuild (the interpreter of make python-venv) and
+      # builds the venv from it, so CI and a local check use the same interpreter; setup-python is not used.
       - name: Python client dependencies
         id: install-python
         if: ${{ !cancelled() && steps.group-needs.outputs.python == 'true' }}
