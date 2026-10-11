@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 import unittest
 import uuid
@@ -116,12 +117,26 @@ def fresh_db(dialect: str):
 
 class StatementFaultTest(unittest.TestCase):
     def each_dialect(self, case: str, body):
-        """case를 dialect마다 새 database에서 실행한다. 한 dialect의 실패가 다른 dialect를 막지 않도록 subTest로 나눈다."""
+        """case를 dialect마다 새 database에서 실행하고, case 하나의 PASS 또는 FAIL 줄을 출력한다.
+
+        case는 모든 dialect에서 통과해야 PASS다. 한 dialect의 실패가 다른 dialect를 막지 않도록 각 dialect를 끝까지
+        실행하고, 실패한 dialect의 이유를 모아 FAIL 줄에 쓴다. 줄 이름은 `statement-fault/<case>`다.
+        """
+        started = time.monotonic()
+        reasons = []
         for dialect in DIALECTS:
-            with self.subTest(dialect=dialect):
-                RAN.add((case, dialect))
+            RAN.add((case, dialect))
+            try:
                 with fresh_db(dialect) as db:
                     body(db)
+            except Exception as error:  # noqa: BLE001
+                reasons.append(f'{dialect}: {type(error).__name__}: {error}')
+        elapsed = time.monotonic() - started
+        name = f'statement-fault/{case}'
+        if reasons:
+            print(f'FAIL {name} elapsed={elapsed:.3f}s: ' + '; '.join(reasons), flush=True)
+            self.fail('; '.join(reasons))
+        print(f'PASS {name} elapsed={elapsed:.3f}s', flush=True)
 
     def probe(self, db, label: str):
         return MODELS['models'].RollbackProbe().connect(db).set_label(label)

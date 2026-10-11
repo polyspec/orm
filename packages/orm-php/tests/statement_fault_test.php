@@ -57,8 +57,6 @@ require "$work/models/bootstrap.php";
 
 $failures = 0;
 $current = '';
-/** case/driver가 본문을 시작했는지다. guard가 fixture의 case 모두가 각 driver에서 실행됐는지 확인한다. */
-$ran = [];
 
 function check(bool $ok, string $message): void
 {
@@ -184,30 +182,20 @@ foreach ($selected as $case) {
     if (!isset($cases[$case])) {
         throw new RuntimeException("unknown case $case");
     }
-    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-        $before = $failures;
-        $current = "$case/$driver";
-        // case마다 자기 case database에 문서를 설치하고, 끝나면(실패해도) database를 지운다.
-        $passed = testcase_run("statement_fault/$current", CASE_DEADLINE_SECONDS, static function (callable $step) use ($cases, $case, $driver, $before, $fault, &$ran): void {
-            $ran[$case][$driver] = true;
+    $before = $failures;
+    $current = $case;
+    // The case passes when it passes on SQLite, MySQL and PostgreSQL; each run has a case database of its own
+    // and the database is removed when the run ends, also when it fails.
+    $passed = testcase_run("statement-fault/$case", CASE_DEADLINE_SECONDS * 3, static function (callable $step) use ($cases, $case, $before, $fault): void {
+        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             with_case_database($driver, $step, static fn(string $dsn) => $cases[$case]($dsn, $fault));
-            if ($GLOBALS['failures'] > $before) {
-                throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
-            }
-        });
-        if (!$passed && $failures === $before) {
-            $failures++;
         }
-    }
-}
-// Guard: every named case of the fixture ran on SQLite, MySQL and PostgreSQL.
-$current = 'guard';
-foreach ($selected as $case) {
-    if (!in_array($case, $fixture['cases'], true)) {
-        continue;
-    }
-    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-        check(($ran[$case][$driver] ?? false) === true, "the named case $case did not run on $driver");
+        if ($GLOBALS['failures'] > $before) {
+            throw new RuntimeException(($GLOBALS['failures'] - $before) . ' check(s) failed; each FAIL line above names one');
+        }
+    });
+    if (!$passed && $failures === $before) {
+        $failures++;
     }
 }
 if ($failures > 0) {

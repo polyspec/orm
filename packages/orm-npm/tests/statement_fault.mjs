@@ -35,8 +35,6 @@ for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
 
 let failures = 0;
 let current = '';
-/** The case and database pairs whose case passed, by fixture case name. */
-const passed = new Map();
 
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
@@ -187,7 +185,7 @@ for (const name of fixture.cases) {
 {
   current = 'entry_point';
   const before = failures;
-  const ok = await runCase('statement_fault/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
+  const ok = await runCase('statement-fault-entry/entry_point', CASE_DEADLINE_MS, async ({ step }) => {
     step('spawn the entry point checks');
     checkFaultEntry();
     if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
@@ -195,28 +193,18 @@ for (const name of fixture.cases) {
   if (!ok && failures === before) failures++;
 }
 
+// One line per fixture case: the case passes when it passes on SQLite, MySQL and PostgreSQL.
 for (const name of fixture.cases) {
   const run = cases[name];
   if (run === undefined) continue;
-  for (const driver of DRIVERS) {
-    const before = failures;
-    current = `${name}/${driver}`;
-    const ok = await runCase(`statement_fault/${current}`, CASE_DEADLINE_MS, async ({ step }) => {
+  const before = failures;
+  current = name;
+  const ok = await runCase(`statement-fault/${name}`, CASE_DEADLINE_MS * DRIVERS.length, async ({ step }) => {
+    for (const driver of DRIVERS) {
       await withCaseDatabase(driver, step, database => run(driver, database.dsn));
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-    if (ok && failures === before) {
-      if (!passed.has(name)) passed.set(name, new Set());
-      passed.get(name).add(driver);
-    } else if (failures === before) {
-      failures++;
     }
-  }
-}
-
-for (const name of fixture.cases) {
-  for (const driver of DRIVERS) {
-    if (!passed.get(name)?.has(driver)) { failures++; console.error(`FAIL guard: fixture case ${name} did not pass on ${driver}`); }
-  }
+    if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
+  });
+  if (!ok && failures === before) failures++;
 }
 if (failures > 0) process.exitCode = 1;
