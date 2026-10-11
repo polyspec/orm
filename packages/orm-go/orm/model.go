@@ -106,11 +106,11 @@ func RelatedAs[T any](c *Core, name string) (T, error) {
 
 // entityModel은 model의 runtime model entity를 반환한다.
 func (c *Core) entityModel(d *DB) (*runtimemodel.Entity, error) {
-	eng, err := d.engineFor(c.ent.Schema)
+	m, err := d.registeredModel(c.ent.Schema)
 	if err != nil {
 		return nil, err
 	}
-	ent := eng.M.Entities[c.ent.Name]
+	ent := m.Entities[c.ent.Name]
 	if ent == nil {
 		return nil, configErr("entity %s is not in the manifest %s", c.ent.Name, c.ent.Schema.Hash)
 	}
@@ -245,8 +245,8 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		case "join":
 			child := b.joinChild(ch.Rel)
 			var v any
-			if ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil {
-				cm, err := a.model(child, ch.Assemble, row)
+			if jrow, present := a.joinRow(ch, row); present {
+				cm, err := a.model(child, ch.Assemble, jrow)
 				if err != nil {
 					return nil, err
 				}
@@ -255,11 +255,10 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 			st.setRelated(ch.Rel, v, false, false)
 		default:
 			child, many := b.relationChild(ch.Rel)
-			rows, err := a.res.related(ch, row)
+			rows, childAsm, err := a.related(ch, row)
 			if err != nil {
 				return nil, err
 			}
-			childAsm := a.res.steps[ch.Step].step.Assemble
 			if many {
 				coll := &collection{}
 				for _, cr := range rows {
@@ -291,6 +290,29 @@ func (a *assembler) model(b *Core, asm *plan.Assemble, row []any) (*Core, error)
 		a.made[b] = append(a.made[b], m)
 	}
 	return m, nil
+}
+
+// joinRow는 join ch의 행과 그 행이 있는지다. SQL 결과에서는 join column이 부모 행에 함께
+// 있고 첫 column이 NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다.
+func (a *assembler) joinRow(ch *plan.Child, row []any) ([]any, bool) {
+	if a.res.markdown {
+		jrow := markdownLinks(row).joins[ch.Rel]
+		return jrow, jrow != nil
+	}
+	return row, ch.Assemble != nil && len(ch.Assemble.Columns) > 0 && row[ch.Assemble.Columns[0].Index] != nil
+}
+
+// related는 relation ch에서 부모 행 row의 행과 그 배치다. SQL 결과에서는 relation step의
+// 행을 key로 찾고, markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다.
+func (a *assembler) related(ch *plan.Child, row []any) ([][]any, *plan.Assemble, error) {
+	if a.res.markdown {
+		return markdownLinks(row).rels[ch.Rel], ch.Assemble, nil
+	}
+	rows, err := a.res.related(ch, row)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rows, a.res.steps[ch.Step].step.Assemble, nil
 }
 
 func (c *Core) joinChild(name string) *Core {
@@ -874,19 +896,27 @@ func (c *Core) Create() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ent.Identity != "" {
-		st.addName(ent.Identity)
-		assigned, err := c.ent.Assign(m.self, ent.Identity, id)
+	// 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로
+	// 요청이 값을 주지 않은 하나뿐인 primary key column이다.
+	assignedKey := ent.Identity
+	if assignedKey == "" && d.md != nil && len(ent.PK) == 1 && id != nil && !slices.ContainsFunc(c.sets, func(s setSpec) bool { return s.column == ent.PK[0] }) {
+		assignedKey = ent.PK[0]
+	}
+	if assignedKey != "" {
+		st.addName(assignedKey)
+		assigned, err := c.ent.Assign(m.self, assignedKey, id)
 		if err != nil {
 			return nil, err
 		}
 		if !assigned {
-			return nil, codecErr(CodeInternal, "identity column %q is not in generated model", ent.Identity)
+			return nil, codecErr(CodeInternal, "key column %q is not in generated model", assignedKey)
 		}
 	}
 	st.loaded = true
-	if tx := ex.transaction(); tx != nil && ent.Identity != "" {
-		tx.recordInserted(c.ent.Name, id)
+	if n, ok := id.(int64); ok && ent.Identity != "" {
+		if tx := ex.transaction(); tx != nil {
+			tx.recordInserted(c.ent.Name, n)
+		}
 	}
 	for _, pk := range ent.PK {
 		v := m.value(pk)

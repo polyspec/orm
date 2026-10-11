@@ -76,6 +76,9 @@ func validKey(key string) bool {
 
 // Lock takes a named lock that is released when the transaction ends.
 func (u *Utils) Lock(key string) error {
+	if err := u.db.unsupportedOnMarkdown("lock"); err != nil {
+		return err
+	}
 	t, err := u.active("lock")
 	if err != nil {
 		return err
@@ -127,6 +130,9 @@ func (t *txConn) releaseLocks() error {
 // SetLocal은 transaction-local 값을 정한다. PostgreSQL은 set_config, MySQL은
 // user variable에 쓰고 SQLite는 transaction 안에만 둔다.
 func (u *Utils) SetLocal(key, value string) error {
+	if err := u.db.unsupportedOnMarkdown("setLocal"); err != nil {
+		return err
+	}
 	t, err := u.active("setLocal")
 	if err != nil {
 		return err
@@ -173,6 +179,9 @@ func (t *txConn) clearLocals() error {
 
 // Local returns a value set with SetLocal; NO_ROWS when it is missing.
 func (u *Utils) Local(key string) (string, error) {
+	if err := u.db.unsupportedOnMarkdown("local"); err != nil {
+		return "", err
+	}
 	t, err := u.active("local")
 	if err != nil {
 		return "", err
@@ -227,6 +236,9 @@ func (s *SchemaUtils) Register(schema *Schema) error {
 // transaction 밖에서 적용하고 안에서는 CONFIG다.
 func (s *SchemaUtils) Install(schema *Schema) error {
 	d := s.u.db
+	if err := d.unsupportedOnMarkdown("schema install (flowmark install creates a corpus)"); err != nil {
+		return err
+	}
 	m, err := schema.registered()
 	if err != nil {
 		return err
@@ -307,6 +319,9 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 // "table.column"으로 table 이름, column 순서로 돌려준다.
 func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 	d := s.u.db
+	if err := d.unsupportedOnMarkdown("addTablesAndColumns (schema evolution follows the flowmark migration rules)"); err != nil {
+		return nil, err
+	}
 	m, err := schema.registered()
 	if err != nil {
 		return nil, err
@@ -464,6 +479,9 @@ func sqliteWithoutForeignKeys(d *DB, fn func(ctx context.Context, r runner) erro
 }
 
 func (s *SchemaUtils) exists(query string, args ...any) (bool, error) {
+	if err := s.u.db.unsupportedOnMarkdown("schema inspection"); err != nil {
+		return false, err
+	}
 	var found bool
 	err := s.u.read(func(ctx context.Context, r runner) error {
 		return r.scan(ctx, KindSchema, nil, query, args, &found)
@@ -636,6 +654,9 @@ type aesColumn struct {
 }
 
 func (a *AESUtils) spec(m Model) (*aesSpec, error) {
+	if err := a.u.db.unsupportedOnMarkdown("aes rotation"); err != nil {
+		return nil, err
+	}
 	if m == nil {
 		return nil, configErr("aes requires a model")
 	}

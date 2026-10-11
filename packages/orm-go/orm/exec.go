@@ -275,6 +275,9 @@ type Statement struct {
 }
 
 func (d *DB) statement(ctx context.Context, r *request) (*Statement, error) {
+	if err := d.unsupportedOnMarkdown("getQuery"); err != nil {
+		return nil, err
+	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
@@ -318,6 +321,9 @@ type result struct {
 	main   [][]any
 	steps  map[int]*stepRows
 	params []any
+	// markdown은 markdown 답의 result임을 뜻한다: 각 행의 마지막 칸이 그 행의 join과
+	// relation 행(mdLinks)이다.
+	markdown bool
 }
 
 type stepRows struct {
@@ -374,6 +380,10 @@ func query(ex executor, r *request) (*result, error) {
 		return nil, err
 	}
 	d, ctx := ex.base(), ex.context()
+	if d.md != nil {
+		res, _, err := markdownRead(ex, r)
+		return res, err
+	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
@@ -831,6 +841,9 @@ func scalar(ex executor, r *request) (any, error) {
 		return nil, err
 	}
 	d, ctx := ex.base(), ex.context()
+	if d.md != nil {
+		return markdownScalar(ex, r)
+	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, err
@@ -906,6 +919,9 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 		return nil, 0, err
 	}
 	d, ctx := ex.base(), ex.context()
+	if d.md != nil {
+		return markdownRead(ex, r)
+	}
 	c, err := d.plan(r)
 	if err != nil {
 		return nil, 0, err
@@ -931,18 +947,27 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 	return nil, 0, &ir.Error{Code: CodeInternal, Msg: "paginate plan has no count step"}
 }
 
-// write runs an insert, update, delete, or restore and returns the generated id and
-// the affected row count.
-func write(ex executor, r *request) (lastID, affected int64, err error) {
+// write runs an insert, update, delete, or restore and returns the key of the
+// inserted row and the affected row count: the generated identity on a SQL
+// database, the first key the markdown executor answers.
+func write(ex executor, r *request) (key any, affected int64, err error) {
 	done, err := ex.enter()
 	if err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 	defer done()
 	d, ctx := ex.base(), ex.context()
+	if d.md != nil {
+		keys, affected, err := markdownWrite(ex, r)
+		if err != nil || len(keys) == 0 {
+			return nil, affected, err
+		}
+		return keys[0], affected, nil
+	}
+	var lastID int64
 	c, err := d.plan(r)
 	if err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 	if t := ex.transaction(); t != nil {
 		r.audit = t.audit
@@ -950,34 +975,34 @@ func write(ex executor, r *request) (lastID, affected int64, err error) {
 	st := &c.plan.Steps[0]
 	args, masks, err := d.args(st, r, nil)
 	if err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 	stmt, err := ex.stmt(ctx, st.SQL)
 	if err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 	start := time.Now()
 	if err := d.takeStatementFault(); err != nil {
-		return 0, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
+		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
 		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
-			return 0, 0, err
+			return nil, 0, err
 		}
 		return lastID, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
 	err = mapDriverErr(err)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
-		return 0, 0, err
+		return nil, 0, err
 	}
 	affected, _ = res.RowsAffected()
 	if r.ir.Kind == "insert" && len(r.ir.Rows) == 0 {
 		lastID, _ = res.LastInsertId()
 	}
 	if r.ir.Kind == "update" && r.ir.Optimistic != nil && affected == 0 {
-		return 0, 0, &ir.Error{Code: CodeOptimisticLock, Msg: "the row changed after it was read"}
+		return nil, 0, &ir.Error{Code: CodeOptimisticLock, Msg: "the row changed after it was read"}
 	}
 	return lastID, affected, nil
 }

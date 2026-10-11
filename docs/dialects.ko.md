@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 279bb95774f05816857b512a24f369e5342ce39830553048588f9638f131bb9e -->
+<!-- source-sha256: 5c10cd2d5f3f430e5932c60dac84aa01d637e871a323b7e64b81918b6381dfc9 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -401,11 +401,11 @@ DSN scheme `markdown://`은 SQL dialect 대신 flowmark IR executor를 고른다
 | `select explicit`, `entity`, `navigation` | 지원 | 클라이언트 쪽이며 저장소에 영향이 없다 |
 | `aes`, `aes_version`, `blind_index` | `SCHEMA_INVALID` | executor가 corpus catalog를 읽을 때 거부한다. key는 클라이언트를 떠나지 않는다 |
 | `audit`, `immutable` setting | `SCHEMA_INVALID` | executor가 corpus catalog를 읽을 때 거부한다. 대신 `state_machine … history`를 쓴다 |
-| 트랜잭션 | 지원 | 세션 위에서 `begin`부터 `commit` 또는 `rollback`까지다. `readOnly`는 지키고 lock을 잡는다 |
+| 트랜잭션 | 지원 | 세션 위에서 `begin`부터 `commit` 또는 `rollback`까지다. `readOnly`는 `begin`의 `read_only`로 보내며, lock을 잡고, 트랜잭션의 모든 쓰기는 `READ_ONLY`다 |
 | savepoint | 지원 | 중첩된 단계다 |
 | `orderByRandom` | 지원 | 순서를 seed로 정하지 않는다 |
 | audit 값이 있는 트랜잭션 | `CAPABILITY_UNSUPPORTED` | |
-| `isolation`, `timeoutMs` 옵션 | `CAPABILITY_UNSUPPORTED` | |
+| `isolation`, `timeoutMs` 옵션, `statementTimeoutMs` 설정 | `CAPABILITY_UNSUPPORTED` | |
 | `getQuery()`, statement event, `subscribe()` | `CAPABILITY_UNSUPPORTED` | SQL text가 없다 |
 | `force_index` | `CAPABILITY_UNSUPPORTED` | index는 이름이 아니라 파생된다 |
 | `fulltext`, `Lb` 연산자 | `OPERATOR_NOT_ALLOWED` | |

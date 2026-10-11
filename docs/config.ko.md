@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 4912b97364ececfb2a174094c9aeab71be5f680ce186c8214c1a98b8bb5b268b -->
+<!-- source-sha256: 5361e5cb3e633ca063f3e888006fc9d033ae87e8e65cbe228ebd04b4df1f0e84 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -12,9 +12,10 @@ mysql://user@localhost/orm_example?socket=/tmp/mysql.sock
 postgres://user:password@host:5432/orm_example?sslmode=disable
 postgres:///orm_example?host=/tmp
 sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(5000)
+markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 ```
 
-- scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다.
+- scheme이 MySQL, PostgreSQL, SQLite 중 하나를 선택한다. 클라이언트는 해당 네이티브 드라이버를 만들고 연결 풀을 연다. 스키마 로딩과 해시 검사는 내부에서 처리한다. scheme `markdown`은 데이터베이스 대신 flowmark server의 markdown IR executor를 선택한다. 그 DSN, server 연결의 풀, 거절하는 설정은 [프로토콜](protocol.ko.md#_5-ir-executors)과 [capability 표](dialects.ko.md#markdown-ir-executor)에 있다. Go 클라이언트가 이를 구현한다.
 - 모든 연결은 서버 시간대와 상관없이 datetime 값을 UTC로 읽고 쓴다([dialects](dialects.ko.md#date-and-time)). MySQL 연결은 `time_zone = '+00:00'`을, PostgreSQL 연결은 `TimeZone`을 `UTC`로 설정하고, SQLite 값과 ORM 값 함수는 클라이언트에서 UTC를 쓴다. offset이 있는 값은 UTC wall clock으로 쓰고 UTC로 다시 읽는다. 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받으며, 다른 값은 `CONFIG`를 반환한다.
 - 연결 설정은 최대 연결 수 `poolSize`를 받는다. Go는 `orm.Config{PoolSize: n}`, PHP는 `new Config(poolSize: n)`, TypeScript는 `{ poolSize: n }`, Rust는 `Db::connect(dsn, n, config)`다. 0이거나 지정하지 않으면 Go·TypeScript·Rust는 최대 10개의 연결을 열고, 음수는 `CONFIG`를 반환한다. 풀은 최대값보다 많은 연결을 열지 않으며, 모든 연결이 사용 중일 때 연결이 필요한 문이나 트랜잭션은 연결이 반환될 때까지 기다린다. TypeScript의 SQLite 드라이버는 연결 하나를 유지한다. PHP는 요청마다 연결을 연다. 각 `Db`가 연결 하나를 열고 그 연결은 `Db`와 함께 닫히며, 요청보다 오래 남는 연결은 없다. PHP의 풀은 PgBouncer나 ProxySQL이 맡는다([연결 pooler](#connection-poolers)). PHP 클라이언트는 자기 풀을 가지지 않는다. php-fpm worker는 한 번에 요청 하나를 처리하고 다음 요청과 상태를 공유하지 않으며, 요청을 넘어 유지한 연결은 한 요청의 세션 상태를 다음 요청에 넘기고 서버 연결 수를 worker 수만큼 늘린다. 풀러는 대신 적은 서버 연결을 모든 worker가 나누어 쓰게 한다. 클라이언트가 무시하는 설정은 호출자가 연결이 풀링된다고 믿게 하므로, 0이 아닌 n의 `new Config(poolSize: n)`은 `CONFIG`를 반환한다. `stats()`는 `Db`의 연결 하나인 1을 `maxOpenConnections`로 보고한다.
 - 연결 설정은 풀의 최대 유휴 연결 수 `poolIdleSize`와 풀 연결의 수명(밀리초) `poolLifetimeMs`를 받는다. Go는 `orm.Config{PoolIdleSize: n, PoolLifetimeMs: ms}`, TypeScript는 `{ poolIdleSize: n, poolLifetimeMs: ms }`, Rust는 `Config { pool_idle_size: n, pool_lifetime_ms: ms, ..Default::default() }`다. 풀이 이미 `poolIdleSize`개의 유휴 연결을 유지하는 동안 반환된 연결은 닫힌다. 수명이 지난 연결은 유휴 상태일 때 또는 반환될 때 닫힌다. `poolIdleSize`가 0이거나 지정하지 않으면 풀 크기까지 유휴 연결을 유지한다. `poolLifetimeMs`가 0이거나 지정하지 않으면 Go와 TypeScript는 수명 없이 연결을 유지하고, Rust는 풀의 30분 수명을 유지한다. 음수나 풀 크기보다 큰 유휴 연결 수는 `CONFIG`를 반환하며, Rust의 필드는 부호 없는 정수다. TypeScript의 SQLite 드라이버는 연결 하나를 유지하며 이 값을 사용하지 않는다. PHP에는 풀이 없으므로 0이 아닌 `poolIdleSize`나 `poolLifetimeMs`에 `CONFIG`를 반환한다.

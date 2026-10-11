@@ -52,7 +52,7 @@ func run() (code int) {
 	})
 	check(err)
 	defer db.Close()
-	db.Subscribe(func(e orm.StatementEvent) error {
+	_, err = db.Subscribe(func(e orm.StatementEvent) error {
 		lastSQL, lastArgs = e.SQL, e.Binds
 		for i, a := range lastArgs {
 			if a == orm.Secret {
@@ -61,6 +61,7 @@ func run() (code int) {
 		}
 		return nil
 	})
+	check(err)
 	now := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
 
 	query := func() (*orm.Collection[*model.AuthorModel], error) {

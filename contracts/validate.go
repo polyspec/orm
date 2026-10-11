@@ -68,8 +68,8 @@ var outputs = map[string]map[string]string{
 	"DbspecMermaidExport":        {"go": "(string,[]Unsupported)", "php": "Polyspec\\Orm\\Dbspec\\MermaidExportResult", "rust": "(String,Vec<Unsupported>)", "typescript": "DbspecMermaidExport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult", "python": "dict"},
 	"DbspecMermaidImport":        {"go": "(*Document,[]Unsupported,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\MermaidImportResult", "rust": "Result<(Document,Vec<Unsupported>),Vec<Diagnostic>>", "typescript": "DbspecMermaidImport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult", "python": "dict"},
 	"AddedTablesAndColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>", "python": "list[str]"},
-	// 구독 해제는 database를 읽거나 쓰지 않는 동기 호출이다.
-	"Unsubscribe": {"go": "(unsubscribefunc())", "php": "Closure", "rust": "Subscription", "typescript": "()=>void", "python": "Callable[[],None]"},
+	// 구독과 그 해제는 database를 읽거나 쓰지 않는 동기 호출이다. Go는 markdown 연결의 거절을 error로 돌려준다.
+	"Unsubscribe": {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Subscription", "typescript": "()=>void", "python": "Callable[[],None]"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -165,8 +165,9 @@ func validateRules(d document) error {
 					}
 				}
 				// 오류가 있는 operation은 database에서 실행되므로 async다. transaction은 Transaction
-				// builder를, 등록은 database 없이 동기 결과를 돌려준다.
-				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && !strings.Contains(sig, "asyncfn") {
+				// builder를, 등록은 database 없이 동기 결과를 돌려준다. 구독도 database에 닿지 않으며, 그 오류는
+				// statement를 보내지 않는 markdown 연결의 거절뿐이다.
+				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}

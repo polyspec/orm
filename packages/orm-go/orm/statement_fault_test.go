@@ -78,10 +78,13 @@ func requireStatementFault(t *testing.T, err error, f statementFaultFixture) {
 func requireStatementEvent(t *testing.T, db *orm.DB, f statementFaultFixture, run func()) {
 	t.Helper()
 	var events []orm.StatementEvent
-	unsubscribe := db.Subscribe(func(e orm.StatementEvent) error {
+	unsubscribe, err := db.Subscribe(func(e orm.StatementEvent) error {
 		events = append(events, e)
 		return nil
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer unsubscribe()
 	run()
 	for _, e := range events {

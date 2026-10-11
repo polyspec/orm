@@ -62,7 +62,8 @@
     "tests/dbspec/*.json",
     "tests/dsn/*.json",
     "tests/ir/*.json",
-    "tests/events/*.json"
+    "tests/events/*.json",
+    "tests/markdown/*.json"
   ],
   "comparators": ["tests/conformance/check", "tests/interfaces/check"],
   "testPatterns": [
@@ -460,6 +461,13 @@
         { "implementation": "typescript", "test": "packages/orm-npm/tests/statement_fault.mjs" },
         { "implementation": "python", "test": "packages/orm-python/tests/statement_fault.py" },
         { "implementation": "rust", "test": "packages/orm-rust/orm/tests/statement_fault.rs", "symbol": "statement_fault_cases" }
+      ]
+    },
+    {
+      "id": "markdown-conformance", "kind": "suite", "profile": "client",
+      "file": "tests/markdown/cases.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "packages/orm-go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" }
       ]
     }
   ],
