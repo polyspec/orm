@@ -13,6 +13,7 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | `packages/orm-go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
 | `packages/orm-php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is `packages/orm-php/tests/markdown_conformance.php`, which reports each case as `markdown-conformance/<id>` |
 | `packages/orm-python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
+| `packages/orm-rust/tests/tests/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
 
 ## Run
 
@@ -43,9 +44,8 @@ A case's result is a JSON value compared with `expect` after both are read as JS
 
 - a model is its array form (`toArray`), a collection the list of the array forms in collection order, and a
   grouped count the list of its group rows;
-- a `date` or `datetime` value is `YYYY-MM-DD HH:MM:SS.ffffff`, the text the Go array form writes for its
-  `time.Time`; a client whose array form holds the value model text (Python writes a date `YYYY-MM-DD` and a
-  `datetime(p)` with p fraction digits) writes the value in that form for the comparison;
+- a `date` value is its runtime value model text `YYYY-MM-DD` ([protocol](../../docs/protocol.md#_5-ir-executors)),
+  whatever type the client holds it in: a client whose array form writes a date as a datetime writes it as that text;
 - a count, a sum, an average and the row count of a write are numbers, and `paginate` is
   `{"items", "total_count", "total_pages"}`;
 - a failed case is `{"error": <code>}`, the orm code of the error, and `write_conflict` is

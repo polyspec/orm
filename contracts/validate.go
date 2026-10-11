@@ -68,8 +68,8 @@ var outputs = map[string]map[string]string{
 	"DbspecMermaidExport":        {"go": "(string,[]Unsupported)", "php": "Polyspec\\Orm\\Dbspec\\MermaidExportResult", "rust": "(String,Vec<Unsupported>)", "typescript": "DbspecMermaidExport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult", "python": "dict"},
 	"DbspecMermaidImport":        {"go": "(*Document,[]Unsupported,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\MermaidImportResult", "rust": "Result<(Document,Vec<Unsupported>),Vec<Diagnostic>>", "typescript": "DbspecMermaidImport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult", "python": "dict"},
 	"AddedTablesAndColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>", "python": "list[str]"},
-	// 구독과 그 해제는 database를 읽거나 쓰지 않는 동기 호출이다. Go는 markdown 연결의 거절을 error로 돌려준다.
-	"Unsubscribe": {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Subscription", "typescript": "()=>void", "python": "Callable[[],None]"},
+	// 구독과 그 해제는 database를 읽거나 쓰지 않는 동기 호출이다. Go와 Rust는 markdown 연결의 거절을 error로 돌려준다.
+	"Unsubscribe": {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Result<Subscription>", "typescript": "()=>void", "python": "Callable[[],None]"},
 }
 
 // inputs maps a common argument list to the native parameters of each

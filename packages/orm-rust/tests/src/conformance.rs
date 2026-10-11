@@ -240,23 +240,25 @@ async fn main() {
     // 각 statement를 그 event로 기록한다(docs/usage.md "Statement events"). transaction은 vector
     // 안에서 처음 나온 순서로 1부터 다시 센 번호이고 밖이면 null이다. error는 statement의 오류
     // code이거나 null이다.
-    let _recording = db.subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
-        let mut log = hook.lock().unwrap();
-        let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
-        let transaction = e.transaction.map(|n| {
-            let next = log.transactions.len() as u64 + 1;
-            *log.transactions.entry(n).or_insert(next)
-        });
-        log.statements.push(json!({
-            "sql": e.sql,
-            "binds": binds,
-            "kind": e.kind,
-            "tables": e.tables,
-            "transaction": transaction,
-            "error": e.error.map(|error| error.code().to_owned()),
-        }));
-        Ok(())
-    });
+    let _recording = db
+        .subscribe(move |e: &polyspec_orm::StatementEvent<'_>| {
+            let mut log = hook.lock().unwrap();
+            let binds: Vec<Value> = e.binds.iter().map(|b| norm(&param_json(b).unwrap_or_else(|e| panic!("invalid query bind: {e}")), &log)).collect();
+            let transaction = e.transaction.map(|n| {
+                let next = log.transactions.len() as u64 + 1;
+                *log.transactions.entry(n).or_insert(next)
+            });
+            log.statements.push(json!({
+                "sql": e.sql,
+                "binds": binds,
+                "kind": e.kind,
+                "tables": e.tables,
+                "transaction": transaction,
+                "error": e.error.map(|error| error.code().to_owned()),
+            }));
+            Ok(())
+        })
+        .expect("a SQL connection accepts a subscriber");
     let out = match run_all(&db, &shared, &args.vectors).await {
         Ok(out) => out,
         Err(e) => {

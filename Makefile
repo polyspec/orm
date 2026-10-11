@@ -907,8 +907,8 @@ conformance-check/run: lease-tool conformance-python-models
 # install-flowmark가 여기에 설치한다. test는 그 build 정보가 고정한 판이 아니면 실패하므로, 고정한 revision의 flowmark
 # checkout을 build한 binary는 FLOWMARK=<그 경로>로 줄 수 있다.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python install-flowmark
-markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python
+.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust install-flowmark
+markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php:
@@ -916,6 +916,8 @@ markdown-conformance-check/php:
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/markdown_conformance.py
+markdown-conformance-check/rust: lease-tool cargo-downloads-check
+	cd packages/orm-rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
 
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh

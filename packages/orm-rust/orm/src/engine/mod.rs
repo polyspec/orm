@@ -2,10 +2,12 @@
 //! and schema DDL.
 
 pub(crate) mod dialect;
+mod params;
 mod planner;
 mod validate;
 
 pub use dialect::Dialect;
+pub(crate) use params::{function_type, param_uses, ParamUse};
 
 use crate::ir;
 use crate::plan::Plan;
@@ -18,8 +20,13 @@ pub(crate) fn err(code: &str, msg: impl Into<String>) -> Error {
 
 /// Validates a request and plans it for a dialect.
 pub(crate) fn compile(m: &Manifest, d: Dialect, r: &ir::Request) -> Result<Plan> {
-    validate::validate(m, r)?;
+    validate(m, r)?;
     planner::Planner { m, d }.compile(r)
+}
+
+/// request를 검증한다. IR executor 연결은 plan하지 않고 검증한 request를 보낸다(docs/protocol.md §5).
+pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
+    validate::validate(m, r)
 }
 
 #[cfg(test)]

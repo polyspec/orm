@@ -21,6 +21,7 @@ async fn exec(db: &Db, statement: &str) {
         Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
         Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
         Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
     .unwrap_or_else(|e| panic!("{statement}: {e}"))
 }

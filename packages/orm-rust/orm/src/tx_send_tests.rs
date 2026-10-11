@@ -14,6 +14,7 @@ async fn execute(db: &Db, sql: &str) {
         Pool::MySql(pool) => sqlx::raw_sql(statement).execute(pool).await.map(|_| ()),
         Pool::Postgres(pool) => sqlx::raw_sql(statement).execute(pool).await.map(|_| ()),
         Pool::Sqlite(pool) => sqlx::raw_sql(statement).execute(pool).await.map(|_| ()),
+        Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
     }
     .expect("test statement must succeed");
 }
@@ -23,6 +24,7 @@ async fn state(db: &Db, table: &str) -> Vec<i32> {
         Pool::MySql(pool) => sqlx::query_scalar(sql).fetch_all(pool).await,
         Pool::Postgres(pool) => sqlx::query_scalar(sql).fetch_all(pool).await,
         Pool::Sqlite(pool) => sqlx::query_scalar(sql).fetch_all(pool).await,
+        Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
     }
     .expect("test state must be readable")
 }

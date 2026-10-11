@@ -469,7 +469,8 @@
       "bindings": [
         { "implementation": "go", "test": "packages/orm-go/markdownmodel/conformance_test.go", "symbol": "TestMarkdownConformance" },
         { "implementation": "php", "test": "packages/orm-php/tests/markdown_conformance.php" },
-        { "implementation": "python", "test": "packages/orm-python/tests/markdown_conformance.py" }
+        { "implementation": "python", "test": "packages/orm-python/tests/markdown_conformance.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/tests/tests/markdown_conformance.rs", "symbol": "markdown_conformance" }
       ]
     }
   ],

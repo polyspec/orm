@@ -93,6 +93,7 @@ async fn stored(db: &Db) -> (Vec<u8>, i64) {
             let row = sqlx::query(sql).fetch_one(p).await.unwrap();
             (row.get(0), row.get(1))
         }
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 

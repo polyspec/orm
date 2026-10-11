@@ -288,6 +288,7 @@ impl HeldRows {
                 HeldRows::Postgres(tx)
             }
             Pool::Sqlite(_) => panic!("SQLite has no row lock of another connection"),
+            Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
         }
     }
 

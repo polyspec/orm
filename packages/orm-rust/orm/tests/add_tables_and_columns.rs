@@ -56,6 +56,7 @@ async fn exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
         Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
         Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
         Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 
@@ -66,6 +67,7 @@ async fn count(db: &Db, query: &str) -> Result<i64, sqlx::Error> {
         Pool::MySql(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
         Pool::Postgres(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
         Pool::Sqlite(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 

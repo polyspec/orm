@@ -13,6 +13,7 @@ use futures_util::FutureExt as _;
 use crate::db::{Db, Executor, Pool};
 use crate::driver::{CancellableConnection, MySqlOwnedTx, TxInner};
 use crate::events::{self, Sent, KIND_BEGIN, KIND_COMMIT, KIND_RELEASE, KIND_ROLLBACK, KIND_ROLLBACK_TO, KIND_SAVEPOINT, KIND_UTILITY};
+use crate::markdown::{MdControl, MdPool};
 use crate::schema::Schema;
 use crate::value::Param;
 use crate::{codes, Error, Result};
@@ -62,6 +63,7 @@ pub(crate) struct AuditInsert {
 /// 그 table의 column이 아니거나, primary key가 column 하나가 아니면 CONFIG이고, source의 오류는 그대로
 /// 돌려준다. source는 여기서 한 번, transaction을 시작하기 전에 부른다.
 fn audit_record(db: &Db, values: &AuditValues) -> Result<AuditInsert> {
+    db.unsupported_on_markdown("a transaction with audit values")?;
     let Some(source) = &db.inner.cfg.audit_source else {
         return Err(Error::Config("the transaction has audit values but the connection has no audit source: set Config::audit_source".into()));
     };
@@ -146,14 +148,34 @@ impl TxShared {
         let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
         raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), sql)).await
     }
+
+    /// savepoint `name`의 단계 하나를 실행한다: `kind`가 KIND_SAVEPOINT이면 만들고, KIND_RELEASE이면 풀고,
+    /// KIND_ROLLBACK_TO이면 그 뒤의 작업을 되돌린다. SQL 연결은 그 statement를 보내고 event를 publish하며,
+    /// markdown 연결은 같은 이름의 control message를 보낸다(docs/protocol.md §5 "Session").
+    pub(crate) async fn savepoint_step(&self, kind: &str, name: &str) -> Result<()> {
+        let (op, statement) = match kind {
+            KIND_SAVEPOINT => ("savepoint", format!("SAVEPOINT {name}")),
+            KIND_RELEASE => ("release", format!("RELEASE SAVEPOINT {name}")),
+            KIND_ROLLBACK_TO => ("rollback_to", format!("ROLLBACK TO SAVEPOINT {name}")),
+            other => return Err(Error::internal(format!("{other} is no savepoint step"))),
+        };
+        let mut guard = self.enter()?;
+        let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+        if let TxInner::Markdown(session) = inner {
+            return session.call(&MdControl { op, read_only: false, name: Some(name) }).await.map(drop);
+        }
+        raw_on(&self.db, inner, Sent::bare(kind, &[], Some(self.number), &statement)).await
+    }
 }
 
-/// transaction 연결에서 bind 없는 statement를 실행하고 그 event를 publish한다.
+/// transaction 연결에서 bind 없는 statement를 실행하고 그 event를 publish한다. markdown 연결은 statement를
+/// 보내지 않는다.
 pub(crate) async fn raw_on(db: &Db, inner: &mut TxInner, s: Sent<'_>) -> Result<()> {
     match inner {
         TxInner::MySql(t) => events::raw(db, &mut **t.conn.as_mut().expect("active MySQL transaction connection"), s).await,
         TxInner::Postgres(t) => events::raw(db, &mut **t, s).await,
         TxInner::Sqlite(t) => events::raw(db, &mut **t, s).await,
+        TxInner::Markdown(_) => Err(Error::internal("a markdown transaction sends no statement")),
     }
 }
 
@@ -347,7 +369,7 @@ impl<'a> OnceScope<'a> {
         match self {
             OnceScope::Transaction { tx, .. } => Box::pin(async move { commit(&tx).await }),
             OnceScope::Savepoint { tx, name, .. } => Box::pin(async move {
-                let released = tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await;
+                let released = tx.savepoint_step(KIND_RELEASE, &name).await;
                 tx.savepoints.fetch_sub(1, Ordering::AcqRel);
                 released
             }),
@@ -420,7 +442,7 @@ where
                         Some(tx) => Box::pin(async move {
                             let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
                             let name = format!("orm_sp_{n}");
-                            match tx.raw(KIND_SAVEPOINT, &format!("SAVEPOINT {name}")).await {
+                            match tx.savepoint_step(KIND_SAVEPOINT, &name).await {
                                 Ok(()) => Ok(OnceScope::Savepoint { tx, name }),
                                 Err(error) => {
                                     tx.savepoints.fetch_sub(1, Ordering::AcqRel);
@@ -742,12 +764,12 @@ where
     let n = tx.savepoints.fetch_add(1, Ordering::AcqRel) + 1;
     let name = format!("orm_sp_{n}");
     let ended = async {
-        tx.raw(KIND_SAVEPOINT, &format!("SAVEPOINT {name}")).await?;
+        tx.savepoint_step(KIND_SAVEPOINT, &name).await?;
         let mut stack = frames();
         stack.push(tx.clone());
         Ok::<_, Error>(match std::panic::AssertUnwindSafe(FLOW.scope(stack, callback)).catch_unwind().await {
             Ok(Ok(value)) => {
-                tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await?;
+                tx.savepoint_step(KIND_RELEASE, &name).await?;
                 SavepointEnd::Returned(Ok(value))
             }
             Ok(Err(error)) => SavepointEnd::Returned(Err((error, rollback_savepoint(&tx, &name).await.err()))),
@@ -764,8 +786,8 @@ where
 
 /// savepoint 뒤의 작업을 되돌리고 savepoint를 푼다. 두 statement를 모두 시도하고 실패를 모두 돌려준다.
 async fn rollback_savepoint(tx: &TxShared, name: &str) -> Result<()> {
-    let rolled_back = tx.raw(KIND_ROLLBACK_TO, &format!("ROLLBACK TO SAVEPOINT {name}")).await;
-    let released = tx.raw(KIND_RELEASE, &format!("RELEASE SAVEPOINT {name}")).await;
+    let rolled_back = tx.savepoint_step(KIND_ROLLBACK_TO, name).await;
+    let released = tx.savepoint_step(KIND_RELEASE, name).await;
     joined([rolled_back.err(), released.err()].into_iter().flatten().collect())
 }
 
@@ -830,6 +852,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
             }
             TxInner::Sqlite(CancellableConnection::new(p.acquire().await?))
         }
+        Pool::Markdown(pool) => return begin_markdown(db, pool, isolation, read_only).await,
     };
     let tx = TxShared {
         db: db.clone(),
@@ -859,6 +882,27 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         began |= *kind == KIND_BEGIN;
     }
     Ok(tx)
+}
+
+/// markdown transaction을 연다: pool의 session 하나를 transaction이 끝날 때까지 잡고 begin을 보낸다. 읽기
+/// 전용 transaction은 read_only를 보낸다(docs/protocol.md §5 "Session"). isolation은 CAPABILITY_UNSUPPORTED다.
+async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation>, read_only: bool) -> Result<TxShared> {
+    if isolation.is_some() {
+        db.unsupported_on_markdown("the transaction isolation option")?;
+    }
+    let mut session = pool.acquire().await?;
+    session.call(&MdControl { op: "begin", read_only, name: None }).await?;
+    Ok(TxShared {
+        db: db.clone(),
+        number: db.next_transaction(),
+        inner: tokio::sync::Mutex::new(Some(TxInner::Markdown(session))),
+        finished: AtomicBool::new(false),
+        savepoints: AtomicU32::new(0),
+        locals: Mutex::new(HashMap::new()),
+        locks: Mutex::new(Vec::new()),
+        audit: Mutex::new(None),
+        sqlite_mode: Mutex::new(None),
+    })
 }
 
 /// SQLite row lock이 쓰는 table이다.
@@ -971,6 +1015,15 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
             if clean {
                 t.completed();
             }
+        }
+        // markdown 연결은 같은 이름의 control message를 보낸다. 실패한 session은 pool이 닫는다.
+        TxInner::Markdown(mut session) => {
+            let op = match kind {
+                KIND_COMMIT => "commit",
+                KIND_ROLLBACK => "rollback",
+                other => return Err(Error::internal(format!("{other} does not end a transaction"))),
+            };
+            session.call(&MdControl { op, read_only: false, name: None }).await?;
         }
     }
     Ok(())
@@ -1131,6 +1184,7 @@ mod tests {
                 Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
                 Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
                 Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
             };
             assert_eq!(count, 0, "{driver}: rollback");
             db.transaction_once(async || {
@@ -1157,6 +1211,7 @@ mod tests {
                 Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
                 Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
                 Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
             };
             assert_eq!(count, 3, "{driver}: committed rows");
             execute(&db, "DROP TABLE orm_once_probe").await;
@@ -1175,6 +1230,7 @@ mod tests {
             Pool::MySql(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
             Pool::Postgres(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
             Pool::Sqlite(pool) => sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned())).execute(pool).await.map(|_| ()),
+            Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
         }
         .unwrap();
     }
@@ -1184,6 +1240,7 @@ mod tests {
             Pool::MySql(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
             Pool::Postgres(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
             Pool::Sqlite(pool) => sqlx::query_scalar("SELECT COUNT(*) FROM orm_timeout_probe").fetch_one(pool).await,
+            Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
         }
         .unwrap()
     }
@@ -1407,6 +1464,7 @@ mod tests {
                 }
                 Pool::Sqlite(_) => execute(&db, "CREATE TABLE orm_dropped_probe (id INTEGER PRIMARY KEY)").await,
                 Pool::Postgres(_) => {}
+                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
             }
             let key = format!("orm_test.dropped.{}", std::process::id());
             let held = Arc::new(tokio::sync::Notify::new());
@@ -1453,6 +1511,7 @@ mod tests {
                     assert_eq!(rows, 0, "sqlite: the dropped transaction rolled back");
                     sqlx::raw_sql("ROLLBACK").execute(&mut *other).await.expect("rollback");
                 }
+                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
             }
             db.close().await;
         }

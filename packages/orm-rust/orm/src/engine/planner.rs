@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use super::dialect::Dialect;
 use super::err;
+use super::params::function_type;
 use crate::codes;
 use crate::ir;
 use crate::plan::{Assemble, BindSlot, Child, IfParent, KeyRef, OutCol, ParentRef, Plan, Step};
@@ -328,19 +329,11 @@ fn style_input_type(style: &str) -> &'static str {
 }
 
 /// 상대 시각 함수가 받는 간격 값의 type이다. 초는 소수를, 나머지 단위는 정수를 받는다.
-fn value_function_arg_type(name: &str) -> &'static str {
+pub(super) fn value_function_arg_type(name: &str) -> &'static str {
     if super::dialect::value_function_unit(name) == Some("second") {
         "f64"
     } else {
         "i32"
-    }
-}
-
-fn function_type(name: &str, col: Option<&Field>) -> String {
-    match name {
-        "day_of_week" | "year" | "month" => "i64".into(),
-        "date" => "date".into(),
-        _ => col.map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into()),
     }
 }
 

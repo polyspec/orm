@@ -286,6 +286,9 @@ impl Conn {
             Pool::MySql(p) => Conn::MySql(p.acquire().await?),
             Pool::Postgres(p) => Conn::Postgres(p.acquire().await?),
             Pool::Sqlite(p) => Conn::Sqlite(p.acquire().await?),
+            Pool::Markdown(_) => {
+                return Err(sqlx::Error::Configuration("a markdown corpus has no SQL connection; give a mysql, postgres or sqlite DSN".into()))
+            }
         })
     }
 
