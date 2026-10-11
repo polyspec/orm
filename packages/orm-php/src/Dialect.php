@@ -167,6 +167,35 @@ final class Dialect
         return ' FOR ' . strtoupper(str_replace('_', ' ', $mode));
     }
 
+    /** text를 SQL 문자열 literal로 quote한다. */
+    public static function literal(string $text): string
+    {
+        return "'" . str_replace("'", "''", $text) . "'";
+    }
+
+    /**
+     * table의 identity column을 가장 큰 key 다음 값에서 다시 시작하는 statement다. 빈 table이면
+     * 다음 key는 1이다.
+     * MySQL: InnoDB는 AUTO_INCREMENT를 column의 가장 큰 값 이하로 정하면 가장 큰 값에 1을 더한
+     * 값으로 정하므로 1은 언제나 가장 큰 key 다음이다. DDL이므로 열린 transaction을 commit한다.
+     * PostgreSQL: identity sequence를 가장 큰 key에 1을 더한 값으로 정하고 is_called를 false로
+     * 두어 다음 nextval이 그 값을 돌려주게 한다. pg_get_serial_sequence의 첫 인자는 identifier로
+     * 읽히므로 quote한 table 이름이고, 둘째 인자는 column 이름 그대로다.
+     * SQLite: AUTOINCREMENT table의 다음 key는 sqlite_sequence의 seq에 1을 더한 값이므로 seq를
+     * 가장 큰 key로 정한다. table이 아직 행을 받은 적이 없어 sqlite_sequence에 행이 없으면 다음
+     * key는 이미 가장 큰 key 다음이다.
+     */
+    public function restartIdentity(string $table, string $column): string
+    {
+        return match ($this->name) {
+            'mysql' => 'ALTER TABLE ' . self::quoteWith('`', $table) . ' AUTO_INCREMENT = 1',
+            'postgres' => 'SELECT setval(pg_get_serial_sequence(' . self::literal(self::quoteWith('"', $table)) . ', ' . self::literal($column)
+                . '), COALESCE(MAX(' . self::quoteWith('"', $column) . '), 0) + 1, false) FROM ' . self::quoteWith('"', $table),
+            default => 'UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(' . self::quoteWith('"', $column) . '), 0) FROM ' . self::quoteWith('"', $table)
+                . ') WHERE name = ' . self::literal($table),
+        };
+    }
+
     public function random(): string
     {
         return $this->name === 'mysql' ? 'RAND()' : 'random()';

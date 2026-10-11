@@ -33,6 +33,9 @@ final class Planner
             case 'restore':
                 $steps->add($this->restoreStep($r));
                 break;
+            case 'restart_identity':
+                $steps->add($this->restartIdentityStep($r));
+                break;
             default:
                 $this->selectStep($steps, $r, $r['kind'], $r['agg'] ?? '', null);
         }
@@ -781,11 +784,16 @@ final class Planner
                 }
             }
         }
+        // load은 행을 저장된 key 그대로 쓰므로 identity column의 값을 받고 요구한다.
+        $load = $r['load'] ?? false;
+        if ($load && $ent['identity'] !== '' && !self::assignsValue($set, $ent['identity'])) {
+            throw self::err(Code::IR_INVALID, "load of {$ent['entity']} needs a value for the identity column {$ent['identity']}");
+        }
         $cols = [];
         $vals = [];
         foreach ($set as $a) {
             $col = RuntimeModel::column($ent, $a['column']);
-            if ($col['name'] === $ent['identity']) {
+            if ($col['name'] === $ent['identity'] && !$load) {
                 throw self::err(Code::IR_INVALID, 'cannot set identity column ' . $a['column']);
             }
             $cols[] = $this->d->quote($a['column']);
@@ -960,6 +968,33 @@ final class Planner
         }
         $where = $this->renderGroup($b, $root, $r['where'], true) . ' AND ' . $this->qcol($root, $soft) . ' IS NOT NULL';
         return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE ' . $where, '', $b->slots, $b->tables());
+    }
+
+    /** set이 column에 parameter 값(p)을 assign하는지 여부다. */
+    private static function assignsValue(array $set, string $column): bool
+    {
+        foreach ($set as $a) {
+            if ($a['column'] === $column && isset($a['p'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * entity의 identity를 그 table의 가장 큰 key 다음 값에서 다시 시작하는 statement다: 다음 생성
+     * key는 가장 큰 key에 1을 더한 값이고, 빈 table이면 1이다. load로 key를 지정해 행을 적재한
+     * 뒤 실행한다.
+     */
+    private function restartIdentityStep(array $r): PlanStep
+    {
+        $ent = $this->m->entities[$r['entity']];
+        if ($ent['identity'] === '') {
+            throw self::err(Code::IR_INVALID, "restart_identity of {$ent['entity']}, which has no identity column");
+        }
+        $b = new PlanBinds($this->d);
+        $b->table($ent);
+        return new PlanStep('main', $this->d->restartIdentity($ent['table'], $ent['identity']), '', [], $b->tables());
     }
 
     /** restore의 where가 primary key나 unique key 하나의 모든 column을 and로 이은 eq 값 조건으로 한 번씩 이름하는지 확인한다. */
