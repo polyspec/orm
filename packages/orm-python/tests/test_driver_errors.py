@@ -137,9 +137,14 @@ class SqliteDriverErrorTest(unittest.TestCase):
         self.assertEqual(busy.code, 'CANCELED')
 
         class Frame:
-            """row lock statement만 busy 오류로 실패하는 transaction frame이다."""
+            """row lock statement만 busy 오류로 실패하는 transaction frame이다. run은
+            TxFrame.run과 같은 인자를 받고, row lock table의 statement가 statement
+            fault를 소비하지 않는지(protocol 3.2) faultable로 확인한다."""
 
-            def run(self, sql, values=None, kind='utility', tables=()):
+            def run(self, sql, values=None, kind='utility', binds=None, tables=(),
+                    faultable=True):
+                if faultable:
+                    raise AssertionError(f'the row lock statement consumes the statement fault: {sql}')
                 if sql.startswith('INSERT'):
                     raise busy
                 return {'rows': [[0]]}
