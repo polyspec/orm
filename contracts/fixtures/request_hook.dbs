@@ -1,0 +1,8 @@
+dbspec 1 request_hook
+
+table hook_item {
+  id i64 identity
+  part varchar(16)
+  label varchar(32)
+  primary key (id)
+}
