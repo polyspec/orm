@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1e8a3db2518bf2584c113eef4becc00792d3b4b597b8aae624b08081085e6d6b -->
+<!-- source-sha256: 96a787b13b8e4a2a8d0df88a9034000c7a17983824ee0d83a62a8fa6148944da -->
 # 변경 이력
 
 ## Unreleased
 
+- T125: 모든 client가 연결 handle에서 request hook을 받는다. `withRequestHook`(Go `WithRequestHook`, Rust와 Python `with_request_hook`)은 같은 연결의 handle을 돌려주며, 그 hook은 읽기, count, page, insert, update, delete, restore, getQuery의 각 request를 plan 직전에 받아 predicate, assignment, 매개변수를 더할 수 있다. planner가 바뀐 request를 검증하고 plan cache는 그 request로 key를 정하며, handle의 행과 transaction은 hook을 지킨다.
 - T128-4: `@polyspec/orm/dbspec`은 parse, emit, analyze, format, readDbspecBytes를 가진 browser용 진입점이다; 그 module graph에는 Node module, Node global, driver가 없으며, test가 graph를 따라가 이를 증명한다.
 - T128-2-2: 구문 분석 규칙이 regex 문법을 배제하는 근거를 예약어 `table` 대신, keyword 단어이면서 올바른 column 이름인 `key`, `text`, `references`에 둔다.
 - T128-2-1: dbspec 구문 분석 규칙이 숫자를 형태(숫자와 선택적 소수부로 된 단어)로 정의하고, lexical로만 읽는 줄에서도 `number` class를 유지한다.
