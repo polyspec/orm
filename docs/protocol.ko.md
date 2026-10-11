@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 176b8d8f86139208137a0a9f32d0fb2c260282462da18f5a56e84ee9954788ce -->
+<!-- source-sha256: 8d2e8c94c7e73c6d5fac7601399c1777a8fd706f7c31c83520c215a59c055d70 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `engine/ir/ir.go`와 `engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -112,6 +112,8 @@ Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"c
 `group_by`가 있으면 order 항목은 group 컬럼, 그 컬럼의 함수, `random` 중 하나여야 하고, 다른 컬럼은 `IR_INVALID`("order by %s, which is not a group column")로 실패한다. group에는 그 컬럼의 단일 값이 없기 때문이다(MySQL 1055, PostgreSQL 42803, SQLite는 임의의 행).
 
 `minus_p`는 음수 값을 저장하지 않는다.
+
+`insert`는 `p` 또는 `null`로 할당한다. `plus_p`와 `minus_p`는 `insert`의 `set`에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다. `VALUES` 목록에는 읽을 현재 행이 없기 때문이며, MySQL은 거기서 컬럼의 default를 읽고(3 + 5 = 8) PostgreSQL과 SQLite는 문장을 거절한다.
 
 default가 있는 컬럼을 빼먹은 `insert`는 database default를 받으며 planner는 값을 더하지 않는다. default가 없는 non-null 컬럼을 빼먹은 `insert`는 `IR_INVALID`로 실패한다. planner는 실행기가 소유한 컬럼을 할당한다. AES 키 버전, 모든 `update`의 `updated` 컬럼, 그리고 `audit` setting이 있는 테이블에서는 모든 `insert`, `update`, soft delete, restore, duplicate update의 audit 컬럼이다. AES 키 버전이나 audit 컬럼을 할당하는 요청은 `IR_INVALID`로 실패한다.
 

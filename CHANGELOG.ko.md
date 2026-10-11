@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5583325f40b59578851dfcf291b2eb7e2013eb399a1b10478edb26c12c38bbf7 -->
+<!-- source-sha256: a92c6f8bfde58a1dfe21d6022a3724e51751cd669bca1ab946bd860f17e47ae2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T99: `insert`는 `p` 또는 `null`로 할당한다. `set`의 `plus_p`와 `minus_p`는 모든 구현에서 `IR_INVALID`이고 `on_duplicate`와 `update`에서는 유효하다(MySQL은 `VALUES` 목록에서 default를 읽었고 PostgreSQL과 SQLite는 문장을 거절했다).
 - T86: `key_by`는 자식의 non-null 컬럼을 가리킨다. nullable 컬럼은 모든 구현에서 `IR_INVALID`이다. NULL 컬렉션 키는 언어마다 답이 달랐기 때문이다.
 - T83: `group_by`는 `count`와 `group_count`의 root에서만 유효하고 그 아래 order 항목은 group 컬럼, 그 함수, `random`을 가리킨다. 그 밖의 쓰임은 모든 구현에서 `IR_INVALID`이다(MySQL과 PostgreSQL은 planner가 만든 SQL을 거절했고 SQLite는 임의의 행을 답했다). 도달할 수 없게 된 planner 경로는 지웠다.
 - T67: TypeScript client가 markdown DSN으로 corpus에 접속하며 pool이 server session을 유지하고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.

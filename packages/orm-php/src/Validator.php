@@ -134,6 +134,10 @@ final class Validator
             }
             foreach ($set as $a) {
                 $this->assign($ent, $a);
+                // A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
+                if ($kind === 'insert' && (isset($a['plus_p']) || isset($a['minus_p']))) {
+                    throw self::err(Code::IR_INVALID, "insert cannot assign {$a['column']} by plus or minus");
+                }
             }
         }
         $rows = $r['rows'] ?? [];

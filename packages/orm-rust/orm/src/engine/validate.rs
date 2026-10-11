@@ -124,6 +124,10 @@ pub(crate) fn validate(m: &Manifest, r: &ir::Request) -> Result<()> {
         }
         for a in &r.set {
             v.assign(ent, a)?;
+            // A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
+            if r.kind == "insert" && (a.plus_p.is_some() || a.minus_p.is_some()) {
+                return Err(err(codes::IR_INVALID, format!("insert cannot assign {} by plus or minus", a.column)));
+            }
         }
     }
     if !r.rows.is_empty() {

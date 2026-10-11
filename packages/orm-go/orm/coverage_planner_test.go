@@ -283,3 +283,27 @@ func TestCoveragePlannerRejectsNullableKeyBy(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_nullable_key_by")
 }
+
+// TestCoveragePlannerInsertByValue는 insert by value case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerInsertByValue(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_insert_by_value")
+}
+
+// TestCoveragePlannerInsertOnDuplicatePlus는 insert on duplicate plus case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerInsertOnDuplicatePlus(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_insert_on_duplicate_plus")
+}
+
+// TestCoveragePlannerRejectsInsertSetPlus는 rejects insert set plus case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsInsertSetPlus(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_insert_set_plus")
+}
+
+// TestCoveragePlannerRejectsInsertSetMinus는 rejects insert set minus case가 기대한 대로 compile되는지 확인한다.
+func TestCoveragePlannerRejectsInsertSetMinus(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_insert_set_minus")
+}
