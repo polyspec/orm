@@ -40,13 +40,11 @@ final class Orm
      */
     public static function connect(string $dsn, Config $config): Db
     {
+        if (self::scheme($dsn) === 'markdown') {
+            return self::connectMarkdown($dsn, $config);
+        }
         [$driver, $pdoDsn, $user, $password, $pragmas, $sslCa] = self::parseDsn($dsn);
-        if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
-            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/config.md "Connection poolers")');
-        }
-        if ($config->statementTimeoutMs < 0) {
-            throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
-        }
+        self::checkConnectionConfig($config);
         $options = [];
         switch ($driver) {
             case 'mysql':
@@ -86,6 +84,89 @@ final class Orm
         return new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
     }
 
+    /** pool option과 statement timeout은 SQL 연결과 markdown 연결이 같은 규칙으로 검사한다. */
+    private static function checkConnectionConfig(Config $config): void
+    {
+        if ($config->poolSize !== 0 || $config->poolIdleSize !== 0 || $config->poolLifetimeMs !== 0) {
+            throw new OrmException(Code::CONFIG, 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool, and the PHP client opens one connection per Db and keeps no pool; pool PHP connections with PgBouncer or ProxySQL (docs/config.md "Connection poolers")');
+        }
+        if ($config->statementTimeoutMs < 0) {
+            throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
+        }
+    }
+
+    /**
+     * markdown://127.0.0.1:<port>/<corpus>?token=<token>이 가리키는 flowmark server에 연결한다
+     * (docs/protocol.md §5). 연결 하나를 열고 connect message로 corpus와 token을 보낸다: server가
+     * 거절한 corpus나 token은 그 CONFIG다. markdown executor는 statement timeout을 받지 않는다.
+     */
+    private static function connectMarkdown(string $dsn, Config $config): Db
+    {
+        [$address, $corpus, $token] = self::parseMarkdownDsn($dsn);
+        self::checkConnectionConfig($config);
+        if ($config->statementTimeoutMs > 0) {
+            throw Markdown::unsupported('statement timeout');
+        }
+        return new Db(null, 'markdown', $config, new \DateTimeZone('UTC'), MarkdownSession::dial($address, $corpus, $token));
+    }
+
+    /** DSN URI의 scheme이다. 소문자다. URI가 아니면 CONFIG다. */
+    private static function scheme(string $dsn): string
+    {
+        if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
+            throw new OrmException(Code::CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://');
+        }
+        return strtolower($m[1]);
+    }
+
+    /**
+     * markdown://127.0.0.1:<port>/<corpus>?token=<token>을 읽는다. flowmark server는 127.0.0.1에서만
+     * 듣고 token은 평문으로 가므로 host는 127.0.0.1뿐이다. 다른 host, 없는 port, 이름 하나가 아닌
+     * path, 없는 token과 다른 parameter는 CONFIG다.
+     *
+     * @return array{0: string, 1: string, 2: string} the server address, the corpus name and the token
+     */
+    public static function parseMarkdownDsn(string $dsn): array
+    {
+        $form = 'markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>';
+        $parts = parse_url($dsn);
+        if ($parts === false || strtolower($parts['scheme'] ?? '') !== 'markdown') {
+            throw new OrmException(Code::CONFIG, "$form; give the port that flowmark serve printed and the corpus name");
+        }
+        if (isset($parts['user']) || isset($parts['pass'])) {
+            throw new OrmException(Code::CONFIG, "$form; it takes no user");
+        }
+        $host = (string) ($parts['host'] ?? '');
+        if ($host !== '127.0.0.1') {
+            throw new OrmException(Code::CONFIG, "$form; host \"$host\": a flowmark server listens on 127.0.0.1 only");
+        }
+        $port = $parts['port'] ?? 0;
+        if ($port < 1 || $port > 65535) {
+            throw new OrmException(Code::CONFIG, "$form; port \"$port\" is not 1 to 65535: give the port that flowmark serve printed");
+        }
+        $path = (string) ($parts['path'] ?? '');
+        $corpus = rawurldecode(substr($path, 1));
+        if (!str_starts_with($path, '/') || $corpus === '' || str_contains($corpus, '/')) {
+            throw new OrmException(Code::CONFIG, "$form; the path \"$path\" is not one corpus name: give the corpus root's directory name");
+        }
+        $tokens = [];
+        foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+            $key = urldecode($key);
+            if ($key !== 'token') {
+                throw new OrmException(Code::CONFIG, "$form; it does not accept $key");
+            }
+            $tokens[] = urldecode($value);
+        }
+        if (count($tokens) !== 1 || $tokens[0] === '') {
+            throw new OrmException(Code::CONFIG, "$form; give one token, the token of .flowmark/server.json of the corpus");
+        }
+        return ["127.0.0.1:$port", $corpus, $tokens[0]];
+    }
+
     /**
      * `timezone` parameter는 UTC(`+00:00`, `UTC`)만 받는다. 다른 zone은 UTC 규칙과
      * 맞지 않으므로 CONFIG로 실패한다.
@@ -96,14 +177,15 @@ final class Orm
      */
     public static function parseDsn(string $dsn): array
     {
-        if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $dsn, $m) !== 1) {
-            throw new OrmException(Code::CONFIG, 'dsn must be a URI using mysql://, postgres://, or sqlite://');
+        $driver = self::scheme($dsn);
+        if ($driver === 'markdown') {
+            throw new OrmException(Code::CONFIG, 'a markdown DSN selects the markdown IR executor and has no PDO DSN; read it with parseMarkdownDsn');
         }
-        $driver = strtolower($m[1]);
         if (!in_array($driver, Db::DRIVERS, true)) {
-            throw new OrmException(Code::CONFIG, "unsupported DSN scheme $driver; want mysql, postgres, or sqlite");
+            throw new OrmException(Code::CONFIG, "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown");
         }
-        $parts = parse_url(str_replace($m[1] . ':///', $m[1] . '://localhost/', $dsn));
+        $scheme = substr($dsn, 0, strlen($driver));
+        $parts = parse_url(str_replace($scheme . ':///', $scheme . '://localhost/', $dsn));
         if ($parts === false) {
             throw new OrmException(Code::CONFIG, 'invalid DSN URI');
         }

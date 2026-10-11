@@ -171,6 +171,150 @@ final class Validator
         }
     }
 
+    /**
+     * The uses of each parameter of a validated request, by parameter index: each use is
+     * ['type' => the slot's logical type, 'column' => the compared or assigned column or null].
+     * A use is the compared or assigned column; a column function's result; i32, or f64 for
+     * seconds, for the interval of a relative time function; text for contains and
+     * contains_binary; the parent column for if_parent; the column for optimistic. An IR
+     * executor message writes each parameter in the form of its slot's type
+     * (docs/protocol.md §5), so the client reads the type here.
+     *
+     * @return list<list<array{type: string, column: ?array}>>
+     */
+    public function paramUses(array $r): array
+    {
+        $out = array_fill(0, $r['n_params'] ?? 0, []);
+        $ent = $this->m->entities[$r['entity']];
+        $this->queryUses($r, null, $out);
+        foreach ([...($r['set'] ?? []), ...($r['on_duplicate'] ?? [])] as $a) {
+            $col = RuntimeModel::column($ent, $a['column']);
+            foreach (['p', 'plus_p', 'minus_p'] as $field) {
+                if (isset($a[$field])) {
+                    self::columnUse($out, $a[$field], $col);
+                }
+            }
+        }
+        foreach ($r['rows'] ?? [] as $row) {
+            foreach ($row as $j => $i) {
+                self::columnUse($out, $i, RuntimeModel::column($ent, $r['set'][$j]['column']));
+            }
+        }
+        if (isset($r['optimistic'])) {
+            self::columnUse($out, $r['optimistic']['p'], RuntimeModel::column($ent, $r['optimistic']['column']));
+        }
+        return $out;
+    }
+
+    /** The type of a column function's result on column $col: the type of a parameter compared with it and of the output column it selects. */
+    public static function functionType(string $name, ?array $col): string
+    {
+        return match ($name) {
+            'day_of_week', 'year', 'month' => 'i64',
+            'date' => 'date',
+            default => $col['type'] ?? 'text',
+        };
+    }
+
+    /** @param list<list<array{type: string, column: ?array}>> $out */
+    private static function addUse(array &$out, int $i, string $type, ?array $col): void
+    {
+        if ($i >= 0 && $i < count($out)) {
+            $out[$i][] = ['type' => $type, 'column' => $col];
+        }
+    }
+
+    /** @param list<list<array{type: string, column: ?array}>> $out */
+    private static function columnUse(array &$out, int $i, ?array $col): void
+    {
+        if ($col !== null) {
+            self::addUse($out, $i, $col['type'], $col);
+        }
+    }
+
+    /**
+     * query $q의 parameter use를 $out에 더한다. relation child의 $parent는 부모 entity다.
+     *
+     * @param list<list<array{type: string, column: ?array}>> $out
+     */
+    private function queryUses(array $q, ?array $parent, array &$out): void
+    {
+        $ent = $this->m->entities[$q['entity'] ?? ''] ?? null;
+        if ($ent === null) {
+            return;
+        }
+        $this->groupUses($q['on'] ?? null, $ent, $out);
+        $this->groupUses($q['where'] ?? null, $ent, $out);
+        if (isset($q['if_parent']) && $parent !== null) {
+            self::columnUse($out, $q['if_parent']['p'], RuntimeModel::column($parent, $q['if_parent']['column']));
+        }
+        foreach ($q['columns']['sub'] ?? [] as $sub) {
+            $this->queryUses($sub['query'], null, $out);
+        }
+        foreach ($q['joins'] ?? [] as $j) {
+            $this->queryUses($j['query'], null, $out);
+        }
+        foreach ($q['relations'] ?? [] as $rel) {
+            $this->queryUses($rel['query'], $ent, $out);
+        }
+    }
+
+    /** @param list<list<array{type: string, column: ?array}>> $out */
+    private function groupUses(?array $g, array $ent, array &$out): void
+    {
+        foreach ($g['items'] ?? [] as $item) {
+            if (isset($item['pred'])) {
+                $this->predUses($item['pred'], $ent, $out);
+            } elseif (isset($item['group'])) {
+                $this->groupUses($item['group'], $ent, $out);
+            }
+        }
+    }
+
+    /** @param list<list<array{type: string, column: ?array}>> $out */
+    private function predUses(array $p, array $ent, array &$out): void
+    {
+        if (isset($p['sub'])) {
+            $this->queryUses($p['sub']['query'], null, $out);
+        }
+        if ($p['op'] === 'tuple_in' || $p['op'] === 'tuple_not_in') {
+            $cols = $p['cols'] ?? [];
+            foreach ($p['ps'] ?? [] as $k => $i) {
+                if ($cols !== []) {
+                    self::columnUse($out, $i, RuntimeModel::column($ent, $cols[$k % count($cols)]));
+                }
+            }
+            return;
+        }
+        $col = RuntimeModel::column($ent, $p['column'] ?? '');
+        foreach ($p['value']['ps'] ?? [] as $i) {
+            // 상대 시각 함수의 간격이다: 초는 소수를, 나머지 단위는 정수를 받는다.
+            self::addUse($out, $i, (Dialect::VALUE_FUNCTION_UNITS[$p['value']['name']] ?? '') === 'second' ? 'f64' : 'i32', null);
+        }
+        if ($p['op'] === 'contains' || $p['op'] === 'contains_binary') {
+            if (isset($p['p'])) {
+                self::addUse($out, $p['p'], 'text', null);
+            }
+            return;
+        }
+        $slots = $p['ps'] ?? [];
+        if (isset($p['p'])) {
+            array_unshift($slots, $p['p']);
+        }
+        foreach ($slots as $i) {
+            if (isset($p['fn'])) {
+                $type = self::functionType($p['fn']['name'], $col);
+                if ($col !== null && $type === $col['type']) {
+                    self::columnUse($out, $i, $col);
+                } else {
+                    self::addUse($out, $i, $type, null);
+                }
+                continue;
+            }
+            self::columnUse($out, $i, $col);
+        }
+    }
+
     /** Rejects unknown fields and wrong JSON types, like a strict decoder. */
     private static function shape(string $record, mixed $value, string $path): void
     {

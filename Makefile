@@ -1,6 +1,6 @@
 .PHONY: check check-run ci-group-needs feature-helper-check feature-stress-mysql-check feature-stress-pg-sqlite-check runner-check version-check repo-check ts-min-check php-min-check client-unit-check php-without-mysql-check client-db-check client-pooler-check case-database-check conformance-check dialect-facts-check conformance-counter-check conformance-result-check conformance-result-physical-check conformance-rust-group-check group-rows-physical-check unselected-column-physical-check decimal-bench-sqlite decimal-physical-check run-databases perf-check interface-check go-model-check ts-model-check ts-check typescript-build rust-check rust-fmt-check rust-150-check rust-driver-check example-check timing-check fuzz-check docs-dev docs-build docs-check docs-verify-idempotent docs-rules-check feature-unit-check feature-check feature-coverage feature-verify-rust feature-verify-other feature-docs package-check test-servers test-servers-tls test-servers-stop test-servers-leases test-servers-leases-clear
 # 실패에서 멈추지 않는 target의 독립된 부분이다(scripts/check/run.mjs가 make -k로 실행한다).
-.PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+.PHONY: version-check/unit version-check/run repo-check/unit repo-check/run rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces fuzz-check/engine-ir fuzz-check/clients-go-orm dialect-facts-check/probes dialect-facts-check/facts feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select testcase-check/go testcase-check/node testcase-check/runners testcase-check/php testcase-check/rust rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults ts-check/hold ts-check/types ts-check/test feature-check/build client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
 
 # git은 core.hooksPath가 `.githooks`일 때만 추적하는 hook(`.githooks/commit-msg`, `.githooks/pre-push`)을 실행하고, 그 설정은
@@ -772,9 +772,11 @@ fuzz-check/clients-go-orm:
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
-client-unit-check: client-unit-check/dsn client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
+client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/perf-extensions
 client-unit-check/dsn:
 	$(PHP) packages/orm-php/tests/dsn.php
+client-unit-check/markdown:
+	$(PHP) packages/orm-php/tests/markdown_test.php
 client-unit-check/relation-keys:
 	$(PHP) packages/orm-php/tests/relation_keys.php
 client-unit-check/hostcodec:
@@ -900,14 +902,17 @@ conformance-check/run: lease-tool conformance-python-models
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
-# markdown-conformance-check는 tests/markdown/cases.json의 case를 Go client로 FLOWMARK의 flowmark server에서
-# 실행한다(tests/markdown/README.md). FLOWMARK는 tests/markdown/flowmark.version이 고정한 build이며 make
+# markdown-conformance-check는 tests/markdown/cases.json의 case를 Go client와 PHP client로 각자 FLOWMARK의 flowmark
+# server에서 실행한다(tests/markdown/README.md). FLOWMARK는 tests/markdown/flowmark.version이 고정한 build이며 make
 # install-flowmark가 여기에 설치한다. test는 그 build 정보가 고정한 판이 아니면 실패하므로, 고정한 revision의 flowmark
 # checkout을 build한 binary는 FLOWMARK=<그 경로>로 줄 수 있다.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-.PHONY: markdown-conformance-check install-flowmark
-markdown-conformance-check:
+.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php install-flowmark
+markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php
+markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
+markdown-conformance-check/php:
+	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
 
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
