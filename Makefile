@@ -449,14 +449,22 @@ PYTHON_VENV = $(abspath packages/orm-python/.venv)
 # ORDERED_JSON is the checkout of polyspec/ordered-json whose packages/ordered-json-python/src the Python client imports. The sibling
 # checkout serves local work; CI checks the release v0.0.7 out inside the workspace (ci.yml sets ORDERED_JSON).
 ORDERED_JSON ?= $(abspath ..)/ordered-json
+# install-python은 config/toolchain.json의 pythonBuild를 var/tools/bin/python3에 설치하고(install-tools), kit의 python-venv로
+# 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다). 패키지는 kit의 release-consumer처럼 그 pip로 venv에 설치한다.
 .PHONY: install-python
 install-python:
-	$(ONLINE) python3 -m venv $(PYTHON_VENV)
-	$(ONLINE) $(PYTHON_VENV)/bin/python -m pip install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
-# python-venv-check는 install-python이 만든 interpreter가 있는지 확인한다. 없으면 내려받지 않고 실패한다.
+	$(MAKE) --no-print-directory install-tools TOOLS=python
+	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
+	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
+# python-venv-check는 install-python이 만든 venv가 있고 그 interpreter의 minor가 .python-version과 같은지 확인한다. 없거나
+# 다른 minor이면 내려받지도 고치지도 않고 실패하며, 고칠 방법(venv를 지우고 make install)을 적는다. .python-version은 minor를
+# 선언하고(requires-python도 그 minor), 정확한 release는 pythonBuild가 정하며 python-venv가 venv를 만들 때 확인한다.
 .PHONY: python-venv-check
 python-venv-check:
 	@test -x $(PYTHON_VENV)/bin/python || { echo "python-venv-check: $(PYTHON_VENV)/bin/python is missing; run make install, which creates it"; exit 1; }
+	@got=$$($(PYTHON_VENV)/bin/python -c 'import platform; print(platform.python_version())') || { echo "python-venv-check: $(PYTHON_VENV)/bin/python does not run; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }; \
+	want=$$(cut -d. -f1,2 .python-version); minor=$${got%.*}; \
+	test "$$minor" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but .python-version declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. PYTHONPATH names the sibling ordered-json source that the client imports.
@@ -636,7 +644,7 @@ version-check/run:
 repo-check: repo-check/unit repo-check/run
 repo-check/unit:
 	$(BUILD_NEW_SESSION)
-	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mjs
+	NEW_SESSION=$(NEW_SESSION) node --test scripts/repo/check.test.mjs scripts/repo/python-venv.test.mjs
 repo-check/run:
 	node scripts/repo/check.mjs
 
