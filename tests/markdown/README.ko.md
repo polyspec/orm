@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 7bd8ddb3867041fd80674294aa7656c588b5319f3887ee62cae56c747e9c34db -->
+<!-- source-sha256: 64eb3a5bf0da3d494aa6e13984d41c7204e973b7f54bb2f5c085ee06e013dbec -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -13,6 +13,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
 | `packages/orm-go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
 | `packages/orm-php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/orm-php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
+| `packages/orm-python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
 | `packages/orm-rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
 | `packages/orm-npm/src/models/markdown_fixture` | catalog에서 생성한 TypeScript model. TypeScript 실행기 `packages/orm-npm/tests/markdown_conformance.mjs`가 case보다 먼저 generator 출력과 비교하며, 실행기는 각 case를 `markdown-conformance/<id>`로 보고한다 |
 
@@ -25,7 +26,7 @@ make markdown-conformance-check
 
 `make install-flowmark`는 고정한 `flowmark`를 `.runtime/bin/flowmark`에 설치하고, `make markdown-conformance-check`는
 그 경로를 `FLOWMARK`로 각 실행기에 넘기며, 각 실행기는 자기 server와 corpus를 쓴다(`make markdown-conformance-check/<client>`가
-하나를 실행하고, TypeScript 것은 먼저 package를 build한다). 실행기는 `FLOWMARK`의 build 정보를 읽고(PHP
+하나를 실행하고, TypeScript 것은 먼저 package를 build한다). 실행기는 `FLOWMARK`의 build 정보를 읽고(PHP와 Python
 실행기는 `go version -m`으로), main module이 `flowmark.version` 판의
 `github.com/polyspec/flowmark`가 아니면 실패한다. 없거나 다른 build는 실행을 실패시키며 건너뛰지 않는다. 고정한
 revision의 flowmark checkout을 build한 binary도 같은 판을 가지므로, `make markdown-conformance-check FLOWMARK=<그 경로>`가
