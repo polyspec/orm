@@ -54,8 +54,12 @@ export async function readMySQL(query: CatalogQuery): Promise<Catalog> {
     const [charset, collation, generation] = [r.text(6), r.text(7), r.text(8)];
     const t = c.table(table);
     if (t === undefined) continue;
+    if (generation !== '') {
+      c.report('column', table, name, 'a generated column has no dbspec definition');
+      continue;
+    }
     const read = mysqlType(columnType, charset, collation);
-    if (read === null || generation !== '') {
+    if (read === null) {
       c.report('column', table, name, `type ${columnType} ${charset} ${collation} has no dbspec type`);
       continue;
     }

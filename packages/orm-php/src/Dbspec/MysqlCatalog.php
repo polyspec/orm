@@ -62,8 +62,12 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
             if ($t === null) {
                 continue;
             }
+            if ($generation !== '') {
+                $c->report('column', $table, $name, 'a generated column has no dbspec definition');
+                continue;
+            }
             $type = self::type($columnType, $charset, $collation);
-            if ($type === null || $generation !== '') {
+            if ($type === null) {
                 $c->report('column', $table, $name, "type $columnType $charset $collation has no dbspec type");
                 continue;
             }

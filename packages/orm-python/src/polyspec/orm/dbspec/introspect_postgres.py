@@ -87,8 +87,11 @@ def read_postgres(query) -> Catalog:
         t = c.table(table)
         if t is None:
             continue
+        if generated != '':
+            c.report('column', table, name, 'a generated column has no dbspec definition')
+            continue
         type_ = _postgres_type(formatted, collation)
-        if type_ is None or generated != '':
+        if type_ is None:
             c.report('column', table, name,
                      f'type {formatted} with collation {collation!r} has no dbspec '
                      f'type')

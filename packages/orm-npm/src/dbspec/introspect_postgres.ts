@@ -70,8 +70,12 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
     const [identity, generated, collation] = [r.text(6), r.text(7), r.text(8)];
     const t = c.table(table);
     if (t === undefined) continue;
+    if (generated !== '') {
+      c.report('column', table, name, 'a generated column has no dbspec definition');
+      continue;
+    }
     const type = postgresType(formatted, collation);
-    if (type === null || generated !== '') {
+    if (type === null) {
       c.report('column', table, name, `type ${formatted} with collation ${JSON.stringify(collation)} has no dbspec type`);
       continue;
     }

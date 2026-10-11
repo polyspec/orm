@@ -49,17 +49,18 @@ const applyProgressEvery = 1000
 func TestIntrospectCompare(t *testing.T) {
 	testcase.Group(t)
 	stressPath, rustRunner, extension := os.Getenv("DBSPEC_STRESS_DOCUMENT"), os.Getenv("DBSPEC_INTROSPECT_RUST"), os.Getenv("ORM_DBSPEC_EXTENSION")
+	pythonRunner := os.Getenv("DBSPEC_INTROSPECT_PYTHON")
 	mysqlDSN, postgresDSN := os.Getenv("ORM_TEST_MYSQL_DSN"), os.Getenv("ORM_TEST_POSTGRES_DSN")
-	if stressPath == "" || rustRunner == "" || extension == "" || mysqlDSN == "" || postgresDSN == "" {
-		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_DBSPEC_EXTENSION, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
+	if stressPath == "" || rustRunner == "" || extension == "" || pythonRunner == "" || mysqlDSN == "" || postgresDSN == "" {
+		t.Fatal("DBSPEC_STRESS_DOCUMENT, DBSPEC_INTROSPECT_RUST, ORM_DBSPEC_EXTENSION, DBSPEC_INTROSPECT_PYTHON, ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; run make dbspec-introspect-compare-check")
 	}
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// make는 자기 실행 directory(RUN_DIR)의 문서와 program 복사본을 절대 경로로 준다.
-	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) {
-		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q and ORM_DBSPEC_EXTENSION %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension)
+	if !filepath.IsAbs(stressPath) || !filepath.IsAbs(rustRunner) || !filepath.IsAbs(extension) || !filepath.IsAbs(pythonRunner) {
+		t.Fatalf("DBSPEC_STRESS_DOCUMENT %q, DBSPEC_INTROSPECT_RUST %q, ORM_DBSPEC_EXTENSION %q and DBSPEC_INTROSPECT_PYTHON %q must be absolute paths in the run directory of make", stressPath, rustRunner, extension, pythonRunner)
 	}
 	text, diagnostics, err := dbspec.ReadFile(stressPath)
 	if err != nil {
@@ -83,6 +84,7 @@ func TestIntrospectCompare(t *testing.T) {
 		{"typescript", []string{"node", "tests/dbspec/introspect/typescript.mjs"}},
 		{"rust", []string{rustRunner}},
 		{"php-extension", []string{"php", "-d", "extension=" + extension, "tests/dbspec/introspect/php-extension.php"}},
+		{"python", []string{pythonRunner, "packages/orm-python/tests/dbspec_introspect_runner.py"}},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {

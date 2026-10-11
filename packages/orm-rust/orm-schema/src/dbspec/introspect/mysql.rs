@@ -76,7 +76,11 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         if !c.has_table(&table) {
             continue;
         }
-        let Some((typ, needs_check)) = mysql_type(&column_type, &charset, &collation).filter(|_| generation.is_empty()) else {
+        if !generation.is_empty() {
+            c.report("column", &table, &name, "a generated column has no dbspec definition");
+            continue;
+        }
+        let Some((typ, needs_check)) = mysql_type(&column_type, &charset, &collation) else {
             c.report("column", &table, &name, format!("type {column_type} {charset} {collation} has no dbspec type"));
             continue;
         };

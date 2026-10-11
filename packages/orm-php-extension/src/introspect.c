@@ -1645,9 +1645,13 @@ static catalog *mysql_read(zval *pdo)
             if (t == NULL) {
                 continue;
             }
+            if (generation.n > 0) {
+                catalog_report(c, SL("column"), table, name, SL("a generated column has no dbspec definition"));
+                continue;
+            }
             str needs;
             ctype *type = mysql_type(column_type, charset, collation, &needs);
-            if (type == NULL || generation.n > 0) {
+            if (type == NULL) {
                 catalog_report(c, SL("column"), table, name, fmt("type %S %S %S has no dbspec type", column_type, charset, collation));
                 continue;
             }
@@ -2094,8 +2098,12 @@ static catalog *pg_read(zval *pdo)
             if (t == NULL) {
                 continue;
             }
+            if (generated.n > 0) {
+                catalog_report(c, SL("column"), table, name, SL("a generated column has no dbspec definition"));
+                continue;
+            }
             ctype *type = pg_type(formatted, collation);
-            if (type == NULL || generated.n > 0) {
+            if (type == NULL) {
                 catalog_report(c, SL("column"), table, name, fmt("type %S with collation \"%S\" has no dbspec type", formatted, collation));
                 continue;
             }

@@ -95,8 +95,12 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 		if t == nil {
 			return nil
 		}
+		if generated != "" {
+			c.report("column", table, name, "a generated column has no dbspec definition")
+			return nil
+		}
 		typ, ok := postgresType(formatted, collation)
-		if !ok || generated != "" {
+		if !ok {
 			c.report("column", table, name, "type %s with collation %q has no dbspec type", formatted, collation)
 			return nil
 		}

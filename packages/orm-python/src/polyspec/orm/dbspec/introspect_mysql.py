@@ -70,8 +70,11 @@ def read_mysql(query) -> Catalog:
         t = c.table(table)
         if t is None:
             continue
+        if generation != '':
+            c.report('column', table, name, 'a generated column has no dbspec definition')
+            continue
         read = _mysql_type(column_type, charset, collation)
-        if read is None or generation != '':
+        if read is None:
             c.report('column', table, name,
                      f'type {column_type} {charset} {collation} has no dbspec type')
             continue

@@ -208,7 +208,7 @@ func TestIntrospectUnsupported(t *testing.T) {
 			Documents   map[string][]string `json:"documents"`
 			Statements  []string            `json:"statements"`
 			Document    []string            `json:"document"`
-			Unsupported [][3]string         `json:"unsupported"`
+			Unsupported [][]string          `json:"unsupported"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(raw, &vectors); err != nil {
@@ -253,12 +253,23 @@ func TestIntrospectUnsupported(t *testing.T) {
 			if got := dbspec.Emit(document); got != want {
 				e.fail("document differs\n--- want\n%s--- got\n%s", want, got)
 			}
-			got := make([][3]string, len(unsupported))
+			got := make([][]string, len(unsupported))
 			for i, u := range unsupported {
-				got[i] = [3]string{u.Kind, u.Table, u.Name}
+				got[i] = []string{u.Kind, u.Table, u.Name}
 			}
-			if !slices.Equal(got, c.Unsupported) {
+			want := make([][]string, len(c.Unsupported))
+			for i, w := range c.Unsupported {
+				want[i] = w[:3]
+			}
+			if !slices.EqualFunc(got, want, func(a, b []string) bool { return slices.Equal(a, b) }) {
 				e.fail("unsupported differs\nwant %v\ngot  %+v", c.Unsupported, unsupported)
+				return
+			}
+			// 네 번째 원소는 reason이 포함해야 하는 rule이다. 없으면 reason은 비교하지 않는다.
+			for i, w := range c.Unsupported {
+				if len(w) == 4 && !strings.Contains(unsupported[i].Reason, w[3]) {
+					e.fail("reason of %s %s %s differs\nwant rule %q\ngot  %q", w[0], w[1], w[2], w[3], unsupported[i].Reason)
+				}
 			}
 		}}
 		t.Run(probe.ID, func(t *testing.T) { runProbeCase(t, servers, probe, index, "") })

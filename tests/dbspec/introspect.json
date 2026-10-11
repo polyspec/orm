@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; reasons are not compared. docs/dialects.md \"Introspection\".",
+  "note": "Each case renders its documents and runs its statements in an empty database of its dialect, with {schema} in a statement replaced by the name of that database or schema; a PostgreSQL case may create a second schema named {schema}_b, which is dropped with it, introspects the database into a document named introspected, and expects that document in canonical form and the unsupported objects as [kind, table, name] in the order of table, kind and name; an entry may add a fourth element, a rule that the reason of that object must contain, and otherwise reasons are not compared. docs/dialects.md \"Introspection\".",
   "cases": [
     {
       "id": "mysql-unsupported",
@@ -694,6 +694,56 @@
         "}"
       ],
       "unsupported": []
+    },
+    {
+      "id": "mysql-generated-column",
+      "dialect": "mysql",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE `gen` (`id` bigint NOT NULL, `n` bigint NOT NULL, `label` varchar(128) AS (concat(`n`, 'x')) STORED, PRIMARY KEY (`id`))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table gen {",
+        "  id i64",
+        "  n i64",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "column",
+          "gen",
+          "label",
+          "a generated column"
+        ]
+      ]
+    },
+    {
+      "id": "postgres-generated-column",
+      "dialect": "postgres",
+      "documents": {},
+      "statements": [
+        "CREATE TABLE \"gen\" (\"id\" bigint NOT NULL, \"n\" bigint NOT NULL, \"label\" varchar(128) GENERATED ALWAYS AS (\"n\"::text || 'x') STORED, PRIMARY KEY (\"id\"))"
+      ],
+      "document": [
+        "dbspec 1 introspected",
+        "",
+        "table gen {",
+        "  id i64",
+        "  n i64",
+        "  primary key (id)",
+        "}"
+      ],
+      "unsupported": [
+        [
+          "column",
+          "gen",
+          "label",
+          "a generated column"
+        ]
+      ]
     }
   ]
 }

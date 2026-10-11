@@ -73,8 +73,12 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 			return nil
 		}
 		col := icolumn{name: name, null: nullable == "YES"}
+		if generation != "" {
+			c.report("column", table, name, "a generated column has no dbspec definition")
+			return nil
+		}
 		typ, needsCheck, ok := mysqlType(columnType, charset, collation)
-		if !ok || generation != "" {
+		if !ok {
 			c.report("column", table, name, "type %s %s %s has no dbspec type", columnType, charset, collation)
 			return nil
 		}
