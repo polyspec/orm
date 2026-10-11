@@ -2170,6 +2170,42 @@
           }
         ]
       }
+    },
+    {
+      "name": "hex_malformed",
+      "chain": "HexCell getBySeq(1) (' 4F', white space), getBySeq(2) ('686', odd length): each CODEC_DECODE",
+      "expect": {
+        "result": {
+          "odd_length": "CODEC_DECODE",
+          "white_space": "CODEC_DECODE"
+        },
+        "statements": [
+          {
+            "binds": [
+              1
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"value\" AS \"a__value\" FROM \"hex_cell\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "hex_cell"
+            ],
+            "transaction": null
+          },
+          {
+            "binds": [
+              2
+            ],
+            "error": null,
+            "kind": "select",
+            "sql": "SELECT \"a\".\"seq\" AS \"a__seq\", \"a\".\"label\" AS \"a__label\", \"a\".\"value\" AS \"a__value\" FROM \"hex_cell\" AS \"a\" WHERE \"a\".\"seq\" = $1 LIMIT 1 OFFSET 0",
+            "tables": [
+              "hex_cell"
+            ],
+            "transaction": null
+          }
+        ]
+      }
     }
   ]
 }

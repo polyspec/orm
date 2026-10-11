@@ -9,7 +9,7 @@
 // Each --vector selects one vector by name; without one every vector runs.
 // The models embed the manifest of schema/bench.dbs.
 import {
-  AesKeyring, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
+  AesKeyring, Author, CompositeAccount, HexCell, Service, ServiceMember, ServiceRegion, SoftRecord, StyledValue, Task, User, connect, orm,
 } from '../../packages/orm-npm/dist/index.js';
 import { derivedInteger, executeVector, resultValue } from './result_typescript.mjs';
 
@@ -450,6 +450,11 @@ async function main() {
     const versions = [...status.versions].map(([v, n]) => `${v}:${n}`).sort();
     return { current: status.current, pending: status.pending, versions: versions.join(',') };
   });
+  // the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+  await run('hex_malformed', async () => ({
+    white_space: await caught(new HexCell().connect(db).getBySeq(1)),
+    odd_length: await caught(new HexCell().connect(db).getBySeq(2)),
+  }));
 
   await db.close();
   const unknown = selected.filter(name => !declared.has(name));

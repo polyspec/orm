@@ -15,3 +15,7 @@ INSERT INTO "user" ("seq", "name") SELECT DISTINCT "user_seq", 'user-' || "user_
 INSERT INTO "service" ("seq", "name") SELECT DISTINCT "service_seq", 'service-' || "service_seq" FROM "author" UNION ALL SELECT 999, 'service-999';
 INSERT INTO "service_region" ("seq", "service_seq", "name") SELECT "service_region_seq", MIN("service_seq"), 'module-' || "service_region_seq" FROM "author" GROUP BY "service_region_seq";
 INSERT INTO "service_member" ("seq", "service_seq", "user_seq") SELECT "service_member_seq", MIN("service_seq"), MIN("user_seq") FROM "author" GROUP BY "service_member_seq";
+
+-- hex_cell holds raw hex cells that no encoder writes: decoding each one is CODEC_DECODE
+-- (vector hex_malformed, docs/codec.md "Decoding is exact").
+INSERT INTO "hex_cell" ("seq", "label", "value") VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');

@@ -801,6 +801,11 @@
           "composite_membership"
         ],
         [
+          "settings",
+          "hex_cell",
+          "hex_cell"
+        ],
+        [
           "index",
           "service_member",
           "ix_service_member_service"

@@ -9,6 +9,7 @@ require __DIR__ . '/result_php_helpers.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
+use Polyspec\Orm\Tests\Model\HexCell;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
@@ -474,6 +475,12 @@ vector('aes_status', function () use ($db): array {
     sort($versions);
     return ['current' => $status->current, 'pending' => $status->pending, 'versions' => implode(',', $versions)];
 });
+
+// the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+vector('hex_malformed', fn(): array => [
+    'white_space' => caught(fn() => (new HexCell)($db)->getBySeq(1)),
+    'odd_length' => caught(fn() => (new HexCell)($db)->getBySeq(2)),
+]);
 
 foreach (array_keys($selected) as $name) {
     if (!isset($vectors[$name])) {

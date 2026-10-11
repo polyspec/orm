@@ -17,3 +17,8 @@ SELECT setval(pg_get_serial_sequence('"user"', 'seq'), (SELECT MAX("seq") FROM "
 SELECT setval(pg_get_serial_sequence('"service"', 'seq'), (SELECT MAX("seq") FROM "service"));
 SELECT setval(pg_get_serial_sequence('"service_region"', 'seq'), (SELECT MAX("seq") FROM "service_region"));
 SELECT setval(pg_get_serial_sequence('"service_member"', 'seq'), (SELECT MAX("seq") FROM "service_member"));
+
+-- hex_cell holds raw hex cells that no encoder writes: decoding each one is CODEC_DECODE
+-- (vector hex_malformed, docs/codec.md "Decoding is exact").
+INSERT INTO "hex_cell" ("seq", "label", "value") VALUES (1, 'white-space', ' 4F'), (2, 'odd-length', '686');
+SELECT setval(pg_get_serial_sequence('"hex_cell"', 'seq'), (SELECT MAX("seq") FROM "hex_cell"));

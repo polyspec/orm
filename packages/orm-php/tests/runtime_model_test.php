@@ -50,7 +50,7 @@ function errorCode(Closure $fn): string
 $bench = RuntimeModel::build(RuntimeModel::files(["$root/schema/bench.dbs"]));
 
 runCase('entities in document order', function () use ($bench): void {
-    $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task'];
+    $want = ['author', 'user', 'service', 'service_region', 'service_member', 'composite_account', 'composite_membership', 'soft_record', 'account', 'project', 'account_project', 'task', 'hex_cell'];
     want(array_keys($bench->entities) === $want, 'entities ' . implode(',', array_keys($bench->entities)));
     $author = $bench->entities['author'];
     want($author['identity'] === 'seq' && $author['pk'] === ['seq'], 'author keys');

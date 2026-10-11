@@ -827,6 +827,12 @@ func run() (status int) {
 		sort.Strings(versions)
 		return map[string]any{"current": status.Current, "pending": status.Pending, "versions": strings.Join(versions, ",")}, nil
 	})
+	// the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+	run("hex_malformed", func() (any, error) {
+		_, whiteSpace := model.HexCell().Connect(db).GetBySeq(1)
+		_, oddLength := model.HexCell().Connect(db).GetBySeq(2)
+		return map[string]any{"white_space": code(whiteSpace), "odd_length": code(oddLength)}, nil
+	})
 
 	vectors, err := selectVectors(declared, selected)
 	check(err)

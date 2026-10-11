@@ -58,7 +58,7 @@ def parse_args(args):
 # Set by main() from the arguments; importing this module parses nothing.
 DSN, MODELS_DIR, SELECTED = None, None, []
 bench = Author = CompositeAccount = Service = ServiceMember = ServiceRegion = None
-User = SoftRecord = Task = None
+User = SoftRecord = Task = HexCell = None
 
 log = []
 transactions = {}
@@ -244,13 +244,13 @@ def go_escape(text):
 
 
 def load_models():
-    global bench, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, User, SoftRecord, Task
+    global bench, Author, CompositeAccount, Service, ServiceMember, ServiceRegion, User, SoftRecord, Task, HexCell
     sys.path.insert(0, MODELS_DIR)
     import models as generated  # noqa: E402  (generated from schema/bench.dbs)
     bench = generated
     Author, CompositeAccount, Service, ServiceMember, ServiceRegion = (
         bench.Author, bench.CompositeAccount, bench.Service, bench.ServiceMember, bench.ServiceRegion)
-    User, SoftRecord, Task = bench.User, bench.SoftRecord, bench.Task
+    User, SoftRecord, Task, HexCell = bench.User, bench.SoftRecord, bench.Task, bench.HexCell
 
 
 def main():
@@ -602,6 +602,12 @@ def main():
         versions = sorted(f'{v}:{n}' for v, n in status.versions.items())
         return {'current': status.current, 'pending': status.pending, 'versions': ','.join(versions)}
     run('aes_status', aes_status)
+
+    def hex_malformed():
+        # the seed stores raw hex cells that no encoder writes (bench/sql/seed.*.sql)
+        return {'white_space': caught(lambda: HexCell().connect(db).get_by_seq(1)),
+                'odd_length': caught(lambda: HexCell().connect(db).get_by_seq(2))}
+    run('hex_malformed', hex_malformed)
 
     db.close()
     unknown = [name for name in SELECTED if name not in declared]
