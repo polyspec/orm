@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T125: every client takes a request hook on a connection handle: `withRequestHook` (Go `WithRequestHook`, Rust and Python `with_request_hook`) returns a handle on the same connection whose hook receives each request of a read, count, page, insert, update, delete, restore and getQuery right before planning and may add predicates, assignments and parameters; the planner validates the changed request, the plan cache keys on it, and rows and transactions of the handle keep the hook.
 - T128-4: `@polyspec/orm/dbspec` is a browser-safe entry with parse, emit, analyze, format and readDbspecBytes; its module graph holds no Node module, Node global or driver, and a test follows the graph to prove it.
 - T128-2-2: the syntax analysis rules ground their exclusion of regex grammars on valid column names that are keyword words (`key`, `text`, `references`), instead of the reserved `table`.
 - T128-2-1: the dbspec syntax analysis rules define a number by its form, a word of digits with an optional fraction, and keep its `number` class on a line read only lexically.
