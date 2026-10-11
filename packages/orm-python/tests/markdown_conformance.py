@@ -19,7 +19,6 @@ sys.path.insert(0, str(ROOT / 'packages' / 'orm-python' / 'src'))
 from test_sqlite import generate  # noqa: E402
 
 from polyspec.orm import Collection, Model, OrmError  # noqa: E402
-from polyspec.orm.engine.model import field_of  # noqa: E402
 
 CONFORMANCE_DIR = ROOT / 'tests' / 'markdown'
 FLOWMARK_MODULE = 'github.com/polyspec/flowmark'
@@ -78,23 +77,11 @@ def pinned_flowmark() -> str:
     return binary
 
 
-def datetime_text(value: str, type_: str) -> str:
-    """README "Results"의 비교 form: date와 datetime은 YYYY-MM-DD HH:MM:SS.ffffff다."""
-    if type_ == 'date':
-        return f'{value} 00:00:00.000000'
-    whole, _, fraction = value.partition('.')
-    return f'{whole}.{fraction.ljust(6, "0")}'
-
-
 def array_form(m: Model) -> dict:
-    """model의 array form(to_array)이다. date와 datetime column은 README의 비교 form으로 쓴다."""
+    """model의 array form(to_array)이다. Python model은 date를 README "Results"의 YYYY-MM-DD text로 가진다."""
     out = m.to_array()
-    entity = m.core.ent.entity
     related = m.core.row.related if m.core.row is not None else {}
-    for name, value in out.items():
-        field = field_of(entity, name)
-        if field is not None and field.type in ('date', 'datetime') and isinstance(value, str):
-            out[name] = datetime_text(value, field.type)
+    for name in out:
         child = related.get(name)
         if isinstance(child, Model):
             out[name] = array_form(child)
