@@ -1,19 +1,19 @@
 {
   "schema": 1,
-  "comment": "The implementations of orm, the one source of its language set, and the shared vector suites and the error catalog that each of them holds, as the tree stands. scripts/kit/parity.mjs reads it (make parity-declarations-check, make parity-check; docs/tool-inventory of kit, Language parity). A missing binding stays missing so that the check reports it.",
+  "comment": "The implementations of orm, the one source of its language set, and the shared vector suites and the error catalog that each of them holds, as the tree stands. scripts/kit/parity.mjs reads it (make parity-declarations-check, make parity-check; docs/tool-inventory of kit, Language parity). A missing binding stays missing so that the check reports it. The tests globs of go, php, typescript and rust match every coverage_* test file except the support files that share the prefix (coverage_helpers_test.go, coverage_fixture_test.go, coverage_cases.php, coverage_cases_test.php, coverage_case.mjs, coverage_env.rs): a kit glob has no exclusion, so each glob set spells out every other name, branch by branch.",
   "implementations": [
     {
       "name": "go",
       "runner": "go",
       "roots": ["packages/orm-go", "engine", "generator", "cmd", "internal", "contracts"],
-      "tests": ["packages/orm-go/**/coverage_*_test.go"],
+      "tests": ["packages/orm-go/**/coverage_{a,b,c,d,e,g,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_h_test.go","packages/orm-go/**/coverage_h{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_he_test.go","packages/orm-go/**/coverage_he{a,b,c,d,e,f,g,h,i,j,k,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_hel_test.go","packages/orm-go/**/coverage_hel{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_help_test.go","packages/orm-go/**/coverage_help{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_helpe_test.go","packages/orm-go/**/coverage_helpe{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_helper_test.go","packages/orm-go/**/coverage_helper{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_helpers{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_f_test.go","packages/orm-go/**/coverage_f{a,b,c,d,e,f,g,h,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fi_test.go","packages/orm-go/**/coverage_fi{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fix_test.go","packages/orm-go/**/coverage_fix{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fixt_test.go","packages/orm-go/**/coverage_fixt{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fixtu_test.go","packages/orm-go/**/coverage_fixtu{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fixtur_test.go","packages/orm-go/**/coverage_fixtur{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go","packages/orm-go/**/coverage_fixture{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*_test.go"],
       "errors": { "file": "packages/orm-go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
     },
     {
       "name": "php",
       "runner": "php",
       "roots": ["packages/orm-php"],
-      "tests": ["packages/orm-php/tests/coverage_*.php"],
+      "tests": ["packages/orm-php/tests/coverage_{a,b,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_c.php","packages/orm-php/tests/coverage_c{b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_ca.php","packages/orm-php/tests/coverage_ca{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cas.php","packages/orm-php/tests/coverage_cas{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_case.php","packages/orm-php/tests/coverage_case{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cases{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,-}*.php","packages/orm-php/tests/coverage_cases_.php","packages/orm-php/tests/coverage_cases_{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cases_t.php","packages/orm-php/tests/coverage_cases_t{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cases_te.php","packages/orm-php/tests/coverage_cases_te{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cases_tes.php","packages/orm-php/tests/coverage_cases_tes{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php","packages/orm-php/tests/coverage_cases_test{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.php"],
       "errors": { "file": "packages/orm-php/src/Code.php", "pattern": "^    public const (\\w+) = '\\w+';$" }
     },
     {
@@ -27,7 +27,7 @@
       "name": "typescript",
       "runner": "node",
       "roots": ["packages/orm-npm"],
-      "tests": ["packages/orm-npm/tests/coverage_*.mjs"]
+      "tests": ["packages/orm-npm/tests/coverage_{a,b,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.mjs","packages/orm-npm/tests/coverage_c.mjs","packages/orm-npm/tests/coverage_c{b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.mjs","packages/orm-npm/tests/coverage_ca.mjs","packages/orm-npm/tests/coverage_ca{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.mjs","packages/orm-npm/tests/coverage_cas.mjs","packages/orm-npm/tests/coverage_cas{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.mjs","packages/orm-npm/tests/coverage_case{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.mjs"]
     },
     {
       "name": "python",
@@ -41,7 +41,7 @@
       "name": "rust",
       "runner": "cargo",
       "roots": ["packages/orm-rust"],
-      "tests": ["packages/orm-rust/**/tests/**/coverage_*.rs"],
+      "tests": ["packages/orm-rust/**/tests/**/coverage_{a,b,c,d,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.rs","packages/orm-rust/**/tests/**/coverage_e.rs","packages/orm-rust/**/tests/**/coverage_e{a,b,c,d,e,f,g,h,i,j,k,l,m,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.rs","packages/orm-rust/**/tests/**/coverage_en.rs","packages/orm-rust/**/tests/**/coverage_en{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.rs","packages/orm-rust/**/tests/**/coverage_env{a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,0,1,2,3,4,5,6,7,8,9,_,-}*.rs"],
       "errors": { "file": "packages/orm-rust/orm/src/codes.rs", "pattern": "^pub const (\\w+): &str = \"\\w+\";$" }
     }
   ],
