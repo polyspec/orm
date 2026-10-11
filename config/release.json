@@ -20,6 +20,11 @@
       "kind": "composer",
       "directory": "packages/orm-php-extension",
       "name": "polyspec/orm-dbspec"
+    },
+    {
+      "kind": "wheel",
+      "directory": "packages/orm-python",
+      "name": "polyspec-orm"
     }
   ],
   "manifests": {
@@ -27,10 +32,14 @@
     "packages/orm-npm/package.json": "archive",
     "packages/orm-php/composer.json": "archive",
     "packages/orm-php-extension/composer.json": "archive",
-    "packages/orm-python/pyproject.toml": "git-tag",
+    "packages/orm-python/pyproject.toml": "archive",
     "packages/orm-rust/orm-schema/Cargo.toml": "git-tag",
     "packages/orm-rust/orm/Cargo.toml": "git-tag",
     "packages/orm-rust/orm-build/Cargo.toml": "git-tag"
+  },
+  "buildBackend": {
+    "requirement": "setuptools==84.0.0",
+    "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
   },
   "notReleased": {
     "package.json": "the private npm workspace root: it installs packages/orm-npm as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
@@ -69,19 +78,19 @@
           "require 'vendor/autoload.php'; if (!class_exists('Polyspec\\\\Orm\\\\Db')) { exit(1); }"
         ]
       }
-    }
-  },
-  "proof": {
-    "gitTag": {
-      "packages/orm-python/pyproject.toml": {
-        "kind": "python",
-        "name": "polyspec-orm",
-        "smoke": [
+    },
+    "wheel": {
+      "smoke": {
+        "polyspec-orm": [
           "python",
           "-c",
           "import polyspec.orm"
         ]
-      },
+      }
+    }
+  },
+  "proof": {
+    "gitTag": {
       "packages/orm-rust/orm-schema/Cargo.toml": {
         "kind": "rust",
         "name": "polyspec-orm-schema",
