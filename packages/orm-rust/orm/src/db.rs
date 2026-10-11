@@ -34,6 +34,37 @@ use crate::{codes, Error, Result};
 /// audit value of its own.
 pub type AuditSource = Arc<dyn Fn() -> Result<Vec<(String, Param)>> + Send + Sync>;
 
+/// The request hook of a handle (docs/usage.md "Request hook"): it receives each
+/// request of the handle right before the client plans it, changes it in place
+/// and adds parameters with [`RequestParams::add`]. An error it returns fails the
+/// operation unchanged, before any statement.
+pub type RequestHook = Arc<dyn Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync>;
+
+/// The parameters of the request a [`RequestHook`] receives.
+pub struct RequestParams {
+    params: Vec<Param>,
+}
+
+impl RequestParams {
+    /// Appends `value` to the request parameters and returns its index.
+    pub fn add(&mut self, value: impl Into<Param>) -> usize {
+        self.params.push(value.into());
+        self.params.len() - 1
+    }
+}
+
+/// handle의 request hook을 req에 적용한다. hook이 없으면 아무것도 하지 않는다. hook은 request와
+/// parameter를 바꾸고, 그 뒤 n_params는 parameter 수다. hook의 오류는 그대로 돌려준다.
+pub(crate) fn apply_request_hook(handle: &Db, req: &mut Req) -> Result<()> {
+    let Some(hook) = &handle.hook else { return Ok(()) };
+    req.ir.n_params = req.params.len();
+    let mut params = RequestParams { params: std::mem::take(&mut req.params) };
+    let result = hook(&mut req.ir, &mut params);
+    req.params = params.params;
+    req.ir.n_params = req.params.len();
+    result
+}
+
 /// The connection configuration: declared, never discovered.
 #[derive(Clone)]
 pub struct Config {
@@ -294,6 +325,8 @@ pub(crate) struct DbInner {
 #[derive(Clone)]
 pub struct Db {
     pub(crate) inner: Arc<DbInner>,
+    /// 이 handle의 request hook이다. 연결의 다른 handle과 공유하지 않는다.
+    pub(crate) hook: Option<RequestHook>,
 }
 
 /// The connection pool state.
@@ -455,6 +488,7 @@ impl Db {
                 #[cfg(feature = "test-faults")]
                 statement_fault: Mutex::new(None),
             }),
+            hook: None,
         };
         let _ = owner.set(Arc::downgrade(&db.inner));
         Ok(db)
@@ -462,6 +496,18 @@ impl Db {
 
     pub(crate) fn id(&self) -> u64 {
         self.inner.id
+    }
+
+    /// Returns a handle on the same connection whose hook receives each request
+    /// of the handle right before the client plans it (docs/usage.md "Request
+    /// hook"). The handle shares the pool, the caches, the subscribers and the
+    /// active transactions of the connection; it carries one hook, so this
+    /// replaces the hook of a hooked handle.
+    pub fn with_request_hook<F>(&self, hook: F) -> Db
+    where
+        F: Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static,
+    {
+        Db { inner: self.inner.clone(), hook: Some(Arc::new(hook)) }
     }
 
     /// The database of the connection: mysql, postgres, sqlite, or markdown, a
