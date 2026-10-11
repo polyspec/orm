@@ -7,7 +7,7 @@
       "runner": "go",
       "roots": ["packages/orm-go", "engine", "generator", "cmd", "internal", "contracts"],
       "tests": ["packages/orm-go/**/coverage_*_test.go"],
-      "args": ["-tags", "physical,ormtest"],
+      "args": ["-tags", "physical,ormtest,markdown"],
       "errors": { "file": "packages/orm-go/orm/codes.go", "pattern": "^\\tCode\\w+\\s+= \"(\\w+)\"" }
     },
     {
