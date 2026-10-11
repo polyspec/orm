@@ -38,10 +38,21 @@ function plannerCase(string $root, array $fixture, string $id): void
         // key는 fixture의 정렬된 key 순서다.
         $statements = array_map(static fn(array $step): array => [
             'role' => $step['role'],
-            'slots' => array_map(static fn(array $slot): array => match ($slot['from']) {
-                'param' => ['from' => 'param', 'param' => $slot['param'], 'type' => $slot['col_type'] ?? ''],
-                'parent' => ['from' => 'parent', 'key_types' => $slot['key_types']],
-                default => ['from' => $slot['from'], 'type' => $slot['col_type'] ?? ''],
+            'slots' => array_map(static function (array $slot): array {
+                if ($slot['from'] === 'parent') {
+                    return ['from' => 'parent', 'key_types' => $slot['key_types']];
+                }
+                $type = $slot['col_type'] ?? '';
+                $out = ['from' => $slot['from']];
+                if ($slot['from'] === 'param') {
+                    $out['param'] = $slot['param'];
+                }
+                // A datetime or time slot carries its fraction digits (sorted key order).
+                if ($type === 'datetime' || $type === 'time') {
+                    $out['precision'] = $slot['precision'] ?? 0;
+                }
+                $out['type'] = $type;
+                return $out;
             }, $step['bind_slots']),
             'sql' => $step['sql'],
             'tables' => $step['tables'],

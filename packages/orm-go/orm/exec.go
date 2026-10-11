@@ -175,8 +175,8 @@ func (d *DB) args(st *plan.Step, r *request, parentVals []any) (out []any, masks
 					return nil, nil, err
 				}
 			}
-			if d.driver == "sqlite" && (b.ColType == "datetime" || b.ColType == "date") && v != nil {
-				if v, err = d.sqliteTimeValue(v, b.ColType); err != nil {
+			if d.driver == "sqlite" && (b.ColType == "datetime" || b.ColType == "date" || b.ColType == "time") && v != nil {
+				if v, err = d.sqliteTimeValue(v, b.ColType, b.Precision); err != nil {
 					return nil, nil, err
 				}
 			}

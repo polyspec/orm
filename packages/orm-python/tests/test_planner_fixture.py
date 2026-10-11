@@ -19,11 +19,14 @@ from polyspec.orm.errors import OrmError  # noqa: E402
 
 def _slot(slot: dict) -> dict:
     """bind slot의 출처와 type: param slot은 request 값의 번호를, parent slot은 key type을 싣는다."""
-    if slot['from'] == 'param':
-        return {'from': 'param', 'param': slot['param'], 'type': slot.get('col_type', '')}
     if slot['from'] == 'parent':
         return {'from': 'parent', 'key_types': slot['key_types']}
-    return {'from': slot['from'], 'type': slot.get('col_type', '')}
+    out = {'from': slot['from'], 'type': slot.get('col_type', '')}
+    if slot['from'] == 'param':
+        out = {'from': 'param', 'param': slot['param'], 'type': out['type']}
+    if out['type'] in ('datetime', 'time'):
+        out['precision'] = slot.get('precision', 0)
+    return out
 
 
 class PlannerFixtureTest(unittest.TestCase):

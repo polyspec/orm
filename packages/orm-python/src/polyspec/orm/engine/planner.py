@@ -74,7 +74,11 @@ class _Builder:
         return self._push(slot)
 
     def param(self, i: int, type_: str) -> str:
-        return self._typed(_Slot('param', param=i, col_type=type_))
+        slot = _Slot('param', param=i, col_type=type_)
+        # A datetime or time compared with a function's argument or result is text of six fraction digits.
+        if type_ in ('time', 'datetime'):
+            slot.precision = 6
+        return self._typed(slot)
 
     def col_param(self, i: int, col: Field, transform: str = '') -> str:
         slot = _Slot('param', param=i, transform=transform, col_type=col.type)

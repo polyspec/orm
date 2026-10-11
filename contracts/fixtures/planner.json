@@ -582,6 +582,7 @@
               },
               {
                 "from": "now",
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -591,6 +592,7 @@
               },
               {
                 "from": "now",
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -733,6 +735,7 @@
               {
                 "from": "param",
                 "param": 4,
+                "precision": 6,
                 "type": "datetime"
               }
             ],
@@ -783,6 +786,7 @@
               {
                 "from": "param",
                 "param": 4,
+                "precision": 6,
                 "type": "datetime"
               }
             ],
@@ -827,6 +831,7 @@
               },
               {
                 "from": "now",
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -837,6 +842,7 @@
               {
                 "from": "param",
                 "param": 4,
+                "precision": 6,
                 "type": "datetime"
               }
             ],
@@ -904,11 +910,13 @@
               {
                 "from": "param",
                 "param": 2,
+                "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
                 "param": 3,
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -964,11 +972,13 @@
               {
                 "from": "param",
                 "param": 2,
+                "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
                 "param": 3,
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -1024,11 +1034,13 @@
               {
                 "from": "param",
                 "param": 2,
+                "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "param",
                 "param": 3,
+                "precision": 6,
                 "type": "datetime"
               },
               {
@@ -1062,10 +1074,12 @@
               },
               {
                 "from": "now",
+                "precision": 6,
                 "type": "datetime"
               },
               {
                 "from": "now",
+                "precision": 6,
                 "type": "datetime"
               }
             ],
