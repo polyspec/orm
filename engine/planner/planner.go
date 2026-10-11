@@ -227,7 +227,6 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	var outNames []string
 	idx := 0
 	groupCount := kind == "count" && len(q.GroupBy) > 0 // number of groups: wrap the grouped statement
-	groupRows := kind == "group_count"
 	switch kind {
 	case "count":
 		if groupCount {
@@ -306,8 +305,8 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
 	}
-	// GROUP BY applies to row selects and to the group count; scalar aggregates ignore it.
-	if len(q.GroupBy) > 0 && (kind == "one" || kind == "all" || groupCount || groupRows) {
+	// The validator admits group_by only on count and group_count.
+	if len(q.GroupBy) > 0 {
 		sb.WriteString(" GROUP BY " + p.renderGroupBy(root, q))
 	}
 	if groupCount {
@@ -1609,9 +1608,6 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 	}
 	if len(where) > 0 {
 		sb.WriteString(" WHERE " + strings.Join(where, " AND "))
-	}
-	if len(sub.Query.GroupBy) > 0 {
-		sb.WriteString(" GROUP BY " + p.renderGroupBy(root, sub.Query))
 	}
 	return sb.String(), nil
 }

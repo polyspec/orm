@@ -45,6 +45,8 @@ Values never appear in the request. Every value is a parameter index into the cl
 
 `Query` is the shape shared by the root, a join child, a relation child, and a subquery: `entity`, `columns`, `on` (join child only), `where`, `joins`, `relations`, `order`, `group_by`, `limit`, `force_index`, `lock`, and the relation options.
 
+`group_by` is valid only on the root of a `count` (the number of groups) and of a `group_count`; on any other kind, and in a join child, a relation child or a subquery, the request fails with `IR_INVALID`. A grouped row has no value for a column outside the group, so no other kind could name its output in all three databases.
+
 ### 1.1 Columns
 
 ```json
@@ -105,6 +107,8 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 Order  = {"column": "seq", "desc": true} | {"column": "start_dt", "fn": Func} | {"random": true}
 Assign = {"column", "p"} | {"column", "null": true} | {"column", "plus_p"} | {"column", "minus_p"}
 ```
+
+With `group_by`, an order item names a group column, a function of one, or `random`; any other column fails with `IR_INVALID` ("order by %s, which is not a group column"), because a group has no single value for it (MySQL 1055, PostgreSQL 42803, an arbitrary row on SQLite).
 
 `minus_p` never stores a negative value.
 

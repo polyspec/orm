@@ -217,6 +217,14 @@ class _Validator:
         for g in q.get('group_by') or []:
             if field_of(ent, g) is None:
                 _fail('COLUMN_UNKNOWN', f'{q["entity"]}.{g}')
+        if q.get('group_by'):
+            # The request's own query is the only one that may group: a join, a relation and a subquery have an outer.
+            if is_join or is_relation or at['outer'] is not None:
+                _fail('IR_INVALID', "group_by is only valid on the request's root query")
+            # An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
+            for o in q.get('order') or []:
+                if o.get('column') and o['column'] not in q['group_by']:
+                    _fail('IR_INVALID', f'order by {o["column"]}, which is not a group column')
         limit = q.get('limit')
         if limit is not None and (not _is_safe(limit['offset'])
                                   or not _is_safe(limit['count']) or limit['offset'] < 0
@@ -436,6 +444,8 @@ def validate(m: RuntimeModel, r: dict) -> None:
             _fail('OPERATOR_NOT_ALLOWED', f'{r["kind"]} on {r["entity"]}.{r["agg"]} ({c.type})')
     if r['kind'] == 'group_count' and not (r.get('group_by') or []):
         _fail('IR_INVALID', 'group_count needs group_by')
+    if (r.get('group_by') or []) and r['kind'] not in ('count', 'group_count'):
+        _fail('IR_INVALID', f'group_by is only valid on count or group_count, not {r["kind"]}')
     if r['kind'] in ('insert', 'update', 'restore'):
         if not (r.get('set') or []) and r['kind'] != 'restore':
             _fail('IR_INVALID', f'{r["kind"]} needs set[]')

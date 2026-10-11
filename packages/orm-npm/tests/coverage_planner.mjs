@@ -62,4 +62,13 @@ await runCases('coverage_planner.mjs', {
   async planner_rejects_outer_ref_outside_subquery() { compileCase('planner_rejects_outer_ref_outside_subquery'); },
   async planner_rejects_unjoined_ref() { compileCase('planner_rejects_unjoined_ref'); },
   async planner_ref_path_absent() { compileCase('planner_ref_path_absent'); },
+  async planner_group_by_count() { compileCase('planner_group_by_count'); },
+  async planner_group_count_order_column() { compileCase('planner_group_count_order_column'); },
+  async planner_group_count_order_column_function() { compileCase('planner_group_count_order_column_function'); },
+  async planner_group_count_order_random() { compileCase('planner_group_count_order_random'); },
+  async planner_rejects_group_by_all() { compileCase('planner_rejects_group_by_all'); },
+  async planner_rejects_group_by_sum() { compileCase('planner_rejects_group_by_sum'); },
+  async planner_rejects_group_by_join() { compileCase('planner_rejects_group_by_join'); },
+  async planner_rejects_group_by_subquery() { compileCase('planner_rejects_group_by_subquery'); },
+  async planner_rejects_group_order_non_group_column() { compileCase('planner_rejects_group_order_non_group_column'); },
 }, 60_000);

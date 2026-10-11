@@ -223,3 +223,57 @@ func TestCoveragePlannerRejectsUnjoinedRef(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_rejects_unjoined_ref")
 }
+
+// TestCoveragePlannerGroupByCount는 group_by가 있는 count가 group 수를 세는지 확인한다.
+func TestCoveragePlannerGroupByCount(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_group_by_count")
+}
+
+// TestCoveragePlannerGroupCountOrderColumn는 group_count가 group column으로 정렬되는지 확인한다.
+func TestCoveragePlannerGroupCountOrderColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_group_count_order_column")
+}
+
+// TestCoveragePlannerGroupCountOrderColumnFunction는 group_count가 group column의 column function으로 정렬되는지 확인한다.
+func TestCoveragePlannerGroupCountOrderColumnFunction(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_group_count_order_column_function")
+}
+
+// TestCoveragePlannerGroupCountOrderRandom는 group_count가 random으로 정렬되는지 확인한다.
+func TestCoveragePlannerGroupCountOrderRandom(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_group_count_order_random")
+}
+
+// TestCoveragePlannerRejectsGroupByAll는 all의 group_by가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsGroupByAll(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_group_by_all")
+}
+
+// TestCoveragePlannerRejectsGroupBySum는 sum의 group_by가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsGroupBySum(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_group_by_sum")
+}
+
+// TestCoveragePlannerRejectsGroupByJoin는 join query의 group_by가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsGroupByJoin(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_group_by_join")
+}
+
+// TestCoveragePlannerRejectsGroupBySubquery는 subquery의 group_by가 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsGroupBySubquery(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_group_by_subquery")
+}
+
+// TestCoveragePlannerRejectsGroupOrderNonGroupColumn는 group이 아닌 column의 group 정렬이 IR_INVALID인지 확인한다.
+func TestCoveragePlannerRejectsGroupOrderNonGroupColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_group_order_non_group_column")
+}

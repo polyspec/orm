@@ -319,7 +319,6 @@ class Planner:
         out_names: list[str] = []
         idx = {'n': 0}
         group_count = kind == 'count' and _has_group_by(q)
-        group_rows = kind == 'group_count'
         if kind == 'count':
             sql += '1' if group_count else 'COUNT(*)'
         elif kind == 'sum':
@@ -364,8 +363,8 @@ class Planner:
         self._collect_join_where(b, root, where)
         if where:
             sql += f' WHERE {" AND ".join(where)}'
-        # GROUP BY는 row select와 group count에 붙는다; 스칼라 집계는 무시한다.
-        if _has_group_by(q) and (kind in ('one', 'all') or group_count or group_rows):
+        # validator는 group_by를 count와 group_count에만 허용한다.
+        if _has_group_by(q):
             sql += f' GROUP BY {self._render_group_by(root, q)}'
         if group_count:
             sql = f'SELECT COUNT(*) FROM ({sql}) AS {self.d.quote("orm_g")}'
@@ -784,8 +783,6 @@ class Planner:
         self._collect_join_where(b, root, where)
         if where:
             sql += f' WHERE {" AND ".join(where)}'
-        if sub['query'].get('group_by'):
-            sql += f' GROUP BY {self._render_group_by(root, sub["query"])}'
         return sql
 
     def _sub_type(self, sub: dict) -> str:

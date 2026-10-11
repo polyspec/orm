@@ -252,7 +252,7 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. Order and range
 
-`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping. `limit(offset, count)` sets the range.
+`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, and chains such as `orderBySeqDescAndNameAsc()` set the order. `orderByRandom()` orders rows randomly with the dialect function. `groupBy<Col>()` sets grouping on `getsCount()` and on group counts; on any other read it is `IR_INVALID`. `limit(offset, count)` sets the range.
 
 ## 7. Writes
 

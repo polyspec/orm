@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: c5643a07f63cd9b190ddd4b83ea422c52ef1260225eae6d34bf5539804c298f8 -->
+<!-- source-sha256: 066f56230528b0198e1ea8ab90cbea4976481414ac811a4ecfe692182438b343 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -253,7 +253,7 @@ rows, err := model.Product().Connect(slave1).
 
 ## 6. 정렬과 범위
 
-`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 그룹을 정한다. `limit(offset, count)`은 범위를 정한다.
+`orderBy<Col>Asc()`, `orderBy<Col>Desc()`, `orderBySeqDescAndNameAsc()` 같은 체인이 정렬을 정한다. `orderByRandom()`은 방언 함수로 행을 무작위 정렬한다. `groupBy<Col>()`은 `getsCount()`와 group count에서 그룹을 정하며, 다른 읽기에서는 `IR_INVALID`이다. `limit(offset, count)`은 범위를 정한다.
 
 ## 7. 쓰기
 

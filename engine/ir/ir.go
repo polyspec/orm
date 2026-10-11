@@ -322,7 +322,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	if r.Kind == "restart_identity" && (len(r.Set) > 0 || len(r.Rows) > 0 || len(r.OnDuplicate) > 0 || r.Where != nil || r.Optimistic != nil) {
 		return errf("IR_INVALID", "restart_identity takes no set, rows, on_duplicate, where or optimistic")
 	}
-	v := &validator{m: m, n: r.NParams}
+	v := &validator{m: m, n: r.NParams, root: &r.Query}
 	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false); err != nil {
 		return err
 	}
@@ -342,6 +342,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 	}
 	if r.Kind == "group_count" && !hasGroupBy(&r.Query) {
 		return errf("IR_INVALID", "group_count needs group_by")
+	}
+	if hasGroupBy(&r.Query) && r.Kind != "count" && r.Kind != "group_count" {
+		return errf("IR_INVALID", "group_by is only valid on count or group_count, not %s", r.Kind)
 	}
 	if r.Kind == "insert" || r.Kind == "update" || r.Kind == "restore" {
 		if len(r.Set) == 0 && r.Kind != "restore" {
@@ -403,8 +406,9 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 }
 
 type validator struct {
-	m *runtimemodel.Model
-	n int // NParams
+	m    *runtimemodel.Model
+	n    int    // NParams
+	root *Query // the request's own query: the only one that may group
 }
 
 // scope는 statement 안의 entity 자리 하나(statement의 root나 join)다. planner의 scope처럼
@@ -651,6 +655,17 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 	for _, g := range q.GroupBy {
 		if ent.Field(g) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s", q.Entity, g)
+		}
+	}
+	if len(q.GroupBy) > 0 {
+		if q != v.root {
+			return errf("IR_INVALID", "group_by is only valid on the request's root query")
+		}
+		// An order item of a grouped query sorts the groups: only a group column (or random) has a value per group.
+		for _, o := range q.Order {
+			if o.Column != "" && !slices.Contains(q.GroupBy, o.Column) {
+				return errf("IR_INVALID", "order by %s, which is not a group column", o.Column)
+			}
 		}
 	}
 	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {

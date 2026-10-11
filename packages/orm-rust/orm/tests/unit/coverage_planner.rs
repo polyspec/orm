@@ -253,10 +253,12 @@ fn query(value: &Value, at: &str) -> ir::Query {
     let order = list("order")
         .into_iter()
         .map(|(at, o)| {
-            let o = members(o, &at, &["column", "desc"]);
+            let o = members(o, &at, &["column", "desc", "random", "fn"]);
             ir::Order {
-                column: string(o, &at, "column"),
+                column: if o.contains_key("column") { string(o, &at, "column") } else { String::new() },
                 desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{at}.desc: expected a boolean"))).unwrap_or(false),
+                random: o.get("random").map(|r| r.as_bool().unwrap_or_else(|| panic!("{at}.random: expected a boolean"))).unwrap_or(false),
+                r#fn: o.get("fn").map(|f| func(f, &format!("{at}.fn"))),
                 ..Default::default()
             }
         })
@@ -531,4 +533,67 @@ fn coverage_planner_ref_path_absent() {
 fn coverage_planner_rejects_unjoined_ref() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     run("planner_rejects_unjoined_ref");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_group_by_count() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_group_by_count");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_group_count_order_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_group_count_order_column");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_group_count_order_column_function() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_group_count_order_column_function");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_group_count_order_random() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_group_count_order_random");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_group_by_all() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_group_by_all");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_group_by_sum() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_group_by_sum");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_group_by_join() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_group_by_join");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_group_by_subquery() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_group_by_subquery");
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_planner_rejects_group_order_non_group_column() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("planner_rejects_group_order_non_group_column");
 }

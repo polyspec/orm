@@ -242,8 +242,7 @@ func TestAggregates(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	e := testEngine(t)
 	cases := map[string]string{
-		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`:                                                                                           "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
-		`"kind":"all","entity":"author","columns":{"mode":"none"},"group_by":["service_seq"],"order":[{"column":"service_seq","desc":false}],"limit":{"offset":0,"count":2}`: "SELECT `a`.`seq` AS `a__seq`, `a`.`user_seq` AS `a__user_seq`, `a`.`service_seq` AS `a__service_seq`, `a`.`service_region_seq` AS `a__service_region_seq`, `a`.`service_member_seq` AS `a__service_member_seq` FROM `author` AS `a` GROUP BY `a`.`service_seq` ORDER BY `a`.`service_seq` ASC LIMIT 0, 2",
+		`"kind":"count","entity":"author","group_by":["service_seq"],"n_params":0`: "SELECT COUNT(*) FROM (SELECT 1 FROM `author` AS `a` GROUP BY `a`.`service_seq`) AS `orm_g`",
 	}
 	for irs, want := range cases {
 		p := compile(t, e, irs)
