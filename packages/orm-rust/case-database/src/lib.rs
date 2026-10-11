@@ -232,6 +232,7 @@ async fn execute(db: &polyspec_orm::Db, sql: &str) -> Result<(), String> {
         Pool::MySql(p) => statement.execute(p).await.map(|_| ()),
         Pool::Postgres(p) => statement.execute(p).await.map(|_| ()),
         Pool::Sqlite(p) => statement.execute(p).await.map(|_| ()),
+        Pool::Markdown(_) => return Err("a case database is a SQL database; a markdown connection has none".into()),
     }
     .map_err(|e| e.to_string())
 }

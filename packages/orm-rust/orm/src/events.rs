@@ -130,10 +130,12 @@ impl Db {
     /// order after each statement ends and before the operation continues. A
     /// subscriber must not fail: an error it returns stops the remaining
     /// subscribers and fails the operation with SUBSCRIBER, whose source is
-    /// that error; the statement keeps its effect.
-    pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Subscription {
+    /// that error; the statement keeps its effect. A markdown connection sends
+    /// no statement, so it refuses a subscriber with CAPABILITY_UNSUPPORTED.
+    pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription> {
+        self.unsupported_on_markdown("statement events")?;
         let id = self.inner.subscribers.add(Arc::new(subscriber));
-        Subscription { db: Arc::downgrade(&self.inner), id }
+        Ok(Subscription { db: Arc::downgrade(&self.inner), id })
     }
 
     /// 새 바깥 transaction의 번호다.

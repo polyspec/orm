@@ -14,6 +14,7 @@ mod driver;
 pub mod engine;
 pub mod events;
 pub mod ir;
+pub mod markdown;
 pub mod model;
 pub mod plan;
 mod request;

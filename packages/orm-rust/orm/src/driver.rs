@@ -556,6 +556,8 @@ pub(crate) enum TxInner {
     MySql(MySqlOwnedTx),
     Postgres(CancellableConnection<Postgres>),
     Sqlite(CancellableConnection<Sqlite>),
+    /// transaction이 끝날 때까지 잡아 두는 flowmark session이다.
+    Markdown(crate::markdown::MdLease),
 }
 
 /// Where a statement runs: the pool (each statement on its own) or a transaction's connection.

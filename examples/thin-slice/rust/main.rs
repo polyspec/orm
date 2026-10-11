@@ -63,7 +63,7 @@ async fn main() -> polyspec_orm::Result<()> {
             .collect();
         *hook.lock().unwrap() = (e.sql.to_owned(), binds);
         Ok(())
-    });
+    })?;
     let now = chrono::NaiveDate::from_ymd_opt(2026, 9, 11)
         .unwrap()
         .and_hms_opt(0, 0, 0)

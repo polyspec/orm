@@ -92,7 +92,8 @@
         "packages/orm-npm/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
         "packages/orm-go/orm/markdown_test.go",
-        "packages/orm-php/tests/markdown_test.php"
+        "packages/orm-php/tests/markdown_test.php",
+        "packages/orm-rust/orm/tests/markdown.rs"
       ],
       "docs": [
         "docs/config.md",
@@ -118,6 +119,15 @@
             "packages/orm-php/tests/markdown_test.php",
             "packages/orm-php/tests/markdown_fake_server.php",
             "packages/orm-php/src/Markdown.php"
+          ]
+        },
+        {
+          "id": "markdown-session-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs markdown-session-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test markdown",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/tests/markdown.rs",
+            "packages/orm-rust/orm/src/markdown.rs"
           ]
         },
         {
@@ -3556,7 +3566,8 @@
         "packages/orm-python/tests/test_planner_fixture.py",
         "engine/ir/validate_test.go",
         "packages/orm-python/tests/test_ir_validate.py",
-        "engine/ir/params_test.go"
+        "engine/ir/params_test.go",
+        "packages/orm-rust/orm/tests/unit/param_uses.rs"
       ],
       "docs": [
         "docs/protocol.md",
@@ -3570,6 +3581,15 @@
           "inputs": [
             "engine/ir/params_test.go",
             "engine/ir/params.go"
+          ]
+        },
+        {
+          "id": "param-uses-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs param-uses-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib engine::param_uses_tests",
+          "shard": "rust",
+          "inputs": [
+            "packages/orm-rust/orm/tests/unit/param_uses.rs",
+            "packages/orm-rust/orm/src/engine/params.rs"
           ]
         },
         {
@@ -5869,6 +5889,7 @@
         "packages/orm-go/markdownmodel/conformance_test.go",
         "packages/orm-php/tests/markdown_conformance.php",
         "packages/orm-python/tests/markdown_conformance.py",
+        "packages/orm-rust/tests/tests/markdown_conformance.rs",
         "tests/conformance/check/main.go",
         "tests/conformance/runner_go/main.go",
         "tests/conformance/runner_go/main_test.go",

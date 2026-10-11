@@ -117,6 +117,7 @@ async fn end_session(driver: &str, session: &str) {
             sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL {id}"))).execute(pool).await.unwrap();
         }
         Pool::Sqlite(_) => unreachable!("sqlite needs no session end"),
+        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
     admin.close().await;
 }

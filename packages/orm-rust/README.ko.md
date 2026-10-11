@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: 12d1de75f7132a01d6b1be5d7cd0e7617dc5b901b54c234894fa37f4eab066fe -->
+<!-- source-sha256: c974270c5ec039436f88ba55b6b5a6f809571e811f5cbb32c6d1731dfb92a253 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -46,7 +46,7 @@ let rows = Author::new().connect(&db).service_seq(7).and_is_close(false).order_b
 
 ## 연결
 
-`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite` 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
+`model::connect(dsn, pool_size, config)`와 `Db::connect(dsn, pool_size, config)`는 DSN URI를 받는다. `Db::connect`는 등록된 set 없이 연결을 연다. scheme은 `mysql`, `postgres`, `sqlite`, 또는 markdown IR executor로 flowmark server가 제공하는 corpus인 `markdown`(`markdown://127.0.0.1:<port>/<corpus>?token=<token>`, [docs/protocol.ko.md](../../docs/protocol.ko.md#_5-ir-executors)) 중 하나를 선택하고 `timezone` 매개변수는 연결 시간대를 정한다. 인증 정보는 DSN으로, AES 키는 `Config`로 전달한다. `caching_sha2_password`를 쓰는 MySQL 연결에는 TLS가 필요하다. DSN에 `ssl-mode=verify_ca`와 `ssl-ca`를 지정한다. 클라이언트는 암호화하지 않은 연결의 RSA 인증을 켜지 않는다.
 
 `db.utils().schema().install(&model::SCHEMA)`는 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한 뒤 그 set을 연결에 등록한다. manifest text가 `manifestHash`로 hash되지 않으면 `CONFIG`를 반환한다. set의 테이블이 모두 있으면 아무것도 만들지 않고 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. `db.utils().schema().register(&model::SCHEMA)`는 데이터베이스를 읽지 않고 열린 연결에 set을 등록한다.
 `db.utils().schema().add_tables_and_columns(&model::SCHEMA).await`는 설치한 set을 올린다: 데이터베이스에 없는 테이블을 만들고 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 dialect의 plan step(`polyspec_orm_schema::dbspec::add_tables_and_columns_steps`)으로 추가하며, 그 step은 각 테이블을 index, foreign key, check, 트리거와 함께 만들고 바뀐 각 테이블의 audit 트리거를 바꾼다. 만든 테이블을 `table`, 추가한 컬럼을 `table.column`으로 반환한다. 다른 모든 차이는 어떤 statement보다 먼저 `SCHEMA_DIFFERS`를 반환한다(docs/schema.md, "Adding tables and columns"). MySQL과 SQLite는 트랜잭션 밖에서 추가한다.
@@ -100,7 +100,7 @@ MySQL/PostgreSQL 테스트 DSN과 이 URI를 명시해야 한다. 테스트 테�
 
 ## Statement event
 
-`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
+`db.subscribe(|e: &polyspec_orm::StatementEvent<'_>| Ok(()))`는 연결과 그 clone이 실행하는 모든 statement의 subscriber를 등록한다: model statement, transaction 제어, savepoint, utility와 schema utility의 statement다. event는 `sql`, `binds`(비밀 bind는 `$SECRET`, 실행기 시계 bind는 `$NOW`로 표시한다), `kind`, `tables`, `elapsed`, `transaction`(연결에서의 transaction 번호, 밖이면 `None`), `error`를 가진다. subscriber는 statement가 끝난 뒤 등록 순서로 동기 실행되며, subscriber가 돌려준 오류는 operation을 `Error::Subscriber`(`SUBSCRIBER`)로 실패시키고 그 오류를 source로 가진다. `subscription.unsubscribe()`가 subscriber를 지운다. `subscribe`는 `Result`를 돌려준다: markdown 연결은 statement를 보내지 않으므로 subscriber를 `CAPABILITY_UNSUPPORTED`로 거절한다. 모든 client의 event는 [docs/usage.ko.md](../../docs/usage.ko.md#statement-events)가 적는다.
 
 ## 빌드와 테스트
 
