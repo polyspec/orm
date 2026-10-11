@@ -42,7 +42,7 @@
     "go": "sha256:e5859e53434746ba2bef736dd0088792777bed5605ae22ac2bc96d5ef551f739",
     "php": "sha256:fa4e583ab2ee2987bdfc4ec6792469e082c7dd951c431fe4b1b24df9d8c8b87b",
     "rust": "sha256:89f0c8caafb636a2ab9dc06a292f41660b2affc2f9c05b0c5dc25ae6ea1102d1",
-    "typescript": "sha256:5be1583189e8ea9c0af626dd751b39b2827ac8f9cacd93a82024f2703ea7744f",
+    "typescript": "sha256:6c40dda6f8149d2c739ad15dc1fbc2725074dc8853c9b0fb15a257bd6aa295a8",
     "python": "sha256:e7147957fa113dc611a3ea2d7790ce472fe77c2627a818ae8a897553a7c20d23"
   },
   "extensions": {

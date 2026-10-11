@@ -496,8 +496,8 @@ dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
-.PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode
-dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode
+.PHONY: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
+dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check/documents: cargo-downloads-check
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
@@ -507,6 +507,9 @@ dbspec-rust-check/unicode: cargo-downloads-check
 dbspec-rust-check/apply-cleanup: cargo-downloads-check
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
+# dbspec-rust-check/show-create는 shown_checks(mysql.rs)가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
+dbspec-rust-check/show-create: cargo-downloads-check
+	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 # 부분의 실행 directory는 top target의 것이다($@에 /가 있으면 directory가 한 단계 더 생긴다).
@@ -526,8 +529,8 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
 # 실행한다.
-dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode
-.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create
+.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create
 dbspec-php-check/documents:
 	php packages/orm-php/tests/dbspec_test.php
 	php packages/orm-php/tests/dbspec_test.php
@@ -553,6 +556,10 @@ dbspec-php-check/apply-cleanup:
 dbspec-php-check/unicode:
 	php packages/orm-php/tests/dbspec_unicode_test.php
 	php packages/orm-php/tests/dbspec_unicode_test.php
+# dbspec-php-check/show-create는 MysqlCatalog::createChecks가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
+dbspec-php-check/show-create:
+	php packages/orm-php/tests/dbspec_show_create_test.php
+	php packages/orm-php/tests/dbspec_show_create_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/orm-php-extension, PHP client의 dbspec 표면을 C로 구현한
@@ -566,8 +573,8 @@ dbspec-php-check/unicode:
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -588,6 +595,11 @@ dbspec-php-extension-check/mermaid: dbspec-php-extension-check/prepare
 dbspec-php-extension-check/apply-cleanup: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_cleanup_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_cleanup_test.php
+# dbspec-php-extension-check/show-create는 shown_check(introspect.c)가 canned MySQL catalog에서 tests/dbspec/show-create.json의
+# 모든 case를 Go의 introspection과 같은 check와 미지원 객체로 읽는지, 없는 CHECK를 Go와 같은 error로 거부하는지 본다.
+dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
 php-extension-arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) write
 
@@ -908,7 +920,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs
+	node --test packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
 
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
