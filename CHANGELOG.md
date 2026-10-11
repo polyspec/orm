@@ -2,6 +2,10 @@
 # Changelog
 
 ## Unreleased
+
+## 0.0.8
+
+- T114: release 0.0.8: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.8, the dependency review is recorded again, `tests/release-consumer` holds the locks of the archives of 0.0.8, and the Python wheel `polyspec_orm-0.0.8-py3-none-any.whl` is among the release assets.
 - T78-2: the Python statement fault test is named `statement_fault.py`, so `make python-unit-check` (`unittest discover -p 'test_*.py'`) no longer runs a test that needs the databases; `make python-statement-fault-check` runs it.
 - T115: the Python client releases as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`. Its `Requires-Dist` pins registry packages as `name==version` and names `polyspec-ordered-json` by its release asset with the sha256; `packages/orm-python/pylock.toml` locks every dependency with hashes, and the release proof installs that lock, then the wheel offline, and imports it.
 - T113: the Python client reads a driver's date-time without a zone (PyMySQL, psycopg) as the wall clock of the connection's zone, so a loaded `datetime` is exact on any machine; every client's tests run in `TEST_TZ` (Asia/Seoul), and docs/dialects.md states the rule.

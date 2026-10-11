@@ -22,12 +22,12 @@ In 0.0.x the polyspec packages are distributed through GitHub only, as release a
   {
     "dependencies": {
       "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
-      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.7.tgz"
+      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.8.tgz"
     }
   }
   ```
 
-- Composer: an `artifact` repository is a directory of the downloaded zips, and Composer reads the name, version and requirements of each zip from its `composer.json`. The artifact repository holds the orm zip and the zip of each polyspec package that it requires (`polyspec-ordered-json-php-0.0.7.zip`).
+- Composer: an `artifact` repository is a directory of the downloaded zips, and Composer reads the name, version and requirements of each zip from its `composer.json`. The artifact repository holds the orm zip and the zip of each polyspec package that it requires (`polyspec-ordered-json-php-0.0.8.zip`).
 
   ```json
   {

@@ -1,5 +1,5 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: e9dd4b2a4bc477fee521552d6984972ce8d730fc24a23191746b0d5052971de5 -->
+<!-- source-sha256: dcb58adfba77c6479446b2295d1a1dc061264747f0d966e21e7b566c7b0241ff -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
@@ -23,12 +23,12 @@
   {
     "dependencies": {
       "@polyspec/orm": "file:vendor/polyspec-orm-npm-<version>.tgz",
-      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.7.tgz"
+      "@polyspec/ordered-json": "file:vendor/polyspec-ordered-json-npm-0.0.8.tgz"
     }
   }
   ```
 
-- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. artifact repository는 orm zip과 그것이 요구하는 polyspec package마다 그 zip(`polyspec-ordered-json-php-0.0.7.zip`)을 담는다.
+- Composer: `artifact` repository는 내려받은 zip의 directory이고, Composer는 zip마다 그 `composer.json`에서 이름, version, 요구 사항을 읽는다. artifact repository는 orm zip과 그것이 요구하는 polyspec package마다 그 zip(`polyspec-ordered-json-php-0.0.8.zip`)을 담는다.
 
   ```json
   {

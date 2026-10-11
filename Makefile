@@ -447,7 +447,7 @@ dbspec-compare-check/unit:
 # PyMySQL, psycopg, PyYAML)을 고정 버전으로 설치하며, 검사는 이 interpreter를 ORM_PYTHON으로 받는다.
 PYTHON_VENV = $(abspath packages/orm-python/.venv)
 # ORDERED_JSON is the checkout of polyspec/ordered-json whose packages/ordered-json-python/src the Python client imports. The sibling
-# checkout serves local work; CI checks the release v0.0.7 out inside the workspace (ci.yml sets ORDERED_JSON).
+# checkout serves local work; CI checks the release v0.0.8 out inside the workspace (ci.yml sets ORDERED_JSON).
 ORDERED_JSON ?= $(abspath ..)/ordered-json
 # install-python은 config/toolchain.json의 pythonBuild를 var/tools/bin/python3에 설치하고(install-tools), kit의 python-venv로
 # 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다). 패키지는 kit의 release-consumer처럼 그 pip로 venv에 설치한다.

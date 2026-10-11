@@ -4,15 +4,15 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "edb9d9f5cdfbf7b265c4baa666109417",
+    "content-hash": "0f4d0e5303082550148ea54cc5132f97",
     "packages": [
         {
             "name": "polyspec/ordered-json",
-            "version": "0.0.7",
+            "version": "0.0.8",
             "dist": {
                 "type": "zip",
-                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.7/polyspec-ordered-json-php-0.0.7.zip",
-                "shasum": "ba76343b5d6a2ce7db53fc88bc71b0706fa5fd4a"
+                "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
+                "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
             },
             "require": {
                 "ext-json": "*",
@@ -31,18 +31,18 @@
         },
         {
             "name": "polyspec/orm",
-            "version": "0.0.7",
+            "version": "0.0.8",
             "dist": {
                 "type": "path",
                 "url": "packages/orm-php",
-                "reference": "d7a167a456bc748d59d16457db093a4d2002b0da"
+                "reference": "545804b1a33e8405d48e064807f9060b3e390e2b"
             },
             "require": {
                 "ext-json": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",
                 "php": ">=8.4",
-                "polyspec/ordered-json": "0.0.7",
+                "polyspec/ordered-json": "0.0.8",
                 "symfony/yaml": "^7.4"
             },
             "suggest": {

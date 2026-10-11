@@ -3,8 +3,8 @@
     "description": "A project that installs polyspec/orm from the release zips",
     "type": "project",
     "require": {
-        "polyspec/orm": "0.0.7",
-        "polyspec/ordered-json": "0.0.7"
+        "polyspec/orm": "0.0.8",
+        "polyspec/ordered-json": "0.0.8"
     },
     "repositories": [
         {
@@ -15,7 +15,7 @@
             "type": "package",
             "package": {
                 "name": "polyspec/ordered-json",
-                "version": "0.0.7",
+                "version": "0.0.8",
                 "type": "library",
                 "require": {
                     "php": ">=8.2",
@@ -32,8 +32,8 @@
                 },
                 "dist": {
                     "type": "zip",
-                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.7/polyspec-ordered-json-php-0.0.7.zip",
-                    "shasum": "ba76343b5d6a2ce7db53fc88bc71b0706fa5fd4a"
+                    "url": "https://github.com/polyspec/ordered-json/releases/download/v0.0.8/polyspec-ordered-json-php-0.0.8.zip",
+                    "shasum": "6fa67fff99b422f42ed7ab51ac470cadf8ade699"
                 }
             }
         }
