@@ -7,7 +7,6 @@
 - T66: the Rust client reaches a corpus through the markdown DSN and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build; the identity load test covers the markdown pool.
 - T64: the PHP client reaches a corpus through the markdown DSN, one connection per `Db`, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T63: the Go client reaches a corpus through the DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`: it connects to a flowmark server, runs every IR kind, transactions and savepoints through it, returns `WRITE_CONFLICT` without a retry, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build.
-- T124: Python is not a required implementation: the parity profiles `dbspec` and `client` omit it, so a suite is green without a Python binding; the Python package and its wheel stay shipped.
 - T92 (in part): a `datetime(p)` or `time(p)` value binds on SQLite with exactly p fraction digits: the planner puts the column's precision on the parameter slot in every implementation, and the Go client drops zero digits past p and refuses a non-zero one as `CODEC_ENCODE`.
 - T115-3: Python 3.15 is the Python the repository tests: `.python-version`, `config/toolchain.json` (python-build-standalone 3.15.0, release 20261009), `requires-python >=3.15` and the README declare it.
 ## 0.0.8
