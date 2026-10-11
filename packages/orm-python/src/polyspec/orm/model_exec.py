@@ -9,6 +9,7 @@ from polyspec.orm.database import (Db, Executor, _ACTIVE, convert, key_of_values
                                    write)
 from polyspec.orm.engine.model import Entity, Field, entity_of, field_of
 from polyspec.orm.errors import OrmError
+from polyspec.orm.markdown import markdown_links
 from polyspec.orm.model import Collection, Model
 from polyspec.orm.names import ChainKey
 from polyspec.orm.styled_value import StyledValue
@@ -86,9 +87,9 @@ class _Assembler:
                                   if j['child'].result_name(False) == child['rel']), None)
                 if join_core is None:
                     raise OrmError('INTERNAL', f'join result {child["rel"]} without a model')
-                first = child['assemble']['columns'][0]
-                value = self.model(join_core, child['assemble'], row).self \
-                    if first is not None and row[first['index']] is not None else None
+                join_row = self._join_row(child, row)
+                value = self.model(join_core, child['assemble'], join_row).self \
+                    if join_row is not None else None
                 row_state.set_related(child['rel'], value, False, False)
                 continue
             relation = next((r for r in builder.relations
@@ -96,36 +97,46 @@ class _Assembler:
             if relation is None:
                 raise OrmError('INTERNAL', f'relation result {child["rel"]} without a model')
             child_core = relation['child']
-            step_result = self.result['steps'].get(child['step'])
-            if step_result is None:
-                rows = []
-            else:
-                rows = self._related(step_result, child, row)
+            rows, child_asm = self._related(child, row)
             if relation['many']:
                 collection = Collection()
-                child_asm = step_result['step']['assemble']
                 for child_row in rows:
                     made = self.model(child_core, child_asm, child_row)
                     collection.put(_collection_key(child_core, made, child_asm, child_row),
                                    made.self)
                 row_state.set_related(child['rel'], collection, child['cascade'], False)
             else:
-                value = self.model(child_core, step_result['step']['assemble'],
-                                   rows[0]).self if rows else None
+                value = self.model(child_core, child_asm, rows[0]).self if rows else None
                 row_state.set_related(child['rel'], value, child['cascade'],
                                       child['flatten'])
         self.made.setdefault(builder, []).append(core)
         return core
 
-    def _related(self, step_result, child, parent):
+    def _join_row(self, child, row):
+        """join child의 행이다; 없으면 None이다. SQL 결과에서는 join column이 부모 행에 함께 있고 첫 column이
+        NULL이면 없다. markdown 답에서는 부모 행의 마지막 칸이 join 행을 가진다."""
+        if self.result.get('markdown'):
+            return markdown_links(row).joins.get(child['rel'])
+        first = child['assemble']['columns'][0] if child['assemble']['columns'] else None
+        return row if first is not None and row[first['index']] is not None else None
+
+    def _related(self, child, parent):
+        """relation child에서 부모 행 parent의 행과 그 배치다. SQL 결과에서는 relation step의 행을 key로 찾고,
+        markdown 답에서는 부모 행의 마지막 칸이 relation 행을 가진다."""
+        if self.result.get('markdown'):
+            return markdown_links(parent).rels.get(child['rel'], []), child['assemble']
+        step_result = self.result['steps'].get(child['step'])
+        if step_result is None:
+            return [], None
+        asm = step_result['step']['assemble']
         if_parent = step_result['step']['parent'].get('if_parent')
         if if_parent and scalar_key(parent[if_parent['index']]) \
                 != scalar_key(self.result['params'][if_parent['param']]):
-            return []
+            return [], asm
         key = row_key(parent, child['parent_keys'])
         if key is None:
-            return []
-        return [step_result['data'][i] for i in step_result['by_key'].get(key, [])]
+            return [], asm
+        return [step_result['data'][i] for i in step_result['by_key'].get(key, [])], asm
 
 
 class _RowState:
@@ -356,9 +367,15 @@ def create(c: Core):
             core.values[s.column] = StyledValue.sql_null() if type_ == 'styled' else None
         else:
             core.values[s.column] = convert(type_, s.value, ex.db.zone, field)
-    if schema.identity != '':
-        core.row.add_name(schema.identity)
-        core.values[schema.identity] = written['id']
+    # 받은 key를 쓰는 column이다: identity, 또는 markdown executor가 정하는 key(key_prefix)로 요청이 값을 주지
+    # 않은 하나뿐인 primary key column이다.
+    assigned_key = schema.identity
+    if assigned_key == '' and ex.db.driver == 'markdown' and len(schema.primary_key) == 1 \
+            and written['id'] is not None and all(s.column != schema.primary_key[0] for s in c.sets):
+        assigned_key = schema.primary_key[0]
+    if assigned_key != '':
+        core.row.add_name(assigned_key)
+        core.values[assigned_key] = written['id']
     core.row.loaded = True
     for pk in schema.primary_key:
         value = core.values.get(pk)

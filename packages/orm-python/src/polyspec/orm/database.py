@@ -18,6 +18,9 @@ from polyspec.orm.engine import Engine
 from polyspec.orm.engine.validate import IR_VERSION
 from polyspec.orm.errors import OrmError, rollback_failed
 from polyspec.orm.events import StatementEvent, Subscribers, statement_kind
+from polyspec.orm.markdown import (MarkdownDsn, begin_markdown, dial_markdown, end_markdown,
+                                   markdown_read, markdown_scalar, markdown_write,
+                                   parse_markdown_dsn, savepoint_markdown, unsupported_on_markdown)
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
@@ -50,12 +53,14 @@ _ISOLATION_SQL = {'read_committed': 'READ COMMITTED', 'repeatable_read': 'REPEAT
 
 
 class ParsedDsn:
-    __slots__ = ('driver', 'zone', 'url')
+    __slots__ = ('driver', 'zone', 'url', 'markdown')
 
-    def __init__(self, driver: str, zone: str, url):
+    def __init__(self, driver: str, zone: str, url, markdown: MarkdownDsn | None = None):
         self.driver = driver
         self.zone = zone
         self.url = url
+        # markdown:// DSN의 server 주소, corpus, token이다. 다른 scheme에서는 None이다.
+        self.markdown = markdown
 
 
 def _sqlite_path(url) -> str:
@@ -81,12 +86,14 @@ def parse_dsn(dsn: str) -> ParsedDsn:
     try:
         url = urlsplit(dsn)
     except ValueError:
-        raise OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, or '
-                                 'sqlite://') from None
+        raise OrmError('CONFIG', 'dsn must be a URI using mysql://, postgres://, sqlite://, or '
+                                 'markdown://') from None
     scheme = url.scheme
+    if scheme == 'markdown':
+        return ParsedDsn(scheme, '+00:00', url, parse_markdown_dsn(url))
     if scheme not in DSN_PARAMETERS:
         raise OrmError('CONFIG', f'unsupported DSN scheme {scheme or "(none)"}; want '
-                                 f'mysql, postgres, or sqlite')
+                                 f'mysql, postgres, sqlite, or markdown')
     parameters = dict(parse_qsl(url.query, keep_blank_values=True))
     for name in parameters:
         if name not in DSN_PARAMETERS[scheme]:
@@ -657,10 +664,13 @@ class Db:
         self.dsn = dsn
         self.parsed = parse_dsn(dsn)
         self.driver = self.parsed.driver
-        dialect_class = dialect_of(self.driver)
-        if dialect_class is None:
-            raise OrmError('CONFIG', f'unsupported DSN scheme {self.driver}')
-        self.dialect = dialect_class()
+        # markdown 연결은 plan하지 않으므로(docs/protocol.md §5) dialect가 없다.
+        self.dialect = None
+        if self.driver != 'markdown':
+            dialect_class = dialect_of(self.driver)
+            if dialect_class is None:
+                raise OrmError('CONFIG', f'unsupported DSN scheme {self.driver}')
+            self.dialect = dialect_class()
         self.zone = self.parsed.zone
         self.aes_key = options.get('aesKey', '')
         self.blind_index_key = options.get('blindIndexKey', '')
@@ -668,6 +678,8 @@ class Db:
         self.aes_keyring = options.get('aesKeyring')
         self.audit_source = options.get('auditSource')
         self.engines: dict[str, Engine] = {}
+        # markdown 연결에 등록된 set의 runtime model이다. SQL 연결은 engines가 그 자리다.
+        self.schemas: dict[str, RuntimeModel] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get('planCacheSize', 1024)
         self.events = Subscribers()
@@ -699,6 +711,9 @@ class Db:
             return _SqliteConnection(self.parsed)
         if self.driver == 'mysql':
             return _MysqlConnection(self.parsed)
+        if self.driver == 'markdown':
+            # session 하나를 연결해 server가 corpus와 token을 받아들이는지 확인한다.
+            return dial_markdown(self.parsed.markdown)
         return _PostgresConnection(self.parsed)
 
     def register(self, schema: Schema) -> 'Db':
@@ -706,8 +721,17 @@ class Db:
         from polyspec.orm.engine.model import model_of_manifest
         model = model_of_manifest(schema.manifest_text, schema.manifest_hash,
                                   schema.external_text)
-        self.engines[schema.manifest_hash] = Engine(model, self.driver)
+        self._register_set(schema.manifest_hash, model)
         return self
+
+    def _register_set(self, manifest_hash: str, model: RuntimeModel) -> None:
+        """manifest의 runtime model을 등록한다. SQL 연결은 그 planner를 만들고, plan하지 않는 markdown 연결은
+        model만 둔다. 이미 등록된 set은 바꾸지 않는다."""
+        if self.driver == 'markdown':
+            self.schemas.setdefault(manifest_hash, model)
+            return
+        if manifest_hash not in self.engines:
+            self.engines[manifest_hash] = Engine(model, self.driver)
 
     @property
     def closed(self) -> bool:
@@ -717,7 +741,8 @@ class Db:
         """이 연결과 그 파생 handle이 보내는 모든 statement의 event를 받을
         subscriber를 등록한다 (docs/usage.md "Statement events"). subscriber는
         등록 순서로 statement가 끝난 뒤, 작업이 계속되기 전에 불리고, 던지면
-        안 된다."""
+        안 된다. markdown 연결은 statement를 보내지 않으므로 CAPABILITY_UNSUPPORTED다."""
+        unsupported_on_markdown(self, 'statement events')
         return self.events.subscribe(subscriber)
 
     def close(self) -> None:
@@ -868,6 +893,8 @@ class Db:
         timeout_ms = options.get('timeoutMs', 0)
         if isinstance(timeout_ms, bool) or not isinstance(timeout_ms, int) or timeout_ms < 0:
             raise OrmError('CONFIG', 'transaction timeoutMs must not be negative')
+        if 'audit' in options:
+            unsupported_on_markdown(self, 'a transaction with audit values')
         outer = _active_for(self)
         # audit 기록은 transaction이 시작하기 전에 검사하고 시도마다 callback 앞에서
         # 삽입한다.
@@ -1042,6 +1069,10 @@ class Db:
         if options.get('timeoutMs', 0) > 0 and driver != 'postgres':
             raise OrmError('CAPABILITY_UNSUPPORTED',
                            'transaction timeoutMs is supported only by postgres')
+        if driver == 'markdown':
+            frame = TxFrame(self, self.events.next_transaction(), options)
+            begin_markdown(self, frame, options)
+            return frame
         isolation = options.get('isolation')
         level = _ISOLATION_SQL.get(isolation, '') if isolation is not None else ''
         if isolation is not None and level == '':
@@ -1098,6 +1129,9 @@ class Db:
         if frame.finished:
             return
         frame.finished = True
+        if self.driver == 'markdown':
+            end_markdown(frame, 'commit' if commit else 'rollback')
+            return
         errors: list = []
 
         def attempt(sql: str, values=None, faultable: bool = False):
@@ -1142,8 +1176,15 @@ class Db:
     def _savepoint(self, frame: TxFrame, callback):
         frame.savepoints += 1
         name = f'orm_sp_{frame.savepoints}'
+
+        def control(kind: str, sql: str) -> None:
+            # SQL 연결은 그 statement를, markdown 연결은 같은 이름의 control message를 보낸다.
+            if self.driver == 'markdown':
+                savepoint_markdown(frame, kind, name)
+            else:
+                frame.run(sql, [], kind, faultable=False)
         try:
-            frame.run(f'SAVEPOINT {name}', [], 'savepoint', faultable=False)
+            control('savepoint', f'SAVEPOINT {name}')
             try:
                 result = callback()
             except BaseException as error:
@@ -1151,13 +1192,13 @@ class Db:
                 for kind, sql in (('rollback_to', f'ROLLBACK TO SAVEPOINT {name}'),
                                   ('release', f'RELEASE SAVEPOINT {name}')):
                     try:
-                        frame.run(sql, [], kind, faultable=False)
+                        control(kind, sql)
                     except Exception as failure:  # noqa: BLE001
                         rollback_errors.append(failure)
                 if rollback_errors:
                     raise rollback_failed(error, rollback_errors[0]) from None
                 raise
-            frame.run(f'RELEASE SAVEPOINT {name}', [], 'release', faultable=False)
+            control('release', f'RELEASE SAVEPOINT {name}')
             return result
         finally:
             frame.savepoints -= 1
@@ -1239,6 +1280,8 @@ def query(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
+        if db.driver == 'markdown':
+            return markdown_read(ex, request, params)[0]
         cached = db.plan(request)
         if request.get('lock'):
             db.row_lock(ex.frame, request['lock'])
@@ -1489,6 +1532,8 @@ def scalar(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
+        if db.driver == 'markdown':
+            return markdown_scalar(ex, request, params)
         cached = db.plan(request)
         parts = _root_in_parts(request, cached['plan'], db.driver, params)
         if len(parts) > 1:
@@ -1512,6 +1557,9 @@ def paginate(ex: Executor, request: dict, params):
     def work():
         _check_lock(ex, request)
         db = ex.db
+        if db.driver == 'markdown':
+            result, total = markdown_read(ex, request, params)
+            return {'result': result, 'total': total}
         cached = db.plan(request)
         main = _select(ex, cached, cached['plan']['steps'][0], params)
         result = _relations(ex, cached, params, main)
@@ -1527,9 +1575,14 @@ def paginate(ex: Executor, request: dict, params):
 
 def write(ex: Executor, request: dict, params):
     """insert, update, delete를 실행하고 id와 영향 줄 수를 낸다."""
+    """insert, update, delete를 실행하고 insert한 행의 key와 영향 줄 수를 낸다: SQL database에서는 생성된
+    identity, markdown executor에서는 그 답의 첫 key다."""
 
     def work():
         db = ex.db
+        if db.driver == 'markdown':
+            keys, affected = markdown_write(ex, request, params)
+            return {'id': keys[0] if keys else None, 'affected': affected}
         cached = db.plan(request)
         step = cached['plan']['steps'][0]
         result = db._send_step(ex, step['sql'], step, params)
@@ -1550,6 +1603,7 @@ def write(ex: Executor, request: dict, params):
 
 def statement(ex: Executor, request: dict, params):
     """select request의 statement를 실행 없이 돌려준다."""
+    unsupported_on_markdown(ex.db, 'getQuery')
     cached = ex.db.plan(request)
     step = cached['plan']['steps'][0]
     return {'sql': step['sql'], 'binds': ex.db.args(step, params)['masked']}
