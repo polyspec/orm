@@ -459,6 +459,11 @@ def validate(m: RuntimeModel, r: dict) -> None:
             # A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
             if r['kind'] == 'insert' and (a.get('plus_p') is not None or a.get('minus_p') is not None):
                 _fail('IR_INVALID', f'insert cannot assign {a["column"]} by plus or minus')
+            # The key and the soft delete column are the table's own: a restore clears the latter itself.
+            if r['kind'] in ('update', 'restore'):
+                col = field_of(ent, a['column'])
+                if col.primary or col.identity or (r['kind'] == 'restore' and a['column'] == ent.soft_delete):
+                    _fail('IR_INVALID', f'cannot update {a["column"]}')
     if r.get('rows'):
         if r['kind'] != 'insert' or r.get('on_duplicate'):
             _fail('IR_INVALID', 'rows are only valid on insert without on_duplicate')

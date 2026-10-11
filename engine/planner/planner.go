@@ -1302,9 +1302,6 @@ func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	var sets []string
 	for _, a := range set {
 		col := ent.Field(a.Column)
-		if col.PrimaryKey || col.Identity {
-			return nil, &ir.Error{Code: "IR_INVALID", Msg: "cannot update " + a.Column}
-		}
 		v, err := p.renderAssign(b, ent, col, &a)
 		if err != nil {
 			return nil, err

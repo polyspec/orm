@@ -49,6 +49,12 @@
     {"name": "insert-on-duplicate-plus", "request": {"ir_version": 1, "n_params": 3, "entity": "service_region", "kind": "insert", "set": [{"column": "service_seq", "p": 0}, {"column": "name", "p": 1}], "on_duplicate": [{"column": "service_seq", "plus_p": 2}]}, "valid": true},
     {"name": "insert-set-plus", "request": {"ir_version": 1, "n_params": 3, "entity": "service_region", "kind": "insert", "set": [{"column": "service_seq", "plus_p": 0}, {"column": "name", "p": 1}]}, "error": "IR_INVALID"},
     {"name": "insert-set-minus", "request": {"ir_version": 1, "n_params": 3, "entity": "service_region", "kind": "insert", "set": [{"column": "service_seq", "minus_p": 0}, {"column": "name", "p": 1}]}, "error": "IR_INVALID"},
-    {"name": "update-set-plus", "request": {"ir_version": 1, "n_params": 3, "entity": "service_region", "kind": "update", "set": [{"column": "service_seq", "plus_p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true}
+    {"name": "update-set-plus", "request": {"ir_version": 1, "n_params": 3, "entity": "service_region", "kind": "update", "set": [{"column": "service_seq", "plus_p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true},
+    {"name": "update-plain-column", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service_region", "set": [{"column": "name", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true},
+    {"name": "update-primary-key", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service_region", "set": [{"column": "seq", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
+    {"name": "update-identity-key", "request": {"ir_version": 1, "n_params": 3, "kind": "update", "entity": "service", "set": [{"column": "seq", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
+    {"name": "restore-soft-delete-column", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "set": [{"column": "deleted_at", "null": true}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
+    {"name": "restore-primary-key", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "set": [{"column": "seq", "p": 0}], "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "error": "IR_INVALID"},
+    {"name": "restore-plain", "request": {"ir_version": 1, "n_params": 3, "kind": "restore", "entity": "soft_record", "where": {"items": [{"pred": {"column": "seq", "op": "eq", "p": 1}}]}}, "valid": true}
   ]
 }

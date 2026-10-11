@@ -1206,9 +1206,6 @@ impl<'m> Planner<'m> {
         let mut sets = Vec::new();
         for a in &set {
             let col = self.column_of(ent, &a.column)?;
-            if col.primary_key || col.identity {
-                return Err(err(codes::IR_INVALID, format!("cannot update {}", a.column)));
-            }
             let v = self.render_assign(&mut b, ent, col, a)?;
             sets.push(format!("{} = {v}", self.d.quote(&a.column)));
         }

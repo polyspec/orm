@@ -875,9 +875,6 @@ final class Planner
         $sets = [];
         foreach ($set as $a) {
             $col = RuntimeModel::column($ent, $a['column']);
-            if ($col['pk']) {
-                throw self::err(Code::IR_INVALID, 'cannot update ' . $a['column']);
-            }
             $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
         }
         if (self::assignsAes($ent, $set)) {

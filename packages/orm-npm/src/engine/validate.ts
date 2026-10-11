@@ -404,6 +404,11 @@ export function validate(m: RuntimeModel, r: Request): void {
       v.assign(ent, r, a);
       // A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
       if (r.kind === 'insert' && (a.plus_p !== undefined || a.minus_p !== undefined)) fail('IR_INVALID', `insert cannot assign ${a.column} by plus or minus`);
+      // The key and the soft delete column are the table's own: a restore clears the latter itself.
+      if (r.kind === 'update' || r.kind === 'restore') {
+        const c = columnOf(ent, a.column)!;
+        if (c.primary || c.identity || (r.kind === 'restore' && a.column === ent.softDelete)) fail('IR_INVALID', `cannot update ${a.column}`);
+      }
     }
   }
   if ((r.rows ?? []).length > 0) {

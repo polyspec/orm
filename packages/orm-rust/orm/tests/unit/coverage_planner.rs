@@ -136,10 +136,11 @@ fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
         .enumerate()
         .map(|(i, a)| {
             let at = format!("{at}[{i}]");
-            let a = members(a, &at, &["column", "p", "plus_p", "minus_p"]);
+            let a = members(a, &at, &["column", "p", "null", "plus_p", "minus_p"]);
             ir::Assign {
                 column: string(a, &at, "column"),
                 p: a.get("p").map(|p| index(p, &format!("{at}.p"))),
+                null: a.get("null").map(|n| n.as_bool().unwrap_or_else(|| panic!("{at}.null: expected a boolean"))).unwrap_or(false),
                 plus_p: a.get("plus_p").map(|p| index(p, &format!("{at}.plus_p"))),
                 minus_p: a.get("minus_p").map(|p| index(p, &format!("{at}.minus_p"))),
                 ..Default::default()

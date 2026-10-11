@@ -138,6 +138,13 @@ final class Validator
                 if ($kind === 'insert' && (isset($a['plus_p']) || isset($a['minus_p']))) {
                     throw self::err(Code::IR_INVALID, "insert cannot assign {$a['column']} by plus or minus");
                 }
+                // The key and the soft delete column are the table's own: a restore clears the latter itself.
+                if ($kind === 'update' || $kind === 'restore') {
+                    $c = RuntimeModel::column($ent, $a['column']);
+                    if ($c['pk'] || $ent['identity'] === $a['column'] || ($kind === 'restore' && $a['column'] === $ent['soft_delete'])) {
+                        throw self::err(Code::IR_INVALID, 'cannot update ' . $a['column']);
+                    }
+                }
             }
         }
         $rows = $r['rows'] ?? [];

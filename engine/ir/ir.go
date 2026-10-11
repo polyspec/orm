@@ -358,6 +358,12 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 			if r.Kind == "insert" && (a.PlusP != nil || a.MinusP != nil) {
 				return errf("IR_INVALID", "insert cannot assign %s by plus or minus", a.Column)
 			}
+			// The key and the soft delete column are the table's own: a restore clears the latter itself.
+			if r.Kind == "update" || r.Kind == "restore" {
+				if c := ent.Field(a.Column); c.PrimaryKey || c.Identity || r.Kind == "restore" && a.Column == ent.SoftDelete {
+					return errf("IR_INVALID", "cannot update %s", a.Column)
+				}
+			}
 		}
 	}
 	if len(r.Rows) > 0 {
