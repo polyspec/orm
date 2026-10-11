@@ -1362,7 +1362,7 @@
         },
         "rust": {
           "symbol": "packages/orm-rust/orm/src/events.rs::Db::subscribe",
-          "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Subscription"
+          "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription>"
         },
         "typescript": {
           "symbol": "packages/orm-npm/src/database.ts::Db.subscribe",
