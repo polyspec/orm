@@ -1,9 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d1f2b6e3f28744a306233d503e3acfc6ce6b4baae66709bb0c096807dd0284b3 -->
+<!-- source-sha256: cd857fd2f0bb926a8e470d3c520bf598a53c8cd5e6468ed3766788feae89467f -->
 # 변경 이력
 
 ## Unreleased
 
+## 0.0.9
+
+- T126: 0.0.9 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.9를 밝히고, `tests/release-consumer`가 0.0.9 archive의 lock을 가지며, Python wheel `polyspec_orm-0.0.9-py3-none-any.whl`이 release asset에 있다. tag되지 못한 0.0.8의 section은 0.0.9에 합쳐졌다.
 - T65: Python client가 markdown DSN으로 corpus에 접속하며 `Db`마다 server 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다. rebase에서 main 밖으로 빠졌던 executor module을 다시 추적한다.
 - T102: dialects.md의 "Markdown IR executor" 표가 flowmark의 spec 60을 행마다 그대로 옮긴다. 행마다 판정을 결과와 규칙으로 나누고, `tests/markdown/flowmark.version`이 고정한 flowmark 판(이제 flowmark `444f27f`)에 맞춘다. `make markdown-table-check`가 둘을 비교해 다르면 실패한다.
 - T84: 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 모양만으로 많아야 한 행을 낸다. count가 1인 `limit`과 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가져야 하며, 아니면 모든 구현에서 `IR_INVALID`이다(여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답했고 SQLite는 첫 행을 돌려주었다). planner는 그에 `ORDER BY … LIMIT …`을 렌더한다. conformance vector는 `T84-1`이다.
@@ -21,9 +24,7 @@
 - T64: PHP client가 markdown DSN으로 corpus에 접속하며 `Db`마다 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 같은 case를 통과한다.
 - T63: Go client가 DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`으로 corpus에 접속한다. flowmark server에 연결해 모든 IR 종류와 transaction, savepoint를 그것으로 실행하고, `WRITE_CONFLICT`는 재시도 없이 돌려주며, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다.
 - T92(일부): SQLite에서 `datetime(p)`와 `time(p)` 값은 정확히 p자리 소수로 bind된다. 모든 구현의 planner가 parameter slot에 column의 precision을 담고, Go client는 p자리 뒤의 0을 버리며 0이 아닌 자리는 `CODEC_ENCODE`로 거절한다.
-## 0.0.8
-
-- T114: 0.0.8 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.8을 밝히고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.8 archive의 lock을 가지고, Python wheel `polyspec_orm-0.0.8-py3-none-any.whl`이 release asset에 있다.
+- T114: tag되지 못한 0.0.8의 준비 — bump commit이 batch로 push되어 check run이 없어 `make release-verify`를 통과할 수 없으므로 — 그 선언은 0.0.9로 나간다: 2026-10-11의 dependency review를 기록했고 ordered-json 0.0.8이 모든 client에 닿는다.
 - T78-2: Python statement fault test의 이름을 `statement_fault.py`로 바꿔, `make python-unit-check`(`unittest discover -p 'test_*.py'`)가 database가 필요한 test를 더 실행하지 않는다. `make python-statement-fault-check`가 이를 실행한다.
 - T115: Python client가 PEP 427 wheel `polyspec_orm-<version>-py3-none-any.whl`로 release된다. `Requires-Dist`는 registry package를 `name==version`으로 고정하고 `polyspec-ordered-json`을 sha256을 붙인 release asset으로 가리킨다. `packages/orm-python/pylock.toml`이 모든 의존성을 hash와 함께 고정하고, release proof는 그 lock을 설치한 뒤 wheel을 offline으로 설치하고 import한다.
 - T113: Python client는 driver가 zone 없이 돌려주는 date-time(PyMySQL, psycopg)을 연결 zone의 벽시계로 읽으므로, 읽은 `datetime`이 어느 기계에서나 정확하다. 모든 client의 test가 `TEST_TZ`(Asia/Seoul)에서 실행되고, docs/dialects.md가 규칙을 적는다.
@@ -75,7 +76,6 @@
 - T57-1: version check가 root README의 version 선언을 읽지 않는다. 제목은 version을 적지 않는다. README 변경의 CI가 그로 인해 실패했다.
 - `make release-consumer TAG=v0.0.7`이 npm 12.2.0과 PHP 8.5, Composer 2.10.3이 있는 machine에서 통과했다. release를 만든 machine이 설치하지 못한 Composer project도 통과했다. Makefile이 `release-consumer`와 `release-proof`에 `npm_config_allow_remote=root`를 export한다. npm 12은 기본으로 URL 의존성을 설치하지 않기 때문이다(T56).
 - README가 Python client를 밝힌다. 제목은 version을 적지 않고, 소개·예·models 항목·quick start·도구 줄이 다섯 client를 적는다(T57).
-
 ## 0.0.7
 
 - T56: 0.0.7 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.7을 밝히고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.7 archive의 lock을 가진다.
