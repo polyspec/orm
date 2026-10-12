@@ -15,7 +15,12 @@
     }
   },
   "composer": {
-    "version": "2.10.3"
+    "version": "2.10.3",
+    "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6"
+  },
+  "pythonBackend": {
+    "requirement": "setuptools==84.0.0",
+    "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
   },
   "go": {
     "mod": "go.mod",
