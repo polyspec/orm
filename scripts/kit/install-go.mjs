@@ -2,7 +2,7 @@
 // var/tools/bin. The release is downloaded by the Go of the machine as the module
 // golang.org/toolchain@v0.0.1-go<version>.<os>-<arch> into a module cache of var/tools (GOTOOLCHAIN=local, so that the Go
 // of the machine selects no other toolchain). An installed release is kept. The Go of the machine is never changed.
-import { chmodSync, existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { chmodSync, existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { installOnce } from './install-tool.mjs';
 import { bootstrapEnvironment, quote, run, toolsPath, wrapperText, writeWrapper } from './tool-wrappers.mjs';
@@ -41,6 +41,10 @@ export function installGo({ root, declared, print = () => {} }) {
       return existsSync(file) ? readFileSync(file, 'utf8').split('\n')[0].replace(/^go/, '') : undefined;
     },
     install: (next) => {
+      // A scratch module of the download directory keeps the Go of the machine from reading the go.mod of the
+      // checkout above var/tools, whose go directive may name a newer Go than the machine has: with GOTOOLCHAIN=local
+      // that refusal stops the install before any download. The scratch asks for an old Go every release fulfils.
+      writeFileSync(path.join(next, 'go.mod'), 'module polyspec.kit/go-download\n\ngo 1.16\n');
       // The module cache of var/tools is writable (-modcacherw), so removing var/ needs no change of permissions.
       run('go', ['mod', 'download', '-x', module], {
         cwd: next, env: bootstrapEnvironment(root, { GOMODCACHE: next, GOFLAGS: '-modcacherw', GOTOOLCHAIN: 'local', GOWORK: 'off', GO111MODULE: 'on' }),

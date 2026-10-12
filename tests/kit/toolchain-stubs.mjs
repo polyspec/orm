@@ -29,6 +29,22 @@ script(path.join(prefix, 'node_modules/npm/bin/npm-cli.js'), 'console.log(' + JS
 
 const GO = `${HEADER}
 if (args[0] === 'mod') {
+  // The module resolution of Go 1.24 with GOTOOLCHAIN=local: the go.mod of the working directory, or the first one
+  // above it, names a newer Go and the call refuses, as the real machine Go refused on a release runner.
+  let dir = process.cwd(), found = null;
+  while (true) {
+    if (fs.existsSync(path.join(dir, 'go.mod'))) { found = path.join(dir, 'go.mod'); break; }
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  if (found) {
+    const want = /go (\d+)\.(\d+)/.exec(fs.readFileSync(found, 'utf8'));
+    if (want && Number(want[1]) * 1000 + Number(want[2]) > 1 * 1000 + 24) {
+      console.error('go: ' + found + ' requires go >= ' + want[0].slice(3) + ' (running go 1.24.13; GOTOOLCHAIN=local)');
+      process.exit(1);
+    }
+  }
   const module = args.at(-1);
   const version = /-go(\\d+\\.\\d+\\.\\d+)\\./.exec(module)[1];
   const cache = process.env.GOMODCACHE;
