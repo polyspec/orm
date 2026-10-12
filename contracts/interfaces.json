@@ -40,11 +40,12 @@
   },
   "symbol_hashes": {
 
-    "go": "sha256:919a1645e71b28b98c8b5236cbfdd85f86367af368dac82c48e5d80f2c8f327d",
-    "php": "sha256:295c61626b04c5d36d4d2e5d4966a70acea09d0be9c7cf11c1fbece7bbb2965d",
-    "rust": "sha256:16d52d2f9cd50b867f7193f65d6b1281ec2c81a12654bc8c73dd259c28405b2c",
-    "typescript": "sha256:5e092393719ca9780a4f199b5d02cdf591c39945837fe2645d5eed8b46be4ad1",
-    "python": "sha256:13bd10354c43a77d466979da21f28d3b9bbc89cbea59d2ca25edf73f592b309b"
+    "go": "sha256:a65cb65f403bc03e22e30ec64e32f618f82b198b1756cef9d41387b782517bed",
+    "php": "sha256:31349307d9baaf5d00fcc64d2a1fced43be8f0adc88a7d88e40549a70de0495f",
+    "rust": "sha256:353ed2936e8712820cb3d51cef240e36d2bb2ef791031370f1e64dcc6f26ce78",
+    "typescript": "sha256:d9e200b74398e2680f6fb812bc7a6e168a23a50677b9fc907868b8f5732e3932",
+    "python": "sha256:5e286ba6a3b6bc6f27da9d5f1e5d94e7179b4134fed9bd7034a4a684754fbdfb"
+  },
  "extensions": {
     "php-extension": {
       "description": "The PHP extension orm_dbspec (packages/orm-php-extension) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
