@@ -148,7 +148,6 @@ fn assigns(value: &Value, at: &str) -> Vec<ir::Assign> {
                 null: a.get("null").map(|n| n.as_bool().unwrap_or_else(|| panic!("{at}.null: expected a boolean"))).unwrap_or(false),
                 plus_p: a.get("plus_p").map(|p| index(p, &format!("{at}.plus_p"))),
                 minus_p: a.get("minus_p").map(|p| index(p, &format!("{at}.minus_p"))),
-                ..Default::default()
             }
         })
         .collect()
@@ -284,7 +283,6 @@ fn query(value: &Value, at: &str) -> ir::Query {
                 desc: o.get("desc").map(|d| d.as_bool().unwrap_or_else(|| panic!("{at}.desc: expected a boolean"))).unwrap_or(false),
                 random: o.get("random").map(|r| r.as_bool().unwrap_or_else(|| panic!("{at}.random: expected a boolean"))).unwrap_or(false),
                 r#fn: o.get("fn").map(|f| func(f, &format!("{at}.fn"))),
-                ..Default::default()
             }
         })
         .collect();

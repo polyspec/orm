@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0f4d0e5303082550148ea54cc5132f97",
+    "content-hash": "5f05fbdd187f2f66932da3464daaca7d",
     "packages": [
         {
             "name": "polyspec/ordered-json",
@@ -35,7 +35,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/orm-php",
-                "reference": "545804b1a33e8405d48e064807f9060b3e390e2b"
+                "reference": "0f7ca143dc4418ce10461fdedf1cdde93c2ac014"
             },
             "require": {
                 "ext-json": "*",
