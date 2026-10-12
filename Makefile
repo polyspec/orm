@@ -1023,7 +1023,7 @@ docs-rules-check:
 # capability table of flowmark's docs/spec/60-dialect.md at the version of tests/markdown/flowmark.version, which it
 # downloads as install-flowmark does.
 markdown-table-check:
-	$(ONLINE) node scripts/docs/markdown-table.mjs
+	node scripts/docs/markdown-table.mjs
 
 # go-fmt-check fails when gofmt would change a tracked Go source and lists
 # the files it would change.
@@ -1109,6 +1109,7 @@ install-go:
 # 판을 FLOWMARK의 directory에 설치한다.
 install-flowmark:
 	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) go install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) go mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
 install-node-min:
 	$(ONLINE) ORM_NODE_MIN_INSTALL=1 ./scripts/typescript/node-min.sh
 # install-server-programs는 CI의 Linux runner에 make test-servers가 시작하는 server program을 설치한다
