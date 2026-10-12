@@ -8,13 +8,18 @@
 // of flowmark's document becomes the absolute link to the pinned revision, to the English document in both languages and without the anchor of a heading, as the translation of a document
 // keeps the link targets of its source and a heading has another anchor in each language.
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { root } from './lib.mjs';
 
 const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version'), 'utf8')).trim();
 const revision = version.split('-').pop();
-const module = JSON.parse(execFileSync('go', ['mod', 'download', '-json', `github.com/polyspec/flowmark@${version}`], { cwd: root, encoding: 'utf8' }));
+// The module source of the pinned flowmark, which make install-flowmark downloads into the module cache; a check
+// downloads nothing, so a missing module names the install target instead of fetching.
+const cache = execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: 'utf8' }).trim();
+const module = { Dir: path.join(cache, 'github.com', `polyspec/flowmark@${version}`) };
+if (!existsSync(module.Dir)) throw new Error(`${module.Dir} is missing; run make install-flowmark, which downloads the module of tests/markdown/flowmark.version`);
 
 const absolute = text => text.replace(/\]\((\d\d-[a-z-]+(?:\.ko)?\.md)(#[^)]*)?\)/g,
   (_, file) => `](https://github.com/polyspec/flowmark/blob/${revision}/docs/spec/${file.replace('.ko.md', '.md')})`);
