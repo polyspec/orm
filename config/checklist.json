@@ -7,7 +7,7 @@
       "translation": "docs/plans/execution-checklist.ko.md",
       "format": "list",
       "idPattern": "[A-Z][A-Za-z0-9]*(?:[.-][A-Za-z0-9]+)*",
-      "states": ["[ ]", "[~]", "[o]", "[!]"],
+      "states": ["[ ]", "[~]", "[o]", "[!]", "[-]"],
       "active": "[~]"
     }
   ]

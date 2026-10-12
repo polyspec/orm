@@ -54,7 +54,7 @@
   and branch. If removal is impossible, first add a numbered sub-item to the owning checklist with
   the cause and exact removal condition.
 - `docs/plans/execution-checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make documents-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make documents-check` fails on any other with its file, line and column.
-- Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, and `[!]` only when an unfinished item must be bypassed to advance. An `[!]` item states `Cause:` and `Retry:`. Resume it when the retry condition is met; a bypass is not completion.
+- Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, `[!]` only when an unfinished item must be bypassed to advance, and `[-]` when the item is impossible: it can never complete, so nothing resumes and it is no bypass. An `[!]` item states `Cause:` and `Retry:`; resume it when the retry condition is met, for a bypass is not completion. A `[-]` item states `Cause:` and is terminal, as `[o]` is.
 - Marking an item `[o]` also writes its changelog entry under `## Unreleased` at the top of
   CHANGELOG.md and CHANGELOG.ko.md in the same commit (`make version-check`), and uncommitted
   changes cover one item only. A received instruction is triaged first: finish the item in
@@ -214,7 +214,7 @@
 - A coverage case ID names shared behavior. Go and Rust commands map that ID to the exact native test symbol in their owning file; the checker accepts the ID only after that symbol passes. The checker supplies the selected database and DSN to the native process for database cases.
 - An owning client executes its own behavior cases from tests located under `packages/orm-<package>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
 - Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links or alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
-- Develop one `0.0.8` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
+- Develop one `0.0.9` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
 - Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. The four clients execute the same accepted and rejected schema cases.
 - SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
 - Preserve errors and input values. Do not add silent fallbacks or compatibility layers.

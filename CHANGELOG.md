@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+## 0.0.9
+
+- T126: release 0.0.9: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.9, `tests/release-consumer` holds the locks of the archives of 0.0.9, and the Python wheel `polyspec_orm-0.0.9-py3-none-any.whl` is among the release assets; the section of the never-tagged 0.0.8 joins 0.0.9.
 - T65: the Python client reaches a corpus through the markdown DSN, one server connection per `Db`, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build; its executor module, lost from main in a rebase, is tracked again.
 - T102: the table "Markdown IR executor" of dialects.md mirrors flowmark's spec 60 row by row, one row per row with its ruling split into Result and Rule, at the flowmark version pinned in `tests/markdown/flowmark.version` (now flowmark `444f27f`); `make markdown-table-check` compares the two and fails on a difference.
 - T84: a scalar column subquery (`columns.sub` with no `agg`) yields at most one row by its shape: it has `limit` with count 1 and an `order` that includes every primary key column and no `random` item, else `IR_INVALID` in every implementation (MySQL answered 1242 and PostgreSQL 21000 for several rows, SQLite returned the first); the planners render `ORDER BY … LIMIT …` for it. The conformance vector is `T84-1`.
@@ -20,9 +23,7 @@
 - T64: the PHP client reaches a corpus through the markdown DSN, one connection per `Db`, and passes the same cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T63: the Go client reaches a corpus through the DSN `markdown://127.0.0.1:<port>/<corpus>?token=<token>`: it connects to a flowmark server, runs every IR kind, transactions and savepoints through it, returns `WRITE_CONFLICT` without a retry, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build.
 - T92 (in part): a `datetime(p)` or `time(p)` value binds on SQLite with exactly p fraction digits: the planner puts the column's precision on the parameter slot in every implementation, and the Go client drops zero digits past p and refuses a non-zero one as `CODEC_ENCODE`.
-## 0.0.8
-
-- T114: release 0.0.8: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.8, the dependency review is recorded again, `tests/release-consumer` holds the locks of the archives of 0.0.8, and the Python wheel `polyspec_orm-0.0.8-py3-none-any.whl` is among the release assets.
+- T114: the preparation of 0.0.8, which was never tagged — its bump commit was pushed in a batch and has no check runs, so `make release-verify` cannot pass — so its declarations ship in 0.0.9: the dependency review of 2026-10-11 is recorded and ordered-json 0.0.8 reaches every client.
 - T78-2: the Python statement fault test is named `statement_fault.py`, so `make python-unit-check` (`unittest discover -p 'test_*.py'`) no longer runs a test that needs the databases; `make python-statement-fault-check` runs it.
 - T115: the Python client releases as a PEP 427 wheel, `polyspec_orm-<version>-py3-none-any.whl`. Its `Requires-Dist` pins registry packages as `name==version` and names `polyspec-ordered-json` by its release asset with the sha256; `packages/orm-python/pylock.toml` locks every dependency with hashes, and the release proof installs that lock, then the wheel offline, and imports it.
 - T113: the Python client reads a driver's date-time without a zone (PyMySQL, psycopg) as the wall clock of the connection's zone, so a loaded `datetime` is exact on any machine; every client's tests run in `TEST_TZ` (Asia/Seoul), and docs/dialects.md states the rule.
@@ -74,7 +75,6 @@
 - T57-1: the version check reads no version declaration of the root README, whose title names no version; the CI of the README change had failed on it.
 - `make release-consumer TAG=v0.0.7` passes on a machine with npm 12.2.0, PHP 8.5 and Composer 2.10.3, also the Composer project that the machine of the release could not install; the Makefile exports `npm_config_allow_remote=root` for `release-consumer` and `release-proof`, because npm 12 installs no URL dependency by default (T56).
 - README states the Python client: the title names no version and the introduction, the examples, the models bullet, the quick start and the tooling line name five clients (T57).
-
 ## 0.0.7
 
 - T56: release 0.0.7: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.7, the dependency review is recorded again and `tests/release-consumer` holds the locks of the archives of 0.0.7.
