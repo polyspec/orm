@@ -75,7 +75,10 @@ pub(super) fn conflict_key(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<Strin
         [] => Err(err(codes::IR_INVALID, "on_duplicate needs exactly one conflict key; no key can meet the row")),
         [(name, columns)] => {
             if let Some(missing) = columns.iter().find(|c| !assigned.contains(&c.as_str())) {
-                return Err(err(codes::IR_INVALID, format!("on_duplicate needs exactly one conflict key; {name} can meet the row but the insert does not assign {missing}")));
+                return Err(err(
+                    codes::IR_INVALID,
+                    format!("on_duplicate needs exactly one conflict key; {name} can meet the row but the insert does not assign {missing}"),
+                ));
             }
             Ok((*columns).clone())
         }
@@ -412,7 +415,10 @@ impl<'m> Validator<'m> {
                     return Err(unknown_column(&target.name, &k.right));
                 }
                 if !meets(ent.field(&k.left).unwrap(), target.field(&k.right).unwrap()) {
-                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("relation {}: {}.{} does not meet {}.{}", r.rel, q.entity, k.left, target.name, k.right)));
+                    return Err(err(
+                        codes::OPERATOR_NOT_ALLOWED,
+                        format!("relation {}: {}.{} does not meet {}.{}", r.rel, q.entity, k.left, target.name, k.right),
+                    ));
                 }
                 // 한 column이 두 성분에 나오면 key가 아니다.
                 if lefts.contains(&k.left) || rights.contains(&k.right) {
@@ -583,7 +589,10 @@ impl<'m> Validator<'m> {
             let sub_entity = self.m.entity(&sub.query.entity)?;
             if let Some(sub_column) = sub_entity.field(&sub.column) {
                 if !meets(ent.field(&p.column).unwrap(), sub_column) {
-                    return Err(err(codes::OPERATOR_NOT_ALLOWED, format!("{}.{} does not meet the subquery column {}.{}", ent.name, p.column, sub.query.entity, sub.column)));
+                    return Err(err(
+                        codes::OPERATOR_NOT_ALLOWED,
+                        format!("{}.{} does not meet the subquery column {}.{}", ent.name, p.column, sub.query.entity, sub.column),
+                    ));
                 }
             }
             return Ok(());
