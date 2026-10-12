@@ -817,7 +817,7 @@
       ]
     }
   ],
-  "feature": "identity_load",
+  "feature": "model_writes",
   "fixture": "contracts/fixtures/identity_load.dbs",
   "read": {
     "mysql": "SELECT `seq`, `label` FROM `load_probe` ORDER BY `seq`",
