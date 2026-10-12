@@ -15,7 +15,7 @@
     "repo-check": {"scope": "owner", "needs": ["php", "rust"], "inputs": ["scripts/repo/**", "tests/new-session/**", ".github/workflows/release.yml"], "lints": ["**"]},
     "test-servers-check": {"scope": "owner", "needs": ["go", "server-programs"], "inputs": ["scripts/test-servers.sh", "scripts/test-servers.test.mjs", "scripts/test-servers-mysql.mjs", "scripts/test-servers-mysql.test.mjs", "tests/stop-process/**", "tests/new-session/**", "tests/lease/**", "internal/procevent/**", "tests/testcase.mjs", "tests/environment.mjs"]},
     "docs-rules-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["contracts/rules.json", "scripts/docs/**"], "lints": ["**/*.md"]},
-    "markdown-table-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["scripts/docs/markdown-table.mjs", "tests/markdown/flowmark.version", "docs/dialects.md", "docs/dialects.ko.md"]},
+    "markdown-table-check": {"scope": "owner", "needs": ["go", "node-modules", "flowmark"], "inputs": ["scripts/docs/markdown-table.mjs", "tests/markdown/flowmark.version", "docs/dialects.md", "docs/dialects.ko.md"]},
     "docs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "docs-verify-idempotent": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
     "go-model-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/orm-go/model/generate.go", "generator/*.go", "cmd/orm-gen/*.go"]},
@@ -30,7 +30,7 @@
     "rust-150-check": {"scope": "owner", "needs": ["go", "rust"], "inputs": ["scripts/check-rust-150.sh"]},
     "rust-driver-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["bench/rust/**"]},
     "example-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "databases"], "inputs": ["examples/**"]},
-    "client-db-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
+    "client-db-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "python", "node-modules", "databases"]},
     "codec-check": {"scope": "owner", "needs": ["go", "rust", "php", "composer", "node-modules"], "inputs": ["tests/codec/**"]},
     "fuzz-check": {"scope": "owner", "needs": ["go"], "inputs": ["packages/orm-go/orm/fuzz_test.go", "engine/ir/fuzz_test.go"]},
     "client-pooler-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
@@ -66,7 +66,7 @@
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
-    "python-check": {"scope": "owner", "needs": ["python"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
+    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},
