@@ -38,8 +38,21 @@ jobs:
         with:
           node-version-file: .node-version
           package-manager-cache: false
+      # actions/setup-php: the PHP of .php-version runs the Composer proof of the release; a checkout that declares
+      # none keeps the PHP of the runner.
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea
+        if: ${{ hashFiles('.php-version') != '' }}
+        with:
+          php-version-file: .php-version
+          # The proof runs with no debugger or coverage driver, as the checks do.
+          coverage: none
       - name: make release-tools
         run: make release-tools
+      # The tools of var/tools/bin — the Go of .go-version the release builds with, and whatever else the packages
+      # need — join PATH for the steps that follow; a step's PATH is its own, so the export goes to the file the
+      # runner reads between steps.
+      - name: put the installed tools on PATH
+        run: make release-tools-path
       - name: verify the tagged commit
         run: make release-verify
       - name: check the versions

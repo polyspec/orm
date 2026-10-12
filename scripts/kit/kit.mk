@@ -102,6 +102,10 @@ release-tools: ## Install the tools that config/release.json needs for the relea
 	$(ONLINE) node scripts/kit/release-tools.mjs
 
 
+release-tools-path: ## Append var/tools/bin to GITHUB_PATH for the steps that follow; the release workflow runs it after release-tools
+	@test -n "$$GITHUB_PATH" || { echo 'release-tools-path: GITHUB_PATH is not set; run it in the release workflow between steps'; exit 1; }
+	@echo "$$PWD/var/tools/bin" >> "$$GITHUB_PATH"
+
 release-verify: ## Require the commit of TAG on origin/main with its check runs succeeded; reads GITHUB_REPOSITORY
 	@test -n "$$TAG" || { echo "release-verify: TAG is required, for example make release-verify TAG=v0.0.1"; exit 1; }
 	node scripts/kit/release.mjs verify "$$TAG"
