@@ -346,7 +346,23 @@ pub(super) fn request(input: &Value, manifest_hash: &str) -> ir::Request {
     let object = members(
         input,
         at,
-        &["ir_version", "kind", "entity", "n_params", "columns", "limit", "order", "group_by", "where", "joins", "relations", "set", "on_duplicate", "optimistic", "agg"],
+        &[
+            "ir_version",
+            "kind",
+            "entity",
+            "n_params",
+            "columns",
+            "limit",
+            "order",
+            "group_by",
+            "where",
+            "joins",
+            "relations",
+            "set",
+            "on_duplicate",
+            "optimistic",
+            "agg",
+        ],
     );
     let mut query_input = input.clone();
     for key in ["ir_version", "kind", "n_params", "set", "on_duplicate", "optimistic", "agg"] {
