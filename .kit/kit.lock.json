@@ -2,9 +2,10 @@
   "schema": 1,
   "repository": "https://github.com/polyspec/kit",
   "tag": "fix/install-go-scratch-module-K65-v2",
-  "commit": "47c5f7829e838fce110bd7476ec366dc4b1ee169",
+  "commit": "b30a6854de910a39e69256fcaa6002ef045b20de",
   "files": {
-    "kit.json": "147e2d068704704af0c232e808f9d8ed846ee04b1c7621faaedaaebaf21cef3e",
+    ".github/workflows/release.yml": "5d897622f651d19a81515fc240839240433924657c58c654ab83c61c61ce8ca9",
+    "kit.json": "3b9aa9e226924ed81cade9c74ea4e67aa99582fbbb27730f2513fceb407b8486",
     "scripts/kit/changelog.mjs": "b3979b5b39dba28bb5772bfb932e7e98d7ad05fdb85e19f249c11760d0506433",
     "scripts/kit/check-cargo-downloads.mjs": "55d60f4ce11960077a8b83829c24baa017b508ef08c8079dbf175596ddb38cd2",
     "scripts/kit/check-commits.mjs": "8592e4b036d7f5d3a3182f08f615105fde022c9e6051b9243dabd53950dc97dd",
