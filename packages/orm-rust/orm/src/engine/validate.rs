@@ -719,7 +719,7 @@ impl<'m> Validator<'m> {
             return Err(err(codes::IR_INVALID, "subquery may not use limit, relations, lock or columns"));
         }
         if scalar_column {
-            if q.limit.as_ref().map_or(true, |l| l.count != 1) {
+            if q.limit.as_ref().is_none_or(|l| l.count != 1) {
                 return Err(err(codes::IR_INVALID, "a scalar column subquery needs limit with count 1"));
             }
             if q.order.iter().any(|o| o.random) {
