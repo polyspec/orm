@@ -4,6 +4,7 @@
 ## Unreleased
 
 - T129-1: the interface symbols of the renderer names are recorded: contracts/symbols holds the T129 snapshots, and contracts/interfaces.json holds their hashes, so the interfaces check passes on the T129 tree.
+- T130-2: docs/usage.md states the finder rule exactly: PHP resolves a chain at call time, and a TypeScript chain works after model generation scans the code that calls it. The generators are unchanged.
 - T130: an audited table that is also immutable is introspected: each of the immutable and audit settings is recognized by its own recomputed trigger names instead of by a count of triggers, and a table with both settings has the union of their renderer outputs, which its trigger set must equal exactly (docs/dialects.md "Triggers").
 - T129: a renderer-generated name (the CHECK `<table>$<column>`, the triggers and functions `<table>$<event>`) is the plain form when it has at most 63 bytes, otherwise its first 54 bytes, a `$` and the first 8 lowercase hex digits of its SHA-256, so an audited table with a long history name is declared; a declared name is still refused, never shortened (docs/dbspec.md "Names").
 - T125-8: the Go request hook tests start their cases with the shared testcase package, the Python interface test counts the fifteenth connection rule, and `docs/features.md` lists the feature `request_hook`.
