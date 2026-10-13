@@ -931,4 +931,12 @@
 - [ ] T128-8 `packages/dbspec/codemirror` and `packages/dbspec/vscode`. Acceptance: CodeMirror 6 marks, lint, fold and a format command tested through EditorState; a VS Code extension with semantic token scopes, no grammar file, semantic highlighting enabled by default and the bundled LSP client, tested by integration; the CI job installs VS Code through the kit tool.
 - [ ] T128-9 Wire the editor packages into the checks and the release configuration. Acceptance: the kit import check with orm's rules, feature owners, check inputs, CI group, workspace build and test scripts, release manifests and consumer smokes, dependency review records, and the AGENTS.md (+ko) package layout.
 - [ ] T128-R Release the editor stack. Acceptance: a `chore(release)` bump commit after green CI, the maintainer's tag, the release workflow and `release-verify` of every npm package.
+- [ ] T131 Translate the code comments to English. Cause: AGENTS said code comments are Korean, against the owner's rule that comments are English (kit PRINCIPLES, K84); 10,059 Korean comment lines remain in 728 files (2026-10-13). Acceptance: no Hangul in a comment of a code file, held by a check that fails on one and runs among the check targets; AGENTS states the English rule.
+  - [ ] T131-1 The comment language check: a tool that reads the comments of every code file (Go, TypeScript and JavaScript, PHP, C, Python, Rust, Makefile, shell) through each language's comment syntax and fails on Hangul, naming file and line; red on the current tree.
+  - [ ] T131-2 Go comments in English.
+  - [ ] T131-3 TypeScript and JavaScript comments in English.
+  - [ ] T131-4 PHP and PHP extension comments in English.
+  - [ ] T131-5 Python comments in English.
+  - [ ] T131-6 Rust comments in English.
+  - [ ] T131-7 Makefile, scripts and the remaining files in English; the check of T131-1 passes and joins the check targets.
 - [ ] T69 Release 0.0.9. Cause: T61, T62 and the markdown IR executors T62-1 and T63 to T67 add the protocol section, the markdown storage settings and the executors that polyspec/flowmark requires; flowmark requires a released tag instead of a pseudo-version. Acceptance: the release procedure of the previous release items (T52, T56) for 0.0.9, ending with the tag. Requires T62-1, T63, T64, T65, T66, T67.

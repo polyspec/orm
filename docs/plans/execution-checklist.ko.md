@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 453e8c91b5b9d65bc69a1db2fdd14677f9e1ffdbd351b2f439bdcd2e71bdeab8 -->
+<!-- source-sha256: d59dbbb514775d1dd229eacb3fdd319816a71628cb6d01541d5dae6a31901b4a -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -930,4 +930,12 @@
 - [ ] T128-8 `packages/dbspec/codemirror`와 `packages/dbspec/vscode`. 인수 조건: EditorState로 시험한 CodeMirror 6 mark, lint, fold, format 명령; semantic token scope를 가지고 문법 파일이 없으며 semantic highlighting을 기본으로 켜고 묶어 넣은 LSP client를 가진 VS Code 확장을 integration으로 시험한다; CI job은 kit 도구로 VS Code를 설치한다.
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.
+- [ ] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다.
+  - [ ] T131-1 주석 언어 검사: 모든 code 파일(Go, TypeScript와 JavaScript, PHP, C, Python, Rust, Makefile, shell)의 주석을 각 언어의 주석 문법으로 읽고 한글이 있으면 파일과 줄을 대며 실패하는 도구; 현재 tree에서 red다.
+  - [ ] T131-2 Go 주석을 영어로.
+  - [ ] T131-3 TypeScript와 JavaScript 주석을 영어로.
+  - [ ] T131-4 PHP와 PHP extension 주석을 영어로.
+  - [ ] T131-5 Python 주석을 영어로.
+  - [ ] T131-6 Rust 주석을 영어로.
+  - [ ] T131-7 Makefile, script, 나머지 파일을 영어로; T131-1의 검사가 통과하고 check target에 들어간다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
