@@ -1,15 +1,15 @@
 // orm-gen: the TypeScript model generator.
 //
-//   orm-gen gen --schema <document.dbs>... [--use <document.dbs>...] --out src/models [--scan <file or directory>]... [--check]
+//   orm-gen gen --set <dbspec-set.json> --out src/models [--scan <file or directory>]... [--check]
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { readDbspecFile } from '../dbspec/file.js';
+import { readDbspecBytes } from '../dbspec/read_bytes.js';
+import { readDbspecSet, type DbspecSetFile } from '../dbspec/set_read.js';
 import { modelOfDocuments, parseDocumentSet } from '../engine/model.js';
-import { OrmError } from '../runtime_error.js';
 import { generateTypeScript, renderTypeScript } from '../generate/typescript.js';
 
-const usageText = `usage: orm-gen gen --schema <document.dbs>... [--use <document.dbs>...] --out <directory> [--scan <file or directory>]... [--check]`;
+const usageText = `usage: orm-gen gen --set <dbspec-set.json> --out <directory> [--scan <file or directory>]... [--check]`;
 
 class UsageError extends Error {}
 
@@ -61,30 +61,50 @@ function report(lines: readonly string[]): number {
   return lines.length === 0 ? 0 : 1;
 }
 
-/** --schema 파일을 readDbspecFile로 읽는다. signature가 없는 파일은 그 diagnostic의 SCHEMA_INVALID다. */
-function readDocument(path: string): string {
-  const read = readDbspecFile(path);
-  if (read.text === null) {
-    const d = read.diagnostics[0]!;
-    throw new OrmError('SCHEMA_INVALID', `${d.line}:${d.column} ${d.rule}: ${d.message}`);
+/** The error of a set file or of its files, after every error and diagnostic of the set was printed. */
+class SetError extends Error {}
+
+/**
+ * Reads the set file with readDbspecSet and gives each listed file's bytes to readDbspecBytes with its joined path.
+ * On any error or diagnostic it prints all of them and throws SetError; otherwise it returns the texts of the owned
+ * and of the external documents in written order.
+ */
+function readSet(path: string): { documents: string[]; external: string[] } {
+  const set = readDbspecSet(path);
+  if (set.documents === null) {
+    for (const e of set.errors) console.error(`orm-gen: ${e.rule}: ${e.message}`);
+    throw new SetError(`${path}: ${set.errors.length} set error(s)`);
   }
-  return read.text;
+  const lines: string[] = [];
+  const texts = (files: readonly DbspecSetFile[]): string[] => files.map(file => {
+    const read = readDbspecBytes(file.path, file.bytes);
+    for (const d of read.diagnostics) lines.push(`orm-gen: ${file.path}:${d.line}:${d.column} ${d.rule}: ${d.message}`);
+    return read.text ?? '';
+  });
+  const documents = texts(set.documents);
+  const external = texts(set.external);
+  if (lines.length > 0) {
+    for (const line of lines) console.error(line);
+    throw new SetError(`${path}: ${lines.length} document diagnostic(s)`);
+  }
+  return { documents, external };
 }
 
 /**
- * Generates models.ts from the dbspec documents of one document set, each named by --schema, and the external
- * documents that it uses but does not own, each named by --use. Only the owned tables get models.
+ * Generates models.ts from the dbspec documents of the document set that the set file names with --set: the
+ * documents it owns and the external documents they use. Only the owned tables get models. Nothing is written when
+ * the set file or a listed file has an error or a diagnostic.
  */
 function gen(args: readonly string[]): number {
   const { values } = parse(args, {
-    schema: { type: 'string', multiple: true }, use: { type: 'string', multiple: true }, out: { type: 'string' },
+    set: { type: 'string' }, out: { type: 'string' },
     scan: { type: 'string', multiple: true }, check: { type: 'boolean' },
   });
-  const schemas = (values.schema as string[] | undefined) ?? [];
+  const setPath = text(values.set);
   const out = text(values.out);
-  if (schemas.length === 0 || out === '') usage();
-  const uses = (values.use as string[] | undefined) ?? [];
-  const model = modelOfDocuments(parseDocumentSet(schemas.map(readDocument), uses.map(readDocument)));
+  if (setPath === '' || out === '') usage();
+  const set = readSet(setPath);
+  const model = modelOfDocuments(parseDocumentSet(set.documents, set.external));
   const scan = (values.scan as string[] | undefined) ?? [];
   if (values.check === true) return report(compareFile(join(out, 'models.ts'), renderTypeScript(model, out, scan)));
   generateTypeScript(model, out, scan);
@@ -106,6 +126,11 @@ main(process.argv.slice(2)).then(
     if (error instanceof UsageError) {
       console.error(error.message);
       process.exitCode = 2;
+      return;
+    }
+    if (error instanceof SetError) {
+      console.error(`orm-gen: ${error.message}; nothing was written`);
+      process.exitCode = 1;
       return;
     }
     console.error(`orm-gen: ${message(error)}`);

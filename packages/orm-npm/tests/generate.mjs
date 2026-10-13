@@ -2,7 +2,8 @@
 // published package outside this repository.
 // Usage: node packages/orm-npm/tests/generate.mjs (after npm run typescript:build)
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cases, PROCESS } from '../../../tests/testcase.mjs';
@@ -15,6 +16,17 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL: ${message}`); }
 }
 function run(...args) { return spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8' }); }
+/**
+ * Writes the documents, each a name and its text, and a set file that owns them into a new directory under the work
+ * directory, and returns the path of the set file.
+ */
+async function setOf(dir, documents, external = []) {
+  await mkdir(dir, { recursive: true });
+  for (const [name, text] of documents) await writeFile(join(dir, name), text);
+  const set = join(dir, 'dbspec-set.json');
+  await writeFile(set, JSON.stringify({ schema: 1, documents: documents.map(([name]) => name), external }) + '\n');
+  return set;
+}
 
 // generator check는 orm-gen과 tsc process를 실행하는 case 하나다.
 const suite = cases();
@@ -25,8 +37,8 @@ await suite.run('generate', PROCESS, async () => {
     const calls = ['getsByNotAColumn(1)', 'orderByNotAColumnAsc()', 'gtIsClose(1)', 'lkReadCount(1)', 'getsByServiceSeqAndLtStartDt(1, 2)', 'andNeUuid(null)', 'joinServiceSeqWithSeq(s)'];
     await writeFile(usage, `import { Author } from './models/models.js';\ndeclare const x: Author;\n${calls.map(c => `x.${c};`).join('\n')}\n// comment.${'notCalled'}(1)\n`);
     const out = join(work, 'models');
-    const bench = join(root, 'schema/bench.dbs');
-    const result = run('gen', '--schema', bench, '--out', out, '--scan', usage);
+    const bench = join(root, 'schema/dbspec-set.json');
+    const result = run('gen', '--set', bench, '--out', out, '--scan', usage);
     check(result.status === 0, `orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     for (const invalid of ['NotAColumn', 'gtIsClose', 'lkReadCount', 'notCalled']) check(!text.includes(invalid), `declared invalid name ${invalid}`);
@@ -47,10 +59,9 @@ await suite.run('generate', PROCESS, async () => {
       'getDescription(): string | null',
     ]) check(text.includes(`public ${declaration} {`), `declaration ${declaration}`);
     // The value type of each dbspec type.
-    const types = join(work, 'types.dbs');
-    await writeFile(types, 'dbspec 1 types\n\ntable typed {\n  seq i64\n  small i16\n  day date null\n  clock time(3)\n  stamp datetime(0)\n  id uuid\n  body text\n  blob bytes\n  ratio f64\n  primary key (seq)\n}\n');
+    const types = await setOf(join(work, 'types'), [['types.dbs', 'dbspec 1 types\n\ntable typed {\n  seq i64\n  small i16\n  day date null\n  clock time(3)\n  stamp datetime(0)\n  id uuid\n  body text\n  blob bytes\n  ratio f64\n  primary key (seq)\n}\n']]);
     const typed = join(work, 'typed');
-    check(run('gen', '--schema', types, '--out', typed).status === 0, 'generation of the type document');
+    check(run('gen', '--set', types, '--out', typed).status === 0, 'generation of the type document');
     const typedText = await readFile(join(typed, 'models.ts'), 'utf8');
     for (const declaration of [
       'getSmall(): number', 'setSmall(value: number): this', 'getDay(): string | null', 'setDay(value: string | Date | null): this',
@@ -59,7 +70,7 @@ await suite.run('generate', PROCESS, async () => {
     ]) check(typedText.includes(`public ${declaration} {`), `declaration ${declaration}`);
     const nested = await mkdtemp(join(root, 'packages/orm-npm/src/models/decimal-test-'));
     try {
-      const nestedResult = run('gen', '--schema', join(root, 'contracts/fixtures/decimal_schema.dbs'), '--out', nested, '--scan', usage);
+      const nestedResult = run('gen', '--set', join(root, 'contracts/fixtures/dbspec-set.json'), '--out', nested, '--scan', usage);
       check(nestedResult.status === 0, `nested generated model exit ${nestedResult.status}: ${nestedResult.stderr}`);
       const nestedText = await readFile(join(nested, 'models.ts'), 'utf8');
       check(nestedText.includes("from '../../index.js'"), 'nested model imports its client runtime');
@@ -67,23 +78,44 @@ await suite.run('generate', PROCESS, async () => {
     } finally {
       await rm(nested, { recursive: true, force: true });
     }
-    check(run('gen', '--out', out).status === 2, 'missing --schema is a usage error');
-    check(run('--schema', bench, '--out', out).status === 2, 'a missing command is a usage error');
-    check(run('gen', '--schema', join(work, 'missing.dbs'), '--out', out).status === 1, 'missing schema fails');
-    const invalid = join(work, 'invalid.dbs');
-    await writeFile(invalid, 'dbspec 1 invalid\n\ntable t {\n  seq i64\n}\n');
-    const rejected = run('gen', '--schema', invalid, '--out', out);
+    check(run('gen', '--out', out).status === 2, 'missing --set is a usage error');
+    check(run('--set', bench, '--out', out).status === 2, 'a missing command is a usage error');
+    // The removed forms are usage errors.
+    check(run('gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out).status === 2, '--schema is a usage error');
+    check(run('gen', '--set', bench, '--use', join(root, 'schema/bench.dbs'), '--out', out).status === 2, '--use is a usage error');
+    const missing = join(work, 'missing', 'dbspec-set.json');
+    const missingRun = run('gen', '--set', missing, '--out', join(work, 'missing-out'));
+    check(missingRun.status === 1 && missingRun.stderr.startsWith(`orm-gen: set.file: ${missing}`), `a missing set file fails: ${missingRun.stderr}`);
+    const invalid = await setOf(join(work, 'invalid'), [['invalid.dbs', 'dbspec 1 invalid\n\ntable t {\n  seq i64\n}\n']]);
+    const rejected = run('gen', '--set', invalid, '--out', out);
     check(rejected.status === 1 && rejected.stderr.includes('SCHEMA_INVALID'), `an invalid document fails: ${rejected.stderr}`);
+    // Every error of the set file is printed, and nothing is written.
+    const broken = await setOf(join(work, 'broken'), [['a.dbs', 'dbspec 1 a\n']]);
+    await writeFile(broken, JSON.stringify({ schema: 1, documents: ['gone.dbs', 'a.dbs', 'a.dbs', 'bad\\x.dbs'] }));
+    const brokenOut = join(work, 'broken-out');
+    const brokenRun = run('gen', '--set', broken, '--out', brokenOut);
+    const brokenDir = join(work, 'broken');
+    check(brokenRun.status === 1 && brokenRun.stdout === '' && brokenRun.stderr.split('\n').filter(Boolean).map(line => line.split(':').slice(0, 2).join(':')).join(' ')
+      === 'orm-gen: set.file orm-gen: set.path orm-gen: set.duplicate orm-gen: ' + broken, `every set error is printed: ${brokenRun.stderr}`);
+    check(brokenRun.stderr.includes(`${brokenDir}/gone.dbs`) && brokenRun.stderr.includes(`${brokenDir}/a.dbs`), `the errors name their paths: ${brokenRun.stderr}`);
+    check(!existsSync(brokenOut), 'nothing is written on a set error');
 
-    // readDbspecFile rejects a file without the dbspec signature before parsing it.
-    for (const name of ['dbschema.dbs', 'empty.dbs']) {
-      const file = join(root, 'tests/dbspec/files', name);
-      const unsigned = run('gen', '--schema', file, '--out', join(work, `signature-${name}`));
-      check(unsigned.status === 1 && unsigned.stderr === `orm-gen: SCHEMA_INVALID: 1:1 signature: ${file} is not a dbspec document\n`, `${name} without the signature: ${unsigned.status} ${unsigned.stderr}`);
-    }
+    // The byte check rejects every listed file without the dbspec signature before parsing, and each is printed.
+    const unsignedDir = join(work, 'unsigned');
+    await mkdir(unsignedDir);
+    const unsignedSet = join(unsignedDir, 'dbspec-set.json');
+    const unsignedNames = ['dbschema.dbs', 'empty.dbs'];
+    for (const name of unsignedNames) await copyFile(join(root, 'tests/dbspec/files', name), join(unsignedDir, name));
+    await writeFile(unsignedSet, JSON.stringify({ schema: 1, documents: unsignedNames }));
+    const unsignedOut = join(work, 'unsigned-out');
+    const unsigned = run('gen', '--set', unsignedSet, '--out', unsignedOut);
+    const unsignedWant = unsignedNames.map(name => `orm-gen: ${unsignedDir}/${name}:1:1 signature: ${unsignedDir}/${name} is not a dbspec document\n`).join('')
+      + `orm-gen: ${unsignedSet}: 2 document diagnostic(s); nothing was written\n`;
+    check(unsigned.status === 1 && unsigned.stderr === unsignedWant, `files without the signature: ${unsigned.status} ${unsigned.stderr}`);
+    check(!existsSync(unsignedOut), 'nothing is written on a document diagnostic');
 
     // --check compares models.ts and the dbspec documents without writing.
-    const genCheck = ['gen', '--schema', bench, '--out', out, '--scan', usage, '--check'];
+    const genCheck = ['gen', '--set', bench, '--out', out, '--scan', usage, '--check'];
     let checked = run(...genCheck);
     check(checked.status === 0 && checked.stdout === '' && checked.stderr === '', `gen --check on current models: ${checked.status} ${checked.stdout}${checked.stderr}`);
     await writeFile(join(out, 'models.ts'), '// changed\n');
@@ -93,10 +125,14 @@ await suite.run('generate', PROCESS, async () => {
     await rm(join(out, 'models.ts'));
     checked = run(...genCheck);
     check(checked.status === 1 && checked.stdout === `missing: ${out}/models.ts\n`, `gen --check on missing models: ${checked.status} ${checked.stdout}${checked.stderr}`);
-    // 외부 문서(--use)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는다.
+    // 외부 문서(external)를 쓰는 set은 소유한 table의 model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는다.
     const external = join(root, 'contracts/fixtures/external');
     const memberOut = join(work, 'member');
-    const member = run('gen', '--schema', join(external, 'member.dbs'), '--use', join(external, 'core.dbs'), '--out', memberOut);
+    // The set owns member.dbs and names core.dbs in a sibling directory, through a `..` path.
+    await mkdir(join(work, 'external/core'), { recursive: true });
+    await copyFile(join(external, 'core.dbs'), join(work, 'external/core/core.dbs'));
+    const memberSet = await setOf(join(work, 'external/app'), [['member.dbs', await readFile(join(external, 'member.dbs'), 'utf8')]], ['../core/core.dbs']);
+    const member = run('gen', '--set', memberSet, '--out', memberOut);
     check(member.status === 0, `orm-gen of a set with an external document: ${member.status} ${member.stderr}`);
     if (member.status === 0) {
       const generated = await readFile(join(memberOut, 'models.ts'), 'utf8');
@@ -107,9 +143,8 @@ await suite.run('generate', PROCESS, async () => {
       check(!generated.includes('ext_session'), 'the generated models carry ext_session, which the set does not use');
     }
     // 모델 method 이름은 column 이름이 될 수 없다: restore() 가 있으므로 restore column 도 거부한다.
-    const reservedSchema = join(work, 'reserved.dbs');
-    await writeFile(reservedSchema, 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n');
-    const reserved = run('gen', '--schema', reservedSchema, '--out', join(work, 'reserved'));
+    const reservedSchema = await setOf(join(work, 'reserved-set'), [['reserved.dbs', 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n']]);
+    const reserved = run('gen', '--set', reservedSchema, '--out', join(work, 'reserved'));
     check(reserved.status !== 0 && reserved.stderr.includes('column name is a reserved method name: restore'), `a column named restore: ${reserved.status} ${reserved.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });

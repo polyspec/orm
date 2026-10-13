@@ -987,14 +987,14 @@ ts-min-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) PATH="$$(./scripts/typescript/node-min.sh):$$PATH" && export PATH && node --version && npm run typescript:test
 
-# dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, plan vector, Mermaid
+# dbspec-ts-check는 TypeScript client를 build하고, 공유 dbspec vector, set file vector, plan vector, Mermaid
 # vector, apply 정리 error, 그것들이 아직 다루지 않는 rule, Unicode word 표가 모든 code point에서 그 구간과
 # 같은지를 실행한다. stress 문서는 make bench가 실행한다.
 .PHONY: dbspec-ts-check
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/browser-entry.mjs packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-analyze.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
+	node --test packages/orm-npm/tests/browser-entry.mjs packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-set.mjs packages/orm-npm/tests/dbspec-analyze.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
 
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의
