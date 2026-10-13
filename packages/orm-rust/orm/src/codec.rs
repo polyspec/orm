@@ -2,14 +2,17 @@
 //! Styles are listed in write order; `decode` applies them in reverse. 첫 stage가
 //! `gz`나 `base64`이면 값을 먼저 PHP serialize한다.
 
-use std::collections::HashSet;
 use std::io::{Read, Write};
+use std::sync::LazyLock;
 
 use base64::Engine as _;
 use ordered_json as strict_json;
+use regex::Regex;
 use serde_json::{Map, Value};
 use yaml_rust2::parser::{Event as YamlEvent, MarkedEventReceiver, Parser as YamlParser};
 use yaml_rust2::scanner::{Marker as YamlMarker, TScalarStyle};
+use yaml_rust2::yaml::{Hash as YamlHash, Yaml};
+use yaml_rust2::YamlEmitter;
 
 use crate::codes::{CODEC_DECODE, CODEC_ENCODE, CODEC_UNSUPPORTED};
 use crate::value::{Param, StyledValue, Val};
@@ -49,8 +52,7 @@ pub fn decode(styles: &[String], raw: &Val) -> Result<Val> {
             }
             "serialize" => value = Some(Val::Json(php_unserialize(&cur)?)),
             "yaml" => {
-                validate_yaml_syntax(&cur)?;
-                value = Some(Val::Json(serde_yaml_ng::from_slice(&cur).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?));
+                value = Some(Val::Json(yaml_decode(&cur)?));
             }
             "ordered_json" => value = Some(Val::Ordered(strict_json::parse_bytes(&cur).map_err(|e| err(CODEC_DECODE, format!("json: {e}")))?)),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
@@ -124,7 +126,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                 if i != 0 {
                     return Err(err(CODEC_UNSUPPORTED, "yaml must be the first style"));
                 }
-                cur = serde_yaml_ng::to_string(&value).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?.into_bytes();
+                cur = yaml_encode(&value)?;
             }
             "ordered_json" => {
                 if i != 0 {
@@ -146,53 +148,74 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
     Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
 }
 
+// ---- yaml: YAML 1.2 with the core schema, through yaml-rust2 ----
+
+/// A collection the reader is building: a sequence, or a mapping with the key of the
+/// value that comes next.
 enum YamlFrame {
-    Sequence,
-    Mapping { expecting_key: bool, keys: HashSet<String> },
+    Sequence(Vec<Value>),
+    Mapping { map: Map<String, Value>, key: Option<String> },
 }
 
+/// Builds the common value of one YAML document from the parser events, and refuses
+/// in the same pass every form that docs/codec.md (yaml) refuses.
 #[derive(Default)]
-struct YamlValidator {
+struct YamlReader {
     documents: usize,
     frames: Vec<YamlFrame>,
+    value: Option<Value>,
     error: Option<String>,
 }
 
-impl YamlValidator {
+impl YamlReader {
     fn fail(&mut self, mark: YamlMarker, message: impl AsRef<str>) {
         if self.error.is_none() {
             self.error = Some(format!("{} at line {}, column {}", message.as_ref(), mark.line(), mark.col()));
         }
     }
 
-    fn start_node(&mut self, key: Option<(&str, TScalarStyle)>, mark: YamlMarker) {
-        if let Some(YamlFrame::Mapping { expecting_key, keys }) = self.frames.last_mut() {
-            if *expecting_key {
-                let Some((key, style)) = key else {
-                    self.fail(mark, "map keys must be scalar strings");
-                    return;
-                };
-                let lower = key.to_ascii_lowercase();
-                let non_string_plain = style == TScalarStyle::Plain
-                    && (matches!(lower.as_str(), "true" | "false" | "null" | "~")
-                        || ((key.contains('.') || key.contains('e') || key.contains('E')) && key.parse::<f64>().is_ok()));
-                if non_string_plain {
-                    self.fail(mark, "plain boolean, null, and floating-point map keys are not supported");
-                    return;
+    /// Whether the next node is a mapping key.
+    fn at_key(&self) -> bool {
+        matches!(self.frames.last(), Some(YamlFrame::Mapping { key: None, .. }))
+    }
+
+    /// Places a finished node: a mapping key, a mapping value, a sequence item, or the document.
+    fn place(&mut self, value: Value, mark: YamlMarker) {
+        match self.frames.last_mut() {
+            Some(YamlFrame::Sequence(items)) => items.push(value),
+            Some(YamlFrame::Mapping { map, key }) => match key.take() {
+                Some(name) => {
+                    map.insert(name, value);
                 }
-                if !keys.insert(key.to_string()) {
-                    self.fail(mark, format!("duplicate map key {key:?}"));
-                    return;
+                None => {
+                    // A plain integer key becomes its decimal string; a quoted key is a string.
+                    let name = match value {
+                        Value::String(name) => name,
+                        Value::Number(number) if number.is_i64() => number.to_string(),
+                        _ => return self.fail(mark, "plain boolean, null, and floating-point map keys are not supported"),
+                    };
+                    if map.contains_key(&name) {
+                        return self.fail(mark, format!("duplicate map key {name:?}"));
+                    }
+                    *key = Some(name);
                 }
-                *expecting_key = false;
-            } else {
-                *expecting_key = true;
-            }
+            },
+            None => self.value = Some(value),
+        }
+    }
+
+    fn start_collection(&mut self, anchor: usize, tag: bool, frame: YamlFrame, mark: YamlMarker) {
+        if anchor != 0 || tag {
+            self.fail(mark, "anchors and explicit tags are not supported");
+        } else if self.at_key() {
+            self.fail(mark, "map keys must be scalar strings");
+        } else {
+            self.frames.push(frame);
         }
     }
 }
 
-impl MarkedEventReceiver for YamlValidator {
+impl MarkedEventReceiver for YamlReader {
     fn on_event(&mut self, event: YamlEvent, mark: YamlMarker) {
         if self.error.is_some() {
             return;
@@ -205,48 +228,122 @@ impl MarkedEventReceiver for YamlValidator {
                 }
             }
             YamlEvent::Alias(_) => self.fail(mark, "aliases are not supported"),
-            YamlEvent::Scalar(value, style, anchor, tag) => {
+            YamlEvent::Scalar(text, style, anchor, tag) => {
                 if anchor != 0 {
                     self.fail(mark, "anchors are not supported");
                 } else if tag.is_some() {
                     self.fail(mark, "explicit tags are not supported");
-                } else if style == TScalarStyle::Plain && matches!(value.to_ascii_lowercase().as_str(), ".inf" | "+.inf" | "-.inf" | ".nan") {
-                    self.fail(mark, "non-finite numbers are not supported");
+                } else if style != TScalarStyle::Plain {
+                    self.place(Value::String(text), mark);
                 } else {
-                    self.start_node(Some((&value, style)), mark);
+                    match yaml_core_scalar(text) {
+                        Ok(value) => self.place(value, mark),
+                        Err(message) => self.fail(mark, message),
+                    }
                 }
             }
-            YamlEvent::SequenceStart(anchor, tag) => {
-                if anchor != 0 || tag.is_some() {
-                    self.fail(mark, "anchors and explicit tags are not supported");
-                    return;
-                }
-                self.start_node(None, mark);
-                self.frames.push(YamlFrame::Sequence);
-            }
-            YamlEvent::MappingStart(anchor, tag) => {
-                if anchor != 0 || tag.is_some() {
-                    self.fail(mark, "anchors and explicit tags are not supported");
-                    return;
-                }
-                self.start_node(None, mark);
-                self.frames.push(YamlFrame::Mapping { expecting_key: true, keys: HashSet::new() });
-            }
-            YamlEvent::SequenceEnd | YamlEvent::MappingEnd => {
-                self.frames.pop();
-            }
-            _ => {}
+            YamlEvent::SequenceStart(anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Sequence(Vec::new()), mark),
+            YamlEvent::MappingStart(anchor, tag) => self.start_collection(anchor, tag.is_some(), YamlFrame::Mapping { map: Map::new(), key: None }, mark),
+            YamlEvent::SequenceEnd | YamlEvent::MappingEnd => match self.frames.pop() {
+                Some(YamlFrame::Sequence(items)) => self.place(Value::Array(items), mark),
+                Some(YamlFrame::Mapping { map, .. }) => self.place(Value::Object(map), mark),
+                None => self.fail(mark, "collection end without a start"),
+            },
+            YamlEvent::Nothing | YamlEvent::StreamStart | YamlEvent::StreamEnd | YamlEvent::DocumentEnd => {}
         }
     }
 }
 
-fn validate_yaml_syntax(bytes: &[u8]) -> Result<()> {
+static YAML_CORE_INT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\A(?:[-+]?[0-9]+|0o[0-7]+|0x[0-9a-fA-F]+)\z").unwrap());
+static YAML_CORE_FLOAT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\A(?:[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z").unwrap());
+
+/// Resolves a plain scalar by the tags of the YAML 1.2 core schema (YAML 1.2.2, 10.3.2):
+/// null, bool, int and float by their regular expressions, and str otherwise. yaml-rust2
+/// reports a plain scalar as its text; its `Yaml::from_str` is not the core schema (it reads
+/// `Null` as a string, `0x-1` as an integer, and an integer beyond i64 as a float). An integer
+/// outside i64 and a float that is not finite are outside the common value model.
+fn yaml_core_scalar(text: String) -> std::result::Result<Value, String> {
+    Ok(match text.as_str() {
+        "" | "~" | "null" | "Null" | "NULL" => Value::Null,
+        "true" | "True" | "TRUE" => Value::Bool(true),
+        "false" | "False" | "FALSE" => Value::Bool(false),
+        _ if YAML_CORE_INT.is_match(&text) => {
+            let parsed = match (text.strip_prefix("0o"), text.strip_prefix("0x")) {
+                (Some(digits), _) => i64::from_str_radix(digits, 8),
+                (_, Some(digits)) => i64::from_str_radix(digits, 16),
+                _ => text.parse::<i64>(),
+            };
+            Value::from(parsed.map_err(|_| format!("integer {text} is outside the i64 range"))?)
+        }
+        _ if YAML_CORE_FLOAT.is_match(&text) => match text.parse::<f64>().ok().filter(|float| float.is_finite()).and_then(serde_json::Number::from_f64) {
+            Some(number) => Value::Number(number),
+            None => return Err(format!("non-finite number {text} is not supported")),
+        },
+        _ => Value::String(text),
+    })
+}
+
+/// Whether a character may appear in a YAML stream (YAML 1.2.2, 5.1, c-printable). A byte order
+/// mark is the encoding mark at the start of the stream (5.2) and never content.
+fn yaml_printable(c: char) -> bool {
+    matches!(c, '\t' | '\n' | '\r' | ' '..='~' | '\u{85}' | '\u{a0}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..) && c != '\u{feff}'
+}
+
+/// Reads one YAML document into the common value model in one pass of the yaml-rust2 parser.
+/// A stream without a document, or an empty document, is null. yaml-rust2 neither refuses a
+/// character outside c-printable nor removes the byte order mark, so the reader does both.
+fn yaml_decode(bytes: &[u8]) -> Result<Value> {
     let source = std::str::from_utf8(bytes).map_err(|e| err(CODEC_DECODE, format!("yaml: invalid UTF-8: {e}")))?;
-    let mut validator = YamlValidator::default();
-    YamlParser::new_from_str(source).load(&mut validator, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
-    match validator.error {
+    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    if let Some((at, c)) = source.char_indices().find(|&(_, c)| !yaml_printable(c)) {
+        return Err(err(CODEC_DECODE, format!("yaml: character U+{:04X} at byte {at} is not printable", c as u32)));
+    }
+    let mut reader = YamlReader::default();
+    YamlParser::new_from_str(source).load(&mut reader, true).map_err(|e| err(CODEC_DECODE, format!("yaml: {e}")))?;
+    match reader.error {
         Some(message) => Err(err(CODEC_DECODE, format!("yaml: {message}"))),
-        None => Ok(()),
+        None => Ok(reader.value.unwrap_or(Value::Null)),
+    }
+}
+
+/// The yaml-rust2 node of a common value. A float is written in the shortest form that reads
+/// back as the same f64 and always holds a `.` or an exponent, so it reads back as a float.
+fn yaml_node(value: &Value) -> Result<Yaml> {
+    Ok(match value {
+        Value::Null => Yaml::Null,
+        Value::Bool(boolean) => Yaml::Boolean(*boolean),
+        Value::Number(number) => match (number.as_i64(), number.as_f64()) {
+            (Some(integer), _) => Yaml::Integer(integer),
+            (None, _) if number.is_u64() => return Err(err(CODEC_ENCODE, format!("yaml: integer {number} is outside the i64 range"))),
+            (None, Some(float)) if float.is_finite() => Yaml::Real(format!("{float:?}")),
+            _ => return Err(err(CODEC_ENCODE, format!("yaml: number {number} is outside the common value model"))),
+        },
+        Value::String(text) => Yaml::String(text.clone()),
+        Value::Array(items) => Yaml::Array(items.iter().map(yaml_node).collect::<Result<_>>()?),
+        Value::Object(map) => {
+            let mut hash = YamlHash::new();
+            for (key, item) in map {
+                hash.insert(Yaml::String(key.clone()), yaml_node(item)?);
+            }
+            Yaml::Hash(hash)
+        }
+    })
+}
+
+/// Writes a common value as one YAML document with the yaml-rust2 emitter. The written text
+/// is read back, and a text that does not read back as the value (the emitter leaves some
+/// strings plain that the core schema reads as another value, such as `0o17`) returns
+/// CODEC_ENCODE instead of storing a different value.
+fn yaml_encode(value: &Value) -> Result<Vec<u8>> {
+    let node = yaml_node(value)?;
+    let mut text = String::new();
+    YamlEmitter::new(&mut text).dump(&node).map_err(|e| err(CODEC_ENCODE, format!("yaml: {e}")))?;
+    text.push('\n');
+    match yaml_decode(text.as_bytes()) {
+        Ok(read) if read == *value => Ok(text.into_bytes()),
+        Ok(read) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} reads back as {read}, not {value}"))),
+        Err(e) => Err(err(CODEC_ENCODE, format!("yaml: the written text {text:?} does not read back: {e}"))),
     }
 }
 
@@ -854,6 +951,125 @@ mod tests {
         assert_eq!(decode(&[], &Val::Bytes(vec![0xff])).unwrap(), Val::Bytes(vec![0xff]));
         assert_eq!(decode(&[], &Val::Str(String::new())).unwrap(), Val::Str(String::new()));
         assert_eq!(decode(&["ordered_json".into()], &Val::Str(String::new())).unwrap_err().code(), CODEC_DECODE);
+    }
+
+    /// The yaml stage reads one YAML 1.2 document with the core schema into the common value
+    /// model (docs/codec.md, yaml): plain scalars resolve by the core schema tags, integral keys
+    /// become decimal strings, and the refused forms return CODEC_DECODE instead of a string.
+    #[test]
+    fn yaml_reads_the_core_schema() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let yaml = vec!["yaml".to_string()];
+        let mut wrong = Vec::new();
+        for (text, want) in [
+            ("", serde_json::json!(null)),
+            ("# comment\n", serde_json::json!(null)),
+            ("---\n", serde_json::json!(null)),
+            ("\u{feff}a: 1\n", serde_json::json!({"a": 1})),
+            ("Null\n", serde_json::json!(null)),
+            ("NULL\n", serde_json::json!(null)),
+            ("~\n", serde_json::json!(null)),
+            ("a:\n", serde_json::json!({"a": null})),
+            ("07\n", serde_json::json!(7)),
+            ("0o17\n", serde_json::json!(15)),
+            ("0x1F\n", serde_json::json!(31)),
+            ("+12\n", serde_json::json!(12)),
+            ("-9223372036854775808\n", serde_json::json!(i64::MIN)),
+            ("0b101\n", serde_json::json!("0b101")),
+            ("-0x1\n", serde_json::json!("-0x1")),
+            ("0x-1\n", serde_json::json!("0x-1")),
+            ("1_000\n", serde_json::json!("1_000")),
+            ("tRuE\n", serde_json::json!("tRuE")),
+            ("yes\n", serde_json::json!("yes")),
+            (".nAn\n", serde_json::json!(".nAn")),
+            ("'true'\n", serde_json::json!("true")),
+            ("\"07\"\n", serde_json::json!("07")),
+            ("1e3\n", serde_json::json!(1000.0)),
+            (".5\n", serde_json::json!(0.5)),
+            ("2.0\n", serde_json::json!(2.0)),
+            ("-0.0\n", serde_json::json!(-0.0)),
+            ("0x1F: a\n07: b\n+3: c\n", serde_json::json!({"31": "a", "7": "b", "3": "c"})),
+            ("'1.5': a\n'true': b\n", serde_json::json!({"1.5": "a", "true": "b"})),
+            ("tRuE: a\n", serde_json::json!({"tRuE": "a"})),
+        ] {
+            match decode(&yaml, &Val::Str(text.into())) {
+                Ok(Val::Json(got)) if got == want && format!("{got:?}") == format!("{want:?}") => {}
+                other => wrong.push(format!("{text:?}: got {other:?}, want {want}")),
+            }
+        }
+        for text in [
+            "9223372036854775808\n",
+            "0x8000000000000000\n",
+            "1e400\n",
+            "-.INF\n",
+            ".NaN\n",
+            "a: [.inf]\n",
+            "? [a]\n: b\n",
+            "? {a: 1}\n: b\n",
+            "~: a\n",
+            "Null: a\n",
+            "1.5: a\n",
+            "False: a\n",
+            "1e3: a\n",
+            "a: !!str x\n",
+            "a: ! x\n",
+            "!!map {a: 1}\n",
+            "&x a\n",
+            "a: &x [1]\n",
+            "1: a\n01: b\n",
+            "a: 1\n'a': 2\n",
+            "--- 1\n--- 2\n",
+            "a: [1\n",
+            "a: x\u{7}y\n",
+            "a: \"x\u{9f}\"\n",
+            "a: \u{feff}x\n",
+        ] {
+            match decode(&yaml, &Val::Str(text.into())) {
+                Err(e) if e.code() == CODEC_DECODE => {}
+                other => wrong.push(format!("{text:?}: got {other:?}, want CODEC_DECODE")),
+            }
+        }
+        assert_eq!(decode(&yaml, &Val::Bytes(vec![b'a', b':', b' ', 0xff])).unwrap_err().code(), CODEC_DECODE);
+        assert!(wrong.is_empty(), "Rust yaml decode:\n{}", wrong.join("\n"));
+    }
+
+    /// A YAML write reads back as the same value, floats as floats; a value the common value
+    /// model does not hold, or text that does not read back as the value, returns CODEC_ENCODE.
+    #[test]
+    fn yaml_writes_what_it_reads() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let yaml = vec!["yaml".to_string()];
+        let mut wrong = Vec::new();
+        for value in [
+            serde_json::json!(null),
+            serde_json::json!(2.0),
+            serde_json::json!(-0.0),
+            serde_json::json!(1e25),
+            serde_json::json!(1e-7),
+            serde_json::json!(i64::MIN),
+            serde_json::json!(i64::MAX),
+            serde_json::json!(["", " a", "a ", "07", "1e3", "Null", "yes", "~", "-", "0x1F", "a\nb", "a: b", "#", "\u{85}", "한글"]),
+            serde_json::json!({"1": [], "07": {}, "true": [[1, 2], {"a": [null]}], "": "x"}),
+        ] {
+            let text = match encode(&["yaml"], StyledValue::Value(&value)) {
+                Ok(Param::Str(text)) => text,
+                other => {
+                    wrong.push(format!("{value}: encode {other:?}"));
+                    continue;
+                }
+            };
+            match decode(&yaml, &Val::Str(text.clone())) {
+                Ok(Val::Json(got)) if got == value && format!("{got:?}") == format!("{value:?}") => {}
+                other => wrong.push(format!("{value}: wrote {text:?}, read {other:?}")),
+            }
+        }
+        assert!(wrong.is_empty(), "Rust yaml encode:\n{}", wrong.join("\n"));
+        assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(u64::MAX))).unwrap_err().code(), CODEC_ENCODE);
+        // The yaml-rust2 emitter writes these strings plain or unescaped: `0o17` reads back as 15,
+        // and the control characters, C1 characters and the byte order mark are not printable.
+        for text in ["0o17", "\u{7}", "a\u{1b}", "a\u{7f}", "\u{9f}", "\u{feff}a"] {
+            assert_eq!(encode(&["yaml"], StyledValue::Value(&serde_json::json!(text))).unwrap_err().code(), CODEC_ENCODE, "{text:?}");
+        }
     }
 
     /// The json stage returns the ordered-json value with its member order,

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T13:19:11.131Z",
+  "reviewed": "2026-10-13T13:49:49.821Z",
   "locks": [
     {
       "lock": "package-lock.json",
@@ -20,31 +20,13 @@
     },
     {
       "lock": "bench/rust/Cargo.lock",
-      "sha256": "e43d4029a7869f38caa864ec8c219bbd11becdb8e0a70bc15daa0a253aebe49f",
-      "advisories": [
-        {
-          "package": "unsafe-libyaml",
-          "version": "0.2.11",
-          "id": "RUSTSEC-2024-0449",
-          "severity": "unmaintained",
-          "title": "unsafe-libyaml is unmaintained",
-          "url": "https://github.com/dtolnay/unsafe-libyaml"
-        }
-      ]
+      "sha256": "8bebff347a1a427dcbcfb72577abfe68bd309ebc89ff533755e257eea014cde8",
+      "advisories": []
     },
     {
       "lock": "packages/orm-rust/Cargo.lock",
-      "sha256": "9bc68327533b8b7b0442af401d83467735cb67293e50b66efff5c694e99aee62",
-      "advisories": [
-        {
-          "package": "unsafe-libyaml",
-          "version": "0.2.11",
-          "id": "RUSTSEC-2024-0449",
-          "severity": "unmaintained",
-          "title": "unsafe-libyaml is unmaintained",
-          "url": "https://github.com/dtolnay/unsafe-libyaml"
-        }
-      ]
+      "sha256": "864e124382ad0273300326f09c856aeaf7e37ecedd0053342b4403564add687e",
+      "advisories": []
     },
     {
       "lock": "tests/interfaces/rust/Cargo.lock",
