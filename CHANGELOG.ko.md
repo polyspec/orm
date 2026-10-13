@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aa9b6631adb2294c7282d8abc1b15a0bea08980a11dd0d08abc6d771884db6a4 -->
+<!-- source-sha256: fc17744acb8a66b177beb809cfe536abeee2fc3c233e1545cba147ae75ba23bf -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-8: Go와 PHP의 model 생성 coverage가 set 파일로 생성한다.
 - T146: orm-schema dbspec의 module 목록이 format되어 `make rust-fmt-check`가 통과한다.
 - T151: editor package는 editor stack release 전까지 release하지 않는 것으로 분류되고, 새 파일은 모두 그것을 읽는 검사가 소유하며, syntax vector generator는 재생성 test를 가지고, `make install-cli-check`가 dbspec-fmt를 임시 prefix에 설치한다.
 - T126-2: orm이 kit v0.0.35와 그 PRINCIPLES.md를 vendor한다.
