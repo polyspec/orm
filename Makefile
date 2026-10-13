@@ -1171,8 +1171,12 @@ go-vet-check:
 # 지금 code의 것이다. 세 writer는 서로 독립된 부분이므로 하나가 실패해도 나머지가 실행되고(make -k), 비교는 세
 # 출력을 모두 읽으므로 그 뒤에 온다. 실패한 실행의 directory는 runner가 보고서로 옮긴다.
 CODEC_OUT = $(abspath .runtime/run)/codec-check-$$PPID
-.PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/compare
-codec-check: codec-check/compare
+.PHONY: codec-check codec-check/go codec-check/rust codec-check/typescript codec-check/python codec-check/compare
+codec-check: codec-check/compare codec-check/python
+# codec-check/python runs the shared vectors through the Python codec; it prints each vector of its
+# PYTHON_EXCLUSIONS as skipped.
+codec-check/python: python-venv-check
+	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/codec_vector.py
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/orm-go/orm -run '^TestCodecVectors$$' -count=1
