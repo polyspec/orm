@@ -189,6 +189,99 @@ fn shared_dbspec_vectors() {
     polyspec_orm_testcase::step(format_args!("dbspec vectors {count} cases cpu={cpu:?} wall={wall:?}"));
 }
 
+/// The analyses of tests/dbspec/syntax.json, built as scripts/dbspec/syntax-vectors.mjs builds them (`vectorInputs`):
+/// the main document of each canonical, normalize and invalid case; each document of a sets case with its 1-based
+/// place as the id suffix, with the parsing documents and the other documents of the case; each document of a hashes
+/// case by its name.
+fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>)> {
+    let mut inputs = Vec::new();
+    for kind in ["canonical", "normalize", "invalid"] {
+        for case in cases[kind].as_array().unwrap_or_else(|| panic!("{kind} cases are listed")) {
+            let id = case["id"].as_str().unwrap();
+            let (text, set) = declared(case);
+            inputs.push((format!("{kind}/{id}"), text, set));
+        }
+    }
+    for case in cases["sets"].as_array().expect("sets cases are listed") {
+        let id = case["id"].as_str().unwrap();
+        let documents = case["documents"].as_array().unwrap();
+        let external: Vec<&Value> = case.get("external").and_then(Value::as_array).map_or(Vec::new(), |list| list.iter().collect());
+        let all: Vec<&Value> = documents.iter().chain(external.iter().copied()).collect();
+        for (index, lines) in documents.iter().enumerate() {
+            let mut set = BTreeMap::new();
+            for (name, other) in case["parsing"].as_object().unwrap() {
+                set.insert(name.clone(), joined(other, Ends::Lf));
+            }
+            for (other_index, other) in all.iter().enumerate() {
+                if other_index != index {
+                    let name = other[0].as_str().unwrap().split(' ').nth(2).unwrap().to_owned();
+                    set.insert(name, joined(other, Ends::Lf));
+                }
+            }
+            inputs.push((format!("sets/{id}/{}", index + 1), joined(lines, Ends::Lf), set));
+        }
+    }
+    for case in cases["hashes"].as_array().expect("hashes cases are listed") {
+        let id = case["id"].as_str().unwrap();
+        let documents = case["documents"].as_object().unwrap();
+        for (name, lines) in documents {
+            let mut set = BTreeMap::new();
+            for (other, other_lines) in documents {
+                if other != name {
+                    set.insert(other.clone(), joined(other_lines, Ends::Lf));
+                }
+            }
+            inputs.push((format!("hashes/{id}/{name}"), joined(lines, Ends::Lf), set));
+        }
+    }
+    inputs
+}
+
+/// Every analysis of tests/dbspec/syntax.json, in file order, equals its tokens exactly. The file and each entry are
+/// read strictly: an unknown or missing key, or a token that is not four values, panics.
+#[test]
+fn shared_dbspec_syntax() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let clock = CaseClock::start();
+    let cases: Value = serde_json::from_slice(&std::fs::read(cases_path()).unwrap()).unwrap();
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/syntax.json");
+    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    assert_keys(&file, &["version", "note", "cases"], "syntax.json");
+    assert_eq!(file["version"].as_u64(), Some(1));
+    let entries = file["cases"].as_array().expect("syntax cases are listed");
+    let inputs = vector_inputs(&cases);
+    // The ids are unique, so each analysis has exactly one entry; the file's key order is not compared.
+    let mut by_id = BTreeMap::new();
+    for entry in entries {
+        assert_keys(entry, &["id", "tokens"], "syntax entry");
+        let id = entry["id"].as_str().expect("entry id is a string").to_owned();
+        assert!(by_id.insert(id.clone(), entry).is_none(), "{id}: syntax.json lists the id once");
+    }
+    assert_eq!(by_id.len(), inputs.len(), "syntax.json has one entry per analysis");
+    for (id, text, set) in &inputs {
+        let entry = by_id.get(id).unwrap_or_else(|| panic!("{id}: syntax.json lists the analysis"));
+        let expected: Vec<(usize, usize, usize, String)> = entry["tokens"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|token| {
+                let values = token.as_array().unwrap_or_else(|| panic!("{id}: token is an array"));
+                assert_eq!(values.len(), 4, "{id}: token has four values");
+                (
+                    values[0].as_u64().unwrap() as usize,
+                    values[1].as_u64().unwrap() as usize,
+                    values[2].as_u64().unwrap() as usize,
+                    values[3].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect();
+        let got: Vec<(usize, usize, usize, String)> = dbspec::analyze(text, set).tokens.into_iter().map(|t| (t.line, t.start, t.end, t.class)).collect();
+        assert_eq!(got, expected, "{id}: tokens");
+    }
+    let (cpu, wall) = (clock.cpu(), clock.wall());
+    polyspec_orm_testcase::step(format_args!("dbspec syntax {} analyses cpu={cpu:?} wall={wall:?}", inputs.len()));
+}
+
 /// files case는 `dbspec::read_file`에 path를 주어, `dbspec::read_bytes`에 파일 byte와 case
 /// path를 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec
 /// document", UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나를, 나머지
