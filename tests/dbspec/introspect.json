@@ -791,11 +791,6 @@
       "document": [
         "dbspec 1 introspected",
         "",
-        "table service_module_board_post {",
-        "  service_module_board_post_seq i64 identity",
-        "  primary key (service_module_board_post_seq)",
-        "}",
-        "",
         "table audit {",
         "  seq i64 identity",
         "  primary key (seq)",
@@ -823,6 +818,11 @@
         "  service_module_board_post_seq i64 null",
         "  audit_seq i64 null",
         "  primary key (history_id)",
+        "}",
+        "",
+        "table service_module_board_post {",
+        "  service_module_board_post_seq i64 identity",
+        "  primary key (service_module_board_post_seq)",
         "}"
       ],
       "unsupported": []
@@ -873,11 +873,6 @@
       "document": [
         "dbspec 1 introspected",
         "",
-        "table service_module_board_post {",
-        "  service_module_board_post_seq i64 identity",
-        "  primary key (service_module_board_post_seq)",
-        "}",
-        "",
         "table audit {",
         "  seq i64 identity",
         "  primary key (seq)",
@@ -905,6 +900,11 @@
         "  service_module_board_post_seq i64 null",
         "  audit_seq i64 null",
         "  primary key (history_id)",
+        "}",
+        "",
+        "table service_module_board_post {",
+        "  service_module_board_post_seq i64 identity",
+        "  primary key (service_module_board_post_seq)",
         "}"
       ],
       "unsupported": []
@@ -955,11 +955,6 @@
       "document": [
         "dbspec 1 introspected",
         "",
-        "table service_module_board_post {",
-        "  service_module_board_post_seq i64 identity",
-        "  primary key (service_module_board_post_seq)",
-        "}",
-        "",
         "table audit {",
         "  seq i64 identity",
         "  primary key (seq)",
@@ -987,6 +982,11 @@
         "  service_module_board_post_seq i64 null",
         "  audit_seq i64 null",
         "  primary key (history_id)",
+        "}",
+        "",
+        "table service_module_board_post {",
+        "  service_module_board_post_seq i64 identity",
+        "  primary key (service_module_board_post_seq)",
         "}"
       ],
       "unsupported": []
