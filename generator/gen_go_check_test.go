@@ -83,6 +83,7 @@ func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
 	bin := commandBinary(t)
 	write, _ := generatedScannedModule(t)
 	write("names.dbs", namesDiagram)
+	write("dbspec-set.json", namesSet)
 	run := func(args ...string) (int, string, string) {
 		t.Helper()
 		var stdout, stderr bytes.Buffer
@@ -95,7 +96,7 @@ func TestGoGenerationCheckCommandReportsDifferences(t *testing.T) {
 		}
 		return cmd.ProcessState.ExitCode(), stdout.String(), stderr.String()
 	}
-	gen := []string{"gen", "--document", "names.dbs", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
+	gen := []string{"gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...", "--check"}
 	if code, stdout, stderr := run(gen...); code != 0 || stdout != "" || stderr != "" {
 		t.Fatalf("%v on current files: exit %d\nstdout: %s\nstderr: %s", gen, code, stdout, stderr)
 	}

@@ -1,7 +1,7 @@
 // orm-gen은 dbspec document set에서 Go model을 만들고 docs/errors.yaml에서 각
 // 언어의 오류 코드 file을 만든다.
 //
-//	orm-gen gen --document <file.dbs>... [--use <file.dbs>...] --lang go --out <directory> [--scan <package pattern>...] [--check]
+//	orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]
 //	orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]
 package main
 
@@ -31,30 +31,36 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --document <file.dbs>... [--use <file.dbs>...] --lang go --out <directory> [--scan <package pattern>...] [--check]")
+	fmt.Fprintln(os.Stderr, "usage: orm-gen gen --set <dbspec-set.json> --lang go --out <directory> [--scan <package pattern>...] [--check]")
 	fmt.Fprintln(os.Stderr, "       orm-gen errors --lang go|php|rust --out <file> [--yaml docs/errors.yaml]")
 	os.Exit(2)
 }
 
 func gen(args []string) {
 	fs := flag.NewFlagSet("gen", flag.ExitOnError)
-	var documents stringList
-	fs.Var(&documents, "document", "dbspec document of the document set (repeatable, required)")
-	var uses stringList
-	fs.Var(&uses, "use", "external dbspec document that the set uses but does not own (repeatable)")
+	set := fs.String("set", "", "set file dbspec-set.json of the document set (required)")
 	lang := fs.String("lang", "go", "go")
 	out := fs.String("out", "", "output directory (required)")
 	var scan stringList
 	fs.Var(&scan, "scan", "Go package pattern whose model calls are generated (repeatable)")
 	check := fs.Bool("check", false, "compare the generated files with --out without writing")
 	fs.Parse(args)
-	if len(documents) == 0 || *out == "" {
+	if *set == "" || *out == "" {
 		usage()
 	}
 	if *lang != "go" {
 		fail(fmt.Errorf("lang %q: orm-gen of the Go module generates Go; PHP, Rust, and TypeScript use their own generators", *lang))
 	}
-	m, err := runtimemodel.LoadFileSet(documents, uses)
+	// The set file is read before anything is written: every error of the set
+	// file and every diagnostic of its files is printed, and nothing is written.
+	m, err := runtimemodel.LoadSetFile(*set)
+	var invalid *runtimemodel.SetLoadError
+	if errors.As(err, &invalid) {
+		for _, problem := range invalid.Problems {
+			fmt.Fprintf(os.Stderr, "orm-gen: %s\n", problem)
+		}
+		os.Exit(1)
+	}
 	if err != nil {
 		fail(err)
 	}

@@ -267,10 +267,11 @@ func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	bin := commandBinary(t)
 	write, _ := generatedScannedModule(t)
 	write("names.dbs", namesDiagram)
+	write("dbspec-set.json", namesSet)
 	run := func() (int, string, string) {
 		t.Helper()
 		var stdout, stderr bytes.Buffer
-		cmd := exec.Command(bin, "gen", "--document", "names.dbs", "--lang", "go", "--out", "model", "--scan", "./...")
+		cmd := exec.Command(bin, "gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model", "--scan", "./...")
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
 		var exit *exec.ExitError
@@ -294,5 +295,70 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 	code, stdout, stderr = run()
 	if code != 1 || stdout != "" || !strings.Contains(stderr, "model is unchanged") || !strings.Contains(stderr, "does not accept") {
 		t.Fatalf("generation failure: exit %d\nstdout: %s\nstderr: %s", code, stdout, stderr)
+	}
+}
+
+// namesSet is the set file of a module whose only document is names.dbs.
+const namesSet = `{"schema": 1, "documents": ["names.dbs"]}` + "\n"
+
+// TestGoGenerationCommandReportsSetErrors checks that orm-gen gen prints every
+// error of the set file, and every diagnostic of its listed files, exits 1 and
+// writes nothing (docs/dbspec.md "Document sets").
+func TestGoGenerationCommandReportsSetErrors(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	bin := commandBinary(t)
+	for _, c := range []struct {
+		name  string
+		files map[string]string
+		want  []string
+	}{
+		{
+			name: "set errors",
+			files: map[string]string{
+				"names.dbs":       namesDiagram,
+				"dbspec-set.json": `{"schema": 1, "documents": ["gone.dbs", "names.dbs", "names.dbs"]}`,
+			},
+			want: []string{"orm-gen: set.file: ", "gone.dbs", "orm-gen: set.duplicate: "},
+		},
+		{
+			name: "file diagnostics",
+			files: map[string]string{
+				"one.dbs":         "<?xml version=\"1.0\"?>\n",
+				"two.dbs":         "dbspec 1 two\n\xff\n",
+				"dbspec-set.json": `{"schema": 1, "documents": ["one.dbs", "two.dbs"]}`,
+			},
+			want: []string{"one.dbs:1:1 signature: ", "two.dbs:2:1 encoding: "},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, body := range c.files {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			var stdout, stderr bytes.Buffer
+			cmd := exec.Command(bin, "gen", "--set", "dbspec-set.json", "--lang", "go", "--out", "model")
+			cmd.Dir, cmd.Stdout, cmd.Stderr = dir, &stdout, &stderr
+			err := cmd.Run()
+			var exit *exec.ExitError
+			if err != nil && !errors.As(err, &exit) {
+				t.Fatal(err)
+			}
+			if code := cmd.ProcessState.ExitCode(); code != 1 || stdout.String() != "" {
+				t.Fatalf("exit %d, stdout %q, want 1 and nothing", code, stdout.String())
+			}
+			rest := stderr.String()
+			for _, part := range c.want {
+				i := strings.Index(rest, part)
+				if i < 0 {
+					t.Fatalf("stderr lacks %q in order:\n%s", part, stderr.String())
+				}
+				rest = rest[i+len(part):]
+			}
+			if _, err := os.Lstat(filepath.Join(dir, "model")); !os.IsNotExist(err) {
+				t.Fatalf("the output directory exists after a failed read: %v", err)
+			}
+		})
 	}
 }

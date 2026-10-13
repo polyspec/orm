@@ -23,6 +23,12 @@ func documentSchema(t *testing.T, documents ...string) *orm.Schema {
 // fixtureSchema은 contracts/fixtures의 dbspec document로 만든 orm.Schema다.
 func fixtureSchema(t *testing.T, names ...string) *orm.Schema {
 	t.Helper()
+	return documentSchema(t, fixtureTexts(t, names)...)
+}
+
+// fixtureTexts reads the dbspec documents of contracts/fixtures by name.
+func fixtureTexts(t *testing.T, names []string) []string {
+	t.Helper()
 	documents := make([]string, len(names))
 	for i, name := range names {
 		text, diagnostics, err := dbspec.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs"))
@@ -34,23 +40,16 @@ func fixtureSchema(t *testing.T, names ...string) *orm.Schema {
 		}
 		documents[i] = text
 	}
-	return documentSchema(t, documents...)
+	return documents
 }
 
 // externalSchema은 contracts/fixtures의 소유 문서와 외부 문서(use로 쓰는 다른 set의
 // 문서)로 만든 orm.Schema다. generated code처럼 external text를 싣는다.
 func externalSchema(t *testing.T, owned, external []string) *orm.Schema {
 	t.Helper()
-	paths := func(names []string) []string {
-		out := make([]string, len(names))
-		for i, name := range names {
-			out[i] = filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs")
-		}
-		return out
-	}
-	m, err := runtimemodel.LoadFileSet(paths(owned), paths(external))
-	if err != nil {
-		t.Fatal(err)
+	m, diagnostics := runtimemodel.LoadDocumentSet(fixtureTexts(t, owned), fixtureTexts(t, external))
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
 }

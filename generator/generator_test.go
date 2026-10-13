@@ -55,14 +55,21 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 	return m
 }
 
-// TestGenerateLeavesExternalTablesOut는 외부 문서(--use)를 쓰는 set이 소유한 table의
+// TestGenerateLeavesExternalTablesOut는 외부 문서(external)를 쓰는 set이 소유한 table의
 // model만 만들고, 외부 문서에서 쓰는 table의 text를 schema 값에 싣는 것을 확인한다.
 func TestGenerateLeavesExternalTablesOut(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	fixtures := filepath.Join("..", "contracts", "fixtures", "external")
-	m, err := runtimemodel.LoadFileSet([]string{filepath.Join(fixtures, "member.dbs")}, []string{filepath.Join(fixtures, "core.dbs")})
-	if err != nil {
-		t.Fatal(err)
+	text := func(name string) string {
+		b, err := os.ReadFile(filepath.Join(fixtures, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	m, diagnostics := runtimemodel.LoadDocumentSet([]string{text("member.dbs")}, []string{text("core.dbs")})
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	out := filepath.Join(t.TempDir(), "member")
 	if err := Generate(Options{Model: m, OutputDir: out}); err != nil {
