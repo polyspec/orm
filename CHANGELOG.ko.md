@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 04e085782b8ab197f77f44f937943408182aa45cd39611ad10017fab4cc4dba7 -->
+<!-- source-sha256: 1c00163a09b568ae6950405ac9d6cb784559252c049df950f87ade195607b20b -->
 # 변경 이력
 
 ## Unreleased
 
+- T125-8: Go request hook test가 공유 testcase package로 case를 시작하고, Python interface test가 15번째 연결 rule을 세며, `docs/features.md`가 기능 `request_hook`을 적는다.
 - T125-7: Python identity load test는 `identity_load.py`이므로 `make python-unit-check`가 그 server case를 더는 실행하지 않는다. `make python-identity-load-check`가 실행한다.
-- T125-4: request hook은 `contracts/features.json`의 기능 `request_hook`이며, 그 Go, PHP, Rust, TypeScript owner가 MySQL, PostgreSQL, SQLite에서 공유 case 다섯 개를 통과한다. `contracts/fixtures/identity_load.json`은 기능 `model_writes`를 적는다.
+- T125-4: request hook은 `contracts/features.json`의 기능 `request_hook`이며, 그 Go, PHP, Rust, TypeScript owner가 MySQL, PostgreSQL, SQLite에서 공유 case 다섯 개를 통과한다.
 - T125-3: 개발 규칙은 이 저장소가 만드는 것에만 심볼릭 링크를 금지하고, 각 생태계의 표준 도구를 그 동작대로 쓰며, 경로를 선언적으로 또는 발견으로 정한다.
 - T65: Python client가 markdown DSN으로 corpus에 접속하며 `Db`마다 server 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다. rebase에서 main 밖으로 빠졌던 executor module을 다시 추적한다.
 - T125: 모든 client가 연결 handle에서 request hook을 받는다. `withRequestHook`(Go `WithRequestHook`, Rust와 Python `with_request_hook`)은 같은 연결의 handle을 돌려주며, 그 hook은 읽기, count, page, insert, update, delete, restore, getQuery의 각 request를 plan 직전에 받아 predicate, assignment, 매개변수를 더할 수 있다. planner가 바뀐 request를 검증하고 plan cache는 그 request로 key를 정하며, handle의 행과 transaction은 hook을 지킨다.
