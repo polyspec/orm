@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T126-2: orm vendors kit v0.0.35 and its PRINCIPLES.md.
 - T150: docs/usage.md names Python's `orm-gen gen --check`, and docs/packaging.md how the Python client takes its schema.
 - T128-2a (breaking): a document set is declared once, in `dbspec-set.json`, which every client reads and every generator takes.
 - T128-2a-7 (breaking): every document names the set file as the only form of a generator's document set, the interface rule `Dbspec.readSet` declares the set reader of every client, and the parity unit `dbspec-set-files` declares its vectors.

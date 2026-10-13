@@ -18,8 +18,11 @@ const relative = file => path.relative(root, file).split(path.sep).join('/');
 const allDocs = (await files(docs)).filter(file => file.endsWith('.md') && !file.includes(`${path.sep}.vitepress${path.sep}`));
 // docs/ 밖의 추적되는 한국어 문서(AGENTS.ko.md, README.ko.md, CHANGELOG.ko.md 등)도 영문 원본과
 // 같은 구조 검사를 받는다.
+// The files that kit vendors, as .kit/kit.lock.json declares them, are kit's documents: the rules of this repository do
+// not read them (AGENTS.md), and kit checks them where they are written.
+const vendored = new Set(Object.keys(JSON.parse(await readFile(path.join(root, '.kit', 'kit.lock.json'), 'utf8')).files));
 const pairedOutside = execFileSync('git', ['ls-files', '-z', '*.ko.md'], { cwd: root }).toString().split('\0')
-  .filter(file => file && !file.startsWith('docs/')).map(file => path.join(root, file));
+  .filter(file => file && !file.startsWith('docs/') && !vendored.has(file)).map(file => path.join(root, file));
 const sources = [...allDocs.filter(file => !file.endsWith('.ko.md')),
   ...pairedOutside.map(file => file.slice(0, -'.ko.md'.length) + '.md')];
 const translations = new Map([...allDocs.filter(file => file.endsWith('.ko.md')), ...pairedOutside]

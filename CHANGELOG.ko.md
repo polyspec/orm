@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e929d03655860cae83e2c2814f67616120a6c6dc625a64f92b0dab4f365a3489 -->
+<!-- source-sha256: ecf067149fafff1b40a157ab9e43151c82315c9c0619d458852d368a30a808c6 -->
 # 변경 이력
 
 ## Unreleased
 
+- T126-2: orm이 kit v0.0.35와 그 PRINCIPLES.md를 vendor한다.
 - T150: docs/usage.md가 Python의 `orm-gen gen --check`를, docs/packaging.md가 Python client가 스키마를 받는 방식을 적는다.
 - T128-2a (breaking): 문서 집합은 `dbspec-set.json`에 한 번 선언하며, 모든 client가 그것을 읽고 모든 generator가 그것을 받는다.
 - T128-2a-7 (breaking): 모든 문서가 set 파일을 generator 문서 집합의 유일한 형태로 적고, interface rule `Dbspec.readSet`이 모든 client의 set reader를 선언하며, parity unit `dbspec-set-files`가 그 vector를 선언한다.
