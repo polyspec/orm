@@ -76,7 +76,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 | SQLite (probes) | 3.53.4 through `modernc.org/sqlite` v1.58.0 (`sqlite.env.library`) |
 | SQLite, Go client | `modernc.org/sqlite` v1.58.0 (`go.mod`): 3.53.4 from `select sqlite_version()` |
 | SQLite, PHP client | `pdo_sqlite` of PHP 8.5.10: 3.53.4 from `select sqlite_version()` |
-| SQLite, TypeScript client | `node:sqlite` of Node 26.8.1: 3.53.4 from `select sqlite_version()`; `package.json` accepts Node 22.16.0 and later, whose bundled versions were not measured |
+| SQLite, TypeScript client | `node:sqlite` of Node 26.11.1: 3.53.4 from `select sqlite_version()`; `package.json` accepts Node 26.11.1 and later, whose later bundled versions were not measured |
 | SQLite file name | A file name that still carries the DSN query is opened literally by PHP PDO, `node:sqlite` and the `sqlite3` shell, which create `bench.sqlite?_pragma=…`; `modernc.org/sqlite` parses the query (`sqlite.filename.*` cases of `TestSQLiteFileNameWithQuery`). A client removes the query before it names the file |
 | SQLite, Rust client | sqlx 0.9 `sqlite` feature enables `sqlite-bundled`; `libsqlite3-sys` 0.37.0 (`packages/orm-rust/Cargo.lock`) bundles 3.51.3, read from `sqlite3_libversion()` of a build of that crate and feature. The probes did not run on 3.51.3 |
 

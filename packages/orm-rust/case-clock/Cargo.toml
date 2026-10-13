@@ -2,6 +2,7 @@
 name = "polyspec-orm-case-clock"
 version = "0.0.14"
 edition = "2021"
+rust-version = "1.99.0"
 publish = false
 description = "Thread CPU time for the time bounds that the Rust ORM tests set on their own computation"
 license = "MIT"

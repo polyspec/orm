@@ -85,7 +85,6 @@
     "tests/timezone/date.ini": {"scope": "suite", "reason": "WITH_TEST_ENV adds it to the PHP ini scan path of every target that runs database clients, so it sets the time zone of every PHP client the suite starts"},
     ".gitignore": {"scope": "lint", "reason": "it only decides which files git ignores; no test reads it, and owner-check and make check list changed files through git"},
     ".node-version": {"scope": "suite", "reason": "it selects the Node release of every check, locally and in CI, so it changes the runtime of every Node and TypeScript target"},
-    ".go-version": {"scope": "suite", "reason": "it selects the Go release of every check, locally and in CI, so it changes the toolchain of every Go target"},
     ".composer-version": {"scope": "suite", "reason": "it selects the Composer release that installs the PHP dependencies of every PHP check in CI"},
     ".php-version": {"scope": "suite", "reason": "it selects the PHP release of every check, locally and in CI, so it changes the runtime of every PHP target"},
     "LICENSE": {"scope": "lint", "reason": "license text; no code or test reads it"},

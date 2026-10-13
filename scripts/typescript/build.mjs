@@ -7,10 +7,10 @@
 //
 // Usage: node scripts/typescript/build.mjs
 import { spawnSync } from 'node:child_process';
-import { existsSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const client = fileURLToPath(new URL('../../packages/orm-npm/', import.meta.url));
 const dist = join(client, 'dist');
@@ -19,7 +19,9 @@ const old = join(client, `dist.old-${process.pid}`);
 // tsc는 client의 dependency typescript다: Node가 client의 package.json에서 package 이름으로 찾는다.
 let tsc;
 try {
-  tsc = createRequire(join(client, 'package.json')).resolve('typescript/bin/tsc');
+  // typescript 7 exports only its package.json, so the compiler is the file that its bin field names.
+  const manifest = createRequire(join(client, 'package.json')).resolve('typescript/package.json');
+  tsc = join(dirname(manifest), JSON.parse(readFileSync(manifest, 'utf8')).bin.tsc);
 } catch (error) {
   console.error(`typescript build: typescript does not resolve from ${client} (${error.code ?? error.message}); run make install, which installs the TypeScript compiler`);
   process.exit(1);

@@ -38,6 +38,9 @@ function command(program, args, options, step) {
   });
 }
 
+// typescript 7 exports only its package.json, so the compiler is the file that its bin field names.
+const typescriptCompiler = () => join(packageDirectory('typescript'), JSON.parse(readFileSync(findPackageJSON('typescript', clientPackage), 'utf8')).bin.tsc);
+
 const driverModules = /from ['"](pg|mysql2(\/[^'"]*)?|node:sqlite)['"]|import\(['"](pg|mysql2(\/[^'"]*)?|node:sqlite)['"]\)/;
 
 function declarationFiles(directory) {
@@ -56,6 +59,13 @@ const check = async (name, deadline, body) => { if (!(await runCase(name, deadli
 await check('package-declarations/no-driver-imports', COMPUTE, async () => {
   const offending = declarationFiles(join(client, 'dist')).filter(file => driverModules.test(readFileSync(file, 'utf8')));
   assert.deepEqual(offending.map(file => file.slice(client.length)), [], 'declaration files that import a driver module');
+});
+
+// The scanner of orm-gen parses sources with oxc-parser; the compiler is a build tool of the package and never one of
+// its runtime dependencies, so an install of the package carries no TypeScript compiler.
+await check('package-declarations/no-compiler-dependency', COMPUTE, async () => {
+  const declared = JSON.parse(readFileSync(clientPackage, 'utf8'));
+  assert.equal(declared.dependencies?.typescript, undefined, 'dependencies of packages/orm-npm/package.json name typescript');
 });
 
 const work = mkdtempSync(join(tmpdir(), 'orm-package-declarations-'));
@@ -99,7 +109,7 @@ try {
     ].join('\n'));
     // tsc의 종료 코드와 출력은 아래 case가 판정한다. runLong은 tsc가 끝나기까지 기다리기만 한다.
     await runLong('package-declarations/tsc', async ({ step }) => {
-      tsc = await command(process.execPath, [createRequire(clientPackage).resolve('typescript/bin/tsc'), '-p', project], {}, step);
+      tsc = await command(process.execPath, [typescriptCompiler(), '-p', project], {}, step);
     });
   } else failed++;
   await check('package-declarations/type-check-without-driver-types', COMPUTE, () => {

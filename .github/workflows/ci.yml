@@ -78,9 +78,9 @@ jobs:
       - uses: actions/setup-go@v6
         id: go
         if: ${{ !cancelled() }}
-        # .go-version declares the one Go release of the checks, locally and
-        # here; make repo-check requires it.
-        with: { go-version-file: .go-version }
+        # The go line of go.mod declares the one Go release of the checks,
+        # locally and here; make repo-check requires it.
+        with: { go-version-file: go.mod }
       # make check runs go with GOPROXY=off; make install-go downloads the
       # modules of go.mod.
       - name: Go modules

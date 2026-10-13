@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { builtinModules } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
+import { parseSync, visitorKeys } from 'oxc-parser';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
@@ -27,38 +27,47 @@ const ALLOWED_BARE = '@polyspec/orm/dbspec';
 const FORBIDDEN_GLOBALS = new Set(['Buffer', 'process', '__dirname', 'require']);
 const BUILTIN_ROOTS = new Set(builtinModules.map(m => m.replace(/^node:/, '').split('/')[0]));
 
-/** Whether an identifier is a reference to a binding rather than the name of a property or a member. */
-function isReference(node) {
-  const parent = node.parent;
-  if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false;
-  if (ts.isPropertyAssignment(parent) && parent.name === node) return false;
-  if ((ts.isMethodDeclaration(parent) || ts.isPropertyDeclaration(parent) || ts.isGetAccessorDeclaration(parent) || ts.isSetAccessorDeclaration(parent)) && parent.name === node) return false;
+/** Whether the identifier is a reference to a binding rather than the name of a property or a member. */
+function isReference(node, parent) {
+  if (parent.type === 'MemberExpression' && !parent.computed && parent.property === node) return false;
+  if (parent.type === 'Property' && !parent.computed && !parent.shorthand && parent.key === node) return false;
+  if ((parent.type === 'MethodDefinition' || parent.type === 'PropertyDefinition' || parent.type === 'AccessorProperty') && !parent.computed && parent.key === node) return false;
   return true;
 }
 
-/** The import specifiers, the dynamic imports with no literal specifier and the forbidden global uses of one file. */
+/** The literal text of a module specifier: a string literal or a template literal without substitutions. */
+function literal(node) {
+  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) return node.quasis[0].value.cooked;
+  return undefined;
+}
+
+/** The import specifiers, dynamic imports with no literal specifier and forbidden identifier uses of one module. */
 function scan(file) {
   const text = readFileSync(file, 'utf8');
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const parsed = parseSync(file, text);
+  assert.deepEqual(parsed.errors.map(error => error.message), [], `${relative(pkgRoot, file)} parses`);
   const where = node => {
-    const at = source.getLineAndCharacterOfPosition(node.getStart(source));
-    return `${relative(pkgRoot, file)}:${at.line + 1}:${at.character + 1}`;
+    const before = text.slice(0, node.start).split('\n');
+    return `${relative(pkgRoot, file)}:${before.length}:${before.at(-1).length + 1}`;
   };
   const imports = [];
   const violations = [];
-  const visit = node => {
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
-      imports.push({ specifier: node.moduleSpecifier.text, at: where(node) });
-    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      const arg = node.arguments[0];
-      if (arg && ts.isStringLiteralLike(arg)) imports.push({ specifier: arg.text, at: where(node) });
+  const visit = (node, parent) => {
+    if ((node.type === 'ImportDeclaration' || node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') && node.source) {
+      imports.push({ specifier: node.source.value, at: where(node) });
+    } else if (node.type === 'ImportExpression') {
+      const specifier = literal(node.source);
+      if (specifier !== undefined) imports.push({ specifier, at: where(node) });
       else violations.push(`${where(node)} dynamic import with no literal specifier cannot be followed`);
-    } else if (ts.isIdentifier(node) && FORBIDDEN_GLOBALS.has(node.text) && isReference(node)) {
-      violations.push(`${where(node)} uses the Node global ${node.text}`);
+    } else if (node.type === 'Identifier' && FORBIDDEN_GLOBALS.has(node.name) && isReference(node, parent)) {
+      violations.push(`${where(node)} uses the Node global ${node.name}`);
     }
-    ts.forEachChild(node, visit);
+    for (const key of visitorKeys[node.type] ?? []) {
+      for (const child of [node[key]].flat()) if (child) visit(child, node);
+    }
   };
-  visit(source);
+  visit(parsed.program, undefined);
   return { imports, violations };
 }
 

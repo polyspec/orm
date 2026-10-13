@@ -108,32 +108,23 @@ export function rustToolchainErrors(toolchain, makefile, workflows, running) {
   return errors;
 }
 
-// goVersionErrors는 Go toolchain 선언이 하나가 아니거나 실행 중인 go와 다른 곳마다 오류 하나를 돌려준다. declared는
-// `.go-version`의 내용, goMod는 go.mod, workflows는 {path: text}, running은 `go env GOVERSION`에서 `go`를 뺀 version이다.
-//   - declared는 정확한 x.y.z 하나이고, go.mod의 `go x.y` 줄은 그 x.y다.
-//   - actions/setup-go step은 `go-version-file: .go-version`으로 읽고 `go-version`을 직접 적지 않는다. go를 실행하는
-//     workflow는 setup-go를 쓴다.
-//   - running은 declared와 major.minor가 같다. patch는 상관없다: patch release는 언어와 module 동작을 바꾸지 않는다.
-export function goVersionErrors(declared, goMod, workflows, running) {
+// goVersionErrors returns one error for each workflow that does not set up the Go that go.mod declares. The go line of go.mod
+// is the one declaration of the Go release: kit's toolchain-check requires it to be the kit pin, with no toolchain line, and
+// the running go to be that release. workflows is {path: text}.
+//   - An actions/setup-go step reads `go-version-file: go.mod` and writes no `go-version` of its own; a workflow that runs go
+//     uses setup-go.
+export function goVersionErrors(workflows) {
   const errors = [];
-  const exact = /^(\d+)\.(\d+)\.(\d+)$/.exec(declared.trim());
-  if (!exact || declared !== `${declared.trim()}\n`)
-    errors.push(`.go-version must hold one exact Go release x.y.z and a newline, found ${JSON.stringify(declared)}; write the release that CI and the local checks run`);
-  const line = /^go (\d+\.\d+(?:\.\d+)?)$/m.exec(goMod)?.[1];
-  if (exact && line !== `${exact[1]}.${exact[2]}`)
-    errors.push(`go.mod declares go ${line ?? '(nothing)'}, but .go-version declares ${declared.trim()}; write go ${exact[1]}.${exact[2]} in go.mod`);
   for (const [path, workflow] of Object.entries(workflows)) {
     const steps = actionSteps(workflow, 'actions/setup-go');
     if (runs(workflow, /(^|[\s;&|(])(go\s|make (?:check|install-go)\b)/m) && steps.length === 0)
-      errors.push(`${path} runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version`);
+      errors.push(`${path} runs Go without actions/setup-go; add a setup-go step with go-version-file: go.mod`);
     for (const step of steps) {
-      if (/^\s*go-version:/m.test(step) || /\{\s*go-version:/.test(step)) errors.push(`${path} declares go-version itself; read go-version-file: .go-version in actions/setup-go`);
-      if (!/(?:^\s*|\{\s*)go-version-file:\s*["']?\.go-version["']?/m.test(step))
-        errors.push(`${path} does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version`);
+      if (/^\s*go-version:/m.test(step) || /\{\s*go-version:/.test(step)) errors.push(`${path} declares go-version itself; read go-version-file: go.mod in actions/setup-go`);
+      if (!/(?:^\s*|\{\s*)go-version-file:\s*["']?go\.mod["']?/m.test(step))
+        errors.push(`${path} does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod`);
     }
   }
-  if (exact && !sameMajorMinor(running, declared.trim()))
-    errors.push(`Go ${running} runs the checks; .go-version declares ${declared.trim()}, so its major and minor must be ${exact[1]}.${exact[2]}; install Go ${declared.trim()} or change .go-version together with the CI evidence of the new release`);
   return errors;
 }
 
