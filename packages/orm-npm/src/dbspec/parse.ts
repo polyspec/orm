@@ -672,6 +672,8 @@ class DocumentParser {
     private readonly lines: string[],
     private readonly context: ParseContext,
     private readonly parents: readonly string[],
+    /** The encoding error of the text, which stops the parse after the lines it was given (Go's splitSource). */
+    private readonly encoding: RawDiagnostic | null,
   ) {}
 
   /** The names of this document and the documents that use it, for detecting a use cycle. */
@@ -846,6 +848,12 @@ class DocumentParser {
       }
     }
     if (this.stopped) return;
+    // Go reports no unclosed block after an encoding error: the encoding error is the stop, after every syntax error above it.
+    if (this.encoding !== null) {
+      this.diagnostics.push(this.encoding);
+      this.stopped = true;
+      return;
+    }
     // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
     if (state === 'settings') this.unclosed(this.settingsBlock!.open, 'the settings block is not closed');
     else if (state === 'table') this.unclosed(table!.open, 'the table block is not closed');
@@ -2898,9 +2906,11 @@ function parseText(text: string, context: ParseContext, parents: readonly string
   }
   const raw = text.split('\n');
   const encoding = encodingError(raw);
-  if (encoding !== null) return { diagnostics: [encoding], document: empty, parser: null };
-  const lines = raw.map(line => (line.endsWith('\r') ? line.slice(0, -1) : line));
-  const parser = new DocumentParser(lines, context, parents);
+  // Go parses the complete lines before an encoding error, then reports it; the offending line and the rest are not read.
+  const complete = encoding === null ? raw.length : encoding.line - 1;
+  if (encoding !== null && complete === 0) return { diagnostics: [encoding], document: empty, parser: null };
+  const lines = raw.slice(0, complete).map(line => (line.endsWith('\r') ? line.slice(0, -1) : line));
+  const parser = new DocumentParser(lines, context, parents, encoding);
   parser.parse();
   if (!parser.halted) parser.validate();
   // A stopping error comes after the diagnostics found before it; the others
