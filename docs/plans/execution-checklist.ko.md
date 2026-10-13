@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 9cb66eb3bde8810a36a5a68ac4847cdbf56f6fefd6251bf9259a34626ee5a9ba -->
+<!-- source-sha256: c715b84000f385287f072aadd177419f40d4013c90f76ed490b01b5ebd352cea -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -987,7 +987,7 @@
 - [ ] T143 TypeScript와 PHP set reader가 Windows의 모든 name surrogate를 감지한다(T128-2a-5에 이어). 원인: docs/dbspec.md 단계 3은 tag가 name surrogate인 모든 reparse point를 symbolic link로 보지만, Node와 PHP의 lstat은 symbolic link와 junction만 보고하므로 다른 name-surrogate tag(WSL symlink tag)를 따른다. Go, Rust, PHP extension은 `IsReparseTagNameSurrogate`를 검사한다. 인수 조건: TypeScript와 PHP reader가 선언된 방식으로 reparse tag에 닿거나, 명세가 근거와 함께 지원 tag를 적는다; 조용한 차이는 없다.
 - [ ] T144 checkout에서 `packages/orm-php/bin/orm-gen`을 실행한다. 원인: `php packages/orm-php/bin/orm-gen`이 autoload 조회에서 `vendor-php`를 찾지 못해 `Class "Polyspec\Orm\OrmGen" not found`로 멈추므로 README의 명령이 실패한다; `vendor-php/bin/orm-gen`은 동작한다. 인수 조건: bin이 저장소가 설치하는 autoloader를 찾으며, red를 먼저 본다.
 - [o] T145 mysql2를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 packages/orm-npm이 3.24.5를 고정한 사이 mysql2 3.24.6이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mysql2를 3.24.6에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 없다; `make dependency-policy-check`와 `make typescript-build`가 통과한다.
-- [ ] T146 orm-schema의 module 목록을 format한다. 원인: main에서 `cargo fmt --all --check`가 packages/orm-rust/orm-schema/src/dbspec/mod.rs(`mod names;`와 `mod plan_diff` 순서)에서 실패한다. 인수 조건: crate에서 rustfmt가 통과하며, red를 먼저 본다.
+- [o] T146 orm-schema의 module 목록을 format한다. 원인: main에서 `cargo fmt --all --check`가 packages/orm-rust/orm-schema/src/dbspec/mod.rs(`mod names;`와 `mod plan_diff` 순서)에서 실패한다. 인수 조건: crate에서 rustfmt가 통과하며, red를 먼저 본다. 증거: hyper session의 agent가 69f7748d에서 red를 재현했다(orm-schema/src/dbspec/mod.rs:20의 `mod names`와 `pub mod model` 순서); c0e189e9(T128-2a-6)가 module 순서를 바로잡았고, `make rust-fmt-check`가 세 part 모두 통과한다.
 - [ ] T147 interface rule이 선언하지 않은 component method를 거부한다. 원인: rule 없는 Dbspec component method가 있어도 `make interface-check`가 통과하므로(T128-2a-7이 찾음) 빠진 rule이 red로 드러나지 않는다. 인수 조건: manifest 검사가 rule 없는 component method를 거부하며, red를 먼저 본다.
 - [ ] T148 parity binding 실행 규칙(R3)이 dbspec unit에서 성립하게 한다. 원인: T128-3과 T128-2a-7이 dbspec unit의 binding이 다른 case 이름을 보고하거나(TypeScript, Python), case를 보고하지 않거나(Rust), 실행되지 않음(PHP는 없는 phpunit이 필요하고, extension은 어느 target도 build하지 않는 library가 필요)을 찾았다. 인수 조건: 모든 dbspec unit의 binding 실행이 모든 runtime에서 case id를 보고하거나, kit의 규칙을 근거와 함께 바로잡는다(kit K42가 Go `/` 규칙을 바꾼다); red를 먼저 본다.
 - [ ] T149 schema_definition에서 Python을 덮는다. 원인: `schema_definition`은 Python이 `planned`이고 검증 명령이 없어, Python set reader와 분석 test는 `make python-check`로만 소유된다. 인수 조건: Python의 schema_definition coverage가 검증 명령과 함께 실행된다(파일 소유 부분은 T151로 옮겼다).
