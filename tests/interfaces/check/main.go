@@ -525,14 +525,16 @@ func validateManifest(m Manifest) error {
 	return checkComponentMethods(m)
 }
 
-// checkComponentMethods refuses a component method that no rule declares: a method of the component diagram
-// (docs/interfaces-model.md) is common API only through its rule, so a method without one would never be compared
-// with any language.
+// checkComponentMethods holds the component diagram (docs/interfaces-model.md) and the rules to the same methods: a
+// component method is common API only through its rule, so a method without one would never be compared with any
+// language, and a rule whose method its component does not list would be common API that the diagram leaves out.
 func checkComponentMethods(m Manifest) error {
+	rules := append(append([]Rule{}, m.Rules...), m.Storage...)
 	declared := map[string]bool{}
-	for _, r := range append(append([]Rule{}, m.Rules...), m.Storage...) {
+	for _, r := range rules {
 		declared[r.ID] = true
 	}
+	listed := map[string]bool{}
 	var missing []string
 	for _, raw := range m.Components {
 		var c struct {
@@ -543,13 +545,28 @@ func checkComponentMethods(m Manifest) error {
 			return fmt.Errorf("component %s: %v", raw, err)
 		}
 		for _, method := range c.Methods {
-			if id := c.ID + "." + method; !declared[id] {
+			id := c.ID + "." + method
+			listed[id] = true
+			if !declared[id] {
 				missing = append(missing, id)
 			}
 		}
 	}
+	var unlisted []string
+	for _, r := range rules {
+		if !listed[r.ID] {
+			unlisted = append(unlisted, r.ID)
+		}
+	}
+	var problems []string
 	if len(missing) > 0 {
-		return fmt.Errorf("component methods without an interface rule in contracts/interfaces.json: %s", strings.Join(missing, ", "))
+		problems = append(problems, "component methods without an interface rule in contracts/interfaces.json: "+strings.Join(missing, ", "))
+	}
+	if len(unlisted) > 0 {
+		problems = append(problems, "interface rules whose method no component lists in contracts/interfaces.json: "+strings.Join(unlisted, ", "))
+	}
+	if len(problems) > 0 {
+		return errors.New(strings.Join(problems, "; "))
 	}
 	return nil
 }

@@ -354,12 +354,13 @@
       "methods": [
         "register",
         "install",
+        "addTablesAndColumns",
         "exists",
         "installed",
         "empty"
       ],
-      "ownership": "Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set.",
-      "ownership_ko": "generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다."
+      "ownership": "Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set; upgrades an installed set by the tables and the null or defaulted columns that the database lacks, without registering it.",
+      "ownership_ko": "generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다. 설치된 set을 데이터베이스에 없는 table과 null이거나 default가 있는 column만큼 upgrade하며, set을 등록하지 않는다."
     },
     {
       "id": "AesUtils",

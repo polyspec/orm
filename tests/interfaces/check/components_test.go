@@ -55,3 +55,17 @@ func TestManifestComponentMethodsHaveRules(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestManifestRefusesRuleWithoutComponentMethod(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	component := `{"id":"SchemaUtils","methods":["register"]}`
+	for _, id := range []string{"SchemaUtils.addTablesAndColumns", "Missing.register"} {
+		err := validateManifest(componentManifest(t, []string{component}, "SchemaUtils.register", id))
+		if err == nil {
+			t.Fatalf("the manifest check accepted the rule %s whose method no component lists", id)
+		}
+		if !strings.Contains(err.Error(), id) {
+			t.Fatalf("the refusal does not name the rule %s: %v", id, err)
+		}
+	}
+}
