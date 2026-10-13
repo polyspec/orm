@@ -1101,12 +1101,22 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
 }
 
 /* 같은 renderer 이름을 앞선 표나 쓰는 문서의 표가 이미 쓰면 뒤의 자리에서 보고한다(docs/dbspec.md "Names"). */
-static void claim_generated(parser *p, zend_long line, zend_long column, str name)
+/* 쓰는 문서의 표나 앞선 표가 이미 쓴 renderer 이름이면 뒤의 자리에서 두 출처를 적어 보고한다(docs/dbspec.md "Names"). */
+static void record_generated(parser *p, str name, str source)
 {
-    if (smap_has(&p->generated_names, name)) {
-        error(p, "name.duplicate", line, column, fmt("generated name `%S` repeats in the schema", name));
+    str *own = dbs_alloc(sizeof *own);
+    *own = source;
+    smap_set(&p->generated_names, name, own);
+}
+
+static void claim_generated(parser *p, zend_long line, zend_long column, str name, str source)
+{
+    str *first = smap_get(&p->generated_names, name);
+    if (first != NULL) {
+        error(p, "name.duplicate", line, column, fmt("generated name `%S` of %S repeats the generated name of %S", name, source, *first));
+        return;
     }
-    smap_set(&p->generated_names, name, TRUEP);
+    record_generated(p, name, source);
 }
 
 /* 쓰는 문서의 표가 쓰는 renderer 이름을 기록한다. 진단은 그 문서가 낸다. */
@@ -1117,7 +1127,7 @@ static void claim_used_generated(parser *p, table *definition)
         if (c->identity || c->type == NULL || str_eqc(c->type->name, "text") || str_eqc(c->type->name, "bytes")) {
             continue;
         }
-        smap_set(&p->generated_names, dbs_renderer_name(definition->name, c->name), TRUEP);
+        record_generated(p, dbs_renderer_name(definition->name, c->name), fmt("used table %S", definition->name));
     }
     if (definition->settings == NULL) {
         return;
@@ -1137,7 +1147,7 @@ static void claim_used_generated(parser *p, table *definition)
             count = 3;
         }
         for (size_t e = 0; e < count; e++) {
-            smap_set(&p->generated_names, dbs_renderer_name(definition->name, str_c(events[e])), TRUEP);
+            record_generated(p, dbs_renderer_name(definition->name, str_c(events[e])), fmt("used table %S", definition->name));
         }
     }
 }
@@ -1230,7 +1240,8 @@ static void column_line(parser *p)
     /* renderer가 type CHECK를 쓰는 column은 그 이름 <table>$<column>이 이름 한도를 지킨다. */
     if (identity == NULL && type != NULL && !str_eqc(type->name, "text") && !str_eqc(type->name, "bytes") && well_formed
         && dbs_valid_name(p->table->name)) {
-        claim_generated(p, p->line, name->column, dbs_renderer_name(p->table->name, name->text));
+        claim_generated(p, p->line, name->column, dbs_renderer_name(p->table->name, name->text),
+            fmt("table %S column %S", p->table->name, name->text));
     }
     if (smap_has(p->columns, name->text)) {
         error(p, "name.duplicate", p->line, name->column, fmt("column `%S` is already defined", name->text));
@@ -2859,8 +2870,8 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));
             }
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_update")));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_delete")));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_update")), fmt("table %S setting immutable", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_delete")), fmt("table %S setting immutable", p->table->name));
         } else if (str_eqc(kind, "audit")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `audit` is rejected on a child of a cascade or set_null foreign key"));
@@ -2876,9 +2887,9 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (dbs_valid_name(a->v[0].text) && dbs_valid_name(a->v[3].text) && dbs_valid_name(a->v[4].text)) {
                 PUSH(p->deferred_audits, ((daudit_rec){p->table, p->columns, *a, audit != NULL ? audit->type : NULL, line, recorded}));
             }
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_insert")));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_update")));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_insert")), fmt("table %S setting audit", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_update")), fmt("table %S setting audit", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")), fmt("table %S setting audit", p->table->name));
         }
     }
     state_machine_check(p);
