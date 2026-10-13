@@ -604,7 +604,7 @@ str r_create_table(renderer *r, const table *t, str name, str (*check_name)(void
 
 str r_table_check_name(void *ctx, str column)
 {
-    return fmt("%S$%S", ((const table *)ctx)->name, column);
+    return dbs_renderer_name(((const table *)ctx)->name, column);
 }
 
 strs r_table(renderer *r, const table *t)
@@ -644,7 +644,7 @@ str r_index_columns(renderer *r, const xindex *x)
 /* <table>$<event> trigger의 본문은 statement 하나다. PostgreSQL은 같은 이름의 함수로 감싼다. */
 static void trigger(renderer *r, const table *t, const char *event, const char *timing, str body, bool rejects, strs *out)
 {
-    str name = r_q(r, fmt("%S$%s", t->name, event));
+    str name = r_q(r, dbs_renderer_name(t->name, str_c(event)));
     str on = fmt(" %s ON %S FOR EACH ROW ", timing, r_q(r, t->name));
     switch (r->d) {
         case D_MYSQL:

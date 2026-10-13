@@ -374,6 +374,7 @@ typedef struct {
 
 bool dbs_manifest(const documentv *documents, manifest *m, diags *out);
 str dbs_sha256(str text);  /* "sha256:<hex>" */
+str dbs_renderer_name(str table, str suffix);  /* <table>$<suffix> 의 renderer 이름 */
 
 /* ------------------------------------------------------------------ render */
 

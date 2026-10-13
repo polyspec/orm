@@ -179,6 +179,7 @@ typedef struct parser {
     document *doc;
     smap tables;
     smap constraint_names, used_documents, diagram_names, failed_tables, used_table_names;
+    smap generated_names;
     smap syntax_lines;
     smap types;
     zend_long table_count, column_count, fk_count;
@@ -231,6 +232,8 @@ typedef struct parser {
 
     jmp_buf stop_jump;
 } parser;
+
+static void claim_used_generated(parser *p, table *definition);
 
 /* 문서 끝에서 닫히지 않은 block의 오류다. 같은 줄의 다른 syntax 오류와 함께 보고한다(Go는 줄당 한 번으로 제한하지 않는다). */
 static void unclosed(parser *p, zend_long line, zend_long column, str message)
@@ -914,6 +917,7 @@ static void use_line(parser *p)
                 smap_set(e->columns, definition->columns.v[x]->name, definition->columns.v[x]);
             }
         }
+        claim_used_generated(p, definition);
         smap_set(&p->tables, t->text, e);
     }
 }
@@ -1096,16 +1100,45 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     return intern_type(p, name, params.v, params.n);
 }
 
-/* renderer가 만드는 이름이 63 byte를 넘으면 보고한다(docs/dbspec.md "Names"). */
-static void generated_name(parser *p, zend_long line, zend_long column, str name)
+/* 같은 renderer 이름을 앞선 표나 쓰는 문서의 표가 이미 쓰면 뒤의 자리에서 보고한다(docs/dbspec.md "Names"). */
+static void claim_generated(parser *p, zend_long line, zend_long column, str name)
 {
-    if (name.n <= 63) {
+    if (smap_has(&p->generated_names, name)) {
+        error(p, "name.duplicate", line, column, fmt("generated name `%S` repeats in the schema", name));
+    }
+    smap_set(&p->generated_names, name, TRUEP);
+}
+
+/* 쓰는 문서의 표가 쓰는 renderer 이름을 기록한다. 진단은 그 문서가 낸다. */
+static void claim_used_generated(parser *p, table *definition)
+{
+    for (size_t x = 0; x < definition->columns.n; x++) {
+        column *c = definition->columns.v[x];
+        if (c->identity || c->type == NULL || str_eqc(c->type->name, "text") || str_eqc(c->type->name, "bytes")) {
+            continue;
+        }
+        smap_set(&p->generated_names, dbs_renderer_name(definition->name, c->name), TRUEP);
+    }
+    if (definition->settings == NULL) {
         return;
     }
-    ssize_t dollar = str_find(name, "$", 0);
-    str table = dollar < 0 ? name : str_sub(name, 0, (size_t)dollar);
-    if (dbs_valid_name(table)) {
-        error(p, "name.length", line, column, fmt("the generated name `%S` has %u bytes, more than 63", name, name.n));
+    for (size_t x = 0; x < definition->settings->list.n; x++) {
+        setting *s = definition->settings->list.v[x];
+        const char *events[3] = {NULL, NULL, NULL};
+        size_t count = 0;
+        if (str_eqc(s->kind, "immutable")) {
+            events[0] = "immutable_update";
+            events[1] = "immutable_delete";
+            count = 2;
+        } else if (str_eqc(s->kind, "audit")) {
+            events[0] = "audit_insert";
+            events[1] = "audit_update";
+            events[2] = "audit_delete";
+            count = 3;
+        }
+        for (size_t e = 0; e < count; e++) {
+            smap_set(&p->generated_names, dbs_renderer_name(definition->name, str_c(events[e])), TRUEP);
+        }
     }
 }
 
@@ -1195,8 +1228,9 @@ static void column_line(parser *p)
         has_canonical ? &canonical : NULL);
     c->comments = take_comments(p);
     /* renderer가 type CHECK를 쓰는 column은 그 이름 <table>$<column>이 이름 한도를 지킨다. */
-    if (identity == NULL && type != NULL && !str_eqc(type->name, "text") && !str_eqc(type->name, "bytes") && well_formed) {
-        generated_name(p, p->line, name->column, fmt("%S$%S", p->table->name, name->text));
+    if (identity == NULL && type != NULL && !str_eqc(type->name, "text") && !str_eqc(type->name, "bytes") && well_formed
+        && dbs_valid_name(p->table->name)) {
+        claim_generated(p, p->line, name->column, dbs_renderer_name(p->table->name, name->text));
     }
     if (smap_has(p->columns, name->text)) {
         error(p, "name.duplicate", p->line, name->column, fmt("column `%S` is already defined", name->text));
@@ -2825,7 +2859,8 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));
             }
-            generated_name(p, line, at, fmt("%S$immutable_update", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_update")));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_delete")));
         } else if (str_eqc(kind, "audit")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `audit` is rejected on a child of a cascade or set_null foreign key"));
@@ -2841,7 +2876,9 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (dbs_valid_name(a->v[0].text) && dbs_valid_name(a->v[3].text) && dbs_valid_name(a->v[4].text)) {
                 PUSH(p->deferred_audits, ((daudit_rec){p->table, p->columns, *a, audit != NULL ? audit->type : NULL, line, recorded}));
             }
-            generated_name(p, line, at, fmt("%S$audit_insert", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_insert")));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_update")));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")));
         }
     }
     state_machine_check(p);

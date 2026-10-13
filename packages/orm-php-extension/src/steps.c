@@ -343,7 +343,7 @@ static smap renderer_checks(writer *w, const table *t)
     for (size_t i = 0; i < t->columns.n; i++) {
         str check = r_type_check(&w->r, t->columns.v[i]);
         if (check.n > 0) {
-            smap_set(&out, fmt("%S$%S", t->name, t->columns.v[i]->name), str_ptr(check));
+            smap_set(&out, dbs_renderer_name(t->name, t->columns.v[i]->name), str_ptr(check));
         }
     }
     return out;
@@ -515,7 +515,7 @@ typedef struct {
 
 static str check_name_of(void *ctx, str c)
 {
-    return fmt("%S$%S", ((checkname_ctx *)ctx)->table, c);
+    return dbs_renderer_name(((checkname_ctx *)ctx)->table, c);
 }
 
 typedef struct {
@@ -529,7 +529,7 @@ static str old_check_name(void *ctx, str c)
     oldcheck_ctx *o = ctx;
     smap *m = smap_get(&o->d->column_of, o->name);
     str *s = m == NULL ? NULL : smap_get(m, c);
-    return fmt("%S$%S", o->src, s == NULL ? c : *s);
+    return dbs_renderer_name(o->src, s == NULL ? c : *s);
 }
 
 static str sequence_sql(str to, str from)

@@ -694,6 +694,18 @@ str dbs_sha256(str text)
     return str_of(out, sizeof out);
 }
 
+/* The name that the renderer writes for <table>$<suffix> (docs/dbspec.md "Names"): the plain form when it has at most 63
+ * bytes, otherwise its first 54 bytes, a $ and the first 8 lowercase hex digits of its SHA-256. */
+str dbs_renderer_name(str table, str suffix)
+{
+    str plain = fmt("%S$%S", table, suffix);
+    if (plain.n <= 63) {
+        return plain;
+    }
+    str digest = dbs_sha256(plain);
+    return fmt("%S$%S", str_sub(plain, 0, 54), str_sub(digest, 7, 8));
+}
+
 /* -------------------------------------------------------------- exceptions */
 
 bool dbs_throw(zend_class_entry *ce, str message)
