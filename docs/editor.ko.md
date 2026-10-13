@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: 4245593cbca942236569e1146e55e752378719ff68fd1392f7256dbf83a3a066 -->
+<!-- source-sha256: 07c2b928cf38c07fa5ec029ba0ff53d2bb492db4f15f53744ee624f00de4ade7 -->
 # dbspec editor 도구
 
 [English](editor.md)
@@ -9,8 +9,8 @@ editor 도구는 다른 모든 도구와 같은 parser로 dbspec 문서를 읽�
 ## 계층
 
 - **parser 진입점.** `@polyspec/orm`은 `parse`, `emit`, `analyze`, `format`, `readDbspecBytes`만 가진 subpath를 export한다. 그 module은 `node:` module을 import하지 않고, Node global(`Buffer`, `process`, `__dirname`, `require`)을 읽지 않으며, database driver를 load하지 않으므로 Node에서처럼 browser에서도 실행된다. `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖에 있고, `readDbspecBytes`는 `Buffer`가 아니라 `TextEncoder`와 `TextDecoder`로 decode한다.
-- **language service**(`packages/dbspec/language`). `openDocument(text, {set})`은 range를 가진 diagnostic, token, folding range(table, `settings` block, diagram), `format()`을 준다. code point를 UTF-16 offset으로 바꾸는 것은 이 계층뿐이다. `dbspec-fmt` command line을 가진다.
-- **adapter**: language server(`packages/dbspec/lsp`), CodeMirror extension(`packages/dbspec/codemirror`), VS Code extension(`packages/dbspec/vscode`). adapter는 language service의 결과를 host의 형식으로 바꾸며 자기만의 읽기를 더하지 않는다.
+- **language service**(`packages/dbspec-language`). `openDocument(text, {set})`은 range를 가진 diagnostic, token, folding range(table, `settings` block, diagram), `format()`을 준다. code point를 UTF-16 offset으로 바꾸는 것은 이 계층뿐이다. `dbspec-fmt` command line을 가진다.
+- **adapter**: language server(`packages/dbspec-lsp`), CodeMirror extension(`packages/dbspec-codemirror`), VS Code extension(`packages/dbspec-vscode`). adapter는 language service의 결과를 host의 형식으로 바꾸며 자기만의 읽기를 더하지 않는다.
 
 ## Import 규칙
 

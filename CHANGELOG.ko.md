@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: db53c3dcf0e1dfbf98915262b7cae0fadcef5f97686b541ef6f5b6f8e1cbe294 -->
+<!-- source-sha256: f1b96a8824bdb84f28b5aab9e89fa1a9a2e444cdf0f9ff9c10ff2cde0d8a404b -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2-3: editor package를 폴더 표준 S5대로 둔다: S5가 거부하는 중첩 `packages/dbspec/<part>/` 대신 각자 독립 component인 `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror`, `packages/dbspec-vscode`다.
 - T132: Go generator scan은 build-tag나 platform 설정을 그 파일을 가진 패키지에만 읽으므로, Go의 model_generation coverage case가 부하에서 120초 기한을 넘지 않고 약 30초에 끝난다.
 - T129-1: renderer 이름의 interface symbol을 기록했다. contracts/symbols는 T129 snapshot을, contracts/interfaces.json은 그 hash를 가지므로 T129 tree에서 interfaces 검사가 통과한다.
 - T130-3: docs/interfaces.md의 "조회 체인"이 runtime별 finder 규칙을 정하고, docs/usage.md가 이 절을 연결한다. 각 T130 code commit이 자기가 바꾼 symbol 다섯 개를 기록해서 branch의 모든 commit에서 interfaces 검사가 통과한다.
