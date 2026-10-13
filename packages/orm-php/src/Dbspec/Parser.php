@@ -79,6 +79,8 @@ final class Parser
     private array $lexical = [];
     /** Whether a line is being read: a syntax diagnostic raised then abandons its line. */
     private bool $reading = false;
+    /** Whether the classes are recorded: only for analysis, so that parse keeps no token data. */
+    private bool $marking = false;
     /** The body of a table or settings or diagram block whose opening line failed is read but keeps lexical classes (R20). */
     private bool $tableFailed = false;
     private bool $settingsFailed = false;
@@ -171,6 +173,7 @@ final class Parser
      */
     public function run(string $source, bool $withTokens = false): array
     {
+        $this->marking = $withTokens;
         $stop = null;
         try {
             $this->read($source);
@@ -276,7 +279,7 @@ final class Parser
      */
     private function mark(array $token, string $class): void
     {
-        if (isset($token[2], $token[3])) {
+        if ($this->marking && isset($token[2], $token[3])) {
             $this->marks[$token[3]][$token[2]] = $class;
         }
     }
@@ -381,7 +384,7 @@ final class Parser
                 $this->comments[] = $trimmed;
                 continue;
             }
-            if ($this->tableFailed || $this->settingsFailed || $this->diagramFailed) {
+            if ($this->marking && ($this->tableFailed || $this->settingsFailed || $this->diagramFailed)) {
                 $this->lexical[$this->line] = true;
             }
             $this->tokenize();
@@ -885,7 +888,8 @@ final class Parser
             }
         }
         $this->state = 'table';
-        $this->tableFailed = $headerFailed;
+        // R20: the body of a block whose opening line failed (a syntax diagnostic on it) keeps lexical classes.
+        $this->tableFailed = isset($this->syntaxLines[$this->line]);
         $this->blockOpen = [$this->line, $t[2][1] ?? $t[0][1]];
         $this->table = $table;
         $this->tableName = [$this->line, $name[1]];
@@ -1703,8 +1707,10 @@ final class Parser
         $checkColumns = [];
         foreach ($this->tableChecks as [$check, $line, $tokens, $end]) {
             [$text, $errors, $refs, $marks] = Expression::parse($tokens, $line, $end, $this->columns, $actionColumns);
-            foreach ($marks as $index => $class) {
-                $this->marks[$line][$index] = $class;
+            if ($this->marking) {
+                foreach ($marks as $index => $class) {
+                    $this->marks[$line][$index] = $class;
+                }
             }
             foreach ($errors as $error) {
                 $this->error(...$error);
@@ -2928,7 +2934,7 @@ final class Parser
     {
         if ($rule === 'syntax') {
             // A syntax diagnostic that a reader raises abandons its line (R1); deferred checks do not.
-            if ($this->reading) {
+            if ($this->reading && $this->marking) {
                 $this->lexical[$line] = true;
             }
             if (isset($this->syntaxLines[$line])) {
