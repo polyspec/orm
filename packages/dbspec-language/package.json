@@ -11,6 +11,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/cli/host.d.ts",
+      "import": "./dist/cli/host.js"
     }
   },
   "bin": {

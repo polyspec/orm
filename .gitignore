@@ -3,6 +3,7 @@
 /packages/orm-npm/dist/
 /packages/dbspec-language/dist/
 /packages/dbspec-codemirror/dist/
+/packages/dbspec-lsp/dist/
 /target/
 /bench/rust/target/
 /packages/orm-rust/target/

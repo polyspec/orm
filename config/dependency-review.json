@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T14:42:59.339Z",
+  "reviewed": "2026-10-13T14:57:30.015Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "85f5d3fd9edbfa438d002f921dc83ce72e33c18ca93ad52a7e8730bb575a98ce",
+      "sha256": "6fb8d9223a57a3331532b18974a53869042349ec0349e9fed5c9bedcec5f946a",
       "advisories": []
     },
     {
@@ -97,6 +97,34 @@
       "package": "typescript",
       "version": "6.0.3",
       "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-lsp/package.json",
+      "package": "vscode-languageserver",
+      "version": "10.1.2",
+      "latest": "10.1.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-lsp/package.json",
+      "package": "vscode-languageserver-textdocument",
+      "version": "1.0.15",
+      "latest": "1.0.15"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-lsp/package.json",
+      "package": "typescript",
+      "version": "7.0.2",
+      "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-lsp/package.json",
+      "package": "vscode-jsonrpc",
+      "version": "9.0.3",
+      "latest": "9.0.3"
     },
     {
       "ecosystem": "npm",
