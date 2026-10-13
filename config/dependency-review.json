@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T18:06:19.978Z",
+  "reviewed": "2026-10-13T19:18:49.346Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "5aea2ada382cd04eef6bda3aa07b2300775bf7e73a3eb4ae76d7bc5af2e151cd",
+      "sha256": "c550ee89dabeac8ec95f0a5fcdef52e1f44cf1451dc3f196956f55e6f1e1f3f8",
       "advisories": []
     },
     {
@@ -125,6 +125,62 @@
       "package": "vscode-jsonrpc",
       "version": "9.0.3",
       "latest": "9.0.3"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "@types/vscode",
+      "version": "1.140.0",
+      "latest": "1.140.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "@vscode/test-electron",
+      "version": "3.1.0",
+      "latest": "3.1.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "@vscode/vsce",
+      "version": "4.0.0",
+      "latest": "4.0.0"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "esbuild",
+      "version": "0.28.2",
+      "latest": "0.28.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "typescript",
+      "version": "7.0.2",
+      "latest": "7.0.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "vscode-jsonrpc",
+      "version": "9.0.3",
+      "latest": "9.0.3"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "vscode-languageclient",
+      "version": "10.1.2",
+      "latest": "10.1.2"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-vscode/package.json",
+      "package": "vscode-languageserver",
+      "version": "10.1.2",
+      "latest": "10.1.2"
     },
     {
       "ecosystem": "npm",

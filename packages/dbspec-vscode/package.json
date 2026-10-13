@@ -1,0 +1,146 @@
+{
+  "name": "polyspec-dbspec",
+  "displayName": "Polyspec dbspec",
+  "description": "Semantic highlighting, diagnostics, folding and formatting of dbspec documents (.dbs) from the bundled dbspec language server",
+  "version": "0.0.0",
+  "publisher": "polyspec",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polyspec/orm",
+    "directory": "packages/dbspec-vscode"
+  },
+  "engines": {
+    "vscode": "^1.140.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node22 --external:vscode --outfile=dist/extension.cjs && esbuild src/server.ts --bundle --platform=node --format=cjs --target=node22 --outfile=dist/server.cjs",
+    "package": "vsce package --no-dependencies --skip-license --out dist/polyspec-dbspec.vsix"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "dbspec",
+        "aliases": [
+          "dbspec"
+        ],
+        "extensions": [
+          ".dbs"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "keyword",
+        "description": "A keyword of the dbspec grammar"
+      },
+      {
+        "id": "type",
+        "description": "A column type"
+      },
+      {
+        "id": "name",
+        "superType": "variable",
+        "description": "A declared name of a table, column, index or diagram"
+      },
+      {
+        "id": "setting",
+        "superType": "property",
+        "description": "A table or column setting"
+      },
+      {
+        "id": "number",
+        "description": "A number"
+      },
+      {
+        "id": "string",
+        "description": "A quoted string"
+      },
+      {
+        "id": "operator",
+        "description": "An operator"
+      },
+      {
+        "id": "punctuation",
+        "superType": "operator",
+        "description": "Punctuation: braces, parentheses and commas"
+      },
+      {
+        "id": "comment",
+        "description": "A comment"
+      },
+      {
+        "id": "word",
+        "superType": "variable",
+        "description": "Any other word"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "dbspec",
+        "scopes": {
+          "keyword": [
+            "keyword.other.dbspec"
+          ],
+          "type": [
+            "storage.type.dbspec"
+          ],
+          "name": [
+            "entity.name.dbspec"
+          ],
+          "setting": [
+            "support.type.property-name.dbspec"
+          ],
+          "number": [
+            "constant.numeric.dbspec"
+          ],
+          "string": [
+            "string.quoted.single.dbspec"
+          ],
+          "operator": [
+            "keyword.operator.dbspec"
+          ],
+          "punctuation": [
+            "punctuation.separator.dbspec"
+          ],
+          "comment": [
+            "comment.line.number-sign.dbspec"
+          ],
+          "word": [
+            "variable.other.dbspec"
+          ]
+        }
+      }
+    ],
+    "configurationDefaults": {
+      "[dbspec]": {
+        "editor.semanticHighlighting.enabled": true
+      }
+    }
+  },
+  "devDependencies": {
+    "@polyspec/dbspec-lsp": "0.0.0",
+    "@types/vscode": "1.140.0",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "^7.0.2",
+    "vscode-jsonrpc": "9.0.3",
+    "vscode-languageclient": "10.1.2",
+    "vscode-languageserver": "10.1.2"
+  }
+}

@@ -55,7 +55,8 @@
     "tests/release-consumer/composer/composer.json": "the Composer consumer project of the release archives",
     "packages/dbspec-language/package.json": "the dbspec language service, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke",
     "packages/dbspec-lsp/package.json": "the dbspec language server, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke",
-    "packages/dbspec-codemirror/package.json": "the dbspec CodeMirror extension, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke"
+    "packages/dbspec-codemirror/package.json": "the dbspec CodeMirror extension, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke",
+    "packages/dbspec-vscode/package.json": "the dbspec VS Code extension, private until the editor stack is released (T128-R), whose wiring item T128-9 moves it to the released packages with its archive manifest and consumer smoke"
   },
   "goModules": {
     ".": "github.com/polyspec/orm"

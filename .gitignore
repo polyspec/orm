@@ -4,6 +4,8 @@
 /packages/dbspec-language/dist/
 /packages/dbspec-codemirror/dist/
 /packages/dbspec-lsp/dist/
+/packages/dbspec-vscode/dist/
+*.vsix
 /target/
 /bench/rust/target/
 /packages/orm-rust/target/
@@ -14,6 +16,7 @@
 /node_modules/
 /packages/orm-npm/node_modules/
 /packages/dbspec-language/node_modules/
+/packages/dbspec-vscode/node_modules/
 /vendor-php/
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
