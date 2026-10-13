@@ -1002,7 +1002,7 @@ decimal-physical-check: cargo-downloads-check lease-tool
 	$(BUILD_CONFORMANCE_STATE)
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
-interface-check: lease-tool
+interface-check: php-vendor-check lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
 
 go-model-check:
