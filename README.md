@@ -51,7 +51,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 
 ## How it works
 - **Schema**: a hand-written set of dbspec documents (`schema/*.dbs`, `docs/dbspec.md`); its manifest text and `manifestHash` are embedded in the generated models.
-- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), `packages/orm-python/bin/orm-gen` (Python), and the `polyspec-orm-build` crate in `build.rs` (Rust).
+- **Models**: each language generates its models with its own build tool: `go generate` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin in `npm run build` (TypeScript), the `orm-gen` console script of the Python package (Python), and the `polyspec-orm-build` crate in `build.rs` (Rust).
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/dialects.md`).
 - **Python**: the Python client supports Python 3.14 (CPython), the release of `.python-version` that CI tests; `requires-python` states it (`docs/packaging.md`).
@@ -88,7 +88,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 `docs/errors.yaml` codes · `docs/perf.md` measurements and gates · `docs/plans/execution-checklist.md` work plan.
 
 ## Tooling
-`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `packages/orm-python/bin/orm-gen gen` (Python), `polyspec-orm-build` (Rust),
+`orm-gen gen --lang go | errors --lang` (Go), `vendor/bin/orm-gen gen` (PHP), `orm-gen gen` (TypeScript), `orm-gen gen` of the Python package (Python), `polyspec-orm-build` (Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License
