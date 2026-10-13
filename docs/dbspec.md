@@ -302,7 +302,7 @@ Each implementation has one dbspec lexer and one parser, and syntax analysis is 
 
 `analyze(text, set)` returns the parse result, unchanged, and the tokens of the text. A token is `{line, start, end, class}`: `line` is 1-based, `start` and `end` count Unicode code points from the line start, and `end` is exclusive. The classes are:
 
-The lexer reads four kinds of token: a word, a string, a punctuation mark (`{`, `}`, `(`, `)`, `,`) and an operator (`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`); a number is a word, and a comment is a whole line. The parser gives each token its class:
+A line is read into words, strings, punctuation marks (`{`, `}`, `(`, `)`, `,`) and operators (`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`); a word of digits with an optional fraction (`12`, `0.50`) is a number, and a comment is a whole line. The parser gives each token its class:
 
 | Class | Tokens |
 | --- | --- |
@@ -310,7 +310,7 @@ The lexer reads four kinds of token: a word, a string, a punctuation mark (`{`, 
 | `type` | A word of a column type |
 | `name` | A document, table, column, constraint, index or diagram name, where it is declared and where it is referenced |
 | `setting` | The first word of a line of a `settings` block; the other words of the line take the classes above |
-| `number` | A word that the parser reads as a number |
+| `number` | A number |
 | `string` | A string |
 | `operator` | An operator, the `-` and `>` of `->` included |
 | `punctuation` | A punctuation mark |
@@ -320,7 +320,7 @@ The lexer reads four kinds of token: a word, a string, a punctuation mark (`{`, 
 The cases that the parse does not complete are defined:
 
 - a `limit` error yields no tokens, since the check precedes allocation ([Limits and errors](#limits-and-errors));
-- after an `encoding` or `header` stop, the stop line and every later line yield lexical tokens only: a word, a number included, is `word`, and a string, an operator, a punctuation mark and a comment line keep their class; for `encoding`, a bare CR is not a line end, and lexing goes on after it;
+- after an `encoding` or `header` stop, the stop line and every later line yield lexical tokens only: a word is `word`, and a number, a string, an operator, a punctuation mark and a comment line keep their class; for `encoding`, a bare CR is not a line end, and lexing goes on after it;
 - an invalid character yields no token;
 - on a line the parser abandoned with a `syntax` diagnostic, a word is `word`; a line that carries only a semantic diagnostic keeps the classes the parser gave it.
 

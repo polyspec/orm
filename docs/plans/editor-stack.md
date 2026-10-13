@@ -53,9 +53,10 @@ Owner rulings:
        (docs/dbspec.md:301);
      - after a `header` or `encoding` stop, the stop line and every later line yield lexical
        tokens;
-     - in such a lexical-only line a word, a number included, is `word`, and strings, operators,
-       punctuation and comment lines keep their class: the lexer reads a number as a word
-       (corrected in T128-2 from "numbers keep their lexical class", which has no lexical class);
+     - in such a lexical-only line a word is `word`, and numbers, strings, operators, punctuation
+       and comment lines keep their class; a number is a word of digits with an optional fraction,
+       as Go's lexer reads it (a T128-2 edit that made numbers `word` from the TS lexer alone was
+       wrong and is undone by T128-2-1);
      - for `encoding`, a bare CR is not a line end, and lexing resumes after it;
      - an invalid character yields no token;
      - `word` is also a word on a line the parser abandoned (the recovery path). A line that
