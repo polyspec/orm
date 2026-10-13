@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: c4c7828f3a08e0f4fcbcb6253a2ef8a7f9d288462e3e45dc2d3525662c221595 -->
+<!-- source-sha256: 054915d2353f82a916996fc412d9bb2758b216b8d2b15f823401e96fd6150b71 -->
 # dbspec
 
 [English](dbspec.md)
@@ -299,7 +299,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 
 ## Syntax analysis
 
-각 구현은 dbspec lexer 하나와 parser 하나를 가지며, 구문 분석은 그 parser의 출력이다. editor 계층, 생성 파일, 정규 표현식 어느 것도 문법 규칙을 갖지 않는다. TextMate 같은 정규 표현식 문법은 parser 문맥이 없고, 이름이 keyword일 수 있으므로(`table`은 올바른 column 이름이다) parser와 다르게 token을 분류한다.
+각 구현은 dbspec lexer 하나와 parser 하나를 가지며, 구문 분석은 그 parser의 출력이다. editor 계층, 생성 파일, 정규 표현식 어느 것도 문법 규칙을 갖지 않는다. TextMate 같은 정규 표현식 문법은 parser 문맥이 없고, 이름이 예약되지 않은 keyword 단어일 수 있으므로(`key`, `text`, `references`는 올바른 column 이름이다) parser와 다르게 token을 분류한다.
 
 `analyze(text, set)`은 parse 결과를 바꾸지 않고 그대로, 그리고 text의 token을 돌려준다. token은 `{line, start, end, class}`이다. `line`은 1부터 시작하고, `start`와 `end`는 줄 시작부터의 Unicode code point 수이며, `end`는 포함하지 않는다.
 

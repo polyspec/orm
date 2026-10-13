@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 7e6084d2aa59f739571ca68626c30fc4e5b86f4089f107eb61d83d037879becb -->
+<!-- source-sha256: c2735898d1e92f2287dfa5f815f1a21b39389f4084691903ba15d9d868288b4e -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -41,7 +41,7 @@ owner 판정:
 1. **runtime마다 문법 하나.**
    - 각 runtime은 dbspec lexer와 parser를 하나만 가진다. 분석은 parser 출력 중 하나다.
    - 어떤 editor layer, 생성 파일, regex도 문법 규칙을 담지 않는다. 그래서 TextMate 문법을 제외한다:
-     regex 문법에는 parser 문맥이 없고, `NAME`은 `table` 같은 keyword를 column의 이름에 허용하므로
+     regex 문법에는 parser 문맥이 없고, `NAME`은 `key`, `text`, `references`처럼 예약되지 않은 keyword 단어를 column의 이름에 허용하므로(`table`은 예약어다; T128-2-2에서 바로잡음)
      `analyze`와 어긋난다.
 2. **구문 분석: 여섯 구현 모두의 `analyze(text, set)`.**
    - parse 결과(그대로)와 token `{line, start, end, class}`를 돌려준다.

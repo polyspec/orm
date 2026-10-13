@@ -41,8 +41,9 @@ Owner rulings:
 1. **One grammar per runtime.**
    - Each runtime has one dbspec lexer and parser. Analysis is one of the parser's outputs.
    - No editor layer, generated file or regex holds a grammar rule. That excludes TextMate
-     grammars: a regex grammar has no parser context, and `NAME` admits keywords such as
-     `table` as column names, so it would disagree with `analyze`.
+     grammars: a regex grammar has no parser context, and `NAME` admits keyword words that are
+     not reserved, such as `key`, `text` and `references`, as column names, so it would disagree
+     with `analyze` (`table` is reserved; corrected by T128-2-2).
 2. **Syntax analysis: `analyze(text, set)` in all six implementations.**
    - It returns the parse result (unchanged) and tokens `{line, start, end, class}`.
    - Line is 1-based; start and end are code points, end exclusive.

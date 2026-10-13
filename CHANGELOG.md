@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2-2: the syntax analysis rules ground their exclusion of regex grammars on valid column names that are keyword words (`key`, `text`, `references`), instead of the reserved `table`.
 - T128-2-1: the dbspec syntax analysis rules define a number by its form, a word of digits with an optional fraction, and keep its `number` class on a line read only lexically.
 - T128-3s (breaking): a repeated `state_machine` line of one machine is a `setting` error at the later line in every runtime: one `initial` and one `terminal` line per state, and one transition line per `<from> -> <to>` pair whatever its `require` list. Such a document was accepted silently before.
 - T128-2: the dbspec specification states syntax analysis (`analyze` and its token classes, for every implementation, from the one parser) and formatting (`format` as `emit(parse(text))`, refusing a document with a diagnostic, with its three invariants), and docs/editor.md states the editor tools: the browser-safe parser entry, the language service, the adapters, their import rules, results, ecosystem mechanisms and fixtures.
