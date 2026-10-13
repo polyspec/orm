@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 7e4da267ac8c4a0b2f195faeea20e6a2316b1b741569c742ef3b626763d133ca -->
+<!-- source-sha256: cb0ed23be1095d84d8ca6f76e0ed94ade46fd3bd20210fe3b009bae3349fdc33 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -938,6 +938,7 @@
 - [ ] T128-8 `packages/dbspec/codemirror`와 `packages/dbspec/vscode`. 인수 조건: EditorState로 시험한 CodeMirror 6 mark, lint, fold, format 명령; semantic token scope를 가지고 문법 파일이 없으며 semantic highlighting을 기본으로 켜고 묶어 넣은 LSP client를 가진 VS Code 확장을 integration으로 시험한다; CI job은 kit 도구로 VS Code를 설치한다.
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.
+- [~] T129 renderer가 만드는 이름을 하나의 hash 규칙으로 63 bytes에 맞춘다(T8.1.5 후속). 원인: renderer는 `<table>$<column>` CHECK와 `<table>$<event>` trigger·function을 쓰는데, `service_module_board_comment_history` table과 `service_module_board_post_seq` column의 history는 66 bytes CHECK 이름을 받아 audit table을 선언할 수 없다. 선언된 이름은 여전히 거부하며 줄이지 않는다. 인수 조건: docs/dbspec.md "이름"과 docs/dialects.md가 규칙을 밝힌다(63 bytes 이하이면 plain form, 아니면 처음 46 bytes, `$`, SHA-256 소문자 16진수 16자리); 모든 client가 이 규칙으로 이름을 쓰고, 계획하고, introspection한다; tests/dbspec/cases.json과 ddl.json은 66 bytes history case를 정확한 생성 이름과 함께 허용하고 사용자가 고른 64 bytes 이름을 거부한다; 공유 vector는 변경 전 실패하고 Go, PHP, PHP extension, TypeScript, Python, Rust에서 각 package의 test가 통과하며, `make dbspec-ddl-check`가 test server의 MySQL, PostgreSQL, SQLite에서 통과한다.
 - [ ] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다.
   - [ ] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다.
   - [ ] T131-2 Go 주석을 영어로.

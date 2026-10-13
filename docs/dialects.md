@@ -215,7 +215,7 @@ Update-time stamping decision (owner: executor stamping):
 | Trigger body object | Body inside the trigger | Body is a separate function in `pg_proc` that remains after `DROP TABLE` | Body inside the trigger; `DROP TABLE` drops its triggers | `postgres.trigger.function_separate_object`, `sqlite.trigger.dropped_with_table` | **Decision:** the renderer owns one function per generated PostgreSQL trigger; diff and apply create and drop the function with its trigger | PostgreSQL `pg_proc` |
 | `NEW` assignment | Allowed in `BEFORE` triggers | Allowed in `BEFORE` row triggers | Not allowed | `mysql.trigger.new_assignable`, `postgres.trigger.update_fires_when_unchanged`, `sqlite.trigger.new_read_only` | Fact for update-time stamping | Not applicable |
 | Catalog text | `ACTION_STATEMENT` is the body exactly as written, comments included | `prosrc` is the function body as written; `pg_get_triggerdef` returns normalized text with the table qualified by its schema | `sqlite_master.sql` is the `CREATE TRIGGER` text as written | `mysql.trigger.body_catalog_verbatim`, `postgres.trigger.catalog_text`, `sqlite.trigger.catalog_verbatim` | **Decision:** a generated trigger is restored only when the catalog text equals the declared renderer version's output: MySQL timing, event and body; PostgreSQL `pg_get_triggerdef` and `prosrc`; SQLite the full text. Comment markers are not used | As listed |
-| Names | Unique in the database (1359) | Scoped to the table | Unique in the database | `mysql.trigger.name_schema_scope`, `postgres.trigger.name_table_scope`, `sqlite.trigger.name_database_scope` | **Decision:** generated names are unique in the schema and at most 63 bytes; a table whose generated names would exceed this is rejected | As listed |
+| Names | Unique in the database (1359) | Scoped to the table | Unique in the database | `mysql.trigger.name_schema_scope`, `postgres.trigger.name_table_scope`, `sqlite.trigger.name_database_scope` | **Decision:** generated names are at most 63 bytes by the rule of [dbspec names](dbspec.md#names) (the plain form, or its first 46 bytes, a `$` and 16 hexadecimal digits of its SHA-256), so no table is rejected for the length of a generated name; declared names longer than 63 bytes are still rejected | As listed |
 
 Audit context options. The audit triggers read the audit of the unit of work that the client sets inside the transaction:
 
@@ -294,7 +294,7 @@ A column is written as its name, its type, `NOT NULL` or `NULL`, then its defaul
 
 ### Renderer CHECKs
 
-A renderer CHECK enforces a type the dialect does not enforce. It is named `<table>$<column>`; a dbspec name cannot contain `$`, so it never meets a declared name. One CHECK per column holds every condition of the column's type:
+A renderer CHECK enforces a type the dialect does not enforce. It is named `<table>$<column>` by the rule of [dbspec names](dbspec.md#names): the plain form when it has at most 63 bytes, otherwise its first 46 bytes, a `$` and 16 hexadecimal digits of its SHA-256. A dbspec name cannot contain `$`, so it never meets a declared name. One CHECK per column holds every condition of the column's type:
 
 | dbspec | MySQL | PostgreSQL | SQLite |
 | --- | --- | --- | --- |
@@ -315,7 +315,7 @@ The SQLite `f64` CHECK has no probe in the schema definitions above: a REAL colu
 
 ### Triggers
 
-A generated trigger is named `<table>$<event>`: `immutable_update`, `immutable_delete`, `audit_insert`, `audit_update` and `audit_delete`. A PostgreSQL trigger executes a function of the same name that the renderer owns. A rejection raises the message `table <table> is immutable` or `table <table> deletes through its soft delete column`: MySQL `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '…'`, PostgreSQL `RAISE EXCEPTION '…'`, SQLite `SELECT RAISE(ABORT, '…')`.
+A generated trigger is named `<table>$<event>` (shortened by the same rule as the renderer CHECK names, [dbspec names](dbspec.md#names)): `immutable_update`, `immutable_delete`, `audit_insert`, `audit_update` and `audit_delete`. A PostgreSQL trigger executes a function of the same name that the renderer owns. A rejection raises the message `table <table> is immutable` or `table <table> deletes through its soft delete column`: MySQL `SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '…'`, PostgreSQL `RAISE EXCEPTION '…'`, SQLite `SELECT RAISE(ABORT, '…')`.
 
 - `immutable`: `BEFORE UPDATE` and `BEFORE DELETE` row triggers that reject.
 - `audit`: an `AFTER INSERT` row trigger inserts into the history table the action `'insert'`, a NULL previous audit record and the `NEW` value of every recorded column; an `AFTER UPDATE` row trigger inserts `'update'`, `OLD.<audit column>` and the `NEW` value of every recorded column; a `BEFORE DELETE` row trigger rejects. The insert names the action, previous and recorded columns in that order, the recorded columns in table column order, and leaves the history key to its identity ([audit](dbspec.md#audit)).
