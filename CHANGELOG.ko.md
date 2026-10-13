@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fe5c84afdc7777fa085441ac620f575a03f40b7875d74ce89a993df09f5c4762 -->
+<!-- source-sha256: db53c3dcf0e1dfbf98915262b7cae0fadcef5f97686b541ef6f5b6f8e1cbe294 -->
 # 변경 이력
 
 ## Unreleased
@@ -14,7 +14,6 @@
 - T125-7: Python identity load test는 `identity_load.py`이므로 `make python-unit-check`가 그 server case를 더는 실행하지 않는다. `make python-identity-load-check`가 실행한다.
 - T125-4: request hook은 `contracts/features.json`의 기능 `request_hook`이며, 그 Go, PHP, Rust, TypeScript owner가 MySQL, PostgreSQL, SQLite에서 공유 case 다섯 개를 통과한다.
 - T125-3: 개발 규칙은 이 저장소가 만드는 것에만 심볼릭 링크를 금지하고, 각 생태계의 표준 도구를 그 동작대로 쓰며, 경로를 선언적으로 또는 발견으로 정한다.
-- T65: Python client가 markdown DSN으로 corpus에 접속하며 `Db`마다 server 연결 하나를 쓰고, 고정한 flowmark build에 대해 `tests/markdown/cases.json`의 case를 통과한다. rebase에서 main 밖으로 빠졌던 executor module을 다시 추적한다.
 - T125: 모든 client가 연결 handle에서 request hook을 받는다. `withRequestHook`(Go `WithRequestHook`, Rust와 Python `with_request_hook`)은 같은 연결의 handle을 돌려주며, 그 hook은 읽기, count, page, insert, update, delete, restore, getQuery의 각 request를 plan 직전에 받아 predicate, assignment, 매개변수를 더할 수 있다. planner가 바뀐 request를 검증하고 plan cache는 그 request로 key를 정하며, handle의 행과 transaction은 hook을 지킨다.
 - T128-4: `@polyspec/orm/dbspec`은 parse, emit, analyze, format, readDbspecBytes를 가진 browser용 진입점이다; 그 module graph에는 Node module, Node global, driver가 없으며, test가 graph를 따라가 이를 증명한다.
 - T128-2-2: 구문 분석 규칙이 regex 문법을 배제하는 근거를 예약어 `table` 대신, keyword 단어이면서 올바른 column 이름인 `key`, `text`, `references`에 둔다.
