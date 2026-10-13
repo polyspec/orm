@@ -9,12 +9,13 @@ Each language generates its models from the document set with its own tool ([usa
 
 | Language | Tool |
 |---|---|
-| Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
-| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
-| TypeScript | `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` of `@polyspec/orm` |
-| Rust | `polyspec_orm_build::Builder::new([<files.dbs>]).scan("src").generate()` in `build.rs` |
+| Go | `orm-gen gen --set <dbspec-set.json> --lang go --out <directory> --scan <package pattern>...` |
+| PHP | `vendor/bin/orm-gen gen --set <dbspec-set.json> --out <directory> --namespace <namespace>` |
+| TypeScript | `orm-gen gen --set <dbspec-set.json> --out <directory> --scan <path>` of `@polyspec/orm` |
+| Python | `orm-gen gen --set <dbspec-set.json> --out <directory> --scan <path>` of `packages/orm-python/bin/orm-gen` |
+| Rust | `polyspec_orm_build::Builder::set("<dbspec-set.json>").scan("src").generate()` in `build.rs` |
 
-Each tool reads every document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
+Each tool takes the document set only as its [set file](dbspec.md#document-sets) and reads it with its client's set reader; a set file with an error makes the tool print every error and write nothing. Each tool then reads every listed document file with the file reader of its client, which rejects a file that does not start with the dbspec signature as a `signature` error before parsing ([files](dbspec.md#files)); the tool then fails with `SCHEMA_INVALID` and writes no model.
 
 The `github.com/polyspec/orm/generator` package exposes Go generation to other programs. `generator.Generate` takes the runtime model of the document set, the output directory, `PackageName` (the directory name by default) and `Scan`, the package patterns whose calls are generated. Naming, field mapping and output stay in the ORM generator.
 

@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 6eaa5b2df2e918d956f84a95e46f96616e93988e27cca160d560d524ed8e5f86 -->
+<!-- source-sha256: c77fed2050d4f4523b939e90c7f00a6f45bb0aac25fdd49eb04ab2be70ff0ac0 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -75,16 +75,23 @@ table authors {
 
 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
+모든 생성기는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받는다. 여기서는 나열하는 문서 옆의 `schema/dbspec-set.json`이다:
+
+```json
+{"schema": 1, "documents": ["example.dbs"]}
+```
+
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
-npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
+go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
+npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
+packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out model --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
 }
 ```
 
@@ -93,16 +100,17 @@ fn main() {
 | Go | `//go:generate` 줄의 `orm-gen gen --lang go` | `go build` 전에 `go generate` |
 | PHP | `vendor/bin/orm-gen gen` | 스키마 변경 후 Composer 스크립트 |
 | TypeScript | `@polyspec/orm`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
+| Python | `packages/orm-python/bin/orm-gen gen` | 스키마나 scan한 소스가 바뀐 뒤 |
 | Rust | `polyspec-orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `polyspec_orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
 - Go, Rust, TypeScript 생성기는 `--scan`(Rust는 `scan`)으로 지정한 소스를 읽어 소스가 호출하는 체인 메서드를 생성한다. 그래서 잘못된 메서드 이름은 빌드를 멈춘다. PHP는 호출 시점에 체인 이름을 해석한다.
-- 생성 모델은 document와 scan한 소스에만 의존하고 path를 쓴 방식에는 의존하지 않는다: scan과 output path를 상대 path나 절대 path로, `./`를 넣어, 또는 끝에 `/`를 붙여 써도, PHP document path를 상대 path, 절대 path, `./`를 넣은 path로 써도 같은 파일이 나온다. Rust `include_str!`은 manifest file의 path를 output directory의 canonical path로 쓴다.
+- 생성 모델은 document와 scan한 소스에만 의존하고 path를 쓴 방식에는 의존하지 않는다: scan과 output path를 상대 path나 절대 path로, `./`를 넣어, 또는 끝에 `/`를 붙여 써도, PHP set 파일 path를 상대 path, 절대 path, `./`를 넣은 path로 써도 같은 파일이 나온다. Rust `include_str!`은 manifest file의 path를 output directory의 canonical path로 쓴다.
 - TypeScript scan은 receiver가 생성 모델로 해석되는 호출에 대해서만 메서드를 선언하며, 그 모델에 선언한다. receiver는 다음 경우에 모델로 해석된다: 생성 class `C`의 `new C()`(import alias나 namespace import를 거친 경우 포함), 모델에 묶였거나 모델 class 타입을 가진 변수나 parameter, 선언된 반환 타입이 모델이거나, 반환 타입 없이 식 본문이나 유일한 `return` 문이 모델인 function이나 arrow function, 모델의 체인 메서드, 모델의 `and`, `or`, `on`, `fetchKey`, `fetchValue`, `addColumn…`에 넘긴 callback의 타입 없는 첫 parameter, `as C` 타입을 붙인 식, 모델의 행: `get`이나 `getBy…`를 await한 결과, 또는 모델 collection(`gets`나 `getsBy…`를 await한 결과, 그 `values()`나 `filter(…)`, spread 복사본, `Collection<C>`나 `C[]` 타입의 값)의 원소를 `for … of`, index, `first`, `get`, `at`, `find`, `map`, `forEach`, `filter`, `find`, `some`, `every`의 callback으로 얻은 것. model이 아닌 class의 `this.enabled()`처럼 그 밖의 receiver에 대한 호출은 메서드를 더하지 않는다. 그런 receiver의 호출에 타입이 필요하면 receiver에 모델 타입을 준다.
 - `orm-gen gen --lang go`는 scan 회차마다 `--out` 옆의 임시 디렉터리에 파일을 쓰고, scan이 수렴한 뒤에만 `--out`의 생성 파일을 교체한다. 생성 헤더가 없는 파일은 그대로 유지한다. 생성이 실패하면 `--out`을 바꾸지 않으며 `orm-gen`은 상태 1로 종료한다. 이 실패에는 잘못된 체인 호출, 수렴하지 않는 scan, 로드할 수 없는 scan 대상 패키지, 컴파일되지 않는 생성 코드가 포함된다. scan이 수렴했지만 scan한 패키지가 다른 이유로 컴파일되지 않으면 `--out`은 완전한 모델을 담고 `orm-gen`은 상태 3으로 종료한다.
 - `--check`는 출력을 쓰지 않고 기존 파일과 비교한다. 대상은 Go·PHP·TypeScript `orm-gen`의 `gen`이다. 명령은 내용이 다른 파일에 `differs: <path>`, 없는 파일에 `missing: <path>`, 출력 디렉터리에서 생성 코드 주석을 가지고 있지만 생성이 더 이상 쓰지 않는 파일에 `extra: <path>`를 경로 순서로 출력하고, 한 줄이라도 출력하면 상태 1로 종료한다. 파일이 최신이면 아무것도 출력하지 않고 상태 0으로 종료한다. Go `gen --check`는 `gen`과 같은 scan을 시스템 임시 디렉터리 아래의 디렉터리에서 실행하므로 모델 패키지는 `--out`의 이름과 import 경로를 유지한다. 생성 실패와 상태 3은 `gen`과 같다. Rust는 `build.rs`에서 모델을 생성하며 `gen` 명령이 없다.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - 호출 인자의 타입이 확정되지 않아도 scan은 호출한 메서드를 생성한다. 예를 들어 다른 모델 패키지에 아직 없는 메서드로 계산한 값이 이런 인자다. join과 relation 인자는 생성하는 패키지의 모델로 확정되어야 한다. 따라서 여러 모델 패키지에 대한 `go generate` 한 번으로 각 패키지의 최종 모델을 쓴다. 다른 패키지의 메서드가 생기기 전에 실행한 생성은 그 패키지 호출 때문에 여전히 상태 3으로 종료한다.
 - 스키마를 바꾸거나 새 체인 호출을 추가한 뒤에는 **모델을 다시 생성하고 스키마와 함께 배포**한다. 요청의 `manifest_hash`가 클라이언트가 읽은 모델과 다르면 `SCHEMA_HASH_MISMATCH`로 실패한다.
@@ -127,7 +135,7 @@ sqlite:///var/lib/orm_example.sqlite
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbs>...`은 dbspec document set을 document마다 `--document` 하나로 읽고, 생성한 `orm.go`에 `ManifestText`, `ManifestHash`, schema 값 `Schema`를 쓴다. `--use <file.dbs>`마다 [외부 문서](dbspec.ko.md#external-documents) 하나를 적으며, 생성 코드는 그 문서에서 쓰는 table을 `ExternalText`로 담고 `Install`이 database에서 확인하며, 그 model은 만들지 않는다. `model.Connect(dsn, config)`는 `orm.ConnectSchema(dsn, model.Schema, config)`를 호출한다. 연결을 열고 그 모델의 set을 연결에 등록하며, text의 hash가 `ManifestHash`와 다르면 `CONFIG`로 실패한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다([protocol](protocol.md)). `orm.Connect(dsn, config)`는 set 없이 연결을 연다. `master.Utils().Schema().Install(model.Schema)`는 그 set을 연결에 등록하고 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
+`orm-gen gen --set <dbspec-set.json>`은 dbspec document set을 set 파일에서 `dbspec.ReadSet`으로 읽고, 생성한 `orm.go`에 `ManifestText`, `ManifestHash`, schema 값 `Schema`를 쓴다. set 파일의 `external`에 있는 path마다 [외부 문서](dbspec.ko.md#external-documents) 하나를 적으며, 생성 코드는 그 문서에서 쓰는 table을 `ExternalText`로 담고 `Install`이 database에서 확인하며, 그 model은 만들지 않는다. `model.Connect(dsn, config)`는 `orm.ConnectSchema(dsn, model.Schema, config)`를 호출한다. 연결을 열고 그 모델의 set을 연결에 등록하며, text의 hash가 `ManifestHash`와 다르면 `CONFIG`로 실패한다. 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다([protocol](protocol.md)). `orm.Connect(dsn, config)`는 set 없이 연결을 연다. `master.Utils().Schema().Install(model.Schema)`는 그 set을 연결에 등록하고 document set을 연결의 dialect로 render해 trigger를 포함한 문장을 적용한다. set의 테이블이 하나도 없으면 모두 만들고, 모두 있으면 아무것도 바꾸지 않으며, 일부만 있으면 `CONFIG`로 실패한다. 그다음 데이터베이스의 set 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
 ### PHP
 
@@ -145,7 +153,7 @@ let master = model::connect(&master_dsn, pool_size, polyspec_orm::Config { aes_k
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`polyspec_orm_build::Builder::new(documents)`는 dbspec document set을 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `polyspec_orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 table이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
+`polyspec_orm_build::Builder::set(path)`는 dbspec document set을 set 파일에서 `dbspec::read_set`으로 읽고 모델과 manifest text를 `OUT_DIR`에 쓴다. 생성된 모듈은 manifest text를 `include_str!`로 `model::SCHEMA`에, `manifestHash`를 `model::MANIFEST_HASH`에 담는다. 그 `model::connect`는 `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`를 호출해 연결을 열고 set을 등록한다. `polyspec_orm::Db::connect`는 set 없이 연결을 연다. runtime model은 처음 쓸 때 포함된 text로 만들고, 모든 요청은 `manifestHash`를 담는다. `utils().schema().install(&model::SCHEMA)`는 set을 연결에 등록하고 document set을 연결의 데이터베이스에 맞게 render하고 statement를 적용한다. set의 table이 모두 있으면 아무것도 만들지 않고, 일부만 있으면 `CONFIG`를 반환하며, 그다음 set의 table이 set과 다르면 각 차이를 적은 `CONFIG`를 반환한다. MySQL은 statement를 transaction 밖에서 적용하며 transaction 안에서는 `CONFIG`를 반환한다.
 
 ### TypeScript
 
@@ -156,7 +164,7 @@ const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
 ```
 
-`orm-gen gen`은 document set의 dbspec 문서를 하나씩 반복한 `--schema`로 받고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
+`orm-gen gen --set <dbspec-set.json>`은 dbspec document set을 set 파일에서 `readDbspecSet`으로 읽고, 생성된 `models.ts`는 manifest text를 `MANIFEST_TEXT`로, 그 hash를 `MANIFEST_HASH`로, schema 값을 `SCHEMA`로, connect helper를 `connect(dsn, options)`로 export한다. `connect`는 `Db.connectSchema`로 연결을 열고 그 모델의 set을 연결에 등록한다. `Db.connect(dsn, options)`는 set 없이 연결을 열고, 연결에 등록되지 않은 set의 요청은 `SCHEMA_HASH_MISMATCH`로 실패한다. `utils().schema().install(SCHEMA)`는 한 document set의 schema 값을 받아 연결에 등록하고, 그 테이블이 하나도 없을 때 rendered statement를 적용한다. 모든 테이블이 있으면 아무것도 바꾸지 않고, 일부만 있으면 `CONFIG`로 실패한다. 그다음 set의 테이블이 set과 다르면 각 차이를 적은 `CONFIG`로 실패한다.
 
 각 클라이언트는 요청 형태별로 Plan을 캐시한다. `connection.utils().schema().install(schema)`는 document set을 설치하고([schema.md](schema.md#_4-schema-installation)), `connection.utils().schema().addTablesAndColumns(schema)`는 설치한 set을 더하기만 하는 version으로 올린다: 데이터베이스에 없는 테이블을 만들고, 기존 테이블에 빠진 컬럼 가운데 null이거나 default가 있는 컬럼을 추가하고 빠진 index를 만들며, 다른 모든 차이에는 변경 전에 `SCHEMA_DIFFERS`를 반환한다. 빠진 unique key도 있는 row에서 실패할 수 있어 plan에서 다루므로 `SCHEMA_DIFFERS`다([schema.md](schema.md#_5-adding-tables-and-columns)). 둘 다 실행할 때 데이터베이스를 확인한다. `connection.utils().schema().register(schema)`와 connect helper는 데이터베이스를 읽지 않고 연결마다 set을 등록한다([schema.md](schema.md#_6-schema-registration)).
 

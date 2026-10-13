@@ -4,7 +4,7 @@
 | decision | choice | reason | what would reverse it |
 |---|---|---|---|
 | statement planning | in the client library, in the calling process; executors use the native driver | adopting the ORM needs only the library; no service or daemon to deploy and operate | none |
-| model generation | one generator per language: `orm-gen gen --lang go` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin (TypeScript), the `polyspec-orm-build` crate in `build.rs` (Rust) | each language builds with its own tool chain | none |
+| model generation | one generator per language: `orm-gen gen --lang go` (Go), `vendor/bin/orm-gen` (PHP), the `orm-gen` npm bin (TypeScript), the `polyspec-orm-build` crate in `build.rs` (Rust); each takes the document set only as its set file `dbspec-set.json` ([document sets](dbspec.md#document-sets)) | each language builds with its own tool chain, and one set file declares the set for all of them | none |
 | equality across languages | `tests/conformance` vectors on MySQL, PostgreSQL, and SQLite | the four planners must produce the same SQL, binds, and results | none |
 | artifacts | `orm-gen-<version>-<os>-<arch>`, `SHA256SUMS` | the Go `orm-gen` runs at build time; the schema operations are client library functions | — (the version comes from VERSION; file names carry it, never a "latest" symlink) |
 | distribution | Go: module path; PHP: composer package `polyspec/orm` with `bin/orm-gen`; TypeScript: npm package `@polyspec/orm` with the `orm-gen` bin; Rust: crates `polyspec-orm` and `polyspec-orm-build` | — | a registry publish is a separate decision |

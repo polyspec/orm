@@ -74,16 +74,23 @@ Each client renders the `CREATE` statements of a document set for one dialect, i
 
 Each language generates its models with its own build tool. The generator reads the dbspec document set, embeds its manifest text and `manifestHash`, and writes one model per entity with typed column getters and setters.
 
+Every generator takes the document set as its [set file](dbspec.md#document-sets), here `schema/dbspec-set.json` beside the documents it lists, and no other form:
+
+```json
+{"schema": 1, "documents": ["example.dbs"]}
+```
+
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
-npx orm-gen gen --schema schema/example.dbs --out src/models --scan src
+go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
+vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
+npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
+packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out model --scan src
 ```
 
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
 }
 ```
 
@@ -92,16 +99,17 @@ fn main() {
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
 | TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
+| Python | `packages/orm-python/bin/orm-gen gen` | after the schema or a scanned source changes |
 | Rust | the `polyspec-orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.
-- The generated models depend only on the documents and the scanned sources, not on how a path is written: a scan or output path written relative or absolute, with a `./` component or with a trailing `/` gives the same files, and so does a PHP document path written relative, absolute or with `./`. Rust `include_str!` names the manifest file by the canonical path of the output directory.
+- The generated models depend only on the documents and the scanned sources, not on how a path is written: a scan or output path written relative or absolute, with a `./` component or with a trailing `/` gives the same files, and so does a PHP set file path written relative, absolute or with `./`. Rust `include_str!` names the manifest file by the canonical path of the output directory.
 - The TypeScript scan declares a method only for a call whose receiver resolves to a generated model, and declares it on that model. A receiver resolves to a model when it is `new C()` of a generated class `C` (also through an import alias or a namespace import), a variable or parameter bound to a model or typed with a model class, a function or arrow function whose declared return type is a model or, without a declared type, whose expression body or only `return` statement is a model, a chain method of a model, the untyped first parameter of a callback given to `and`, `or`, `on`, `fetchKey`, `fetchValue`, or `addColumn…` of a model, an expression asserted `as C`, or a row of a model: the awaited result of `get` or `getBy…`, or an element of a collection of models (the awaited result of `gets` or `getsBy…`, its `values()` or `filter(…)`, a spread copy, or a value typed `Collection<C>` or `C[]`) reached through `for … of`, an index, `first`, `get`, `at`, `find`, or the callback of `map`, `forEach`, `filter`, `find`, `some`, or `every`. A call on any other receiver, such as `this.enabled()` of a class that is not a model, adds no method; give such a receiver a model type when its calls must be typed.
 - `orm-gen gen --lang go` writes each scan round into a temporary directory beside `--out` and replaces the generated files of `--out` only after the scan converges; files without the generated header stay. A generation failure leaves `--out` unchanged, and `orm-gen` exits with status 1; the failures include an invalid chain call, a scan that does not converge, a scanned package that cannot be loaded, and generated code that does not compile. When the scan converges but the scanned packages do not compile for another reason, `--out` holds the complete models, and `orm-gen` exits with status 3.
 - `--check` compares the output with the existing files without writing: `gen` of the Go, PHP, and TypeScript `orm-gen`. The command prints `differs: <path>` for a file whose content differs, `missing: <path>` for a file that does not exist, and `extra: <path>` for a file of the output directory that holds the generated-code comment and that the generation no longer writes, ordered by path, and exits with status 1 when it prints a line. Current files print nothing and exit with status 0. Go `gen --check` runs the same scan as `gen` in a directory under the system temporary directory, so the model package keeps the name and import path of `--out`; its generation failures and status 3 are the same as those of `gen`. Rust generates its models in `build.rs` and has no `gen` command.
 
 ```sh
-go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./... --check
+go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./... --check
 ```
 - The scan generates a called method when an argument of the call has an unresolved type, such as a value computed with a method that another model package does not have yet; a join or relation argument must resolve to a model of the generated package. One `go generate` run over several model packages therefore writes the final models of each package. A generation that runs before another package's methods exist still exits with status 3 for the calls of that package.
 - After changing the schema or adding a chain call, **regenerate and deploy the models with the schema**. A request whose `manifest_hash` differs from the model the client loaded fails with `SCHEMA_HASH_MISMATCH`.
@@ -126,7 +134,7 @@ Each client accepts the DSN and creates the matching native driver and pool. The
 master, err := model.Connect(masterDSN, orm.Config{AESKey: aesKey})
 ```
 
-`orm-gen gen --document <file.dbs>...` reads the dbspec document set, one `--document` per document, and writes `ManifestText`, `ManifestHash` and the schema value `Schema` into the generated `orm.go`; each `--use <file.dbs>` names an [external document](dbspec.md#external-documents), whose used tables the generated code carries as `ExternalText` and `Install` checks in the database, without generating their models. `model.Connect(dsn, config)` calls `orm.ConnectSchema(dsn, model.Schema, config)`: it opens the connection and registers the set of the models on it, and a text whose hash differs from `ManifestHash` fails with `CONFIG`. A request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` ([protocol](protocol.md)); `orm.Connect(dsn, config)` opens a connection without any set. `master.Utils().Schema().Install(model.Schema)` registers the set on the connection and renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist; then it fails with `CONFIG` naming each difference when the tables of the set in the database differ from the set.
+`orm-gen gen --set <dbspec-set.json>` reads the dbspec document set from its set file with `dbspec.ReadSet` and writes `ManifestText`, `ManifestHash` and the schema value `Schema` into the generated `orm.go`; each path of the set file's `external` names an [external document](dbspec.md#external-documents), whose used tables the generated code carries as `ExternalText` and `Install` checks in the database, without generating their models. `model.Connect(dsn, config)` calls `orm.ConnectSchema(dsn, model.Schema, config)`: it opens the connection and registers the set of the models on it, and a text whose hash differs from `ManifestHash` fails with `CONFIG`. A request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` ([protocol](protocol.md)); `orm.Connect(dsn, config)` opens a connection without any set. `master.Utils().Schema().Install(model.Schema)` registers the set on the connection and renders the document set with the dialect of the connection and applies the statements, triggers included: it creates every table when none of the set exists, changes nothing when all exist, and fails with `CONFIG` when only some exist; then it fails with `CONFIG` naming each difference when the tables of the set in the database differ from the set.
 
 ### PHP
 
@@ -144,7 +152,7 @@ let master = model::connect(&master_dsn, pool_size, polyspec_orm::Config { aes_k
 master.utils().schema().install(&model::SCHEMA).await?;
 ```
 
-`polyspec_orm_build::Builder::new(documents)` reads the dbspec document set and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `polyspec_orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
+`polyspec_orm_build::Builder::set(path)` reads the dbspec document set from its set file with `dbspec::read_set` and writes the models and the manifest text into `OUT_DIR`. The generated module embeds the manifest text with `include_str!` as `model::SCHEMA` and its `manifestHash` as `model::MANIFEST_HASH`; its `model::connect` calls `polyspec_orm::Db::connect_schema(dsn, &model::SCHEMA, pool_size, config)`, which opens the connection and registers the set on it. `polyspec_orm::Db::connect` opens a connection without any set. The runtime model is built from the embedded text on first use, and every request carries `manifestHash`. `utils().schema().install(&model::SCHEMA)` registers the set on the connection and renders the document set for the connection's database and applies the statements. It creates nothing when every table of the set exists and returns `CONFIG` when only some exist, and then returns `CONFIG` naming each difference when the tables of the set differ from the set; MySQL applies the statements outside a transaction and returns `CONFIG` inside one.
 
 ### TypeScript
 
@@ -155,7 +163,7 @@ const master = await connect(masterDsn, { aesKey });
 await master.utils().schema().install(SCHEMA);
 ```
 
-`orm-gen gen` takes each dbspec document of the set with a repeated `--schema`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`; then it fails with `CONFIG` naming each difference when the tables of the set differ from the set.
+`orm-gen gen --set <dbspec-set.json>` reads the dbspec document set from its set file with `readDbspecSet`, and the generated `models.ts` exports the manifest text as `MANIFEST_TEXT`, its hash as `MANIFEST_HASH`, the schema value `SCHEMA` and the connect helper `connect(dsn, options)`, which opens the connection with `Db.connectSchema` and registers the set of the models on it. `Db.connect(dsn, options)` opens a connection without any set, and a request of a set that is not registered on its connection fails with `SCHEMA_HASH_MISMATCH`. `utils().schema().install(SCHEMA)` takes the schema value of one document set, registers it on the connection and applies their rendered statements when none of their tables exists; when every table exists it changes nothing, and when only some exist it fails with `CONFIG`; then it fails with `CONFIG` naming each difference when the tables of the set differ from the set.
 
 Each client caches plans by request shape. `connection.utils().schema().install(schema)` installs the document set ([schema.md](schema.md#_4-schema-installation)), and `connection.utils().schema().addTablesAndColumns(schema)` upgrades an installed set to a version that only adds: it creates the tables the database lacks, adds the missing columns of its existing tables that are null or have a default, creates their missing indexes, and returns `SCHEMA_DIFFERS` before any change for every other difference, a missing unique key included, because it can fail on the existing rows and belongs to a plan ([schema.md](schema.md#_5-adding-tables-and-columns)). Both verify the database when they run; `connection.utils().schema().register(schema)` and the connect helper register a set on each connection without reading the database ([schema.md](schema.md#_6-schema-registration)).
 
