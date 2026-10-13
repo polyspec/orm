@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 22cae45bcd2bd7e0a3111d7f2a16fde829d2bf13938a4e53ff8242139697561d -->
+<!-- source-sha256: 5f2c59af6c1460b78a448e265a4c7e4eb4f28fbdcfc399f110ed6f1a3efcd954 -->
 # 변경 이력
 
 ## Unreleased
 
+- T126-2-1: workflow test가 vendor 파일 중 workflow만 판정한다.
 - T136-1: install-python test가 uv를 Python보다 먼저 설치하기를 요구한다.
 - T128-2a-8: Go와 PHP의 model 생성 coverage가 set 파일로 생성한다.
 - T146: orm-schema dbspec의 module 목록이 format되어 `make rust-fmt-check`가 통과한다.
