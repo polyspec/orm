@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -622,37 +622,42 @@ caseTest('the lowest PHP release comes only from the php-min step', COMPUTE, () 
   ]);
 });
 
-// socket case는 test-servers.sh를 깊은 checkout 경로의 scripts/ 아래에 복사해 실행한다. script는
-// 자기 위치에서 .runtime/servers를 정하므로, 그 경로의 socket이 platform 한도(Linux 107, macOS 103
-// byte)를 넘으면 서버를 시작하기 전에 그 path와 한도를 말하고 실패해야 한다.
+// The socket case runs a copy of test-servers.sh whose declared socket folder
+// (SOCKET_DIR, T135) is long. Before any server starts, the script must fail
+// naming the first socket path over the platform limit (Linux 107, macOS 103
+// bytes) and that limit, creating neither the socket folder nor the servers
+// directory. That the real declaration fits for any checkout is the case of
+// scripts/test-servers.test.mjs.
 caseTest('test-servers.sh refuses a socket path longer than the platform limit', PROCESS, () => {
   const limit = { linux: 107, darwin: 103 }[process.platform];
   assert.ok(limit, `no socket path limit for ${process.platform}`);
-  // base는 /tmp 아래에 둔다: case에는 가장 짧은 mysql.sock은 한도 안에 드는 root가 필요하지만, 단계의 임시
-  // directory(TMPDIR, macOS에서는 /var/folders/... 아래의 orm-step-*)는 그 자체로 한도에 가깝다.
+  const script = readFileSync(new URL('../test-servers.sh', import.meta.url), 'utf8');
+  const declaration = /^SOCKET_DIR=.*$/m;
+  assert.match(script, declaration, 'test-servers.sh declares no SOCKET_DIR line');
   const base = mkdtempSync('/tmp/orm-sock-');
-  assert.ok(Buffer.byteLength(join(base, '.runtime/servers/mysql.sock')) <= limit, `${base} leaves no room under the socket path limit`);
   try {
-    // 첫 경로는 가장 짧은 mysql.sock도 한도를 넘고, 둘째 경로는 가장 긴
-    // proxysql-admin-pgsql.sock만 넘는다. 실패는 넘은 첫 socket을 말한다.
-    const fits = name => root => Buffer.byteLength(join(root, '.runtime/servers', name)) <= limit;
+    mkdirSync(join(base, 'scripts'));
+    const copy = join(base, 'scripts/test-servers.sh');
+    const fits = name => folder => Buffer.byteLength(join(folder, name)) <= limit;
+    // The first folder puts even the shortest socket, mysql.sock, over the
+    // limit; the second only the longest, proxysql-admin-pgsql.sock.
     const deep = (name, keep) => {
-      let root = base;
-      while (fits(name)(root)) {
-        const next = join(root, 'd');
-        if (keep && !keep(next)) root = `${root}x`; else root = next;
+      let folder = join(base, 'sockets');
+      while (fits(name)(folder)) {
+        const next = join(folder, 'd');
+        folder = keep && !keep(next) ? `${folder}x` : next;
       }
-      return root;
+      return folder;
     };
     const system = process.platform === 'linux' ? 'Linux' : 'macOS';
-    for (const [root, name] of [[deep('mysql.sock'), 'mysql.sock'], [deep('proxysql-admin-pgsql.sock', fits('mysql.sock')), 'proxysql-admin-pgsql.sock']]) {
-      mkdirSync(join(root, 'scripts'), { recursive: true });
-      copyFileSync(new URL('../test-servers.sh', import.meta.url), join(root, 'scripts/test-servers.sh'));
-      const result = spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'start'], { encoding: 'utf8' });
-      const socket = join(root, '.runtime/servers', name);
+    for (const [folder, name] of [[deep('mysql.sock'), 'mysql.sock'], [deep('proxysql-admin-pgsql.sock', fits('mysql.sock')), 'proxysql-admin-pgsql.sock']]) {
+      writeFileSync(copy, script.replace(declaration, `SOCKET_DIR='${folder}'`));
+      const result = spawnSync('sh', [copy, 'start'], { encoding: 'utf8' });
+      const socket = join(folder, name);
       assert.equal(result.status, 1, result.stderr);
       assert.equal(result.stderr, `test-servers: socket path ${socket} is ${Buffer.byteLength(socket)} bytes; ${system} allows at most ${limit}\n`);
-      assert.equal(existsSync(join(root, '.runtime/servers')), false, 'the servers directory was created');
+      assert.equal(existsSync(join(base, 'sockets')), false, 'the socket folder was created');
+      assert.equal(existsSync(join(base, '.runtime/servers')), false, 'the servers directory was created');
     }
   } finally {
     rmSync(base, { recursive: true, force: true });
