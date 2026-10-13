@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: d5b4f3dceac312a1f4774ba21673f76e00b794a305e05f5332aa1ca06b429726 -->
+<!-- source-sha256: e787b1fa0431f83a3d92b7f410261285edb19aa1cf127f9ddd06403d458a68ab -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -32,6 +32,7 @@ classDiagram
         toArray()
     }
     class Core {
+        <<internal>>
         Columns columns
         Group conditions
         Optional_Db connection
@@ -45,6 +46,7 @@ classDiagram
         build()
     }
     class Request {
+        <<internal>>
         RequestIR ir
         List_Value params
         shape()
@@ -74,6 +76,7 @@ classDiagram
         Group where
     }
     class Planner {
+        <<internal>>
         Dialect dialect
         SchemaManifest manifest
         validate()
@@ -116,6 +119,7 @@ classDiagram
         withRequestHook()
     }
     class TransactionFlow {
+        <<internal>>
         List_TransactionFrame frames
         begin()
         savepoint()
@@ -176,6 +180,7 @@ classDiagram
         Map_Integer_Integer versions
     }
     class Generator {
+        <<internal>>
         SchemaManifest manifest
         List_Path scan
         generate()
@@ -241,16 +246,16 @@ classDiagram
 | 구성요소 | 동작 및 상태 |
 |---|---|
 | Model | 엔티티마다 생성된다. 새 행이나 조회한 행의 컬럼 값과 체인 상태를 Core에 담는다. |
-| Core | 체인 상태를 저장하고 값이 없는 request와 별도의 parameter 목록을 만든다. |
-| Request | request 모양이 plan cache key이며 값은 parameter 목록에만 있다. |
+| Core | 체인 상태를 저장하고 값이 없는 request와 별도의 parameter 목록을 만든다. 내부: 각 client가 자기 model runtime 안에서 request를 만든다. 공통인 것은 build 호출이 아니라 그것이 만드는 request IR이다(docs/interfaces.md §2). |
+| Request | request 모양이 plan cache key이며 값은 parameter 목록에만 있다. 내부: shape는 각 client가 자기 연결 안에서 계산하는 plan cache key다. 공통인 것은 shape 호출이 아니라 request IR과 그 parameter 목록이다(docs/interfaces.md §7). |
 | RequestIR | 모든 client에 공통인 request 모양이다. |
 | QueryNode | root, join child, relation child, subquery 중 하나다. |
-| Planner | client process 안에서 실행된다. manifest로 request를 검증하고 dialect SQL을 만든다. |
+| Planner | client process 안에서 실행된다. manifest로 request를 검증하고 dialect SQL을 만든다. 내부: 각 client가 호출한 process에서 자기 연결 안에서 request를 검증하고 plan한다. 공통인 것은 planner 호출이 아니라 plan과 그 SQL이며 conformance vector가 확인한다(docs/interfaces.md §7). |
 | Plan | request 모양별로 cache하는 불변 statement와 조립 정보다. |
 | Step | plan의 SQL statement 하나다. |
 | Assemble | 결과 컬럼을 위치로 model, join, relation에 대응시킨다. |
 | Db | pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다. |
-| TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. |
+| TransactionFlow | 비공개다. 현재 실행 흐름의 transaction이며 연결 없는 model이 사용한다. 내부: begin, savepoint, commit, rollback은 비공개다. 그 공개 입구는 Db.transaction이다(docs/interfaces.md §6). |
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
 | Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
@@ -258,10 +263,12 @@ classDiagram
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
 | AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
 | AESRotationStatus | key version별 행 수다. |
-| Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. |
+| Generator | 언어마다 하나다. dbspec document set을 읽어 model을 만든다. Go와 Rust는 소스가 호출하는 체인 메서드만 만든다. 내부: 각 언어가 자기 build 도구와 명령으로 model을 생성한다. 공통인 것은 generate 호출이 아니라 생성된 model이다(docs/interfaces.md §11, docs/usage.md §3). |
 | Error | docs/errors.yaml의 안정적인 code다. |
 | Dbspec | signature와 encoding을 확인한 뒤 dbspec 문서 파일을 읽거나 호출자가 읽은 파일 byte를 확인하고, set 파일을 읽어 그 문서 집합의 파일을 주고, 선언된 문서 집합을 기준으로 dbspec 문서를 parse해 그 선언의 position을 주고, text를 그 parse 결과와 syntax의 token으로 analyze하며, text를 canonical form으로 format하되 diagnostic이 있는 text는 거부하고, parse한 문서를 canonical form으로 emit하며, 문서 집합의 manifest text, schema text, hash를 만들고, 문서 집합을 dialect statement로 렌더링하고, database를 문서로 introspect하고, database를 외부 문서와 집합에 비교하고, plan을 읽고 쓰고 잇고 diff하고 step으로 쓰며, schema text를 비교하고, 연결에서 plan을 적용하고 이어 가고 되돌리고 finalize하며, Mermaid erDiagram을 export하고 import한다(docs/dbspec.md, docs/dialects.md, docs/plans.md, docs/mermaid.md). |
 | DbspecDocument | parse와 검증을 마친 dbspec 문서 하나. 바뀌지 않으며, emit하면 canonical text가 된다. |
+
+`<<internal>>`로 표시한 구성요소는 manifest의 `internal` 필드(`internal_ko`)가 그 근거를 적는다. 각 client가 그 method를 공통 signature 없이 비공개로 구현하므로 그 method에는 interface rule이 없다. 다른 구성요소의 모든 method는 rule을 가지며 모든 rule은 공개 구성요소의 method 하나의 rule이다. `make interface-check`가 두 방향을 모두 확인한다.
 
 | 시작 | 대상 | 관계 |
 |---|---|---|

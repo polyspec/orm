@@ -526,8 +526,10 @@ func validateManifest(m Manifest) error {
 }
 
 // checkComponentMethods holds the component diagram (docs/interfaces-model.md) and the rules to the same methods: a
-// component method is common API only through its rule, so a method without one would never be compared with any
-// language, and a rule whose method its component does not list would be common API that the diagram leaves out.
+// method of a public component is common API only through its rule, so a method without one would never be compared
+// with any language, and a rule whose method no public component lists would be common API that the diagram leaves
+// out. A component marked internal states, in both languages, why each client implements its methods privately with
+// no common signature, so its methods have no rule.
 func checkComponentMethods(m Manifest) error {
 	rules := append(append([]Rule{}, m.Rules...), m.Storage...)
 	declared := map[string]bool{}
@@ -538,11 +540,19 @@ func checkComponentMethods(m Manifest) error {
 	var missing []string
 	for _, raw := range m.Components {
 		var c struct {
-			ID      string   `json:"id"`
-			Methods []string `json:"methods"`
+			ID         string   `json:"id"`
+			Methods    []string `json:"methods"`
+			Internal   string   `json:"internal"`
+			InternalKO string   `json:"internal_ko"`
 		}
 		if err := decodeJSON(raw, &c); err != nil {
 			return fmt.Errorf("component %s: %v", raw, err)
+		}
+		if (c.Internal == "") != (c.InternalKO == "") {
+			return fmt.Errorf("component %s is internal without its grounding in both internal and internal_ko", c.ID)
+		}
+		if c.Internal != "" {
+			continue
 		}
 		for _, method := range c.Methods {
 			id := c.ID + "." + method
@@ -563,7 +573,7 @@ func checkComponentMethods(m Manifest) error {
 		problems = append(problems, "component methods without an interface rule in contracts/interfaces.json: "+strings.Join(missing, ", "))
 	}
 	if len(unlisted) > 0 {
-		problems = append(problems, "interface rules whose method no component lists in contracts/interfaces.json: "+strings.Join(unlisted, ", "))
+		problems = append(problems, "interface rules whose method no public component lists in contracts/interfaces.json: "+strings.Join(unlisted, ", "))
 	}
 	if len(problems) > 0 {
 		return errors.New(strings.Join(problems, "; "))

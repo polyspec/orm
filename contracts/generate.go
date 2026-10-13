@@ -34,6 +34,10 @@ type component struct {
 	Methods     []string          `json:"methods"`
 	Ownership   string            `json:"ownership"`
 	OwnershipKO string            `json:"ownership_ko"`
+	// Internal and InternalKO state why each client implements the component's methods privately, with no common
+	// signature and so no interface rule; both are empty for a public component.
+	Internal   string `json:"internal"`
+	InternalKO string `json:"internal_ko"`
 }
 type document struct {
 	Version    int                  `json:"version"`
@@ -106,6 +110,9 @@ func diagram(korean bool) ([]byte, error) {
 	}
 	for _, c := range d.Components {
 		fmt.Fprintf(&b, "    class %s {\n", c.ID)
+		if c.Internal != "" {
+			b.WriteString("        <<internal>>\n")
+		}
 		keys := make([]string, 0, len(c.Fields))
 		for k := range c.Fields {
 			keys = append(keys, k)
@@ -139,7 +146,21 @@ func diagram(korean bool) ([]byte, error) {
 		if description == "" {
 			return nil, fmt.Errorf("component %s has no localized description", c.ID)
 		}
+		if (c.Internal == "") != (c.InternalKO == "") {
+			return nil, fmt.Errorf("component %s is internal without its localized grounding", c.ID)
+		}
+		switch {
+		case korean && c.InternalKO != "":
+			description += " 내부: " + c.InternalKO
+		case c.Internal != "":
+			description += " Internal: " + c.Internal
+		}
 		fmt.Fprintf(&b, "| %s | %s |\n", c.ID, description)
+	}
+	if korean {
+		b.WriteString("\n`<<internal>>`로 표시한 구성요소는 manifest의 `internal` 필드(`internal_ko`)가 그 근거를 적는다. 각 client가 그 method를 공통 signature 없이 비공개로 구현하므로 그 method에는 interface rule이 없다. 다른 구성요소의 모든 method는 rule을 가지며 모든 rule은 공개 구성요소의 method 하나의 rule이다. `make interface-check`가 두 방향을 모두 확인한다.\n")
+	} else {
+		b.WriteString("\nA component marked `<<internal>>` states its grounding in the manifest field `internal` (`internal_ko`): each client implements its methods privately with no common signature, so they have no interface rule. Every method of the other components has a rule, and every rule names a method of a public component; `make interface-check` checks both directions.\n")
 	}
 	if korean {
 		b.WriteString("\n| 시작 | 대상 | 관계 |\n|---|---|---|\n")
