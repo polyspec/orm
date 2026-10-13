@@ -7,10 +7,10 @@ import (
 
 // The renderer names of CHECKs, triggers and functions (docs/dbspec.md
 // "Names"): the plain form <table>$<suffix> when it has at most maxNameBytes,
-// otherwise its first 46 bytes, a $ and the first 16 lowercase hexadecimal
-// digits of its SHA-256, 46 + 1 + 16 = 63 bytes.
+// otherwise its first 54 bytes, a $ and the first 8 lowercase hexadecimal
+// digits of its SHA-256, 54 + 1 + 8 = 63 bytes.
 const (
-	renderedHashDigits  = 16
+	renderedHashDigits  = 8
 	renderedPrefixBytes = maxNameBytes - 1 - renderedHashDigits
 )
 

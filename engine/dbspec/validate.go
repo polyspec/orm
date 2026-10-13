@@ -103,6 +103,7 @@ func (s *session) validate(doc *documentNode, stack []string) []Diagnostic {
 	for _, t := range doc.tables {
 		v.tableRules(t)
 	}
+	v.generatedNamesUnique()
 	v.diagrams()
 	return v.out
 }
@@ -208,6 +209,76 @@ func (v *validator) columnRef(t *tableNode, ref token, rule string) *columnNode 
 		v.add(rule, ref, "column %q is not a column of table %q", ref.text, t.name.text)
 	}
 	return c
+}
+
+// renderedCheck reports whether the renderer writes a type CHECK for the
+// column on some dialect.
+func renderedCheck(c *columnNode) bool {
+	return c.identity == nil && c.typ.valid && c.typ.typ.Kind != TypeText && c.typ.typ.Kind != TypeBytes
+}
+
+// generatedName is a name that the renderer writes for a table and the token
+// that writes it.
+type generatedName struct {
+	name string
+	at   token
+}
+
+// generatedNames lists the renderer names of table t: the type CHECK of each
+// column that has one, and the triggers of immutable and audit. A table or a
+// column whose name is malformed has none (the malformed name is reported).
+func generatedNames(t *tableNode) []generatedName {
+	if !wellFormed(t.name.text) || t.failed {
+		return nil
+	}
+	var out []generatedName
+	for _, c := range t.columns {
+		if renderedCheck(c) && wellFormed(c.name.text) {
+			out = append(out, generatedName{rendererName(t.name.text, c.name.text), c.name})
+		}
+	}
+	if t.settings == nil {
+		return out
+	}
+	for _, s := range t.settings.lines {
+		var events []string
+		switch s.keyword.text {
+		case "immutable":
+			events = []string{"immutable_update", "immutable_delete"}
+		case "audit":
+			events = []string{"audit_insert", "audit_update", "audit_delete"}
+		}
+		for _, e := range events {
+			out = append(out, generatedName{rendererName(t.name.text, e), s.keyword})
+		}
+	}
+	return out
+}
+
+// generatedNamesUnique refuses a generated name of a table of the document
+// that equals a generated name of a used table or of an earlier table of the
+// document, with name.duplicate at the later name (docs/dbspec.md "Names").
+func (v *validator) generatedNamesUnique() {
+	seen := map[string]bool{}
+	for _, t := range v.used {
+		if t == nil {
+			continue
+		}
+		for _, g := range generatedNames(t) {
+			seen[g.name] = true
+		}
+	}
+	for _, t := range v.doc.tables {
+		if t.name.line == 0 || v.local[t.name.text] != t {
+			continue
+		}
+		for _, g := range generatedNames(t) {
+			if seen[g.name] {
+				v.add(RuleNameDuplicate, g.at, "generated name %q repeats in the schema", g.name)
+			}
+			seen[g.name] = true
+		}
+	}
 }
 
 func (v *validator) tableRules(t *tableNode) {
