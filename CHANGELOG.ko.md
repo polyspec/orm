@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cd857fd2f0bb926a8e470d3c520bf598a53c8cd5e6468ed3766788feae89467f -->
+<!-- source-sha256: 7eca2420923b2474a20bfd06a4d8dacc6ec10a90ec4bd99665fe1230f407053f -->
 # 변경 이력
 
 ## Unreleased
+
+- T128-1: 0.0.9 뒤에 더한 Go editor 도구(`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens`와 regex 분류기 `engine/dbspec/tokens.go`)를 어떤 release 전에 제거하며, Go binary를 build하던 docs 연결도 함께 제거한다; T128은 editor stack을 모든 runtime의 표준으로 다시 만든다.
 
 ## 0.0.9
 

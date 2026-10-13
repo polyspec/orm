@@ -29,12 +29,3 @@
 @media (max-width: 767px) {
   .VPHome .vp-doc { padding: 0 24px; }
 }
-
-/* The dbs code block: the grammar classes of the highlighter (docs/.vitepress/dbs.ts). */
-.dbs code { color: inherit; }
-.dbs-kw { color: #0550ae; }
-.dbs-ty { color: #953800; }
-.dbs-num { color: #116329; }
-.dbs-str { color: #0a3069; }
-.dbs-cmt { color: #6e7781; font-style: italic; }
-.dbs-punc { color: #57606a; }

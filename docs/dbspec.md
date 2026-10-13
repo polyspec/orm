@@ -9,7 +9,7 @@ The [schema definitions](dialects.md#schema-definitions) record decides which da
 
 ## Document
 
-```dbs
+```text
 dbspec 1 shop
 
 use core { users }

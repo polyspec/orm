@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T128-1: the Go editor tools added after 0.0.9 (`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens` and the regex classifier `engine/dbspec/tokens.go`) are removed before any release, with the docs bridge that built a Go binary; T128 rebuilds the editor stack as a standard of every runtime.
+
 ## 0.0.9
 
 - T126: release 0.0.9: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.9, `tests/release-consumer` holds the locks of the archives of 0.0.9, and the Python wheel `polyspec_orm-0.0.9-py3-none-any.whl` is among the release assets; the section of the never-tagged 0.0.8 joins 0.0.9.
