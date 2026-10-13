@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: abb6c4c928727d4c22e389910a3c90c189e4e308eb3ea5de7ade4511c89d965f -->
+<!-- source-sha256: cf19c604c7fe26ff7fd163c4b90e79e22e3b105b2e4c603061e7a2e89da71524 -->
 # 변경 이력
 
 ## Unreleased
 
+- T154: Python Mermaid test가 선언된 PYTHONPATH로만 import한다.
 - T149: feature coverage가 Python owner를 실행하고, schema_definition이 case 일곱으로 Python을 덮는다.
 
 ## 0.0.10
