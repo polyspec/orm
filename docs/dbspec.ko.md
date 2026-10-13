@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 26b49dc597f66de11ffd40fea815b8708917afc4d8c592727da50f33d587d691 -->
+<!-- source-sha256: 9bf1ec71859b0abfcc5213f066d9184b75d19bf05bc37832b46e14018ace1303 -->
 # dbspec
 
 [English](dbspec.md)
@@ -54,7 +54,7 @@ dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <doc
 
 `dbspec`, `use`, `table`, `diagram`, `primary`, `unique`, `index`, `foreign`, `check`, `settings`, `null`, `identity`, `default`, `true`, `false`, `and`, `or`, `not`, `in`, `between`, `is`는 예약어이며 어떤 이름에도 쓸 수 없다. 마지막 여섯 단어는 check predicate keyword다.
 
-index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다. renderer는 자기 이름도 쓴다([rendered statements](dialects.md#rendered-statements)). `text`, `bytes`, identity column이 아닌 모든 column의 type CHECK에 `<table>$<column>`, `immutable`에 `<table>$immutable_update`와 `<table>$immutable_delete`, `audit`에 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete`다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. 각각 최대 63 bytes이며, 더 길면 column 이름이나 setting keyword에서 `name.length` error다.
+index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다. renderer는 자기 이름도 쓴다([rendered statements](dialects.md#rendered-statements)). `text`, `bytes`, identity column이 아닌 모든 column의 type CHECK에 `<table>$<column>`, `immutable`에 `<table>$immutable_update`와 `<table>$immutable_delete`, `audit`에 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete`다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. 이 생성 이름은 모두 한 규칙으로 쓰므로 항상 63 bytes에 들어간다. plain form은 한도 없이 renderer가 쓸 이름인 `<table>$<suffix>`이며, suffix는 column 이름이나 event 이름(`immutable_update`, `immutable_delete`, `audit_insert`, `audit_update`, `audit_delete`)이다. plain form이 63 bytes 이하이면 그것이 이름이다. 아니면 이름은 plain form의 처음 46 bytes, `$`, 그리고 plain form의 UTF-8 bytes에 대한 SHA-256의 소문자 16자리 16진수다: 46 + 1 + 16 = 63 bytes. 이름은 `[a-z0-9_$]`만 쓴다. 데이터베이스에서 읽은 이름은 introspection이 알고 있는 모든 table과 suffix의 이름을 다시 계산해 비교하여 table과 suffix로 되돌린다. `$`로 나누지 않는다. hash가 plain form 전체를 덮으므로 서로 다른 plain form은 64-bit hash 접두어가 충돌하지 않는 한 다른 이름을 준다. renderer는 자기 이름만 이렇게 줄이며, 선언된 이름은 줄이지 않고 63 bytes보다 긴 선언 이름은 여전히 `name.length` error다.
 
 ## 문서와 `use`
 

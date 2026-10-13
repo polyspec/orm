@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T129: a renderer-generated name (the CHECK `<table>$<column>`, the triggers and functions `<table>$<event>`) is the plain form when it has at most 63 bytes, otherwise its first 46 bytes, a `$` and the first 16 lowercase hex digits of its SHA-256, so an audited table with a long history name is declared; a declared name is still refused, never shortened (docs/dbspec.md "Names").
 - T125-8: the Go request hook tests start their cases with the shared testcase package, the Python interface test counts the fifteenth connection rule, and `docs/features.md` lists the feature `request_hook`.
 - T125-7: the Python identity load test is `identity_load.py`, so `make python-unit-check` no longer runs its server cases; `make python-identity-load-check` runs them.
 - T125-4: the request hook is the feature `request_hook` of `contracts/features.json`, whose Go, PHP, Rust and TypeScript owners pass the five shared cases on MySQL, PostgreSQL and SQLite.
