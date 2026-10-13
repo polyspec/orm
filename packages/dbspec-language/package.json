@@ -32,7 +32,7 @@
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.cli.json"
   },
   "dependencies": {
-    "@polyspec/orm": "0.0.9"
+    "@polyspec/orm": "0.0.10"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
