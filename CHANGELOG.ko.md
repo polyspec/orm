@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e45916960efcd36054df65a06aac589c1b6f31b63949a8ae955429beed6c5a9b -->
+<!-- source-sha256: b4cc23684e3e43fc363c86f5ca97560007fc57618a90e9c49a663fb93967d37a -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-5-1: `dbspec-fmt`가 명령줄에서 dbspec 문서를 format한다(`--write`, `--check`, 표준 입력). 각 문서는 `resolveSet`이 가장 가까운 `dbspec-set.json`에서 찾은 집합 안에서 다룬다; `make install-cli`가 이를 설치한다.
 - T145: TypeScript client가 mysql2 3.24.6을 고정한다.
 - T128-2a-6-1: Rust set vector test가 느린 실행을 실패시키지 않고 경고하며, `dbspec-rust-check/set`이 두 test를 별도 part로 실행한다.
 - T128-2a-6 (breaking): Rust build generator가 `Builder::set(path)`로 set 파일을 받는다; `Builder::new([..])`와 `uses`는 지웠고, `cargo:rerun-if-changed`가 set 파일과 나열된 모든 문서를 적는다. `dbspec::read_set`이 set 파일을 읽는다.
