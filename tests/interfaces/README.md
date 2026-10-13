@@ -37,7 +37,7 @@ Regenerate the contract outputs after an interface change:
 
 ```sh
 (cd packages/orm-go/model && go generate ./)
-php packages/orm-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model'
+vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model'
 npm run typescript:build
 go run ./tests/interfaces/check --generate --record --self-test
 ```
