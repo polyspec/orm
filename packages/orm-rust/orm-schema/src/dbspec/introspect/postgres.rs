@@ -2,6 +2,7 @@
 
 use super::super::literal::quote;
 use super::super::model::Type;
+use super::super::names::rendered_column;
 use super::super::render::Dialect;
 use super::check::decode_check;
 use super::trigger::ITrigger;
@@ -156,14 +157,14 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
                 c.table(&table).expect("table read above").fks.push(key);
             }
             "c" => {
-                if let Some((owner, column)) = name.split_once('$') {
-                    let quoted_column = quoted.get(&table).and_then(|q| q.get(column)).map_or("", String::as_str);
+                if name.contains('$') {
+                    let column = rendered_column(&table, &name, pending.get(&table).into_iter().flatten().map(String::as_str));
+                    let quoted_column = column.and_then(|column| quoted.get(&table).and_then(|q| q.get(column))).map_or("", String::as_str);
                     let want = format!("CHECK (({quoted_column} < '24:00:00'::time without time zone))");
-                    let is_pending = pending.get(&table).is_some_and(|p| p.contains(column));
-                    if owner != table || !is_pending || definition != want {
+                    let Some(column) = column.filter(|_| definition == want) else {
                         c.report("check", &table, &name, format!("the check {definition} is not the renderer CHECK"));
                         continue;
-                    }
+                    };
                     checked.entry(table.clone()).or_default().insert(column.to_owned());
                     continue;
                 }

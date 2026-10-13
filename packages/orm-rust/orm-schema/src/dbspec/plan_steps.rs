@@ -3,6 +3,7 @@
 //! [`super::render`].
 
 use super::model::{Column, Expr, Name, Operand, Table, Type};
+use super::names::renderer_name;
 use super::plan::{sorted_by, Plan};
 use super::plan_diff::{column_of, diff_plan, has_triggers, same_default, ObjectRef, PlanDiff};
 use super::render::{Dialect, Renderer};
@@ -490,10 +491,10 @@ impl<'d> PlanWriter<'_, 'd> {
                 column
             })
             .collect();
-        let new_create = |as_name: &str| self.r.create_table(t, as_name, &|c: &str| format!("{}${c}", t.name.text), &hidden_dropped);
+        let new_create = |as_name: &str| self.r.create_table(t, as_name, &|c: &str| renderer_name(&t.name.text, c), &hidden_dropped);
         // source_column은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
         let source_column = |c: &str| -> String { columns.get(c).map_or_else(|| c.to_owned(), |s| (*s).to_owned()) };
-        let old_create = self.r.create_table(&old, name, &|c: &str| format!("{}${}", src.name.text, source_column(c)), &hidden_added);
+        let old_create = self.r.create_table(&old, name, &|c: &str| renderer_name(&src.name.text, &source_column(c)), &hidden_added);
         let new_names: Vec<String> = t.columns.iter().map(|c| c.name.text.clone()).chain(hidden_dropped.iter().map(|c| c.name.text.clone())).collect();
         let new_list = self.r.list(new_names.iter());
         // 옛 table에서 새 정의로 옮기는 식
@@ -843,6 +844,6 @@ impl<'d> PlanWriter<'_, 'd> {
 
     /// table의 renderer CHECK 이름과 식.
     fn renderer_checks(&self, t: &Table) -> RendererChecks {
-        t.columns.iter().filter_map(|c| self.r.type_check(c).map(|check| (format!("{}${}", t.name.text, c.name.text), check))).collect()
+        t.columns.iter().filter_map(|c| self.r.type_check(c).map(|check| (renderer_name(&t.name.text, &c.name.text), check))).collect()
     }
 }

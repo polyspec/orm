@@ -2,6 +2,7 @@
 
 use super::super::literal::quote;
 use super::super::model::Type;
+use super::super::names::rendered_column;
 use super::super::render::{Dialect, UUID_PATTERN};
 use super::check::decode_check;
 use super::trigger::ITrigger;
@@ -135,12 +136,15 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             c.report("check", &table, &name, "the check is not enforced");
             continue;
         }
-        if let Some((owner, column)) = name.split_once('$') {
-            let known = columns.get(&table).and_then(|cols| cols.get(column));
-            if owner != table || known.is_none_or(|typ| without_introducers(&clause) != without_introducers(&renderer_check(column, *typ))) {
+        if name.contains('$') {
+            let found = columns.get(&table).and_then(|cols| {
+                let column = rendered_column(&table, &name, cols.keys().map(String::as_str))?;
+                Some((column, cols[column]))
+            });
+            let Some((column, _)) = found.filter(|&(column, typ)| without_introducers(&clause) == without_introducers(&renderer_check(column, typ))) else {
                 c.report("check", &table, &name, format!("the check {clause} is not the renderer CHECK"));
                 continue;
-            }
+            };
             checked.entry(table.clone()).or_default().insert(column.to_owned(), true);
             continue;
         }
