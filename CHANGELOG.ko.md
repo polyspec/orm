@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b5b161461496edbc4f2bb5a663e2083ea612b3154172e144e7843277a230e70c -->
+<!-- source-sha256: b3539f204488b1af0aa0ec092820bd30228c7aa337c097169c14e14ee5497b9a -->
 # 변경 이력
 
 ## Unreleased
 
+- T129-2: PHP extension이 PHP client의 renderer 이름인 `render`, `ofTable`, `column`을 가진 `Native\Names`를 갖는다.
 - T128-3-1: 모든 runtime이 Go처럼 encoding 정지 앞의 완전한 줄을 parse하고 그 diagnostic을 encoding diagnostic보다 먼저 보고한다.
 - T128-5-2: 의존성 정책이 packages/dbspec-language가 typescript 6.0.3을 두는 이유를 밝힌다: 그 module graph test는 typescript 7에 없는 typescript API가 필요하다.
 - T138: 문서 site가 mermaid 12.2.0으로 도표를 그린다.
