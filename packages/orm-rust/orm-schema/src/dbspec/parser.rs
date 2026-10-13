@@ -264,6 +264,8 @@ struct Parser {
     opened: usize,
     /// Whether the opening line of the open diagram failed (R20).
     diagram_header_failed: bool,
+    /// Whether the opening line of the open settings block failed (R20); cleared at its close.
+    settings_header_failed: bool,
 }
 
 fn err(pos: Pos, rule: &'static str, message: impl Into<String>) -> Diag {
@@ -347,6 +349,7 @@ pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
         marks: Vec::new(),
         opened: 0,
         diagram_header_failed: false,
+        settings_header_failed: false,
     };
     let header = parser.define(name);
     parser.declare("document", vec![header.text.clone()], header.pos);
@@ -555,6 +558,15 @@ impl Parser {
         let failed = self.in_failed_block();
         self.read_line(line, number);
         let abandoned = self.diags[diags..].iter().any(|d| d.rule == "syntax" && d.pos.line == number);
+        // A block whose opening line is abandoned failed to open (R1, R20), even when its brace was read.
+        if abandoned && self.opened != opened {
+            match self.context {
+                Context::Top => {}
+                Context::Table => self.table_header_failed = true,
+                Context::Settings => self.settings_header_failed = true,
+                Context::Diagram => self.diagram_header_failed = true,
+            }
+        }
         if abandoned || (failed && self.opened == opened) {
             self.marks.truncate(marks);
         }
@@ -563,7 +575,8 @@ impl Parser {
     fn in_failed_block(&self) -> bool {
         match self.context {
             Context::Top => false,
-            Context::Table | Context::Settings => self.table_header_failed,
+            Context::Table => self.table_header_failed,
+            Context::Settings => self.table_header_failed || self.settings_header_failed,
             Context::Diagram => self.diagram_header_failed,
         }
     }
@@ -752,6 +765,7 @@ impl Parser {
             self.header_failed.push(std::mem::take(&mut self.table_header_failed));
             self.defaults.push(std::mem::take(&mut self.table_defaults));
         }
+        self.settings_header_failed = false;
         self.context = Context::Top;
     }
 
@@ -1314,9 +1328,9 @@ impl Parser {
         let comments = self.comments();
         let brace = cursor.here();
         let opened = self.expect(cursor, "{").is_some();
-        if opened {
-            self.end(cursor);
-        }
+        let ended = opened && self.end(cursor).is_some();
+        // The block's opening line failed when it has no `{` or text after it (R20): its lines keep lexical classes.
+        self.settings_header_failed = !ended;
         // Go의 열린 위치: 읽은 `{`, 없으면 키워드다.
         self.settings_brace = Some(if opened { brace } else { keyword });
         let block = Settings { comments, lines: Vec::new(), closing: Vec::new() };
@@ -1345,6 +1359,7 @@ impl Parser {
             if let Some(settings) = self.settings_target() {
                 settings.closing = closing;
             }
+            self.settings_header_failed = false;
             self.context = Context::Table;
             return;
         }
