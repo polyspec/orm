@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1f5d96174727e03cc82b2cd1b74296b16fc97996a2af860ac1084f9511e3c584 -->
+<!-- source-sha256: 15c1ee47d18acf82474eddca2f90e1d119ec2d9ef3f57f676c413d1c7d3328fe -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-5-2: 의존성 정책이 packages/dbspec-language가 typescript 6.0.3을 두는 이유를 밝힌다: 그 module graph test는 typescript 7에 없는 typescript API가 필요하다.
 - T138: 문서 site가 mermaid 12.2.0으로 도표를 그린다.
 - T128-3-3: 구문 분석, 선언 위치, browser entry의 Go, Rust, TypeScript test가 case harness로 case를 시작하므로 각각 deadline과 RUN 줄을 가진다.
 - T128-5: `@polyspec/dbspec-language`(`packages/dbspec-language`)가 dbspec language service다: `openDocument(text, {set})`가 UTF-16 range를 가진 diagnostic, token, block의 folding range, `format()`을 browser-safe parser entry만으로 준다.
