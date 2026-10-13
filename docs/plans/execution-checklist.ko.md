@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 2c3c2b4733a1b18c4477251733683296c2a1ecca08471a5db01fbbc057b644b0 -->
+<!-- source-sha256: 229a77c67ce1b5d356f3f71553cd82b5ac67a9b91b298aa7d5fe071de0f92c53 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -974,5 +974,5 @@
 - [o] T138 mermaid를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 root package가 12.1.0을 고정한 사이 mermaid 12.2.0이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mermaid를 12.2.0에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 보고하지 않는다; `npm run docs:check`가 Mermaid source 20개와 함께 통과한다.
 - [ ] T139 YAML codec을 pure-Rust YAML library 하나로 읽고 쓴다. 원인: 2026-10-13 review가 packages/orm-rust와 bench/rust에서 RUSTSEC-2024-0449(unsafe-libyaml 유지보수 중단)를 찾았다. 이는 Rust codec이 decode와 encode에 쓰는 serde_yaml_ng를 통해 들어오며, 같은 text는 이미 yaml-rust2가 검증한다; fork인 serde_norway는 2024-12 이후 release가 없다. 인수 조건: `yaml` 단계가 docs/codec.md의 규칙(공통 값 모델, `CODEC_DECODE`로 거부하는 형태, encode 실패 시 `CODEC_ENCODE`)대로 yaml-rust2만으로 decode와 encode를 한다; serde_yaml_ng와 unsafe-libyaml이 두 lock에서 빠진다; 동작이 바뀌는 codec vector에서 red를 먼저 본다; Rust codec test와 client 간 codec 검사가 통과한다; `make dependency-policy-check`가 통과한다.
 - [ ] T140 restore가 update의 request hook 규칙을 따른다. 원인: restore는 request hook 조건을 실을 수 없다: restore key는 key 등호 predicate만 받으므로 hook이 더한 조건은 `IR_INVALID`이고, model은 hook이 돌기 전에 set 값에서 key를 고르므로 scope column을 더는 쓰지 않는 module은 그 column을 담은 unique key를 고를 수 없다. 인수 조건: planner가 hook 뒤에 set 대입과 `and`로 이은 등호 조건에서 restore key를 고른다(덮이면 primary key, 아니면 이름순 첫 unique key); `Model::restore`는 set만 전달한다; restore의 where는 key 밖의 `and` 조건을 더 실을 수 있고, 여전히 많아야 한 row임이 보장된다; 여섯 client, protocol(+ko), conformance에서, 각 client가 red를 먼저 본다.
-- [ ] T141 docs/dbspec.md "Files"에 Python byte 검사와 파일 reader를 적는다. 원인: 이 절은 Go, PHP, TypeScript, Rust의 byte 검사와 파일 reader를 적는데 Python에도 `read_dbspec_bytes`(packages/orm-python/src/polyspec/orm/dbspec/file.py)가 있다. 인수 조건: 이 절(+ko)이 Python의 함수를 적는다.
+- [o] T141 docs/dbspec.md "Files"에 Python byte 검사와 파일 reader를 적는다. 원인: 이 절은 Go, PHP, TypeScript, Rust의 byte 검사와 파일 reader를 적는데 Python에도 `read_dbspec_bytes`(packages/orm-python/src/polyspec/orm/dbspec/file.py)가 있다. 인수 조건: 이 절(+ko)이 Python의 함수를 적는다. 증거: 이 절(+ko)이 packages/orm-python/src/polyspec/orm/dbspec/file.py의 함수인 `read_dbspec_bytes`와 `read_dbspec_file`을 적는다; `make documents-check`가 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eff146ee24f4c398e8d2997abe1cd0802c8e91032c651d272804b0e7a92da4fe -->
+<!-- source-sha256: 244ec0ecc0c47b235f768f2898d76e7e58536fdd9c27965eb87267872594bdb3 -->
 # 변경 이력
 
 ## Unreleased
 
+- T141: docs/dbspec.md "Files"가 Python byte 검사 `read_dbspec_bytes`와 파일 reader `read_dbspec_file`을 적는다.
 - T128-2a-1: docs/dbspec.md "Document sets"가 set 파일 `dbspec-set.json`과 그 reader를 명세하고, `tests/dbspec/set-files.json`이 file tree vector 61개를 담는다.
 - T129-2: PHP extension이 PHP client의 renderer 이름인 `render`, `ofTable`, `column`을 가진 `Native\Names`를 갖는다.
 - T128-3-1: 모든 runtime이 Go처럼 encoding 정지 앞의 완전한 줄을 parse하고 그 diagnostic을 encoding diagnostic보다 먼저 보고한다.
