@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-7 (breaking): every document names the set file as the only form of a generator's document set, the interface rule `Dbspec.readSet` declares the set reader of every client, and the parity unit `dbspec-set-files` declares its vectors.
 - T136: `make install-python` installs uv before the Python it installs, so a fresh checkout and CI build the Python venv.
 - T128-2a-4-1: the Python tests generate their models from set files, so the python check passes with the set-file generator.
 - T128-6: `@polyspec/dbspec-lsp` (`packages/dbspec-lsp`, command `dbspec-lsp`) is the dbspec language server: diagnostics, semantic tokens, folding and formatting, with each document's set from its nearest `dbspec-set.json`.

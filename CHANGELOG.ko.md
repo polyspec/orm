@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5b7b99e42cbbc418cbd21d7beba8da97c142234693dec657a4cca91e21ddcb6f -->
+<!-- source-sha256: c240f486d92a48e9ea6c899e32f16f334432aeab9bb2a46733bf546fa317eb24 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-7 (breaking): 모든 문서가 set 파일을 generator 문서 집합의 유일한 형태로 적고, interface rule `Dbspec.readSet`이 모든 client의 set reader를 선언하며, parity unit `dbspec-set-files`가 그 vector를 선언한다.
 - T136: `make install-python`이 Python보다 먼저 uv를 설치하므로 새 checkout과 CI가 Python venv를 만든다.
 - T128-2a-4-1: Python test가 set 파일로 model을 생성하므로 set 파일 generator와 함께 python 검사가 통과한다.
 - T128-6: `@polyspec/dbspec-lsp`(`packages/dbspec-lsp`, 명령 `dbspec-lsp`)가 dbspec language server다: diagnostic, semantic token, folding, formatting을 주며, 각 문서의 집합은 가장 가까운 `dbspec-set.json`에서 온다.
