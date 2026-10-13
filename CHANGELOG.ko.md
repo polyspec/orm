@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7eca2420923b2474a20bfd06a4d8dacc6ec10a90ec4bd99665fe1230f407053f -->
+<!-- source-sha256: 6292f19ae73267706ac6ea4e1b59039f37cac509d4cbd2f1ea164aef3271a868 -->
 # 변경 이력
 
 ## Unreleased
 
+- T126-1: orm은 kit을 branch가 아닌 release tag v0.0.31에서 vendor하고, Python을 uv로 선언하며(config/toolchain.json의 `pythonBuild.version`과 `uv`), `release-assets`가 자신이 build하는 데 쓰는 설치(`install-go`, `install-node`)를 선언한다.
 - T128-1: 0.0.9 뒤에 더한 Go editor 도구(`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens`와 regex 분류기 `engine/dbspec/tokens.go`)를 어떤 release 전에 제거하며, Go binary를 build하던 docs 연결도 함께 제거한다; T128은 editor stack을 모든 runtime의 표준으로 다시 만든다.
 
 ## 0.0.9

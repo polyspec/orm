@@ -5,6 +5,7 @@
 # only after the proof passes. The steps run in order and stop at the first failure; each step runs one make target of
 # scripts/kit/kit.mk with TAG from the environment:
 #   release-tools    installs the tools that config/release.json needs for the packages and proof of this repository
+#   release-tools-path puts var/tools/bin on the PATH of the steps that follow, through GITHUB_PATH
 #   release-verify   the tagged commit is on origin/main and its check runs concluded success, without running the tests again
 #   release-versions every manifest has the version of the tag and the changelog has its section
 #   release-assets  builds the archive of every package into var/release/assets

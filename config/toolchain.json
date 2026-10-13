@@ -5,13 +5,15 @@
   ],
   "python": "3.14",
   "pythonBuild": {
-    "version": "3.14.8",
-    "release": "20261009",
+    "version": "3.14.8"
+  },
+  "uv": {
+    "version": "0.12.24",
     "sha256": {
-      "darwin-arm64": "ff8e1ddc02a9df3190b62d5af475cb642a02cfc77901ef780f9826cc23b51934",
-      "darwin-x64": "9694bf8c8c1fb1250dd6f05e7914ebbbe7180e0f11b7feaf5edb2f6acebe4153",
-      "linux-arm64": "2a99838d2ba71c91d9c72929ee73cdfad2ccd093d7746a14094f50e583989ec3",
-      "linux-x64": "83f9cb480b702548c592443f86209cf0fc03448d90692df257f095c01791dccc"
+      "darwin-arm64": "0c4346de7abdb49495b393b9ec809fe387aa43e586be20fecb972216c1e71732",
+      "darwin-x64": "4fa82e37cb94767661f532b001e470b67a186c7260e305bd84ddb78fd545c0b6",
+      "linux-arm64": "5231be65f496304623895dacdbf1de8504fec90303684bdf05805aa34414dd21",
+      "linux-x64": "b4dfaef47d491a7296981f8374a4595f55dbf84e8937c8ecd2983574d8bb3da6"
     }
   },
   "composer": {
