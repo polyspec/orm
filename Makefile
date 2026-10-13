@@ -470,6 +470,13 @@ python-venv-check:
 	want=$$(cut -d. -f1,2 .python-version); minor=$${got%.*}; \
 	test "$$minor" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but .python-version declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }
 
+# php-vendor-check fails when vendor-php/autoload.php, the autoloader install-php creates with Composer, is missing, and
+# names the make step that creates it; it installs nothing. A target that runs PHP through packages/orm-php/tests/autoload.php
+# takes it as a prerequisite.
+.PHONY: php-vendor-check
+php-vendor-check:
+	@test -f vendor-php/autoload.php || { echo "php-vendor-check: vendor-php/autoload.php is missing; run make install-php, which installs it with Composer"; exit 1; }
+
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (install-python).
 .PHONY: python-check python-unit-check python-interface-unit-check
@@ -1186,7 +1193,7 @@ codec-check/typescript: lease-tool
 	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
 	ORM_CODEC_OUT=$(CODEC_OUT) node packages/orm-npm/tests/codec-vector.mjs
-codec-check/compare: codec-check/go codec-check/rust codec-check/typescript
+codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript
 	ORM_CODEC_OUT=$(CODEC_OUT) php tests/codec/check.php
 	rm -rf $(CODEC_OUT)
 
