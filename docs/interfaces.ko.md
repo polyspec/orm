@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 6d07d16f06d5d90a1d161c0733ea2c3137f4695a1bf34010422fe47927288141 -->
+<!-- source-sha256: 77f95e750eebbf2b13dfff086bd72013adbfb2a6fbb030e2b3adfa7dd9faeb09 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -131,7 +131,14 @@ classDiagram
 | 변경 | 변경 필드와 원래 값을 기록한다. |
 | 종단 | 체인 값만 받고 모델 연결을 사용한다. |
 
-`getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 체인을 조건으로 적용하고 종단 작업을 호출한다. PHP는 호출 시점에 체인을 해석하고, Go, Rust, TypeScript는 읽은 소스가 호출하는 체인을 생성한다.
+#### 조회 체인 {#finder-chains}
+
+`getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 컬럼 체인을 조건으로 적용하고 종단 작업을 호출한다. 체인은 컬럼 key, 연산자, 연결자의 조합이라 가능한 체인의 수에 한계가 없으며, 어떤 client도 그 목록을 다 가지지 않는다. 각 client는 체인을 두 방식 중 하나로 찾으며, 같은 체인은 모든 client에서 같은 row를 준다.
+
+- 정적인 모델 타입을 가진 client는 모델 생성이 scan된 소스 코드에서 찾은 체인마다 선언한다. Go, Rust, TypeScript가 이 방식이다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
+- 동적인 모델 타입을 가진 client는 호출이 실행될 때 호출 이름을 해석한다. PHP(`__call`)와 Python(`__getattr__`)이 이 방식이다. 생성 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다.
+
+공유 vector `terminal_by`(`tests/conformance/vectors.json`)는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
 
 ### 5.3 실행 메서드
 
