@@ -24,7 +24,7 @@ def _text(value) -> str:
 def _source(case):
     if case.get('source') is None:
         return None
-    document, diagnostics = parse_dbspec(_text(case['source']), {})
+    document, _positions, diagnostics = parse_dbspec(_text(case['source']), {})
     assert document is not None, (case['id'], diagnostics[:1])
     return document
 
@@ -107,8 +107,8 @@ def main() -> None:
             f'{case["id"]}: parse diagnostic count differs'
         cases += 1
     for case in data['comparisons']:
-        source, _ = parse_dbspec(_text(case['source']), {})
-        target, _ = parse_dbspec(_text(case['target']), {})
+        source, _positions, _ = parse_dbspec(_text(case['source']), {})
+        target, _positions, _ = parse_dbspec(_text(case['target']), {})
         result = compare_schemas(source, target)
         assert _errors(result['diagnostics']) == case.get('errors', []), \
             f'{case["id"]}: comparison diagnostics differ'

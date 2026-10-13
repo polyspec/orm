@@ -21,7 +21,7 @@ NOTE = 'table note {\n  id i64 identity\n  body text null\n  primary key (id)\n}
 
 
 def schema_of(body: str) -> Schema:
-    document, diagnostics = parse_dbspec(f'dbspec 1 shop\n\n{body}', {})
+    document, _positions, diagnostics = parse_dbspec(f'dbspec 1 shop\n\n{body}', {})
     assert not diagnostics, diagnostics
     manifest, diagnostics = dbspec_manifest([document])
     assert manifest is not None, diagnostics

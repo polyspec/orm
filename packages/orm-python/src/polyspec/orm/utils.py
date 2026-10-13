@@ -305,7 +305,7 @@ def _schema_target(model):
         d = diagnostics[0]
         raise OrmError('SCHEMA_INVALID', f'document set: {d.rule} at {d.line}:{d.column}: {d.message}')
     externals = {d.name: emit_dbspec(d) for d in model.documents if d.external is True}
-    document, parse_diagnostics = parse_dbspec(manifest.schema_text, externals)
+    document, _positions, parse_diagnostics = parse_dbspec(manifest.schema_text, externals)
     if parse_diagnostics:
         d = parse_diagnostics[0]
         raise OrmError('SCHEMA_INVALID', f'document set: {d.rule} at {d.line}:{d.column}: {d.message}')

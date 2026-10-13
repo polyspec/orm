@@ -68,7 +68,7 @@ def skeleton(document) -> list:
 
 def run_export(c) -> None:
     documents = {name: text(lines) for name, lines in c['documents'].items()}
-    document, diagnostics = parse_dbspec(text(c['document']), documents)
+    document, _positions, diagnostics = parse_dbspec(text(c['document']), documents)
     equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
     result = export_mermaid(document)
     equal(result['mermaid'], text(c['mermaid']), 'mermaid text')
@@ -91,7 +91,7 @@ def run_invalid(c) -> None:
 def run_round_trip(c) -> None:
     text_read, diagnostics = read_dbspec_file(str(ROOT / c['path']))
     equal(diagnostic_triples(diagnostics), [], 'file diagnostics')
-    document, diagnostics = parse_dbspec(text_read, {})
+    document, _positions, diagnostics = parse_dbspec(text_read, {})
     equal(diagnostic_triples(diagnostics), [], 'document diagnostics')
     exported = export_mermaid(document)
     equal(drops(exported['dropped']), c['dropped'], 'export dropped')

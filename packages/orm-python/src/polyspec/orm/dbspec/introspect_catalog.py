@@ -133,7 +133,7 @@ class Catalog:
         self._drop_tables_without_key()
         while True:
             text, objects = self._text(name)
-            document, diagnostics = parse_document(text, {})
+            document, _positions, diagnostics = parse_document(text, {})
             if document is not None:
                 self.unsupported.sort(key=lambda u: _byte_key(
                     f'{u["table"]}\0{u["kind"]}\0{u["name"]}'))

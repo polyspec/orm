@@ -11,7 +11,7 @@ from polyspec.orm.dbspec import add_tables_and_columns_steps, parse_dbspec  # no
 
 
 def document(body: str):
-    parsed, diagnostics = parse_dbspec(f'dbspec 1 schema\n\n{body}', {})
+    parsed, _positions, diagnostics = parse_dbspec(f'dbspec 1 schema\n\n{body}', {})
     assert not diagnostics, diagnostics
     return parsed
 

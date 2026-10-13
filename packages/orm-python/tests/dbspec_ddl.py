@@ -16,7 +16,7 @@ def parse_set(documents: dict) -> list:
     """사례의 문서 집합을 parse한다; main 문서가 집합을 대표한다."""
     out: list = []
     for name, lines in documents.items():
-        document, diagnostics = parse_dbspec('\n'.join(lines),
+        document, _positions, diagnostics = parse_dbspec('\n'.join(lines),
                                              {k: '\n'.join(v)
                                               for k, v in documents.items() if k != name})
         if diagnostics:

@@ -133,7 +133,7 @@ def parse_plan(text: str) -> dict:
                                   f'external documents with install or '
                                   f'addTablesAndColumns')
     schema_text = '\n'.join(lines[offset:]) + '\n'
-    document, diagnostics = parse_dbspec(schema_text, {})
+    document, _positions, diagnostics = parse_dbspec(schema_text, {})
     if document is None:
         return {'plan': None,
                 'diagnostics': [DbspecDiagnostic(d.rule, d.line + offset, d.column,

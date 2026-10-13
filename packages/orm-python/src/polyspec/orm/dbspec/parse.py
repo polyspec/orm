@@ -7,7 +7,7 @@ import re
 
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
-                                       DbspecDiagnostic, DbspecDiagram, DbspecDocument,
+                                       DbspecDiagnostic, DbspecDiagram, DbspecDocument, DbspecPosition,
                                        DbspecForeignKey, DbspecIndex, DbspecIndexColumn,
                                        DbspecPlacement, DbspecPrimaryKey, DbspecSetting,
                                        DbspecSettings, DbspecStoreShard, DbspecTable, DbspecType, DbspecUnique,
@@ -454,6 +454,29 @@ class _Setting:
         self.form = fields.get('form', '')
 
 
+def _setting_identity(s: _Setting) -> tuple[str, ...]:
+    """Return what the repeat rule of a setting makes unique (docs/dbspec.md "Settings"; the same as
+    settingIdentity in engine/dbspec/positions.go): the column of codec, markdown and blind_index, the
+    foreign key of navigation, the column and state of checkbox, and the form and states of a state_machine
+    line (its column left out). Every other setting has no identity."""
+    keyword = s.kw.t
+    if keyword == 'codec' or keyword == 'blind_index':
+        return (s.column.t,)
+    if keyword == 'navigation':
+        return (s.foreign_key.t,)
+    if keyword == 'markdown':
+        return (s.args[0].t,)
+    if keyword == 'checkbox':
+        return (s.args[0].t, s.args[1].t)
+    if keyword == 'state_machine':
+        if s.form == 'transition':
+            return ('transition', s.args[1].t, s.args[2].t)
+        if s.form == 'history':
+            return ('history',)
+        return (s.form, s.args[1].t)
+    return ()
+
+
 class _Settings:
     __slots__ = ('open', 'entries', 'comments', 'closing')
 
@@ -531,10 +554,12 @@ class _Diagram:
 
 
 class _Document:
-    __slots__ = ('name', 'uses', 'tables', 'diagrams', 'closing', 'failed', 'constraints')
+    __slots__ = ('name', 'name_tok', 'uses', 'tables', 'diagrams', 'closing', 'failed', 'constraints')
 
     def __init__(self):
         self.name = ''
+        # The token of the document name, set only when the header is valid: the place of its position.
+        self.name_tok = None
         self.uses = []
         self.tables = []
         self.diagrams = []
@@ -921,6 +946,7 @@ class DocumentParser:
         name = lex_line(text, 1)[0][2]
         self._name(name)
         self.document.name = name.t
+        self.document.name_tok = name
         return True
 
     def _list(self, toks, i: int, line: int, close: str):
@@ -2633,6 +2659,45 @@ class DocumentParser:
                                           f'({s.column.t}) references {ref.t} ({key}) on delete '
                                           f'restrict on update restrict')
 
+    def _position(self, positions, kind: str, at: Tk, *path: str) -> None:
+        # The column counts code points, as diagnostics do.
+        text = self.lines[at.line - 1] if 1 <= at.line <= len(self.lines) else ''
+        positions.append(DbspecPosition(kind, path, at.line, column_of(text, at.s)))
+
+    def positions(self) -> list[DbspecPosition]:
+        """Return the declaration positions in source order (docs/dbspec.md "Declaration positions"; the same
+        rule as engine/dbspec/positions.go)."""
+        doc = self.document
+        out: list[DbspecPosition] = []
+        at = self._position
+        at(out, 'document', doc.name_tok, doc.name)
+        for u in doc.uses:
+            at(out, 'use', u.doc, u.doc.t)
+            for t in u.tables:
+                at(out, 'use_table', t, u.doc.t, t.t)
+        for t in doc.tables:
+            table = t.name.t
+            at(out, 'table', t.name, table)
+            for c in t.columns:
+                at(out, 'column', c.name, table, c.name.t)
+            for k in t.pks:
+                at(out, 'constraint', k.kw, table, 'primary key')
+            for k in t.uniques + t.indexes:
+                at(out, 'constraint', k.name, table, k.name.t)
+            for f in t.fks:
+                at(out, 'constraint', f.name, table, f.name.t)
+            for c in t.checks:
+                at(out, 'constraint', c.name, table, c.name.t)
+            if t.settings is not None:
+                for s in t.settings.entries:
+                    at(out, 'setting', s.kw, table, s.kw.t, *_setting_identity(s))
+        for g in doc.diagrams:
+            at(out, 'diagram', g.name, g.name.t)
+            for e in g.entries:
+                at(out, 'diagram_entry', e.table, g.name.t, e.table.t)
+        out.sort(key=lambda p: (p.line, p.column))
+        return out
+
     def build(self) -> DbspecDocument:
         doc = self.document
         tables = []
@@ -2798,16 +2863,19 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
 
 
 def parse_document(text: str, documents):
-    """문서 text와 그 선언된 문서 집합의 parse 결과, 또는 원본 순서의 모든 진단."""
+    """문서 text와 그 선언된 문서 집합의 parse 결과, 또는 원본 순서의 모든 진단.
+    On success it returns (document, positions, ()); on failure (None, None, diagnostics)."""
     parsed = _parse_text(text, _ParseContext(dict(documents)), [])
     if parsed.diagnostics or parsed.parser is None:
-        return None, parsed.diagnostics
-    return parsed.parser.build(), ()
+        return None, None, parsed.diagnostics
+    return parsed.parser.build(), parsed.parser.positions(), ()
 
 
-def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[DbspecDocument | None, list[DbspecDiagnostic]]:
+def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[
+        DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]:
     """dbspec 문서를 parse하고 검사한다. `documents`는 use 줄을 위한 문서 집합의
-    다른 문서 이름과 text다."""
+    다른 문서 이름과 text다.
+    On success it returns (document, positions, []); on failure (None, None, diagnostics)."""
     if not isinstance(text, str):
         raise TypeError('dbspec text must be a string')
     if not isinstance(documents, dict):
