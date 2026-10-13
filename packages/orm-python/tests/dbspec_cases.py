@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.dbspec import (DbspecPosition, check_set, dbspec_manifest, emit_dbspec,
-                                 parse_dbspec, read_dbspec_file)
+                                 format_dbspec, parse_dbspec, read_dbspec_file)
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -115,6 +115,40 @@ class DbspecCaseTest(unittest.TestCase):
             if found != expected:
                 failures.append(f"{case['id']}: want {expected} got {found} "
                                 f"({error_lines(diagnostics)})")
+        if failures:
+            self.fail('\n'.join(failures))
+
+    def test_format(self):
+        """format is emit(parse): canonical and normalize cases format to their canonical text, invalid
+        cases are refused with their diagnostics, and formatting twice changes nothing."""
+        failures = []
+        for section in ('canonical', 'normalize'):
+            for case in self.cases[section]:
+                documents = {name: text_of(case, lines)
+                             for name, lines in case['documents'].items()}
+                others = {k: v for k, v in documents.items() if k != case['main']}
+                formatted, diagnostics = format_dbspec(documents[case['main']], others)
+                if formatted is None:
+                    failures.append(f"{case['id']}: refused {error_lines(diagnostics)}")
+                    continue
+                expected = text_of(case, case['canonical'], as_input=False) \
+                    if 'canonical' in case else documents[case['main']]
+                if formatted != expected:
+                    failures.append(f"{case['id']}: format differs\n--- want\n{expected}\n"
+                                    f"--- got\n{formatted}")
+                again, _ = format_dbspec(formatted, others)
+                if again != formatted:
+                    failures.append(f"{case['id']}: format is not idempotent")
+        for case in self.cases['invalid']:
+            documents = {name: text_of(case, lines)
+                         for name, lines in case['documents'].items()}
+            formatted, diagnostics = format_dbspec(documents[case['main']],
+                                                   {k: v for k, v in documents.items()
+                                                    if k != case['main']})
+            found = [(d.line, d.column, d.rule) for d in diagnostics]
+            expected = [(e['line'], e['column'], e['rule']) for e in case['errors']]
+            if formatted is not None or found != expected:
+                failures.append(f"{case['id']}: want refusal {expected} got {formatted!r} {found}")
         if failures:
             self.fail('\n'.join(failures))
 

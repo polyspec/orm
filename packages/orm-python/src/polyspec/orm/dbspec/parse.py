@@ -5,8 +5,9 @@ from __future__ import annotations
 
 import re
 
-from polyspec.orm.dbspec.emit import type_text
-from polyspec.orm.dbspec.model import (DbspecCheck, DbspecColumn, DbspecDefault,
+from polyspec.orm.dbspec.emit import CANONICAL, emit_document, type_text
+from polyspec.orm.dbspec.model import (DbspecAnalysis, DbspecCheck, DbspecColumn, DbspecDefault,
+    DbspecToken,
                                        DbspecDiagnostic, DbspecDiagram, DbspecDocument, DbspecPosition,
                                        DbspecForeignKey, DbspecIndex, DbspecIndexColumn,
                                        DbspecPlacement, DbspecPrimaryKey, DbspecSetting,
@@ -56,7 +57,7 @@ WORD, STR, PUNCT, OP = 'word', 'str', 'punct', 'op'
 
 
 class Tk:
-    __slots__ = ('k', 't', 's', 'e', 'line')
+    __slots__ = ('k', 't', 's', 'e', 'line', 'cls')
 
     def __init__(self, k: str, t: str, s: int, e: int, line: int):
         self.k = k
@@ -64,6 +65,29 @@ class Tk:
         self.s = s
         self.e = e
         self.line = line
+        # The token class of docs/dbspec.md "Syntax analysis": the lexical class until the parser sets it.
+        self.cls = _lexical_class(k, t)
+
+
+def _lexical_class(kind: str, text: str) -> str:
+    if kind == WORD:
+        return 'number' if re.fullmatch(r'[0-9]+(\.[0-9]+)?', text) else 'word'
+    return {STR: 'string', OP: 'operator', PUNCT: 'punctuation'}[kind]
+
+
+_VALUE_WORDS = frozenset({'true', 'false', 'null', 'now'})
+
+
+def _mark(tok, cls: str) -> None:
+    """Sets the class of a token the parser accepts at its position."""
+    if tok is not None:
+        tok.cls = cls
+
+
+def _mark_value(tok) -> None:
+    """A value position: true, false, null and now are keywords; another word stays word."""
+    if tok is not None and tok.k == WORD and tok.t in _VALUE_WORDS:
+        tok.cls = 'keyword'
 
 
 def is_word(tok, text: str) -> bool:
@@ -570,12 +594,14 @@ class _Document:
 
 
 class _Parsed:
-    __slots__ = ('diagnostics', 'document', 'parser')
+    __slots__ = ('diagnostics', 'document', 'parser', 'stop')
 
-    def __init__(self, diagnostics, document, parser):
+    def __init__(self, diagnostics, document, parser, stop=None):
         self.diagnostics = diagnostics
         self.document = document
         self.parser = parser
+        # The stopping rule (limit, header, encoding) or None.
+        self.stop = stop
 
 
 class _ParseContext:
@@ -653,6 +679,7 @@ class _Cursor:
 
     def keyword(self, text: str) -> bool:
         if self.peek(WORD, text):
+            _mark(self.toks[self.i], 'keyword')
             self.i += 1
             return True
         return self.fail(f"'{text}'")
@@ -665,12 +692,16 @@ class _Cursor:
 
     def name(self, what: str):
         if self.more() and self.toks[self.i].k == WORD:
-            return self.next(), True
+            tok = self.next()
+            _mark(tok, 'name')
+            return tok, True
         return None, self.fail(what)
 
     def one_of(self, what: str, *words: str):
         if self.more() and self.toks[self.i].k == WORD and self.toks[self.i].t in words:
-            return self.next(), True
+            tok = self.next()
+            _mark(tok, 'keyword')
+            return tok, True
         return None, self.fail(what)
 
     def quoted(self, what: str):
@@ -690,7 +721,9 @@ class _Cursor:
             self.i += 1
             return None, self.fail("a number after '-'")
         if self.more() and self.toks[self.i].k == WORD:
-            return self.next(), True
+            tok = self.next()
+            _mark_value(tok)
+            return tok, True
         return None, self.fail(what)
 
     def arrow(self) -> bool:
@@ -705,7 +738,11 @@ class _Cursor:
         if not self.peek(WORD, text):
             return False
         nxt = self.i + 1
-        return nxt >= len(self.toks) or not (self.toks[nxt].k == OP and self.toks[nxt].t == '-')
+        if nxt < len(self.toks) and self.toks[nxt].k == OP and self.toks[nxt].t == '-':
+            return False
+        # The caller always takes the word as a form word, so it is a keyword here.
+        _mark(self.toks[self.i], 'keyword')
+        return True
 
     def names(self):
         """`( name, ... )`를 읽는다. 실패하면 None."""
@@ -748,6 +785,14 @@ class DocumentParser:
         self._syntax_line = 0
         self._column_count = 0
         self._foreign_key_count = 0
+        # Analysis state: the lines read as statements (line -> tokens), the lines the parser abandoned,
+        # the stopping rule, and the flags of blocks whose opening line failed (R20).
+        self.read = {}
+        self.abandoned = set()
+        self.stop = None
+        self.table_failed = False
+        self.settings_failed = False
+        self.diagram_failed = False
 
     @property
     def _chain(self):
@@ -755,6 +800,7 @@ class DocumentParser:
 
     def _report(self, rule: str, line: int, index: int, message: str) -> None:
         if rule == 'syntax':
+            self.abandoned.add(line)
             if self._syntax_line == line:
                 return
             self._syntax_line = line
@@ -781,8 +827,10 @@ class DocumentParser:
     def _stop(self, rule: str, tok: Tk, message: str) -> None:
         self._at(rule, tok, message)
         self._stopped = True
+        self.stop = rule
 
     def _name(self, tok: Tk) -> bool:
+        _mark(tok, 'name')
         formed = well_formed(tok.t)
         if not formed:
             self._at('name.format', tok, f'{tok.t} is a reserved word'
@@ -846,14 +894,23 @@ class DocumentParser:
             if first is None:
                 n += 1
                 continue
+            # A body line of a block whose opening line failed keeps lexical classes (R20).
+            body_failed = (state == 'table' and self.table_failed) \
+                or (state == 'settings' and (self.settings_failed or self.table_failed)) \
+                or (state == 'diagram' and self.diagram_failed)
+            if not body_failed:
+                self.read[line] = toks
+            before = state
             if state == 'top':
                 if is_word(first, 'use'):
+                    _mark(first, 'keyword')
                     if phase > 1:
                         self._at('order', first, 'use lines come before tables and diagrams')
                     else:
                         phase = 1
                     self._use(toks, line, own)
                 elif is_word(first, 'table'):
+                    _mark(first, 'keyword')
                     if phase > 2:
                         self._at('order', first, 'tables come before diagrams')
                     else:
@@ -861,6 +918,7 @@ class DocumentParser:
                     table = self._table_header(toks, line, own)
                     state = 'table'
                 elif is_word(first, 'diagram'):
+                    _mark(first, 'keyword')
                     phase = 3
                     diagram = self._diagram_header(toks, line, own)
                     state = 'diagram'
@@ -876,6 +934,7 @@ class DocumentParser:
                 elif lexed is not None:
                     state = self._lexed_table_line(table, toks, line, own)
                 elif is_word(first, 'settings'):
+                    _mark(first, 'keyword')
                     second = toks[1] if len(toks) > 1 else None
                     # Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
                     if table.settings is not None and is_punct(second, '{') and len(toks) == 2:
@@ -889,6 +948,7 @@ class DocumentParser:
                         self._syntax(toks, 2, line, 'expected the end of the line')
                     state = 'settings'
                 elif first.k == WORD and first.t in CONSTRAINT_WORDS:
+                    _mark(first, 'keyword')
                     if table.phase == 2:
                         self._at('order', first, 'key, index, foreign key and check lines come before settings')
                     else:
@@ -916,6 +976,18 @@ class DocumentParser:
                     state = 'top'
                 elif lexed is None:
                     self._placement(diagram, toks, line, own)
+            if before == 'top' and state == 'table':
+                self.table_failed, self.settings_failed = line in self.abandoned, False
+            elif before in ('top', 'table') and state == 'settings':
+                self.settings_failed = line in self.abandoned
+            elif before == 'top' and state == 'diagram':
+                self.diagram_failed = line in self.abandoned
+            elif before == 'settings' and state == 'table':
+                self.settings_failed = False
+            elif before == 'table' and state == 'top':
+                self.table_failed, self.settings_failed = False, False
+            elif before == 'diagram' and state == 'top':
+                self.diagram_failed = False
             n += 1
         if self._stopped or not self.complete:
             return
@@ -935,6 +1007,7 @@ class DocumentParser:
         def fail(offset: int) -> bool:
             self._report('header', 1, offset, 'the first line is exactly dbspec 1 <document>')
             self._stopped = True
+            self.stop = 'header'
             return False
 
         prefix = 'dbspec 1 '
@@ -946,7 +1019,10 @@ class DocumentParser:
             end += 1
         if end == len(prefix) or end < len(text):
             return fail(end)
-        name = lex_line(text, 1)[0][2]
+        toks = lex_line(text, 1)[0]
+        self.read[1] = toks
+        _mark(toks[0], 'keyword')
+        name = toks[2]
         self._name(name)
         self.document.name = name.t
         self.document.name_tok = name
@@ -1094,6 +1170,7 @@ class DocumentParser:
         if type_tok is None or type_tok.k != WORD:
             table.failed.add(name.t)
             return self._syntax(toks, 1, line, 'expected a type')
+        _mark(type_tok, 'type')
         i = 2
         params = None
         if is_punct(toks[i] if i < len(toks) else None, '('):
@@ -1118,12 +1195,15 @@ class DocumentParser:
         complete = True
         if is_word(toks[i] if i < len(toks) else None, 'null'):
             null_tok = toks[i]
+            _mark(null_tok, 'keyword')
             i += 1
         if is_word(toks[i] if i < len(toks) else None, 'identity'):
             identity = toks[i]
+            _mark(identity, 'keyword')
             i += 1
         if is_word(toks[i] if i < len(toks) else None, 'default'):
             default_tok = toks[i]
+            _mark(default_tok, 'keyword')
             i += 1
             v = toks[i] if i < len(toks) else None
             nxt = toks[i + 1] if i + 1 < len(toks) else None
@@ -1133,6 +1213,7 @@ class DocumentParser:
                 i += 2
             elif v is not None and v.k in (WORD, STR):
                 value_tok = v
+                _mark_value(value_tok)
                 i += 1
             else:
                 self._syntax(toks, i, line, 'expected a default value')
@@ -1187,6 +1268,7 @@ class DocumentParser:
             if directions and (is_word(toks[i] if i < len(toks) else None, 'asc')
                                or is_word(toks[i] if i < len(toks) else None, 'desc')):
                 descending = toks[i].t == 'desc'
+                _mark(toks[i], 'keyword')
                 i += 1
             cols.append(_KeyColumn(w, descending))
             if is_punct(toks[i] if i < len(toks) else None, ','):
@@ -1214,6 +1296,7 @@ class DocumentParser:
             if not is_word(toks[1] if len(toks) > 1 else None, 'key'):
                 table.failed_primary = True
                 return self._syntax(toks, 1, line, 'expected key')
+            _mark(toks[1], 'keyword')
             cols = self._key_columns(toks, 2, line, False)
             if cols is None or not self._end(toks, cols[1], line):
                 table.failed_primary = True
@@ -1240,6 +1323,7 @@ class DocumentParser:
         if kw.t == 'foreign':
             if not is_word(toks[1] if len(toks) > 1 else None, 'key'):
                 return self._syntax(toks, 1, line, 'expected key')
+            _mark(toks[1], 'keyword')
             name = toks[2] if len(toks) > 2 else None
             if name is None or name.k != WORD:
                 return self._syntax(toks, 2, line, 'expected a name')
@@ -1249,6 +1333,7 @@ class DocumentParser:
             i = cols[1]
             if not is_word(toks[i] if i < len(toks) else None, 'references'):
                 return self._syntax(toks, i, line, 'expected references')
+            _mark(toks[i], 'keyword')
             target = toks[i + 1] if i + 1 < len(toks) else None
             if target is None or target.k != WORD:
                 return self._syntax(toks, i + 1, line, 'expected a table name')
@@ -1262,10 +1347,14 @@ class DocumentParser:
                 if not is_word(toks[i] if i < len(toks) else None, 'on') \
                         or not is_word(toks[i + 1] if i + 1 < len(toks) else None, event):
                     continue
+                _mark(toks[i], 'keyword')
+                _mark(toks[i + 1], 'keyword')
                 action = toks[i + 2] if i + 2 < len(toks) else None
                 if action is None or action.k != WORD:
                     return self._syntax(toks, i + 2, line, 'expected an action')
                 actions[event] = action.t
+                if action.t in ACTIONS:
+                    _mark(action, 'keyword')
                 action_toks[event] = action
                 i += 3
             if not self._end(toks, i, line):
@@ -1313,6 +1402,7 @@ class DocumentParser:
         kw = toks[0]
         if kw.k != WORD:
             return self._syntax(toks, 0, line, 'expected a setting')
+        _mark(kw, 'setting')
         if kw.t in FORM_SETTINGS:
             entry = self._form_setting(toks, line, comments)
             if entry is not None:
@@ -1352,6 +1442,7 @@ class DocumentParser:
         elif kw.t == 'select':
             if not is_word(toks[1] if len(toks) > 1 else None, 'explicit'):
                 return self._syntax(toks, 1, line, 'expected explicit')
+            _mark(toks[1], 'keyword')
             w = words(2, None)
             if w is None:
                 return
@@ -1367,9 +1458,10 @@ class DocumentParser:
             self._name(w[0])
             stages = w[1:]
             for s in stages:
-                if s.t not in STAGES:
-                    if not self._detached_block:
-                        self._at('setting', s, f'{s.t} is not a codec stage')
+                if s.t in STAGES:
+                    _mark(s, 'keyword')
+                elif not self._detached_block:
+                    self._at('setting', s, f'{s.t} is not a codec stage')
             entry = _Setting(kw, comments, 'codec', column=w[0], stages=tuple(stages))
         elif kw.t == 'blind_index':
             w = words(1, 2)
@@ -1396,6 +1488,7 @@ class DocumentParser:
             for label in ('into', 'column', 'references', 'action', 'previous'):
                 if not is_word(toks[i] if i < len(toks) else None, label):
                     return self._syntax(toks, i, line, f'expected {label}')
+                _mark(toks[i], 'keyword')
                 w = toks[i + 1] if i + 1 < len(toks) else None
                 if w is None or w.k != WORD:
                     return self._syntax(toks, i + 1, line, 'expected a name')
@@ -1410,6 +1503,7 @@ class DocumentParser:
                 listed = self._list(toks, i + 2, line, ')')
                 if listed is None:
                     return
+                _mark(toks[i], 'keyword')
                 lists.append((toks[i], listed[0]))
                 i = listed[1]
             if i < len(toks):
@@ -1451,7 +1545,9 @@ class DocumentParser:
                     args.append(shape)
             # shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다.
             if ok and c.peek(WORD, 'shard'):
-                args.append(c.next())
+                shard = c.next()
+                _mark(shard, 'keyword')
+                args.append(shard)
                 ok = arg('the shard column')
                 if ok:
                     period, ok = c.one_of("'year', 'month' or 'day'", 'year', 'month', 'day')
@@ -1498,6 +1594,7 @@ class DocumentParser:
                 ok = arg('the from state') and c.arrow() and arg('the to state')
             if ok and form in ('transition', 'terminal') and c.peek(WORD, 'require'):
                 require = c.next()
+                _mark(require, 'keyword')
                 columns = c.names()
                 ok = columns is not None
                 if ok:
@@ -1534,6 +1631,7 @@ class DocumentParser:
             return self._syntax(toks, 0, line, 'expected a table name')
         if not is_word(toks[1] if len(toks) > 1 else None, 'at'):
             return self._syntax(toks, 1, line, 'expected at')
+        _mark(toks[1], 'keyword')
         i = 2
         coordinates = []
         for _ in range(2):
@@ -1880,6 +1978,7 @@ class DocumentParser:
             tok = take()
             if not is_word(tok, text):
                 raise _ExpressionSyntax(tok)
+            _mark(tok, 'keyword')
             out.append(text)
 
         def is_number(tok) -> bool:
@@ -1909,6 +2008,7 @@ class DocumentParser:
             if is_number(t):
                 return literal_operand(t, number_text(t.t))
             if is_word(t, 'true') or is_word(t, 'false'):
+                _mark(t, 'keyword')
                 return literal_operand(t, t.t)
             if is_word(t, 'null'):
                 flag('check', t, 'the null literal is not part of a predicate')
@@ -1936,6 +2036,7 @@ class DocumentParser:
             if is_number(t):
                 return literal_operand(t, number_text(t.t))
             if t.t in ('true', 'false'):
+                _mark(t, 'keyword')
                 return literal_operand(t, t.t)
             if t.t == 'null':
                 flag('check', t, 'the null literal is not part of a predicate')
@@ -1955,6 +2056,7 @@ class DocumentParser:
                         break
                 return None
             # Go의 ref: a malformed reference reports its name rule and is not resolved.
+            _mark(t, 'name')
             malformed = _name_rule(t.t)
             if malformed is not None:
                 issue(t, malformed[1], malformed[0])
@@ -2055,11 +2157,14 @@ class DocumentParser:
                 return ('leaf', list(out))
             negated = is_word(t, 'not') and is_word(toks[i + 1] if i + 1 < len(toks) else None, 'in')
             if negated:
-                out.append(take().t)
+                negation = take()
+                _mark(negation, 'keyword')
+                out.append(negation.t)
             u = peek()
             if is_word(u, 'in'):
                 column = subject(left, u)
-                out.append(take().t)
+                _mark(take(), 'keyword')
+                out.append(u.t)
                 expect_punct('(')
                 values = [literal()]
                 while is_punct(peek(), ','):
@@ -2073,9 +2178,11 @@ class DocumentParser:
                 return ('leaf', list(out))
             if is_word(u, 'is'):
                 subject(left, u)
-                out.append(take().t)
+                _mark(take(), 'keyword')
+                out.append(u.t)
                 if is_word(peek(), 'not'):
-                    out.append(take().t)
+                    _mark(take(), 'keyword')
+                    out.append('not')
                 expect_word('null')
                 return ('leaf', list(out))
             alone(start)
@@ -2083,14 +2190,14 @@ class DocumentParser:
         def and_expr():
             left = predicate()
             while is_word(peek(), 'and'):
-                take()
+                _mark(take(), 'keyword')
                 left = ('and', left, predicate())
             return left
 
         def or_expr():
             left = and_expr()
             while is_word(peek(), 'or'):
-                take()
+                _mark(take(), 'keyword')
                 left = ('or', left, and_expr())
             return left
 
@@ -2842,14 +2949,14 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     empty = _Document()
     if utf8_length(text) > MAX_BYTES:
         diagnostics = [DbspecDiagnostic('limit', 1, 1, 'a document has at most 32 MiB')]
-        return _Parsed(diagnostics, empty, None)
+        return _Parsed(diagnostics, empty, None, 'limit')
     raw = text.split('\n')
     encoding = _encoding_error(raw)
     # 인코딩 오류 앞의 완전한 줄만 parse한다(Go의 splitSource): 오류 줄 앞의 진단이 먼저 온다.
     # 첫 줄의 오류(BOM, 첫 줄의 bare CR)는 완전한 줄이 없으므로 그 오류만 보고한다.
     complete = raw if encoding is None else raw[:encoding.line - 1]
     if encoding is not None and not complete:
-        return _Parsed([encoding], empty, None)
+        return _Parsed([encoding], empty, None, 'encoding')
     lines = [line[:-1] if line.endswith('\r') else line for line in complete]
     parser = DocumentParser(lines, context, parents, complete=encoding is None)
     parser.parse()
@@ -2868,23 +2975,23 @@ def _parse_text(text: str, context: _ParseContext, parents) -> _Parsed:
     # 인코딩 오류는 멈춘 오류가 없을 때만 보고한다(Go의 defer: 앞선 header나 limit 멈춤이 우선).
     if encoding is not None and not parser.halted:
         found.append(encoding)
-    return _Parsed(found, parser.document, parser)
+        return _Parsed(found, parser.document, parser, 'encoding')
+    return _Parsed(found, parser.document, parser, parser.stop)
 
 
 def parse_document(text: str, documents):
     """문서 text와 그 선언된 문서 집합의 parse 결과, 또는 원본 순서의 모든 진단.
     On success it returns (document, positions, ()); on failure (None, None, diagnostics)."""
-    parsed = _parse_text(text, _ParseContext(dict(documents)), [])
+    return _outcome(_parse_text(text, _ParseContext(dict(documents)), []))
+
+
+def _outcome(parsed: _Parsed):
     if parsed.diagnostics or parsed.parser is None:
         return None, None, parsed.diagnostics
     return parsed.parser.build(), parsed.parser.positions(), ()
 
 
-def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[
-        DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]:
-    """dbspec 문서를 parse하고 검사한다. `documents`는 use 줄을 위한 문서 집합의
-    다른 문서 이름과 text다.
-    On success it returns (document, positions, []); on failure (None, None, diagnostics)."""
+def _check_arguments(text: str, documents: Mapping[str, str]) -> None:
     if not isinstance(text, str):
         raise TypeError('dbspec text must be a string')
     if not isinstance(documents, dict):
@@ -2892,4 +2999,53 @@ def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[
     for name, source in documents.items():
         if not isinstance(source, str):
             raise TypeError(f'dbspec document {name} must be a string')
+
+
+def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[
+        DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]:
+    """dbspec 문서를 parse하고 검사한다. `documents`는 use 줄을 위한 문서 집합의
+    다른 문서 이름과 text다.
+    On success it returns (document, positions, []); on failure (None, None, diagnostics)."""
+    _check_arguments(text, documents)
     return parse_document(text, documents)
+
+
+def analyze_dbspec(text: str, documents: Mapping[str, str]) -> DbspecAnalysis:
+    """The parse result, unchanged, and the tokens of the text (docs/dbspec.md "Syntax analysis")."""
+    _check_arguments(text, documents)
+    parsed = _parse_text(text, _ParseContext(dict(documents)), [])
+    document, positions, diagnostics = _outcome(parsed)
+    return DbspecAnalysis(document, positions, list(diagnostics), _tokens(text, parsed))
+
+
+def format_dbspec(text: str, documents: Mapping[str, str]) -> tuple[str | None, list[DbspecDiagnostic]]:
+    """format(text) is emit(parse(text)); a document with a diagnostic is refused, never rewritten."""
+    document, _positions, diagnostics = parse_dbspec(text, documents)
+    if document is None:
+        return None, list(diagnostics)
+    return emit_document(document, CANONICAL), []
+
+
+def _tokens(text: str, parsed: _Parsed) -> tuple[DbspecToken, ...]:
+    """The tokens of the text: the parser's classes on the lines it read, lexical classes on the other
+    lines and on the lines the parser abandoned. A limit stop gives no tokens."""
+    if parsed.stop == 'limit':
+        return ()
+    parser = parsed.parser
+    read = parser.read if parser is not None else {}
+    abandoned = parser.abandoned if parser is not None else frozenset()
+    raw = text.split('\n')
+    out = []
+    for n, raw_line in enumerate(raw):
+        line = n + 1
+        # A CR before an LF is part of the line end; a bare CR is an offending character (R8, R22).
+        body = raw_line[:-1] if raw_line.endswith('\r') and line < len(raw) else raw_line
+        stripped = body.lstrip(' ')
+        if stripped.startswith('#'):
+            out.append(DbspecToken(line, len(body) - len(stripped), len(body), 'comment'))
+            continue
+        toks = read[line] if line in read else lex_recover(body, line)
+        for tk in toks:
+            cls = _lexical_class(tk.k, tk.t) if line in abandoned else tk.cls
+            out.append(DbspecToken(line, tk.s, tk.e, cls))
+    return tuple(out)
