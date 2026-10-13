@@ -705,6 +705,31 @@ impl<'m> Gen<'m> {
     }
 }
 
+/// The calls that declare the methods of every prefix of every key of each model (T156): a prefix of one column is its
+/// column method, and a prefix of several columns is the tuple method of those columns. A fixed method of a model is not
+/// declared again.
+fn key_prefix_calls(g: &Gen<'_>) -> Vec<Call> {
+    let mut calls = Vec::new();
+    for gm in &g.models {
+        let e = gm.e;
+        let mut keys: Vec<&[String]> = vec![&e.primary_key];
+        keys.extend(e.uniques.iter().map(|u| u.columns.as_slice()));
+        keys.extend(e.indexes.iter().map(|i| i.columns.as_slice()));
+        for columns in keys {
+            for k in 1..=columns.len() {
+                let name = if k == 1 { columns[0].clone() } else { format!("tuple_{}", columns[..k].join("_with_")) };
+                // A prefix that the chain grammar refuses, such as a tuple of a boolean column, declares no method.
+                if gm.fixed.contains(&name) || parse_chain(g.m, e, &snake_to_pascal(&name).unwrap_or_default()).is_err() {
+                    continue;
+                }
+                // The column method takes one value, and the tuple method takes one list of tuples.
+                calls.push(Call { name, args: vec![syn::parse_quote!(0)], model: Some(gm.typ.clone()), pos: e.name.clone(), attached_many: None });
+            }
+        }
+    }
+    calls
+}
+
 /// 한 document set과 scan의 generated source. `manifest_file`은 manifest text를 담은 file이다.
 pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<String, String> {
     let m = &set.model;
@@ -741,7 +766,8 @@ pub fn generate(set: &DocumentSet, scan: &Scan, manifest_file: &str) -> Result<S
         alias_many.entry(u.alias.clone()).or_default().insert(u.many);
     }
     let getter = |c: &Call| c.name.starts_with("get_") && !c.name.starts_with("get_by_") && !c.name.starts_with("get_count_by_");
-    for call in scan.calls.iter().filter(|c| !getter(c)) {
+    let schema_calls = key_prefix_calls(&g);
+    for call in scan.calls.iter().filter(|c| !getter(c)).chain(schema_calls.iter()) {
         for (gi, typed) in targets(&g, call) {
             let r = Req { call, typed };
             if g.models[gi].fixed.contains(&call.name) || DERIVED.contains(&call.name.as_str()) {
