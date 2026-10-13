@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b342e53d65ac2d19ecb28bd1351676ccb51bb67fd340b75228b97f55ab9f8cdb -->
+<!-- source-sha256: f3d1af5aec1e7f79dcd6e835f10af8b0c72bf0a7884ab6ea256d983afa53dcbf -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-3-2: `tests/dbspec/syntax.json`이 T129가 더한 case 아홉의 token을 담고, 지운 case 셋을 더는 적지 않는다.
 - T128-4-1: `@polyspec/orm/dbspec`가 다시 browser-safe다: renderer 이름은 `node:crypto`와 `Buffer` 대신 `@noble/hashes`에서 SHA-256을, `TextEncoder`에서 byte 길이를 얻으며, browser entry test는 선언한 browser package의 module까지 따라간다.
 - T128-2-3: editor package를 폴더 표준 S5대로 둔다: S5가 거부하는 중첩 `packages/dbspec/<part>/` 대신 각자 독립 component인 `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror`, `packages/dbspec-vscode`다.
 - T132: Go generator scan은 build-tag나 platform 설정을 그 파일을 가진 패키지에만 읽으므로, Go의 model_generation coverage case가 부하에서 120초 기한을 넘지 않고 약 30초에 끝난다.
