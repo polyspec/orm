@@ -596,7 +596,6 @@ dbspec-php-check/show-create:
 # a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
 dbspec-php-check/set:
 	php packages/orm-php/tests/dbspec_set_test.php
-	php packages/orm-php/tests/dbspec_show_create_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
 # dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/orm-php-extension, PHP client의 dbspec 표면을 C로 구현한
@@ -648,7 +647,6 @@ dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
 # the focused cases and requires each result to equal the PHP client's, messages included.
 dbspec-php-extension-check/set: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_set_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
 php-extension-arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) write
 
