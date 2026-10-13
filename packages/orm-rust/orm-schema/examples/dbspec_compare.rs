@@ -1,7 +1,8 @@
 //! 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의 Rust dbspec
-//! 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
+//! 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases of
+//! cases.json and the analysis and format of each case of syntax.json.
 //!
-//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>`
+//! Usage: `cargo run --release -p polyspec-orm-schema --example dbspec_compare -- <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>`
 
 use polyspec_orm_schema::dbspec::{Change, Diagnostic, Dialect, Document, Plan, PlanStep, ReadError, Unsupported};
 use serde_json::{Map, Value};
@@ -31,6 +32,29 @@ struct SharedCases {
     invalid: Vec<TestCase>,
     hashes: Vec<HashCase>,
     files: Vec<FileCase>,
+    sets: Vec<SetCase>,
+    positions: Vec<PositionCase>,
+}
+
+/// A document of a sets case with the name of its header.
+struct NamedDocument {
+    name: String,
+    lines: Vec<String>,
+}
+
+/// A sets case: its documents, the documents that its parse declares beside them, and its external documents.
+struct SetCase {
+    id: String,
+    documents: Vec<NamedDocument>,
+    parsing: Documents,
+    external: Vec<NamedDocument>,
+}
+
+/// A positions case: a main document and the other documents of its set.
+struct PositionCase {
+    id: String,
+    main: String,
+    documents: Documents,
 }
 
 /// cases.json 기준 상대 경로로 파일을 이름 짓는 files case.
@@ -180,6 +204,24 @@ impl<'p> Reader<'p> {
     fn hash_case(&self, case: &Map<String, Value>, location: &str, id: String) -> Result<HashCase, String> {
         Ok(HashCase { id, documents: self.documents(case, location, "documents")? })
     }
+
+    /// An array of documents, each a line array whose first line is a header that names it.
+    fn named_documents(&self, object: &Map<String, Value>, location: &str, key: &str) -> Result<Vec<NamedDocument>, String> {
+        let items = self.field(object, location, key)?.as_array().ok_or_else(|| self.fail(&at(location, key), "is not an array"))?;
+        let mut documents = Vec::with_capacity(items.len());
+        for (i, item) in items.iter().enumerate() {
+            let place = format!("{}[{i}]", at(location, key));
+            let lines = self.lines(item, &place)?;
+            let name = header_name(&lines).ok_or_else(|| self.fail(&format!("{place}[0]"), "has no document name"))?;
+            documents.push(NamedDocument { name, lines });
+        }
+        Ok(documents)
+    }
+}
+
+/// The third word of the first line, the document name of a dbspec header split at single spaces.
+fn header_name(lines: &[String]) -> Option<String> {
+    lines.first()?.split(' ').nth(2).map(str::to_string)
 }
 
 /// tests/dbspec/cases.json을 읽는다.
@@ -199,7 +241,104 @@ fn read_cases(path: &str) -> Result<SharedCases, String> {
         invalid: r.cases(&v, "invalid", test_case)?,
         hashes: r.cases(&v, "hashes", |case, location, id| r.hash_case(case, location, id))?,
         files: r.cases(&v, "files", |case, location, id| Ok(FileCase { id, path: r.string(case, location, "path")? }))?,
+        sets: r.cases(&v, "sets", |case, location, id| {
+            Ok(SetCase {
+                id,
+                documents: r.named_documents(case, location, "documents")?,
+                parsing: r.documents(case, location, "parsing")?,
+                external: if case.contains_key("external") { r.named_documents(case, location, "external")? } else { Vec::new() },
+            })
+        })?,
+        positions: r.cases(&v, "positions", |case, location, id| {
+            let main = r.string(case, location, "main")?;
+            let documents = r.documents(case, location, "documents")?;
+            if !documents.contains_key(&main) {
+                return Err(r.fail(&at(&at(location, "documents"), &main), "is missing"));
+            }
+            Ok(PositionCase { id, main, documents })
+        })?,
     })
+}
+
+/// The case ids of tests/dbspec/syntax.json in file order, with the reader that names their places. The expected
+/// tokens are the runtime tests' to check; this runner compares what each client gives.
+fn read_syntax(path: &str) -> Result<(Reader<'_>, Vec<String>), String> {
+    let (r, v) = Reader::open(path)?;
+    let ids = r.cases(&v, "cases", |_, _, id| Ok(id))?;
+    Ok((r, ids))
+}
+
+/// The input of every analysis that syntax.json names, by its id, as scripts/dbspec/syntax-vectors.mjs derives it
+/// from cases.json: the main document of each canonical, normalize and invalid case ("<section>/<id>"), each document
+/// of a sets case with the parsing documents and the other documents of the case by header name ("sets/<id>/<place>",
+/// 1-based), and each document of a hashes case with the others ("hashes/<id>/<name>").
+fn syntax_inputs(cases: &SharedCases) -> BTreeMap<String, (String, BTreeMap<String, String>)> {
+    let mut inputs = BTreeMap::new();
+    for (kind, list) in [("canonical", &cases.canonical), ("normalize", &cases.normalize), ("invalid", &cases.invalid)] {
+        for case in list {
+            let set =
+                case.documents.iter().filter(|(name, _)| **name != case.main).map(|(name, lines)| (name.clone(), join(lines, case.crlf, case.mixed))).collect();
+            inputs.insert(format!("{kind}/{}", case.id), (join(&case.documents[&case.main], case.crlf, case.mixed), set));
+        }
+    }
+    for case in &cases.sets {
+        let every: Vec<&NamedDocument> = case.documents.iter().chain(&case.external).collect();
+        for (i, document) in case.documents.iter().enumerate() {
+            let mut set: BTreeMap<String, String> = case.parsing.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
+            for (j, other) in every.iter().enumerate() {
+                if j != i {
+                    set.insert(other.name.clone(), join(&other.lines, false, false));
+                }
+            }
+            inputs.insert(format!("sets/{}/{}", case.id, i + 1), (join(&document.lines, false, false), set));
+        }
+    }
+    for case in &cases.hashes {
+        for (name, lines) in &case.documents {
+            let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
+            inputs.insert(format!("hashes/{}/{name}", case.id), (join(lines, false, false), set));
+        }
+    }
+    inputs
+}
+
+/// Prints the declaration positions of the main document of each positions case, as
+/// "| kind<TAB>line<TAB>column<TAB>path..." lines, or its diagnostics.
+fn write_positions(out: &mut impl Write, cases: &[PositionCase]) -> std::io::Result<()> {
+    for case in cases {
+        writeln!(out, "positions/{}", case.id)?;
+        let set = case.documents.iter().filter(|(name, _)| **name != case.main).map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
+        match polyspec_orm_schema::dbspec::parse(&join(&case.documents[&case.main], false, false), &set) {
+            Err(diagnostics) => write_diagnostics(out, &diagnostics)?,
+            Ok(parsed) => {
+                for p in &parsed.positions {
+                    writeln!(out, "| {}\t{}\t{}\t{}", p.kind, p.line, p.column, p.path.join("\t"))?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Prints the analysis of one syntax case, its tokens ("| line start end class") and its diagnostics, then
+/// "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+fn write_syntax(out: &mut impl Write, id: &str, text: &str, set: &BTreeMap<String, String>) -> std::io::Result<()> {
+    writeln!(out, "syntax/{id}")?;
+    let analysis = polyspec_orm_schema::dbspec::analyze(text, set);
+    for t in &analysis.tokens {
+        writeln!(out, "| {} {} {} {}", t.line, t.start, t.end, t.class)?;
+    }
+    write_diagnostics(out, &analysis.diagnostics)?;
+    writeln!(out, "syntax/{id}/format")?;
+    match polyspec_orm_schema::dbspec::format(text, set) {
+        Err(diagnostics) => write_diagnostics(out, &diagnostics),
+        Ok(formatted) => {
+            for line in formatted.split('\n') {
+                writeln!(out, "| {line}")?;
+            }
+            Ok(())
+        }
+    }
 }
 
 /// tests/dbspec/ddl.json의 cases를 읽는다.
@@ -592,7 +731,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
     Ok(())
 }
 
-fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str) -> Result<(), String> {
+fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, mermaid_path: &str, syntax_path: &str) -> Result<(), String> {
     let cases = read_cases(cases_path)?;
     let stress = match polyspec_orm_schema::dbspec::read_file(Path::new(stress_path)) {
         Ok(text) => text,
@@ -654,16 +793,23 @@ fn run(cases_path: &str, stress_path: &str, ddl_path: &str, plans_path: &str, me
     }
     write_plans(&mut out, &read_plans(plans_path)?).map_err(io)?;
     write_mermaid(&mut out, &read_mermaid(mermaid_path)?)?;
+    write_positions(&mut out, &cases.positions).map_err(io)?;
+    let (r, ids) = read_syntax(syntax_path)?;
+    let inputs = syntax_inputs(&cases);
+    for (i, id) in ids.iter().enumerate() {
+        let (text, set) = inputs.get(id).ok_or_else(|| r.fail(&format!("cases[{i}].id"), "names no input of the shared cases"))?;
+        write_syntax(&mut out, id, text, set).map_err(io)?;
+    }
     out.flush().map_err(io)
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let [cases, stress, ddl, plans, mermaid] = args.as_slice() else {
-        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>");
+    let [cases, stress, ddl, plans, mermaid, syntax] = args.as_slice() else {
+        eprintln!("usage: dbspec_compare <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>");
         return ExitCode::from(2);
     };
-    match run(cases, stress, ddl, plans, mermaid) {
+    match run(cases, stress, ddl, plans, mermaid, syntax) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");

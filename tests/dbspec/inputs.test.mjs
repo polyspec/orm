@@ -26,8 +26,8 @@ const missing = join(directory, 'missing.json');
 const folder = join(directory, 'folder');
 mkdirSync(folder);
 
-const vectors = ['cases', 'ddl', 'plans', 'mermaid'].map(name => join(root, `tests/dbspec/${name}.json`));
-const compareInputs = [vectors[0], stress, vectors[1], vectors[2], vectors[3]];
+const vectors = ['cases', 'ddl', 'plans', 'mermaid', 'syntax'].map(name => join(root, `tests/dbspec/${name}.json`));
+const compareInputs = [vectors[0], stress, vectors[1], vectors[2], vectors[3], vectors[4]];
 
 // round trip case의 path만 바꾼 mermaid vector를 쓴다.
 function mermaidWithPath(path) {
@@ -46,7 +46,7 @@ const applyRunners = [
 ];
 const stressHarness = { name: 'stress rust', command: join(cargoTarget(), 'debug/examples/dbspec_stress'), args: [] };
 // inputNames는 INPUTS 순서의 input을 message에 쓰는 이름이다.
-const inputNames = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid' };
+const inputNames = { cases: 'cases', stress: 'stress document', ddl: 'ddl', plans: 'plans', mermaid: 'mermaid', syntax: 'syntax' };
 
 // 각 경우는 runner, 그 인자, 그리고 stderr에 나와야 할 읽을 수 없는 경로다.
 const cases = [];

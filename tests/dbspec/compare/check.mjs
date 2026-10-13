@@ -9,26 +9,29 @@
 // 끝난다. Mermaid export case는 Mermaid text와 빠진 객체(이유 없이
 // "= kind<TAB>table<TAB>name") 또는 문서의 diagnostic을, import와 invalid case는 emit한
 // 문서와 빠진 객체 또는 diagnostic을, round trip case는 문서의 export와 그다음
-// "<name>/import"와 그 export의 import를 출력한다. 각 runner는 두 번 실행하며 모든 출력이 첫 Go 출력과 같아야
-// 한다.
+// "<name>/import"와 그 export의 import를 출력한다. Each positions case of cases.json prints the declaration positions
+// of its main document ("| kind<TAB>line<TAB>column<TAB>path..." lines) or its diagnostics. Each case of syntax.json
+// prints, from the input of cases.json that its id names, the tokens of the analysis ("| line start end class") and
+// its diagnostics, then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal. 각 runner는 두 번
+// 실행하며 모든 출력이 첫 Go 출력과 같아야 한다.
 //
-// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
+// Usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 // (TypeScript build, Rust example의 debug build와 PHP 확장의 build 뒤)
 import { compare } from './compare.mjs';
 import { runRunner, runners } from './runners.mjs';
 import { COMPUTE, runCase } from '../../testcase.mjs';
 
 // TIMEOUT은 runner 실행 하나의 기한이다. Go runner는 `go run` compile을 포함하고 모든
-// runner가 stress 문서와 vector file 다섯 개를 읽는다.
+// runner가 stress 문서와 vector file 여섯 개를 읽는다.
 const TIMEOUT = 120000;
-const [cases, stress, ddl, plans, mermaid] = process.argv.slice(2);
-if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined || mermaid === undefined) {
-  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>');
+const [cases, stress, ddl, plans, mermaid, syntax] = process.argv.slice(2);
+if (cases === undefined || stress === undefined || ddl === undefined || plans === undefined || mermaid === undefined || syntax === undefined) {
+  console.error('usage: node tests/dbspec/compare/check.mjs <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>');
   process.exit(2);
 }
 
 async function run(runner) {
-  const result = await runRunner(runner, [cases, stress, ddl, plans, mermaid], TIMEOUT);
+  const result = await runRunner(runner, [cases, stress, ddl, plans, mermaid, syntax], TIMEOUT);
   if (result.code !== 0) throw new Error(`${runner.name} exited with ${result.code ?? result.signal}: ${result.stderr}`);
   return result.stdout;
 }

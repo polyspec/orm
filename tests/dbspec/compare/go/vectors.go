@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // vectorError는 vector file의 위치와 문제를 밝힌다.
@@ -200,7 +201,93 @@ func readCases(path string) (sharedCases, error) {
 		path, err := r.string(c, location, "path")
 		return fileCase{ID: id, Path: path}, err
 	})
+	if err != nil {
+		return all, err
+	}
+	if all.Sets, err = cases(r, v, "sets", r.setCase); err != nil {
+		return all, err
+	}
+	all.Positions, err = cases(r, v, "positions", func(c map[string]any, location, id string) (positionCase, error) {
+		p := positionCase{ID: id}
+		var err error
+		if p.Main, err = r.string(c, location, "main"); err != nil {
+			return p, err
+		}
+		if p.Documents, err = r.documents(c, location, "documents"); err != nil {
+			return p, err
+		}
+		if _, ok := p.Documents[p.Main]; !ok {
+			return p, r.fail(at(at(location, "documents"), p.Main), "is missing")
+		}
+		return p, nil
+	})
 	return all, err
+}
+
+// setCase reads a sets case: its documents, the documents that its parse declares beside them (parsing) and the
+// optional external documents, each document with the name of its header.
+func (r vectorReader) setCase(c map[string]any, location, id string) (setCase, error) {
+	s := setCase{ID: id}
+	var err error
+	if s.Documents, err = r.namedDocuments(c, location, "documents"); err != nil {
+		return s, err
+	}
+	if s.Parsing, err = r.documents(c, location, "parsing"); err != nil {
+		return s, err
+	}
+	if _, ok := c["external"]; ok {
+		s.External, err = r.namedDocuments(c, location, "external")
+	}
+	return s, err
+}
+
+// namedDocuments reads an array of documents, each a line array whose first line is a header that names it.
+func (r vectorReader) namedDocuments(c map[string]any, location, key string) ([]namedDocument, error) {
+	value, err := r.field(c, location, key)
+	if err != nil {
+		return nil, err
+	}
+	items, ok := value.([]any)
+	if !ok {
+		return nil, r.fail(at(location, key), "is not an array")
+	}
+	documents := make([]namedDocument, len(items))
+	for i, item := range items {
+		where := fmt.Sprintf("%s[%d]", at(location, key), i)
+		lines, err := r.lines(item, where)
+		if err != nil {
+			return nil, err
+		}
+		name, ok := headerName(lines)
+		if !ok {
+			return nil, r.fail(where+"[0]", "has no document name")
+		}
+		documents[i] = namedDocument{Name: name, Lines: lines}
+	}
+	return documents, nil
+}
+
+// headerName is the third word of the first line, the document name of a dbspec header, split at single spaces.
+func headerName(lines []string) (string, bool) {
+	if len(lines) == 0 {
+		return "", false
+	}
+	words := strings.Split(lines[0], " ")
+	if len(words) < 3 {
+		return "", false
+	}
+	return words[2], true
+}
+
+// readSyntax reads the case ids of tests/dbspec/syntax.json in file order. The expected tokens are the runtime
+// tests' to check; this runner compares what each client gives.
+func readSyntax(path string) (vectorReader, []string, error) {
+	r, v, err := readVectors(path)
+	if err != nil {
+		return r, nil, err
+	}
+	ids, err := cases(r, v, "cases", func(_ map[string]any, _, id string) (string, error) { return id, nil })
+	return r, ids, err
 }
 
 // hashCase는 id와 documents만 가진 case를 읽는다.

@@ -426,8 +426,11 @@ dbspec-introspect-compare-bench:
 	$(MAKE) --no-print-directory dbspec-introspect-compare-check DBSPEC_INTROSPECT_TABLES=2000 DBSPEC_INTROSPECT_PROFILE=release
 
 # dbspec-compare-check는 Go, PHP, TypeScript, Rust dbspec runner와 PHP 확장 orm_dbspec의 runner를 tests/dbspec/cases.json,
-# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json으로
-# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. PHP 확장은 이 실행의 directory에
+# stress 문서(DBSPEC_COMPARE_TABLES개 table), tests/dbspec/ddl.json, tests/dbspec/plans.json, tests/dbspec/mermaid.json,
+# tests/dbspec/syntax.json으로
+# 각각 두 번 실행하고, 두 run의 출력이 처음 다른 case에서 실패한다. The runs also print the declaration positions of
+# the positions cases of cases.json and, for each case of syntax.json, the tokens and the format of the input of
+# cases.json that its id names. PHP 확장은 이 실행의 directory에
 # build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
 # apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
@@ -488,7 +491,7 @@ dbspec-compare-check/runners: dbspec-compare-check/prepare
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000

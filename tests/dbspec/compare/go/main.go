@@ -1,7 +1,8 @@
 // Command go는 모든 공유 case, stress 문서, statement vector, plan vector, Mermaid vector의
-// Go dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다.
+// Go dbspec 결과를 tests/dbspec/compare/check.mjs의 줄 형식으로 출력한다. It then prints the positions cases
+// of cases.json and the analysis and format of each case of syntax.json.
 //
-// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>
+// Usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>
 package main
 
 import (
@@ -41,6 +42,129 @@ type sharedCases struct {
 	Invalid   []testCase
 	Hashes    []hashCase
 	Files     []fileCase
+	Sets      []setCase
+	Positions []positionCase
+}
+
+// namedDocument is a document of a sets case with the name of its header.
+type namedDocument struct {
+	Name  string
+	Lines []string
+}
+
+// setCase is a sets case of cases.json.
+type setCase struct {
+	ID        string
+	Documents []namedDocument
+	Parsing   map[string][]string
+	External  []namedDocument
+}
+
+// positionCase is a positions case of cases.json: a main document and the other documents of its set.
+type positionCase struct {
+	ID        string
+	Main      string
+	Documents map[string][]string
+}
+
+// syntaxInput is the text and the declared document set of one analysis of syntax.json.
+type syntaxInput struct {
+	Text      string
+	Documents map[string]string
+}
+
+// syntaxInputs gives the input of every analysis that syntax.json names, by its id, as
+// scripts/dbspec/syntax-vectors.mjs derives it from cases.json: the main document of each canonical, normalize and
+// invalid case ("<section>/<id>"), each document of a sets case with the parsing documents and the other documents
+// of the case by header name ("sets/<id>/<place>", 1-based), and each document of a hashes case with the others
+// ("hashes/<id>/<name>").
+func syntaxInputs(all sharedCases) map[string]syntaxInput {
+	inputs := map[string]syntaxInput{}
+	for _, kind := range []struct {
+		name  string
+		cases []testCase
+	}{{"canonical", all.Canonical}, {"normalize", all.Normalize}, {"invalid", all.Invalid}} {
+		for _, c := range kind.cases {
+			set := map[string]string{}
+			for name, lines := range c.Documents {
+				if name != c.Main {
+					set[name] = join(lines, c.CRLF, c.Mixed)
+				}
+			}
+			inputs[kind.name+"/"+c.ID] = syntaxInput{Text: join(c.Documents[c.Main], c.CRLF, c.Mixed), Documents: set}
+		}
+	}
+	for _, c := range all.Sets {
+		every := append(append([]namedDocument{}, c.Documents...), c.External...)
+		for i, d := range c.Documents {
+			set := map[string]string{}
+			for name, lines := range c.Parsing {
+				set[name] = join(lines, false, false)
+			}
+			for j, other := range every {
+				if j != i {
+					set[other.Name] = join(other.Lines, false, false)
+				}
+			}
+			inputs[fmt.Sprintf("sets/%s/%d", c.ID, i+1)] = syntaxInput{Text: join(d.Lines, false, false), Documents: set}
+		}
+	}
+	for _, c := range all.Hashes {
+		for name, lines := range c.Documents {
+			set := map[string]string{}
+			for other, l := range c.Documents {
+				if other != name {
+					set[other] = join(l, false, false)
+				}
+			}
+			inputs["hashes/"+c.ID+"/"+name] = syntaxInput{Text: join(lines, false, false), Documents: set}
+		}
+	}
+	return inputs
+}
+
+// writePositions prints each positions case: the declaration positions of its main document as
+// "| kind<TAB>line<TAB>column<TAB>path..." lines, or its diagnostics.
+func writePositions(out *bufio.Writer, cases []positionCase) {
+	for _, c := range cases {
+		fmt.Fprintf(out, "positions/%s\n", c.ID)
+		set := map[string]string{}
+		for name, lines := range c.Documents {
+			if name != c.Main {
+				set[name] = join(lines, false, false)
+			}
+		}
+		_, positions, diagnostics := dbspec.Parse(join(c.Documents[c.Main], false, false), set)
+		for _, d := range diagnostics {
+			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+		}
+		for _, p := range positions {
+			fmt.Fprintf(out, "| %s\t%d\t%d\t%s\n", p.Kind, p.Line, p.Column, strings.Join(p.Path, "\t"))
+		}
+	}
+}
+
+// writeSyntax prints the analysis of one syntax case, its tokens ("| line start end class") and its diagnostics,
+// then "syntax/<id>/format" and the formatted text or the diagnostics of the refusal.
+func writeSyntax(out *bufio.Writer, id string, input syntaxInput) {
+	fmt.Fprintf(out, "syntax/%s\n", id)
+	analysis := dbspec.Analyze(input.Text, input.Documents)
+	for _, t := range analysis.Tokens {
+		fmt.Fprintf(out, "| %d %d %d %s\n", t.Line, t.Start, t.End, t.Class)
+	}
+	for _, d := range analysis.Diagnostics {
+		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+	}
+	fmt.Fprintf(out, "syntax/%s/format\n", id)
+	text, diagnostics := dbspec.Format(input.Text, input.Documents)
+	for _, d := range diagnostics {
+		fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
+	}
+	if len(diagnostics) == 0 {
+		for _, line := range strings.Split(text, "\n") {
+			fmt.Fprintf(out, "| %s\n", line)
+		}
+	}
 }
 
 // join은 줄을 LF로, crlf이면 CRLF로, mixed이면 CRLF와 LF를 번갈아 마지막 줄 끝 없이 잇는다.
@@ -488,8 +612,8 @@ func writeRead(out *bufio.Writer, text string, diagnostics []dbspec.Diagnostic, 
 }
 
 func main() {
-	if len(os.Args) != 6 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json>")
+	if len(os.Args) != 7 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./tests/dbspec/compare/go <cases.json> <stress document> <ddl.json> <plans.json> <mermaid.json> <syntax.json>")
 		os.Exit(2)
 	}
 	all, err := readCases(os.Args[1])
@@ -556,6 +680,21 @@ func main() {
 	if err := writeMermaid(out, mermaid); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+	writePositions(out, all.Positions)
+	r, syntax, err := readSyntax(os.Args[6])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	inputs := syntaxInputs(all)
+	for i, id := range syntax {
+		input, ok := inputs[id]
+		if !ok {
+			fmt.Fprintln(os.Stderr, r.fail(fmt.Sprintf("cases[%d].id", i), "names no input of the shared cases"))
+			os.Exit(1)
+		}
+		writeSyntax(out, id, input)
 	}
 	if err := out.Flush(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
