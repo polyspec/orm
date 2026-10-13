@@ -232,6 +232,8 @@ typedef struct parser {
     smap lexical;
     /* 줄을 읽는 중이면 참이다: 그때의 구문 오류는 그 줄을 버린다(R1). */
     bool reading;
+    /* class를 기록하는지다: 분석만 기록하고 parse는 token 자료를 남기지 않는다. */
+    bool marking;
     /* 열린 줄이 실패한 block의 본문은 읽지만 어휘 class만 가진다(R20). */
     bool table_failed;
     bool settings_failed;
@@ -255,7 +257,7 @@ static void error(parser *p, const char *rule, zend_long line, zend_long column,
 {
     if (strcmp(rule, "syntax") == 0) {
         /* 읽는 중의 구문 오류는 그 줄을 버린다(R1); 확인 단계의 오류는 버리지 않는다. */
-        if (p->reading) {
+        if (p->reading && p->marking) {
             smap_set(&p->lexical, fmt("%d", line), TRUEP);
         }
         str key = fmt("%d", line);
@@ -346,7 +348,7 @@ static bool tok_is(parser *p, size_t i, const char *s)
 /* 읽은 token에 class를 준다. 파서가 만든 token(줄 0)은 준 class가 없다. */
 static void mark_token(parser *p, const token *t, const char *class)
 {
-    if (t == NULL || t->line == 0) {
+    if (!p->marking || t == NULL || t->line == 0) {
         return;
     }
     smap_set(&p->marks, fmt("%d:%d", (int)t->line, (int)t->index), (void *)class);
@@ -991,7 +993,8 @@ static void open_table(parser *p)
     table *t = table_new(name.text);
     t->comments = take_comments(p);
     t->header_failed = header_failed;
-    p->table_failed = header_failed;
+    /* R20: the body of a block whose opening line failed (a syntax diagnostic on it) keeps lexical classes. */
+    p->table_failed = syntax_here(p);
     PUSH(p->doc->tables, t);
     declare(p, SL("table"), p->line, name.column, path1(name.text));
     if (name.text.n > 0) {
@@ -3089,7 +3092,7 @@ static void close_table(parser *p)
         tcheck_rec *r = &p->table_checks.v[i];
         str text = SL("");
         diags errors = {0};
-        if (!expression_parse(&r->toks, r->line, r->end, p->columns, &action, &text, &errors, &p->marks)) {
+        if (!expression_parse(&r->toks, r->line, r->end, p->columns, &action, &text, &errors, p->marking ? &p->marks : NULL)) {
             text = SL("");
         }
         for (size_t k = 0; k < errors.n; k++) {
@@ -3359,7 +3362,7 @@ static void read_source(parser *p, str source)
             PUSH(p->comments, trimmed);
             continue;
         }
-        if (p->table_failed || p->settings_failed || p->diagram_failed) {
+        if (p->marking && (p->table_failed || p->settings_failed || p->diagram_failed)) {
             smap_set(&p->lexical, fmt("%d", (int)p->line), TRUEP);
         }
         tokenize(p);
@@ -3517,6 +3520,7 @@ static void analysis_tokens(parser *p, str source, dtokv *out)
 
 static document *run(parser *p, str source, diags *out, dposv *pos, dtokv *tokens)
 {
+    p->marking = tokens != NULL;
     bool stopped = !read_until_stop(p, source);
     diag stopd = {0};
     if (stopped) {

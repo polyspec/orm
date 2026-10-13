@@ -74,7 +74,7 @@ static bool ordering(str s)
 static void mark_at(xparser *p, size_t at, const char *class)
 {
     const token *t = &p->t->v[at];
-    if (t->line == 0) {
+    if (p->marks == NULL || t->line == 0) {
         return;
     }
     smap_set(p->marks, fmt("%d:%d", (int)t->line, (int)t->index), (void *)class);
