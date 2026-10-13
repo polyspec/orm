@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 054915d2353f82a916996fc412d9bb2758b216b8d2b15f823401e96fd6150b71 -->
+<!-- source-sha256: 7e07756c6d36c12b61b214ee14e49b1d7848ffe86803849b933283d2529c7387 -->
 # dbspec
 
 [English](dbspec.md)
@@ -301,15 +301,15 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 
 각 구현은 dbspec lexer 하나와 parser 하나를 가지며, 구문 분석은 그 parser의 출력이다. editor 계층, 생성 파일, 정규 표현식 어느 것도 문법 규칙을 갖지 않는다. TextMate 같은 정규 표현식 문법은 parser 문맥이 없고, 이름이 예약되지 않은 keyword 단어일 수 있으므로(`key`, `text`, `references`는 올바른 column 이름이다) parser와 다르게 token을 분류한다.
 
-`analyze(text, set)`은 parse 결과를 바꾸지 않고 그대로, 그리고 text의 token을 돌려준다. token은 `{line, start, end, class}`이다. `line`은 1부터 시작하고, `start`와 `end`는 줄 시작부터의 Unicode code point 수이며, `end`는 포함하지 않는다.
+`analyze(text, set)`은 parse 결과를 바꾸지 않고 그대로, 그리고 text의 token을 돌려준다. token은 `{line, start, end, class}`이다. `line`은 1부터 시작하고, `start`는 그 줄에서 token 앞에 있는 Unicode code point의 수이고, `end`는 token 뒤 code point 앞까지의 수다.
 
 줄은 단어, 문자열, 구두점(`{`, `}`, `(`, `)`, `,`), operator(`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`)로 읽는다. 숫자와 선택적 소수부로 된 단어(`12`, `0.50`)는 숫자이고, comment는 줄 전체다. parser가 각 token의 class를 정한다:
 
 | Class | Token |
 | --- | --- |
-| `keyword` | 그 줄의 문법이 그 위치에서 keyword로 읽는 단어, 예를 들어 `table`, `primary`, `references`, `null`, `and` |
-| `type` | column type의 단어 |
-| `name` | 문서, table, column, constraint, index, diagram의 이름. 선언과 참조 모두 |
+| `keyword` | 문법이 그 위치에 고정한 단어, 곧 그 위치가 받는 단어 가운데 하나: header의 `dbspec`, `table`, `primary`, `key`, `references`, `on`, `cascade`, `asc`, `settings`, setting의 option 단어, `->`를 뺀 state machine 줄의 단어, `diagram`, `at`, predicate 단어 `and`, `or`, `not`, `in`, `between`, `is`, 그리고 literal 단어 `true`, `false`, `null` |
+| `type` | column의 type을 가리키는 단어 |
+| `name` | 문법이 그 위치에서 자유롭게 받는 단어: 문서, table, column, constraint, index, diagram, state의 이름, 또는 `navigation`의 관계 이름. 선언과 참조 모두 |
 | `setting` | `settings` block 줄의 첫 단어. 그 줄의 다른 단어는 위의 class를 따른다 |
 | `number` | 숫자 |
 | `string` | 문자열 |
