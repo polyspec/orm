@@ -19,7 +19,7 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const fixtures = fileURLToPath(new URL('../../../../tests/editor/', import.meta.url));
 const { values } = parseArgs({ options: { vscode: { type: 'string' } } });
-if (!values.vscode) throw new Error('--vscode <tools directory> is required');
+if (!values.vscode) throw new Error('--vscode <tools directory> is required; run make dbspec-vscode-integration, which passes var/tools/vscode');
 const vscodeExecutablePath = installedExecutable(root, values.vscode);
 console.log(`[integration] VS Code ${vscodeExecutablePath}`);
 // VS Code creates its IPC socket in the user data directory; a Unix socket path is limited to about 100 bytes, so the
