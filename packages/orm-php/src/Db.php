@@ -152,6 +152,13 @@ final class Db
         return new Utils($this);
     }
 
+    /** The connection state: one connection per Db in PHP. */
+    public function stats(): Stats
+    {
+        $busy = self::activeFor($this) !== null ? 1 : 0;
+        return new Stats(1, 1, $busy, 1 - $busy);
+    }
+
     /**
      * Releases cached statements and closes the connection; the Db cannot be
      * used afterwards.

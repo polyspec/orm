@@ -129,11 +129,10 @@ final class Utils
         return new AesUtils($this->db, $this);
     }
 
-    /** The connection state: one connection per Db in PHP. */
+    /** The connection state of the Db (Db::stats). */
     public function stats(): Stats
     {
-        $busy = Db::activeFor($this->db) !== null ? 1 : 0;
-        return new Stats(1, 1, $busy, 1 - $busy);
+        return $this->db->stats();
     }
 }
 

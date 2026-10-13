@@ -414,6 +414,7 @@ $tests['transactions'] = function (Db $db, string $dsn): void {
     check(code(fn() => $db->transaction(fn() => $db->transaction(fn() => null, readOnly: true))) === Code::CONFIG, 'nested options');
     check($db->utils()->schema()->empty() === false, 'schema empty');
     check($db->utils()->stats()->openConnections === 1, 'stats');
+    check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
 };
 
 $tests['utilities'] = function (Db $db, string $dsn): void {
