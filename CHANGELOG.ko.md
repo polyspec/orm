@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: df0ddbb20168d19bdb0db4421053275a63c7417cc9f8d28b19acefa3294b4da6 -->
+<!-- source-sha256: b31074e5dc8147a2da2f9ae0139f973f81b77447013100eefee8bfbb650261c0 -->
 # 변경 이력
 
 ## Unreleased
 
+- T153: Python Collection의 get과 fetched가 key_text를 import해 더는 NameError로 실패하지 않는다.
 - T147: interface 검사가 rule이 선언하지 않은 공개 component method를 거부한다.
 - T147-5: Rust AesKeyring이 key version을 나열하고, rule AESKeyring.versions가 선언된다.
 - T147-2: Python이 Db.stats, Utils.privileges, Utils.stats, SchemaUtils.exists, installed, empty를, PHP가 Db::stats를 가지며, 그 interface rule이 선언된다.
