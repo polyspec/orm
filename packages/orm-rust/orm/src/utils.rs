@@ -486,6 +486,11 @@ impl AesKeyring {
         self.current
     }
 
+    /// Returns the declared versions in ascending order.
+    pub fn versions(&self) -> Vec<i32> {
+        self.keys.keys().copied().collect()
+    }
+
     fn key(&self, version: i32) -> Result<&str> {
         self.keys.get(&version).map(String::as_str).ok_or_else(|| Error::Config(format!("AES version {version} is not declared")))
     }
@@ -815,4 +820,18 @@ fn external_error(differences: Vec<String>) -> Result<()> {
         return Ok(());
     }
     Err(Error::Config(format!("the tables that the set uses from external documents differ from the database: {}", differences.join("; "))))
+}
+
+#[cfg(test)]
+mod keyring_tests {
+    use super::AesKeyring;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn versions_lists_the_declared_versions_in_ascending_order() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let keys = BTreeMap::from([(3, "c".to_owned()), (1, "a".to_owned()), (2, "b".to_owned())]);
+        let keyring = AesKeyring::new(keys, 2).unwrap();
+        assert_eq!(keyring.versions(), vec![1, 2, 3]);
+    }
 }
