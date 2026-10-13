@@ -11318,6 +11318,34 @@
           "rule": "setting"
         }
       ]
+    },
+    {
+      "id": "encoding-after-a-syntax-error",
+      "documents": {
+        "d": [
+          "dbspec 1 d",
+          "",
+          "table t {",
+          "  id i64 bogus",
+          "  primary key (id)",
+          "}",
+          "",
+          "# x\ry"
+        ]
+      },
+      "main": "d",
+      "errors": [
+        {
+          "line": 4,
+          "column": 10,
+          "rule": "syntax"
+        },
+        {
+          "line": 8,
+          "column": 4,
+          "rule": "encoding"
+        }
+      ]
     }
   ],
   "hashes": [
