@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9174fde2d00607509ac721056d13bc036defc7a1388aacd3fff4ce3b98efded6 -->
+<!-- source-sha256: 4ad71e4b75c429afea6c9384fe42db57ad276efb554619ede09580d7e51c6209 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-1-2: set reader가 set 파일의 어느 object에서든 반복된 key를 거부하고 `schema`를 IEEE 754 double로 읽는다.
 - T139: Rust YAML codec이 yaml-rust2만으로 읽고 쓰며 YAML 1.2 core schema로 decode한다(`07`은 7, `0b101`과 `tRuE`는 문자열, i64를 넘는 정수와 `1e400`은 `CODEC_DECODE`); serde_yaml_ng와 유지보수가 끊긴 unsafe-libyaml이 두 Rust lock에서 빠진다. yaml-rust2가 그대로 되읽히게 쓸 수 없는 문자열은 `CODEC_ENCODE`다(T139-1).
 - T128-2a-1-1: set reader가 root를 끝의 구분자 없이 조사하므로 root의 symbolic link를 따르지 않는다.
 - T141: docs/dbspec.md "Files"가 Python byte 검사 `read_dbspec_bytes`와 파일 reader `read_dbspec_file`을 적는다.

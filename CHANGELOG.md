@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-1-2: the set reader refuses a repeated key in any object of the set file and reads `schema` as an IEEE 754 double.
 - T139: the Rust YAML codec reads and writes with yaml-rust2 alone and decodes by the YAML 1.2 core schema (`07` is 7, `0b101` and `tRuE` are strings, integers beyond i64 and `1e400` are `CODEC_DECODE`); serde_yaml_ng and the unmaintained unsafe-libyaml leave both Rust locks. A string that yaml-rust2 cannot write so that it reads back unchanged is `CODEC_ENCODE` (T139-1).
 - T128-2a-1-1: the set reader examines the root without its trailing separator, so a symbolic link at the root is never followed.
 - T141: docs/dbspec.md "Files" names the Python byte check `read_dbspec_bytes` and file reader `read_dbspec_file`.
