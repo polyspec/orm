@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 85e9e3ffbe634d2b73b9d8df61f40d63ba8178e00b02204abc1424fbd7981465 -->
+<!-- source-sha256: c8d717fd40d0ce6b43c90b693d3d8c1b76aa456a90b3abe56f7b825143be6ad3 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2-1: dbspec 구문 분석 규칙이 숫자를 형태(숫자와 선택적 소수부로 된 단어)로 정의하고, lexical로만 읽는 줄에서도 `number` class를 유지한다.
 - T128-3s (breaking): 한 기계의 반복된 `state_machine` 줄은 모든 runtime에서 뒤 줄의 `setting` error다: state마다 `initial` 줄과 `terminal` 줄 하나, `require` 목록과 상관없이 `<from> -> <to>` 쌍마다 전환 줄 하나. 전에는 그런 문서를 아무 말 없이 받아들였다.
 - T128-2: dbspec 명세가 구문 분석(`analyze`와 그 token class, 모든 구현에서 하나의 parser로부터)과 formatting(`emit(parse(text))`인 `format`, diagnostic이 있는 문서의 거부, 불변식 셋)을 적고, docs/editor.md가 editor 도구를 적는다: browser에서 쓸 수 있는 parser 진입점, language service, adapter, 그 import 규칙, 결과, 생태계 방식, fixture.
 - T126-1: orm은 kit을 branch가 아닌 release tag v0.0.31에서 vendor하고, Python을 uv로 선언하며(config/toolchain.json의 `pythonBuild.version`과 `uv`), `release-assets`가 자신이 build하는 데 쓰는 설치(`install-go`, `install-node`)를 선언한다.

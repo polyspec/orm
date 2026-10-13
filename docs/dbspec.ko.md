@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: b2948110fd5ec5296da14f08f52a8a8fcd12fba578f7bd8f1a2275909b7e11fd -->
+<!-- source-sha256: c4c7828f3a08e0f4fcbcb6253a2ef8a7f9d288462e3e45dc2d3525662c221595 -->
 # dbspec
 
 [English](dbspec.md)
@@ -303,7 +303,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 
 `analyze(text, set)`은 parse 결과를 바꾸지 않고 그대로, 그리고 text의 token을 돌려준다. token은 `{line, start, end, class}`이다. `line`은 1부터 시작하고, `start`와 `end`는 줄 시작부터의 Unicode code point 수이며, `end`는 포함하지 않는다.
 
-lexer는 token 네 종류를 읽는다: 단어, 문자열, 구두점(`{`, `}`, `(`, `)`, `,`), operator(`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`). 숫자는 단어이고, comment는 줄 전체다. parser가 각 token의 class를 정한다:
+줄은 단어, 문자열, 구두점(`{`, `}`, `(`, `)`, `,`), operator(`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`)로 읽는다. 숫자와 선택적 소수부로 된 단어(`12`, `0.50`)는 숫자이고, comment는 줄 전체다. parser가 각 token의 class를 정한다:
 
 | Class | Token |
 | --- | --- |
@@ -311,7 +311,7 @@ lexer는 token 네 종류를 읽는다: 단어, 문자열, 구두점(`{`, `}`, `
 | `type` | column type의 단어 |
 | `name` | 문서, table, column, constraint, index, diagram의 이름. 선언과 참조 모두 |
 | `setting` | `settings` block 줄의 첫 단어. 그 줄의 다른 단어는 위의 class를 따른다 |
-| `number` | parser가 숫자로 읽는 단어 |
+| `number` | 숫자 |
 | `string` | 문자열 |
 | `operator` | operator. `->`의 `-`와 `>`도 포함한다 |
 | `punctuation` | 구두점 |
@@ -321,7 +321,7 @@ lexer는 token 네 종류를 읽는다: 단어, 문자열, 구두점(`{`, `}`, `
 parse가 끝나지 않는 경우는 다음과 같이 정한다:
 
 - `limit` error는 token을 만들지 않는다. 검사가 할당보다 먼저이기 때문이다([한도와 error](#limits-and-errors));
-- `encoding`이나 `header`로 중단되면 중단 줄과 그 뒤 모든 줄은 lexical token만 만든다: 단어는 숫자를 포함해 `word`이고, 문자열, operator, 구두점, comment 줄은 그 class를 유지한다. `encoding`에서 단독 CR은 줄 끝이 아니며 lex는 그 뒤에서 이어진다;
+- `encoding`이나 `header`로 중단되면 중단 줄과 그 뒤 모든 줄은 lexical token만 만든다: 단어는 `word`이고, 숫자, 문자열, operator, 구두점, comment 줄은 그 class를 유지한다. `encoding`에서 단독 CR은 줄 끝이 아니며 lex는 그 뒤에서 이어진다;
 - 올바르지 않은 문자는 token을 만들지 않는다;
 - parser가 `syntax` diagnostic으로 포기한 줄에서 단어는 `word`이다. 의미 diagnostic만 있는 줄은 parser가 정한 class를 유지한다.
 
