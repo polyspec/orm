@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-6: `@polyspec/dbspec-lsp` (`packages/dbspec-lsp`, command `dbspec-lsp`) is the dbspec language server: diagnostics, semantic tokens, folding and formatting, with each document's set from its nearest `dbspec-set.json`.
 - T128-5-1: `dbspec-fmt` formats dbspec documents from the command line (`--write`, `--check`, standard input), each in the set that `resolveSet` finds from the nearest `dbspec-set.json`; `make install-cli` installs it.
 - T145: the TypeScript client locks mysql2 3.24.6.
 - T128-2a-6-1: the Rust set vector test warns on a slow run instead of failing it, and `dbspec-rust-check/set` runs its two tests as separate parts.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b4cc23684e3e43fc363c86f5ca97560007fc57618a90e9c49a663fb93967d37a -->
+<!-- source-sha256: edce8e2fcf7f10daa8b77d3788cf91343c027311e4aa0f7b2e85ce3906648e6a -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-6: `@polyspec/dbspec-lsp`(`packages/dbspec-lsp`, 명령 `dbspec-lsp`)가 dbspec language server다: diagnostic, semantic token, folding, formatting을 주며, 각 문서의 집합은 가장 가까운 `dbspec-set.json`에서 온다.
 - T128-5-1: `dbspec-fmt`가 명령줄에서 dbspec 문서를 format한다(`--write`, `--check`, 표준 입력). 각 문서는 `resolveSet`이 가장 가까운 `dbspec-set.json`에서 찾은 집합 안에서 다룬다; `make install-cli`가 이를 설치한다.
 - T145: TypeScript client가 mysql2 3.24.6을 고정한다.
 - T128-2a-6-1: Rust set vector test가 느린 실행을 실패시키지 않고 경고하며, `dbspec-rust-check/set`이 두 test를 별도 part로 실행한다.
