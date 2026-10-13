@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: f32c825193ee3292e6f7cb5116e75494b7094e4e004fdc4725547f10055c51eb -->
+<!-- source-sha256: 058c3d46df91e35b847f4875cd8bedd4d77f54e117d2e8a8e9769bcca7913c8f -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -964,4 +964,5 @@
 - [ ] T136 새 worktree에서 `make install`을 재현하고 고친다. 원인: T128-3p agent가 새 worktree에서 `make install`이 Python 도구에서 실패하며 uv가 선언되지 않았다고 보고했다; uv는 선언되어 있으므로(config/toolchain.json) 보고된 원인은 틀렸고 진짜 원인은 모른다. 인수 조건: 새 worktree에서 실패를 정확한 출력과 함께 재현하고, 원인을 고치거나 보고가 틀렸음을 보이며, red를 먼저 본다.
 - [ ] T137 kit의 현재 release와 그 표준을 받아들인다. 원인: orm은 kit이 표준 S1–S9를 담은 PRINCIPLES.md와 TypeScript 도구를 갖기 전의 v0.0.31을 vendor한다; orm AGENTS.md:31은 아직 `packages/orm-<kind>`를 정하는데, 폴더 표준 S5는 이를 거부한다(repository prefix 없음, runtime port는 `packages/<runtime>/`). 인수 조건: kit 최신 release로 `make kit-sync`; AGENTS.md(+ko)가 vendor한 PRINCIPLES.md를 link하고 orm 고유 규칙만 남긴다; `config/layout.yml`이 kit 공통 규칙 위에 orm을 매핑하며 예외마다 이유를 단다; runtime package를 `packages/<runtime>/`(go, ts, php, php-ext, python, rust)로 옮기고 모든 경로, manifest, module path, workflow를 호환 경로 없이 갱신한다; `make layout-check`와 `make kit-check`가 통과한다.
 - [o] T138 mermaid를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 root package가 12.1.0을 고정한 사이 mermaid 12.2.0이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mermaid를 12.2.0에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 보고하지 않는다; `npm run docs:check`가 Mermaid source 20개와 함께 통과한다.
+- [ ] T139 YAML codec을 pure-Rust YAML library 하나로 읽고 쓴다. 원인: 2026-10-13 review가 packages/orm-rust와 bench/rust에서 RUSTSEC-2024-0449(unsafe-libyaml 유지보수 중단)를 찾았다. 이는 Rust codec이 decode와 encode에 쓰는 serde_yaml_ng를 통해 들어오며, 같은 text는 이미 yaml-rust2가 검증한다; fork인 serde_norway는 2024-12 이후 release가 없다. 인수 조건: `yaml` 단계가 docs/codec.md의 규칙(공통 값 모델, `CODEC_DECODE`로 거부하는 형태, encode 실패 시 `CODEC_ENCODE`)대로 yaml-rust2만으로 decode와 encode를 한다; serde_yaml_ng와 unsafe-libyaml이 두 lock에서 빠진다; 동작이 바뀌는 codec vector에서 red를 먼저 본다; Rust codec test와 client 간 codec 검사가 통과한다; `make dependency-policy-check`가 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
