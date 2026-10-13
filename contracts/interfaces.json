@@ -58,6 +58,8 @@
         "Dbspec.readFile",
         "Dbspec.readBytes",
         "Dbspec.parse",
+        "Dbspec.analyze",
+        "Dbspec.format",
         "Dbspec.emit",
         "Dbspec.manifest",
         "Dbspec.render",
