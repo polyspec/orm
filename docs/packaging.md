@@ -8,7 +8,7 @@
 | equality across languages | `tests/conformance` vectors on MySQL, PostgreSQL, and SQLite | the four planners must produce the same SQL, binds, and results | none |
 | artifacts | `orm-gen-<version>-<os>-<arch>`, `SHA256SUMS` | the Go `orm-gen` runs at build time; the schema operations are client library functions | — (the version comes from VERSION; file names carry it, never a "latest" symlink) |
 | distribution | Go: module path; PHP: composer package `polyspec/orm` with `bin/orm-gen`; TypeScript: npm package `@polyspec/orm` with the `orm-gen` bin; Rust: crates `polyspec-orm` and `polyspec-orm-build` | — | a registry publish is a separate decision |
-| configuration | DSN and secrets are arguments of the connect call; the schema path is a connection option (Go, PHP, TypeScript) or embedded by the build (Rust) | — | — |
+| configuration | DSN and secrets are arguments of the connect call; the schema path is a connection option (Go, PHP, TypeScript), the generated schema is an argument of `Db.connect_schema` (Python), or it is embedded by the build (Rust) | — | — |
 | drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | a measured 2× win from another driver on the hot path |
 | YAML codec | Go `go.yaml.in/yaml/v3`, PHP `symfony/yaml`, Rust `yaml-rust2`, TypeScript `yaml`; lock files are committed | the same 80 vectors and invalid-input cases run in all four clients | replace a library only when the shared vectors and error cases remain unchanged |
 

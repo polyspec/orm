@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 4f757d30fe442177e05616ab53b98802978f146b20d362c3de8a6166d55d5cd9 -->
+<!-- source-sha256: 88e091b8f2afd62623a3239530e0616fb553a466a2a03caa6e769f768c8af658 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -990,5 +990,5 @@
 - [ ] T147 interface rule이 선언하지 않은 component method를 거부한다. 원인: rule 없는 Dbspec component method가 있어도 `make interface-check`가 통과하므로(T128-2a-7이 찾음) 빠진 rule이 red로 드러나지 않는다. 인수 조건: manifest 검사가 rule 없는 component method를 거부하며, red를 먼저 본다.
 - [ ] T148 parity binding 실행 규칙(R3)이 dbspec unit에서 성립하게 한다. 원인: T128-3과 T128-2a-7이 dbspec unit의 binding이 다른 case 이름을 보고하거나(TypeScript, Python), case를 보고하지 않거나(Rust), 실행되지 않음(PHP는 없는 phpunit이 필요하고, extension은 어느 target도 build하지 않는 library가 필요)을 찾았다. 인수 조건: 모든 dbspec unit의 binding 실행이 모든 runtime에서 case id를 보고하거나, kit의 규칙을 근거와 함께 바로잡는다(kit K42가 Go `/` 규칙을 바꾼다); red를 먼저 본다.
 - [ ] T149 남은 test 파일을 소유하고 schema_definition에서 Python을 덮는다. 원인: `packages/orm-npm/tests/browser-entry.mjs`(T128-4)와 `scripts/dbspec/syntax-vectors.mjs`가 어느 feature에도 속하지 않고, `schema_definition`은 Python이 `planned`이며 검증 명령이 없다. 인수 조건: 각 파일이 소유되고, generator가 behaviour test(다시 생성하면 같은 byte)를 가지며, Python의 schema_definition coverage가 실행된다.
-- [ ] T150 낡은 generator 문장 둘을 고친다. 원인: docs/usage.md는 `--check`가 Go, PHP, TypeScript orm-gen에 있다고 하지만 Python에도 있고, docs/packaging.md의 configuration 행은 schema 경로를 Go, PHP, TypeScript만의 connection option이라 한다. 인수 조건: 두 문장(+ko)이 code와 대조해 다섯 client와 맞는다.
+- [o] T150 낡은 generator 문장 둘을 고친다. 원인: docs/usage.md는 `--check`가 Go, PHP, TypeScript orm-gen에 있다고 하지만 Python에도 있고, docs/packaging.md의 configuration 행은 schema 경로를 Go, PHP, TypeScript만의 connection option이라 한다. 인수 조건: 두 문장(+ko)이 code와 대조해 다섯 client와 맞는다. 증거: `bin_orm_gen.py`에는 하나뿐인 `models.py`에 `missing`이나 `differs`를 출력하는 `--check`가 있고, `Db.connect_schema(dsn, schema)`는 생성된 스키마를 받는다; docs/usage.md와 docs/packaging.md(+ko)가 이제 그렇게 적는다; `make documents-check`와 `npm run docs:rules-check`가 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
