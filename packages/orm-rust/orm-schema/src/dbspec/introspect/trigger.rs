@@ -33,7 +33,7 @@ impl Catalog {
                 continue;
             };
             match trigger_setting(dialect, t, &list) {
-                Some(setting) => self.table(&table).expect("table found above").settings.push(setting),
+                Some(lines) => self.table(&table).expect("table found above").settings.extend(lines),
                 None => {
                     for tr in &list {
                         self.report("trigger", &table, &tr.name, "the trigger is not the renderer output of immutable or audit");
@@ -45,38 +45,38 @@ impl Catalog {
 }
 
 /// trigger 집합이 같은 renderer 출력을 주는 setting 줄. 없으면 None이다.
-fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<String> {
+/// 각 setting을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting들의
+/// renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 None이다(docs/dialects.md
+/// "Triggers"). 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지 않는다.
+fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<Vec<String>> {
     let names: BTreeMap<&str, &ITrigger> = list.iter().map(|tr| (tr.name.as_str(), tr)).collect();
-    let mut candidates: Vec<(Setting, String)> = Vec::new();
-    if list.len() == 2 {
-        candidates.push((Setting::Immutable, "immutable".to_owned()));
+    let mut found: Vec<(Setting, String)> = Vec::new();
+    if ["immutable_update", "immutable_delete"].iter().any(|event| names.contains_key(renderer_name(&t.name, event).as_str())) {
+        found.push((Setting::Immutable, "immutable".to_owned()));
     }
-    if let (Some(insert), 3) = (names.get(renderer_name(&t.name, "audit_insert").as_str()), list.len()) {
+    if let Some(insert) = names.get(renderer_name(&t.name, "audit_insert").as_str()) {
         let update = names.get(renderer_name(&t.name, "audit_update").as_str()).map_or(&[][..], |u| &u.statements[..]);
         let m = AUDIT_INSERT.captures(statement_body(&insert.statements));
         let u = AUDIT_UPDATE.captures(statement_body(update));
         if let Some(candidate) = m.zip(u).and_then(|(m, u)| audit_of(t, group(&m, 1), group(&m, 2), group(&u, 1))) {
-            candidates.push(candidate);
+            found.push(candidate);
         }
     }
-    let r = Renderer { d: dialect };
-    for (setting, line) in candidates {
-        let want = r.triggers(&model(t, setting));
-        let mut got: Option<Vec<String>> = Some(Vec::new());
-        for w in trigger_order(&want) {
-            match (names.get(w), got.as_mut()) {
-                (Some(tr), Some(out)) => out.extend(tr.statements.iter().cloned()),
-                _ => {
-                    got = None;
-                    break;
-                }
-            }
-        }
-        if got.unwrap_or_default() == want {
-            return Some(line);
-        }
+    if found.is_empty() {
+        return None;
     }
-    None
+    let (settings, lines): (Vec<Setting>, Vec<String>) = found.into_iter().unzip();
+    let want = Renderer { d: dialect }.triggers(&model(t, settings));
+    let wanted = trigger_order(&want);
+    if wanted.len() != list.len() {
+        return None;
+    }
+    let mut got = Vec::new();
+    for w in wanted {
+        let tr = names.get(w)?;
+        got.extend(tr.statements.iter().cloned());
+    }
+    (got == want).then_some(lines)
 }
 
 /// audit insert trigger의 column 목록(action, previous, 기록하는 column)과 update trigger의
@@ -109,10 +109,10 @@ fn name(text: &str) -> Name {
 }
 
 /// renderer가 trigger를 쓰는 table model: column 이름과 type, setting 하나.
-fn model(t: &ITable, setting: Setting) -> Table {
+fn model(t: &ITable, settings: Vec<Setting>) -> Table {
     let columns =
         t.columns.iter().map(|c| Column { comments: Vec::new(), name: name(&c.name), ty: c.typ, nullable: false, identity: None, default: None }).collect();
-    let line = SettingLine { comments: Vec::new(), pos: Default::default(), setting };
+    let lines = settings.into_iter().map(|setting| SettingLine { comments: Vec::new(), pos: Default::default(), setting }).collect();
     Table {
         comments: Vec::new(),
         name: name(&t.name),
@@ -122,7 +122,7 @@ fn model(t: &ITable, setting: Setting) -> Table {
         indexes: Vec::new(),
         foreign_keys: Vec::new(),
         checks: Vec::new(),
-        settings: Some(Settings { comments: Vec::new(), lines: vec![line], closing: Vec::new() }),
+        settings: Some(Settings { comments: Vec::new(), lines, closing: Vec::new() }),
         closing: Vec::new(),
     }
 }
