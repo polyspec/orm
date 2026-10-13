@@ -433,7 +433,8 @@ dbspec-introspect-compare-bench:
 # cases.json that its id names. PHP 확장은 이 실행의 directory에
 # build한다(PHP_EXTENSION_LIBRARY). 그 전에 모든 runner가
 # section이나 field를 빼거나 type을 바꾼 vector를 위치를 밝힌 error로 거부해야 하고, compare,
-# apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. runner는
+# apply, Rust stress runner가 없거나 directory인 input을 그 경로와 함께 거부해야 한다. A runner also refuses a section
+# or field of cases.json that the format does not name. runner는
 # test build와 의존성을 함께 쓰는 debug build다. dbspec-compare-bench는 같은 target을 2000 table
 # 문서로 실행한다.
 .PHONY: dbspec-compare-check dbspec-compare-bench

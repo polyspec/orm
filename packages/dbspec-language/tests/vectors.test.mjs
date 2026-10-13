@@ -15,13 +15,14 @@ import { nodeSetHost } from '../dist/cli/host.js';
 import { parseDbspec } from '@polyspec/orm/dbspec';
 import { dbspecManifest } from '@polyspec/orm';
 import { codePointIndex, join, parserLines, utf16Index, vectorsFile } from './helpers.mjs';
+import { readCases } from '../../../tests/dbspec/cases.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
 const vector = (name, body) => caseTest(name, TIMEOUT, body);
 
 const { openDocument, resolveSet } = language;
-const cases = vectorsFile('cases.json');
+const cases = readCases();
 const syntax = vectorsFile('syntax.json');
 
 /** The text of a document of a case, joined with the case's line ends. */

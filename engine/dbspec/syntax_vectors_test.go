@@ -26,24 +26,7 @@ type syntaxInput struct {
 
 // exactKeys reports a missing or an unknown field of object.
 func (r vectorReader) exactKeys(object map[string]any, location string, keys ...string) error {
-	allowed := map[string]bool{}
-	for _, k := range keys {
-		allowed[k] = true
-		if _, ok := object[k]; !ok {
-			return r.fail(vectorAt(location, k), "is missing")
-		}
-	}
-	names := make([]string, 0, len(object))
-	for k := range object {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-	for _, k := range names {
-		if !allowed[k] {
-			return r.fail(vectorAt(location, k), "is not a known field")
-		}
-	}
-	return nil
+	return r.fields(object, location, keys)
 }
 
 // loadSyntaxVectors reads tests/dbspec/syntax.json strictly.

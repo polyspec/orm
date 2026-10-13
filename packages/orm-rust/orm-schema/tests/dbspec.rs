@@ -5,6 +5,9 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
+#[path = "common/dbspec_cases.rs"]
+mod dbspec_cases;
+
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 // SUITE_DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
 // (polyspec_orm_testcase::wall_for_cpu).
@@ -12,6 +15,14 @@ const SUITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn cases_path() -> PathBuf {
     polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json")
+}
+
+/// tests/dbspec/cases.json, read strictly: a missing or unknown section or field of any section panics with its place.
+fn read_cases() -> Value {
+    let path = cases_path();
+    let value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").unwrap_or_else(|e| panic!("{e}"));
+    value
 }
 
 /// Line ends of a case: LF, CRLF when `crlf` is true, or alternating CRLF and
@@ -121,10 +132,9 @@ fn run(case: &Value, kind: &str) {
 }
 
 /// The positions case: the main document parses, and its declaration positions equal the listed ones in
-/// order. Every key of the case and of each position is read strictly: an unknown or missing key panics.
+/// order.
 fn run_positions(case: &Value) {
     let id = case["id"].as_str().unwrap();
-    assert_keys(case, &["id", "documents", "main", "positions"], id);
     let (text, set) = declared(case);
     let parsed = match dbspec::parse(&text, &set) {
         Ok(parsed) => parsed,
@@ -135,7 +145,6 @@ fn run_positions(case: &Value) {
         .unwrap()
         .iter()
         .map(|p| {
-            assert_keys(p, &["kind", "path", "line", "column"], id);
             let path = p["path"].as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_owned()).collect();
             (p["kind"].as_str().unwrap().to_owned(), path, p["line"].as_u64().unwrap() as usize, p["column"].as_u64().unwrap() as usize)
         })
@@ -158,10 +167,8 @@ fn assert_keys(value: &Value, keys: &[&str], id: &str) {
 fn shared_dbspec_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
-    let path = cases_path();
-    polyspec_orm_testcase::step(format_args!("start dbspec vectors {}", path.display()));
-    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
-    assert_eq!(file["version"].as_u64(), Some(1));
+    polyspec_orm_testcase::step(format_args!("start dbspec vectors {}", cases_path().display()));
+    let file = read_cases();
     let mut seen = std::collections::BTreeSet::new();
     let mut count = 0;
     for kind in ["canonical", "normalize", "invalid"] {
@@ -243,7 +250,7 @@ fn vector_inputs(cases: &Value) -> Vec<(String, String, BTreeMap<String, String>
 fn shared_dbspec_syntax() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
-    let cases: Value = serde_json::from_slice(&std::fs::read(cases_path()).unwrap()).unwrap();
+    let cases = read_cases();
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/syntax.json");
     let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
     assert_keys(&file, &["version", "note", "cases"], "syntax.json");
@@ -291,7 +298,7 @@ fn shared_dbspec_files() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
     let clock = CaseClock::start();
     let path = cases_path();
-    let file: Value = serde_json::from_slice(&std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))).unwrap();
+    let file = read_cases();
     let cases = file["files"].as_array().expect("files cases are listed");
     assert!(!cases.is_empty(), "files cases are not empty");
     for case in cases {
@@ -342,4 +349,35 @@ fn shared_dbspec_files() {
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     polyspec_orm_testcase::step(format_args!("dbspec files {} cases cpu={cpu:?} wall={wall:?}", cases.len()));
+}
+
+/// A change to cases.json, with the location and the problem that the reader names for it.
+type Mutation<'a> = (&'a str, &'a str, Box<dyn Fn(&mut Value)>);
+
+/// The reader of cases.json refuses a missing or an unknown section or field of every section, naming it.
+#[test]
+fn shared_dbspec_cases_reader_refuses_missing_and_unknown_fields() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let original = read_cases();
+    let manifest = original["sets"].as_array().unwrap().iter().position(|c| c.get("manifest").is_some()).expect("a sets case has a manifest");
+    let manifest_extra = format!("sets[{manifest}].manifest.extra");
+    let mutations: Vec<Mutation> = vec![
+        ("note", "is missing", Box::new(|v| drop(v.as_object_mut().unwrap().remove("note")))),
+        ("extra", "is not a known field", Box::new(|v| v["extra"] = Value::Array(Vec::new()))),
+        ("canonical[0].extra", "is not a known field", Box::new(|v| v["canonical"][0]["extra"] = Value::Bool(true))),
+        ("normalize[0].canonical", "is missing", Box::new(|v| drop(v["normalize"][0].as_object_mut().unwrap().remove("canonical")))),
+        ("invalid[0].errors[0].extra", "is not a known field", Box::new(|v| v["invalid"][0]["errors"][0]["extra"] = Value::from(1))),
+        ("hashes[0].extra", "is not a known field", Box::new(|v| v["hashes"][0]["extra"] = Value::Bool(true))),
+        ("sets[0].extra", "is not a known field", Box::new(|v| v["sets"][0]["extra"] = Value::Bool(true))),
+        (&manifest_extra, "is not a known field", Box::new(move |v| v["sets"][manifest]["manifest"]["extra"] = Value::Array(Vec::new()))),
+        ("files[0].errors", "is missing", Box::new(|v| drop(v["files"][0].as_object_mut().unwrap().remove("errors")))),
+        ("positions[0].positions[0].extra", "is not a known field", Box::new(|v| v["positions"][0]["positions"][0]["extra"] = Value::from(1))),
+        ("positions[0].positions[0].line", "is not an integer", Box::new(|v| v["positions"][0]["positions"][0]["line"] = Value::Bool(true))),
+    ];
+    for (location, problem, change) in &mutations {
+        let mut value = original.clone();
+        change(&mut value);
+        assert_eq!(dbspec_cases::check_cases(&value, "tests/dbspec/cases.json"), Err(format!("tests/dbspec/cases.json: {location} {problem}")), "{location}");
+    }
+    polyspec_orm_testcase::step(format_args!("{} refused", mutations.len()));
 }

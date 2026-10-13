@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 )
 
@@ -51,6 +52,32 @@ func vectorAt(location, key string) string {
 		return key
 	}
 	return location + "." + key
+}
+
+// fields reports a missing required field or an unknown field of object: a field that is
+// neither required nor optional.
+func (r vectorReader) fields(object map[string]any, location string, required []string, optional ...string) error {
+	allowed := map[string]bool{}
+	for _, k := range optional {
+		allowed[k] = true
+	}
+	for _, k := range required {
+		allowed[k] = true
+		if _, ok := object[k]; !ok {
+			return r.fail(vectorAt(location, k), "is missing")
+		}
+	}
+	names := make([]string, 0, len(object))
+	for k := range object {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	for _, k := range names {
+		if !allowed[k] {
+			return r.fail(vectorAt(location, k), "is not a known field")
+		}
+	}
+	return nil
 }
 
 // field는 object의 key 값을 돌려주고, key가 없으면 error다.
@@ -323,6 +350,9 @@ func (r vectorReader) locatedErrors(object map[string]any, location, key string)
 		e, ok := item.(map[string]any)
 		if !ok {
 			return nil, r.fail(at, "is not an object")
+		}
+		if err := r.fields(e, at, []string{"line", "column", "rule"}); err != nil {
+			return nil, err
 		}
 		if out[i].Line, err = r.integerField(e, at, "line"); err != nil {
 			return nil, err

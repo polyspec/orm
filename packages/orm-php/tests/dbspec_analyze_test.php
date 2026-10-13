@@ -12,7 +12,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Token;
 
 $root = dirname(__DIR__, 3);
-$cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
+$cases = dbspec_read_cases();
 
 /** @return list<array{0:int,1:int,2:int,3:string}> */
 function analysis_tokens(string $text, array $documents): array

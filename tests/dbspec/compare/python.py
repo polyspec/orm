@@ -11,6 +11,8 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'src'))
 # ordered-json의 Python 배포를 sibling checkout에서 import한다(docs/plans/execution-checklist.md T43.5-1).
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
+sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'tests'))
+from dbspec_cases_reader import CasesError, check_cases as check_shared_cases  # noqa: E402
 
 try:
     from polyspec.orm.dbspec import (  # noqa: E402
@@ -88,11 +90,6 @@ def field(path, obj, location, key, kind):
     return value
 
 
-# optionalBoolean은 key가 없으면 False를, 있으면 boolean인지 확인한 값을 돌려준다.
-def optional_boolean(path, obj, location, key):
-    return field(path, obj, location, key, 'boolean') if key in obj else False
-
-
 # checkLines는 value가 string의 array인지 확인한다.
 def check_lines(path, value, at):
     if not isinstance(value, list):
@@ -124,31 +121,20 @@ def cases(path, obj, key, check):
         check(c, at)
 
 
+# check_cases reads cases.json strictly (packages/orm-python/tests/dbspec_cases_reader.py) and checks that each
+# document of a sets case names itself in its header.
 def check_cases(path, v):
-    for kind in ['canonical', 'normalize', 'invalid']:
-        def check(c, at):
-            main = field(path, c, at, 'main', 'string')
-            docs = documents(path, c, at, 'documents')
-            if main not in docs:
-                fail(path, f'{at}.documents.{main}', 'is missing')
-            optional_boolean(path, c, at, 'crlf')
-            optional_boolean(path, c, at, 'mixed')
-        cases(path, v, kind, check)
-    cases(path, v, 'hashes', lambda c, at: documents(path, c, at, 'documents'))
-    cases(path, v, 'files', lambda c, at: field(path, c, at, 'path', 'string'))
+    try:
+        check_shared_cases(v, path)
+    except CasesError as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
 
     def check_set(c, at):
         named_documents(path, c, at, 'documents')
-        documents(path, c, at, 'parsing')
         if 'external' in c:
             named_documents(path, c, at, 'external')
     cases(path, v, 'sets', check_set)
-
-    def check_position(c, at):
-        main = field(path, c, at, 'main', 'string')
-        if main not in documents(path, c, at, 'documents'):
-            fail(path, f'{at}.documents.{main}', 'is missing')
-    cases(path, v, 'positions', check_position)
 
 
 # header_name is the third word of the first line, the document name of a dbspec header, split at single spaces.

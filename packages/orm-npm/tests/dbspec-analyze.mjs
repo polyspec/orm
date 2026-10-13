@@ -9,9 +9,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { analyzeDbspec, formatDbspec, parseDbspec } from '../dist/dbspec/index.js';
 import { generate, join, render, vectorInputs } from '../../../scripts/dbspec/syntax-vectors.mjs';
+import { readCases } from '../../../tests/dbspec/cases.mjs';
 
 const root = new URL('../../../', import.meta.url);
-const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
+const cases = readCases();
 const TIMEOUT = 15000;
 const CLASSES = new Set(['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word']);
 

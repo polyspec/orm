@@ -7,24 +7,13 @@ require __DIR__ . '/dbspec_cases.php';
 
 $started = caseClockStart();
 $root = dirname(__DIR__, 3);
-$cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
-if ($cases['version'] !== 1) {
-    throw new RuntimeException('Unknown dbspec vector version');
-}
+// dbspec_read_cases refuses a missing or unknown section or field of every section, naming it.
+$cases = dbspec_read_cases();
 $counts = [];
 foreach (['canonical', 'normalize', 'invalid'] as $kind) {
-    if (!isset($cases[$kind]) || $cases[$kind] === []) {
-        throw new RuntimeException("Missing $kind vectors");
-    }
     $counts[$kind] = dbspec_run_cases($kind, $cases[$kind], 2.0);
 }
-if (!isset($cases['positions']) || $cases['positions'] === []) {
-    throw new RuntimeException('Missing positions vectors');
-}
 $counts['positions'] = dbspec_run_position_cases($cases['positions'], 2.0);
-if (!isset($cases['files']) || $cases['files'] === []) {
-    throw new RuntimeException('Missing files vectors');
-}
 // files case는 Dbspec::readFile에 path를 주어, Dbspec::readBytes에 파일 byte와 case path를
 // 이름으로 주어 두 번 읽는다. signature가 없는 byte는 "<name> is not a dbspec document",
 // UTF-8이 아닌 byte는 "<name> is not valid UTF-8" diagnostic 하나와 null text를, 나머지는
@@ -67,6 +56,39 @@ foreach ($cases['files'] as $case) {
         $counts['files'] = ($counts['files'] ?? 0) + 1;
     }
 }
+// The reader of cases.json refuses a missing or an unknown section or field of every section, naming it.
+testcase_begin('dbspec_vectors/strict-reader', TESTCASE_COMPUTE);
+$text = (string) file_get_contents("$root/tests/dbspec/cases.json");
+$manifest = array_key_first(array_filter($cases['sets'], static fn(array $c): bool => array_key_exists('manifest', $c)));
+$mutations = [
+    ['note', 'is missing', static function (stdClass $v): void { unset($v->note); }],
+    ['extra', 'is not a known field', static function (stdClass $v): void { $v->extra = []; }],
+    ['canonical[0].extra', 'is not a known field', static function (stdClass $v): void { $v->canonical[0]->extra = true; }],
+    ['normalize[0].canonical', 'is missing', static function (stdClass $v): void { unset($v->normalize[0]->canonical); }],
+    ['invalid[0].errors[0].extra', 'is not a known field', static function (stdClass $v): void { $v->invalid[0]->errors[0]->extra = 1; }],
+    ['hashes[0].extra', 'is not a known field', static function (stdClass $v): void { $v->hashes[0]->extra = true; }],
+    ['sets[0].extra', 'is not a known field', static function (stdClass $v): void { $v->sets[0]->extra = true; }],
+    ["sets[$manifest].manifest.extra", 'is not a known field', static function (stdClass $v) use ($manifest): void { $v->sets[$manifest]->manifest->extra = []; }],
+    ['files[0].errors', 'is missing', static function (stdClass $v): void { unset($v->files[0]->errors); }],
+    ['positions[0].positions[0].extra', 'is not a known field', static function (stdClass $v): void { $v->positions[0]->positions[0]->extra = 1; }],
+    ['positions[0].positions[0].line', 'is not an integer', static function (stdClass $v): void { $v->positions[0]->positions[0]->line = true; }],
+];
+foreach ($mutations as [$location, $problem, $change]) {
+    $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);
+    $change($value);
+    $want = "tests/dbspec/cases.json: $location $problem";
+    $got = null;
+    try {
+        dbspec_check_cases($value);
+    } catch (RuntimeException $e) {
+        $got = $e->getMessage();
+    }
+    if ($got !== $want) {
+        throw new RuntimeException("$location: the reader gave " . json_encode($got) . ", want \"$want\"");
+    }
+}
+testcase_step(count($mutations) . ' refused');
+testcase_end();
 // 모든 vector를 합친 CPU 시간을 출력하고, 10 s 기준값을 넘으면 경고한다.
 testcase_begin('dbspec_vectors/cpu-total', TESTCASE_COMPUTE);
 [$cpuMs, $wallMs] = caseClockElapsed($started);

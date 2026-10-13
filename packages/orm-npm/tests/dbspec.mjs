@@ -8,9 +8,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dbspecManifest, emitDbspec, parseDbspec, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { checkCases, readCases } from '../../../tests/dbspec/cases.mjs';
 
 const root = new URL('../../../', import.meta.url);
-const cases = JSON.parse(readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8'));
+// readCases refuses a missing or unknown section or field of every section.
+const cases = readCases();
 // TIMEOUT은 case 하나의 기한(ms)이다. vector 하나는 memory 안에서 문서 하나를 parse하고 emit한다.
 const TIMEOUT = 15000;
 
@@ -66,11 +68,7 @@ for (const c of cases.normalize) {
   });
 }
 
-// positions cases read strictly: the case and each position have exactly the listed fields.
-assert(cases.positions.length > 0, 'positions cases');
 for (const c of cases.positions) {
-  assert.deepEqual(Object.keys(c).sort(), ['documents', 'id', 'main', 'positions']);
-  for (const p of c.positions) assert.deepEqual(Object.keys(p).sort(), ['column', 'kind', 'line', 'path']);
   vector(`positions ${c.id}`, () => {
     const text = join(c.documents[c.main], false);
     const result = parseDbspec(text, documentSet(c));
@@ -210,3 +208,27 @@ for (const c of cases.sets) {
     }
   });
 }
+
+// The reader of cases.json refuses a missing or an unknown section or field of every section, naming it.
+vector('cases.json reader refuses missing and unknown fields', () => {
+  const text = readFileSync(new URL('tests/dbspec/cases.json', root), 'utf8');
+  const manifest = cases.sets.findIndex(c => Object.hasOwn(c, 'manifest'));
+  const mutations = [
+    ['note', 'is missing', v => delete v.note],
+    ['extra', 'is not a known field', v => (v.extra = [])],
+    ['canonical[0].extra', 'is not a known field', v => (v.canonical[0].extra = true)],
+    ['normalize[0].canonical', 'is missing', v => delete v.normalize[0].canonical],
+    ['invalid[0].errors[0].extra', 'is not a known field', v => (v.invalid[0].errors[0].extra = 1)],
+    ['hashes[0].extra', 'is not a known field', v => (v.hashes[0].extra = true)],
+    ['sets[0].extra', 'is not a known field', v => (v.sets[0].extra = true)],
+    [`sets[${manifest}].manifest.extra`, 'is not a known field', v => (v.sets[manifest].manifest.extra = [])],
+    ['files[0].errors', 'is missing', v => delete v.files[0].errors],
+    ['positions[0].positions[0].extra', 'is not a known field', v => (v.positions[0].positions[0].extra = 1)],
+    ['positions[0].positions[0].line', 'is not an integer', v => (v.positions[0].positions[0].line = true)],
+  ];
+  for (const [location, problem, change] of mutations) {
+    const value = JSON.parse(text);
+    change(value);
+    assert.throws(() => checkCases(value), { message: `tests/dbspec/cases.json: ${location} ${problem}` }, location);
+  }
+});

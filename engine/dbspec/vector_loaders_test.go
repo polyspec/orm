@@ -55,6 +55,23 @@ func TestVectorLoadersRejectMalformedVectors(t *testing.T) {
 		}},
 		{"cases.json", "hashes[0].schemaHash", "is not a string", func(o map[string]any) { vectorCaseOf(o, "hashes", 0)["schemaHash"] = 1.0 }},
 		{"cases.json", "sets", "is missing", func(o map[string]any) { delete(o, "sets") }},
+		{"cases.json", "note", "is missing", func(o map[string]any) { delete(o, "note") }},
+		{"cases.json", "extra", "is not a known field", func(o map[string]any) { o["extra"] = []any{} }},
+		{"cases.json", "canonical[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "canonical", 0)["extra"] = true }},
+		{"cases.json", "normalize[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "normalize", 0)["extra"] = true }},
+		{"cases.json", "invalid[0].errors[0].extra", "is not a known field", func(o map[string]any) {
+			vectorCaseOf(o, "invalid", 0)["errors"].([]any)[0].(map[string]any)["extra"] = 1.0
+		}},
+		{"cases.json", "hashes[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "hashes", 0)["extra"] = true }},
+		{"cases.json", "sets[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "sets", 0)["extra"] = true }},
+		{"cases.json", "sets[3].manifest.extra", "is not a known field", func(o map[string]any) {
+			vectorCaseOf(o, "sets", 3)["manifest"].(map[string]any)["extra"] = []any{}
+		}},
+		{"cases.json", "files[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "files", 0)["extra"] = true }},
+		{"cases.json", "positions[0].extra", "is not a known field", func(o map[string]any) { vectorCaseOf(o, "positions", 0)["extra"] = true }},
+		{"cases.json", "positions[0].positions[0].extra", "is not a known field", func(o map[string]any) {
+			vectorCaseOf(o, "positions", 0)["positions"].([]any)[0].(map[string]any)["extra"] = 1.0
+		}},
 		{"ddl.json", "cases[0].statements", "is missing", func(o map[string]any) { delete(vectorCaseOf(o, "cases", 0), "statements") }},
 	}
 	for _, m := range mutations {

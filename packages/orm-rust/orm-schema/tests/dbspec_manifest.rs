@@ -8,6 +8,9 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+#[path = "common/dbspec_cases.rs"]
+mod dbspec_cases;
+
 // DEADLINE는 test의 CPU 시간 한도이고, 멈춘 test를 끝내는 wall-clock 기한은 그 열 배다
 // (polyspec_orm_testcase::wall_for_cpu).
 const DEADLINE: Duration = Duration::from_secs(10);
@@ -45,9 +48,12 @@ fn expect(case: &Value, documents: &[&Document]) {
     assert_eq!(manifest.schema_hash, case["schemaHash"].as_str().unwrap(), "{id}: schema hash");
 }
 
+/// tests/dbspec/cases.json, read strictly: a missing or unknown section or field of any section panics with its place.
 fn cases() -> Value {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/cases.json");
-    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    let value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    dbspec_cases::check_cases(&value, "tests/dbspec/cases.json").unwrap_or_else(|e| panic!("{e}"));
+    value
 }
 
 fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {

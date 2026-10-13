@@ -6,6 +6,7 @@
 // (TypeScript build 뒤)
 import { readFileSync } from 'node:fs';
 import { dirname, join as joinPath } from 'node:path';
+import { checkCases as checkSharedCases } from '../cases.mjs';
 import { readInput } from '../input.mjs';
 import {
   analyzeDbspec,
@@ -70,11 +71,6 @@ function field(path, object, location, key, kind) {
   return value;
 }
 
-// optionalBoolean은 key가 없으면 false를, 있으면 boolean인지 확인한 값을 돌려준다.
-function optionalBoolean(path, object, location, key) {
-  return Object.hasOwn(object, key) ? field(path, object, location, key, 'boolean') : false;
-}
-
 // checkLines는 value가 string의 array인지 확인한다.
 function checkLines(path, value, at) {
   if (!Array.isArray(value)) fail(path, at, 'is not an array');
@@ -104,27 +100,18 @@ function cases(path, object, key, check) {
   });
 }
 
+// checkCases reads cases.json strictly (tests/dbspec/cases.mjs) and checks that each document of a sets case names
+// itself in its header.
 function checkCases(path, v) {
-  for (const kind of ['canonical', 'normalize', 'invalid']) {
-    cases(path, v, kind, (c, at) => {
-      const main = field(path, c, at, 'main', 'string');
-      const set = documents(path, c, at, 'documents');
-      if (!Object.hasOwn(set, main)) fail(path, `${at}.documents.${main}`, 'is missing');
-      optionalBoolean(path, c, at, 'crlf');
-      optionalBoolean(path, c, at, 'mixed');
-    });
+  try {
+    checkSharedCases(v, path);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
   }
-  cases(path, v, 'hashes', (c, at) => documents(path, c, at, 'documents'));
-  cases(path, v, 'files', (c, at) => field(path, c, at, 'path', 'string'));
   cases(path, v, 'sets', (c, at) => {
     namedDocuments(path, c, at, 'documents');
-    documents(path, c, at, 'parsing');
     if (Object.hasOwn(c, 'external')) namedDocuments(path, c, at, 'external');
-  });
-  cases(path, v, 'positions', (c, at) => {
-    const main = field(path, c, at, 'main', 'string');
-    const set = documents(path, c, at, 'documents');
-    if (!Object.hasOwn(set, main)) fail(path, `${at}.documents.${main}`, 'is missing');
   });
 }
 
