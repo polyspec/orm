@@ -13,6 +13,7 @@ from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_jso
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError
+from polyspec.orm.keys import key_text
 from polyspec.orm.names import parse_chain, parse_order, snake, split_pair
 from polyspec.orm.styled_value import StyledValue
 
@@ -77,14 +78,12 @@ class Collection:
                 self._items[len(self._items)] = {'key': len(self._items), 'value': item}
 
     def put(self, key, value, fetched=None) -> None:
-        from polyspec.orm.database import key_text
         self._items[key_text(key)] = {'key': key, 'value': value, 'fetched': fetched}
 
     def get(self, key) -> Model | None:
         return self._items.get(key_text(key), {}).get('value')
 
     def has(self, key) -> bool:
-        from polyspec.orm.database import key_text
         return key_text(key) in self._items
 
     def first(self) -> Model | None:

@@ -24,6 +24,7 @@ from polyspec.orm.markdown import (MarkdownDsn, begin_markdown, dial_markdown, e
                                    markdown_read, markdown_scalar, markdown_write,
                                    parse_markdown_dsn, savepoint_markdown, unsupported_on_markdown)
 from polyspec.orm.ir import IRRequest
+from polyspec.orm.keys import key_text, scalar_key
 from polyspec.orm.model import Model, register_model
 from polyspec.orm.placeholders import for_mysql, for_postgres
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders
@@ -244,16 +245,6 @@ def read_time(value, col_type: str, zone: str, precision: int) -> str:
     return text
 
 
-def scalar_key(value) -> str:
-    if value is None:
-        return '\0'
-    if isinstance(value, bool):
-        return '1' if value else '0'
-    if isinstance(value, bytes):
-        return value.decode('utf-8', 'replace')
-    return str(value)
-
-
 def row_key(row, refs):
     values = []
     for ref in refs:
@@ -268,14 +259,6 @@ def key_of_values(values) -> str:
     if len(values) == 1:
         return key_text(values[0])
     return ''.join(f'{len(part)}:{part}' for part in (scalar_key(v) for v in values))
-
-
-def key_text(value) -> str:
-    if isinstance(value, (int,)) and not isinstance(value, bool):
-        return f'n:{value}'
-    if isinstance(value, bool):
-        return f'n:{1 if value else 0}'
-    return f's:{scalar_key(value)}'
 
 
 def key_value(value):
