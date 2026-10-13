@@ -155,14 +155,15 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
 
 /// The renderer names of `table` with the position of the token that writes each: the type CHECK of every column
 /// that has one, and the triggers of immutable and audit (docs/dbspec.md "Names"). A malformed name has none.
-fn generated_names_of(table: &Table) -> Vec<(String, Pos)> {
+fn generated_names_of(table: &Table) -> Vec<(String, Pos, String)> {
     if !well_formed(&table.name.text) {
         return Vec::new();
     }
     let mut out = Vec::new();
     for column in &table.columns {
         if column.identity.is_none() && !matches!(column.ty, Type::Text | Type::Bytes) && well_formed(&column.name.text) {
-            out.push((renderer_name(&table.name.text, &column.name.text), column.name.pos));
+            let source = format!("table {} column {}", table.name.text, column.name.text);
+            out.push((renderer_name(&table.name.text, &column.name.text), column.name.pos, source));
         }
     }
     for line in table.settings.iter().flat_map(|settings| &settings.lines) {
@@ -172,7 +173,8 @@ fn generated_names_of(table: &Table) -> Vec<(String, Pos)> {
             _ => &[],
         };
         for event in events {
-            out.push((renderer_name(&table.name.text, event), line.pos));
+            let source = format!("table {} setting {}", table.name.text, if matches!(line.setting, Setting::Immutable) { "immutable" } else { "audit" });
+            out.push((renderer_name(&table.name.text, event), line.pos, source));
         }
     }
     out
@@ -181,14 +183,22 @@ fn generated_names_of(table: &Table) -> Vec<(String, Pos)> {
 /// Refuses a generated name that a used table or an earlier table of the document already writes, at the later
 /// token (docs/dbspec.md "Names").
 fn generated_names_unique(document: &Document, scope: &Scope<'_>, diags: &mut Vec<Diag>) {
-    let mut seen: HashSet<String> = scope.used.values().flat_map(|table| generated_names_of(table)).map(|(name, _)| name).collect();
+    // Generated name => the source that wrote it first.
+    let mut seen: HashMap<String, String> = HashMap::new();
+    for table in scope.used.values() {
+        for (name, _, _) in generated_names_of(table) {
+            seen.insert(name, format!("used table {}", table.name.text));
+        }
+    }
     for (index, table) in document.tables.iter().enumerate() {
         if scope.tables.get(table.name.text.as_str()) != Some(&index) {
             continue;
         }
-        for (name, pos) in generated_names_of(table) {
-            if !seen.insert(name.clone()) {
-                diags.push(err(pos, "name.duplicate", format!("generated name '{name}' repeats in the schema")));
+        for (name, pos, source) in generated_names_of(table) {
+            if let Some(first) = seen.get(&name) {
+                diags.push(err(pos, "name.duplicate", format!("generated name '{name}' of {source} repeats the generated name of {first}")));
+            } else {
+                seen.insert(name, source);
             }
         }
     }
