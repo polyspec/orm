@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 9dc77ddfcce1d287159a6419f7c103e617ddb6882e89fd8c6aff64b38c8b0412 -->
+<!-- source-sha256: 4d9c6e826d5a0da8f9938f5b9e97a1d991bfc53669b273c21a92b622d6a6fbbb -->
 # dbspec
 
 [English](dbspec.md)
@@ -10,7 +10,7 @@ dbspec이 지원하는 database 기능은 [schema definitions](dialects.md#schem
 
 ## 문서
 
-```text
+```dbs
 dbspec 1 shop
 
 use core { users }
