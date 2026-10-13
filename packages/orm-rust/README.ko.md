@@ -1,5 +1,5 @@
 <!-- doc-id: packages-orm-rust-readme -->
-<!-- source-sha256: c974270c5ec039436f88ba55b6b5a6f809571e811f5cbb32c6d1731dfb92a253 -->
+<!-- source-sha256: 8d7bbba6766327ffee21e8d1d747fb33a055a5d800da414bb873e3be3c6cda34 -->
 [English](README.md)
 
 # orm — Rust 클라이언트
@@ -28,9 +28,11 @@ polyspec-orm-build = { path = "…/packages/orm-rust/orm-build" }
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
 }
 ```
+
+set 파일 `schema/dbspec-set.json`이 set의 문서를 나열한다(`{"schema": 1, "documents": ["example.dbs"]}`, [문서 집합](../../docs/dbspec.ko.md#document-sets)). 그 파일이나 나열된 문서가 바뀌면 cargo가 build script를 다시 실행한다.
 
 ```rust
 // src/main.rs

@@ -1,8 +1,8 @@
 //! dbspec, the schema language (`docs/dbspec.md`): parsing with every
 //! validation rule, and canonical emission.
 //!
-//! [`read_file`] reads a document file after checking its signature, and [`read_bytes`]
-//! checks the bytes of a file that the caller read.
+//! [`read_set`] reads a set file and the files it lists. [`read_file`] reads a document file
+//! after checking its signature, and [`read_bytes`] checks the bytes of a file that the caller read.
 //! [`parse`] reads one document against the declared document set that its
 //! `use` lines refer to and returns the [`Parsed`] document with its declaration
 //! positions, or every [`Diagnostic`]
@@ -20,8 +20,8 @@ mod introspect;
 mod lexer;
 mod literal;
 mod mermaid;
-mod names;
 pub mod model;
+mod names;
 mod parser;
 mod plan;
 mod plan_diff;
@@ -30,6 +30,7 @@ mod plan_steps;
 mod positions;
 mod render;
 mod runtime;
+mod set;
 mod unicode_word;
 mod validate;
 
@@ -44,6 +45,10 @@ pub use plan_diff::{diff, Change};
 pub use plan_steps::{plan_steps, Effect, NullCheck, PlanStep};
 pub use render::{render, render_statements, Dialect, RenderedStatement};
 pub use runtime::{parse_manifest, parse_manifest_set, runtime_model, Audit, Entity, Field, FieldDefault, ForeignKey, Key, RuntimeModel};
+pub use set::{
+    read_set, Set, SetError, SetFile, RULE_SET_DUPLICATE, RULE_SET_EMPTY, RULE_SET_FILE, RULE_SET_JSON, RULE_SET_KEY, RULE_SET_PATH, RULE_SET_SCHEMA,
+    RULE_SET_SYMLINK, SET_FILE_NAME,
+};
 
 use parser::Diag;
 use std::collections::{BTreeMap, BTreeSet, HashMap};

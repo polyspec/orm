@@ -1,10 +1,8 @@
 //! generator가 읽는 dbspec document set: manifest text, `manifestHash`, runtime model
 //! (docs/dbspec.md, "Manifest and hashes", "Runtime model").
 
-use std::collections::BTreeMap;
-use std::path::Path;
-
 use polyspec_orm_schema::dbspec::{self, Document, Field, RuntimeModel};
+use std::collections::BTreeMap;
 
 /// 한 document set의 manifest와 runtime model.
 pub struct DocumentSet {
@@ -19,30 +17,42 @@ fn diagnostics(path: &str, errors: Vec<dbspec::Diagnostic>) -> String {
     errors.iter().map(|e| format!("{path}: {e}")).collect::<Vec<_>>().join("\n")
 }
 
-/// `dbspec::read_file`로 소유한 document `paths`와 외부 document `uses`(set이 use로 쓰지만 소유하지 않는 다른 set의 문서)를 읽는다.
-/// 각 document는 나머지 모든 document를 declared document set으로 삼아 parse하고, 외부 document는 `external`로
-/// 표시한다. 외부 document의 table은 model이 되지 않는다.
-pub fn load_set(paths: &[&Path], uses: &[&Path]) -> Result<DocumentSet, String> {
-    if paths.is_empty() {
-        return Err("the document set has no dbspec document".into());
+/// Loads the document set that `dbspec::read_set` read: each file's bytes go to `dbspec::read_bytes`
+/// with its joined path, and each document whose bytes pass is parsed with every other such
+/// document as its declared document set; every diagnostic of every file is reported together.
+/// The external documents are marked `external`; their tables do not become models.
+pub fn load_set(files: &dbspec::Set) -> Result<DocumentSet, String> {
+    let mut texts = Vec::with_capacity(files.documents.len() + files.external.len());
+    let mut failures = Vec::new();
+    let owned = files.documents.len();
+    for (i, file) in files.documents.iter().chain(&files.external).enumerate() {
+        let path = file.path.display().to_string();
+        // A file without the signature fails with the diagnostic of dbspec::read_bytes before parsing.
+        match dbspec::read_bytes(&path, file.bytes.clone()) {
+            Ok(text) => {
+                let name = text.lines().next().and_then(|header| header.split(' ').nth(2)).unwrap_or("").to_owned();
+                texts.push((path, name, text, i < owned));
+            }
+            Err(errors) => failures.push(diagnostics(&path, errors)),
+        }
     }
-    let mut texts = Vec::with_capacity(paths.len() + uses.len());
-    for path in paths.iter().chain(uses) {
-        // signature가 없는 파일은 parse 전에 dbspec::read_file의 diagnostic으로 실패한다.
-        let text = dbspec::read_file(path).map_err(|e| match e {
-            dbspec::ReadError::Io(error) => format!("{}: {error}", path.display()),
-            dbspec::ReadError::Diagnostics(errors) => diagnostics(&path.display().to_string(), errors),
-        })?;
-        let name = text.lines().next().and_then(|header| header.split(' ').nth(2)).unwrap_or("").to_owned();
-        texts.push((path.display().to_string(), name, text));
-    }
-    let set: BTreeMap<String, String> = texts.iter().map(|(_, name, text)| (name.clone(), text.clone())).collect();
+    // The documents whose bytes passed are parsed too, so that one generation reports the
+    // diagnostics of every document.
+    let set: BTreeMap<String, String> = texts.iter().map(|(_, name, text, _)| (name.clone(), text.clone())).collect();
     let mut documents: Vec<Document> = Vec::with_capacity(texts.len());
-    for (i, (path, name, text)) in texts.iter().enumerate() {
+    for (path, name, text, is_owned) in &texts {
         let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
-        let mut document = dbspec::parse(text, &others).map(|parsed| parsed.document).map_err(|errors| diagnostics(path, errors))?;
-        document.external = i >= paths.len();
-        documents.push(document);
+        match dbspec::parse(text, &others) {
+            Ok(parsed) => {
+                let mut document = parsed.document;
+                document.external = !is_owned;
+                documents.push(document);
+            }
+            Err(errors) => failures.push(diagnostics(path, errors)),
+        }
+    }
+    if !failures.is_empty() {
+        return Err(failures.join("\n"));
     }
     let refs: Vec<&Document> = documents.iter().collect();
     let manifest = dbspec::manifest(&refs).map_err(|errors| diagnostics("document set", errors))?;

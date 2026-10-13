@@ -13,9 +13,14 @@ categories = ["database"]
 [dependencies]
 sha2 = "0.10"
 regex = "1"
+# The set reader (dbspec::read_set) takes each listed file's identity from its open handle.
+same-file = "1.0.6"
+# The set reader parses the set file with serde_json; raw values keep a number unconverted and
+# the visitor hooks of serde detect a key that appears twice and the nesting depth.
+serde = "1"
+serde_json = { version = "1", features = ["raw_value"] }
 
 [dev-dependencies]
 # test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
 polyspec-orm-testcase = { path = "../testcase" }
 polyspec-orm-case-clock = { path = "../case-clock" }
-serde_json = "1"

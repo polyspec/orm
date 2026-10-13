@@ -27,9 +27,11 @@ polyspec-orm-build = { path = "…/packages/orm-rust/orm-build" }
 ```rust
 // build.rs
 fn main() {
-    polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate();
+    polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate();
 }
 ```
+
+The set file `schema/dbspec-set.json` lists the documents of the set (`{"schema": 1, "documents": ["example.dbs"]}`, [Document sets](../../docs/dbspec.md#document-sets)); cargo reruns the build script when it or a listed document changes.
 
 ```rust
 // src/main.rs
