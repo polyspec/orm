@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a16fd4e40fb52666a70d560102f26248841eaf8f17b2b78b47ed36f9b126ebbe -->
+<!-- source-sha256: 67851c8b05370536055bcbe1f1fc7ae49738fb8e88142be364457e5398282e38 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-5 (breaking): PHP `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; 위치 인자 파일과 `--use`는 지웠다. `Dbspec::readSet`과 PHP extension의 native 짝이 set 파일을 읽는다.
 - T128-8-1: `@polyspec/dbspec-codemirror`(`packages/dbspec-codemirror`)가 dbspec의 CodeMirror 6 extension이다: language service에서 온 token 색, lint diagnostic, folding, Shift+Alt+F format.
 - T128-2a-2 (breaking): Go `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; `--document`, `--use`, `runtimemodel.LoadFileSet`은 지웠다. `dbspec.ReadSet`이 set 파일을 읽고 `runtimemodel.LoadSetFile`이 그것을 load한다.
 - T128-2a-3 (breaking): TypeScript `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; `--schema`와 `--use`는 지웠다. `readDbspecSet`이 set 파일을 읽고, `@polyspec/orm/dbspec`이 순수 함수 `parseSet(bytes, path)`를 export한다.
