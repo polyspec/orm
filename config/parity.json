@@ -312,6 +312,18 @@
       ]
     },
     {
+      "id": "dbspec-set-files", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/set-files.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/set_test.go", "symbol": "TestReadSetVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_set_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_set_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-set.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_dbspec_set_files.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec_set.rs", "symbol": "shared_set_file_vectors" }
+      ]
+    },
+    {
       "id": "dbspec-syntax", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/syntax.json", "cases": "$.cases[*].id",
       "bindings": [

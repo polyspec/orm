@@ -2649,8 +2649,8 @@
       "title": "Schema definition and migration",
       "title_ko": "스키마 정의와 마이그레이션",
       "status": "implemented",
-      "description": "Parse and emit dbspec documents with the positions of their declarations, analyze a document into the tokens of its syntax, format a document canonically and refuse one with a diagnostic, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so code that calls them type-checks without the pg, mysql2 or node:sqlite types.",
-      "description_ko": "dbspec document를 선언의 position과 함께 parse하고 emit하며, document를 syntax의 token으로 analyze하고, document를 canonical form으로 format하되 diagnostic이 있는 document는 거부하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
+      "description": "Read a set file into the files of its document set, parse and emit dbspec documents with the positions of their declarations, analyze a document into the tokens of its syntax, format a document canonically and refuse one with a diagnostic, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so code that calls them type-checks without the pg, mysql2 or node:sqlite types.",
+      "description_ko": "set 파일을 읽어 그 문서 집합의 파일을 주고, dbspec document를 선언의 position과 함께 parse하고 emit하며, document를 syntax의 token으로 analyze하고, document를 canonical form으로 format하되 diagnostic이 있는 document는 거부하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -2670,6 +2670,7 @@
         ]
       },
       "state": [
+        "read a set file into the files of its document set, or every error of the set file",
         "parse documents with located diagnostics",
         "return the positions of the declarations of a parsed document",
         "analyze a text into the parse result and the tokens of its syntax",
@@ -2704,6 +2705,7 @@
         "tests/dbspec/mermaid.json",
         "tests/dbspec/show-create.json",
         "tests/dbspec/syntax.json",
+        "tests/dbspec/set-files.json",
         "engine/dbspec/case_clock_test.go",
         "packages/orm-php/tests/case_clock.php",
         "contracts/fixtures/schema_definition.json",
@@ -2791,7 +2793,10 @@
         "packages/orm-php/tests/dbspec_syntax_vectors.php",
         "packages/orm-php-extension/tests/dbspec_analyze_test.php",
         "packages/orm-rust/orm-schema/tests/dbspec_analyze.rs",
-        "packages/orm-npm/tests/dbspec-analyze.mjs"
+        "packages/orm-npm/tests/dbspec-analyze.mjs",
+        "engine/dbspec/set_test.go",
+        "packages/orm-rust/orm-schema/tests/dbspec_set.rs",
+        "packages/orm-npm/tests/dbspec-set.mjs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2833,7 +2838,9 @@
             "packages/orm-php-extension/src/unicode_word.h",
             "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py",
             "packages/orm-php/src/Dbspec/UnicodeWord.php",
-            "packages/orm-npm/src/dbspec/unicode_word.ts"
+            "packages/orm-npm/src/dbspec/unicode_word.ts",
+            "engine/dbspec/set_test.go",
+            "tests/dbspec/set-files.json"
           ]
         },
         {
@@ -2890,7 +2897,9 @@
             "tests/dbspec/mermaid.json",
             "packages/orm-rust/orm-schema/src/lib.rs",
             "packages/orm-rust/orm-schema/src/dbspec/unicode_word.rs",
-            "tests/dbspec/show-create.json"
+            "tests/dbspec/show-create.json",
+            "packages/orm-rust/orm-schema/tests/dbspec_set.rs",
+            "tests/dbspec/set-files.json"
           ]
         },
         {
@@ -2913,7 +2922,9 @@
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
-            "tests/dbspec/mermaid.json"
+            "tests/dbspec/mermaid.json",
+            "packages/orm-npm/tests/dbspec-set.mjs",
+            "tests/dbspec/set-files.json"
           ]
         },
         {
