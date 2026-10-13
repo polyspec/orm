@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 50cdce58b172783f5696eafb66a40c1063703daa05c1d7f84914a0985aefe73f -->
+<!-- source-sha256: b7a853b45f930ac7a82bf0dd6f1137ab4ec9ba934485f1d0768bbc2437656ad5 -->
 # 변경 이력
 
 ## Unreleased
 
 - T129-1: renderer 이름의 interface symbol을 기록했다. contracts/symbols는 T129 snapshot을, contracts/interfaces.json은 그 hash를 가지므로 T129 tree에서 interfaces 검사가 통과한다.
+- T130-3: docs/interfaces.md의 "조회 체인"이 runtime별 finder 규칙을 밝히고, docs/usage.md가 이를 가리킨다. 공유 vector terminal_by는 다섯 runtime 모두에서 unique가 아닌 column의 scan된 체인을 다룬다. T130-3은 interfaces contract와 근거 때문에 열려 있다.
 - T130-2: docs/usage.md는 finder 규칙을 정확히 밝힌다. PHP는 호출 시점에 체인을 해석하고, TypeScript의 체인은 모델 생성이 그 체인을 호출하는 코드를 scan한 뒤에 동작한다. generator는 바뀌지 않는다.
 - T130: audit과 immutable을 함께 쓴 table을 introspection할 수 있다. immutable과 audit setting은 trigger 개수가 아니라 각자의 재계산한 trigger 이름으로 알아보며, 두 setting을 함께 쓴 table은 두 renderer 출력의 합과 trigger 집합이 정확히 같아야 한다(docs/dialects.md "Triggers").
 - T129: renderer가 만드는 이름(CHECK `<table>$<column>`, trigger와 function `<table>$<event>`)은 63 bytes 이하이면 plain form이고, 아니면 처음 54 bytes, `$`, SHA-256 소문자 16진수 8자리다. 긴 history 이름을 가진 audit table을 선언할 수 있다. 다른 생성 이름이나 선언된 이름과 같은 생성 이름은 두 출처를 적는 `name.duplicate` 오류다. 선언된 이름은 여전히 거부하며 줄이지 않는다(docs/dbspec.md "이름").
