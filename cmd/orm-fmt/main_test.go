@@ -5,12 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // TestCasesRunThroughTheFormatter pins orm-fmt over the shared case database: every canonical
 // case is already formatted, every normalize case formats into its canonical text, and every
 // invalid case is refused with exit 2, for a parse with diagnostics is never rewritten.
 func TestCasesRunThroughTheFormatter(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	b, err := os.ReadFile(filepath.Join("..", "..", "tests", "dbspec", "cases.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -108,6 +111,7 @@ func join(lines []string) string {
 // TestCheckAndWrite pin the exit statuses: --check names an unformatted file and exits 1,
 // --write rewrites it, and a formatted file leaves both quiet.
 func TestCheckAndWrite(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	dir := t.TempDir()
 	file := filepath.Join(dir, "x.dbs")
 	if err := os.WriteFile(file, []byte("dbspec 1 x\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n\n\ntable items {\n  id i64 identity\n  primary key (id)\n}\n"), 0o644); err != nil {
