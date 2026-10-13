@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 226223b5c2ad00081bab12767f5050ef59a3898c367dcdafe1cd57441a59c541 -->
+<!-- source-sha256: b40646ca5138597ad33b3756615a2e56a3b8725870c90719f432f5151599bc3c -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-2 (breaking): Go `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; `--document`, `--use`, `runtimemodel.LoadFileSet`은 지웠다. `dbspec.ReadSet`이 set 파일을 읽고 `runtimemodel.LoadSetFile`이 그것을 load한다.
 - T128-2a-3 (breaking): TypeScript `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; `--schema`와 `--use`는 지웠다. `readDbspecSet`이 set 파일을 읽고, `@polyspec/orm/dbspec`이 순수 함수 `parseSet(bytes, path)`를 export한다.
 - T128-7: 문서 site가 ```` ```dbs ```` fence를 dbspec language service로 렌더하며, light와 dark theme에서 token class마다 색을 가진다; 집합의 fence는 `set=`과 `document=`를 밝히고, fence의 diagnostic은 docs build를 실패시킨다.
 - T128-2a-4 (breaking): Python `orm-gen gen`이 argparse로 읽는 `--set <dbspec-set.json>`으로 set 파일을 받는다; `--schema`와 `--use`는 지웠다. `read_dbspec_set`이 docs/dbspec.md "Document sets"대로 set 파일을 읽는다.
