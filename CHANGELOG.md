@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T149: the feature coverage runs Python owners, and schema_definition covers Python with its seven cases.
+
 ## 0.0.10
 
 - T144: the PHP `orm-gen` takes its autoloader by Composer's lookup and names a missing one; the documents run `vendor-php/bin/orm-gen`.

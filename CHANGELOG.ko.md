@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 41aa0b020d5a7673013cb143cd3116a1246c1edd242e14f257fe641f1c2756d4 -->
+<!-- source-sha256: abb6c4c928727d4c22e389910a3c90c189e4e308eb3ea5de7ade4511c89d965f -->
 # 변경 이력
 
 ## Unreleased
+
+- T149: feature coverage가 Python owner를 실행하고, schema_definition이 case 일곱으로 Python을 덮는다.
 
 ## 0.0.10
 
