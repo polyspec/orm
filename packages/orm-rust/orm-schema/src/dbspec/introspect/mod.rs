@@ -261,9 +261,9 @@ impl Catalog {
         loop {
             let (text, objects) = self.text(name);
             let diagnostics = match super::parse(&text, &BTreeMap::new()) {
-                Ok(document) => {
+                Ok(parsed) => {
                     self.unsupported.sort_by(|a, b| (&a.table, &a.kind, &a.name).cmp(&(&b.table, &b.kind, &b.name)));
-                    return Ok(Introspection { document, unsupported: self.unsupported });
+                    return Ok(Introspection { document: parsed.document, unsupported: self.unsupported });
                 }
                 Err(diagnostics) => diagnostics,
             };

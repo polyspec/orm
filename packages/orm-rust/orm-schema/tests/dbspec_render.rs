@@ -37,7 +37,7 @@ fn render_vectors() {
             .map(|(name, lines)| {
                 let set: BTreeMap<String, String> =
                     documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
-                dbspec::parse(&text(lines), &set).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
+                dbspec::parse(&text(lines), &set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
             })
             .collect();
         let mut refs: Vec<&Document> = documents.iter().collect();

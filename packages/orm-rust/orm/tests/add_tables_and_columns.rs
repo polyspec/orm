@@ -39,7 +39,7 @@ const MISSING_UNIQUE: &str = "add_unique addcol_item.uq_addcol_item_label: a mis
 fn fixture(name: &str) -> &'static Schema {
     let path = format!("{}/../../../contracts/fixtures/add_tables_and_columns/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
     let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
-    let document = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{path}: {e:?}"));
+    let document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{path}: {e:?}"));
     edited(&manifest.manifest_text, &manifest.manifest_hash)
 }

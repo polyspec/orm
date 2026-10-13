@@ -43,7 +43,7 @@ fn sources(input: &Value) -> Vec<(String, String)> {
 }
 
 fn parse(path: &str, text: &str) -> Document {
-    dbspec::parse(text, &Default::default()).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
+    dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{path}: {errors:?}"))
 }
 
 /// `body`를 실행하고 시작, 성공, 걸린 시간을 출력하며 CPU 시간 한도를 확인한다.

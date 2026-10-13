@@ -33,7 +33,7 @@ fn created_tables(statements: &[String]) -> Vec<&str> {
 }
 
 fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
-    dbspec::parse(text, set).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
+    dbspec::parse(text, set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
 }
 
 fn expect(case: &Value, documents: &[&Document]) {

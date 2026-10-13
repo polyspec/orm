@@ -4,7 +4,8 @@
 //! [`read_file`] reads a document file after checking its signature, and [`read_bytes`]
 //! checks the bytes of a file that the caller read.
 //! [`parse`] reads one document against the declared document set that its
-//! `use` lines refer to and returns the [`Document`] or every [`Diagnostic`]
+//! `use` lines refer to and returns the [`Parsed`] document with its declaration
+//! positions, or every [`Diagnostic`]
 //! in source order. [`emit`] writes a document in its canonical text, so
 //! `emit(parse(s)) == s` for canonical input.
 
@@ -24,6 +25,7 @@ mod plan;
 mod plan_diff;
 mod plan_objects;
 mod plan_steps;
+mod positions;
 mod render;
 mod runtime;
 mod unicode_word;
@@ -65,19 +67,38 @@ impl fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
+/// The declaration of one name of a parsed document (docs/dbspec.md "Declaration positions"): its kind, its
+/// path of enclosing names and its own name, and the 1-based line and column, in Unicode code points, of its
+/// name token or, for a setting and the primary key, of its keyword.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Position {
+    pub kind: String,
+    pub path: Vec<String>,
+    pub line: usize,
+    pub column: usize,
+}
+
+/// A successfully parsed document with the positions of its declarations in source order.
+#[derive(Clone, Debug)]
+pub struct Parsed {
+    pub document: Document,
+    pub positions: Vec<Position>,
+}
+
 /// Parses `text` and validates it. `documents` is the declared document set:
 /// document name to text, where `use` lines find the documents they name.
-/// Returns the document, or every diagnostic in source order; an `encoding`,
-/// `header` or `limit` error ends parsing.
-pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Document, Vec<Diagnostic>> {
+/// Returns the document and its declaration positions, or every diagnostic in
+/// source order; an `encoding`, `header` or `limit` error ends parsing.
+pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Parsed, Vec<Diagnostic>> {
     let mut session = Session { documents, parsed: HashMap::new(), valid: HashMap::new(), validating: Vec::new() };
     let parsed = parser::parse(text).map_err(stopped)?;
     let name = parsed.document.name.text.clone();
     let (diags, literals) = session.validate(&name, &parsed);
     if diags.is_empty() {
+        let positions = positions::positions(&parsed.declarations);
         let mut document = parsed.document;
         check_type::set_literals(&mut document, literals);
-        Ok(document)
+        Ok(Parsed { document, positions })
     } else {
         Err(diagnostics(diags))
     }
@@ -354,14 +375,14 @@ fn convert(diags: Vec<Diag>) -> Vec<Diagnostic> {
 /// any use cycle is a `use` error.
 struct Session<'s> {
     documents: &'s BTreeMap<String, String>,
-    parsed: HashMap<String, Result<Rc<parser::Parsed>, String>>,
+    parsed: HashMap<String, Result<Rc<parser::Syntax>, String>>,
     valid: HashMap<String, Result<(), String>>,
     validating: Vec<String>,
 }
 
 impl<'s> Session<'s> {
     /// The parsed document of the declared set named `name`.
-    fn parsed(&mut self, name: &str) -> Result<Rc<parser::Parsed>, String> {
+    fn parsed(&mut self, name: &str) -> Result<Rc<parser::Syntax>, String> {
         if let Some(found) = self.parsed.get(name) {
             return found.clone();
         }
@@ -393,7 +414,7 @@ impl<'s> Session<'s> {
 
     /// The line errors of `parsed` and its validation errors, unsorted, with
     /// the canonical literal texts of its checks.
-    fn validate(&mut self, name: &str, parsed: &parser::Parsed) -> (Vec<Diag>, Vec<check_type::CheckLiterals>) {
+    fn validate(&mut self, name: &str, parsed: &parser::Syntax) -> (Vec<Diag>, Vec<check_type::CheckLiterals>) {
         self.validating.push(name.to_owned());
         let mut diags = parsed.diags.clone();
         let mut used = Vec::with_capacity(parsed.document.uses.len());

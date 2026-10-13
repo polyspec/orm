@@ -27,7 +27,7 @@ table notes {
 ";
 
 fn manifest() -> Manifest {
-    let document = crate::dbspec::parse(DOCUMENT, &Default::default()).unwrap_or_else(|errors| panic!("{errors:?}"));
+    let document = crate::dbspec::parse(DOCUMENT, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{errors:?}"));
     let set = crate::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{errors:?}"));
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
 }

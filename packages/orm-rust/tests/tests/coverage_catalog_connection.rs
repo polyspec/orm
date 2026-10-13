@@ -54,7 +54,8 @@ async fn coverage_catalog_read() {
         let author = TableRef { namespace, name: "author".into() };
         let metadata = catalog.describe_table(&author).await.expect("author metadata");
         let text = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).expect("bench schema");
-        let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
+        let document =
+            polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("bench schema: {errors:?}"));
         let model = polyspec_orm::dbspec::runtime_model(&[&document]).unwrap_or_else(|errors| panic!("bench model: {errors:?}"));
         let declared = model.entities.iter().find(|e| e.table == "author").expect("declared author table");
         let columns: Vec<&str> = metadata.columns.iter().map(|c| c.name.as_str()).collect();

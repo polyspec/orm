@@ -65,7 +65,7 @@ fn parse_set(id: &str, documents: &BTreeMap<String, String>) -> Vec<Document> {
         .iter()
         .map(|(name, text)| {
             let set: BTreeMap<String, String> = documents.iter().filter(|(other, _)| *other != name).map(|(o, t)| (o.clone(), t.clone())).collect();
-            dbspec::parse(text, &set).unwrap_or_else(|e| panic!("{id}/{name}: {e:?}"))
+            dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}/{name}: {e:?}"))
         })
         .collect()
 }
@@ -98,7 +98,7 @@ fn expected_schema_text(id: &str, documents: &[Document]) -> String {
         text.push_str(block);
         text.push('\n');
     }
-    let combined = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{id}: combined document: {e:?}\n{text}"));
+    let combined = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}: combined document: {e:?}\n{text}"));
     dbspec::manifest(&[&combined]).unwrap_or_else(|e| panic!("{id}: {e:?}")).schema_text
 }
 

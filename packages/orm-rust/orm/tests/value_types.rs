@@ -31,7 +31,7 @@ table value_record {
 fn schema() -> &'static Schema {
     static SCHEMA: std::sync::OnceLock<&'static Schema> = std::sync::OnceLock::new();
     SCHEMA.get_or_init(|| {
-        let document = polyspec_orm::dbspec::parse(DOCUMENT, &BTreeMap::new()).unwrap();
+        let document = polyspec_orm::dbspec::parse(DOCUMENT, &BTreeMap::new()).map(|parsed| parsed.document).unwrap();
         let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap();
         assert_eq!(manifest.manifest_text, DOCUMENT, "the test document is its own manifest text");
         Box::leak(Box::new(Schema::new(DOCUMENT, Box::leak(manifest.manifest_hash.into_boxed_str()))))

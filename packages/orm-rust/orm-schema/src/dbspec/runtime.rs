@@ -215,7 +215,8 @@ pub fn parse_manifest_set(text: &str, external: &str) -> Result<Vec<Document>, V
         for (start, name, chunk) in chunks {
             let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
             match super::parse(chunk, &others) {
-                Ok(mut document) => {
+                Ok(parsed) => {
+                    let mut document = parsed.document;
                     document.external = is_external;
                     documents.push(document);
                 }

@@ -45,7 +45,7 @@ fn main() -> ExitCode {
     let mut parsed = None;
     for _ in 0..PARSES {
         let parse = CaseClock::start();
-        let document = match polyspec_orm_schema::dbspec::parse(&text, &BTreeMap::new()) {
+        let document = match polyspec_orm_schema::dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document) {
             Ok(document) => document,
             Err(errors) => {
                 for error in errors.iter().take(20) {

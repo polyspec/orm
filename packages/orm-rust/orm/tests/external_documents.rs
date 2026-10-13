@@ -34,7 +34,7 @@ fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
         .iter()
         .map(|(text, is_external)| {
             let set: BTreeMap<String, String> = texts.iter().filter(|(other, _)| other != text).map(|(other, _)| (name(other), other.clone())).collect();
-            let mut document = dbspec::parse(text, &set).unwrap_or_else(|e| panic!("{e:?}"));
+            let mut document = dbspec::parse(text, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:?}"));
             document.external = *is_external;
             document
         })

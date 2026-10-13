@@ -265,7 +265,7 @@ fn join(lines: &[String], crlf: bool, mixed: bool) -> String {
 
 /// `text`의 diagnostic을, 없으면 그 emission을 출력한다.
 fn write(out: &mut impl Write, text: &str, set: &BTreeMap<String, String>, stress: bool) -> std::io::Result<()> {
-    match polyspec_orm_schema::dbspec::parse(text, set) {
+    match polyspec_orm_schema::dbspec::parse(text, set).map(|parsed| parsed.document) {
         Err(diagnostics) => {
             for d in diagnostics {
                 writeln!(out, "! {} {} {}", d.rule, d.line, d.column)?;
@@ -297,7 +297,7 @@ fn write_manifest(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> 
     let mut documents = Vec::new();
     for (name, lines) in &case.documents {
         let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
-        match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &set) {
+        match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &set).map(|parsed| parsed.document) {
             Ok(document) => documents.push(document),
             Err(diagnostics) => return write_diagnostics(out, &diagnostics),
         }
@@ -325,7 +325,7 @@ fn write_render(out: &mut impl Write, case: &HashCase) -> std::io::Result<()> {
     let mut documents = Vec::new();
     for (name, lines) in &case.documents {
         let set = case.documents.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), join(l, false, false))).collect();
-        match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &set) {
+        match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &set).map(|parsed| parsed.document) {
             Ok(document) => documents.push(document),
             Err(diagnostics) => {
                 writeln!(out, "render/{id}")?;
@@ -383,7 +383,7 @@ fn plan_source(out: &mut impl Write, lines: &Option<Vec<String>>) -> std::io::Re
     let Some(lines) = lines else {
         return Ok(Ok(None));
     };
-    match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &BTreeMap::new()) {
+    match polyspec_orm_schema::dbspec::parse(&join(lines, false, false), &BTreeMap::new()).map(|parsed| parsed.document) {
         Ok(document) => Ok(Ok(Some(document))),
         Err(diagnostics) => {
             write_plan_diagnostics(out, &diagnostics)?;
@@ -496,11 +496,11 @@ fn write_plans(out: &mut impl Write, plans: &PlanVectors) -> std::io::Result<()>
     }
     for case in &plans.comparisons {
         writeln!(out, "plans/comparisons/{}", case.id)?;
-        let source = polyspec_orm_schema::dbspec::parse(&join(&case.source, false, false), &BTreeMap::new());
+        let source = polyspec_orm_schema::dbspec::parse(&join(&case.source, false, false), &BTreeMap::new()).map(|parsed| parsed.document);
         if let Err(diagnostics) = &source {
             write_plan_diagnostics(out, diagnostics)?;
         }
-        let target = polyspec_orm_schema::dbspec::parse(&join(&case.target, false, false), &BTreeMap::new());
+        let target = polyspec_orm_schema::dbspec::parse(&join(&case.target, false, false), &BTreeMap::new()).map(|parsed| parsed.document);
         if let Err(diagnostics) = &target {
             write_plan_diagnostics(out, diagnostics)?;
         }
@@ -555,7 +555,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
     for case in &mermaid.export {
         writeln!(out, "mermaid/export/{}", case.id).map_err(io)?;
         let set = case.documents.iter().map(|(name, lines)| (name.clone(), join(lines, false, false))).collect();
-        match polyspec_orm_schema::dbspec::parse(&join(&case.document, false, false), &set) {
+        match polyspec_orm_schema::dbspec::parse(&join(&case.document, false, false), &set).map(|parsed| parsed.document) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
             Ok(document) => {
                 write_export(out, &document).map_err(io)?;
@@ -580,7 +580,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
                 continue;
             }
         };
-        match polyspec_orm_schema::dbspec::parse(&source, &BTreeMap::new()) {
+        match polyspec_orm_schema::dbspec::parse(&source, &BTreeMap::new()).map(|parsed| parsed.document) {
             Err(diagnostics) => write_plan_diagnostics(out, &diagnostics).map_err(io)?,
             Ok(document) => {
                 let text = write_export(out, &document).map_err(io)?;

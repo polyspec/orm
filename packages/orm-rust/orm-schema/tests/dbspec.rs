@@ -64,7 +64,7 @@ fn declared(case: &Value) -> (String, BTreeMap<String, String>) {
 }
 
 fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
-    match dbspec::parse(text, set) {
+    match dbspec::parse(text, set).map(|parsed| parsed.document) {
         Ok(document) => document,
         Err(errors) => panic!("{id}: unexpected errors {errors:?}"),
     }
@@ -91,7 +91,7 @@ fn run(case: &Value, kind: &str) {
             assert_eq!(dbspec::emit(&again), expected, "{id}: canonical emission is a fixed point");
         }
         "invalid" => {
-            let errors = match dbspec::parse(&text, &set) {
+            let errors = match dbspec::parse(&text, &set).map(|parsed| parsed.document) {
                 Ok(_) => panic!("{id}: parsed an invalid document"),
                 Err(errors) => errors,
             };
@@ -116,6 +116,40 @@ fn run(case: &Value, kind: &str) {
     inner.step(format_args!("cpu={cpu:?} wall={wall:?}"));
 }
 
+/// The positions case: the main document parses, and its declaration positions equal the listed ones in
+/// order. Every key of the case and of each position is read strictly: an unknown or missing key panics.
+fn run_positions(case: &Value) {
+    let id = case["id"].as_str().unwrap();
+    assert_keys(case, &["id", "documents", "main", "positions"], id);
+    let (text, set) = declared(case);
+    let parsed = match dbspec::parse(&text, &set) {
+        Ok(parsed) => parsed,
+        Err(errors) => panic!("{id}: unexpected errors {errors:?}"),
+    };
+    let expected: Vec<(String, Vec<String>, usize, usize)> = case["positions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| {
+            assert_keys(p, &["kind", "path", "line", "column"], id);
+            let path = p["path"].as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_owned()).collect();
+            (p["kind"].as_str().unwrap().to_owned(), path, p["line"].as_u64().unwrap() as usize, p["column"].as_u64().unwrap() as usize)
+        })
+        .collect();
+    let got: Vec<(String, Vec<String>, usize, usize)> = parsed.positions.iter().map(|p| (p.kind.clone(), p.path.clone(), p.line, p.column)).collect();
+    assert_eq!(got, expected, "{id}: positions");
+}
+
+fn assert_keys(value: &Value, keys: &[&str], id: &str) {
+    let object = value.as_object().unwrap_or_else(|| panic!("{id}: an object is expected"));
+    for key in object.keys() {
+        assert!(keys.contains(&key.as_str()), "{id}: unknown key {key}");
+    }
+    for key in keys {
+        assert!(object.contains_key(*key), "{id}: missing key {key}");
+    }
+}
+
 #[test]
 fn shared_dbspec_vectors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
@@ -135,6 +169,14 @@ fn shared_dbspec_vectors() {
             run(case, kind);
             count += 1;
         }
+    }
+    let positions = file["positions"].as_array().unwrap_or_else(|| panic!("positions cases are listed"));
+    assert!(!positions.is_empty(), "positions cases are not empty");
+    for case in positions {
+        let id = case["id"].as_str().unwrap();
+        assert!(!id.is_empty() && seen.insert(id.to_owned()), "case id {id} is nonempty and unique");
+        run_positions(case);
+        count += 1;
     }
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= SUITE_DEADLINE {
