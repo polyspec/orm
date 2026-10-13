@@ -85,6 +85,11 @@ var outputs = map[string]map[string]string{
 	"RowMaps":         {"go": "[]map[string]any", "php": "array", "rust": "crate::Result<serde_json::Value>", "typescript": "Array<Record<string,unknown>>", "python": "list"},
 	// local reads the value that setLocal left in the transaction, not the database, so it is synchronous in Rust.
 	"LocalValue": {"go": "(string,error)", "php": "string", "rust": "Result<String>", "typescript": "Promise<string>", "python": "str"},
+	// Pool statistics are read from the client, not the database, so they are synchronous and cannot fail.
+	"Stats":          {"go": "DBStats", "php": "Polyspec\\Orm\\Stats", "rust": "DbStats", "typescript": "PoolStats", "python": "DbStats"},
+	"PrivilegeUtils": {"go": "*PrivilegeUtils", "php": "Polyspec\\Orm\\PrivilegeUtils", "rust": "PrivilegeUtils<'_>", "typescript": "PrivilegeUtils", "python": "PrivilegeUtils"},
+	// A schema inspection reads the database and reports one boolean.
+	"Inspected": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -133,6 +138,8 @@ var inputs = map[string]map[string]string{
 	"CollectionConnection":   {"go": "db*DB", "php": "Polyspec\\Orm\\Db$db", "rust": "db:&crate::Db", "typescript": "db:Db", "python": "db:Db"},
 	"LocalKey":               {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string", "python": "key:str"},
 	"LocalKeyValue":          {"go": "key,valuestring", "php": "string$key,string$value", "rust": "key:&str,value:&str", "typescript": "key:string,value:string", "python": "key:str,value:str"},
+	"SchemaName":             {"go": "namestring", "php": "string$schema", "rust": "name:&str", "typescript": "name:string", "python": "name:str"},
+	"SchemaTable":            {"go": "name,tablestring", "php": "string$schema,string$table", "rust": "name:&str,table:&str", "typescript": "name:string,table:string", "python": "name:str,table:str"},
 }
 
 // validateRules checks every native adapter against the common inputs and

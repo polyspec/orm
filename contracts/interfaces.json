@@ -1682,6 +1682,36 @@
       }
     },
     {
+      "id": "Db.stats",
+      "for": "once",
+      "inputs": [],
+      "output": "Stats",
+      "errors": [],
+      "state": "Reports the pool statistics of the connection: the open, in-use and idle connections and the pool limit; a PHP or Python Db holds one connection",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/db.go::DB.Stats",
+          "signature": "receiver=*DB func() DBStats"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::stats",
+          "signature": "public function stats(): Polyspec\\Orm\\Stats"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/db.rs::Db::stats",
+          "signature": "pub fn stats (& self) -> DbStats"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/database.ts::Db.stats",
+          "signature": "public stats(): PoolStats"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.stats",
+          "signature": "def stats(self) -> DbStats"
+        }
+      }
+    },
+    {
       "id": "Utils.lock",
       "for": "once",
       "inputs": [
@@ -1927,6 +1957,111 @@
       }
     },
     {
+      "id": "SchemaUtils.exists",
+      "for": "once",
+      "inputs": [
+        "SchemaName"
+      ],
+      "output": "Inspected",
+      "errors": [
+        "CONFIG",
+        "CAPABILITY_UNSUPPORTED",
+        "driver error"
+      ],
+      "state": "Reports whether a schema exists, reading through the active transaction or the connection; an invalid name returns CONFIG and a markdown connection CAPABILITY_UNSUPPORTED",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Exists",
+          "signature": "receiver=*SchemaUtils func(name string) (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::exists",
+          "signature": "public function exists(string $schema): bool"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::exists",
+          "signature": "pub async fn exists (& self , name : & str) -> Result < bool >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.exists",
+          "signature": "public async exists(name: string): Promise<boolean>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.exists",
+          "signature": "def exists(self, name: str) -> bool"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.installed",
+      "for": "once",
+      "inputs": [
+        "SchemaTable"
+      ],
+      "output": "Inspected",
+      "errors": [
+        "CONFIG",
+        "CAPABILITY_UNSUPPORTED",
+        "driver error"
+      ],
+      "state": "Reports whether a table of a schema exists, reading through the active transaction or the connection; an invalid name returns CONFIG and a markdown connection CAPABILITY_UNSUPPORTED",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Installed",
+          "signature": "receiver=*SchemaUtils func(name, table string) (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::installed",
+          "signature": "public function installed(string $schema, string $table): bool"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::installed",
+          "signature": "pub async fn installed (& self , name : & str , table : & str) -> Result < bool >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.installed",
+          "signature": "public async installed(name: string, table: string): Promise<boolean>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.installed",
+          "signature": "def installed(self, name: str, table: str) -> bool"
+        }
+      }
+    },
+    {
+      "id": "SchemaUtils.empty",
+      "for": "once",
+      "inputs": [],
+      "output": "Inspected",
+      "errors": [
+        "CAPABILITY_UNSUPPORTED",
+        "driver error"
+      ],
+      "state": "Reports whether the database holds no user content as docs/interfaces.md defines it per dialect, reading through the active transaction or the connection; a markdown connection returns CAPABILITY_UNSUPPORTED",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Empty",
+          "signature": "receiver=*SchemaUtils func() (bool, error)"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::empty",
+          "signature": "public function empty(): bool"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::empty",
+          "signature": "pub async fn empty (& self) -> Result < bool >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.empty",
+          "signature": "public async empty(): Promise<boolean>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.empty",
+          "signature": "def empty(self) -> bool"
+        }
+      }
+    },
+    {
       "id": "Utils.aes",
       "for": "once",
       "inputs": [],
@@ -1953,6 +2088,66 @@
         "python": {
           "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.aes",
           "signature": "def aes(self) -> AesUtils"
+        }
+      }
+    },
+    {
+      "id": "Utils.privileges",
+      "for": "once",
+      "inputs": [],
+      "output": "PrivilegeUtils",
+      "errors": [],
+      "state": "Returns the table privilege utilities, which PostgreSQL implements and every other dialect refuses with CAPABILITY_UNSUPPORTED",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::Utils.Privileges",
+          "signature": "receiver=*Utils func() *PrivilegeUtils"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::privileges",
+          "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::privileges",
+          "signature": "pub fn privileges (& self) -> PrivilegeUtils < '_ >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::Utils.privileges",
+          "signature": "public privileges(): PrivilegeUtils"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.privileges",
+          "signature": "def privileges(self) -> PrivilegeUtils"
+        }
+      }
+    },
+    {
+      "id": "Utils.stats",
+      "for": "once",
+      "inputs": [],
+      "output": "Stats",
+      "errors": [],
+      "state": "Returns the pool statistics of the connection, as Db.stats does",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::Utils.Stats",
+          "signature": "receiver=*Utils func() DBStats"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::stats",
+          "signature": "public function stats(): Polyspec\\Orm\\Stats"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::stats",
+          "signature": "pub fn stats (& self) -> DbStats"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::Utils.stats",
+          "signature": "public stats(): PoolStats"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.stats",
+          "signature": "def stats(self) -> DbStats"
         }
       }
     },
