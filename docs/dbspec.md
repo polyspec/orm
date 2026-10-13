@@ -300,15 +300,15 @@ Emission writes a parsed document in one canonical text, so `emit(parse(s)) == s
 
 Each implementation has one dbspec lexer and one parser, and syntax analysis is an output of that parser: no editor layer, generated file or regular expression holds a rule of the grammar. A regular-expression grammar such as TextMate's has no parser context, and a name may be a keyword word that is not reserved (`key`, `text` and `references` are valid column names), so it would classify tokens differently from the parser.
 
-`analyze(text, set)` returns the parse result, unchanged, and the tokens of the text. A token is `{line, start, end, class}`: `line` is 1-based, `start` and `end` count Unicode code points from the line start, and `end` is exclusive. The classes are:
+`analyze(text, set)` returns the parse result, unchanged, and the tokens of the text. A token is `{line, start, end, class}`: `line` is 1-based, `start` is the number of Unicode code points before the token on its line, and `end` the number before the code point after it.
 
 A line is read into words, strings, punctuation marks (`{`, `}`, `(`, `)`, `,`) and operators (`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`); a word of digits with an optional fraction (`12`, `0.50`) is a number, and a comment is a whole line. The parser gives each token its class:
 
 | Class | Tokens |
 | --- | --- |
-| `keyword` | A word that the grammar of its line reads as a keyword at its position, such as `table`, `primary`, `references`, `null` or `and` |
-| `type` | A word of a column type |
-| `name` | A document, table, column, constraint, index or diagram name, where it is declared and where it is referenced |
+| `keyword` | A word that the grammar fixes at its position, one of the words the position accepts: the header's `dbspec`, `table`, `primary`, `key`, `references`, `on`, `cascade`, `asc`, `settings`, the option words of a setting, `->` aside the words of a state machine line, `diagram`, `at`, the predicate words `and`, `or`, `not`, `in`, `between` and `is`, and the literal words `true`, `false` and `null` |
+| `type` | The word that names a column's type |
+| `name` | A word that the grammar takes freely at its position: a document, table, column, constraint, index, diagram or state name, or a relation name of `navigation`, where it is declared and where it is referenced |
 | `setting` | The first word of a line of a `settings` block; the other words of the line take the classes above |
 | `number` | A number |
 | `string` | A string |
