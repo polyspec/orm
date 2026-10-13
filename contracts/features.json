@@ -2701,7 +2701,7 @@
         "php": "pass",
         "rust": "pass",
         "typescript": "pass",
-        "python": "planned"
+        "python": "pass"
       },
       "fixtures": [
         "schema/bench.dbs",
@@ -2717,7 +2717,8 @@
         "contracts/fixtures/schema_definition.json",
         "packages/orm-go/orm/coverage_fixture_test.go",
         "packages/orm-php/tests/coverage_cases.php",
-        "packages/orm-npm/tests/coverage_case.mjs"
+        "packages/orm-npm/tests/coverage_case.mjs",
+        "packages/orm-python/tests/coverage_case.py"
       ],
       "tests": [
         "packages/orm-php/tests/dbspec_apply_cleanup_test.php",
@@ -2805,7 +2806,16 @@
         "packages/orm-npm/tests/dbspec-set.mjs",
         "packages/orm-npm/tests/browser-entry.mjs",
         "packages/orm-npm/tests/syntax-vectors.mjs",
-        "packages/orm-php-extension/tests/dbspec_names_test.php"
+        "packages/orm-php-extension/tests/dbspec_names_test.php",
+        "packages/orm-python/tests/dbspec_cases.py",
+        "packages/orm-python/tests/dbspec_ddl.py",
+        "packages/orm-python/tests/dbspec_plans.py",
+        "packages/orm-python/tests/dbspec_mermaid.py",
+        "packages/orm-python/tests/test_dbspec_analyze.py",
+        "packages/orm-python/tests/test_dbspec_set_files.py",
+        "packages/orm-python/tests/test_dbspec_show_create.py",
+        "packages/orm-python/tests/test_dbspec_syntax_vectors.py",
+        "packages/orm-python/tests/coverage_schema_definition.py"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2937,6 +2947,33 @@
             "packages/orm-npm/tests/browser-entry.mjs",
             "packages/orm-npm/tests/syntax-vectors.mjs",
             "scripts/dbspec/syntax-vectors.mjs"
+          ]
+        },
+        {
+          "id": "schema-python",
+          "command": "make dbspec-python-check",
+          "shard": "other",
+          "inputs": [
+            "packages/orm-python/tests/dbspec_cases.py",
+            "packages/orm-python/tests/dbspec_ddl.py",
+            "packages/orm-python/tests/dbspec_plans.py",
+            "packages/orm-python/tests/dbspec_mermaid.py",
+            "packages/orm-python/tests/test_dbspec_analyze.py",
+            "packages/orm-python/tests/test_dbspec_set_files.py",
+            "packages/orm-python/tests/test_dbspec_show_create.py",
+            "packages/orm-python/tests/test_dbspec_syntax_vectors.py",
+            "schema/bench.dbs",
+            "tests/dbspec/cases.json",
+            "tests/dbspec/ddl.json",
+            "tests/dbspec/plans.json",
+            "tests/dbspec/mermaid.json",
+            "tests/dbspec/syntax.json",
+            "tests/dbspec/show-create.json",
+            "tests/dbspec/set-files.json",
+            "tests/dbspec/files/invalid-utf8.dbs",
+            "tests/dbspec/files/shop.dbs",
+            "tests/dbspec/files/dbschema.dbs",
+            "tests/dbspec/files/empty.dbs"
           ]
         },
         {
@@ -3131,6 +3168,32 @@
                 {
                   "runner": "node",
                   "test": "packages/orm-npm/tests/coverage_schema_definition.mjs",
+                  "cases": [
+                    "dbspec_emit_round_trip",
+                    "dbspec_manifest_hash",
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
+                  ]
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/orm-python/tests",
+            "tests": [
+              "packages/orm-python/tests/coverage_schema_definition.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/schema_definition.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/orm-python/tests/coverage_schema_definition.py",
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
@@ -7107,6 +7170,16 @@
         "packages/orm-npm/tests/coverage-case-unit.mjs"
       ],
       "command": "node packages/orm-npm/tests/coverage-case-unit.mjs"
+    },
+    {
+      "id": "coverage-runner-python",
+      "paths": [
+        "packages/orm-python/tests/coverage_case.py"
+      ],
+      "tests": [
+        "packages/orm-python/tests/coverage_case_test.py"
+      ],
+      "command": "make --no-print-directory python-coverage-case-check"
     },
     {
       "id": "php-test-autoload",

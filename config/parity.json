@@ -132,6 +132,7 @@
         { "implementation": "go", "test": "packages/orm-go/orm/coverage_schema_definition_test.go", "symbol": "TestCoverageDbspecEmitRoundTrip" },
         { "implementation": "php", "test": "packages/orm-php/tests/coverage_schema_definition.php" },
         { "implementation": "typescript", "test": "packages/orm-npm/tests/coverage_schema_definition.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/coverage_schema_definition.py" },
         { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/coverage_schema_definition.rs", "symbol": "coverage_dbspec_emit_round_trip" }
       ]
     },
