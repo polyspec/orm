@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b31074e5dc8147a2da2f9ae0139f973f81b77447013100eefee8bfbb650261c0 -->
+<!-- source-sha256: fa21003a24ab6abb2aec5a91010c043e9fd58e912979baf0f0dd3246209bcf3e -->
 # 변경 이력
 
 ## Unreleased
+
+## 0.0.11
 
 - T153: Python Collection의 get과 fetched가 key_text를 import해 더는 NameError로 실패하지 않는다.
 - T147: interface 검사가 rule이 선언하지 않은 공개 component method를 거부한다.
