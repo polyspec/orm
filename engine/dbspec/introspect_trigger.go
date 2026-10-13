@@ -36,8 +36,8 @@ func (c *catalog) recognizeTriggers(dialect Dialect, triggers map[string][]itrig
 			}
 			continue
 		}
-		setting, settings := c.triggerSetting(dialect, t, list)
-		if setting == "" {
+		ok, settings := c.triggerSetting(dialect, t, list)
+		if !ok {
 			for _, tr := range list {
 				c.report("trigger", table, tr.name, "the trigger is not the renderer output of immutable or audit")
 			}
@@ -47,9 +47,12 @@ func (c *catalog) recognizeTriggers(dialect Dialect, triggers map[string][]itrig
 	}
 }
 
-// triggerSetting은 trigger 집합이 같은 renderer 출력을 주는 setting과 그 setting
-// 줄을 돌려준다. 없으면 빈 문자열이다.
-func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (string, []string) {
+// triggerSetting은 trigger 집합이 immutable과 audit setting 각각의 renderer 출력과
+// 같은지 본다. 각 setting은 자기 trigger 이름(재계산한 renderer 이름)으로 알아보며
+// 개수로 알아보지 않는다. 두 setting을 함께 쓴 table의 trigger는 두 출력의 합이다.
+// 집합이 합과 이름과 내용이 모두 같을 때만 그 setting 줄을 돌려준다. 아니면 ok가
+// false다.
+func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (bool, []string) {
 	names := map[string]itrigger{}
 	for _, tr := range list {
 		names[tr.name] = tr
@@ -58,43 +61,50 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (s
 	for _, col := range t.columns {
 		model.Columns = append(model.Columns, Column{Name: col.name, Type: col.typ})
 	}
-	r := renderer{d: dialect}
-	candidates := map[string]*Settings{}
-	if len(list) == 2 {
-		candidates["immutable"] = &Settings{Immutable: &ImmutableSetting{}}
+	settings := &Settings{}
+	for _, event := range []string{"immutable_update", "immutable_delete"} {
+		if _, ok := names[rendererName(t.name, event)]; ok {
+			settings.Immutable = &ImmutableSetting{}
+		}
 	}
-	if insert, ok := names[rendererName(t.name, "audit_insert")]; ok && len(list) == 3 {
+	if insert, ok := names[rendererName(t.name, "audit_insert")]; ok {
 		update := names[rendererName(t.name, "audit_update")]
 		body := statementBody(insert.statements)
 		m := auditInsertPattern.FindStringSubmatch(body)
 		u := auditUpdatePattern.FindStringSubmatch(statementBody(update.statements))
 		if m != nil && u != nil {
-			if a := auditOf(t, m[1], strings.Split(m[2], ", "), u[1]); a != nil {
-				candidates["audit"] = &Settings{Audit: a}
-			}
+			settings.Audit = auditOf(t, m[1], strings.Split(m[2], ", "), u[1])
 		}
 	}
-	for kind, settings := range candidates {
-		model.Settings = settings
-		want := r.triggers(&model)
-		var got []string
-		for _, w := range triggerOrder(want) {
-			tr, ok := names[w]
-			if !ok {
-				got = nil
-				break
-			}
-			got = append(got, tr.statements...)
-		}
-		if slices.Equal(got, want) {
-			if kind == "immutable" {
-				return kind, []string{"immutable"}
-			}
-			a := settings.Audit
-			return kind, []string{a.line("exclude", a.Exclude)}
-		}
+	if settings.Immutable == nil && settings.Audit == nil {
+		return false, nil
 	}
-	return "", nil
+	model.Settings = settings
+	r := renderer{d: dialect}
+	want := r.triggers(&model)
+	wanted := triggerOrder(want)
+	if len(wanted) != len(list) {
+		return false, nil
+	}
+	var got []string
+	for _, w := range wanted {
+		tr, ok := names[w]
+		if !ok {
+			return false, nil
+		}
+		got = append(got, tr.statements...)
+	}
+	if !slices.Equal(got, want) {
+		return false, nil
+	}
+	var lines []string
+	if settings.Immutable != nil {
+		lines = append(lines, "immutable")
+	}
+	if a := settings.Audit; a != nil {
+		lines = append(lines, a.line("exclude", a.Exclude))
+	}
+	return true, lines
 }
 
 // auditOf는 audit insert trigger의 column 목록(action, previous, 기록하는
