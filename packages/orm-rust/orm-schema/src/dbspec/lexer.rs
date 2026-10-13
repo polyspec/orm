@@ -96,8 +96,14 @@ pub(crate) fn tokenize(line: &str, number: usize) -> Vec<Token<'_>> {
                 }
                 j += 1;
             }
-            kind = if closed { Kind::Str } else { Kind::Invalid };
-            i = j;
+            if closed {
+                kind = Kind::Str;
+                i = j;
+            } else {
+                // Go's lexRecover: the opening quote is the offending character; lexing goes on after it.
+                kind = Kind::Invalid;
+                i = start + 1;
+            }
         } else {
             let next = bytes.get(i + 1).copied().unwrap_or(0);
             if matches!((c, next), ('<', b'>' | b'=') | ('>', b'=')) {

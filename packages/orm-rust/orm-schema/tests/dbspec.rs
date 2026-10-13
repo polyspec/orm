@@ -81,6 +81,7 @@ fn run(case: &Value, kind: &str) {
             let emitted = dbspec::emit(&document);
             assert_eq!(emitted, text, "{id}: canonical text emits unchanged");
             assert_eq!(dbspec::emit(&document), emitted, "{id}: second emission is identical");
+            assert_eq!(dbspec::format(&text, &set), Ok(text.clone()), "{id}: a canonical text formats to itself");
         }
         "normalize" => {
             let document = parsed(id, &text, &set);
@@ -89,6 +90,8 @@ fn run(case: &Value, kind: &str) {
             assert_eq!(emitted, expected, "{id}: emits its canonical lines");
             let again = parsed(id, &emitted, &set);
             assert_eq!(dbspec::emit(&again), expected, "{id}: canonical emission is a fixed point");
+            assert_eq!(dbspec::format(&text, &set), Ok(expected.clone()), "{id}: a normalize text formats to its canonical text");
+            assert_eq!(dbspec::format(&expected, &set), Ok(expected.clone()), "{id}: formatting the canonical text changes nothing");
         }
         "invalid" => {
             let errors = match dbspec::parse(&text, &set).map(|parsed| parsed.document) {
@@ -106,6 +109,7 @@ fn run(case: &Value, kind: &str) {
             for error in &errors {
                 assert!(!error.message.is_empty(), "{id}: diagnostic has a message");
             }
+            assert_eq!(dbspec::format(&text, &set), Err(errors.clone()), "{id}: an invalid text is refused with its diagnostics");
         }
         _ => unreachable!("unknown case kind {kind}"),
     }
