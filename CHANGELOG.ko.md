@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5f2c59af6c1460b78a448e265a4c7e4eb4f28fbdcfc399f110ed6f1a3efcd954 -->
+<!-- source-sha256: 19c82e7175ed7abdc9a69c7b99d5ffd4b1674dc9183bd7317f0b934c80eb9b6f -->
 # 변경 이력
 
 ## Unreleased
 
+- T144: PHP `orm-gen`이 Composer의 조회로 autoloader를 얻고 없는 autoloader를 적는다; 문서는 `vendor-php/bin/orm-gen`을 실행한다.
 - T126-2-1: workflow test가 vendor 파일 중 workflow만 판정한다.
 - T136-1: install-python test가 uv를 Python보다 먼저 설치하기를 요구한다.
 - T128-2a-8: Go와 PHP의 model 생성 coverage가 set 파일로 생성한다.
