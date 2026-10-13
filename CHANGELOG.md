@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T153: the Python Collection's get and fetched import key_text and no longer raise NameError.
 - T147: the interface check refuses a public component method that no rule declares.
 - T147-5: Rust's AesKeyring lists its key versions, and the rule AESKeyring.versions is declared.
 - T147-2: Python has Db.stats, Utils.privileges, Utils.stats and SchemaUtils.exists, installed and empty, PHP has Db::stats, and their interface rules are declared.
