@@ -557,6 +557,7 @@ export interface Author {
   andUuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   betweenReadCount(v0: readonly [number, number]): this;
   betweenStartDt(v0: readonly [string | Date, string | Date]): this;
+  emailBlindIndex(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   geReadCount(v0: number | ValueFunction): this;
   getByName(v0: string | readonly (string)[] | ValueFunction | Model): Promise<this>;
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
@@ -579,14 +580,18 @@ export interface Author {
   newLabel(value: unknown): this;
   orIsClose(v0: boolean | readonly (boolean)[] | ValueFunction | Model): this;
   orderByReadCountDescAndSeqAsc(): this;
+  phoneBlindIndex(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   photoUrl(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   readCount(v0: number | readonly (number)[] | ValueFunction | Model): this;
   readCountGtSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
   seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  serviceMemberSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  serviceRegionSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   startDt(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]): this;
   userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   userSeqEqSeq(v0: Author | User | Service | ServiceRegion | ServiceMember | SoftRecord | Account | Project | Task | HexCell): this;
+  uuid(v0: string | readonly (string)[] | ValueFunction | Model | null): this;
   /** Returns the author relation result; T is its model type. */
   getAuthorModels<T = unknown>(): T;
   /** Returns the value or relation result named Members. */
@@ -695,6 +700,7 @@ export interface Service {
   gtSeq(v0: number | ValueFunction): this;
   matchServiceSeqWithSeq(): this;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -760,6 +766,8 @@ export interface ServiceRegion {
   aliasModule(): this;
   matchServiceRegionSeqWithSeq(): this;
   possibleIsClose(value: unknown): this;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -832,6 +840,9 @@ export interface ServiceMember {
   matchSeqWithServiceSeq(): this;
   matchServiceSeqWithServiceSeq(): this;
   matchUserSeqWithUserSeq(): this;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  serviceSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  userSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1026,6 +1037,7 @@ export class SoftRecord extends Model {
 export interface SoftRecord {
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   name(v0: string | readonly (string)[] | ValueFunction | Model): this;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1077,6 +1089,7 @@ export class Account extends Model {
 export interface Account {
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
   newLabel(value: unknown): this;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1126,6 +1139,7 @@ export class Project extends Model {
   public orderByNameDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('name', true, fn); return this; }
 }
 export interface Project {
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1180,6 +1194,9 @@ export class AccountProject extends Model {
   public forceIndexIxAccountProjectProject(): this { this[CORE].index = 'ix_account_project_project'; return this; }
 }
 export interface AccountProject {
+  accountSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  projectSeq(v0: number | readonly (number)[] | ValueFunction | Model): this;
+  tupleAccountSeqWithProjectSeq(v0: ReadonlyArray<readonly [number, number]>): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1239,6 +1256,7 @@ export class Task extends Model {
   public orderByStateDesc(...fn: ColumnFunction[]): this { this[CORE].orderBy('state', true, fn); return this; }
 }
 export interface Task {
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
@@ -1299,6 +1317,7 @@ export class HexCell extends Model {
 }
 export interface HexCell {
   getBySeq(v0: number | readonly (number)[] | ValueFunction | Model): Promise<this>;
+  seq(v0: number | readonly (number)[] | ValueFunction | Model): this;
   /** Returns the value or relation result named AesHexEmail. */
   getAesHexEmail<T = unknown>(): T;
   /** Returns the author relation result; T is its model type. */
