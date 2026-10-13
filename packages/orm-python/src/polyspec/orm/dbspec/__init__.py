@@ -10,13 +10,13 @@ from polyspec.orm.dbspec.installed import installed_differences
 from polyspec.orm.dbspec.add_tables import add_tables_and_columns_steps
 from polyspec.orm.dbspec.file import DBSPEC_SIGNATURE, read_dbspec_bytes, read_dbspec_file
 from polyspec.orm.dbspec.manifest import check_set, dbspec_manifest, external_differences
-from polyspec.orm.dbspec.model import DbspecColumn, DbspecDefault, DbspecDiagnostic, \
-    DbspecDocument, DbspecPosition, DbspecTable, DbspecType
-from polyspec.orm.dbspec.parse import RESERVED, parse_document, parse_dbspec, valid_name, \
-    well_formed
+from polyspec.orm.dbspec.model import DbspecAnalysis, DbspecColumn, DbspecDefault, \
+    DbspecDiagnostic, DbspecDocument, DbspecPosition, DbspecTable, DbspecToken, DbspecType
+from polyspec.orm.dbspec.parse import RESERVED, analyze_dbspec, format_dbspec, parse_document, \
+    parse_dbspec, valid_name, well_formed
 
 __all__ = ['CANONICAL', 'add_tables_and_columns_steps', 'installed_differences', 'DBSPEC_SIGNATURE', 'MANIFEST', 'RESERVED', 'SCHEMA',
-           'UUID_PATTERN', 'DbspecColumn', 'DbspecDefault', 'DbspecDiagnostic',
+           'UUID_PATTERN', 'DbspecAnalysis', 'DbspecColumn', 'DbspecToken', 'analyze_dbspec', 'format_dbspec', 'DbspecDefault', 'DbspecDiagnostic',
            'DbspecDocument', 'DbspecPosition', 'DbspecTable', 'DbspecType', 'Renderer', 'check_set',
            'default_text', 'dbspec_manifest', 'emit_dbspec', 'emit_document',
            'external_differences', 'parse_document', 'parse_dbspec',

@@ -29,6 +29,29 @@ class DbspecPosition:
 
 
 @dataclass(frozen=True)
+class DbspecToken:
+    """One token of a text (docs/dbspec.md "Syntax analysis"): the 1-based line, the code points before the
+    token on its line (start) and before the code point after it (end), and its class. `token_class` is
+    the field of the `class` token: `class` is a Python keyword."""
+
+    line: int
+    start: int
+    end: int
+    token_class: str
+
+
+@dataclass(frozen=True)
+class DbspecAnalysis:
+    """The parse result of a text, unchanged, and its tokens in source order (docs/dbspec.md
+    "Syntax analysis"). The document and the positions are None on failure."""
+
+    document: DbspecDocument | None
+    positions: list[DbspecPosition] | None
+    diagnostics: list[DbspecDiagnostic]
+    tokens: tuple[DbspecToken, ...]
+
+
+@dataclass(frozen=True)
 class DbspecDiagnostic:
     """SCHEMA_INVALID 진단 하나: 규칙, 1-based 줄과 칸, message."""
 
