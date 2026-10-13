@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-1: docs/dbspec.md "Document sets" specifies the set file `dbspec-set.json` and its reader, and `tests/dbspec/set-files.json` holds its 61 file-tree vectors.
 - T129-2: the PHP extension has `Native\Names` with `render`, `ofTable` and `column`, the renderer names of the PHP client.
 - T128-3-1: every runtime parses the complete lines before an encoding stop and reports their diagnostics before the encoding diagnostic, as Go does.
 - T128-5-2: the dependency policy states why packages/dbspec-language keeps typescript 6.0.3: its module graph test needs the typescript API that typescript 7 lacks.

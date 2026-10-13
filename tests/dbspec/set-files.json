@@ -1,0 +1,1253 @@
+{
+  "version": 1,
+  "note": "Vectors of the set reader (docs/dbspec.md \"Document sets\"). Each case is a file tree under an empty temporary directory, the root of the tree: a path maps to {\"file\": UTF-8 text}, {\"hex\": bytes}, {\"symlink\": target as written} or {\"hardlink\": the tree path of an earlier file}; parent directories are created. The runner calls the set reader with the tree root joined with `set`. A `want` with `documents` and `external` lists the joined paths, relative to the tree root, in order; the runner requires each returned path to be the tree root, `/`, and that path, and the bytes to equal the file's. A `want` with `errors` lists each error's rule and path in order, the path relative to the tree root; messages are not compared. Unknown or missing fields are errors.",
+  "cases": [
+    {
+      "id": "minimal",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "nested-and-external",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/billing/invoices.dbs": {
+          "file": "dbspec 1 invoices\n"
+        },
+        "core/core.dbs": {
+          "file": "dbspec 1 core\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\", \"billing/invoices.dbs\"], \"external\": [\"../core/core.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs",
+          "app/billing/invoices.dbs"
+        ],
+        "external": [
+          "app/../core/core.dbs"
+        ]
+      }
+    },
+    {
+      "id": "external-empty-list",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": []}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "schema-one-point-zero",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1.0, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "schema-exponent",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1e0, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "external-without-dotdot",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/vendor/core.dbs": {
+          "file": "dbspec 1 core\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": [\"vendor/core.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": [
+          "app/vendor/core.dbs"
+        ]
+      }
+    },
+    {
+      "id": "bytes-not-checked",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "<?xml version=\"1.0\"?>\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/shop.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "set-file-wrong-name",
+      "tree": {
+        "app/set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        },
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        }
+      },
+      "set": "app/set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "set-file-missing",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "set-file-name-case",
+      "tree": {
+        "app/DBSPEC-SET.JSON": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        },
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "listed-file-missing",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\", \"gone.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/gone.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "listed-path-is-directory",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dir.dbs/x.dbs": {
+          "file": "dbspec 1 x\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"dir.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/dir.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "listed-name-case",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"Shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/Shop.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "component-not-directory",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs/x.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/shop.dbs/x.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "listed-file-symlink",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/link.dbs": {
+          "symlink": "shop.dbs"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"link.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.symlink",
+            "path": "app/link.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "component-symlink",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "real/x.dbs": {
+          "file": "dbspec 1 x\n"
+        },
+        "app/sub": {
+          "symlink": "../real"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub/x.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.symlink",
+            "path": "app/sub/x.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "set-file-symlink",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/real.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        },
+        "app/dbspec-set.json": {
+          "symlink": "real.json"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.symlink",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "root-symlink",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        },
+        "alias": {
+          "symlink": "app"
+        }
+      },
+      "set": "alias/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.symlink",
+            "path": "alias/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-invalid",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1,"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-array",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "[1]"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-trailing",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"]} x"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-lone-surrogate",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"\\ud800.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-depth-65",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"x\": [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-depth-64-reaches-key-check",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"x\": [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-bom",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "hex": "efbbbf7b22736368656d61223a20312c2022646f63756d656e7473223a205b2273686f702e646273225d7d"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "json-invalid-utf8",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "hex": "7b22736368656d61223a20312c2022646f63756d656e7473223a205b22ff2e646273225d7d"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.json",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "schema-missing",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.schema",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "schema-two",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 2, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.schema",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "schema-string",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": \"1\", \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.schema",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "schema-beyond-double",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1e400, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.schema",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "schema-true",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": true, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.schema",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "key-unknown",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"zeta\": 1, \"alpha\": 1, \"schema\": 1, \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "key-twice",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"documents\": [\"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-missing",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-not-array",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": \"shop.dbs\"}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-number",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [1]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "external-null",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": null}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.key",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-empty",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": []}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.empty",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-absolute",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"/shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-drive",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"C:/shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-backslash",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub\\\\shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-dot",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"./shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-empty-segment",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub//shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-trailing-slash",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub/\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-suffix",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.txt\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-device",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"nul.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-device-before-dots",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"com1.x.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-device-trailing-space",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"LPT1 .dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-device-superscript",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"COM\\u00b9.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-trailing-dot-segment",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub./shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-trailing-space-segment",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub /shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-reserved-char",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sh<op.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "path-control-char",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sh\\u0001op.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-dotdot",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"../shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "documents-inner-dotdot",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"sub/../shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "external-dotdot-after-segment",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": [\"sub/../core.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          }
+        ]
+      }
+    },
+    {
+      "id": "device-name-inside-word",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/console.dbs": {
+          "file": "dbspec 1 console\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"console.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "documents": [
+          "app/console.dbs"
+        ],
+        "external": []
+      }
+    },
+    {
+      "id": "duplicate-same-path",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\", \"shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.duplicate",
+            "path": "app/shop.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-hard-link",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/copy.dbs": {
+          "hardlink": "app/shop.dbs"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\", \"copy.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.duplicate",
+            "path": "app/copy.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "duplicate-across-lists",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"shop.dbs\"], \"external\": [\"../app/shop.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.duplicate",
+            "path": "app/../app/shop.dbs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "errors-by-step-then-path",
+      "tree": {
+        "app/shop.dbs": {
+          "file": "dbspec 1 shop\n"
+        },
+        "app/dbspec-set.json": {
+          "file": "{\"schema\": 1, \"documents\": [\"gone.dbs\", \"shop.dbs\", \"shop.dbs\", \"bad\\\\x.dbs\"]}"
+        }
+      },
+      "set": "app/dbspec-set.json",
+      "want": {
+        "errors": [
+          {
+            "rule": "set.file",
+            "path": "app/gone.dbs"
+          },
+          {
+            "rule": "set.path",
+            "path": "app/dbspec-set.json"
+          },
+          {
+            "rule": "set.duplicate",
+            "path": "app/shop.dbs"
+          }
+        ]
+      }
+    }
+  ]
+}

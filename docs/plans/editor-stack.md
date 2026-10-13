@@ -90,10 +90,13 @@ Owner rulings:
      reads every ancestor up to that bound. This is discovery along the document's own path,
      never a walk of the disk. File watching handles only later changes: create, change and
      delete of set files and listed files.
-   - The rules exist once. The browser-safe subpath exports a pure `parseSet(text, path)` that
+   - The rules exist once. The browser-safe subpath exports a pure `parseSet(bytes, path)` that
      applies every non-I/O rule. The language service gets `resolveSet(path, host)` with an
-     injected host for `lstat` and reading bytes; the LSP and the CLI pass a `node:fs` host.
-     The set vectors run against `parseSet` in TS and against `readSet` in the other runtimes.
+     injected host for `lstat`, listing a directory, and opening a file once to give its bytes
+     and its identity; the LSP and the CLI pass a `node:fs` host.
+     Every runtime's set reader runs the file-tree set vectors; TS `parseSet` also runs the
+     vectors that need no file tree (corrected by the review of T128-2a-1: a pure function
+     cannot run vectors of symbolic and hard links).
    - A document in the `documents` of two set files is a diagnostic. `external` listings do not
      count: an external document of one set is, by definition, owned by another
      (docs/dbspec.md:245).
