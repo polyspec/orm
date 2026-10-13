@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 96177efa27113f522272d79f8e76e3ef65039f79016314dc0d0bd0a671573b1f -->
+<!-- source-sha256: 3a1ce236052b5e60b7fc3ec38f747c32c8c09329ba6b8711a5ca3548bc5dda11 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -984,4 +984,5 @@
 - [ ] T142 Go와 PHP가 YAML을 core schema로 읽는다. 원인: T139 조사에서 Go yaml.v3가 `0b101`을 5로, `+0x1`을 1로, `1_000`을 1000으로, U+0085를 줄바꿈으로 읽고 `2014-12-31`을 거부하며, PHP도 `1_000`, timestamp, U+0085를 같이 읽음을 찾았다. docs/codec.md는 YAML 1.2 문서를 요구하므로, Rust나 TypeScript client가 따옴표 없이 쓴 문자열을 다른 값으로 되읽는다. 인수 조건: Go와 PHP가 YAML 1.2 core schema로 decode하며, 형태마다 공유 codec vector를 두고 red를 먼저 본다.
 - [ ] T143 TypeScript와 PHP set reader가 Windows의 모든 name surrogate를 감지한다(T128-2a-5에 이어). 원인: docs/dbspec.md 단계 3은 tag가 name surrogate인 모든 reparse point를 symbolic link로 보지만, Node와 PHP의 lstat은 symbolic link와 junction만 보고하므로 다른 name-surrogate tag(WSL symlink tag)를 따른다. Go, Rust, PHP extension은 `IsReparseTagNameSurrogate`를 검사한다. 인수 조건: TypeScript와 PHP reader가 선언된 방식으로 reparse tag에 닿거나, 명세가 근거와 함께 지원 tag를 적는다; 조용한 차이는 없다.
 - [ ] T144 checkout에서 `packages/orm-php/bin/orm-gen`을 실행한다. 원인: `php packages/orm-php/bin/orm-gen`이 autoload 조회에서 `vendor-php`를 찾지 못해 `Class "Polyspec\Orm\OrmGen" not found`로 멈추므로 README의 명령이 실패한다; `vendor-php/bin/orm-gen`은 동작한다. 인수 조건: bin이 저장소가 설치하는 autoloader를 찾으며, red를 먼저 본다.
+- [o] T145 mysql2를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 packages/orm-npm이 3.24.5를 고정한 사이 mysql2 3.24.6이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mysql2를 3.24.6에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 없다; `make dependency-policy-check`와 `make typescript-build`가 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.

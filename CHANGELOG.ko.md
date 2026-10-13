@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1d6fb3f561da6a74793228b23b86cb59d86b3822391c1948f19fb2fff6a0820d -->
+<!-- source-sha256: e45916960efcd36054df65a06aac589c1b6f31b63949a8ae955429beed6c5a9b -->
 # 변경 이력
 
 ## Unreleased
 
+- T145: TypeScript client가 mysql2 3.24.6을 고정한다.
 - T128-2a-6-1: Rust set vector test가 느린 실행을 실패시키지 않고 경고하며, `dbspec-rust-check/set`이 두 test를 별도 part로 실행한다.
 - T128-2a-6 (breaking): Rust build generator가 `Builder::set(path)`로 set 파일을 받는다; `Builder::new([..])`와 `uses`는 지웠고, `cargo:rerun-if-changed`가 set 파일과 나열된 모든 문서를 적는다. `dbspec::read_set`이 set 파일을 읽는다.
 - T128-2a-5-1: PHP set target가 자기 set test만 실행한다; show-create test는 자기 target에서 한 번 실행한다.
