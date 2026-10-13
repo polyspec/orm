@@ -66,6 +66,19 @@ for (const c of cases.normalize) {
   });
 }
 
+// positions cases read strictly: the case and each position have exactly the listed fields.
+assert(cases.positions.length > 0, 'positions cases');
+for (const c of cases.positions) {
+  assert.deepEqual(Object.keys(c).sort(), ['documents', 'id', 'main', 'positions']);
+  for (const p of c.positions) assert.deepEqual(Object.keys(p).sort(), ['column', 'kind', 'line', 'path']);
+  vector(`positions ${c.id}`, () => {
+    const text = join(c.documents[c.main], false);
+    const result = parseDbspec(text, documentSet(c));
+    assert.deepEqual(result.diagnostics, [], 'diagnostics of a valid document');
+    assert.deepEqual(result.positions, c.positions);
+  });
+}
+
 for (const c of cases.invalid) {
   vector(`invalid ${c.id}`, () => {
     const text = join(c.documents[c.main], c.crlf === true, c.mixed === true);
