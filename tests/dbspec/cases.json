@@ -444,6 +444,49 @@
         ]
       },
       "main": "log"
+    },
+    {
+      "id": "history-check-name-at-limit",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_post {",
+          "  service_module_board_post_seq i64 identity",
+          "  primary key (service_module_board_post_seq)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  primary key (seq)",
+          "}",
+          "",
+          "table service_module_board_comment {",
+          "  comment_seq i64 identity",
+          "  service_module_board_post_seq i64",
+          "  audit_seq i64",
+          "  primary key (comment_seq)",
+          "  index ix_comment_audit (audit_seq)",
+          "  index ix_comment_post (service_module_board_post_seq)",
+          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into service_module_board_comment_hist column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table service_module_board_comment_hist {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  comment_seq i64 null",
+          "  service_module_board_post_seq i64 null",
+          "  audit_seq i64 null",
+          "  primary key (history_id)",
+          "}"
+        ]
+      }
     }
   ],
   "normalize": [
@@ -11344,6 +11387,106 @@
           "line": 8,
           "column": 4,
           "rule": "encoding"
+        }
+      ]
+    },
+    {
+      "id": "generated-history-check-name-too-long",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_post {",
+          "  service_module_board_post_seq i64 identity",
+          "  primary key (service_module_board_post_seq)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  primary key (seq)",
+          "}",
+          "",
+          "table service_module_board_comment {",
+          "  comment_seq i64 identity",
+          "  service_module_board_post_seq i64",
+          "  audit_seq i64",
+          "  primary key (comment_seq)",
+          "  index ix_comment_post (service_module_board_post_seq)",
+          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
+          "  index ix_comment_audit (audit_seq)",
+          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into service_module_board_comment_history column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table service_module_board_comment_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  comment_seq i64 null",
+          "  service_module_board_post_seq i64 null",
+          "  audit_seq i64 null",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 32,
+          "column": 3,
+          "rule": "name.length"
+        }
+      ]
+    },
+    {
+      "id": "generated-history-check-name-one-byte-over",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_post {",
+          "  service_module_board_post_seq i64 identity",
+          "  primary key (service_module_board_post_seq)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  primary key (seq)",
+          "}",
+          "",
+          "table service_module_board_comment {",
+          "  comment_seq i64 identity",
+          "  service_module_board_post_seq i64",
+          "  audit_seq i64",
+          "  primary key (comment_seq)",
+          "  index ix_comment_post (service_module_board_post_seq)",
+          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
+          "  index ix_comment_audit (audit_seq)",
+          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into service_module_board_comment_histo column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table service_module_board_comment_histo {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  comment_seq i64 null",
+          "  service_module_board_post_seq i64 null",
+          "  audit_seq i64 null",
+          "  primary key (history_id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 32,
+          "column": 3,
+          "rule": "name.length"
         }
       ]
     }
