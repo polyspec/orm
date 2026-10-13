@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-13T13:49:49.821Z",
+  "reviewed": "2026-10-13T14:08:41.247Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "d8c18956af14f58167fe7705596bf265bbf9163d80e0443b9ccb5e9c9179e745",
+      "sha256": "e8018194734f098be4a0db32b37594a301d0a2b0cd4da1d67d316755d55dcf86",
       "advisories": []
     },
     {
@@ -48,6 +48,41 @@
       "package": "vitepress",
       "version": "1.6.4",
       "latest": "1.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "@codemirror/language",
+      "version": "6.13.1",
+      "latest": "6.13.1"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "@codemirror/lint",
+      "version": "6.9.7",
+      "latest": "6.9.7"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "@codemirror/state",
+      "version": "6.7.6",
+      "latest": "6.7.6"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "@codemirror/view",
+      "version": "6.43.14",
+      "latest": "6.43.14"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-codemirror/package.json",
+      "package": "typescript",
+      "version": "7.0.2",
+      "latest": "7.0.2"
     },
     {
       "ecosystem": "npm",
