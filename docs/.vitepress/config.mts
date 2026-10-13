@@ -8,8 +8,6 @@ const root = process.cwd();
 const docs = path.join(root, 'docs');
 const repo = 'https://github.com/polyspec/orm';
 
-import { renderDbs } from './dbs.ts';
-
 export default defineConfig({
   title: 'orm',
   description: 'Schema-based ORM with a common API and data model for Go, PHP, Rust, and TypeScript.',
@@ -149,11 +147,9 @@ export default defineConfig({
       });
       // A Mermaid fence stays its source: the theme renders it in the reader's browser
       // (theme/index.ts), and without JavaScript the source is shown.
-      // A dbs fence highlights by the grammar core: dbs.ts renders the tokens of orm-tokens.
       const fence = md.renderer.rules.fence!;
       md.renderer.rules.fence = (tokens, index, options, env, self) => {
         const token = tokens[index];
-        if (token.info.trim() === 'dbs') return renderDbs(token.content);
         if (token.info.trim() !== 'mermaid') return fence(tokens, index, options, env, self);
         return `<pre class="mermaid" v-pre>${md.utils.escapeHtml(token.content)}</pre>`;
       };

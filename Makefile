@@ -988,14 +988,11 @@ dbspec-ts-check: lease-tool
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,
 # case harness, 그리고 모든 vector file의 빠지거나 type이 틀린 field를 위치와 함께 거부하는지. stress
-# 문서(TestStressDocument, build tag bench)는 make bench가 실행한다. dbspec-go-check/tools는 같은 문법 core 위의 편집
-# 도구를 실행한다: formatter(cmd/orm-fmt), language server(cmd/orm-lsp), docs가 쓰는 token bridge(cmd/orm-tokens).
-.PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode dbspec-go-check/tools
-dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode dbspec-go-check/tools
+# 문서(TestStressDocument, build tag bench)는 make bench가 실행한다.
+.PHONY: dbspec-go-check dbspec-go-check/engine dbspec-go-check/unicode
+dbspec-go-check: dbspec-go-check/engine dbspec-go-check/unicode
 dbspec-go-check/engine:
 	$(GO_TEST) ./engine/dbspec -count=1
-dbspec-go-check/tools:
-	$(GO_TEST) ./cmd/orm-fmt ./cmd/orm-lsp ./cmd/orm-tokens -count=1
 # dbspec-go-check/unicode는 tests/dbspec/unicode의 생성기가 쓴 표 세 파일이 현재 Go 표와 같고, C 확장과 Python 모듈이
 # 모든 code point에서 Go와 같은 분류를 내는지 본다.
 dbspec-go-check/unicode:
