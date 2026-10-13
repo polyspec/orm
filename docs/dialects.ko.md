@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: b643dcf055c6dd1d669e51047c7345fa2bfe5c823fa15819791d6d380efae157 -->
+<!-- source-sha256: 1f3a41777334f13a9c7c2c5bd7b490a4c368216fb5ef1bdd6faa4eaff8c01114 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -368,7 +368,7 @@ literal은 만나는 column의 값으로 읽어 canonical default 형식으로 �
 
 ### Trigger
 
-`<table>$immutable_update`와 `<table>$immutable_delete`, 또는 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 모두가 renderer 출력과 같을 때 `immutable`이나 `audit` setting을 준다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. insert는 action, previous, 기록하는 column을 적고, 기록하는 column은 audit column을 포함하며, insert가 적지 않은 table의 column은 schema text가 쓰는 대로 column 순서의 `exclude` 목록이 된다. audit 기록 table은 audit column의 유일한 foreign key의 대상 table이다. 빠지거나 다른 집합과 그 밖의 모든 trigger는 미지원이다.
+각 setting은 제 trigger의 이름을 보고 알아보며, 그 이름은 [dbspec 이름](dbspec.md#names)의 규칙으로 재계산한다. trigger 개수로 알아보지 않는다. `<table>$immutable_update`와 `<table>$immutable_delete` 이름의 trigger는 `immutable` setting을, `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete` 이름의 trigger는 `audit` setting을 준다. 각각 그 setting의 renderer 출력과 같을 때다: MySQL timing, event, `ACTION_STATEMENT`, PostgreSQL은 table의 schema prefix를 뗀 `pg_get_triggerdef`와 그 function의 `prosrc`, SQLite는 `CREATE TRIGGER` text. `audit` parameter는 비교 전에 `audit_insert`의 insert statement와 `audit_update`의 `OLD` column에서 읽는다. insert는 action, previous, 기록하는 column을 적고, 기록하는 column은 audit column을 포함하며, insert가 적지 않은 table의 column은 schema text가 쓰는 대로 column 순서의 `exclude` 목록이 된다. audit 기록 table은 audit column의 유일한 foreign key의 대상 table이다. 두 setting을 함께 쓴 table은 두 renderer 출력의 합을 가지며, trigger 집합은 그 합과 이름과 내용이 정확히 같아야 한다. 더 있거나, 빠지거나, 내용이 다른 trigger 하나는 그 table의 모든 trigger를 미지원으로 만들며, 그 밖의 모든 trigger도 마찬가지다.
 
 ### 미지원 객체
 
