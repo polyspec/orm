@@ -29,6 +29,8 @@ export {
   planSteps,
   effectText,
   readDbspecFile,
+  readDbspecSet,
+  parseSet,
   renderDbspec,
 } from './dbspec/index.js';
 export type * from './dbspec/index.js';

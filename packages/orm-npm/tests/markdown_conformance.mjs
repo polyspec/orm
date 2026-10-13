@@ -244,7 +244,7 @@ await runner.run('markdown/setup', PROCESS, async ({ step }) => {
   // commit된 model은 corpus catalog과 이 file의 scan에서 생성한 출력과 같아야 한다.
   step('orm-gen gen --check of src/models/markdown_fixture');
   try {
-    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--schema', '../../tests/markdown/corpus/dbspec/conformance.dbs', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_conformance.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
+    await run(process.execPath, ['dist/bin/orm-gen.js', 'gen', '--set', '../../tests/markdown/corpus/dbspec/dbspec-set.json', '--out', 'src/models/markdown_fixture', '--scan', 'tests/markdown_conformance.mjs', '--check'], { cwd: fileURLToPath(new URL('..', import.meta.url)) });
   } catch (error) {
     throw new Error(`src/models/markdown_fixture differs from the generator output; regenerate it with the same orm-gen command without --check: ${error.stdout ?? ''}${error.stderr ?? error.message}`);
   }

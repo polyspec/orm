@@ -25,7 +25,7 @@ async function generate(source) {
     const usage = join(work, 'usage.ts');
     await writeFile(usage, source);
     const out = join(work, 'models');
-    const result = spawnSync(process.execPath, [bin, 'gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out, '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+    const result = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'schema/dbspec-set.json'), '--out', out, '--scan', usage], { encoding: 'utf8', timeout: CASE_DEADLINE_MS });
     if (result.status !== 0) throw new Error(`orm-gen exit ${result.status}: ${result.stderr}`);
     const text = await readFile(join(out, 'models.ts'), 'utf8');
     const members = new Map();
@@ -117,7 +117,7 @@ async function scanPathSpelling() {
     const texts = {};
     for (const [name, [src, tests, out]] of Object.entries(spellings)) {
       await rm(join(work, 'models'), { recursive: true, force: true });
-      const result = spawnSync(process.execPath, [bin, 'gen', '--schema', join(root, 'schema/bench.dbs'), '--out', out, '--scan', src, '--scan', tests], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
+      const result = spawnSync(process.execPath, [bin, 'gen', '--set', join(root, 'schema/dbspec-set.json'), '--out', out, '--scan', src, '--scan', tests], { cwd: work, encoding: 'utf8', timeout: CASE_DEADLINE_MS });
       if (result.status !== 0) throw new Error(`orm-gen ${name} exit ${result.status}: ${result.stderr}`);
       texts[name] = await readFile(join(work, 'models/models.ts'), 'utf8');
     }
