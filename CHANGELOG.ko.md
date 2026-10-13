@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3378746b6e736975c2329bf86c821626ec2bf629cc1de83e4db69a8adc214d7b -->
+<!-- source-sha256: 192197df810e8b73d401252234b768c97b87864a46ed81118a776f660bd0a484 -->
 # 변경 이력
 
 ## Unreleased
 
+- T142-6: `interface-check`가 PHP vendor를 먼저 확인한다.
 - T142-5: `codec-check`가 PHP vendor를 먼저 확인하고, 없으면 `make install-php`를 적는다.
 - T158-4: dbspec-vscode integration은 `--vscode`가 없으면 `make dbspec-vscode-integration`을 적는다.
 - T158-3: `codec-check`가 python need를 선언해, 이를 실행하는 job이 venv를 준비한다.
