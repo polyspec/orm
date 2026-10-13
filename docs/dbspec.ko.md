@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 7e07756c6d36c12b61b214ee14e49b1d7848ffe86803849b933283d2529c7387 -->
+<!-- source-sha256: 26b49dc597f66de11ffd40fea815b8708917afc4d8c592727da50f33d587d691 -->
 # dbspec
 
 [English](dbspec.md)
@@ -307,7 +307,7 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 
 | Class | Token |
 | --- | --- |
-| `keyword` | 문법이 그 위치에 고정한 단어, 곧 그 위치가 받는 단어 가운데 하나: header의 `dbspec`, `table`, `primary`, `key`, `references`, `on`, `cascade`, `asc`, `settings`, setting의 option 단어, `->`를 뺀 state machine 줄의 단어, `diagram`, `at`, predicate 단어 `and`, `or`, `not`, `in`, `between`, `is`, 그리고 literal 단어 `true`, `false`, `null` |
+| `keyword` | 문법이 그 위치에 고정한 단어, 곧 그 위치가 받는 단어 집합의 원소: header의 `dbspec`; `use`, `table`, `diagram`, `settings`; `primary`, `key`, `unique`, `index`, `foreign`, `references`, `on`, `delete`, `update`, `check`; action `restrict`, `cascade`, `set_null`; `null`, `identity`, `default`, `asc`, `desc`; 값 단어 `true`, `false`, `null`, `now`; setting의 option과 form 단어(`explicit`, `files`, `document`, `block`, `list`, `table`, `shard`, `year`, `month`, `day`, `require`, `exclude`, `include`, `row`, `from`, `to`, `at`, `into`, `column`, `action`, `previous`, `initial`, `terminal`, `history`, `limit`)와 codec stage; predicate 단어 `and`, `or`, `not`, `in`, `is`, 그리고 predicate가 읽는 자리의 `null`. 그런 위치에 있지만 원소가 아닌 단어는 `word`다 |
 | `type` | column의 type을 가리키는 단어 |
 | `name` | 문법이 그 위치에서 자유롭게 받는 단어: 문서, table, column, constraint, index, diagram, state의 이름, 또는 `navigation`의 관계 이름. 선언과 참조 모두 |
 | `setting` | `settings` block 줄의 첫 단어. 그 줄의 다른 단어는 위의 class를 따른다 |

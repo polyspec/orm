@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: f9c5c902a44b2ea0f445d59cf5cbe620831e066c2921ca612fe7003a39e524bf -->
+<!-- source-sha256: c1800ff256112764d78d78a9ac016412df57fb97ead9f34ffcb1f5798469764c -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -925,6 +925,7 @@
 - [o] T128-3s 모든 runtime에서 반복된 state machine 줄 거부. 원인: parser가 한 machine의 반복된 `initial`, `terminal`, `<from> -> <to>` 줄을 `require` 목록이 달라도 아무 말 없이 받아들인다(parse.ts:2249-2284). 인수 조건: 그런 반복은 뒤쪽 줄 keyword 위치의 `setting` 오류이며, `docs/dbspec.md`(+ko)에 적고, 모든 parser에서 검사하며, cases.json의 거부 vector 세 개와 changelog 항목을 가진다. 증거: 거부 vector 셋(`state-machine-initial-repeated`, 다른 require 목록의 `-terminal-repeated`, `-transition-repeated`)이 모든 runtime(Go, TypeScript, PHP, PHP client와 비교한 PHP extension, Python, Rust)에서 먼저 실패했다(문서를 parse함); 변경 뒤 각 runtime은 뒤 줄의 keyword에서 `setting` error를 보고하고, 다른 column의 줄은 기계 하나 error만 유지하며, 공유 vector가 여섯 모두에서 통과한다; docs/dbspec.md(+ko)가 줄의 identity를 적는다; Go와 TypeScript symbol이 계산된 hash와 함께 `machineLine`을 기록한다.
 - [ ] T128-3p 모든 runtime parse 결과의 선언 위치. 원인: flowmark 같은 도구가 text를 다시 훑어 선언을 찾고, 1행 1열 fallback을 가진다. 인수 조건: 성공한 parse 결과가 [editor stack 계획](editor-stack.ko.md)에 정의한 `{kind, path, line, column}`의 source 순서 목록 `positions`(반복 규칙에서 온 setting identity, primary key, document 이름 포함)를 `DbspecDocument` 밖에 가진다; `docs/dbspec.md`(+ko)에 적고 모든 kind의 vector와 모든 runtime의 parity를 가진다.
 - [ ] T128-3 모든 runtime의 `analyze`와 `format`. 인수 조건: 여섯 구현이 [editor stack 계획](editor-stack.ko.md)의 불변식을 지키며 표준 token과 canonical format을 돌려준다; `tests/dbspec/syntax.json`이 모든 runtime 검사와 `dbspec-compare-check`에서 실행된다; interface 규칙, symbol, parity unit, feature, php-extension 규칙, `docs/interfaces-model.md`(+ko)가 그것을 기록한다.
+- [ ] T128-3-1 모든 runtime에서 encoding 중단 앞의 줄을 parse한다(T128-3에 이어). 원인: Python은 encoding 오류에서 어떤 줄도 parse하기 전에 멈추지만, Go는 그 앞의 완전한 줄을 parse해 그 diagnostic을 먼저 보고한다; 그런 경우를 담은 vector가 없었다. 인수 조건: cases.json의 `encoding-after-a-syntax-error`(4행 syntax 오류, 8행 단독 CR)가 모든 runtime에서 두 diagnostic을 보고한다.
 - [ ] T128-4 `@polyspec/orm`의 browser-safe parser subpath. 인수 조건: parse, emit, analyze, format, `parseSet`, `readDbspecBytes`를 `node:` module, Node global, driver가 없는 module에서 export하며, module graph test로 검사하고, interface 규칙에 기록한다.
 - [ ] T128-5 `packages/dbspec/language`와 `dbspec-fmt` CLI. 인수 조건: `openDocument`가 범위를 가진 진단, token, folding, `format`을 준다; `resolveSet`은 주입된 host를 받는다; CLI는 종료 코드 0, 1, 2로 template-fmt의 규칙을 따른다; test는 cases.json, syntax.json, 불변식, 멱등성, editor fixture를 다룬다.
 - [ ] T128-6 `packages/dbspec/lsp`. 인수 조건: utf-16 위치, 전체 동기화, 표준 class의 semantic token, folding, formatting, 감시 파일을 가진 set 파일 결정을 갖춘 `vscode-languageserver` 서버; fixture에 대한 stdio session test.
