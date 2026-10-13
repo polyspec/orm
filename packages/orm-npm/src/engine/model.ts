@@ -50,6 +50,8 @@ export interface Entity {
   readonly uniques: readonly (readonly string[])[];
   /** The names of the indexes and unique keys. */
   readonly indexes: readonly string[];
+  /** The columns of each index, in declaration order; a unique key is in `uniques`. */
+  readonly indexColumns: readonly (readonly string[])[];
   /** The `updated` column, or ''. */
   readonly updated: string;
   /** The `soft_delete` column, or ''. */
@@ -165,6 +167,7 @@ function entityOfTable(t: DbspecTable): Entity {
     identity: t.columns.find(c => c.identity)?.name ?? '',
     uniques: Object.freeze(t.uniques.map(u => u.columns)),
     indexes: Object.freeze([...t.uniques.map(u => u.name), ...t.indexes.map(i => i.name)]),
+    indexColumns: Object.freeze(t.indexes.map(i => Object.freeze(i.columns.map(c => c.name)))),
     updated,
     softDelete,
     aesVersion,

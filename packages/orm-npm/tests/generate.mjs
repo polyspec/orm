@@ -142,6 +142,20 @@ await suite.run('generate', PROCESS, async () => {
       check(generated.includes('externalText: EXTERNAL_TEXT') && generated.includes('registerModel(MANIFEST_TEXT, MANIFEST_HASH, EXTERNAL_TEXT)'), 'the schema value and the registered model carry the external text');
       check(!generated.includes('ext_session'), 'the generated models carry ext_session, which the set does not use');
     }
+    // The typed query methods follow the schema: each prefix of a key of a model is a method of that model, whether or not a
+    // scanned source calls it, so a model of a generated package declares the same methods in every checkout.
+    const indexed = await setOf(join(work, 'index-methods'), [['audit_columns.dbs', await readFile(join(root, 'contracts/fixtures/audit_columns.dbs'), 'utf8')]]);
+    const emptyScan = join(work, 'index-methods-scan.mjs');
+    await writeFile(emptyScan, 'export {};\n');
+    const indexedOut = join(work, 'index-methods-out');
+    const indexedRun = run('gen', '--set', indexed, '--out', indexedOut, '--scan', emptyScan);
+    check(indexedRun.status === 0, `orm-gen of the indexed set without a call: ${indexedRun.status} ${indexedRun.stderr}`);
+    if (indexedRun.status === 0) {
+      const generated = await readFile(join(indexedOut, 'models.ts'), 'utf8');
+      const declares = (model, method) => new RegExp(`export interface ${model} \\{[^}]*\\b${method}\\(`).test(generated);
+      check(declares('Card', 'auditSeq'), 'Card declares auditSeq, the prefix of ix_card_audit, without a scanned call');
+      check(declares('CardHistory', 'seq'), 'CardHistory declares seq, the prefix of ix_card_history_row, without a scanned call');
+    }
     // 모델 method 이름은 column 이름이 될 수 없다: restore() 가 있으므로 restore column 도 거부한다.
     const reservedSchema = await setOf(join(work, 'reserved-set'), [['reserved.dbs', 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n']]);
     const reserved = run('gen', '--set', reservedSchema, '--out', join(work, 'reserved'));

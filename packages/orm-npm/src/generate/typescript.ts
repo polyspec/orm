@@ -248,6 +248,17 @@ export function renderTypeScript(m: Manifest, outDir: string, scan: readonly str
       const decl = g.declare(e, name);
       if (decl !== undefined) declared.set(name, decl);
     }
+    // Each prefix of a key names a method of the model, whether or not a scanned source calls it (the schema rule): a single
+    // column is its column method, and several columns are the tuple method of the columns.
+    for (const columns of [e.primaryKey, ...e.uniques, ...e.indexColumns]) {
+      for (let k = 1; k <= columns.length; k++) {
+        const prefix = columns.slice(0, k);
+        const name = prefix.length === 1 ? pascal(prefix[0]!).replace(/^./, c => c.toLowerCase()) : `tuple${prefix.map(pascal).join('With')}`;
+        if (statics.has(name) || declared.has(name)) continue;
+        const decl = g.declare(e, name);
+        if (decl !== undefined) declared.set(name, decl);
+      }
+    }
     g.methods.set(entity, declared);
   }
   const used = new Set(names);
