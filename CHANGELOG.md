@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-8-2: `packages/dbspec-vscode` is the VS Code extension of dbspec: the language, semantic token colours with no grammar, and the bundled language server, built as a `.vsix`.
 - T157: the markdown conformance pins flowmark main at 8b5d16a.
 
 ## 0.0.11

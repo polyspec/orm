@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: de8a21d125dc3bfbe188131c125ec6b505bc3a0a97dddb9a4c8cc152633778f2 -->
+<!-- source-sha256: d016e87773b5469a9f70b4436c73b9644a7a29cd249ffec4313211877b86af05 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-8-2: `packages/dbspec-vscode`가 dbspec의 VS Code extension이다: 언어, 문법 없는 semantic token 색, 묶인 language server를 `.vsix`로 만든다.
 - T157: markdown conformance가 flowmark main의 8b5d16a를 고정한다.
 
 ## 0.0.11
