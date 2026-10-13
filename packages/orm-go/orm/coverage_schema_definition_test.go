@@ -42,7 +42,7 @@ func schemaDocuments(t *testing.T, c fixtureCase) ([]string, []*dbspec.Document)
 	}
 	documents := make([]*dbspec.Document, len(texts))
 	for i, text := range texts {
-		document, diagnostics := dbspec.Parse(text, set)
+		document, _, diagnostics := dbspec.Parse(text, set)
 		if len(diagnostics) > 0 {
 			t.Fatalf("%s: %s", input.Documents[i], runtimemodel.DiagnosticsError(diagnostics))
 		}

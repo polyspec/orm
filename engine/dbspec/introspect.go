@@ -120,7 +120,7 @@ func (c *catalog) document(name string) (*Document, []Unsupported, error) {
 	c.dropTablesWithoutKey()
 	for {
 		text, objects := c.text(name)
-		document, diagnostics := Parse(text, nil)
+		document, _, diagnostics := Parse(text, nil)
 		if len(diagnostics) == 0 {
 			slices.SortStableFunc(c.unsupported, func(a, b Unsupported) int {
 				return strings.Compare(a.Table+"\x00"+a.Kind+"\x00"+a.Name, b.Table+"\x00"+b.Kind+"\x00"+b.Name)

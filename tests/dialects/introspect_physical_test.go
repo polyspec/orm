@@ -94,7 +94,7 @@ func parseSet(t *testing.T, s roundTripSet) []*dbspec.Document {
 				set[other] = text
 			}
 		}
-		document, diagnostics := dbspec.Parse(s.documents[name], set)
+		document, _, diagnostics := dbspec.Parse(s.documents[name], set)
 		if len(diagnostics) > 0 {
 			t.Fatalf("%s/%s: %v", s.id, name, diagnostics)
 		}

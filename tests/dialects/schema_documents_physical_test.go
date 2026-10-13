@@ -65,7 +65,7 @@ func TestSchemaDocumentsApply(t *testing.T) {
 			t.Errorf("%s: %v", path, diagnostics)
 			continue
 		}
-		document, diagnostics := dbspec.Parse(text, nil)
+		document, _, diagnostics := dbspec.Parse(text, nil)
 		if len(diagnostics) > 0 {
 			t.Errorf("%s: %v", path, diagnostics)
 			continue

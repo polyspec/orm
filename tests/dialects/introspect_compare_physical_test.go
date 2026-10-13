@@ -69,7 +69,7 @@ func TestIntrospectCompare(t *testing.T) {
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
-	document, diagnostics := dbspec.Parse(text, nil)
+	document, _, diagnostics := dbspec.Parse(text, nil)
 	if len(diagnostics) > 0 {
 		t.Fatal(diagnostics)
 	}
@@ -250,7 +250,7 @@ func checkIntrospected(t *testing.T, output, want string) {
 	if i := strings.Index(output, "\n! "); i >= 0 {
 		t.Fatalf("unsupported objects: %s", output[i+1:])
 	}
-	document, diagnostics := dbspec.Parse(output, nil)
+	document, _, diagnostics := dbspec.Parse(output, nil)
 	if len(diagnostics) > 0 {
 		t.Fatalf("runner document: %v", diagnostics)
 	}

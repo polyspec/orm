@@ -170,7 +170,7 @@ func planSourceOf(lines []string) (*Document, error) {
 	if lines == nil {
 		return nil, nil
 	}
-	d, diagnostics := Parse(strings.Join(lines, "\n")+"\n", nil)
+	d, _, diagnostics := Parse(strings.Join(lines, "\n")+"\n", nil)
 	if len(diagnostics) > 0 {
 		return nil, fmt.Errorf("parse source: %v", diagnostics)
 	}
@@ -347,11 +347,11 @@ func TestCompareSchemas(t *testing.T) {
 
 func checkComparison(t *testing.T, c comparisonCase) {
 	runTimed(t, "plan/comparison/"+c.ID, 5*time.Second, func() error {
-		source, diagnostics := Parse(strings.Join(c.Source, "\n")+"\n", nil)
+		source, _, diagnostics := Parse(strings.Join(c.Source, "\n")+"\n", nil)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse source: %v", diagnostics)
 		}
-		target, diagnostics := Parse(strings.Join(c.Target, "\n")+"\n", nil)
+		target, _, diagnostics := Parse(strings.Join(c.Target, "\n")+"\n", nil)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse target: %v", diagnostics)
 		}

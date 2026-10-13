@@ -61,7 +61,7 @@ func join(lines []string, crlf, mixed bool) string {
 
 // write는 text의 diagnostic을, 없으면 그 emission을 출력한다.
 func write(out *bufio.Writer, text string, set map[string]string, stress bool) {
-	document, diagnostics := dbspec.Parse(text, set)
+	document, _, diagnostics := dbspec.Parse(text, set)
 	if len(diagnostics) > 0 {
 		for _, d := range diagnostics {
 			fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
@@ -97,7 +97,7 @@ func writeManifest(out *bufio.Writer, c hashCase) {
 				set[other] = join(lines, false, false)
 			}
 		}
-		document, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
+		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
 		if len(diagnostics) > 0 {
 			for _, d := range diagnostics {
 				fmt.Fprintf(out, "! %s %d %d\n", d.Rule, d.Line, d.Column)
@@ -139,7 +139,7 @@ func writeRender(out *bufio.Writer, c hashCase) {
 				set[other] = join(lines, false, false)
 			}
 		}
-		document, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
+		document, _, diagnostics := dbspec.Parse(join(c.Documents[name], false, false), set)
 		if len(diagnostics) > 0 {
 			fmt.Fprintf(out, "render/%s\n", c.ID)
 			for _, d := range diagnostics {
@@ -212,7 +212,7 @@ func planSource(out *bufio.Writer, lines *[]string) (*dbspec.Document, bool) {
 	if lines == nil {
 		return nil, true
 	}
-	document, diagnostics := dbspec.Parse(join(*lines, false, false), nil)
+	document, _, diagnostics := dbspec.Parse(join(*lines, false, false), nil)
 	if len(diagnostics) > 0 {
 		writeDiagnostics(out, diagnostics)
 		return nil, false
@@ -335,9 +335,9 @@ func writePlans(out *bufio.Writer, v planVectors) {
 	}
 	for _, c := range v.Comparisons {
 		fmt.Fprintf(out, "plans/comparisons/%s\n", c.ID)
-		source, sourceDiagnostics := dbspec.Parse(join(c.Source, false, false), nil)
+		source, _, sourceDiagnostics := dbspec.Parse(join(c.Source, false, false), nil)
 		writeDiagnostics(out, sourceDiagnostics)
-		target, targetDiagnostics := dbspec.Parse(join(c.Target, false, false), nil)
+		target, _, targetDiagnostics := dbspec.Parse(join(c.Target, false, false), nil)
 		writeDiagnostics(out, targetDiagnostics)
 		if len(sourceDiagnostics) > 0 || len(targetDiagnostics) > 0 {
 			continue
@@ -414,7 +414,7 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 		for name, lines := range c.Documents {
 			set[name] = join(lines, false, false)
 		}
-		d, diagnostics := dbspec.Parse(join(c.Document, false, false), set)
+		d, _, diagnostics := dbspec.Parse(join(c.Document, false, false), set)
 		if len(diagnostics) > 0 {
 			writeDiagnostics(out, diagnostics)
 			continue
@@ -439,7 +439,7 @@ func writeMermaid(out *bufio.Writer, v mermaidVectors) error {
 			writeDiagnostics(out, diagnostics)
 			continue
 		}
-		d, diagnostics := dbspec.Parse(source, nil)
+		d, _, diagnostics := dbspec.Parse(source, nil)
 		if len(diagnostics) > 0 {
 			writeDiagnostics(out, diagnostics)
 			continue
