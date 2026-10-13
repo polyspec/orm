@@ -456,7 +456,7 @@ ORDERED_JSON ?= $(abspath ..)/ordered-json
 # 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다). 패키지는 kit의 release-consumer처럼 그 pip로 venv에 설치한다.
 .PHONY: install-python
 install-python:
-	$(MAKE) --no-print-directory install-tools TOOLS=python
+	$(MAKE) --no-print-directory install-tools TOOLS="uv python"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
 	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
 # python-venv-check는 install-python이 만든 venv가 있고 그 interpreter의 minor가 .python-version과 같은지 확인한다. 없거나
