@@ -50,6 +50,8 @@ final class Parser
     private array $diagramNames = [];
     /** @var array<string, true> tables of failed `use` lines: references to them report nothing more */
     private array $failedTables = [];
+    /** @var array<string, true> the renderer names written by the tables read so far and by the used tables */
+    private array $generatedNames = [];
     /** @var array<string, true> table names of the used documents, which constraint names must differ from */
     private array $usedTableNames = [];
     /** @var array<int, true> lines that already hold a syntax diagnostic */
@@ -641,7 +643,22 @@ final class Parser
                 continue;
             }
             $this->tables[$table] = ['table' => $definition, 'columns' => self::columnMap($definition)];
+            foreach (Names::ofTable($definition) as $generated) {
+                $this->generatedNames[$generated] = true;
+            }
         }
+    }
+
+    /**
+     * Refuses a renderer name that an earlier table or a used table of the document already
+     * writes, at the later token (docs/dbspec.md "Names").
+     */
+    private function claimGenerated(string $name, int $line, int $column): void
+    {
+        if (isset($this->generatedNames[$name])) {
+            $this->error('name.duplicate', $line, $column, "generated name `$name` repeats in the schema");
+        }
+        $this->generatedNames[$name] = true;
     }
 
     /**
@@ -861,6 +878,10 @@ final class Parser
             }
         }
         $column = new Column($name[0], $type ?? new ColumnType('invalid'), $nullable, $identity !== null, $canonical, $this->takeComments());
+        // renderer 가 type CHECK 를 쓰는 column 의 이름은 다른 생성 이름과 겹치면 안 된다.
+        if ($identity === null && $type !== null && $type->name !== 'text' && $type->name !== 'bytes' && $wellFormed && self::validName($this->table->name)) {
+            $this->claimGenerated(Names::render($this->table->name, $name[0]), $this->line, $name[1]);
+        }
         if (isset($this->columns[$name[0]])) {
             $this->error('name.duplicate', $this->line, $name[1], "column `{$name[0]}` is already defined");
         } else {
@@ -1614,6 +1635,9 @@ final class Parser
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `immutable` is rejected on a child of a cascade or set_null foreign key');
                     }
+                    foreach (['immutable_update', 'immutable_delete'] as $event) {
+                        $this->claimGenerated(Names::render($this->table->name, $event), $line, $at);
+                    }
                     break;
                 case 'markdown':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
@@ -1662,6 +1686,9 @@ final class Parser
                 case 'audit':
                     if ($changedByForeignKeys) {
                         $this->error('setting', $line, $at, 'setting `audit` is rejected on a child of a cascade or set_null foreign key');
+                    }
+                    foreach (['audit_insert', 'audit_update', 'audit_delete'] as $event) {
+                        $this->claimGenerated(Names::render($this->table->name, $event), $line, $at);
                     }
                     $audit = $column($arguments[1]);
                     if ($audit !== null && $audit->nullable) {
