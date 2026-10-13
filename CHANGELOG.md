@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T151: the editor packages are classified as not released until the editor stack release, every new file is owned by the check that reads it, the syntax vector generator has a regeneration test and `make install-cli-check` installs dbspec-fmt into a temporary prefix.
 - T126-2: orm vendors kit v0.0.35 and its PRINCIPLES.md.
 - T150: docs/usage.md names Python's `orm-gen gen --check`, and docs/packaging.md how the Python client takes its schema.
 - T128-2a (breaking): a document set is declared once, in `dbspec-set.json`, which every client reads and every generator takes.

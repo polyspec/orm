@@ -806,7 +806,9 @@
           "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mjs decimal-rust-physical -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "shard": "rust",
           "inputs": [
-            "packages/orm-rust/tests/src/decimal_physical.rs"
+            "packages/orm-rust/tests/src/decimal_physical.rs",
+            "contracts/fixtures/dbspec-set.json",
+            "packages/orm-rust/tests/dbspec-set.json"
           ]
         },
         {
@@ -900,7 +902,9 @@
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mjs decimal-model-rust -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test decimal_model",
           "shard": "rust",
           "inputs": [
-            "packages/orm-rust/orm/tests/decimal_model.rs"
+            "packages/orm-rust/orm/tests/decimal_model.rs",
+            "contracts/fixtures/dbspec-set.json",
+            "packages/orm-rust/tests/dbspec-set.json"
           ]
         },
         {
@@ -1271,7 +1275,9 @@
           "command": ". \"$DECIMAL_ENV\" && node tests/cargo-test.mjs decimal-rust-physical -- cargo test --manifest-path packages/orm-rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --bin decimal_physical",
           "shard": "rust",
           "inputs": [
-            "packages/orm-rust/tests/src/decimal_physical.rs"
+            "packages/orm-rust/tests/src/decimal_physical.rs",
+            "contracts/fixtures/dbspec-set.json",
+            "packages/orm-rust/tests/dbspec-set.json"
           ]
         },
         {
@@ -2796,7 +2802,10 @@
         "packages/orm-npm/tests/dbspec-analyze.mjs",
         "engine/dbspec/set_test.go",
         "packages/orm-rust/orm-schema/tests/dbspec_set.rs",
-        "packages/orm-npm/tests/dbspec-set.mjs"
+        "packages/orm-npm/tests/dbspec-set.mjs",
+        "packages/orm-npm/tests/browser-entry.mjs",
+        "packages/orm-npm/tests/syntax-vectors.mjs",
+        "packages/orm-php-extension/tests/dbspec_names_test.php"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2924,7 +2933,10 @@
             "tests/dbspec/plans.json",
             "tests/dbspec/mermaid.json",
             "packages/orm-npm/tests/dbspec-set.mjs",
-            "tests/dbspec/set-files.json"
+            "tests/dbspec/set-files.json",
+            "packages/orm-npm/tests/browser-entry.mjs",
+            "packages/orm-npm/tests/syntax-vectors.mjs",
+            "scripts/dbspec/syntax-vectors.mjs"
           ]
         },
         {
@@ -2962,7 +2974,8 @@
             "tests/dbspec/files/invalid-utf8.dbs",
             "tests/dbspec/files/shop.dbs",
             "tests/dbspec/files/dbschema.dbs",
-            "tests/dbspec/files/empty.dbs"
+            "tests/dbspec/files/empty.dbs",
+            "packages/orm-php-extension/tests/dbspec_names_test.php"
           ]
         },
         {

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ecf067149fafff1b40a157ab9e43151c82315c9c0619d458852d368a30a808c6 -->
+<!-- source-sha256: 22b2789802de15801767b5a63e4571d47b3d9d9e3a858847fb27c948db071fc3 -->
 # 변경 이력
 
 ## Unreleased
 
+- T151: editor package는 editor stack release 전까지 release하지 않는 것으로 분류되고, 새 파일은 모두 그것을 읽는 검사가 소유하며, syntax vector generator는 재생성 test를 가지고, `make install-cli-check`가 dbspec-fmt를 임시 prefix에 설치한다.
 - T126-2: orm이 kit v0.0.35와 그 PRINCIPLES.md를 vendor한다.
 - T150: docs/usage.md가 Python의 `orm-gen gen --check`를, docs/packaging.md가 Python client가 스키마를 받는 방식을 적는다.
 - T128-2a (breaking): 문서 집합은 `dbspec-set.json`에 한 번 선언하며, 모든 client가 그것을 읽고 모든 generator가 그것을 받는다.
