@@ -1,5 +1,6 @@
 # orm-gen 생성기 검사: schema/dbspec-set.json 문서 집합에서 models.py를 만들고,
 # 생성 module이 chain 문법을 해석하는지 확인한다 (unittest).
+import importlib.util
 import os
 import subprocess
 import sys
@@ -8,16 +9,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-_ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'packages' / 'ordered-json-python' / 'src'
-if _ORDERED_JSON.is_dir():
-    sys.path.insert(0, str(_ORDERED_JSON))
 
-ORM_GEN = [sys.executable, str(ROOT / 'packages' / 'orm-python' / 'bin' / 'orm-gen')]
-# orm-gen은 하위 프로세스이므로 이 test의 sys.path를 받지 못한다. sibling ordered-json을 PYTHONPATH로
-# 넘긴다(docs/plans/execution-checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
-ORM_GEN_ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
-    p for p in [str(_ORDERED_JSON), os.environ.get('PYTHONPATH', '')] if p))
+# orm-gen runs from the package installed into this interpreter's venv.
+ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
 
 
 class OrmGenTest(unittest.TestCase):
@@ -26,12 +20,16 @@ class OrmGenTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-gen-')
         cls.addClassCleanup(tmp.cleanup)
         cls.out = tmp.name
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+        result = subprocess.run(args=ORM_GEN + ['gen', '--set',
                                            str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', cls.out],
                                 capture_output=True, text=True, check=True)
-        sys.path.insert(0, cls.out)
-        cls.addClassCleanup(sys.path.remove, cls.out)
+        # The generated module is loaded from its file and registered as models, without a sys.path change.
+        spec = importlib.util.spec_from_file_location('models', str(Path(cls.out) / 'models.py'))
+        module = importlib.util.module_from_spec(spec)
+        sys.modules['models'] = module
+        cls.addClassCleanup(sys.modules.pop, 'models', None)
+        spec.loader.exec_module(module)
 
     def test_generated_module_imports_and_builds_the_model(self):
         import models
@@ -93,7 +91,7 @@ class OrmGenTest(unittest.TestCase):
         source.write_text('from models import Author\n'
                           'author = Author()\n'
                           'author.not_a_model_method()\n', encoding='utf-8')
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+        result = subprocess.run(args=ORM_GEN + ['gen', '--set',
                                            str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', self.out, '--scan', str(source)],
                                 capture_output=True, text=True)
@@ -103,13 +101,13 @@ class OrmGenTest(unittest.TestCase):
 
     def test_check_reports_a_missing_or_differing_file(self):
         with tempfile.TemporaryDirectory(prefix='orm-gen-missing-') as missing:
-            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+            result = subprocess.run(args=ORM_GEN + ['gen', '--set',
                                                str(ROOT / 'schema' / 'dbspec-set.json'),
                                                '--out', missing, '--check'],
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn('missing:', result.stdout)
-        result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set',
+        result = subprocess.run(args=ORM_GEN + ['gen', '--set',
                                            str(ROOT / 'schema' / 'dbspec-set.json'),
                                            '--out', self.out, '--check'],
                                 capture_output=True, text=True)
@@ -117,7 +115,7 @@ class OrmGenTest(unittest.TestCase):
 
     def test_the_removed_document_flags_are_usage_errors(self):
         for flag in ('--schema', '--use'):
-            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+            result = subprocess.run(args=ORM_GEN + [
                 'gen', '--set', str(ROOT / 'schema' / 'dbspec-set.json'),
                 flag, str(ROOT / 'schema' / 'bench.dbs'), '--out', self.out],
                                     capture_output=True, text=True)
@@ -130,7 +128,7 @@ class OrmGenTest(unittest.TestCase):
             (root / 'dbspec-set.json').write_text(
                 '{"schema": 1, "documents": ["gone.dbs", "also-gone.dbs"]}', encoding='utf-8')
             out = root / 'out'
-            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+            result = subprocess.run(args=ORM_GEN + [
                 'gen', '--set', str(root / 'dbspec-set.json'), '--out', str(out)],
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 1, result.stderr)
@@ -146,7 +144,7 @@ class OrmGenTest(unittest.TestCase):
             (root / 'dbspec-set.json').write_text(
                 '{"schema": 1, "documents": ["a.dbs", "b.dbs"]}', encoding='utf-8')
             out = root / 'out'
-            result = subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + [
+            result = subprocess.run(args=ORM_GEN + [
                 'gen', '--set', str(root / 'dbspec-set.json'), '--out', str(out)],
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 1, result.stderr)

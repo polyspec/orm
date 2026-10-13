@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-# The client and ordered-json come from PYTHONPATH, as make dbspec-python-check declares it.
+# The client and ordered-json come from the packages installed into the venv.
 
 from polyspec.orm.dbspec import emit_dbspec, parse_dbspec, read_dbspec_file  # noqa: E402
 from polyspec.orm.dbspec.mermaid import export_mermaid, import_mermaid  # noqa: E402

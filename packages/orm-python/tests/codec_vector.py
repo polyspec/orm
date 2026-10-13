@@ -7,11 +7,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-# ordered-json의 Python 배포를 sibling checkout에서 import한다 (docs/plans/execution-checklist.md T43).
-_ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'packages' / 'ordered-json-python' / 'src'
-if _ORDERED_JSON.is_dir():
-    sys.path.insert(0, str(_ORDERED_JSON))
 
 from polyspec.ordered_json import Value as OrderedJson, stringify as ordered_json_stringify
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, host_encode

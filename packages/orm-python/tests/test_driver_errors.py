@@ -16,7 +16,6 @@ import pymysql
 
 from test_sqlite import generate_document
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402

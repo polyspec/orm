@@ -17,7 +17,6 @@ import psycopg
 import pymysql
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.database import Db, DbStats  # noqa: E402
 from polyspec.orm.engine import model_of_documents, parse_document_set  # noqa: E402

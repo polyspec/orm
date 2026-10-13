@@ -13,8 +13,6 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(ROOT / 'packages' / 'orm-python' / 'src'))
 
 from test_sqlite import generate  # noqa: E402
 

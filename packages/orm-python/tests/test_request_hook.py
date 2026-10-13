@@ -12,7 +12,6 @@ from test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PACKAGE / 'src'))
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402

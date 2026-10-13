@@ -22,7 +22,6 @@ import pymysql
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PACKAGE / 'src'))
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set  # noqa: E402

@@ -10,16 +10,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-_ORDERED_JSON = Path(__file__).resolve().parents[4] / 'ordered-json' / 'packages' / 'ordered-json-python' / 'src'
-if _ORDERED_JSON.is_dir():
-    sys.path.insert(0, str(_ORDERED_JSON))
 
-ORM_GEN = [sys.executable, str(ROOT / 'packages' / 'orm-python' / 'bin' / 'orm-gen')]
-# orm-gen은 하위 프로세스이므로 이 test의 sys.path를 받지 못한다. sibling ordered-json을 PYTHONPATH로
-# 넘긴다(docs/plans/execution-checklist.md T43.5-6-1). 외부 PYTHONPATH가 있으면 뒤에 덧붙인다.
-ORM_GEN_ENV = dict(os.environ, PYTHONPATH=os.pathsep.join(
-    p for p in [str(_ORDERED_JSON), os.environ.get('PYTHONPATH', '')] if p))
+# orm-gen runs from the package installed into this interpreter's venv.
+ORM_GEN = [sys.executable, '-m', 'polyspec.orm.bin_orm_gen']
 
 # bench.dbs와 같은 모양의 최소 DDL. render가 Python에 오면(T43.4) 이 표를 대신한다.
 DDL = """
@@ -98,7 +91,7 @@ def generate_document(out: str, document: Path):
 
 
 def generate(out: str, set_file: Path):
-    subprocess.run(env=ORM_GEN_ENV, args=ORM_GEN + ['gen', '--set', str(set_file), '--out', out],
+    subprocess.run(args=ORM_GEN + ['gen', '--set', str(set_file), '--out', out],
                    capture_output=True, text=True, check=True)
     spec = importlib.util.spec_from_file_location(f'orm_models_{Path(out).name}',
                                                   str(Path(out) / 'models.py'))

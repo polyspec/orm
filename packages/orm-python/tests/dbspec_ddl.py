@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
 from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402

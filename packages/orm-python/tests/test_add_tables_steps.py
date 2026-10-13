@@ -5,7 +5,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.dbspec import add_tables_and_columns_steps, parse_dbspec  # noqa: E402
 

@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.codec import CodecError, decode, host_decode  # noqa: E402
 

@@ -8,7 +8,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from coverage_case import REPOSITORY_ROOT, run_cases  # noqa: E402
 

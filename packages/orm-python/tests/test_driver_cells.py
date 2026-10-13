@@ -5,7 +5,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.driver_cells import mysql_conversions, postgres_loaders  # noqa: E402
 import psycopg  # noqa: E402

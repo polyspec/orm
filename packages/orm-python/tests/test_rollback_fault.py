@@ -16,7 +16,6 @@ from test_sqlite import generate_document
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PACKAGE / 'src'))
 
 from polyspec.orm.database import Db  # noqa: E402
 from polyspec.orm.errors import OrmError  # noqa: E402
@@ -162,8 +161,7 @@ class RollbackFaultEntryTest(unittest.TestCase):
         self.assertTrue((PACKAGE / 'src' / 'polyspec' / 'orm' / 'testing' / '__init__.py').is_file())
         loaded = subprocess.run([sys.executable, '-c', 'import sys, polyspec.orm, polyspec.orm.database; '
                                  'print("polyspec.orm.testing" in sys.modules)'],
-                                capture_output=True, text=True, env={**os.environ, 'PYTHONPATH': str(PACKAGE / 'src')
-                                                                     + os.pathsep + os.environ.get('PYTHONPATH', '')})
+                                capture_output=True, text=True)
         self.assertEqual(loaded.returncode, 0, loaded.stderr)
         self.assertEqual(loaded.stdout.strip(), 'False')
 
