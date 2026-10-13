@@ -1,6 +1,7 @@
 package dbspec
 
 import (
+	"fmt"
 	"slices"
 )
 
@@ -220,8 +221,9 @@ func renderedCheck(c *columnNode) bool {
 // generatedName is a name that the renderer writes for a table and the token
 // that writes it.
 type generatedName struct {
-	name string
-	at   token
+	name   string
+	at     token
+	source string // the table and the column or setting that writes the name, for a diagnostic
 }
 
 // generatedNames lists the renderer names of table t: the type CHECK of each
@@ -234,7 +236,7 @@ func generatedNames(t *tableNode) []generatedName {
 	var out []generatedName
 	for _, c := range t.columns {
 		if renderedCheck(c) && wellFormed(c.name.text) {
-			out = append(out, generatedName{rendererName(t.name.text, c.name.text), c.name})
+			out = append(out, generatedName{rendererName(t.name.text, c.name.text), c.name, fmt.Sprintf("table %s column %s", t.name.text, c.name.text)})
 		}
 	}
 	if t.settings == nil {
@@ -249,7 +251,7 @@ func generatedNames(t *tableNode) []generatedName {
 			events = []string{"audit_insert", "audit_update", "audit_delete"}
 		}
 		for _, e := range events {
-			out = append(out, generatedName{rendererName(t.name.text, e), s.keyword})
+			out = append(out, generatedName{rendererName(t.name.text, e), s.keyword, fmt.Sprintf("table %s setting %s", t.name.text, s.keyword.text)})
 		}
 	}
 	return out
@@ -259,13 +261,13 @@ func generatedNames(t *tableNode) []generatedName {
 // that equals a generated name of a used table or of an earlier table of the
 // document, with name.duplicate at the later name (docs/dbspec.md "Names").
 func (v *validator) generatedNamesUnique() {
-	seen := map[string]bool{}
+	seen := map[string]string{} // generated name => the source that wrote it first
 	for _, t := range v.used {
 		if t == nil {
 			continue
 		}
 		for _, g := range generatedNames(t) {
-			seen[g.name] = true
+			seen[g.name] = fmt.Sprintf("used table %s", t.name.text)
 		}
 	}
 	for _, t := range v.doc.tables {
@@ -273,10 +275,11 @@ func (v *validator) generatedNamesUnique() {
 			continue
 		}
 		for _, g := range generatedNames(t) {
-			if seen[g.name] {
-				v.add(RuleNameDuplicate, g.at, "generated name %q repeats in the schema", g.name)
+			if first, ok := seen[g.name]; ok {
+				v.add(RuleNameDuplicate, g.at, "generated name %s of %s repeats the generated name of %s", g.name, g.source, first)
+			} else {
+				seen[g.name] = g.source
 			}
-			seen[g.name] = true
 		}
 	}
 }
