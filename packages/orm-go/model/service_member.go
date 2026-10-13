@@ -443,4 +443,25 @@ func (x *ServiceMemberModel) MatchUserSeqWithUserSeq() *ServiceMemberModel {
 	return x
 }
 
+func (x *ServiceMemberModel) Seq[T0 argIntEq](v0 T0) *ServiceMemberModel {
+	x.m.Where("", chainServiceMemberSeq, v0)
+	return x
+}
+
+func (x *ServiceMemberModel) ServiceSeq[T0 argIntEq](v0 T0) *ServiceMemberModel {
+	x.m.Where("", chainServiceMemberServiceSeq, v0)
+	return x
+}
+
+func (x *ServiceMemberModel) UserSeq[T0 argIntEq](v0 T0) *ServiceMemberModel {
+	x.m.Where("", chainServiceMemberUserSeq, v0)
+	return x
+}
+
 var chainServiceMemberGetCountByServiceSeq = []orm.ChainKey{{Column: "service_seq"}}
+
+var chainServiceMemberSeq = []orm.ChainKey{{Column: "seq"}}
+
+var chainServiceMemberServiceSeq = []orm.ChainKey{{Column: "service_seq"}}
+
+var chainServiceMemberUserSeq = []orm.ChainKey{{Column: "user_seq"}}

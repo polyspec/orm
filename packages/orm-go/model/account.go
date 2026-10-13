@@ -301,7 +301,14 @@ func (x *AccountModel) GetBySeq[T0 argIntEq](v0 T0) (*AccountModel, error) {
 
 func (x *AccountModel) NewLabel(v any) *AccountModel { x.m.New("label", v); return x }
 
+func (x *AccountModel) Seq[T0 argIntEq](v0 T0) *AccountModel {
+	x.m.Where("", chainAccountSeq, v0)
+	return x
+}
+
 var chainAccountGetBySeq = []orm.ChainKey{{Column: "seq"}}
+
+var chainAccountSeq = []orm.ChainKey{{Column: "seq"}}
 
 // GetLabel returns the value attached with NewLabel.
 func (x *AccountModel) GetLabel() any { return x.m.NewValue("label") }

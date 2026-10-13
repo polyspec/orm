@@ -238,6 +238,12 @@ type hasSeq interface {
 	Orm_() *orm.Core
 }
 
+// AccountProjectAccountSeqWithProjectSeq is one value group of account_seq, project_seq.
+type AccountProjectAccountSeqWithProjectSeq struct {
+	AccountSeq int64
+	ProjectSeq int64
+}
+
 // CompositeAccountTenantIdWithAccountId is one value group of tenant_id, account_id.
 type CompositeAccountTenantIdWithAccountId struct {
 	TenantId  int64
