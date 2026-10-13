@@ -30,6 +30,10 @@
         "types": "./dist/testing.d.ts",
         "import": "./dist/testing.js"
       }
+    },
+    "./dbspec": {
+      "types": "./dist/dbspec/entry.d.ts",
+      "import": "./dist/dbspec/entry.js"
     }
   },
   "files": [

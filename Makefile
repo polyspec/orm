@@ -983,7 +983,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-analyze.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
+	node --test packages/orm-npm/tests/browser-entry.mjs packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-analyze.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
 
 # dbspec-go-check는 Go dbspec engine package(engine/dbspec)의 test를 모두 실행한다: tests/dbspec/cases.json의
 # 공유 vector, 자기 rule case, manifest, statement, plan, comparison, Mermaid vector, apply 정리 error,

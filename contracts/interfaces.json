@@ -42,7 +42,7 @@
     "go": "sha256:996edeaf43679da9d6b35dd9fa4ca3b8342979567aa41800884859081d2b600d",
     "php": "sha256:31349307d9baaf5d00fcc64d2a1fced43be8f0adc88a7d88e40549a70de0495f",
     "rust": "sha256:01547d1b220bb4027ccd49debf218b9fbe21cc3f316b317471197199b57d6003",
-    "typescript": "sha256:7b75c9cf38d02da7ff4c1b5bf0b515ca5c1f84e7f2bb9da68a6965bb40a54a84",
+    "typescript": "sha256:f8f843dbec698cba9814710e4be33d6a951adaa2cdf64f4aab632bc4b2e819dc",
     "python": "sha256:e2756d0a47895a529f7837297b2750f8e4afb8be8b9a210e48ef0d18bb78f483"
   },
   "extensions": {
@@ -1744,7 +1744,7 @@
           "signature": "pub fn read_bytes(name: &str, bytes: Vec<u8>) -> Result<String, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/file.ts::readDbspecBytes",
+          "symbol": "packages/orm-npm/src/dbspec/read_bytes.ts::readDbspecBytes",
           "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
         },
         "php-extension": {
@@ -1780,7 +1780,7 @@
           "signature": "pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Parsed, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::parseDbspec",
+          "symbol": "packages/orm-npm/src/dbspec/document.ts::parseDbspec",
           "signature": "export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult"
         },
         "php-extension": {
@@ -1816,7 +1816,7 @@
           "signature": "pub fn analyze(text: &str, documents: &BTreeMap<String, String>) -> Analysis"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::analyzeDbspec",
+          "symbol": "packages/orm-npm/src/dbspec/document.ts::analyzeDbspec",
           "signature": "export function analyzeDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecAnalysis"
         },
         "php-extension": {
@@ -1852,7 +1852,7 @@
           "signature": "pub fn format(text: &str, documents: &BTreeMap<String, String>) -> Result<String, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::formatDbspec",
+          "symbol": "packages/orm-npm/src/dbspec/document.ts::formatDbspec",
           "signature": "export function formatDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecFormatResult"
         },
         "php-extension": {
@@ -1888,7 +1888,7 @@
           "signature": "pub fn emit(document: &Document) -> String"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::emitDbspec",
+          "symbol": "packages/orm-npm/src/dbspec/document.ts::emitDbspec",
           "signature": "export function emitDbspec(document: DbspecDocument): string"
         },
         "php-extension": {
