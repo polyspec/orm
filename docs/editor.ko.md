@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: 3ba775de1eba5203c1ae72eb92834c66473eceb919d413898ad4c817fc614c4f -->
+<!-- source-sha256: 458ca46444e295d5549c2315be59dd2c51fce1b117aca12a6893dbf7f3dba606 -->
 # dbspec editor 도구
 
 [English](editor.md)
@@ -21,6 +21,20 @@ editor 도구는 다른 모든 도구와 같은 parser로 dbspec 문서를 읽�
 - parser 진입점은 `node:` module, Node global, driver에 닿지 않는다.
 
 CodeMirror host와 VS Code web host가 language service를 browser에서 실행하도록 language service는 node 없이 동작한다. template의 editor도 같다(그 규칙 EDT-3).
+
+## 집합 해석 {#set-resolution}
+
+editor 도구는 집합이 아니라 문서를 받으므로, tsserver가 `tsconfig.json`을 찾듯 문서의 집합을 찾는다: language service의 `resolveSet(path, host)`가 문서의 directory와 file system root까지의 각 조상에서 `dbspec-set.json`을 찾고, 문서의 집합은 그 set 파일 directory에 대한 상대 경로로 문서를 `documents`에 나열한 가장 가까운 set 파일이다; `external`은 세지 않는다. 한 집합의 외부 문서는 다른 집합이 소유하기 때문이다. 이것은 문서 자신의 경로를 따라가는 발견이며 disk를 훑지 않는다. host는 주입되므로(`lstat`, directory 나열, byte와 identity를 주는 파일 한 번 열기) service는 Node 없이 남는다; command line과 language server는 `node:fs` host를 넘긴다.
+
+- 찾은 모든 set 파일은 [문서 집합](dbspec.ko.md#document-sets)의 단계 1과 2, 그리고 `parseSet`으로 읽는다; 거기서 실패한 set 파일은 그것이 문서를 나열하는지 정할 수 없으므로 오류다. 그다음 소유 집합을 단계 3과 4로 읽으며, 거기서 난 오류는 해석의 오류다: reader는 실패한 집합의 파일을 하나도 돌려주지 않으므로 부분 집합은 쓰지 않는다.
+- 두 set 파일의 `documents`에 나열된 문서는 rule `set.owner`이며, message는 그런 set 파일을 모두 적는다.
+- 해석 오류를 받은 도구는 그것을 보인다: language server는 그것을 게시하고 문서를 단독으로 분석하므로 그 `use` 줄이 곁에서 자기 diagnostic을 보고하며, command line은 그 파일을 상태 2로 거부한다.
+- 어느 set 파일도 나열하지 않는 문서는 그 자신만의 집합이며, 그 `use` 줄은 쓰는 문서가 선언된 문서 집합에 없다고 보고한다: fallback이 아니라 사실 그대로의 보고다.
+- 해석된 집합은 다른 파일 각각의 header 이름을 [byte 검사](dbspec.ko.md#files)를 거친 text에 대응시킨다; byte 검사에 실패하거나 parser가 header를 거부한 파일은 자기 경로의 diagnostic이며 집합에 없고, 반복된 이름은 뒤 파일에서 `name.duplicate`다.
+
+## 명령줄 {#command-line}
+
+`dbspec-fmt`는 template formatter 명령의 규칙(polyspec/template의 `docs/operations/editor-tools.md`)대로 문서를 format한다: 인자는 `node:util` `parseArgs`로 읽는다; mode 없는 경로 하나는 format한 text를 표준 출력에 쓰고, `-`나 경로 없음은 표준 입력을 그 자신만의 집합으로 읽는다; 경로가 여럿이면 `--write`나 `--check`가 필요하다; 모든 경로를 처리하고 가장 높은 종료 상태가 이긴다; diagnostic은 표준 오류에 `path:line:column: rule: message`로 쓴다. 문서의 집합은 directory가 아니라 set 파일에서 오므로 받은 경로만 처리하고 directory를 훑지 않는다. 각 파일의 집합은 `node:fs` host로 한 집합 해석에서 온다. 종료 상태는 모든 파일이 canonical이거나 쓰였으면 0, `--check`가 canonical이 아닌 파일을 찾으면 1, diagnostic, set 오류, 읽을 수 없는 파일, 잘못된 인자면 2다; 집합의 다른 파일의 diagnostic은 출력되고 상태를 2로 만든다. `make install-cli`가 symbolic link 없이 `CLI_PREFIX`(기본 `~/.local`) 아래에 설치하고, `make uninstall-cli`가 지운다.
 
 ## 결과
 
