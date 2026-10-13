@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f7e6de884443c79c3c41952f0b5d5a5c3b3df6a5660639be41abff8f468475fc -->
+<!-- source-sha256: 3378746b6e736975c2329bf86c821626ec2bf629cc1de83e4db69a8adc214d7b -->
 # 변경 이력
 
 ## Unreleased
 
+- T142-5: `codec-check`가 PHP vendor를 먼저 확인하고, 없으면 `make install-php`를 적는다.
 - T158-4: dbspec-vscode integration은 `--vscode`가 없으면 `make dbspec-vscode-integration`을 적는다.
 - T158-3: `codec-check`가 python need를 선언해, 이를 실행하는 job이 venv를 준비한다.
 - T158: T134, T135, T142 이후 orm main CI가 다시 green이다.

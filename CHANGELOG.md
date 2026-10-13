@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T142-5: `codec-check` checks the PHP vendor first and names `make install-php` when it is missing.
 - T158-4: the dbspec-vscode integration names `make dbspec-vscode-integration` when `--vscode` is missing.
 - T158-3: `codec-check` declares the python need, so the job that runs it provisions the venv.
 - T158: orm main CI is green again after T134, T135 and T142.
