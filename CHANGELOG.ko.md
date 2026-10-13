@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e959a096a0b401c8c06947c061f0bb078bcad0f4d05d5d33a77fa0ebfc9fc078 -->
+<!-- source-sha256: 1373737bc88bffe085212b1f9fe4505cd814da8a17046dcec4d65029d6fad59a -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-5-1: PHP set target가 자기 set test만 실행한다; show-create test는 자기 target에서 한 번 실행한다.
 - T128-3: 모든 client와 PHP extension이 같은 syntax token과 format을 주며, 이제 `make dbspec-compare-check`가 이를 비교하고 parity unit `dbspec-syntax`가 이를 선언한다.
 - T128-3p: 모든 client의 parse 결과가 선언 위치를 담으며, `make dbspec-compare-check`가 client 사이에서 이를 비교한다.
 - T128-2a-5 (breaking): PHP `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; 위치 인자 파일과 `--use`는 지웠다. `Dbspec::readSet`과 PHP extension의 native 짝이 set 파일을 읽는다.
