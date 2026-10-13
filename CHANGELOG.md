@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T147-3: the interface manifest marks its internal components, and the rule check covers the public ones.
 - T147-4: the manifest check refuses a rule whose method its component lacks, and SchemaUtils lists addTablesAndColumns.
 - T147-1: the interface rules declare Db.close, the Collection methods get, first, keys, connect, delete and toArray, and Utils.setLocal and local.
 - T140 (breaking): a restore picks its key after the request hook from the set values and the and-joined eq conditions, so a hook's condition narrows a restore as it narrows an update; the model sends its set only (docs/protocol.md 1.5).
