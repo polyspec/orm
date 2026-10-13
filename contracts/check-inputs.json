@@ -56,7 +56,7 @@
     "dbspec-plan-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["packages/orm-npm/tests/dbspec-plan-physical.mjs"]},
     "dbspec-plan-rust-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["packages/orm-rust/orm/tests/dbspec_plan_apply.rs"]},
     "ts-model-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/orm-npm/tests/models-scan.mjs", "packages/orm-npm/tsconfig.build.json", "schema/dbspec-set.json"]},
-    "dbspec-language-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "packages/orm-npm/tsconfig.build.json", "tests/dbspec/cases.json", "tests/dbspec/syntax.json", "tests/editor/**", "scripts/typescript/build.mjs"]},
+    "dbspec-language-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "packages/orm-npm/tsconfig.build.json", "tests/dbspec/cases.json", "tests/dbspec/cases.mjs", "tests/dbspec/syntax.json", "tests/editor/**", "scripts/typescript/build.mjs"]},
     "dbspec-plan-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/orm-php/tests/dbspec_plan_apply_test.php"]},
     "dbspec-apply-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/orm-php/tests/dbspec_apply_test.php"]},
     "dbspec-apply-php-extension-check": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/orm-php-extension/tests/dbspec_apply_test.php", "packages/orm-php-extension/src/apply.c"]},
@@ -71,7 +71,7 @@
     "feature-stress-mysql-check": {"scope": "suite", "needs": ["go", "databases"]},
     "feature-stress-pg-sqlite-check": {"scope": "suite", "needs": ["go", "rust", "php", "composer", "node-modules", "databases"]},
     "go-test-check": {"scope": "suite", "needs": ["go", "databases"]},
-    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
+    "python-check": {"scope": "owner", "needs": ["python", "databases"], "inputs": [".python-version", "packages/orm-python/**", "contracts/python_signature_test.go", "tests/interfaces/test_*.py", "tests/interfaces/python.py", "tests/conformance/result_python.py", "tests/conformance/runner_python.py", "tests/dbspec/show-create.json", "tests/dbspec/cases.json", "contracts/fixtures/planner.json", "tests/ir/validate.json", "tests/codec/decode-vectors.json"]}
   },
   "paths": {
     ".github/runner": {"scope": "suite", "reason": "it names the runner image of every job of the CI workflow, so it changes the machine that runs every target"},

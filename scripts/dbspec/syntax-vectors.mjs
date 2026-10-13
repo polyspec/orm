@@ -3,11 +3,11 @@
 //
 // Usage (after the TypeScript build): node scripts/dbspec/syntax-vectors.mjs
 // Running it twice gives the same bytes. A case it cannot read is an error that stops the run; no case is skipped.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { readCases } from '../../tests/dbspec/cases.mjs';
 
 const root = new URL('../../', import.meta.url);
-const casesPath = new URL('tests/dbspec/cases.json', root);
 const outPath = new URL('tests/dbspec/syntax.json', root);
 const distPath = new URL('packages/orm-npm/dist/dbspec/index.js', root);
 
@@ -84,7 +84,7 @@ export function render(entries) {
 }
 
 async function main() {
-  const cases = JSON.parse(readFileSync(casesPath, 'utf8'));
+  const cases = readCases();
   const { analyzeDbspec } = await import(distPath.href);
   writeFileSync(outPath, render(generate(analyzeDbspec, vectorInputs(cases))));
 }

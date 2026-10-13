@@ -1,5 +1,6 @@
 // 모든 dbspec compare runner가 자기가 읽는 vector file의 없거나 type이 다른 vector section, id, document,
-// line을 위치를 밝힌 error와 nonzero exit로 거부하는지 확인한다.
+// line을 위치를 밝힌 error와 nonzero exit로 거부하는지 확인한다. In cases.json a section or field that the format does
+// not name is refused too.
 //
 // Usage: DBSPEC_STRESS_DOCUMENT=<stress document> node --test tests/dbspec/compare/runners.test.mjs
 // (after the TypeScript build, the debug build of the Rust example and the build of the PHP extension)
@@ -60,6 +61,37 @@ const mutations = [
     problem: 'is missing',
     change: v => delete v.positions[0].documents[v.positions[0].main],
   },
+  // A section or field that the format does not name is refused in every section, as a missing one is.
+  { file: 'cases', location: 'note', problem: 'is missing', change: v => delete v.note },
+  { file: 'cases', location: 'extra', problem: 'is not a known field', change: v => (v.extra = []) },
+  { file: 'cases', location: 'canonical[0].extra', problem: 'is not a known field', change: v => (v.canonical[0].extra = true) },
+  { file: 'cases', location: 'normalize[0].canonical', problem: 'is missing', change: v => delete v.normalize[0].canonical },
+  { file: 'cases', location: 'normalize[0].extra', problem: 'is not a known field', change: v => (v.normalize[0].extra = true) },
+  { file: 'cases', location: 'invalid[0].errors', problem: 'is missing', change: v => delete v.invalid[0].errors },
+  { file: 'cases', location: 'invalid[0].errors[0].rule', problem: 'is missing', change: v => delete v.invalid[0].errors[0].rule },
+  { file: 'cases', location: 'invalid[0].errors[0].extra', problem: 'is not a known field', change: v => (v.invalid[0].errors[0].extra = 1) },
+  { file: 'cases', location: 'hashes[0].schemaHash', problem: 'is missing', change: v => delete v.hashes[0].schemaHash },
+  { file: 'cases', location: 'hashes[0].extra', problem: 'is not a known field', change: v => (v.hashes[0].extra = true) },
+  { file: 'cases', location: 'sets[0].errors', problem: 'is missing', change: v => delete v.sets[0].errors },
+  { file: 'cases', location: 'sets[0].extra', problem: 'is not a known field', change: v => (v.sets[0].extra = true) },
+  {
+    file: 'cases',
+    location: v => `sets[${v.sets.findIndex(c => Object.hasOwn(c, 'manifest'))}].manifest.created`,
+    problem: 'is missing',
+    change: v => delete v.sets.find(c => Object.hasOwn(c, 'manifest')).manifest.created,
+  },
+  {
+    file: 'cases',
+    location: v => `sets[${v.sets.findIndex(c => Object.hasOwn(c, 'manifest'))}].manifest.extra`,
+    problem: 'is not a known field',
+    change: v => (v.sets.find(c => Object.hasOwn(c, 'manifest')).manifest.extra = []),
+  },
+  { file: 'cases', location: 'files[0].errors', problem: 'is missing', change: v => delete v.files[0].errors },
+  { file: 'cases', location: 'files[0].extra', problem: 'is not a known field', change: v => (v.files[0].extra = true) },
+  { file: 'cases', location: 'positions[0].positions', problem: 'is missing', change: v => delete v.positions[0].positions },
+  { file: 'cases', location: 'positions[0].extra', problem: 'is not a known field', change: v => (v.positions[0].extra = true) },
+  { file: 'cases', location: 'positions[0].positions[0].line', problem: 'is missing', change: v => delete v.positions[0].positions[0].line },
+  { file: 'cases', location: 'positions[0].positions[0].extra', problem: 'is not a known field', change: v => (v.positions[0].positions[0].extra = 1) },
   { file: 'ddl', location: 'cases', problem: 'is missing', change: v => delete v.cases },
   { file: 'ddl', location: 'cases[0].id', problem: 'is missing', change: v => delete v.cases[0].id },
   { file: 'plans', location: 'chains', problem: 'is missing', change: v => delete v.chains },

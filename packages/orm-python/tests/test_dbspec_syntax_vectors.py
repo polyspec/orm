@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.dbspec import analyze_dbspec
+from dbspec_cases_reader import read_cases  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 SECTIONS = ('canonical', 'normalize', 'invalid')
@@ -64,9 +65,7 @@ class SyntaxVectorTest(unittest.TestCase):
             self.assertEqual(sorted(case), ['id', 'tokens'])
             self.assertNotIn(case['id'], expected, f"{case['id']} is listed twice")
             expected[case['id']] = case['tokens']
-        with open(ROOT / 'tests' / 'dbspec' / 'cases.json', encoding='utf-8') as handle:
-            cases = json.load(handle)
-        inputs = vector_inputs(cases)
+        inputs = vector_inputs(read_cases())
         self.assertEqual(sorted(i for i, _, _ in inputs), sorted(expected),
                          'the vector ids and the cases of cases.json differ')
         failures = []

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/case_clock.php';
+require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
 // Runs dbspec cases in the shape of tests/dbspec/cases.json: canonical cases
 // emit unchanged, normalize cases emit their canonical lines, invalid cases
 // report exactly the listed errors in order. Each case reports its start,

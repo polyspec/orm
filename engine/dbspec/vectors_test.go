@@ -118,15 +118,31 @@ func loadVectors(t *testing.T) vectorFile {
 
 // decodeCaseVectors는 cases.json의 모든 section과 field를 읽고, 없거나 type이 다른
 // 값을 위치와 함께 거부한다. normalize case는 canonical을, invalid case는 errors를
-// 가지며, crlf와 mixed는 없으면 false다.
+// 가지며, crlf와 mixed는 없으면 false다. A section or field that the format does not name is refused too.
 func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error) {
 	var v vectorFile
+	if err := r.fields(object, "", []string{"version", "note", "canonical", "normalize", "invalid", "hashes", "sets", "files", "positions"}); err != nil {
+		return v, err
+	}
 	if err := r.version(object); err != nil {
 		return v, err
 	}
+	if _, err := r.string(object, "", "note"); err != nil {
+		return v, err
+	}
 	readCase := func(canonical, errors bool) func(c map[string]any, location, id string) (vectorCase, error) {
+		required := []string{"id", "documents", "main"}
+		if canonical {
+			required = append(required, "canonical")
+		}
+		if errors {
+			required = append(required, "errors")
+		}
 		return func(c map[string]any, location, id string) (vectorCase, error) {
 			vc := vectorCase{ID: id}
+			if err := r.fields(c, location, required, "crlf", "mixed"); err != nil {
+				return vc, err
+			}
 			var err error
 			if vc.Main, err = r.string(c, location, "main"); err != nil {
 				return vc, err
@@ -166,6 +182,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	}
 	if v.Hashes, err = vectorCases(r, object, "hashes", func(c map[string]any, location, id string) (hashCase, error) {
 		h := hashCase{ID: id}
+		if err := r.fields(c, location, []string{"id", "documents", "manifestText", "schemaText", "manifestHash", "schemaHash"}); err != nil {
+			return h, err
+		}
 		var err error
 		if h.Documents, err = r.linesMap(c, location, "documents"); err != nil {
 			return h, err
@@ -186,6 +205,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	}
 	v.Sets, err = vectorCases(r, object, "sets", func(c map[string]any, location, id string) (setCase, error) {
 		s := setCase{ID: id}
+		if err := r.fields(c, location, []string{"id", "documents", "parsing", "errors"}, "external", "manifest"); err != nil {
+			return s, err
+		}
 		items, err := r.arrayField(c, location, "documents")
 		if err != nil {
 			return s, err
@@ -224,6 +246,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 				return s, r.fail(vectorAt(location, "manifest"), "is not an object")
 			}
 			at := vectorAt(location, "manifest")
+			if err := r.fields(object, at, []string{"manifestText", "externalText", "schemaText", "created", "manifestHash", "schemaHash"}); err != nil {
+				return s, err
+			}
 			m := &setManifest{}
 			for key, target := range map[string]*[]string{"manifestText": &m.ManifestText, "externalText": &m.ExternalText, "schemaText": &m.SchemaText, "created": &m.Created} {
 				if *target, err = r.linesField(object, at, key); err != nil {
@@ -246,6 +271,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	}
 	if v.Positions, err = vectorCases(r, object, "positions", func(c map[string]any, location, id string) (positionCase, error) {
 		pc := positionCase{ID: id}
+		if err := r.fields(c, location, []string{"id", "documents", "main", "positions"}); err != nil {
+			return pc, err
+		}
 		var err error
 		if pc.Main, err = r.string(c, location, "main"); err != nil {
 			return pc, err
@@ -265,6 +293,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 			object, ok := item.(map[string]any)
 			if !ok {
 				return pc, r.fail(at, "is not an object")
+			}
+			if err := r.fields(object, at, []string{"kind", "path", "line", "column"}); err != nil {
+				return pc, err
 			}
 			var p Position
 			if p.Kind, err = r.string(object, at, "kind"); err != nil {
@@ -287,6 +318,9 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	}
 	v.Files, err = vectorCases(r, object, "files", func(c map[string]any, location, id string) (fileCase, error) {
 		f := fileCase{ID: id}
+		if err := r.fields(c, location, []string{"id", "path", "errors"}); err != nil {
+			return f, err
+		}
 		var err error
 		if f.Path, err = r.string(c, location, "path"); err != nil {
 			return f, err

@@ -85,7 +85,7 @@ function parsed_set(string $dbspec, array $documents): ?array
     return $parsed;
 }
 
-$cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
+$cases = dbspec_read_cases();
 $ddl = json_decode(file_get_contents("$root/tests/dbspec/ddl.json"), true, 512, JSON_THROW_ON_ERROR);
 $failed = 0;
 $run = static function (string $name, callable $body) use (&$failed): void {

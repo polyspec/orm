@@ -62,7 +62,7 @@ foreach (dbspec_analysis_focused_cases() as $id => [$text, $want]) {
     $counts['focused']++;
 }
 
-$cases = json_decode((string) file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
+$cases = dbspec_read_cases();
 foreach (['canonical', 'normalize', 'invalid'] as $kind) {
     foreach ($cases[$kind] as $case) {
         $texts = dbspec_documents($case['documents'], $case['crlf'] ?? false, $case['mixed'] ?? false);

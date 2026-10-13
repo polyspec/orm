@@ -9,6 +9,7 @@ declare(strict_types=1);
 // 모양을 가진다.
 
 require_once __DIR__ . '/../input.php';
+require_once __DIR__ . '/../cases.php';
 
 /** vector file의 위치와 문제를 stderr에 쓰고 1로 끝낸다. */
 function dbspec_vector_fail(string $path, string $location, string $problem): never
@@ -299,6 +300,13 @@ function dbspec_vector_named_documents(string $path, stdClass $object, string $l
 function dbspec_write_interface(string $dbspec, string $casesPath, string $stressPath, string $ddlPath): array
 {
     $cases = dbspec_read_vectors($casesPath, static function (string $path, stdClass $v): array {
+        // cases.json is read strictly (tests/dbspec/cases.php): a missing or unknown section or field is refused.
+        try {
+            dbspec_check_cases($v, $path);
+        } catch (RuntimeException $e) {
+            fwrite(STDERR, $e->getMessage() . "\n");
+            exit(1);
+        }
         $cases = [];
         foreach (['canonical', 'normalize', 'invalid'] as $kind) {
             $cases[$kind] = dbspec_vector_cases($path, $v, $kind, static function (stdClass $case, string $at) use ($path): array {

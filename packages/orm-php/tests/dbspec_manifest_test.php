@@ -5,19 +5,13 @@ declare(strict_types=1);
 // Dbspec::manifest and Dbspec::render in every dialect.
 require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
+require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;
 
 $started = caseClockStart();
-$root = dirname(__DIR__, 3);
-$cases = json_decode(file_get_contents("$root/tests/dbspec/cases.json"), true, 512, JSON_THROW_ON_ERROR);
-if (($cases['hashes'] ?? []) === []) {
-    throw new RuntimeException('Missing hashes vectors');
-}
-if (($cases['sets'] ?? []) === []) {
-    throw new RuntimeException('Missing sets vectors');
-}
+$cases = dbspec_read_cases();
 
 /** @param list<string> $lines */
 function manifest_text(array $lines): string

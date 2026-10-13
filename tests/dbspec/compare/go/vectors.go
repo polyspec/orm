@@ -160,10 +160,13 @@ func cases[T any](r vectorReader, object map[string]any, key string, read func(c
 	return result, nil
 }
 
-// readCases는 tests/dbspec/cases.json을 읽는다.
+// readCases는 tests/dbspec/cases.json을 엄격하게 읽는다(checkCases).
 func readCases(path string) (sharedCases, error) {
 	r, v, err := readVectors(path)
 	if err != nil {
+		return sharedCases{}, err
+	}
+	if err := r.checkCases(v); err != nil {
 		return sharedCases{}, err
 	}
 	readCase := func(c map[string]any, location, id string) (testCase, error) {

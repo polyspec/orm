@@ -11,6 +11,9 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
+#[path = "../tests/common/dbspec_cases.rs"]
+mod dbspec_cases;
+
 type Documents = BTreeMap<String, Vec<String>>;
 
 struct TestCase {
@@ -224,9 +227,11 @@ fn header_name(lines: &[String]) -> Option<String> {
     lines.first()?.split(' ').nth(2).map(str::to_string)
 }
 
-/// tests/dbspec/cases.json을 읽는다.
+/// tests/dbspec/cases.json을 읽는다. It is checked strictly first (tests/common/dbspec_cases.rs): a missing section or
+/// field, or one that the format does not name, is refused.
 fn read_cases(path: &str) -> Result<SharedCases, String> {
     let (r, v) = Reader::open(path)?;
+    dbspec_cases::check_cases(&Value::Object(v.clone()), path)?;
     let test_case = |case: &Map<String, Value>, location: &str, id: String| {
         let main = r.string(case, location, "main")?;
         let documents = r.documents(case, location, "documents")?;
