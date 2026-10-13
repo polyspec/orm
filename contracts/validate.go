@@ -90,6 +90,8 @@ var outputs = map[string]map[string]string{
 	"PrivilegeUtils": {"go": "*PrivilegeUtils", "php": "Polyspec\\Orm\\PrivilegeUtils", "rust": "PrivilegeUtils<'_>", "typescript": "PrivilegeUtils", "python": "PrivilegeUtils"},
 	// A schema inspection reads the database and reports one boolean.
 	"Inspected": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
+	// A keyring lists the versions it declares, in ascending order.
+	"KeyVersions": {"go": "[]int32", "php": "array", "rust": "Vec<i32>", "typescript": "number[]", "python": "list"},
 }
 
 // inputs maps a common argument list to the native parameters of each

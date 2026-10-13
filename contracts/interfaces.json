@@ -40,8 +40,8 @@
   },
   "symbol_hashes": {
     "go": "sha256:9a413745ae25c28dddc56b9f506ada28818208c79ca05de3d323a8a660990bb7",
-    "php": "sha256:a888b6009225a99c728db44e2ba1731850cf515758811954902b8eab913b80ab",
-    "rust": "sha256:6b61cddc711a7b26bafffddfd9d15a0aa12cfd3039efab7075e1aeb30130a9e3",
+    "php": "sha256:b27fe9bd5129cdd0f50ae7ab668a57a30b38c6962f56e24bd728d129424c2534",
+    "rust": "sha256:40f41796b27d3b87f8b04d1ba27654f6e328c2ae3f2c926ffaab6990c4921efb",
     "typescript": "sha256:c27361412694d5574215161739c8480914b2fe1f34f1d0177dbf8a01dd31d8f6",
     "python": "sha256:27957b50a002744582eb165d8bdd68ed5f9035c27fb2d37638be91d6d1d9a279"
   },
@@ -2218,6 +2218,36 @@
         "python": {
           "symbol": "packages/orm-python/src/polyspec/orm/utils.py::AesUtils.rotate",
           "signature": "def rotate(self, model: Model, keyring: AesKeyring) -> int"
+        }
+      }
+    },
+    {
+      "id": "AESKeyring.versions",
+      "for": "once",
+      "inputs": [],
+      "output": "KeyVersions",
+      "errors": [],
+      "state": "Returns the declared key versions in ascending order",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/aes_rotation.go::AESKeyring.AESVersions",
+          "signature": "receiver=AESKeyring func() []int32"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/AesKeyring.php::Polyspec\\Orm\\AesKeyring::versions",
+          "signature": "public function versions(): array"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::AesKeyring::versions",
+          "signature": "pub fn versions (& self) -> Vec < i32 >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/aes.ts::AesKeyring.versions",
+          "signature": "public versions(): number[]"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/aes.py::AesKeyring.versions",
+          "signature": "def versions(self) -> list"
         }
       }
     },

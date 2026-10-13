@@ -312,6 +312,7 @@
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::send": "private function send(Closure $send, Closure $done, bool $control=false): mixed",
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::statement": "public function statement(Polyspec\\Orm\\Request $r): array",
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::statementKind": "private static function statementKind(string $sql): string",
+  "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::stats": "public function stats(): Polyspec\\Orm\\Stats",
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::stmt": "private function stmt(string $sql): PDOStatement",
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::subscribe": "public function subscribe(Closure $subscriber): Closure",
   "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::timeText": "private static function timeText(DateTimeImmutable $t, int $precision): string",

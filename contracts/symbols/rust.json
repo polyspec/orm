@@ -3048,6 +3048,7 @@
   "packages/orm-rust/orm/src/utils.rs::AesKeyring::current": "pub fn current (\u0026 self) -\u003e i32",
   "packages/orm-rust/orm/src/utils.rs::AesKeyring::key": " fn key (\u0026 self , version : i32) -\u003e Result \u003c \u0026 str \u003e",
   "packages/orm-rust/orm/src/utils.rs::AesKeyring::new": "pub fn new (keys : BTreeMap \u003c i32 , String \u003e , current : i32) -\u003e Result \u003c Self \u003e",
+  "packages/orm-rust/orm/src/utils.rs::AesKeyring::versions": "pub fn versions (\u0026 self) -\u003e Vec \u003c i32 \u003e",
   "packages/orm-rust/orm/src/utils.rs::AesRotationStatus": "pub struct AesRotationStatus  { pub current : i32 , pub total : i64 , pub pending : i64 , pub versions : BTreeMap \u003c i32 , i64 \u003e , }",
   "packages/orm-rust/orm/src/utils.rs::AesRotationStatus#field.current": "i32",
   "packages/orm-rust/orm/src/utils.rs::AesRotationStatus#field.pending": "i64",
