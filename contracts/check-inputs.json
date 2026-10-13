@@ -18,6 +18,7 @@
     "install-cli-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["scripts/install-cli.mjs", "tests/cli/**", "packages/dbspec-language/bin/**"]},
     "dbspec-lsp-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-lsp/**", "packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "tests/editor/**"]},
     "dbspec-codemirror-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-codemirror/**", "packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "tests/editor/**"]},
+    "dbspec-vscode-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-vscode/**", "packages/dbspec-lsp/**", "packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "package-lock.json"]},
     "docs-dbs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/.vitepress/dbs.ts", "tests/docs/**"]},
     "markdown-table-check": {"scope": "owner", "needs": ["go", "node-modules", "flowmark"], "inputs": ["scripts/docs/markdown-table.mjs", "tests/markdown/flowmark.version", "docs/dialects.md", "docs/dialects.ko.md"]},
     "docs-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["docs/**", "scripts/docs/**", "contracts/interfaces.json", "package.json", "package-lock.json"]},
