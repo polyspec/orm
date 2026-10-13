@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 2e9d92f802286a64673a2fc32d8acc0979d8062297238d2009780eb7880bda57 -->
+<!-- source-sha256: f66ce487fa508f054bc85cce2e549e0f4d763f2d7b1d97645f7c50283d2b17e4 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -934,7 +934,7 @@
 - [o] T128-2a-1-2 중복 key의 깊이와 `schema`의 읽기를 정한다(T128-2a-1에 이어). 원인: Python reader가 열려 있던 두 읽기를 찾았다: "어떤 key도 두 번 나오지 않는다"가 중첩 object에도 걸리는지(`{"schema": {"a": 1, "a": 2}}`가 `set.key`인지 `set.schema`인지), 그리고 `1.0000000000000000001`이 1인지. 인수 조건: 단계 2가 모든 깊이의 모든 object를 검사하고, `schema`를 RFC 8259가 권하는 대로 IEEE 754 double로 읽는다. 증거: docs/dbspec.md(+ko) 단계 2가 둘을 적는다; `make documents-check`와 `npm run docs:rules-check`가 통과한다.
 - [ ] T128-2a-2 Go set reader와 `orm-gen gen --set`(T128-2a-1에 이어). 인수 조건: `dbspec.ReadSet`이 set-files.json의 모든 case를 실행한다; `runtimemodel.LoadFileSet`과 `--document`/`--use`를 모든 호출자와 함께 지운다.
 - [ ] T128-2a-3 TypeScript set reader, `parseSet`, `--set`(T128-2a-1에 이어). 인수 조건: `@polyspec/orm/dbspec`의 `parseSet(bytes, path)`와 `readDbspecSet`이 set-files.json을 실행한다(`parseSet`은 tree 없는 case); `--schema`/`--use`를 지운다.
-- [ ] T128-2a-4 Python set reader와 argparse의 `--set`(T128-2a-1에 이어). 인수 조건: `read_dbspec_set`이 set-files.json을 실행한다; 손으로 쓴 인자 loop를 argparse로 바꾼다; `--schema`/`--use`를 지운다.
+- [o] T128-2a-4 Python set reader와 argparse의 `--set`(T128-2a-1에 이어). 인수 조건: `read_dbspec_set`이 set-files.json을 실행한다; 손으로 쓴 인자 loop를 argparse로 바꾼다; `--schema`/`--use`를 지운다. 증거: 변경 전 vector runner가 `read_dbspec_set` import에서 실패했고, 변경 후 set-files.json의 61 case가 실제 symbolic link와 hard link로 모두 통과하며, `test_orm_gen.py`가 `--schema`와 `--use`의 거부, set 오류나 문서 diagnostic이 모든 message를 출력하고 아무것도 쓰지 않음을 확인하고, `make python-model-check`가 `--set schema/dbspec-set.json`으로 통과하며, Python interface 검사가 통과한다.
 - [ ] T128-2a-5 PHP와 extension의 set reader와 `--set`(T128-2a-1에 이어). 인수 조건: `Dbspec::readSet`과 그 native 짝이 set-files.json을 실행한다; 위치 인자 파일을 지운다.
 - [ ] T128-2a-6 Rust set reader와 `Builder::set`(T128-2a-1에 이어). 인수 조건: `dbspec::read_set`이 set-files.json을 실행한다; `Builder::new([..])`와 `uses`를 지운다; `cargo:rerun-if-changed`가 set 파일과 나열된 모든 문서를 적는다.
 - [ ] T128-2a-7 set 파일의 호출자와 문서(T128-2a-2부터 T128-2a-6에 이어). 인수 조건: Makefile target, script, docs/usage.md, docs/schema.md, docs/dsl.md, docs/packaging.md(+ko)가 set 파일을 쓴다; interfaces rule `Dbspec.readSet`과 symbol, parity; breaking changelog 항목.
