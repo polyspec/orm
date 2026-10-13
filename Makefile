@@ -603,8 +603,8 @@ dbspec-php-check/show-create:
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -616,6 +616,11 @@ dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
 dbspec-php-extension-check/vectors: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
+# dbspec-php-extension-check/analyze는 확장의 syntax analysis와 format이 PHP client와 같은 token, 위치, diagnostic, emission과
+# formatted text를 내는지 focused case, cases.json의 모든 case와 한도 error로 본다.
+dbspec-php-extension-check/analyze: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
 dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_plan_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_plan_test.php

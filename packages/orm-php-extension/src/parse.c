@@ -226,6 +226,16 @@ typedef struct parser {
     smap failed_names;
     /* column 이름 => tdefault, 첫 column의 default 값이다. */
     smap defaults;
+    /* 읽은 token의 class: "줄:index" => class다. 줄의 class는 구문 오류가 난 줄과 열린 block 본문에서 버린다(R1, R20). */
+    smap marks;
+    /* 어휘 class만 쓰는 줄의 집합이다("줄" => TRUEP). */
+    smap lexical;
+    /* 줄을 읽는 중이면 참이다: 그때의 구문 오류는 그 줄을 버린다(R1). */
+    bool reading;
+    /* 열린 줄이 실패한 block의 본문은 읽지만 어휘 class만 가진다(R20). */
+    bool table_failed;
+    bool settings_failed;
+    bool diagram_failed;
     VEC(dstate_rec) deferred_states;
     /* 성공한 parse의 선언 위치다(run이 줄과 칸으로 정렬한다). */
     dposv decls;
@@ -244,6 +254,10 @@ static void unclosed(parser *p, zend_long line, zend_long column, str message)
 static void error(parser *p, const char *rule, zend_long line, zend_long column, str message)
 {
     if (strcmp(rule, "syntax") == 0) {
+        /* 읽는 중의 구문 오류는 그 줄을 버린다(R1); 확인 단계의 오류는 버리지 않는다. */
+        if (p->reading) {
+            smap_set(&p->lexical, fmt("%d", line), TRUEP);
+        }
         str key = fmt("%d", line);
         if (smap_has(&p->syntax_lines, key)) {
             return;
@@ -329,6 +343,23 @@ static bool tok_is(parser *p, size_t i, const char *s)
     return t != NULL && str_eqc(t->text, s);
 }
 
+/* 읽은 token에 class를 준다. 파서가 만든 token(줄 0)은 준 class가 없다. */
+static void mark_token(parser *p, const token *t, const char *class)
+{
+    if (t == NULL || t->line == 0) {
+        return;
+    }
+    smap_set(&p->marks, fmt("%d:%d", (int)t->line, (int)t->index), (void *)class);
+}
+
+/* 값 자리의 낱말이다: true, false, null과 now는 keyword다(R6, R18). */
+static void mark_value(parser *p, const token *t)
+{
+    if (t != NULL && (str_eqc(t->text, "true") || str_eqc(t->text, "false") || str_eqc(t->text, "null") || str_eqc(t->text, "now"))) {
+        mark_token(p, t, "keyword");
+    }
+}
+
 /* Go의 nameDiagnostics: 이름이 형식이나 길이를 어기면 그 규칙과 메시지를 쓰고 참을 돌려준다. */
 bool name_rule(str name, const char **rule, str *message)
 {
@@ -371,6 +402,7 @@ static bool name_ok(parser *p, str name, zend_long column)
 
 static bool name_tok(parser *p, const token *t)
 {
+    mark_token(p, t, "name");
     return name_ok(p, t->text, t->column);
 }
 
@@ -417,6 +449,10 @@ static bool expect_at(parser *p, size_t i, const char *expected)
             t == NULL ? fmt("expected `%s`", expected) : fmt("expected `%s`, found `%S`", expected, t->text));
         return false;
     }
+    /* A word the grammar expects is one of its fixed words (R12); punctuation keeps its lexical class. */
+    if (expected[0] >= 'a' && expected[0] <= 'z') {
+        mark_token(p, t, "keyword");
+    }
     return true;
 }
 
@@ -443,10 +479,12 @@ static bool column_list(parser *p, size_t i, bool directions, lcols *out, size_t
         if (name == NULL) {
             return false;
         }
+        mark_token(p, name, "name");
         i++;
         bool descending = false;
         const token *n = tok(p, i);
         if (directions && n != NULL && (str_eqc(n->text, "asc") || str_eqc(n->text, "desc"))) {
+            mark_token(p, n, "keyword");
             descending = str_eqc(n->text, "desc");
             i++;
             n = tok(p, i);
@@ -630,10 +668,7 @@ static void lex_line(parser *p, bool recover)
         } else if (word_rune_width(s, i) > 0) {
             len = word_run_end(s, i) - i;
         } else {
-            size_t width = 1;
-            if (c >= 0x80) {
-                (void)utf8_decode_at(s, i, &width);
-            }
+            size_t width = utf8_char_width(s, i);
             if (!recover) {
                 p->lex_failed = true;
                 p->lex_column = column;
@@ -646,8 +681,9 @@ static void lex_line(parser *p, bool recover)
             continue;
         }
         str text = str_sub(s, i, len);
-        PUSH(p->t, ((token){text, column}));
-        column += (zend_long)utf8_length(text);
+        zend_long index = (zend_long)p->t.n;
+        PUSH(p->t, ((token){text, column, p->line, index}));
+        column += (zend_long)utf8_count(text);
         i += len;
     }
 }
@@ -702,6 +738,7 @@ static void open_settings_block(parser *p, settings *s)
         p->table->settings = s;
     }
     p->settings_block = p->detached_block ? s : p->table->settings;
+    p->settings_failed = syntax_here(p);
 }
 
 /* lex 오류가 난 table 줄(}가 아닌)은 Go의 tableLine처럼 상태와 실패한 이름만 남긴다. */
@@ -777,6 +814,7 @@ static void header(parser *p)
     if (end == pn || end < p->text.n) {
         stop(p, "header", 1, (zend_long)end + 1, SL("the first line is exactly `dbspec 1 <document>`"));
     }
+    mark_token(p, &p->t.v[0], "keyword");
     name_tok(p, &p->t.v[2]);
     p->doc = document_new(p->t.v[2].text);
     declare(p, SL("document"), p->line, p->t.v[2].column, path1(p->t.v[2].text));
@@ -790,6 +828,7 @@ static void use_line(parser *p)
     if (docname == NULL) {
         return;
     }
+    mark_token(p, docname, "name");
     if (!expect_at(p, 2, "{")) {
         return;
     }
@@ -800,6 +839,7 @@ static void use_line(parser *p)
         if (t == NULL) {
             return;
         }
+        mark_token(p, t, "name");
         PUSH(tables, *t);
         i++;
         if (tok_is(p, i, ",")) {
@@ -935,7 +975,7 @@ static void open_table(parser *p)
     bool header_failed = false;
     if (n == NULL || !str_dotted(n->text)) {
         error(p, "syntax", p->line, n != NULL ? n->column : end_column(p), SL("expected a table name"));
-        name = (token){SL(""), p->t.v[0].column};
+        name = (token){SL(""), p->t.v[0].column, 0, 0};
         header_failed = true;
     } else {
         name = *n;
@@ -951,6 +991,7 @@ static void open_table(parser *p)
     table *t = table_new(name.text);
     t->comments = take_comments(p);
     t->header_failed = header_failed;
+    p->table_failed = header_failed;
     PUSH(p->doc->tables, t);
     declare(p, SL("table"), p->line, name.column, path1(name.text));
     if (name.text.n > 0) {
@@ -1021,6 +1062,7 @@ static size_t skip_parentheses(parser *p, size_t i)
 /* token i의 type을 읽는다. type이 잘못되면 NULL이다. */
 static ctype *read_type(parser *p, size_t i, size_t *next)
 {
+    mark_token(p, &p->t.v[i], "type");
     str name = p->t.v[i].text;
     zend_long column = p->t.v[i].column;
     bool paren = tok_is(p, i + 1, "(");
@@ -1181,22 +1223,26 @@ static void column_line(parser *p)
     bool has_default = false;
     token keyword = {0}, value = {0};
     if (tok_is(p, i, "null")) {
+        mark_token(p, &p->t.v[i], "keyword");
         nullable = true;
         i++;
     }
     if (tok_is(p, i, "identity")) {
+        mark_token(p, &p->t.v[i], "keyword");
         identity = &p->t.v[i];
         i++;
     }
     if (tok_is(p, i, "default")) {
+        mark_token(p, &p->t.v[i], "keyword");
         keyword = p->t.v[i];
         const token *v = tok(p, i + 1);
+        mark_value(p, v);
         if (v == NULL) {
             error(p, "syntax", p->line, end_column(p), SL("expected a default value"));
             i++;
         } else if (str_eqc(v->text, "-") && i + 2 < p->t.n && p->t.v[i + 2].column == v->column + 1) {
             has_default = true;
-            value = (token){fmt("-%S", p->t.v[i + 2].text), v->column};
+            value = (token){fmt("-%S", p->t.v[i + 2].text), v->column, 0, 0};
             i += 3;
         } else {
             has_default = true;
@@ -1406,10 +1452,15 @@ static void foreign_key_line(parser *p)
     const char *events[2] = {"delete", "update"};
     for (int e = 0; e < 2; e++) {
         if (tok_is(p, i, "on") && tok_is(p, i + 1, events[e])) {
+            mark_token(p, &p->t.v[i], "keyword");
+            mark_token(p, &p->t.v[i + 1], "keyword");
             const token *action = tok(p, i + 2);
             if (action == NULL || !str_dotted(action->text)) {
                 error(p, "syntax", p->line, action != NULL ? action->column : end_column(p), SL("expected an action"));
                 return;
+            }
+            if (listed(action->text, fk_actions)) {
+                mark_token(p, action, "keyword");
             }
             actions[e] = action->text;
             if (!listed(action->text, fk_actions)) {
@@ -1511,6 +1562,7 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
             error(p, "syntax", p->line, keyword.column, fmt("expected `exclude`, `include` or the end of the line, not `%S`", keyword.text));
             return false;
         }
+        mark_token(p, &t->v[i], "keyword");
         if (!(i + 1 < t->n && str_eqc(t->v[i + 1].text, "("))) {
             error(p, "syntax", p->line, i + 1 < t->n ? t->v[i + 1].column : end_column(p), SL("expected `(`"));
             return false;
@@ -1523,6 +1575,7 @@ static bool audit_list_tokens(parser *p, const tokens *t, audit_lists *out)
                 error(p, "syntax", p->line, name != NULL ? name->column : end_column(p), SL("expected a column name"));
                 return false;
             }
+            mark_token(p, name, "name");
             PUSH(l.columns, *name);
             const token *nx = i + 1 < t->n ? &t->v[i + 1] : NULL;
             i += 2;
@@ -1621,6 +1674,7 @@ static bool sc_fail(scursor *c, str expected)
 static bool sc_keyword(scursor *c, const char *text)
 {
     if (sc_is(c, text)) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         return true;
     }
@@ -1651,6 +1705,7 @@ static bool sc_oneof(scursor *c, str what, const char *const *words, size_t n, t
 {
     for (size_t k = 0; sc_more(c) && k < n; k++) {
         if (str_eqc(c->t->v[c->i].text, words[k])) {
+            mark_token(c->p, &c->t->v[c->i], "keyword");
             *out = c->t->v[c->i++];
             return true;
         }
@@ -1674,13 +1729,17 @@ static bool sc_count(scursor *c, token *out)
         token minus = c->t->v[c->i];
         if (c->i + 1 < c->t->n && number_text(c->t->v[c->i + 1].text)) {
             c->i += 2;
-            *out = (token){fmt("-%S", c->t->v[c->i - 1].text), minus.column};
+            *out = (token){fmt("-%S", c->t->v[c->i - 1].text), minus.column, 0, 0};
             return true;
         }
         c->i++;
         return sc_fail(c, SL("a number after `-`"));
     }
-    return sc_name(c, SL("a row count"), out);
+    if (!sc_name(c, SL("a row count"), out)) {
+        return false;
+    }
+    mark_value(c->p, out);
+    return true;
 }
 
 static bool sc_end(scursor *c)
@@ -1694,6 +1753,7 @@ static bool take_name(scursor *c, str what, tokens *args)
     if (!sc_name(c, what, &t)) {
         return false;
     }
+    mark_token(c->p, &t, "name");
     PUSH(*args, t);
     return true;
 }
@@ -1701,7 +1761,7 @@ static bool take_name(scursor *c, str what, tokens *args)
 /* state_machine 줄의 형식 낱말이다. 검사는 이 자리의 낱말로 줄의 종류를 정한다. */
 static void take_form(tokens *args, str form)
 {
-    PUSH(*args, ((token){form, 0}));
+    PUSH(*args, ((token){form, 0, 0, 0}));
 }
 
 /* `(name, ...)`의 require 목록을 args 뒤에 이어 쓴다. */
@@ -1730,6 +1790,7 @@ static bool take_requires(scursor *c, tokens *args)
 static bool state_tail(scursor *c, tokens *args)
 {
     if (sc_is(c, "require")) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         if (!take_requires(c, args)) {
             return false;
@@ -1765,6 +1826,7 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
         /* shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은 위치를 위해 남긴다. */
         if (sc_is(c, "shard")) {
             static const char *const periods[] = {"year", "month", "day"};
+            mark_token(c->p, &c->t->v[c->i], "keyword");
             PUSH(*args, c->t->v[c->i]);
             c->i++;
             if (!take_name(c, SL("the shard column"), args)) {
@@ -1802,16 +1864,19 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
         return false;
     }
     if (sc_form_ahead(c, "initial")) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         take_form(args, SL("initial"));
         return take_name(c, SL("a state name"), args) && sc_end(c);
     }
     if (sc_form_ahead(c, "terminal")) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         take_form(args, SL("terminal"));
         return take_name(c, SL("a state name"), args) && state_tail(c, args);
     }
     if (sc_form_ahead(c, "history")) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         take_form(args, SL("history"));
         return take_name(c, SL("the history table"), args) && sc_keyword(c, "row") && take_name(c, SL("the foreign key column"), args)
@@ -1819,6 +1884,7 @@ static bool new_setting_args(scursor *c, str keyword, tokens *args)
             && take_name(c, SL("the to column"), args) && sc_keyword(c, "at") && take_name(c, SL("the at column"), args) && sc_end(c);
     }
     if (sc_form_ahead(c, "limit")) {
+        mark_token(c->p, &c->t->v[c->i], "keyword");
         c->i++;
         take_form(args, SL("limit"));
         if (!take_name(c, SL("a state name"), args)) {
@@ -1959,8 +2025,10 @@ static void settings_line(parser *p)
         end_at(p, 1);
         p->settings_block->closing = take_comments(p);
         p->state = S_TABLE;
+        p->settings_failed = false;
         return;
     }
+    mark_token(p, &first, "setting");
     if (new_setting_kind(keyword)) {
         new_setting(p, first);
         return;
@@ -2007,6 +2075,28 @@ static void settings_line(parser *p)
     if (args.n < min) {
         error(p, "syntax", p->line, end_column(p), fmt("setting `%S` needs more arguments", keyword));
         return;
+    }
+    /* The positions the grammar takes (R3, R4, R11, R12): every argument is a name, except the stages of a codec,
+     * and the fixed words of select and audit are keywords. */
+    for (size_t i = 0; i < args.n; i++) {
+        if (!(str_eqc(keyword, "codec") && i > 0)) {
+            mark_token(p, &args.v[i], "name");
+        }
+    }
+    if (str_eqc(keyword, "codec")) {
+        for (size_t i = 1; i < args.n; i++) {
+            if (listed(args.v[i].text, codec_stages)) {
+                mark_token(p, &args.v[i], "keyword");
+            }
+        }
+    }
+    if (str_eqc(keyword, "select")) {
+        mark_token(p, &args.v[0], "keyword");
+    }
+    if (str_eqc(keyword, "audit")) {
+        for (size_t i = 0; i < 10; i += 2) {
+            mark_token(p, &args.v[i], "keyword");
+        }
     }
     audit_lists lists = {0};
     str kind = keyword;
@@ -2091,6 +2181,7 @@ static void settings_line(parser *p)
 static void open_diagram(parser *p)
 {
     const token *name = word_at(p, 1);
+    p->diagram_failed = false;
     p->state = S_DIAGRAM;
     p->block_open[0] = p->line;
     p->block_open[1] = p->t.n > 2 ? p->t.v[2].column : p->t.v[0].column;
@@ -2101,6 +2192,7 @@ static void open_diagram(parser *p)
     p->diagram = g;
     PUSH(p->doc->diagrams, g);
     if (name == NULL) {
+        p->diagram_failed = true;
         return;
     }
     declare(p, SL("diagram"), p->line, name->column, path1(name->text));
@@ -2112,6 +2204,7 @@ static void open_diagram(parser *p)
         error(p, "name.duplicate", p->line, name->column, fmt("diagram `%S` is already defined", name->text));
     }
     smap_set(&p->diagram_names, name->text, TRUEP);
+    p->diagram_failed = syntax_here(p);
 }
 
 static void diagram_line(parser *p)
@@ -2120,6 +2213,7 @@ static void diagram_line(parser *p)
         end_at(p, 1);
         p->diagram->closing = take_comments(p);
         p->state = S_TOP;
+        p->diagram_failed = false;
         return;
     }
     const token *tname = word_at(p, 0);
@@ -2134,13 +2228,14 @@ static void diagram_line(parser *p)
             error(p, "syntax", p->line, end_column(p), SL("expected a coordinate"));
             return;
         }
+        mark_value(p, t);
         str text = t->text;
         i++;
         if (str_eqc(text, "-") && i < p->t.n && p->t.v[i].column == t->column + 1) {
             text = fmt("%S%S", text, p->t.v[i].text);
             i++;
         }
-        coordinates[n] = (token){text, t->column};
+        coordinates[n] = (token){text, t->column, 0, 0};
     }
     if (!end_at(p, i)) {
         return;
@@ -2189,6 +2284,7 @@ static void top_line(parser *p)
 {
     token first = p->t.v[0];
     if (str_eqc(first.text, "use")) {
+        mark_token(p, &first, "keyword");
         if (p->top_phase > 0) {
             error(p, "order", p->line, first.column, SL("`use` lines come before tables and diagrams"));
         }
@@ -2196,6 +2292,7 @@ static void top_line(parser *p)
         return;
     }
     if (str_eqc(first.text, "table")) {
+        mark_token(p, &first, "keyword");
         if (p->top_phase > 1) {
             error(p, "order", p->line, first.column, SL("tables come before diagrams"));
         }
@@ -2206,6 +2303,7 @@ static void top_line(parser *p)
         return;
     }
     if (str_eqc(first.text, "diagram")) {
+        mark_token(p, &first, "keyword");
         p->top_phase = 2;
         open_diagram(p);
         return;
@@ -2225,6 +2323,7 @@ static void table_line(parser *p)
         return;
     }
     if (str_eqc(w, "primary") || str_eqc(w, "unique") || str_eqc(w, "index") || str_eqc(w, "foreign") || str_eqc(w, "check")) {
+        mark_token(p, &first, "keyword");
         if (p->table_phase == 2) {
             error(p, "order", p->line, first.column, SL("key, index, foreign key and check lines come before the settings block"));
         } else {
@@ -2242,6 +2341,7 @@ static void table_line(parser *p)
         return;
     }
     if (str_eqc(w, "settings")) {
+        mark_token(p, &first, "keyword");
         /* Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다. */
         bool well_formed = tok_is(p, 1, "{") && p->t.n == 2;
         if (p->table_phase == 2 && well_formed) {
@@ -2914,6 +3014,8 @@ static bool prefix_equal(const strs *columns, const strs *fk)
 
 static void close_table(parser *p)
 {
+    p->table_failed = false;
+    p->settings_failed = false;
     table *t = p->table;
     pkey *primary = t->pk;
     if (p->columns->live == 0 && p->failed_lines == 0) {
@@ -2987,7 +3089,7 @@ static void close_table(parser *p)
         tcheck_rec *r = &p->table_checks.v[i];
         str text = SL("");
         diags errors = {0};
-        if (!expression_parse(&r->toks, r->line, r->end, p->columns, &action, &text, &errors)) {
+        if (!expression_parse(&r->toks, r->line, r->end, p->columns, &action, &text, &errors, &p->marks)) {
             text = SL("");
         }
         for (size_t k = 0; k < errors.n; k++) {
@@ -3243,6 +3345,7 @@ static void read_source(parser *p, str source)
         }
         p->line = (zend_long)index + 1;
         p->text = text;
+        p->reading = true;
         if (index == 0) {
             tokenize(p);
             header(p);
@@ -3255,6 +3358,9 @@ static void read_source(parser *p, str source)
         if (trimmed.s[0] == '#') {
             PUSH(p->comments, trimmed);
             continue;
+        }
+        if (p->table_failed || p->settings_failed || p->diagram_failed) {
+            smap_set(&p->lexical, fmt("%d", (int)p->line), TRUEP);
         }
         tokenize(p);
         if (p->lex_failed) {
@@ -3280,6 +3386,7 @@ static void read_source(parser *p, str source)
                 break;
         }
     }
+    p->reading = false;
     if (encoding) {
         stop(p, "encoding", encoding_line, encoding_column, str_c(encoding_message));
     }
@@ -3348,12 +3455,76 @@ static int cmp_decl(const void *a, const void *b, void *ctx)
     return 0;
 }
 
-static document *run(parser *p, str source, diags *out, dposv *pos)
+/* The class of a token whose line gives it none (docs/dbspec.md "Syntax analysis"). */
+static const char *lexical_class(str text)
+{
+    if (text.n > 0 && text.s[0] == '\'') {
+        return "string";
+    }
+    if (str_eqc(text, "(") || str_eqc(text, ")") || str_eqc(text, "{") || str_eqc(text, "}") || str_eqc(text, ",")) {
+        return "punctuation";
+    }
+    if (str_eqc(text, "=") || str_eqc(text, "<>") || str_eqc(text, "<") || str_eqc(text, "<=") || str_eqc(text, ">")
+        || str_eqc(text, ">=") || str_eqc(text, "+") || str_eqc(text, "-") || str_eqc(text, "*") || str_eqc(text, "/")) {
+        return "operator";
+    }
+    if (number_text(text)) {
+        return "number";
+    }
+    return "word";
+}
+
+/* The tokens of every line of the source in source order (docs/dbspec.md "Syntax analysis"). Each line is split and
+ * lexed as read_source reads it, so a line the parser did not read gets the same tokens. */
+static void analysis_tokens(parser *p, str source, dtokv *out)
+{
+    strs lines = strs_split(source, '\n');
+    for (size_t i = 0; i < lines.n; i++) {
+        str text = lines.v[i];
+        /* A CR before an LF is part of the line end; a bare CR is an offending character (R8, R22). */
+        if (i + 1 < lines.n && text.n > 0 && text.s[text.n - 1] == '\r') {
+            text.n--;
+        }
+        zend_long line = (zend_long)i + 1;
+        str trimmed = str_ltrim_spaces(text);
+        if (trimmed.n == 0) {
+            continue;
+        }
+        if (trimmed.s[0] == '#') {
+            dtoken c = {line, (zend_long)(text.n - trimmed.n), 0, SL("comment")};
+            c.end = c.start + (zend_long)utf8_count(trimmed);
+            PUSH(*out, c);
+            continue;
+        }
+        p->line = line;
+        p->text = text;
+        lex_line(p, false);
+        if (p->lex_failed) {
+            lex_line(p, true);
+        }
+        bool lexical_only = smap_has(&p->lexical, fmt("%d", (int)line));
+        for (size_t k = 0; k < p->t.n; k++) {
+            const token *t = &p->t.v[k];
+            const char *class = lexical_only ? NULL : (const char *)smap_get(&p->marks, fmt("%d:%d", (int)line, (int)k));
+            if (class == NULL) {
+                class = lexical_class(t->text);
+            }
+            dtoken d = {line, t->column - 1, t->column - 1 + (zend_long)utf8_count(t->text), str_c(class)};
+            PUSH(*out, d);
+        }
+    }
+}
+
+static document *run(parser *p, str source, diags *out, dposv *pos, dtokv *tokens)
 {
     bool stopped = !read_until_stop(p, source);
-    diag stopd;
+    diag stopd = {0};
     if (stopped) {
         stopd = p->diagnostics.v[--p->diagnostics.n];
+    }
+    /* A limit error gives no tokens, whatever was read before it (R22). */
+    if (tokens != NULL && !(stopped && str_eqc(stopd.rule, "limit"))) {
+        analysis_tokens(p, source, tokens);
     }
     if (p->diagnostics.n == 0 && !stopped) {
         dbs_sort(p->decls.v, p->decls.n, sizeof(dpos), cmp_decl, NULL);
@@ -3418,7 +3589,7 @@ static used_entry *used_document(parser *p, str name)
     diags found = {0};
     str *text = smap_get(p->documents, name);
     dposv unused = {0};
-    document *d = run(child, *text, &found, &unused);
+    document *d = run(child, *text, &found, &unused, NULL);
     e = dbs_alloc(sizeof *e);
     if (d == NULL) {
         diag first = found.v[0];
@@ -3438,5 +3609,12 @@ document *dbs_parse(str text, const smap *documents, diags *out, dposv *pos)
 {
     smap *used = dbs_alloc(sizeof *used);
     parser *p = parser_new(documents, NULL, used);
-    return run(p, text, out, pos);
+    return run(p, text, out, pos, NULL);
+}
+
+document *dbs_analyze(str text, const smap *documents, diags *out, dposv *pos, dtokv *tokens)
+{
+    smap *used = dbs_alloc(sizeof *used);
+    parser *p = parser_new(documents, NULL, used);
+    return run(p, text, out, pos, tokens);
 }

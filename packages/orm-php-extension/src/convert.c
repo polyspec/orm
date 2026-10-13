@@ -120,6 +120,24 @@ void zv_positions(zval *out, const dposv *d)
     }
 }
 
+void zv_tokens(zval *out, const dtokv *t)
+{
+    if (t->n == 0) {
+        ZVAL_EMPTY_ARRAY(out);
+        return;
+    }
+    array_init_size(out, (uint32_t)t->n);
+    for (size_t i = 0; i < t->n; i++) {
+        zval o;
+        obj_new(&o, dbs_ce_Token);
+        obj_put_long(&o, "line", t->v[i].line);
+        obj_put_long(&o, "start", t->v[i].start);
+        obj_put_long(&o, "end", t->v[i].end);
+        obj_put_str(&o, "class", t->v[i].class);
+        add_next_index_zval(out, &o);
+    }
+}
+
 void zv_diags(zval *out, const diags *d)
 {
     if (d->n == 0) {

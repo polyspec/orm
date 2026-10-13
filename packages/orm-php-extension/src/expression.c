@@ -35,6 +35,8 @@ typedef struct {
     const tokens *t;
     zend_long line, end;
     const smap *columns, *action;
+    /* 읽은 token의 class, "줄:index" => class다(parse의 marks와 같다). */
+    smap *marks;
     size_t at;
     strs literals;
     diags *errors;
@@ -66,6 +68,16 @@ static bool in_list(str s, const char *const *list)
 static bool ordering(str s)
 {
     return str_eqc(s, "<") || str_eqc(s, "<=") || str_eqc(s, ">") || str_eqc(s, ">=");
+}
+
+/* 읽은 token에 class를 준다. */
+static void mark_at(xparser *p, size_t at, const char *class)
+{
+    const token *t = &p->t->v[at];
+    if (t->line == 0) {
+        return;
+    }
+    smap_set(p->marks, fmt("%d:%d", (int)t->line, (int)t->index), (void *)class);
 }
 
 static const str *peek(xparser *p, size_t ahead)
@@ -122,6 +134,7 @@ static operand literal(xparser *p)
     if (token != NULL && (str_eqc(*token, "true") || str_eqc(*token, "false"))) {
         text = *token;
         have = true;
+        mark_at(p, p->at, "keyword");
         p->at++;
     } else if (token != NULL && str_eqc(*token, "-") && p->at + 1 < p->t->n && p->t->v[p->at + 1].column == column + 1
         && literal_number(fmt("-%S", p->t->v[p->at + 1].text), NULL)) {
@@ -153,6 +166,7 @@ static operand xoperand(xparser *p)
         }
         if (!in_list(*token, keywords)) {
             operand o = {OP_COLUMN, *token, position(p), smap_get(p->columns, *token), 0};
+            mark_at(p, p->at, "name");
             p->at++;
             return o;
         }
@@ -188,11 +202,13 @@ static enode *predicate(xparser *p)
     bool negated = next != NULL && str_eqc(*next, "not") && peek_is(p, 1, "in");
     if (negated) {
         require_column(p, &left, "in");
+        mark_at(p, p->at, "keyword");
         p->at++;
         next = peek(p, 0);
     }
     if (next != NULL && str_eqc(*next, "in")) {
         require_column(p, &left, "in");
+        mark_at(p, p->at, "keyword");
         p->at++;
         expect(p, "(");
         enode *n = dbs_alloc(sizeof *n);
@@ -210,10 +226,15 @@ static enode *predicate(xparser *p)
     }
     if (next != NULL && str_eqc(*next, "is")) {
         require_column(p, &left, "is");
+        mark_at(p, p->at, "keyword");
         p->at++;
         bool is_not = peek_is(p, 0, "not");
         if (is_not) {
+            mark_at(p, p->at, "keyword");
             p->at++;
+        }
+        if (peek_is(p, 0, "null")) {
+            mark_at(p, p->at, "keyword");
         }
         expect(p, "null");
         enode *n = dbs_alloc(sizeof *n);
@@ -245,6 +266,7 @@ static enode *conjunction(xparser *p)
 {
     enode *left = group(p);
     while (peek_is(p, 0, "and")) {
+        mark_at(p, p->at, "keyword");
         p->at++;
         enode *n = dbs_alloc(sizeof *n);
         n->kind = N_AND;
@@ -259,6 +281,7 @@ static enode *disjunction(xparser *p)
 {
     enode *left = conjunction(p);
     while (peek_is(p, 0, "or")) {
+        mark_at(p, p->at, "keyword");
         p->at++;
         enode *n = dbs_alloc(sizeof *n);
         n->kind = N_OR;
@@ -433,9 +456,10 @@ static void check_types(xparser *p)
     PUSH(*p->errors, mkdiag(first.rule != NULL ? str_c(first.rule) : SL("check"), p->line, first.at, first.message));
 }
 
-bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors)
+bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors, smap *marks)
 {
     xparser *p = dbs_alloc(sizeof *p);
+    p->marks = marks;
     p->t = t;
     p->line = line;
     p->end = end;

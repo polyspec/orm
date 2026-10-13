@@ -652,6 +652,57 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct)
     init_long(ZEND_THIS, "column", column);
 }
 
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Token, __construct)
+{
+    zend_long line, start, end;
+    zend_string *cls;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_LONG(line)
+        Z_PARAM_LONG(start)
+        Z_PARAM_LONG(end)
+        Z_PARAM_STR(cls)
+    ZEND_PARSE_PARAMETERS_END();
+    init_long(ZEND_THIS, "line", line);
+    init_long(ZEND_THIS, "start", start);
+    init_long(ZEND_THIS, "end", end);
+    init_str(ZEND_THIS, "class", cls);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Analysis, __construct)
+{
+    zval *document, *positions, *diagnostics, *tokens;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(document, dbs_ce_Document)
+        Z_PARAM_ARRAY_OR_NULL(positions)
+        Z_PARAM_ARRAY(diagnostics)
+        Z_PARAM_ARRAY(tokens)
+    ZEND_PARSE_PARAMETERS_END();
+    zval null_;
+    ZVAL_NULL(&null_);
+    init_prop(ZEND_THIS, "document", document != NULL ? document : &null_);
+    init_prop(ZEND_THIS, "positions", positions != NULL ? positions : &null_);
+    init_prop(ZEND_THIS, "diagnostics", diagnostics);
+    init_prop(ZEND_THIS, "tokens", tokens);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_FormatResult, __construct)
+{
+    zend_string *text;
+    zval *diagnostics;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR_OR_NULL(text)
+        Z_PARAM_ARRAY(diagnostics)
+    ZEND_PARSE_PARAMETERS_END();
+    zval null_;
+    ZVAL_NULL(&null_);
+    if (text != NULL) {
+        init_str(ZEND_THIS, "text", text);
+    } else {
+        init_prop(ZEND_THIS, "text", &null_);
+    }
+    init_prop(ZEND_THIS, "diagnostics", diagnostics);
+}
+
 RESULT_CLASS(ManifestResult, "manifest", Z_PARAM_NULLABLE_OBJ(dbs_ce_Manifest), "manifest")
 RESULT_CLASS(RenderResult, "statements", Z_PARAM_NULLABLE_ARRAY, "render")
 RESULT_CLASS(PlanParseResult, "plan", Z_PARAM_NULLABLE_OBJ(dbs_ce_Plan), "plan parse")
@@ -1134,6 +1185,99 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ApplyCleanupError, __construct)
 }
 
 /* ---------------------------------------------------------------- Dbspec */
+
+/* The declared document set: every name maps to a text. Another entry throws, as parse does. */
+static bool declared_set_valid(zval *documents)
+{
+    zend_string *key;
+    zval *source;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(documents), key, source) {
+        ZVAL_DEREF(source);
+        if (key == NULL || Z_TYPE_P(source) != IS_STRING) {
+            zend_throw_exception(spl_ce_InvalidArgumentException, "The declared document set maps document names to texts", 0);
+            return false;
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+static void declared_set_build(zval *documents, smap *set)
+{
+    zend_string *key;
+    zval *source;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(documents), key, source) {
+        ZVAL_DEREF(source);
+        str *t = dbs_alloc(sizeof *t);
+        *t = zs(Z_STR_P(source));
+        smap_set(set, zs(key), t);
+    } ZEND_HASH_FOREACH_END();
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, analyze)
+{
+    zend_string *text;
+    zval *documents;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(text)
+        Z_PARAM_ARRAY(documents)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!declared_set_valid(documents)) {
+        RETURN_THROWS();
+    }
+    ENTER();
+    smap set = {0};
+    declared_set_build(documents, &set);
+    diags found = {0};
+    dposv decls = {0};
+    dtokv tokens = {0};
+    document *d = dbs_analyze(zs(text), &set, &found, &decls, &tokens);
+    zval dl, tz;
+    zv_diags(&dl, &found);
+    zv_tokens(&tz, &tokens);
+    obj_new(return_value, dbs_ce_Analysis);
+    if (d != NULL) {
+        zval dz, pz;
+        out_document(d, &dz);
+        zv_positions(&pz, &decls);
+        obj_put(return_value, "document", &dz);
+        obj_put(return_value, "positions", &pz);
+    } else {
+        obj_put_null(return_value, "document");
+        obj_put_null(return_value, "positions");
+    }
+    obj_put(return_value, "diagnostics", &dl);
+    obj_put(return_value, "tokens", &tz);
+    LEAVE();
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, format)
+{
+    zend_string *text;
+    zval *documents;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(text)
+        Z_PARAM_ARRAY(documents)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!declared_set_valid(documents)) {
+        RETURN_THROWS();
+    }
+    ENTER();
+    smap set = {0};
+    declared_set_build(documents, &set);
+    diags found = {0};
+    dposv decls = {0};
+    document *d = dbs_parse(zs(text), &set, &found, &decls);
+    zval dl;
+    zv_diags(&dl, &found);
+    obj_new(return_value, dbs_ce_FormatResult);
+    if (d != NULL) {
+        obj_put_str(return_value, "text", dbs_emit(d, VIEW_CANONICAL));
+    } else {
+        obj_put_null(return_value, "text");
+    }
+    obj_put(return_value, "diagnostics", &dl);
+    LEAVE();
+}
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parse)
 {
@@ -1795,6 +1939,9 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_Position = register_class_Polyspec_Orm_Dbspec_Native_Position();
     dbs_ce_ReadResult = register_class_Polyspec_Orm_Dbspec_Native_ReadResult();
     dbs_ce_ParseResult = register_class_Polyspec_Orm_Dbspec_Native_ParseResult();
+    dbs_ce_Analysis = register_class_Polyspec_Orm_Dbspec_Native_Analysis();
+    dbs_ce_Token = register_class_Polyspec_Orm_Dbspec_Native_Token();
+    dbs_ce_FormatResult = register_class_Polyspec_Orm_Dbspec_Native_FormatResult();
     dbs_ce_Manifest = register_class_Polyspec_Orm_Dbspec_Native_Manifest();
     dbs_ce_ManifestResult = register_class_Polyspec_Orm_Dbspec_Native_ManifestResult();
     dbs_ce_RenderResult = register_class_Polyspec_Orm_Dbspec_Native_RenderResult();

@@ -254,6 +254,39 @@ final readonly class ParseResult
     public static function invalid(array $diagnostics): ParseResult {}
 }
 
+/** One token of a dbspec text: its 1-based line, its start and end in code points on the line, and its class (docs/dbspec.md "Syntax analysis"). */
+final readonly class Token
+{
+    public int $line;
+    public int $start;
+    public int $end;
+    public string $class;
+
+    public function __construct(int $line, int $start, int $end, string $class) {}
+}
+
+/** The outcome of Dbspec::analyze: the parse result unchanged, and the tokens of the text in source order. */
+final readonly class Analysis
+{
+    public ?Document $document;
+    public ?array $positions;
+    public array $diagnostics;
+    public array $tokens;
+
+    /** The document and positions are null when the parse has a diagnostic; the lists hold Diagnostic and Token objects. */
+    public function __construct(?Document $document, ?array $positions, array $diagnostics, array $tokens) {}
+}
+
+/** The outcome of Dbspec::format: the canonical text when the text has no diagnostic, else null with every diagnostic. */
+final readonly class FormatResult
+{
+    public ?string $text;
+    public array $diagnostics;
+
+    /** The diagnostics are Diagnostic objects. */
+    public function __construct(?string $text, array $diagnostics) {}
+}
+
 /** The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes"). */
 final readonly class Manifest
 {
@@ -546,6 +579,12 @@ final class Dbspec
      * Parses and validates the text; $documents maps each other document name of the declared set to its text.
      */
     public static function parse(string $text, array $documents): ParseResult {}
+
+    /** Parses like parse and returns that result unchanged, with the tokens of the text (docs/dbspec.md "Syntax analysis"). */
+    public static function analyze(string $text, array $documents): Analysis {}
+
+    /** The canonical text of the document when the text has no diagnostic; else every diagnostic and no text (docs/dbspec.md "Formatting"). */
+    public static function format(string $text, array $documents): FormatResult {}
 
     /** Reads a dbspec document file and checks its bytes with readBytes, the path naming the file. */
     public static function readFile(string $path): ReadResult {}
