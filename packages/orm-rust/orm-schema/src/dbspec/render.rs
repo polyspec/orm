@@ -2,6 +2,7 @@
 //! dialect (docs/dialects.md, "Rendered statements").
 
 use super::model::{Action, Column, DefaultValue, Document, Expr, ForeignKey, Operand, Setting, Table, Type};
+use super::names::renderer_name;
 use super::{check_set, Diagnostic};
 
 /// A database whose statements [`render`] writes.
@@ -108,7 +109,7 @@ impl Renderer {
     }
 
     pub fn table(&self, t: &Table) -> Vec<String> {
-        let create = self.create_table(t, &t.name.text, &|c: &str| format!("{}${c}", t.name.text), &[]);
+        let create = self.create_table(t, &t.name.text, &|c: &str| renderer_name(&t.name.text, c), &[]);
         let mut out = vec![create];
         if self.d == Dialect::Sqlite {
             for u in sorted_by(&t.uniques, |u| &u.name.text) {
@@ -384,7 +385,7 @@ impl Renderer {
     /// Writes the trigger named `<table>$<event>` whose body is the single
     /// statement `body`; PostgreSQL wraps it in a function of the same name.
     fn trigger(&self, t: &Table, event: &str, timing: &str, body: &str, rejects: bool) -> Vec<String> {
-        let name = self.q(&format!("{}${event}", t.name.text));
+        let name = self.q(&renderer_name(&t.name.text, event));
         let on = format!(" {timing} ON {} FOR EACH ROW ", self.q(&t.name.text));
         match self.d {
             Dialect::MySql => vec![format!("CREATE TRIGGER {name}{on}{body}")],

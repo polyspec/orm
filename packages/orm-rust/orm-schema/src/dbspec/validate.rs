@@ -3,7 +3,8 @@
 
 use super::check_type::{type_check, CheckLiterals};
 use super::model::*;
-use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax, MAX_NAME_BYTES};
+use super::names::renderer_name;
+use super::parser::{name_problem, well_formed, DefaultToken, Diag, FailedKeys, Syntax};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 const MAX_KEY_COLUMNS: usize = 16;
@@ -144,11 +145,53 @@ pub(crate) fn validate(parsed: &Syntax, used: &[Option<&Document>], diags: &mut 
         scope.tables.insert(table.name.text.as_str(), index);
     }
     constraint_names(document, &used_documents, diags);
+    generated_names_unique(document, &scope, diags);
     for index in 0..document.tables.len() {
         let defaults = defaults.get(index).map_or(&[][..], Vec::as_slice);
         TableRules { scope: &scope, index, own: scope.own(index), defaults, diags: &mut *diags, literals: &mut *literals }.run();
     }
     diagrams(document, &scope, diags);
+}
+
+/// The renderer names of `table` with the position of the token that writes each: the type CHECK of every column
+/// that has one, and the triggers of immutable and audit (docs/dbspec.md "Names"). A malformed name has none.
+fn generated_names_of(table: &Table) -> Vec<(String, Pos)> {
+    if !well_formed(&table.name.text) {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for column in &table.columns {
+        if column.identity.is_none() && !matches!(column.ty, Type::Text | Type::Bytes) && well_formed(&column.name.text) {
+            out.push((renderer_name(&table.name.text, &column.name.text), column.name.pos));
+        }
+    }
+    for line in table.settings.iter().flat_map(|settings| &settings.lines) {
+        let events: &[&str] = match line.setting {
+            Setting::Immutable => &["immutable_update", "immutable_delete"],
+            Setting::Audit { .. } => &["audit_insert", "audit_update", "audit_delete"],
+            _ => &[],
+        };
+        for event in events {
+            out.push((renderer_name(&table.name.text, event), line.pos));
+        }
+    }
+    out
+}
+
+/// Refuses a generated name that a used table or an earlier table of the document already writes, at the later
+/// token (docs/dbspec.md "Names").
+fn generated_names_unique(document: &Document, scope: &Scope<'_>, diags: &mut Vec<Diag>) {
+    let mut seen: HashSet<String> = scope.used.values().flat_map(|table| generated_names_of(table)).map(|(name, _)| name).collect();
+    for (index, table) in document.tables.iter().enumerate() {
+        if scope.tables.get(table.name.text.as_str()) != Some(&index) {
+            continue;
+        }
+        for (name, pos) in generated_names_of(table) {
+            if !seen.insert(name.clone()) {
+                diags.push(err(pos, "name.duplicate", format!("generated name '{name}' repeats in the schema")));
+            }
+        }
+    }
 }
 
 fn constraint_names_of(table: &Table) -> impl Iterator<Item = &Name> {
@@ -251,30 +294,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
         self.settings();
     }
 
-    /// Reports `<table>$<suffix>`, a name that the renderer generates, when it
-    /// exceeds the name limit (docs/dbspec.md, "Names"). A malformed or too
-    /// long table name, or column name when the suffix is a column, is
-    /// already reported at that name.
-    fn generated_name(&mut self, at: Pos, suffix: &str, suffix_is_column: bool) {
-        let table = &self.own.table.name.text;
-        if !well_formed(table) || (suffix_is_column && !well_formed(suffix)) {
-            return;
-        }
-        let name = format!("{table}${suffix}");
-        if name.len() > MAX_NAME_BYTES {
-            self.report(at, "name.length", format!("the generated name {name} has {} bytes; the limit is {MAX_NAME_BYTES}", name.len()));
-        }
-    }
-
     fn columns(&mut self) {
         let table = self.own.table;
-        // The renderer writes a type CHECK for every column other than an
-        // identity, text or bytes column.
-        for column in &table.columns {
-            if column.identity.is_none() && !matches!(column.ty, Type::Text | Type::Bytes) {
-                self.generated_name(column.name.pos, &column.name.text, true);
-            }
-        }
         let mut names = HashSet::new();
         for column in &table.columns {
             if !names.insert(column.name.text.as_str()) {
@@ -626,16 +647,12 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     if changes_rows {
                         self.report(line.pos, "setting", "immutable is rejected on a child of a cascade or set_null foreign key");
                     }
-                    // The longest of the immutable trigger names stands for both.
-                    self.generated_name(line.pos, "immutable_update", false);
                 }
                 Setting::Audit { into, column, references, action, previous, lists } => {
                     if changes_rows {
                         self.report(line.pos, "setting", "audit is rejected on a child of a cascade or set_null foreign key");
                     }
                     self.audit(&line.setting, into, column, references, action, previous, lists);
-                    // The longest of the audit trigger names stands for all three.
-                    self.generated_name(line.pos, "audit_insert", false);
                 }
             }
         }

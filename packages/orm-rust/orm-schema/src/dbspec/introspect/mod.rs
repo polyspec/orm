@@ -403,11 +403,6 @@ fn action_name(rule: &str) -> Option<&'static str> {
     }
 }
 
-/// renderer CHECK의 이름 `<table>$<column>`.
-fn renderer_check_name(table: &str, column: &str) -> String {
-    format!("{table}${column}")
-}
-
 /// 정규식 capture group의 text. 참여하지 않은 group은 빈 문자열이다.
 fn group<'t>(captures: &regex::Captures<'t>, i: usize) -> &'t str {
     captures.get(i).map_or("", |m| m.as_str())

@@ -2,10 +2,11 @@
 //! table을 한 번에 읽는다.
 
 use super::super::model::{Column, Name, Type};
+use super::super::names::renderer_name;
 use super::super::render::{Dialect, Renderer};
 use super::check::{decode_check, unscaled_decimal};
 use super::trigger::ITrigger;
-use super::{action_name, group, renderer_check_name, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Unsupported};
+use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Unsupported};
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::sync::LazyLock;
@@ -107,7 +108,7 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             c.report("column", &table, &name, format!("the column definition {item:?} has clauses that dbspec does not read"));
             continue;
         }
-        let check_name = renderer_check_name(&table, &name);
+        let check_name = renderer_name(&table, &name);
         let check = st.checks.get(&check_name).cloned();
         let mut col = IColumn { name: name.clone(), typ: Type::I64, null: not_null == 0, identity: false, dflt: String::new() };
         if st.identity == name {

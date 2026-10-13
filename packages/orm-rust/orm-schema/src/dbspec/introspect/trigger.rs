@@ -2,6 +2,7 @@
 //! 비교해 그 setting을 알아본다.
 
 use super::super::model::{audit_line, AuditList, Column, Name, Setting, SettingLine, Settings, Table};
+use super::super::names::renderer_name;
 use super::super::render::{Dialect, Renderer};
 use super::{group, Catalog, ITable};
 use regex::Regex;
@@ -50,8 +51,8 @@ fn trigger_setting(dialect: Dialect, t: &ITable, list: &[ITrigger]) -> Option<St
     if list.len() == 2 {
         candidates.push((Setting::Immutable, "immutable".to_owned()));
     }
-    if let (Some(insert), 3) = (names.get(format!("{}$audit_insert", t.name).as_str()), list.len()) {
-        let update = names.get(format!("{}$audit_update", t.name).as_str()).map_or(&[][..], |u| &u.statements[..]);
+    if let (Some(insert), 3) = (names.get(renderer_name(&t.name, "audit_insert").as_str()), list.len()) {
+        let update = names.get(renderer_name(&t.name, "audit_update").as_str()).map_or(&[][..], |u| &u.statements[..]);
         let m = AUDIT_INSERT.captures(statement_body(&insert.statements));
         let u = AUDIT_UPDATE.captures(statement_body(update));
         if let Some(candidate) = m.zip(u).and_then(|(m, u)| audit_of(t, group(&m, 1), group(&m, 2), group(&u, 1))) {

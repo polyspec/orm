@@ -20,6 +20,7 @@ mod introspect;
 mod lexer;
 mod literal;
 mod mermaid;
+mod names;
 pub mod model;
 mod parser;
 mod plan;
