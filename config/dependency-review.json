@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "comment": "Written by make dependency-review RECORD=1 (scripts/kit/dependency-review.mjs) from the registries; make dependency-policy-check compares the checkout with it without a network.",
-  "reviewed": "2026-10-12T05:14:01.282Z",
+  "reviewed": "2026-10-13T13:12:43.777Z",
   "locks": [
     {
       "lock": "package-lock.json",
-      "sha256": "455a307c84ae9afb5f725f1a722fdf7fa1166fe0668a304ee67684b7271afc78",
+      "sha256": "dd2fc4aad872913121341cbe2842b1165a18eca1997ed9975f29a4a84683716d",
       "advisories": []
     },
     {
@@ -21,12 +21,30 @@
     {
       "lock": "bench/rust/Cargo.lock",
       "sha256": "e43d4029a7869f38caa864ec8c219bbd11becdb8e0a70bc15daa0a253aebe49f",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "unsafe-libyaml",
+          "version": "0.2.11",
+          "id": "RUSTSEC-2024-0449",
+          "severity": "unmaintained",
+          "title": "unsafe-libyaml is unmaintained",
+          "url": "https://github.com/dtolnay/unsafe-libyaml"
+        }
+      ]
     },
     {
       "lock": "packages/orm-rust/Cargo.lock",
       "sha256": "9bc68327533b8b7b0442af401d83467735cb67293e50b66efff5c694e99aee62",
-      "advisories": []
+      "advisories": [
+        {
+          "package": "unsafe-libyaml",
+          "version": "0.2.11",
+          "id": "RUSTSEC-2024-0449",
+          "severity": "unmaintained",
+          "title": "unsafe-libyaml is unmaintained",
+          "url": "https://github.com/dtolnay/unsafe-libyaml"
+        }
+      ]
     },
     {
       "lock": "tests/interfaces/rust/Cargo.lock",
@@ -40,7 +58,7 @@
       "manifest": "package.json",
       "package": "mermaid",
       "version": "12.1.0",
-      "latest": "12.1.0"
+      "latest": "12.2.0"
     },
     {
       "ecosystem": "npm",
@@ -48,6 +66,13 @@
       "package": "vitepress",
       "version": "1.6.4",
       "latest": "1.6.4"
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/orm-npm/package.json",
+      "package": "@noble/hashes",
+      "version": "2.4.0",
+      "latest": "2.4.0"
     },
     {
       "ecosystem": "npm",
