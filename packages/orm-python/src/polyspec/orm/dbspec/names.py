@@ -33,7 +33,7 @@ def rendered_column(table: str, name: str, columns) -> 'str | None':
 
 
 def generated_names(table) -> list:
-    """The renderer names of a parsed table as (name, token-or-None) pairs: the type CHECK of
+    """The renderer names of a parsed table as (name, token, source) triples: the type CHECK of
     each column that has one, and the triggers of immutable and audit. A table or a column
     whose name is malformed has none."""
     if not _resolved(table.name.t):
@@ -42,11 +42,13 @@ def generated_names(table) -> list:
     for column in table.columns:
         if column.identity is None and column.type is not None \
                 and column.type.kind not in ('text', 'bytes') and _resolved(column.name.t):
-            out.append((renderer_name(table.name.t, column.name.t), column.name))
+            out.append((renderer_name(table.name.t, column.name.t), column.name,
+                        f'table {table.name.t} column {column.name.t}'))
     settings = table.settings.entries if table.settings is not None else []
     for s in settings:
         events = {'immutable': ('immutable_update', 'immutable_delete'),
                   'audit': ('audit_insert', 'audit_update', 'audit_delete')}.get(s.kind, ())
         for event in events:
-            out.append((renderer_name(table.name.t, event), s.kw))
+            out.append((renderer_name(table.name.t, event), s.kw,
+                        f'table {table.name.t} setting {s.kw.t}'))
     return out

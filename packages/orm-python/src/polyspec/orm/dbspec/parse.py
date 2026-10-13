@@ -1808,17 +1808,21 @@ class DocumentParser:
         """Refuses a renderer name of a table of the document that an earlier table or a used
         table of the document already writes, at the later token (docs/dbspec.md "Names")."""
         local = {id(t) for t in doc.tables}
-        seen = set()
+        seen = {}  # generated name => the source that wrote it first
         for table in available.values():
             if table is not None and id(table) not in local:
-                seen.update(name for name, _ in generated_names(table))
+                for name, _, _ in generated_names(table):
+                    seen[name] = f'used table {table.name.t}'
         for t in doc.tables:
             if not t.named or available.get(t.name.t) is not t or t.header_failed:
                 continue
-            for name, tok in generated_names(t):
-                if name in seen:
-                    self._at('name.duplicate', tok, f'generated name {name} repeats in the schema')
-                seen.add(name)
+            for name, tok, source in generated_names(t):
+                first = seen.get(name)
+                if first is not None:
+                    self._at('name.duplicate', tok,
+                             f'generated name {name} of {source} repeats the generated name of {first}')
+                else:
+                    seen[name] = source
 
     def _validate_table(self, table: _Table, available) -> None:
         if len(table.columns) == 0 and table.failed_lines == 0:
