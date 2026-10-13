@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 7c47951a110e155bef5cefc6a9e510bf6a8283c5bff6cc067b4b0f6fc957aa6e -->
+<!-- source-sha256: 6eaa5b2df2e918d956f84a95e46f96616e93988e27cca160d560d524ed8e5f86 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -200,7 +200,7 @@ const rows = await new Author().connect(slave1)
 ```
 
 - 조건: 첫 조건에는 접두어가 없고, 이후 조건은 `and<Chain>`, `or<Chain>` 또는 `and()`·`or()`를 사용하며, 묶음은 `and(fn)`·`or(fn)`을, 부정 묶음은 `not(fn)`·`andNot(fn)`·`orNot(fn)`을 사용한다. 연산자 접두어·값 형태·체인 규칙은 [dsl.md](dsl.md)에 있다.
-- 조회 메서드: `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 `getsByServiceSeqAndIsClose(7, false)`처럼 컬럼 체인을 받는다. PHP는 호출이 실행될 때 체인을 해석한다. TypeScript에서는 체인이 모델 생성이 그 체인을 호출하는 코드를 scan한 뒤에 동작한다. 생성은 scan된 호출이 이름을 붙인 체인마다 finder를 선언하므로, 어떤 scan된 코드도 호출하지 않는 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
+- 조회 메서드: `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 `getsByServiceSeqAndIsClose(7, false)`처럼 컬럼 체인을 적용한다. Go, Rust, TypeScript는 모델 생성이 scan된 코드에서 찾은 체인을 선언하고, PHP와 Python은 호출이 실행될 때 체인을 해석한다. 규칙은 [조회 체인](interfaces.md#finder-chains)에 있다.
 - 컬럼: `addColumn<Col>()`, `removeColumn<Col>()`, `removeAllColumns()`, `addAllColumns()`. `text`·`blob`·스타일 컬럼은 기본 SELECT에서 빠지며 `addColumn<Col>()`로 추가한다.
 - Rust 생성 모델 필드는 비공개다. 조회하거나 대입하지 않은 컬럼을 읽으면 `COLUMN_UNSELECTED`를 반환하며, 빠진 값을 SQL NULL이나 기본값으로 보여주지 않는다.
 - PHP 생성 모델 getter도 스타일이 없는 컬럼을 조회하거나 대입하지 않고 읽으면 `COLUMN_UNSELECTED`를 반환하며, 선택한 SQL NULL과 명시적으로 대입한 값은 계속 읽을 수 있다.
