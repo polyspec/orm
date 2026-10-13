@@ -6,7 +6,7 @@ use super::lexer::{Kind, Token};
 use super::literal::Value;
 use super::model::{Expr, Literal, Name, Operand, Pos};
 
-const KEYWORDS: [&str; 9] = ["and", "or", "not", "in", "between", "is", "null", "true", "false"];
+pub(crate) const KEYWORDS: [&str; 9] = ["and", "or", "not", "in", "between", "is", "null", "true", "false"];
 const COMPARISONS: [&str; 6] = ["=", "<>", "<", "<=", ">", ">="];
 
 pub(crate) struct CheckParser<'t, 'a> {

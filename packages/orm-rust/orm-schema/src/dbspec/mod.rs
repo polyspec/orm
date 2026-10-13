@@ -10,6 +10,7 @@
 //! `emit(parse(s)) == s` for canonical input.
 
 mod add_tables_and_columns;
+mod analyze;
 mod check;
 mod check_type;
 mod compare;
@@ -85,23 +86,66 @@ pub struct Parsed {
     pub positions: Vec<Position>,
 }
 
+/// A token of the text: `line` is 1-based, `start` and `end` count Unicode code points on the line.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Token {
+    pub line: usize,
+    pub start: usize,
+    pub end: usize,
+    pub class: String,
+}
+
+/// The parse result of a text, unchanged, with the tokens of the text.
+#[derive(Clone, Debug)]
+pub struct Analysis {
+    pub document: Option<Document>,
+    pub positions: Option<Vec<Position>>,
+    pub diagnostics: Vec<Diagnostic>,
+    pub tokens: Vec<Token>,
+}
+
+/// Parses `text` as `parse` does and returns the result with the tokens of the text.
+pub fn analyze(text: &str, documents: &BTreeMap<String, String>) -> Analysis {
+    let (result, marks) = parse_marked(text, documents);
+    let tokens = analyze::tokens(text, &marks);
+    match result {
+        Ok(parsed) => Analysis { document: Some(parsed.document), positions: Some(parsed.positions), diagnostics: Vec::new(), tokens },
+        Err(diagnostics) => Analysis { document: None, positions: None, diagnostics, tokens },
+    }
+}
+
+/// The canonical text of a document without a diagnostic; a document with one is refused.
+pub fn format(text: &str, documents: &BTreeMap<String, String>) -> Result<String, Vec<Diagnostic>> {
+    parse(text, documents).map(|parsed| emit(&parsed.document))
+}
+
 /// Parses `text` and validates it. `documents` is the declared document set:
 /// document name to text, where `use` lines find the documents they name.
 /// Returns the document and its declaration positions, or every diagnostic in
 /// source order; an `encoding`, `header` or `limit` error ends parsing.
 pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Parsed, Vec<Diagnostic>> {
+    parse_marked(text, documents).0
+}
+
+/// `parse`, also returning the classes of the words that the parser read (docs/dbspec.md, "Syntax analysis").
+pub(crate) fn parse_marked(text: &str, documents: &BTreeMap<String, String>) -> (Result<Parsed, Vec<Diagnostic>>, parser::Marks) {
     let mut session = Session { documents, parsed: HashMap::new(), valid: HashMap::new(), validating: Vec::new() };
-    let parsed = parser::parse(text).map_err(stopped)?;
+    let parsed = match parser::parse(text) {
+        Ok(parsed) => parsed,
+        Err(error) => return (Err(stopped(error.diags)), error.marks),
+    };
+    let marks = parsed.marks.clone();
     let name = parsed.document.name.text.clone();
     let (diags, literals) = session.validate(&name, &parsed);
-    if diags.is_empty() {
+    let result = if diags.is_empty() {
         let positions = positions::positions(&parsed.declarations);
         let mut document = parsed.document;
         check_type::set_literals(&mut document, literals);
         Ok(Parsed { document, positions })
     } else {
         Err(diagnostics(diags))
-    }
+    };
+    (result, marks)
 }
 
 /// Writes `document` in its canonical text.
@@ -389,7 +433,7 @@ impl<'s> Session<'s> {
         let result = match self.documents.get(name) {
             None => Err(format!("document '{name}' is not in the declared document set")),
             Some(text) => match parser::parse(text) {
-                Err(stopped) => Err(invalid(name, stopped)),
+                Err(stopped) => Err(invalid(name, stopped.diags)),
                 Ok(parsed) if parsed.document.name.text != name => {
                     Err(format!("the declared document '{name}' has the header name '{}'", parsed.document.name.text))
                 }
