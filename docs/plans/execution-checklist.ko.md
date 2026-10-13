@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 09782505fb5820590e7d3de8e72d010caeb9f23b0c72a5e171087cba52326011 -->
+<!-- source-sha256: a3458fc70707b007851346c7ae53ead115f7a474e02b7b7b5775756364e33624 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1019,7 +1019,7 @@
 - [o] T157 markdown conformance에서 merge된 flowmark를 고정한다. 원인: flowmark T14가 열려 있는 동안 T140은 branch의 flowmark commit 5e065f4를 고정했다; flowmark는 orm v0.0.11과 함께 T14를 main의 8b5d16a로 merge했다. 인수 조건: tests/markdown/flowmark.version이 flowmark main을 고정하고 dialects 표가 그것을 옮겨 둔다. 증거: 고정은 v0.0.0-20261013184618-8b5d16a81141이고, `node scripts/docs/markdown-table.mjs`가 두 표가 그것을 옮겨 둔다고 보고하며, `make markdown-conformance-check`가 모든 client에서 restore case를 통과한다.
 - [o] T158 T134, T135, T142 뒤 orm main CI를 green으로 되돌린다. 원인: 85d84f2c의 CI run 38462697441에서 feature_coverage, static, feature_verify_rust, conformance가 실패했다. 완료 기준: 각 sub-item의 check가 local에서 통과한다.
   - [o] T158-1 T142의 Go codec symbol을 기록한다 (T158 후속). 원인: interface check가 feature_coverage(interface_contract/owner/go), conformance(interfaces/go), feature_verify_rust(interface_contract/interface-self-test)에서 `go: unexpected packages/orm-go/orm/codec.go::yamlCoreScalar`와 `::yamlPlainUntagged`로 실패한다. 완료 기준: Go record가 두 symbol을 담고 `go run ./tests/interfaces/check -language go`가 통과하며, red를 먼저 확인한다.
-  - [ ] T142-6 interface-check가 실행하는 PHP 의존성을 설치한다 (T142-5에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `interfaces/php`와 `interfaces/php-extension`이 `php declarations: exit status 255`로 실패한다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
+  - [o] T142-6 interface-check가 실행하는 PHP 의존성을 설치한다 (T142-5에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `interfaces/php`와 `interfaces/php-extension`이 `php declarations: exit status 255`로 실패한다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
   - [o] T158-2 socket 길이 test가 T135의 socket folder를 따른다 (T158 후속). 원인: static repo-check의 "test-servers.sh refuses a socket path longer than the platform limit"가 `Cannot find module '/tmp/orm-sock-.../d/.../scripts/free-ports.mjs'`로 실패한다. T135가 socket을 checkout 밖으로 옮겼는데 test는 여전히 checkout 경로를 늘린다. 완료 기준: test가 T135의 선언된 socket 위치로 한도를 넘기고 `make repo-check`가 통과하며, red를 먼저 확인한다.
   - [o] T158-3 codec-check의 need에 python을 선언한다 (T158에 이어). 원인: T142-3로 codec-check가 Python vector를 실행하는데 contracts/check-inputs.json의 codec-check에 `python` need가 없어 static job이 `python-venv-check: .../.venv/bin/python is missing`로 실패한다(run 38465371334). 완료 조건: need를 선언하고 static job의 codec-check가 통과한다.
   - [o] T158-4 dbspec-vscode integration의 인자 오류에 해결 방법을 적는다 (T158에 이어). 원인: repo-check가 packages/dbspec-vscode/tests/integration/run.mjs:22를 거부한다. `--vscode`가 없을 때의 문구가 해결 방법을 적지 않는다(run 38465371334). 완료 조건: 문구가 `make dbspec-vscode-integration`을 적고 repo-check가 통과한다.
