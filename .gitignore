@@ -2,6 +2,7 @@
 /dist/
 /packages/orm-npm/dist/
 /packages/dbspec-language/dist/
+/packages/dbspec-codemirror/dist/
 /target/
 /bench/rust/target/
 /packages/orm-rust/target/
