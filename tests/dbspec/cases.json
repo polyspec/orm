@@ -600,6 +600,21 @@
           "}"
         ]
       }
+    },
+    {
+      "id": "generated-name-plain-63-bytes",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_comment_archive_row_2026_archive_ {",
+          "  id i64 identity",
+          "  e2d5e68c i32",
+          "  primary key (id)",
+          "}"
+        ]
+      }
     }
   ],
   "normalize": [
@@ -11444,6 +11459,29 @@
           "  id i64 identity",
           "  col_00027815 i32",
           "  col_00101989 i32",
+          "  primary key (id)",
+          "}"
+        ]
+      },
+      "errors": [
+        {
+          "line": 6,
+          "column": 3,
+          "rule": "name.duplicate"
+        }
+      ]
+    },
+    {
+      "id": "generated-name-plain-vs-hashed",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_comment_archive_row_2026_archive_ {",
+          "  id i64 identity",
+          "  col_00000000 i32",
+          "  e2d5e68c i32",
           "  primary key (id)",
           "}"
         ]
