@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d58e1bab04848383e1b9c710d48c4a246760e59b8f818287e7a0ca668bbabf54 -->
+<!-- source-sha256: f7e6de884443c79c3c41952f0b5d5a5c3b3df6a5660639be41abff8f468475fc -->
 # 변경 이력
 
 ## Unreleased
 
+- T158-4: dbspec-vscode integration은 `--vscode`가 없으면 `make dbspec-vscode-integration`을 적는다.
 - T158-3: `codec-check`가 python need를 선언해, 이를 실행하는 job이 venv를 준비한다.
 - T158: T134, T135, T142 이후 orm main CI가 다시 green이다.
 - T158-2: socket 거부 테스트는 T135가 둔 socket 폴더를 길게 만든다.

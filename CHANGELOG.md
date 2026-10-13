@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T158-4: the dbspec-vscode integration names `make dbspec-vscode-integration` when `--vscode` is missing.
 - T158-3: `codec-check` declares the python need, so the job that runs it provisions the venv.
 - T158: orm main CI is green again after T134, T135 and T142.
 - T158-2: the socket refusal test lengthens the socket folder, as T135 placed it.
