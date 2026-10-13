@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2-3: the editor packages are placed by the folder standard S5: `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror` and `packages/dbspec-vscode`, each a component of its own, instead of the nested `packages/dbspec/<part>/` that S5 refuses.
 - T132: the Go generator scan loads a build-tag or platform configuration only for the packages that hold its files, so the model_generation coverage case of Go finishes in about 30 s instead of passing the 120 s deadline under load.
 - T129-1: the interface symbols of the renderer names are recorded: contracts/symbols holds the T129 snapshots, and contracts/interfaces.json holds their hashes, so the interfaces check passes on the T129 tree.
 - T130-3: docs/interfaces.md "Finder chains" states the finder rule per runtime, docs/usage.md points to it, and each T130 code commit records the five symbols that it changed, so the interfaces check passes at every commit of the branch.

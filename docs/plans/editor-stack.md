@@ -296,7 +296,7 @@ text lives in T128's Cause and Acceptance, plus `docs/editor.md`.
 - **T128-4 The browser-safe subpath** of `@polyspec/orm` (ruling 8). It goes into the
   interfaces/symbols contracts. A test asserts that its module graph holds no `node:` module,
   no driver, and none of the Node globals `Buffer`, `process`, `__dirname` and `require`.
-- **T128-5 `packages/dbspec/language`.**
+- **T128-5 `packages/dbspec-language`.**
   - `openDocument(text, {set})`: diagnostics with ranges, tokens, folding (table, settings and
     diagram blocks), `format()`.
   - The `dbspec-fmt` CLI follows template-fmt's rules (editor-tools.md:105-126):
@@ -314,14 +314,14 @@ text lives in T128's Cause and Acceptance, plus `docs/editor.md`.
     - 2: a parse diagnostic, an unreadable file, or bad arguments.
   - Tests: cases.json and syntax.json, the invariants, idempotence, and the editor fixtures
     (`tests/editor/*.dbs` + `.json`, with a `--write|--check` script).
-- **T128-6 `packages/dbspec/lsp`** on `vscode-languageserver`.
+- **T128-6 `packages/dbspec-lsp`** on `vscode-languageserver`.
   - utf-16, full sync, semantic tokens (the legend is the standard classes), folding,
     formatting.
   - Set-file resolution (ruling 4), watched set files and listed files.
   - Stdio session tests against the fixtures.
 - **T128-7 The docs fence**, through the fence hook and the language service. Colours for light
   and dark; no subprocess.
-- **T128-8 `packages/dbspec/codemirror` and `packages/dbspec/vscode`.**
+- **T128-8 `packages/dbspec-codemirror` and `packages/dbspec-vscode`.**
   - CodeMirror 6: marks, lint, fold, format command.
   - VS Code: language contribution, `semanticTokenScopes`, the bundled LSP client, a `.vsix`
     build.
@@ -345,9 +345,12 @@ text lives in T128's Cause and Acceptance, plus `docs/editor.md`.
     - the vscode package as a `version` manifest, as template does.
   - Dependency review records at latest stable: `vscode-languageserver`,
     `vscode-languageserver-textdocument`, `vscode-languageclient`, `@codemirror/*`.
-  - The packages follow the folder standard S5 of `PRINCIPLES.md` (kit K70): a component's parts live in
-    `packages/<component>/<part>/`, with no repository prefix, so the editor stack is `packages/dbspec/language`, `lsp`,
-    `codemirror` and `vscode`. AGENTS.md (+ko) states this layout.
+  - The packages follow the folder standard S5 of `PRINCIPLES.md` (kit K70): a folder under `packages/` is a runtime or
+    a component, a nested folder `packages/<component>/<runtime>/` holds only a runtime port, and no folder carries the
+    repository prefix. The language service and each adapter are components of their own, so the editor stack is
+    `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror` and `packages/dbspec-vscode`
+    (corrected by T128-2-3: `packages/dbspec/<part>/` nests a folder that is no runtime, which S5 and kit's
+    `component-ports` rule refuse). AGENTS.md (+ko) states this layout.
 - **T128-R Release of the editor stack**, its own item, following T126's precedent and orm
   AGENTS.md:233-240.
   - A `chore(release)` bump commit after green CI.
