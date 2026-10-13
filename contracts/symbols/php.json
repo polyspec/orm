@@ -687,7 +687,7 @@
   "packages/orm-php/src/Dbspec/MysqlCatalog.php::Polyspec\\Orm\\Dbspec\\MysqlCatalog::type": "private static function type(string $columnType, string $charset, string $collation): ?array",
   "packages/orm-php/src/Dbspec/MysqlCatalog.php::Polyspec\\Orm\\Dbspec\\MysqlCatalog::withoutIntroducers": "private static function withoutIntroducers(string $clause): string",
   "packages/orm-php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names": "final class Polyspec\\Orm\\Dbspec\\Names extends  implements  uses ",
-  "packages/orm-php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names::column": "public static function column(string $table, string $name, iterable $columns): ?string",
+  "packages/orm-php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names::column": "public static function column(string $table, string $name, Traversable|array $columns): ?string",
   "packages/orm-php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names::ofTable": "public static function ofTable(Polyspec\\Orm\\Dbspec\\Table $table): array",
   "packages/orm-php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names::render": "public static function render(string $table, string $suffix): string",
   "packages/orm-php/src/Dbspec/NullCheck.php::Polyspec\\Orm\\Dbspec\\NullCheck": "final readonly class Polyspec\\Orm\\Dbspec\\NullCheck extends  implements  uses ",
