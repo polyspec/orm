@@ -525,11 +525,10 @@ size_t utf8_valid_prefix(str s)
     return i;
 }
 
-static void check_encoding(parser *p, str source)
+/* The first encoding error after the byte order mark, as its line, column and message. A bare CR is not a line end,
+ * so it is an error; the lines before the error's line are complete and valid (Go's splitSource). */
+static bool encoding_error(str source, zend_long *line_out, zend_long *column_out, const char **message_out)
 {
-    if (str_starts(source, "\xEF\xBB\xBF")) {
-        stop(p, "encoding", 1, 1, SL("the document starts with a byte order mark"));
-    }
     bool bad = false;
     size_t offset = 0;
     const char *message = NULL;
@@ -549,17 +548,21 @@ static void check_encoding(parser *p, str source)
             break;
         }
     }
-    if (bad) {
-        size_t start = 0;
-        zend_long line = 1;
-        for (size_t i = 0; i < offset; i++) {
-            if (source.s[i] == '\n') {
-                line++;
-                start = i + 1;
-            }
-        }
-        stop(p, "encoding", line, (zend_long)utf8_length(str_sub(source, start, offset - start)) + 1, str_c(message));
+    if (!bad) {
+        return false;
     }
+    size_t start = 0;
+    zend_long line = 1;
+    for (size_t i = 0; i < offset; i++) {
+        if (source.s[i] == '\n') {
+            line++;
+            start = i + 1;
+        }
+    }
+    *line_out = line;
+    *column_out = (zend_long)utf8_length(str_sub(source, start, offset - start)) + 1;
+    *message_out = message;
+    return true;
 }
 
 /* -------------------------------------------------------------------- lines */
@@ -3217,7 +3220,12 @@ static void read_source(parser *p, str source)
     if (source.n > MAX_BYTES) {
         stop(p, "limit", 1, 1, SL("the document is larger than 32 MiB"));
     }
-    check_encoding(p, source);
+    if (str_starts(source, "\xEF\xBB\xBF")) {
+        stop(p, "encoding", 1, 1, SL("the document starts with a byte order mark"));
+    }
+    zend_long encoding_line = 0, encoding_column = 0;
+    const char *encoding_message = NULL;
+    bool encoding = encoding_error(source, &encoding_line, &encoding_column, &encoding_message);
     strs lines = strs_split(source, '\n');
     if (lines.n > 0 && lines.v[lines.n - 1].n == 0) {
         lines.n--;
@@ -3226,6 +3234,9 @@ static void read_source(parser *p, str source)
         stop(p, "header", 1, 1, SL("the first line is not `dbspec 1 <document>`"));
     }
     for (size_t index = 0; index < lines.n; index++) {
+        if (encoding && (zend_long)index + 1 >= encoding_line) {
+            break;
+        }
         str text = lines.v[index];
         if (text.n > 0 && text.s[text.n - 1] == '\r') {
             text.n--;
@@ -3268,6 +3279,9 @@ static void read_source(parser *p, str source)
                 diagram_line(p);
                 break;
         }
+    }
+    if (encoding) {
+        stop(p, "encoding", encoding_line, encoding_column, str_c(encoding_message));
     }
     /* 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다. */
     if (p->state == S_SETTINGS) {

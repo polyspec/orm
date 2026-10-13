@@ -222,7 +222,11 @@ final class Parser
         if (strlen($source) > self::MAX_BYTES) {
             $this->stop('limit', 1, 1, 'the document is larger than 32 MiB');
         }
-        $this->checkEncoding($source);
+        if (str_starts_with($source, "\xEF\xBB\xBF")) {
+            $this->stop('encoding', 1, 1, 'the document starts with a byte order mark');
+        }
+        // 맨 처음 encoding 오류의 줄 앞 줄들은 온전하므로 읽고, 그 줄부터는 읽지 않는다(Go의 splitSource).
+        $encoding = self::encodingError($source);
         $lines = explode("\n", $source);
         if (end($lines) === '') {
             array_pop($lines);
@@ -231,6 +235,9 @@ final class Parser
             $this->stop('header', 1, 1, 'the first line is not `dbspec 1 <document>`');
         }
         foreach ($lines as $index => $text) {
+            if ($encoding !== null && $index + 1 >= $encoding[0]) {
+                break;
+            }
             if ($text !== '' && $text[-1] === "\r") {
                 $text = substr($text, 0, -1);
             }
@@ -265,6 +272,9 @@ final class Parser
                 'diagram' => $this->diagramLine(),
             };
         }
+        if ($encoding !== null) {
+            $this->stop('encoding', ...$encoding);
+        }
         // 가장 안쪽의 열린 block만 보고한다(Go처럼): 열린 settings block은 표의 `{`를 보고하지 않는다.
         if ($this->state === 'settings') {
             $this->unclosed($this->settingsOpen[0], $this->settingsOpen[1], 'the settings block is not closed');
@@ -283,12 +293,15 @@ final class Parser
         $this->checkStateHistories();
     }
 
-    private function checkEncoding(string $source): void
+    /**
+     * The first encoding error after the byte order mark, as [line, column, message], or null. A bare CR is not a
+     * line end, so it is an error; the lines before the error's line are complete and valid.
+     *
+     * @return ?array{0: int, 1: int, 2: string}
+     */
+    private static function encodingError(string $source): ?array
     {
         $bad = null;
-        if (str_starts_with($source, "\xEF\xBB\xBF")) {
-            $this->stop('encoding', 1, 1, 'the document starts with a byte order mark');
-        }
         if (!preg_match('//u', $source)) {
             preg_match(self::VALID_UTF8, $source, $m);
             $bad = [strlen($m[0]), 'the document is not valid UTF-8'];
@@ -296,13 +309,14 @@ final class Parser
         if (preg_match('/\r(?!\n)/', $source, $m, PREG_OFFSET_CAPTURE) && ($bad === null || $m[0][1] < $bad[0])) {
             $bad = [$m[0][1], 'the document has a carriage return without a line feed'];
         }
-        if ($bad !== null) {
-            [$offset, $message] = $bad;
-            $before = substr($source, 0, $offset);
-            $newline = strrpos($before, "\n");
-            $start = $newline === false ? 0 : $newline + 1;
-            $this->stop('encoding', substr_count($source, "\n", 0, $offset) + 1, mb_strlen(substr($source, $start, $offset - $start), 'UTF-8') + 1, $message);
+        if ($bad === null) {
+            return null;
         }
+        [$offset, $message] = $bad;
+        $before = substr($source, 0, $offset);
+        $newline = strrpos($before, "\n");
+        $start = $newline === false ? 0 : $newline + 1;
+        return [substr_count($source, "\n", 0, $offset) + 1, mb_strlen(substr($source, $start, $offset - $start), 'UTF-8') + 1, $message];
     }
 
     // ---------------------------------------------------------------- lines
