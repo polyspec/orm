@@ -4,6 +4,7 @@
 ## Unreleased
 
 - T157: the markdown conformance pins flowmark main at 8b5d16a.
+
 ## 0.0.11
 
 - T140-1: the Markdown IR executor table of docs/dialects.md mirrors the flowmark that the markdown conformance pins.
@@ -152,6 +153,7 @@
 - T57-1: the version check reads no version declaration of the root README, whose title names no version; the CI of the README change had failed on it.
 - `make release-consumer TAG=v0.0.7` passes on a machine with npm 12.2.0, PHP 8.5 and Composer 2.10.3, also the Composer project that the machine of the release could not install; the Makefile exports `npm_config_allow_remote=root` for `release-consumer` and `release-proof`, because npm 12 installs no URL dependency by default (T56).
 - README states the Python client: the title names no version and the introduction, the examples, the models bullet, the quick start and the tooling line name five clients (T57).
+
 ## 0.0.7
 
 - T56: release 0.0.7: the manifests, the locks, `VERSION`, the contract version of `contracts/features.json`, the version of the PHP extension and the documents declare 0.0.7, the dependency review is recorded again and `tests/release-consumer` holds the locks of the archives of 0.0.7.
