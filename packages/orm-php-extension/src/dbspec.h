@@ -614,7 +614,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
 
 /* -------------------------------------------------------------- PHP objects */
 
-#define DBS_CLASSES(X) X(Analysis) X(Token) X(FormatResult) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
+#define DBS_CLASSES(X) X(Analysis) X(Token) X(FormatResult) X(Names) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
     X(Index) X(IndexColumn) X(ForeignKey) X(Check) X(Settings) X(Setting) X(Diagram) X(Placement) X(Position) X(ReadResult) \
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \

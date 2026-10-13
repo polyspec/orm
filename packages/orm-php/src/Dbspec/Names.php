@@ -56,9 +56,9 @@ final class Names
      * The column among $columns whose renderer name is $name, or null. Recomputes
      * each name; never splits $name on $.
      *
-     * @param iterable<string> $columns
+     * @param Traversable<int, string>|array<int, string> $columns
      */
-    public static function column(string $table, string $name, iterable $columns): ?string
+    public static function column(string $table, string $name, \Traversable|array $columns): ?string
     {
         foreach ($columns as $column) {
             if (self::render($table, $column) === $name) {

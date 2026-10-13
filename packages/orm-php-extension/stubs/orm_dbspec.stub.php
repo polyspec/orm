@@ -287,6 +287,16 @@ final readonly class FormatResult
     public function __construct(?string $text, array $diagnostics) {}
 }
 
+/** The renderer names that the renderer writes for a table and a suffix, and the column whose name they are (docs/dbspec.md "Names"). */
+final class Names
+{
+    public static function render(string $table, string $suffix): string {}
+
+    public static function ofTable(Table $table): array {}
+
+    public static function column(string $table, string $name, \Traversable|array $columns): ?string {}
+}
+
 /** The manifest and schema texts of a document set and their hashes (docs/dbspec.md, "Manifest and hashes"). */
 final readonly class Manifest
 {

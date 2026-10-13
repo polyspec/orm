@@ -703,6 +703,140 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_FormatResult, __construct)
     init_prop(ZEND_THIS, "diagnostics", diagnostics);
 }
 
+/* Names (Names.php): the renderer names of a table, and the column whose renderer name is a given name. */
+static bool names_bool_prop(zval *obj, const char *name)
+{
+    return zend_is_true(obj_get(obj, name));
+}
+
+/* The renderer names that a table writes: the type CHECK of each column that has one, then the triggers of immutable
+ * and audit, each setting in order (Names::ofTable). */
+static void names_of_table(zval *table, strs *names)
+{
+    str table_name = zs(Z_STR_P(obj_get(table, "name")));
+    zval *columns = obj_get(table, "columns");
+    zval *c;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), c) {
+        ZVAL_DEREF(c);
+        str column_name = zs(Z_STR_P(obj_get(c, "name")));
+        str type_name = zs(Z_STR_P(obj_get(obj_get(c, "type"), "name")));
+        if (!names_bool_prop(c, "identity") && !str_eqc(type_name, "text") && !str_eqc(type_name, "bytes")) {
+            PUSH(*names, dbs_renderer_name(table_name, column_name));
+        }
+    } ZEND_HASH_FOREACH_END();
+    zval *settings = obj_get(table, "settings");
+    if (Z_TYPE_P(settings) != IS_OBJECT) {
+        return;
+    }
+    zval *list = obj_get(settings, "settings");
+    zval *s;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(list), s) {
+        ZVAL_DEREF(s);
+        str kind = zs(Z_STR_P(obj_get(s, "kind")));
+        if (str_eqc(kind, "immutable")) {
+            PUSH(*names, dbs_renderer_name(table_name, SL("immutable_update")));
+            PUSH(*names, dbs_renderer_name(table_name, SL("immutable_delete")));
+        } else if (str_eqc(kind, "audit")) {
+            PUSH(*names, dbs_renderer_name(table_name, SL("audit_insert")));
+            PUSH(*names, dbs_renderer_name(table_name, SL("audit_update")));
+            PUSH(*names, dbs_renderer_name(table_name, SL("audit_delete")));
+        }
+    } ZEND_HASH_FOREACH_END();
+}
+
+/* One element of Names::column: 1 when its renderer name is the name (out gets it), 0 when not, -1 when it is not a
+ * string (a TypeError, as strict types give the renderer). */
+static int names_match(str table, str name, zval *e, zval *out)
+{
+    ZVAL_DEREF(e);
+    if (Z_TYPE_P(e) != IS_STRING) {
+        zend_type_error("Polyspec\\Orm\\Dbspec\\Native\\Names::column(): Argument #3 ($columns) must contain only strings, %s given", zend_zval_value_name(e));
+        return -1;
+    }
+    if (!str_eq(dbs_renderer_name(table, zs(Z_STR_P(e))), name)) {
+        return 0;
+    }
+    ZVAL_COPY(out, e);
+    return 1;
+}
+
+/* Names::column: the first element whose renderer name is $name, or null; it stops at the first match, as the PHP loop
+ * does, so a later element of an iterator is not read. */
+static void names_column(zval *iterable, str table, str name, zval *out)
+{
+    ZVAL_NULL(out);
+    if (Z_TYPE_P(iterable) == IS_ARRAY) {
+        HashTable *ht = Z_ARRVAL_P(iterable);
+        HashPosition pos;
+        zval *e;
+        for (zend_hash_internal_pointer_reset_ex(ht, &pos); (e = zend_hash_get_current_data_ex(ht, &pos)) != NULL; zend_hash_move_forward_ex(ht, &pos)) {
+            if (names_match(table, name, e, out) != 0) {
+                return;
+            }
+        }
+        return;
+    }
+    zend_class_entry *ce = Z_OBJCE_P(iterable);
+    zend_object_iterator *it = ce->get_iterator(ce, iterable, 0);
+    if (it == NULL) {
+        return;
+    }
+    it->funcs->rewind(it);
+    while (EG(exception) == NULL && it->funcs->valid(it) == SUCCESS) {
+        zval *e = it->funcs->get_current_data(it);
+        if (e != NULL && names_match(table, name, e, out) != 0) {
+            break;
+        }
+        it->funcs->move_forward(it);
+    }
+    zend_iterator_dtor(it);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, render)
+{
+    zend_string *table, *suffix;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_STR(table)
+        Z_PARAM_STR(suffix)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    RETVAL_STR(str_zend(dbs_renderer_name(zs(table), zs(suffix))));
+    LEAVE();
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, ofTable)
+{
+    zval *table;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(table, dbs_ce_Table)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    strs names = {0};
+    names_of_table(table, &names);
+    zv_strs(return_value, &names);
+    LEAVE();
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Names, column)
+{
+    zend_string *table, *name;
+    zval *columns;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STR(table)
+        Z_PARAM_STR(name)
+        Z_PARAM_ITERABLE(columns)
+    ZEND_PARSE_PARAMETERS_END();
+    ENTER();
+    zval found;
+    names_column(columns, zs(table), zs(name), &found);
+    LEAVE();
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(&found);
+        RETURN_THROWS();
+    }
+    RETVAL_COPY_VALUE(&found);
+}
+
 RESULT_CLASS(ManifestResult, "manifest", Z_PARAM_NULLABLE_OBJ(dbs_ce_Manifest), "manifest")
 RESULT_CLASS(RenderResult, "statements", Z_PARAM_NULLABLE_ARRAY, "render")
 RESULT_CLASS(PlanParseResult, "plan", Z_PARAM_NULLABLE_OBJ(dbs_ce_Plan), "plan parse")
@@ -1941,6 +2075,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_ParseResult = register_class_Polyspec_Orm_Dbspec_Native_ParseResult();
     dbs_ce_Analysis = register_class_Polyspec_Orm_Dbspec_Native_Analysis();
     dbs_ce_Token = register_class_Polyspec_Orm_Dbspec_Native_Token();
+    dbs_ce_Names = register_class_Polyspec_Orm_Dbspec_Native_Names();
     dbs_ce_FormatResult = register_class_Polyspec_Orm_Dbspec_Native_FormatResult();
     dbs_ce_Manifest = register_class_Polyspec_Orm_Dbspec_Native_Manifest();
     dbs_ce_ManifestResult = register_class_Polyspec_Orm_Dbspec_Native_ManifestResult();
