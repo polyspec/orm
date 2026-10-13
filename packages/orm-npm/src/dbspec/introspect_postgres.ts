@@ -1,6 +1,7 @@
 // PostgreSQL의 현재 schema를 catalog으로 읽는다 (docs/dialects.md "Introspection").
 // 모든 query는 현재 schema 전체를 한 번에 읽는다.
-import { Catalog, cut, quote, tableTypes, type CatalogQuery } from './introspect_catalog.js';
+import { Catalog, quote, tableTypes, type CatalogQuery } from './introspect_catalog.js';
+import { renderedColumn } from './names.js';
 import { CheckDecodeError, decodeCheck } from './introspect_check.js';
 import { recognizeTriggers, type ITrigger } from './introspect_trigger.js';
 import type { DbspecAction, DbspecType } from './model.js';
@@ -131,10 +132,10 @@ export async function readPostgres(query: CatalogQuery): Promise<Catalog> {
       }
       t.fks.push({ name, columns: list, table: refTable, refs: refs.split(','), onDelete: del, onUpdate: upd });
     } else if (kind === 'c') {
-      const [owner, column, generated] = cut(name, '$');
-      if (generated) {
-        const want = `CHECK ((${quoted.get(table)?.get(column) ?? ''} < '24:00:00'::time without time zone))`;
-        if (owner !== table || !pending.get(table)?.has(column) || definition !== want) {
+      if (name.includes('$')) {
+        const column = renderedColumn(table, name, pending.get(table)?.keys() ?? []);
+        const want = `CHECK ((${column === null ? '' : quoted.get(table)?.get(column) ?? ''} < '24:00:00'::time without time zone))`;
+        if (column === null || definition !== want) {
           c.report('check', table, name, `the check ${definition} is not the renderer CHECK`);
           continue;
         }

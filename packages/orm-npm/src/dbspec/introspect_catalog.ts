@@ -237,21 +237,12 @@ export function actionName(rule: string): DbspecAction | null {
   return null;
 }
 
-/** renderer CHECK의 이름 <table>$<column>이다. */
-export function rendererCheckName(table: string, column: string): string {
-  return `${table}$${column}`;
-}
 
 /** table의 column 이름마다 type이다. */
 export function tableTypes(t: ITable): Map<string, DbspecType> {
   return new Map(t.columns.map(c => [c.name, c.type]));
 }
 
-/** Go의 strings.Cut(s, sep): 처음 sep의 앞과 뒤, 그리고 sep이 있었는지. */
-export function cut(s: string, sep: string): [string, string, boolean] {
-  const i = s.indexOf(sep);
-  return i < 0 ? [s, '', false] : [s.slice(0, i), s.slice(i + sep.length), true];
-}
 
 /** catalog query가 돌려준 row 하나다. 각 값은 기대한 JavaScript type이어야 한다. */
 export class CatalogRow {

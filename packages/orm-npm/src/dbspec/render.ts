@@ -2,7 +2,8 @@
 // 문장의 바이트는 tests/dbspec/ddl.json과 Go 엔진(engine/dbspec/render.go)과 같다.
 import { readCheck, type CheckExpr, type CheckOperand } from './check.js';
 import { checkSet } from './set.js';
-import { auditRecords, type DbspecAuditSetting } from './audit.js';
+import { auditRecords, type DbspecAuditSetting } from './audit.js';import { rendererName } from './names.js';
+
 import type { DbspecAction, DbspecColumn, DbspecDefault, DbspecDiagnostic, DbspecDocument, DbspecForeignKey, DbspecTable, DbspecType } from './model.js';
 
 export type DbspecDialect = 'mysql' | 'postgres' | 'sqlite';
@@ -56,7 +57,7 @@ export class Renderer {
   }
 
   table(t: DbspecTable): string[] {
-    const create = this.createTable(t, t.name, c => `${t.name}$${c}`, []);
+    const create = this.createTable(t, t.name, c => rendererName(t.name, c), []);
     const out = [create];
     if (this.d === 'sqlite') {
       for (const u of sorted(t.uniques, u => u.name)) {
@@ -349,7 +350,7 @@ export class Renderer {
 
   /** The trigger <table>$<event> whose body is one statement; PostgreSQL wraps it in a function of the same name. */
   trigger(t: DbspecTable, event: string, timing: string, body: string, rejects: boolean): string[] {
-    const name = this.q(`${t.name}$${event}`);
+    const name = this.q(rendererName(t.name, event));
     const on = ` ${timing} ON ${this.q(t.name)} FOR EACH ROW `;
     switch (this.d) {
       case 'mysql':
