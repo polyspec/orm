@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -52,7 +53,7 @@ const REQUIREMENTS = 'requests==2.34.2\n';
 
 /** A checkout of the three files of ENTRY in a temporary directory; `files` replaces any of them (null removes one). */
 function checkout(t, files = {}) {
-  const root = mkdtempSync(path.join(ROOT, 'var', 'python-lock-check-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'python-lock-check-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const all = { 'app/pylock.toml': lockText(REGISTRY), 'app/constraints.txt': CONSTRAINTS, 'app/requirements.txt': REQUIREMENTS, ...files };
   mkdirSync(path.join(root, 'app'), { recursive: true });
@@ -188,7 +189,7 @@ test('a missing source or lock file is refused, and the finding names the file',
 });
 
 test('the fixture policy declares sources that exist and agree with its lock, and the check passes on the fixture', (t) => {
-  const root = mkdtempSync(path.join(ROOT, 'var', 'python-lock-fixture-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'python-lock-fixture-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   cpSync(FIXTURE, root, { recursive: true });
   const entries = pythonLockEntries(root);

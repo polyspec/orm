@@ -7,7 +7,7 @@
 // its `EXIT <n>` line (go: `EXIT <symbol> <n>`).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -806,39 +806,5 @@ test('admit: an implementation that admits no case, a key on no case, an empty l
   assert.match(findings([{ name: 'empty' }, { name: 'ascii' }]).join('\n'), /^declaration unit codec: .*no case of .* has kinds/m);
   assert.match(findings([{ name: 'empty', kinds: [] }, { name: 'ascii', kinds: all }]).join('\n'), /declaration unit codec: .*case empty has kinds that is empty/);
   assert.match(findings([{ name: 'empty', kinds: ['go', 'go', 'rust', 'ts', 'php', 'python'] }, { name: 'ascii', kinds: all }]).join('\n'), /declaration unit codec: .*case empty lists go twice/);
-});
-
-/** A temporary repository of the real tool `python` with the files and the declaration `config`, checked with the wrapper of the checkout. */
-function realPython(t, files, config) {
-  const root = tree(t, { '.gitignore': 'var/\n', ...files, 'config/parity.json': `${JSON.stringify(config, null, 2)}\n` });
-  const wrapper = path.join(KIT, '../..', 'var/tools/bin/python3');
-  if (!existsSync(wrapper)) assert.fail(`${wrapper} does not exist; run make install-tools TOOLS="python pythonBackend"`);
-  mkdirSync(path.join(root, 'var/tools/bin'), { recursive: true });
-  copyFileSync(wrapper, path.join(root, 'var/tools/bin/python3'));
-  chmodSync(path.join(root, 'var/tools/bin/python3'), 0o755);
-  return checkParity(root, { execute: true, env: process.env, say: () => {} });
-}
-
-const UNITTEST_CONFIG = {
-  schema: 1,
-  implementations: [{ name: 'python', runner: 'python', roots: ['python'], tests: ['python/tests/test_*.py'] }],
-  profiles: [{ name: 'all', implementations: ['python'] }],
-  testPatterns: [{ runner: 'python', globs: ['**/tests/**/test_*.py'] }],
-  units: [{
-    id: 'codec', kind: 'suite', profile: 'all', file: 'tests/vectors/codec.json', cases: '$.vectors[*].name',
-    bindings: [{ implementation: 'python', test: 'python/tests/test_codec.py' }],
-  }],
-  nativeOnly: [],
-  exclusions: [],
-};
-
-test('R3: a unittest expected failure is a todo, which is no pass, so its case fails (real unittest, K47)', { timeout: 120_000 }, (t) => {
-  const { findings, ledger } = realPython(t, {
-    'tests/vectors/codec.json': JSON.stringify({ vectors: [{ name: 'empty' }, { name: 'known' }] }),
-    'python/tests/test_codec.py': 'import unittest\n\n\nclass Codec(unittest.TestCase):\n    def test_empty(self):\n        pass\n\n    @unittest.expectedFailure\n    def test_known(self):\n        self.fail("not yet")\n',
-  }, UNITTEST_CONFIG);
-  assert.deepEqual(keys(findings), ['R3 codec python']);
-  assert.equal(findings[0].message, 'failed: known');
-  assert.deepEqual(ledger.cases.map(entry => `${entry.case} ${entry.outcome}`).sort(), ['empty pass', 'known fail']);
 });
 

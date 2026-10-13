@@ -99,9 +99,8 @@ export function toolCommand({ tool, timeoutSeconds, cwd, args, phpExtension, ven
     case 'node':
       return {
         command: process.execPath,
-        // A timed-out test can leave work pending; the process of a file ends when its tests end, and the preload fails a
-        // file whose process ends before its module registered every test.
-        args: ['--test', '--test-force-exit', `--import=${pathToFileURL(path.join(KIT, 'test-load-check.mjs')).href}`, `--test-timeout=${milliseconds}`, `--test-reporter=${path.join(KIT, 'node-reporter.mjs')}`, '--test-reporter-destination=stdout', ...args],
+        // The preload fails a file whose process is still alive the test timeout after its last test, naming what holds it.
+        args: ['--test', `--import=${pathToFileURL(path.join(KIT, 'test-exit-deadline.mjs')).href}?ms=${milliseconds}`, `--test-timeout=${milliseconds}`, `--test-reporter=${path.join(KIT, 'node-reporter.mjs')}`, '--test-reporter-destination=stdout', ...args],
       };
     case 'vitest':
       // npm writes no bin links, so the runner starts the entry of the vitest package with node.

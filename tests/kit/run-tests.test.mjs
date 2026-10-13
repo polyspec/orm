@@ -89,12 +89,31 @@ test('a run in which no test ran fails: a file without a test case, only skipped
   assert.equal(runner(root, ['node', '--', 'tests/ok.test.mjs']).status, 0);
 });
 
-// The top-level await never settles: the process ends with no live handle, before the module registers `late`.
-test('a file whose process ends before its module registered every test fails', (t) => {
+// The top-level await never settles: node ends the process with no live handle and fails the file for the unsettled await.
+test('a file whose top-level await never settles fails', (t) => {
   const root = checkout(t, { 'tests/late.test.mjs': `${SPEC}test('early', () => {});\nawait new Promise(() => {});\ntest('late', () => {});\n` });
   const result = runner(root, ['node', '--', 'tests/late.test.mjs']);
   assert.equal(result.status, 1, output(result));
-  assert.match(output(result), /the process ended before the module finished loading; tests registered later did not run/);
+});
+
+// --test-force-exit ended a file's process when its known tests ended, so a test registered after a top-level await never
+// ran and the file passed (K72).
+test('a test registered after a top-level await runs', (t) => {
+  const root = checkout(t, { 'tests/late.test.mjs': `${SPEC}test('early', () => {});\nawait new Promise(resolve => setTimeout(resolve, 50));\ntest('late', () => { throw new Error('late ran'); });\n` });
+  const result = runner(root, ['node', '--', 'tests/late.test.mjs']);
+  assert.equal(result.status, 1, output(result));
+  assert.match(output(result), /late ran/);
+});
+
+// A test that leaves a handle open keeps its file's process alive after its last test. The file fails after the deadline
+// and names what holds it, instead of hanging the run (K72).
+test('a file whose process outlives its last test fails after the deadline and names its open handles', (t) => {
+  const root = checkout(t, { 'tests/leak.test.mjs': `${SPEC}test('leaks a timer', () => { setInterval(() => {}, 1000); });\n` });
+  const started = Date.now();
+  const result = runner(root, ['node', '--timeout', '2', '--', 'tests/leak.test.mjs']);
+  assert.equal(result.status, 1, output(result));
+  assert.match(output(result), /did not exit 2000 ms after its last test; it holds [^\n]*Timeout/);
+  assert.ok(Date.now() - started < 30_000, 'the deadline ended the file');
 });
 
 test('the arguments of the runner are read before the arguments of the tool', () => {
@@ -114,9 +133,9 @@ test('the arguments of the runner are read before the arguments of the tool', ()
 
 test('each tool starts with its progress and timeout arguments and no limit on a whole run', () => {
   const node = toolCommand({ tool: 'node', timeoutSeconds: 7, cwd: '/r', args: ['a'] }, '/r');
-  assert.ok(node.args.includes('--test-timeout=7000') && node.args.includes('--test-force-exit') && node.args.at(-1) === 'a');
+  assert.ok(node.args.includes('--test-timeout=7000') && !node.args.includes('--test-force-exit') && node.args.at(-1) === 'a');
   assert.ok(node.args.some(arg => arg.startsWith('--test-reporter=') && arg.endsWith('scripts/kit/node-reporter.mjs')));
-  assert.ok(node.args.some(arg => arg.startsWith('--import=file://') && arg.endsWith('scripts/kit/test-load-check.mjs')));
+  assert.ok(node.args.some(arg => arg.startsWith('--import=file://') && arg.endsWith('scripts/kit/test-exit-deadline.mjs?ms=7000')));
   const vitest = toolCommand({ tool: 'vitest', timeoutSeconds: 7, cwd: '/r', args: [] }, '/r');
   assert.deepEqual(vitest.args.slice(0, 4), ['/r/node_modules/vitest/vitest.mjs', 'run', '--testTimeout=7000', '--hookTimeout=7000']);
   assert.deepEqual(toolCommand({ tool: 'go', timeoutSeconds: 7, cwd: '/r', args: ['./...'] }, '/r'), { command: 'go', args: ['test', '-json', '-count=1', '-timeout=0', './...'] });
