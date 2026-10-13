@@ -171,9 +171,10 @@ func readPostgres(ctx context.Context, q Querier) (*catalog, error) {
 			}
 			t.fks = append(t.fks, ifk{name: name, columns: list, table: refTable, refs: strings.Split(refs, ","), onDelete: del, onUpdate: upd})
 		case kind == "c":
-			if owner, column, generated := strings.Cut(name, "$"); generated {
+			if strings.Contains(name, "$") {
+				column, found := renderedColumn(table, name, pending[table])
 				want := "CHECK ((" + quoted[table][column] + " < '24:00:00'::time without time zone))"
-				if owner != table || !pending[table][column] || definition != want {
+				if !found || definition != want {
 					c.report("check", table, name, "the check %s is not the renderer CHECK", definition)
 					return nil
 				}

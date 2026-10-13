@@ -138,7 +138,7 @@ func (r renderer) list(names []string) string {
 }
 
 func (r renderer) table(t *Table) []string {
-	create := r.createTable(t, t.Name, func(column string) string { return t.Name + "$" + column }, nil)
+	create := r.createTable(t, t.Name, func(column string) string { return rendererName(t.Name, column) }, nil)
 	out := []string{create}
 	if r.d == DialectSQLite {
 		for _, u := range sortedBy(t.Uniques, func(u Unique) string { return u.Name }) {
@@ -555,7 +555,7 @@ func (r renderer) triggers(t *Table) []string {
 // trigger writes the trigger named <table>$<event> whose body is the single
 // statement body; PostgreSQL wraps it in a function of the same name.
 func (r renderer) trigger(t *Table, event, timing, body string, rejects bool) []string {
-	name := r.q(t.Name + "$" + event)
+	name := r.q(rendererName(t.Name, event))
 	on := " " + timing + " ON " + r.q(t.Name) + " FOR EACH ROW "
 	switch r.d {
 	case DialectMySQL:

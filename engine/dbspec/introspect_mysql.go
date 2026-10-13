@@ -166,9 +166,10 @@ func readMySQL(ctx context.Context, q Querier) (*catalog, error) {
 			c.report("check", table, name, "the check is not enforced")
 			return nil
 		}
-		if owner, column, generated := strings.Cut(name, "$"); generated {
-			col, known := columns[table][column]
-			if owner != table || !known || withoutIntroducers(clause) != withoutIntroducers(mysqlRendererCheck(col)) {
+		if strings.Contains(name, "$") {
+			column, found := renderedColumn(table, name, columns[table])
+			col := columns[table][column]
+			if !found || withoutIntroducers(clause) != withoutIntroducers(mysqlRendererCheck(col)) {
 				c.report("check", table, name, "the check %s is not the renderer CHECK", clause)
 				return nil
 			}

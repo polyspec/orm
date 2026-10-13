@@ -63,8 +63,8 @@ func (c *catalog) triggerSetting(dialect Dialect, t *itable, list []itrigger) (s
 	if len(list) == 2 {
 		candidates["immutable"] = &Settings{Immutable: &ImmutableSetting{}}
 	}
-	if insert, ok := names[t.name+"$audit_insert"]; ok && len(list) == 3 {
-		update := names[t.name+"$audit_update"]
+	if insert, ok := names[rendererName(t.name, "audit_insert")]; ok && len(list) == 3 {
+		update := names[rendererName(t.name, "audit_update")]
 		body := statementBody(insert.statements)
 		m := auditInsertPattern.FindStringSubmatch(body)
 		u := auditUpdatePattern.FindStringSubmatch(statementBody(update.statements))
