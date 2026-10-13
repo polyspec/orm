@@ -612,6 +612,11 @@ str mermaid_export(const document *d, unsupportedv *dropped);
 /* 문서, 또는 diagnostic 하나다. 예외(RuntimeException 밖)는 던진다. */
 document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
 
+/* ---------------------------------------------------------------- sets */
+
+/* Dbspec::readSet (set.c): the SetResult of the set file at path into return_value. */
+void dbs_read_set(zend_string *path, zval *return_value);
+
 /* -------------------------------------------------------------- PHP objects */
 
 #define DBS_CLASSES(X) X(Analysis) X(Token) X(FormatResult) X(Names) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
@@ -619,7 +624,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \
     X(ApplyCleanupError) X(PlanParseResult) X(PlanStepsResult) X(ChainResult) X(DiffResult) X(ComparisonResult) \
-    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec) X(PlanApply)
+    X(MermaidExportResult) X(MermaidImportResult) X(IntrospectResult) X(Dbspec) X(PlanApply) X(SetFile) X(SetError) X(SetResult)
 
 #define DBS_DECLARE_CE(n) extern zend_class_entry *dbs_ce_##n;
 DBS_CLASSES(DBS_DECLARE_CE)

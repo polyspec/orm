@@ -240,6 +240,39 @@ final readonly class ReadResult
     public static function invalid(array $diagnostics): ReadResult {}
 }
 
+/** One file of a read set (Dbspec::readSet): its joined path and its bytes, not yet checked. */
+final readonly class SetFile
+{
+    public string $path;
+    public string $bytes;
+
+    public function __construct(string $path, string $bytes) {}
+}
+
+/** One error of Dbspec::readSet: its `set.*` rule, the path it concerns (the set file's path, or the joined path of an entry) and a message that names the path. */
+final readonly class SetError
+{
+    public string $rule;
+    public string $path;
+    public string $message;
+
+    public function __construct(string $rule, string $path, string $message) {}
+}
+
+/** The outcome of Dbspec::readSet: the files of `documents` and of `external` in written order and no errors, or the errors by step, then by path, and no files. */
+final readonly class SetResult
+{
+    public ?array $documents;
+    public ?array $external;
+    public array $errors;
+
+    private function __construct(?array $documents, ?array $external, array $errors) {}
+
+    public static function valid(array $documents, array $external): SetResult {}
+
+    public static function invalid(array $errors): SetResult {}
+}
+
 /** The outcome of Dbspec::parse: a document, its declaration positions and no diagnostics, or every diagnostic in source order and no document and no positions. */
 final readonly class ParseResult
 {
@@ -601,6 +634,9 @@ final class Dbspec
 
     /** Checks the bytes of a document file that the caller read; $name is the name its messages use. */
     public static function readBytes(string $name, string $bytes): ReadResult {}
+
+    /** Reads the set file at $path and the files it lists (docs/dbspec.md "Document sets"): the set file, its JSON, each path and the read with the file identity, in that order. */
+    public static function readSet(string $path): SetResult {}
 
     /** Writes a document in its canonical text: `emit(parse(s)) === s` for canonical input. */
     public static function emit(Document $document): string {}

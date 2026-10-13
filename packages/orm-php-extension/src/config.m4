@@ -5,9 +5,10 @@ PHP_ARG_ENABLE([orm-dbspec], [whether to enable orm_dbspec],
 
 if test "$PHP_ORM_DBSPEC" != "no"; then
   PHP_NEW_EXTENSION([orm_dbspec],
-    [orm_dbspec.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c mermaid.c introspect.c apply.c],
+    [orm_dbspec.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c mermaid.c introspect.c apply.c set.c],
     [$ext_shared],, [-std=gnu11 -Wall -Wextra -Wno-unused-parameter])
   PHP_ADD_EXTENSION_DEP([orm_dbspec], [spl])
   PHP_ADD_EXTENSION_DEP([orm_dbspec], [hash])
   PHP_ADD_EXTENSION_DEP([orm_dbspec], [pdo])
+  PHP_ADD_EXTENSION_DEP([orm_dbspec], [json])
 fi

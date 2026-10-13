@@ -85,6 +85,17 @@ final class Dbspec
     }
 
     /**
+     * Reads the set file at $path and the files it lists (docs/dbspec.md "Document sets"): the set file,
+     * its JSON, each path and the read with the file identity, in that order. The result holds the files
+     * of `documents` and `external` with their joined path and their unchecked bytes, or every error by
+     * step, then by path; the caller gives each file's bytes to readBytes with its path.
+     */
+    public static function readSet(string $path): SetResult
+    {
+        return SetReader::read($path);
+    }
+
+    /**
      * 호출자가 자기 규칙으로 읽은 dbspec document 파일의 byte를 parse 전에 확인한다.
      * $name은 message가 파일을 가리키는 이름이다. SIGNATURE로 시작하지 않는 byte는 text 없이
      * line 1, column 1의 `signature` diagnostic 하나와 message "<name> is not a dbspec

@@ -126,6 +126,39 @@ final class RuntimeModel
     }
 
     /**
+     * Reads the set file at $path with Dbspec::readSet, gives each listed file's bytes to
+     * Dbspec::readBytes with its joined path and parses the set (parseSet). An error of the set file is
+     * CONFIG with every error, one `<rule>: <message>` line each; a file with a diagnostic is
+     * SCHEMA_INVALID with every diagnostic of every file.
+     *
+     * @return list<Document>
+     */
+    public static function set(string $path): array
+    {
+        $set = Dbspec::readSet($path);
+        if ($set->errors !== []) {
+            throw new OrmException(Code::CONFIG, implode("\n", array_map(static fn($e): string => "{$e->rule}: {$e->message}", $set->errors)));
+        }
+        $errors = [];
+        $texts = ['documents' => [], 'external' => []];
+        foreach (['documents' => $set->documents, 'external' => $set->external] as $list => $files) {
+            foreach ($files as $file) {
+                $read = Dbspec::readBytes($file->path, $file->bytes);
+                foreach ($read->diagnostics as $d) {
+                    $errors[] = "{$file->path}:{$d->line}:{$d->column}: {$d->rule}: {$d->message}";
+                }
+                if ($read->text !== null) {
+                    $texts[$list][$file->path] = $read->text;
+                }
+            }
+        }
+        if ($errors !== []) {
+            throw new OrmException(Code::SCHEMA_INVALID, implode("\n", $errors));
+        }
+        return self::parseSet($texts['documents'], $texts['external']);
+    }
+
+    /**
      * document set의 dbspec 파일을 Dbspec::readFile로 읽어 parse한다. $external은 소유한 문서가
      * use로 쓰는 외부 문서 파일이다(parseSet). 읽을 수 없는 파일은 CONFIG, signature가 없는
      * 파일은 SCHEMA_INVALID로 실패한다.

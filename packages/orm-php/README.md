@@ -44,12 +44,12 @@ the client on SQLite with `php -n` and only the extensions it needs, so that `my
 Styled columns (a codec with `ordered_json`, `serialize`, `yaml`, `gz`, or `base64`) use `Polyspec\Orm\StyledValue` in generated setters and getters. `StyledValue::sqlNull()` represents SQL NULL; `StyledValue::value($value)` represents an encoded value, including a literal null. A non-null column rejects SQL NULL with `CODEC_ENCODE` when its setter is called. Requesting a styled column excluded from the selection returns `COLUMN_UNSELECTED`. `toArray()` and `toJson()` emit `{"kind":"sql-null"}` or `{"kind":"value","value":...}` for each selected styled column. `toJson()` preserves ordered JSON values exactly.
 
 ```sh
-vendor/bin/orm-gen gen --out src/Model --namespace 'Example\Model' schema/example.dbs
+vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
 ```
 
-Run it as a Composer script after the schema changes (`"scripts": {"orm-gen": "orm-gen gen --out
-src/Model --namespace Example\\Model schema/example.dbs"}`); the arguments list every document of the
-set. The generator rejects a document set with diagnostics and column names that collide with
+Run it as a Composer script after the schema changes (`"scripts": {"orm-gen": "orm-gen gen --set
+schema/dbspec-set.json --out src/Model --namespace Example\\Model"}`); the set file lists every document of
+the set (docs/dbspec.md "Document sets"). The generator rejects a document set with diagnostics and column names that collide with
 model methods, and replaces the files it generated earlier; `bootstrap.php` must be required once. With `--check`, `gen` writes nothing,
 prints `differs:`, `missing:`, or `extra:` with each output file that is not current, and exits with
 status 1 when it prints a line.

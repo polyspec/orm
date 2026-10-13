@@ -556,8 +556,8 @@ rust-send-savepoint-check/test: cargo-downloads-check
 # tests/dbspec/plans.json의 plan vector, tests/dbspec/mermaid.json의 Mermaid vector, 감싼 SQLite
 # connection으로 주입한 apply 정리 error를 각각 두 번 실행한다. stress 문서는 make bench가
 # 실행한다.
-dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze
-.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze
+dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
+.PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
 dbspec-php-check/documents:
 	php packages/orm-php/tests/dbspec_test.php
 	php packages/orm-php/tests/dbspec_test.php
@@ -589,6 +589,10 @@ dbspec-php-check/analyze:
 	php packages/orm-php/tests/dbspec_analyze_test.php
 dbspec-php-check/show-create:
 	php packages/orm-php/tests/dbspec_show_create_test.php
+# dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
+# a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
+dbspec-php-check/set:
+	php packages/orm-php/tests/dbspec_set_test.php
 	php packages/orm-php/tests/dbspec_show_create_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
@@ -603,8 +607,8 @@ dbspec-php-check/show-create:
 PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/orm_dbspec.so
 GEN_STUB = $(abspath .runtime/bin/gen-stub/gen_stub.php)
 dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-extension-check-$$PPID
-.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
-dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create
+.PHONY: dbspec-php-extension-check/arginfo dbspec-php-extension-check/prepare dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set
+dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) check
@@ -637,6 +641,10 @@ dbspec-php-extension-check/apply-cleanup: dbspec-php-extension-check/prepare
 # 모든 case를 Go의 introspection과 같은 check와 미지원 객체로 읽는지, 없는 CHECK를 Go와 같은 error로 거부하는지 본다.
 dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
+# dbspec-php-extension-check/set runs the extension's Dbspec::readSet on every case of tests/dbspec/set-files.json and
+# the focused cases and requires each result to equal the PHP client's, messages included.
+dbspec-php-extension-check/set: dbspec-php-extension-check/prepare
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_set_test.php
 	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
 php-extension-arginfo:
 	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) write
