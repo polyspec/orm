@@ -1504,6 +1504,8 @@ class DocumentParser:
                 if listed is None:
                     return
                 _mark(toks[i], 'keyword')
+                for column in listed[0]:
+                    _mark(column, 'name')
                 lists.append((toks[i], listed[0]))
                 i = listed[1]
             if i < len(toks):
@@ -1950,6 +1952,11 @@ class DocumentParser:
             flagged = True
             self._at(rule, tok, message)
 
+        def read_mark(tok, cls: str) -> None:
+            # R14: the tokens the reader reads after its first reading diagnostic keep lexical classes.
+            if not flagged:
+                _mark(tok, cls)
+
         issues = []
 
         def issue(tok: Tk, message: str, rule: str = 'check') -> None:
@@ -1978,7 +1985,7 @@ class DocumentParser:
             tok = take()
             if not is_word(tok, text):
                 raise _ExpressionSyntax(tok)
-            _mark(tok, 'keyword')
+            read_mark(tok, 'keyword')
             out.append(text)
 
         def is_number(tok) -> bool:
@@ -2008,7 +2015,7 @@ class DocumentParser:
             if is_number(t):
                 return literal_operand(t, number_text(t.t))
             if is_word(t, 'true') or is_word(t, 'false'):
-                _mark(t, 'keyword')
+                read_mark(t, 'keyword')
                 return literal_operand(t, t.t)
             if is_word(t, 'null'):
                 flag('check', t, 'the null literal is not part of a predicate')
@@ -2036,7 +2043,7 @@ class DocumentParser:
             if is_number(t):
                 return literal_operand(t, number_text(t.t))
             if t.t in ('true', 'false'):
-                _mark(t, 'keyword')
+                read_mark(t, 'keyword')
                 return literal_operand(t, t.t)
             if t.t == 'null':
                 flag('check', t, 'the null literal is not part of a predicate')
@@ -2056,7 +2063,7 @@ class DocumentParser:
                         break
                 return None
             # Go의 ref: a malformed reference reports its name rule and is not resolved.
-            _mark(t, 'name')
+            read_mark(t, 'name')
             malformed = _name_rule(t.t)
             if malformed is not None:
                 issue(t, malformed[1], malformed[0])
@@ -2158,12 +2165,12 @@ class DocumentParser:
             negated = is_word(t, 'not') and is_word(toks[i + 1] if i + 1 < len(toks) else None, 'in')
             if negated:
                 negation = take()
-                _mark(negation, 'keyword')
+                read_mark(negation, 'keyword')
                 out.append(negation.t)
             u = peek()
             if is_word(u, 'in'):
                 column = subject(left, u)
-                _mark(take(), 'keyword')
+                read_mark(take(), 'keyword')
                 out.append(u.t)
                 expect_punct('(')
                 values = [literal()]
@@ -2178,10 +2185,10 @@ class DocumentParser:
                 return ('leaf', list(out))
             if is_word(u, 'is'):
                 subject(left, u)
-                _mark(take(), 'keyword')
+                read_mark(take(), 'keyword')
                 out.append(u.t)
                 if is_word(peek(), 'not'):
-                    _mark(take(), 'keyword')
+                    read_mark(take(), 'keyword')
                     out.append('not')
                 expect_word('null')
                 return ('leaf', list(out))
@@ -2190,14 +2197,14 @@ class DocumentParser:
         def and_expr():
             left = predicate()
             while is_word(peek(), 'and'):
-                _mark(take(), 'keyword')
+                read_mark(take(), 'keyword')
                 left = ('and', left, predicate())
             return left
 
         def or_expr():
             left = and_expr()
             while is_word(peek(), 'or'):
-                _mark(take(), 'keyword')
+                read_mark(take(), 'keyword')
                 left = ('or', left, and_expr())
             return left
 
