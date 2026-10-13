@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T134: the Python tests import the package installed editable into the venv; no test changes `sys.path` or `PYTHONPATH`, and a check refuses one.
 - T142-3: `codec-check` runs the Python codec vectors.
 - T142-4: `codec-check/rust` builds the lease tool it runs.
 - T135: the test server sockets live in `/tmp/orm-servers-<cksum of the checkout>`, owned by the checkout, so a long checkout path stays within the Unix socket path limit.

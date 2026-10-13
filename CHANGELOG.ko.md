@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c79fbd759124654249f3a49a1be3055a7bcd984485908ea8e8584bce7adf8de2 -->
+<!-- source-sha256: 77695cae35e669b7d6b57985f1fa4997cf232d1c22e82faae702f306dca62964 -->
 # 변경 이력
 
 ## Unreleased
 
+- T134: Python 테스트는 venv에 editable로 설치된 package를 import한다. 어떤 테스트도 `sys.path`나 `PYTHONPATH`를 바꾸지 않고, 검사가 이를 거부한다.
 - T142-3: `codec-check`가 Python codec vector를 실행한다.
 - T142-4: `codec-check/rust`가 실행하는 lease tool을 먼저 build한다.
 - T135: 테스트 서버 socket은 checkout이 소유한 `/tmp/orm-servers-<checkout의 cksum>`에 있어, 긴 checkout 경로도 Unix socket 경로 제한 안에 든다.
