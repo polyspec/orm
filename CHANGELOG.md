@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T133: every runtime reads tests/dbspec/cases.json with one strict reader that refuses a missing or unknown field in any section.
 - T154: the Python Mermaid test imports only through the declared PYTHONPATH.
 - T149: the feature coverage runs Python owners, and schema_definition covers Python with its seven cases.
 
