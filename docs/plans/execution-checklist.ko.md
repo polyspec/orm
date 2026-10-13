@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 2be825a24f47a59c7e4d5cdcd29fedc561d55c9f22e2b0e7e470a92d136d79a7 -->
+<!-- source-sha256: e5ccc3e060f10ff47650e988f0f9cc5447ad8ef74c218d94586a75f6db4018b2 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -933,7 +933,7 @@
 - [o] T128-2a-1-1 root를 끝의 구분자 없이 조사한다(T128-2a-1에 이어). 원인: root는 주어진 set 경로의 prefix이고 구분자로 끝나는데, POSIX에서 `lstat("alias/")`은 symbolic link를 따르므로 vector `root-symlink`가 link된 root를 통과시킬 수 있었다; Rust agent가 찾았다. 인수 조건: 단계 1이 root를 끝의 구분자 없이 조사하며, `/`인 root는 `/` 그대로다. 증거: docs/dbspec.md(+ko) 단계 1이 이를 적는다; `make documents-check`와 `npm run docs:rules-check`가 통과한다.
 - [o] T128-2a-1-2 중복 key의 깊이와 `schema`의 읽기를 정한다(T128-2a-1에 이어). 원인: Python reader가 열려 있던 두 읽기를 찾았다: "어떤 key도 두 번 나오지 않는다"가 중첩 object에도 걸리는지(`{"schema": {"a": 1, "a": 2}}`가 `set.key`인지 `set.schema`인지), 그리고 `1.0000000000000000001`이 1인지. 인수 조건: 단계 2가 모든 깊이의 모든 object를 검사하고, `schema`를 RFC 8259가 권하는 대로 IEEE 754 double로 읽는다. 증거: docs/dbspec.md(+ko) 단계 2가 둘을 적는다; `make documents-check`와 `npm run docs:rules-check`가 통과한다.
 - [ ] T128-2a-2 Go set reader와 `orm-gen gen --set`(T128-2a-1에 이어). 인수 조건: `dbspec.ReadSet`이 set-files.json의 모든 case를 실행한다; `runtimemodel.LoadFileSet`과 `--document`/`--use`를 모든 호출자와 함께 지운다.
-- [ ] T128-2a-3 TypeScript set reader, `parseSet`, `--set`(T128-2a-1에 이어). 인수 조건: `@polyspec/orm/dbspec`의 `parseSet(bytes, path)`와 `readDbspecSet`이 set-files.json을 실행한다(`parseSet`은 tree 없는 case); `--schema`/`--use`를 지운다.
+- [o] T128-2a-3 TypeScript set reader, `parseSet`, `--set`(T128-2a-1에 이어). 인수 조건: `@polyspec/orm/dbspec`의 `parseSet(bytes, path)`와 `readDbspecSet`이 set-files.json을 실행한다(`parseSet`은 tree 없는 case); `--schema`/`--use`를 지운다. 증거: 변경 전 runner는 browser entry가 `parseSet`을 export하지 않아 실패했고, 변경 후 `packages/orm-npm/tests/dbspec-set.mjs`가 61 case 모두를 실제 tree에서 `readDbspecSet`으로, tree 없는 case를 두 entry의 `parseSet`으로 통과하며, browser entry test가 `parseSet` export와 함께 통과하고, generator test가 `--schema`와 `--use`를 거부하고 모든 set 오류를 출력하며, TypeScript interface 검사가 통과한다.
 - [o] T128-2a-4 Python set reader와 argparse의 `--set`(T128-2a-1에 이어). 인수 조건: `read_dbspec_set`이 set-files.json을 실행한다; 손으로 쓴 인자 loop를 argparse로 바꾼다; `--schema`/`--use`를 지운다. 증거: 변경 전 vector runner가 `read_dbspec_set` import에서 실패했고, 변경 후 set-files.json의 61 case가 실제 symbolic link와 hard link로 모두 통과하며, `test_orm_gen.py`가 `--schema`와 `--use`의 거부, set 오류나 문서 diagnostic이 모든 message를 출력하고 아무것도 쓰지 않음을 확인하고, `make python-model-check`가 `--set schema/dbspec-set.json`으로 통과하며, Python interface 검사가 통과한다.
 - [ ] T128-2a-5 PHP와 extension의 set reader와 `--set`(T128-2a-1에 이어). 인수 조건: `Dbspec::readSet`과 그 native 짝이 set-files.json을 실행한다; 위치 인자 파일을 지운다.
 - [ ] T128-2a-6 Rust set reader와 `Builder::set`(T128-2a-1에 이어). 인수 조건: `dbspec::read_set`이 set-files.json을 실행한다; `Builder::new([..])`와 `uses`를 지운다; `cargo:rerun-if-changed`가 set 파일과 나열된 모든 문서를 적는다.

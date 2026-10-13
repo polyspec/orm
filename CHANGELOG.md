@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-3 (breaking): the TypeScript `orm-gen gen` takes `--set <dbspec-set.json>`; `--schema` and `--use` are removed. `readDbspecSet` reads a set file, and `@polyspec/orm/dbspec` exports the pure `parseSet(bytes, path)`.
 - T128-7: the documentation site renders ```` ```dbs ```` fences through the dbspec language service, with a colour per token class in the light and the dark theme; a fence of a set declares `set=` and `document=`, and any diagnostic of a fence fails the docs build.
 - T128-2a-4 (breaking): the Python `orm-gen gen` takes the set file with `--set <dbspec-set.json>`, parsed by argparse; `--schema` and `--use` are removed. `read_dbspec_set` reads a set file by docs/dbspec.md "Document sets".
 - T128-2a-1-2: the set reader refuses a repeated key in any object of the set file and reads `schema` as an IEEE 754 double.
