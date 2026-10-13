@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 34a8b7b98c6f58cf0046df802dda0ea33ccdf27fc4fb54a8afaad139e8f781bf -->
+<!-- source-sha256: 2a48aa141642fa66395cf1d6830fea6f9acfb1e1c4f5b6219e97071b4bb47e01 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -992,7 +992,7 @@
 - [o] T145 mysql2를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 packages/orm-npm이 3.24.5를 고정한 사이 mysql2 3.24.6이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mysql2를 3.24.6에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 없다; `make dependency-policy-check`와 `make typescript-build`가 통과한다.
 - [o] T146 orm-schema의 module 목록을 format한다. 원인: main에서 `cargo fmt --all --check`가 packages/orm-rust/orm-schema/src/dbspec/mod.rs(`mod names;`와 `mod plan_diff` 순서)에서 실패한다. 인수 조건: crate에서 rustfmt가 통과하며, red를 먼저 본다. 증거: hyper session의 agent가 69f7748d에서 red를 재현했다(orm-schema/src/dbspec/mod.rs:20의 `mod names`와 `pub mod model` 순서); c0e189e9(T128-2a-6)가 module 순서를 바로잡았고, `make rust-fmt-check`가 세 part 모두 통과한다.
 - [!] T147 interface rule이 선언하지 않은 component method를 거부한다. 원인: rule 없는 Dbspec component method가 있어도 `make interface-check`가 통과하므로(T128-2a-7이 찾음) 빠진 rule이 red로 드러나지 않는다. 인수 조건: manifest 검사가 rule 없는 component method를 거부하며, red를 먼저 본다. 원인(우회): fixture에서 red를 먼저 본 거부 검사가 실제 manifest에서 rule 없는 component method 25개를 찾으므로, main에 commit하면 `make interface-check`가 red가 된다. 재시도: T147-1부터 T147-4가 끝나면 branch fix/rules-T147(검사의 commit, 그때까지 두며 merge할 때 worktree orm-rules-T147과 함께 지운다)을 merge한다.
-  - [ ] T147-1 공개 component method 아홉의 rule을 선언한다(T147에 이어). 원인: `Db.close`, `Collection.get`, `first`, `keys`, `connect`, `delete`, `toArray`, `Utils.setLocal`, `Utils.local`은 다섯 언어 모두에 있지만 rule이 없다. 인수 조건: 각각 언어별 정확한 symbol과 input·output type을 가진 rule이 있고 기록된다.
+  - [o] T147-1 공개 component method 아홉의 rule을 선언한다(T147에 이어). 원인: `Db.close`, `Collection.get`, `first`, `keys`, `connect`, `delete`, `toArray`, `Utils.setLocal`, `Utils.local`은 다섯 언어 모두에 있지만 rule이 없다. 인수 조건: 각각 언어별 정확한 symbol과 input·output type을 가진 rule이 있고 기록된다. 증거: 233fc7b4가 contracts/symbols에서 읽은 symbol과 contracts/validate.go의 type으로 rule 아홉을 선언한다; `make interface-check`가 모든 언어에서 통과한다.
   - [ ] T147-2 Python에 없는 공개 method 여섯을 준다(T147에 이어). 원인: `Db.stats`, `Utils.privileges`, `Utils.stats`, `SchemaUtils.exists`, `SchemaUtils.installed`, `SchemaUtils.empty`는 docs/interfaces.md에 문서화되어 있지만 Python에 없다. 인수 조건: Python이 공유 test와 함께 이를 구현하고(red 먼저), 각각 모든 언어에서 rule을 가진다.
   - [ ] T147-3 manifest의 내부 component를 판정한다(T147에 이어). 원인: `Core.build`, `Request.shape`, `Planner.validate`, `Planner.plan`, `TransactionFlow.begin`, `savepoint`, `commit`, `rollback`, `Generator.generate`는 공통 signature 없는 private이나 internal이다. 인수 조건: manifest가 근거와 함께 component를 internal로 표시하고 검사는 공개 component만 보거나, method가 diagram을 떠난다; docs/interfaces-model.md(+ko)에 적는다.
   - [ ] T147-4 모든 rule의 method를 그 component에 둔다(T147에 이어). 원인: rule `SchemaUtils.addTablesAndColumns`는 있지만 그 component가 그런 method를 적지 않아 docs/interfaces-model.md가 이를 빠뜨린다. 인수 조건: manifest 검사가 component에 없는 method의 rule을 거부하며(red 먼저), 빈틈을 메운다.

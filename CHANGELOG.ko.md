@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4c813509e32599b60d18fa069a4ca5676e0eb5fc034050cc6ea244308a16ae09 -->
+<!-- source-sha256: 5eaeb12d02b92b253449c7de52688f7f0a47526233a08ba195ba5f1e96172782 -->
 # 변경 이력
 
 ## Unreleased
 
+- T147-1: interface rule이 Db.close, Collection의 get, first, keys, connect, delete, toArray, Utils.setLocal과 local을 선언한다.
 - T140 (breaking): restore가 request hook 뒤에 set 값과 and로 이은 eq 조건에서 key를 고르므로 hook의 조건이 update를 좁히듯 restore를 좁힌다; model은 set만 보낸다(docs/protocol.md 1.5).
 - T133: 모든 runtime이 tests/dbspec/cases.json을 어느 section에서든 없거나 모르는 field를 거부하는 엄격한 reader 하나로 읽는다.
 - T154: Python Mermaid test가 선언된 PYTHONPATH로만 import한다.
