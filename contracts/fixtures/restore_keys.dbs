@@ -1,0 +1,15 @@
+dbspec 1 restore_keys
+
+table badge {
+  id i64 identity
+  slug varchar(32)
+  code varchar(32)
+  note text null
+  deleted_at datetime(6) null
+  primary key (id)
+  unique uq_badge_slug (slug)
+  unique uq_badge_code (code)
+  settings {
+    soft_delete deleted_at
+  }
+}

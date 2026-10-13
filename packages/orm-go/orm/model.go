@@ -1189,13 +1189,15 @@ func (c *Core) Save() (Model, error) {
 	return c.Create()
 }
 
-// Restore restores the soft-deleted row that the set values name by its
-// primary key or one unique key, and returns the restored row. The key is the
-// primary key when every primary key column has a set value, otherwise the
-// first unique key in name order whose columns all have set values; every
-// other set value is a new value written with the restore. It clears the soft
-// delete column with one update that, on an audited table, writes the
-// operation id like any other update. A row that is not deleted is returned
+// Restore restores the soft-deleted row that the set values name and returns
+// the restored row. It sends the set values as the restore request's set; the
+// planner picks the key after the request hook from the set values and the eq
+// conditions of the where (docs/protocol.md 1.5): the primary key when they
+// cover it, otherwise the first unique key in name order. A set value of a key
+// column is a condition and every other set value is a new value written with
+// the restore. It clears the soft delete column with one update that, on an
+// audited table, writes the operation id like any other update, and then reads
+// the row by the values of that key. A row that is not deleted is returned
 // unchanged and nothing is written; a missing row returns CodeNoRows. Reads
 // never return a soft-deleted row: Restore names it explicitly.
 func (c *Core) Restore() (Model, error) {
@@ -1208,59 +1210,19 @@ func (c *Core) Restore() (Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	values := map[string]any{}
-	for _, s := range c.sets {
-		if !s.null && !s.plus && !s.minus {
-			values[s.column] = s.value
-		}
-	}
-	covered := func(columns []string) bool {
-		for _, column := range columns {
-			if _, ok := values[column]; !ok {
-				return false
-			}
-		}
-		return true
-	}
-	var key []string
-	if covered(ent.PK) {
-		key = ent.PK
-	} else {
-		for _, unique := range ent.Uniques {
-			if covered(unique.Columns) {
-				key = unique.Columns
-				break
-			}
-		}
-	}
-	if key == nil {
-		return nil, configErr("restore requires the set values of the primary key or a unique key of %s", ent.Name)
-	}
-	// key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가
-	// 같은 행을 같은 값 변환으로 찾는다.
-	q := NewCore(c.ent)
-	q.conn = c.conn
-	keys := make([]ChainKey, len(key))
-	args := make([]any, len(key))
-	for i, column := range key {
-		keys[i] = ChainKey{Column: column}
-		if i > 0 {
-			keys[i].Conn = "and"
-		}
-		args[i] = values[column]
-	}
-	q.Where("", keys, args...)
-	r := q.build("restore")
+	r := NewCore(c.ent).build("restore")
 	if r.err != nil {
 		return nil, r.err
 	}
+	// own maps the parameter of each value the model sets to that set value; the hook adds parameters after them.
+	own := map[int]setSpec{}
 	for _, s := range c.sets {
-		if slices.Contains(key, s.column) {
-			continue
-		}
 		a, err := r.assign(ent, s)
 		if err != nil {
 			return nil, err
+		}
+		if a.P != nil {
+			own[*a.P] = s
 		}
 		r.ir.Set = append(r.ir.Set, a)
 	}
@@ -1268,7 +1230,50 @@ func (c *Core) Restore() (Model, error) {
 	if _, _, err := write(ex, r); err != nil {
 		return nil, err
 	}
+	// r is the request as the hook left it, so its key is the key the planner picked.
+	parts, err := ir.RestoreKey(ent, &r.ir)
+	if err != nil {
+		return nil, err
+	}
+	q := NewCore(c.ent)
+	q.conn = c.conn
+	keys := make([]ChainKey, len(parts.Key))
+	args := make([]any, len(parts.Key))
+	for i, column := range parts.Key {
+		keys[i] = ChainKey{Column: column}
+		if i > 0 {
+			keys[i].Conn = "and"
+		}
+		if args[i], err = restoreKeyValue(own, r, column); err != nil {
+			return nil, err
+		}
+	}
+	q.Where("", keys, args...)
 	return q.Get()
+}
+
+// restoreKeyValue is the value of a key column of the restore request r as the
+// hook left it. A set item whose parameter is one the model added for that same
+// column takes the model's own value, which the read converts as any condition
+// value; any other set item or eq condition of the where on the column takes
+// its parameter, as the hook left it.
+func restoreKeyValue(own map[int]setSpec, r *request, column string) (any, error) {
+	for _, a := range r.ir.Set {
+		if a.Column == column && a.P != nil {
+			if s, ok := own[*a.P]; ok && s.column == column {
+				return s.value, nil
+			}
+			return r.params[*a.P], nil
+		}
+	}
+	if r.ir.Where != nil {
+		for _, item := range r.ir.Where.Items {
+			if pr := item.Pred; pr != nil && pr.Column == column && pr.Op == "eq" && pr.P != nil && pr.Fn == nil && pr.Value == nil && pr.Ref == nil && pr.Sub == nil {
+				return r.params[*pr.P], nil
+			}
+		}
+	}
+	return nil, &ir.Error{Code: CodeInternal, Msg: "restore key column " + column + " has no value in the request"}
 }
 
 // Delete deletes the row. Delete(true) first deletes loaded relation rows

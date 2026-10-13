@@ -1,6 +1,7 @@
 # Db.with_request_hook의 공유 case(docs/usage.md "Request hook")를 contracts/fixtures/request_hook.dbs로 SQLite에서
 # 실행한다. hook은 handle의 각 request를 plan 직전에 받아 predicate, assignment, parameter를 더할 수 있다.
-# case 이름은 다른 client와 같다: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param.
+# case 이름은 다른 client와 같다: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
+# restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
 import os
 import sys
 import tempfile
@@ -35,6 +36,11 @@ def part_filter(value: str, kinds=READS):
             and_where(request, {'column': 'part', 'op': 'eq', 'p': add_param(value)})
         return request
     return hook
+
+
+def part_scope(value: str):
+    """Adds part eq value to the where of every read and restore."""
+    return part_filter(value, READS + ('restore',))
 
 
 class RequestHookTest(unittest.TestCase):
@@ -124,6 +130,77 @@ class RequestHookTest(unittest.TestCase):
             self.item(self.db.with_request_hook(hook)).get_count()
         self.assertEqual(raised.exception.code, 'IR_INVALID')
         self.assertEqual(events, [], 'no statement runs')
+
+    def entry(self, db):
+        return self.models.HookEntry().connect(db)
+
+    def seed_deleted_entries(self) -> dict:
+        """Creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0, soft deletes each and returns their
+        ids by part and label."""
+        ids = {}
+        for part, label in (('a', 'x'), ('b', 'x'), ('a', 'y')):
+            row = self.entry(self.db).set_part(part).set_label(label).set_note('n0').create()
+            ids[part + label] = row.get_id()
+            row.delete()
+        return ids
+
+    def entry_rows(self, db) -> list:
+        """The (id, note) of every hook_entry row that db reads, which are the rows not deleted."""
+        return [(row.get_id(), row.get_note()) for row in self.entry(db).gets()]
+
+    def test_restore_key(self):
+        ids = self.seed_deleted_entries()
+        # The set names label and the hook's condition names part: together they cover the unique key.
+        row = self.entry(self.db.with_request_hook(part_scope('a'))).set_label('x').set_note('n1').restore()
+        self.assertEqual((row.get_id(), row.get_part(), row.get_label(), row.get_note()), (ids['ax'], 'a', 'x', 'n1'))
+        self.assertEqual(self.entry_rows(self.db), [(ids['ax'], 'n1')])
+
+    def test_restore_condition(self):
+        ids = self.seed_deleted_entries()
+        # The set names the primary key; the hook's condition narrows the restore to the rows of its part.
+        with self.assertRaises(OrmError) as raised:
+            self.entry(self.db.with_request_hook(part_scope('b'))).set_id(ids['ay']).set_note('n2').restore()
+        self.assertEqual(raised.exception.code, 'NO_ROWS')
+        self.assertEqual(self.entry_rows(self.db), [], 'the restore outside the hook condition restores no row')
+        row = self.entry(self.db.with_request_hook(part_scope('a'))).set_id(ids['ay']).set_note('n2').restore()
+        self.assertEqual((row.get_id(), row.get_label(), row.get_note()), (ids['ay'], 'y', 'n2'))
+
+    def test_restore_no_key(self):
+        self.seed_deleted_entries()
+        events = []
+        self.db.subscribe(events.append)
+        # Part from the hook and no label cover no key.
+        with self.assertRaises(OrmError) as raised:
+            self.entry(self.db.with_request_hook(part_scope('a'))).set_note('n3').restore()
+        self.assertEqual(raised.exception.code, 'IR_INVALID')
+        self.assertEqual(events, [], 'no statement runs')
+
+    def test_restore_rewritten_key(self):
+        ids = self.seed_deleted_entries()
+        # The hook scopes the restore to part a and gives the model's label its own value y.
+        scope = part_scope('a')
+
+        def hook(request, add_param):
+            if request['kind'] == 'restore':
+                for a in request.get('set') or []:
+                    if a['column'] == 'label':
+                        a['p'] = add_param('y')
+            return scope(request, add_param)
+        row = self.entry(self.db.with_request_hook(hook)).set_label('x').set_note('n4').restore()
+        self.assertEqual((row.get_id(), row.get_label(), row.get_note()), (ids['ay'], 'y', 'n4'))
+        self.assertEqual(self.entry_rows(self.db), [(ids['ay'], 'n4')])
+
+    def test_restore_hook_set_key(self):
+        ids = self.seed_deleted_entries()
+        # The hook puts part a first in the set; the model's label completes the unique key.
+
+        def hook(request, add_param):
+            if request['kind'] == 'restore':
+                request['set'] = [{'column': 'part', 'p': add_param('a')}] + (request.get('set') or [])
+            return request
+        row = self.entry(self.db.with_request_hook(hook)).set_label('x').set_note('n5').restore()
+        self.assertEqual((row.get_id(), row.get_part(), row.get_note()), (ids['ax'], 'a', 'n5'))
+        self.assertEqual(self.entry_rows(self.db), [(ids['ax'], 'n5')])
 
 
 if __name__ == '__main__':

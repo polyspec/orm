@@ -1,7 +1,9 @@
 <?php
 // The shared cases of the request hook (docs/usage.md "Request hook") with the
 // fixture contracts/fixtures/request_hook.dbs: without_hook, read_filter,
-// insert_assign, loaded_row_writes and invalid_param. A handle from
+// insert_assign, loaded_row_writes, invalid_param, restore_key,
+// restore_condition, restore_no_key, restore_rewritten_key and
+// restore_hook_set_key. A handle from
 // Db::withRequestHook calls its hook with each request right before planning;
 // the hook changes $r->ir in place and adds parameters with $r->param(). Each
 // case installs the fixture on the empty database of a DSN. The unit test
@@ -20,6 +22,7 @@ use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Request;
 use Polyspec\Orm\RuntimeModel;
+use Polyspec\Orm\Tests\RequestHookCase\HookEntry;
 use Polyspec\Orm\Tests\RequestHookCase\HookItem;
 
 $work = sys_get_temp_dir() . '/orm-php-request-hook-' . getmypid();
@@ -219,6 +222,118 @@ function invalidParam(string $dsn): void
     $db->close();
 }
 
+/** A hook that ANDs part = $part into the root where of every read and restore. */
+function partScope(string $part): Closure
+{
+    return static function (Request $r) use ($part): void {
+        if ($r->ir['kind'] === 'restore' || in_array($r->ir['kind'], READ_KINDS, true)) {
+            hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
+        }
+    };
+}
+
+/**
+ * Creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0 through $db, soft deletes each and
+ * returns their ids by part and label.
+ */
+function seedDeletedEntries(Db $db): array
+{
+    $ids = [];
+    foreach ([['a', 'x'], ['b', 'x'], ['a', 'y']] as [$part, $label]) {
+        $row = (new HookEntry)($db)->setPart($part)->setLabel($label)->setNote('n0')->create();
+        $ids[$part . $label] = $row->getId();
+        $row->delete();
+    }
+    return $ids;
+}
+
+/** The id and note of every hook_entry row that $db reads, which are the rows not deleted. */
+function entryRows(Db $db): array
+{
+    $out = [];
+    foreach ((new HookEntry)($db)->gets() as $row) {
+        $out[] = [$row->getId(), $row->getNote()];
+    }
+    return $out;
+}
+
+/** The set names label and the hook's condition names part: together they cover the unique key. */
+function restoreKeyCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $ids = seedDeletedEntries($db);
+    $row = (new HookEntry)($db->withRequestHook(partScope('a')))->setLabel('x')->setNote('n1')->restore();
+    hookCheck([$row->getId(), $row->getPart(), $row->getLabel(), $row->getNote()] === [$ids['ax'], 'a', 'x', 'n1'], 'the restore returns (a, x) with note n1: ' . json_encode($row->toArray()));
+    hookCheck(entryRows($db) === [[$ids['ax'], 'n1']], 'the connection reads only (a, x) with note n1: ' . json_encode(entryRows($db)));
+    $db->close();
+}
+
+/** The set names the primary key; the hook's condition narrows the restore to the rows of its part. */
+function restoreConditionCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $ids = seedDeletedEntries($db);
+    $e = hookRaised(fn() => (new HookEntry)($db->withRequestHook(partScope('b')))->setId($ids['ay'])->setNote('n2')->restore());
+    hookCheck($e instanceof OrmException && $e->code_ === Code::NO_ROWS, 'the restore outside the hook condition fails with NO_ROWS: ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
+    hookCheck(entryRows($db) === [], 'the restore outside the hook condition restores no row: ' . json_encode(entryRows($db)));
+    $row = (new HookEntry)($db->withRequestHook(partScope('a')))->setId($ids['ay'])->setNote('n2')->restore();
+    hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n2'], 'the restore inside the hook condition returns (a, y) with note n2: ' . json_encode($row->toArray()));
+    $db->close();
+}
+
+/** Part from the hook and no label cover no key: IR_INVALID before any statement. */
+function restoreNoKeyCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    seedDeletedEntries($db);
+    $events = 0;
+    $db->subscribe(static function () use (&$events): void {
+        $events++;
+    });
+    $e = hookRaised(fn() => (new HookEntry)($db->withRequestHook(partScope('a')))->setNote('n3')->restore());
+    hookCheck($e instanceof OrmException && $e->code_ === Code::IR_INVALID, 'the restore without a key fails with IR_INVALID: ' . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage()));
+    hookCheck($events === 0, "the refused restore sends no statement, got $events events");
+    $db->close();
+}
+
+/** The hook scopes the restore to part a and gives the model's label its own value y. */
+function restoreRewrittenKeyCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $ids = seedDeletedEntries($db);
+    $scope = partScope('a');
+    $h = $db->withRequestHook(static function (Request $r) use ($scope): void {
+        if ($r->ir['kind'] === 'restore') {
+            foreach (array_keys($r->ir['set']) as $i) {
+                if ($r->ir['set'][$i]['column'] === 'label') {
+                    $r->ir['set'][$i]['p'] = $r->param('y');
+                }
+            }
+        }
+        $scope($r);
+    });
+    $row = (new HookEntry)($h)->setLabel('x')->setNote('n4')->restore();
+    hookCheck([$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n4'], 'the restore returns (a, y) with note n4: ' . json_encode($row->toArray()));
+    hookCheck(entryRows($db) === [[$ids['ay'], 'n4']], 'the connection reads only (a, y) with note n4: ' . json_encode(entryRows($db)));
+    $db->close();
+}
+
+/** The hook puts part a first in the set; the model's label completes the unique key. */
+function restoreHookSetKeyCase(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    $ids = seedDeletedEntries($db);
+    $h = $db->withRequestHook(static function (Request $r): void {
+        if ($r->ir['kind'] === 'restore') {
+            array_unshift($r->ir['set'], ['column' => 'part', 'p' => $r->param('a')]);
+        }
+    });
+    $row = (new HookEntry)($h)->setLabel('x')->setNote('n5')->restore();
+    hookCheck([$row->getId(), $row->getPart(), $row->getNote()] === [$ids['ax'], 'a', 'n5'], 'the restore returns (a, x) with note n5: ' . json_encode($row->toArray()));
+    hookCheck(entryRows($db) === [[$ids['ax'], 'n5']], 'the connection reads only (a, x) with note n5: ' . json_encode(entryRows($db)));
+    $db->close();
+}
+
 /** The case functions by shared case ID; each takes the DSN of an empty database. */
 const REQUEST_HOOK_CASES = [
     'without_hook' => 'withoutHook',
@@ -226,6 +341,11 @@ const REQUEST_HOOK_CASES = [
     'insert_assign' => 'insertAssign',
     'loaded_row_writes' => 'loadedRowWrites',
     'invalid_param' => 'invalidParam',
+    'restore_key' => 'restoreKeyCase',
+    'restore_condition' => 'restoreConditionCase',
+    'restore_no_key' => 'restoreNoKeyCase',
+    'restore_rewritten_key' => 'restoreRewrittenKeyCase',
+    'restore_hook_set_key' => 'restoreHookSetKeyCase',
 ];
 
 /** Runs case $id on the empty database of $dsn and fails when a check of it failed. */

@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: de0785ad2ad8a8768fc79d107949fbf9090bf577bc0dc2d5f7fa8d9a35a3716b -->
+<!-- source-sha256: f560fc6e09ab0b896ea6a768b7dcc27a1960545961287067b7f6c6c1f3780f67 -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -352,7 +352,7 @@ await master.transaction(async () => {
 
 ### Soft delete한 행 되돌리기 {#restore-a-soft-deleted-row}
 
-`soft_delete` setting이 있는 테이블의 삭제는 행과 그 unique key 값을 남기고, 읽기는 그 행을 반환하지 않으므로 같은 key를 다시 삽입하면 `DUPLICATE_KEY`로 실패한다. `restore()`는 그런 행을 되돌린다. 새 모델에 primary key나 unique key 하나의 값과, 다른 컬럼의 새 값을 지정하고 `restore()`를 호출한다. 이 호출은 `UPDATE` 하나로 새 값을 쓰고 soft delete 컬럼을 비우며([protocol](protocol.ko.md#_1-5-restore)), 같은 key로 기본 select 집합의 행을 읽어 조회한 모델로 반환한다.
+`soft_delete` setting이 있는 테이블의 삭제는 행과 그 unique key 값을 남기고, 읽기는 그 행을 반환하지 않으므로 같은 key를 다시 삽입하면 `DUPLICATE_KEY`로 실패한다. `restore()`는 그런 행을 되돌린다. 새 모델에 primary key나 unique key 하나의 값과, 다른 컬럼의 새 값을 지정하고 `restore()`를 호출한다. 이 호출은 지정 값을 요청의 `set`으로 보내고, planner는 request hook 뒤에 key를 고르므로 hook은 `update`처럼 restore에 조건을 더할 수 있다. 이 호출은 `UPDATE` 하나로 새 값을 쓰고 soft delete 컬럼을 비우며([protocol](protocol.ko.md#_1-5-restore)), 그 key의 값으로 기본 select 집합의 행을 읽어 조회한 모델로 반환한다.
 
 ```go
 row, err := model.Membership().Connect(master).SetTeamId(1).SetMemberId(2).SetRole("owner").Restore()
@@ -367,7 +367,7 @@ let row = Membership::new().connect(&master).set_team_id(1).set_member_id(2).set
 const row = await new Membership().connect(master).setTeamId(1).setMemberId(2).setRole('owner').restore();
 ```
 
-- key는 모든 primary key 컬럼에 값을 지정했으면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 지정한 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. 나머지 지정 값은 새 값이며 `update`처럼 할당한다. key의 값이 없으면 `CONFIG`로 실패하고, primary key나 soft delete 컬럼의 할당, `soft_delete`가 없는 테이블은 `IR_INVALID`로 실패한다.
+- key는 hook 뒤 요청의 지정 값과, 함수, 값 함수, ref, subquery 없는 컬럼의 `eq` 조건이 모든 primary key 컬럼에 값을 주면 primary key이고, 그렇지 않으면 컬럼 모두에 값을 주는 첫 unique key(이름 순서)다. key 값은 null, raw, plus, minus가 아닌 일반 값이다. key 컬럼의 지정 값은 조건이고, 나머지 지정 값은 새 값이며 `update`처럼 할당한다. hook이 더한 조건은 restore를 더 좁힌다. key의 값이 없으면 문장 없이 `IR_INVALID`로 실패하며, primary key나 soft delete 컬럼의 새 값, `soft_delete`가 없는 테이블도 그렇다.
 - 지워지지 않은 행은 바뀌지 않은 채 반환되며 새 값을 포함해 아무것도 쓰지 않는다. 어떤 행도 갖지 않은 key는 `NO_ROWS`로 실패한다.
 - `audit` setting이 있는 테이블에서 restore는 다른 update와 같다. audit 값을 가진 트랜잭션 안에서 실행하고, audit 기록의 key를 audit 컬럼에 쓰며, trigger가 그 버전을 history 테이블에 기록한다. audit이 없으면 `CONFIG`로 실패한다.
 - restore는 soft delete처럼 `updated` 컬럼을 할당하지 않는다. update와 읽기는 문장 두 개이며, 트랜잭션 안에서는 한 상태를 본다.
@@ -490,7 +490,7 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 - model은 자기가 연결된 handle을 거친다. transaction 안에서 연결이 없는 model은 transaction을 시작한 handle을 거친다. hook이 있는 handle로 읽거나 만든 행은 그 handle을 지키므로, 그 뒤의 `update`, `delete`, `restore`도 hook을 지난다. hook이 있는 handle에서 시작한 transaction은 callback의 model에 hook을 지키며, 그 안에서 연결의 다른 handle에 연결한 model은 그 handle의 hook으로 실행된다.
 - 만든 행은 호출자가 지정한 값을 가진다. hook이 지정한 값은 써지지만 행으로 다시 읽히지 않는다.
 - hook이 없는 handle은 model이 만든 request를 복사하거나 부르는 일 없이 그대로 plan한다.
-- 공유 case `contracts/fixtures/request_hook.dbs`는 모든 client에서 SQLite로 실행된다: hook이 더한 predicate가 읽기, count, page를 거르고, hook이 더한 assignment를 행 하나의 insert와 여러 행의 insert가 쓰며, 읽은 행의 update와 delete가 hook을 지나고, 매개변수 밖의 index는 statement 전에 `IR_INVALID`로 실패하며, hook이 없는 handle은 모든 행을 읽는다.
+- 공유 case `contracts/fixtures/request_hook.dbs`는 모든 client에서 SQLite로 실행된다: hook이 더한 predicate가 읽기, count, page를 거르고, hook이 더한 assignment를 행 하나의 insert와 여러 행의 insert가 쓰며, 읽은 행의 update와 delete가 hook을 지나고, 매개변수 밖의 index는 statement 전에 `IR_INVALID`로 실패하며, hook이 없는 handle은 모든 행을 읽고, restore는 지정 값과 hook이 더한 조건에서 key를 얻으며, hook이 더한 조건은 그 밖의 행의 restore를 막고, 값과 조건이 어떤 key도 덮지 않는 restore는 statement 전에 `IR_INVALID`로 실패한다.
 
 ## 11. 자주 나는 에러
 

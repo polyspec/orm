@@ -33,13 +33,16 @@ type plannerSlot struct {
 	KeyTypes  []string `json:"key_types,omitempty"`
 }
 
-// compilePlannerCase는 planner fixture case의 input에 schema/bench.dbs의
+// compilePlannerCase는 planner fixture case의 input에 그 case의 schema 문서의
 // manifest_hash를 더해 각 dialect의 engine으로 compile하고, 기대한
 // statement나 error code와 비교한다.
 func compilePlannerCase(t *testing.T, id string) {
 	t.Helper()
 	c := featureFixture(t, "planner", id, "compile")
-	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "schema", "bench.dbs"))
+	if c.Schema == "" {
+		t.Fatalf("case %s names no schema; give it the repository path of its dbspec document", id)
+	}
+	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", filepath.FromSlash(c.Schema)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,6 +139,30 @@ func TestCoveragePlannerRestore(t *testing.T) {
 func TestCoveragePlannerRestoreRejectsNonKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_restore_rejects_non_key")
+}
+
+// TestCoveragePlannerRestoreKeyFromSet compiles a restore whose set names the primary key, which becomes the condition.
+func TestCoveragePlannerRestoreKeyFromSet(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore_key_from_set")
+}
+
+// TestCoveragePlannerRestoreExtraCondition compiles a restore whose where narrows the key of its set.
+func TestCoveragePlannerRestoreExtraCondition(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore_extra_condition")
+}
+
+// TestCoveragePlannerRestorePrimaryKeyFirst compiles a restore whose set covers the primary key and a unique key.
+func TestCoveragePlannerRestorePrimaryKeyFirst(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore_primary_key_first")
+}
+
+// TestCoveragePlannerRestoreFirstUniqueByName compiles a restore whose set covers two unique keys.
+func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_restore_first_unique_by_name")
 }
 
 // TestCoveragePlannerTables는 subquery, join, relation이 있는 select의 step마다

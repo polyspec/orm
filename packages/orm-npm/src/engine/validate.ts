@@ -1,6 +1,6 @@
 // Request validation against the manifest. Every client renders the same
 // request; the rules below are the shared statement rules.
-import type { Assignment, Group, Join, Predicate, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
+import type { Assignment, Group, Item, Join, Predicate, Request, RequestQuery, Subquery, OrmFunction } from '../ir.js';
 import { OrmError } from '../runtime_error.js';
 import { columnFunctionArity, columnFunctionTypes, isValueFunction, valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf as columnOf, type Entity, type Field as Column, type RuntimeModel } from './model.js';
@@ -470,10 +470,10 @@ export function validate(m: RuntimeModel, r: Request): void {
       v.assign(ent, r, a);
       // A VALUES list has no current row for plus_p or minus_p to read; on_duplicate does.
       if (r.kind === 'insert' && (a.plus_p !== undefined || a.minus_p !== undefined)) fail('IR_INVALID', `insert cannot assign ${a.column} by plus or minus`);
-      // The key and the soft delete column are the table's own: a restore clears the latter itself.
-      if (r.kind === 'update' || r.kind === 'restore') {
+      // The key is the table's own. A restore checks its set with its key below.
+      if (r.kind === 'update') {
         const c = columnOf(ent, a.column)!;
-        if (c.primary || c.identity || (r.kind === 'restore' && a.column === ent.softDelete)) fail('IR_INVALID', `cannot update ${a.column}`);
+        if (c.primary || c.identity) fail('IR_INVALID', `cannot update ${a.column}`);
       }
     }
   }
@@ -498,7 +498,62 @@ export function validate(m: RuntimeModel, r: Request): void {
     if (!columnOf(ent, r.optimistic.column)) fail('COLUMN_UNKNOWN', `${r.entity}.${r.optimistic.column}`);
     v.params([r.optimistic.p]);
   }
-  if ((r.kind === 'update' || r.kind === 'delete' || r.kind === 'restore') && (!r.where || r.where.items.length === 0)) fail('IR_INVALID', `${r.kind} without where`);
-  // restore 는 지워진 행만 고치므로 읽은 version 과 비교할 것이 없다.
-  if (r.kind === 'restore' && r.optimistic !== undefined) fail('IR_INVALID', 'restore takes no optimistic');
+  if ((r.kind === 'update' || r.kind === 'delete') && (!r.where || r.where.items.length === 0)) fail('IR_INVALID', `${r.kind} without where`);
+  if (r.kind === 'restore') {
+    // restore 는 지워진 행만 고치므로 읽은 version 과 비교할 것이 없다.
+    if (r.optimistic !== undefined) fail('IR_INVALID', 'restore takes no optimistic');
+    restoreKey(ent, r);
+  }
+}
+
+/** The parts of the statement of a restore request: the key that names its row, the conditions and the new values. */
+export interface RestoreParts {
+  /** The primary key, or the unique key, whose columns the request gives values. */
+  readonly key: readonly string[];
+  /** The where of the request with an eq condition for each set value of a key column. */
+  readonly where: Group;
+  /** The set values of the columns outside the key: the new values of the row. */
+  readonly set: readonly Assignment[];
+}
+
+/**
+ * Picks the key of a restore request (docs/protocol.md 1.5) after the request hook. The set values with a parameter
+ * and the eq conditions with a parameter that the where joins with and give columns their values; the key is the
+ * primary key when they cover it, otherwise the first unique key in name order that they cover. A set value of a key
+ * column becomes a condition, every other set value is a new value, and the where keeps its other conditions, which
+ * narrow the restore further; the key still names at most one row.
+ */
+export function restoreKey(ent: Entity, r: Request): RestoreParts {
+  if (ent.softDelete === '') fail('IR_INVALID', `restore of ${ent.name}, which has no soft_delete setting`);
+  const items = r.where?.items ?? [];
+  const valued = new Set<string>();
+  items.forEach((item, i) => {
+    if (i > 0 && itemConn(item) === 'or') fail('IR_INVALID', `restore of ${ent.name} joins the conditions of its where with and`);
+    const p = item.pred;
+    if (p !== undefined && p.op === 'eq' && p.p !== undefined && p.fn === undefined && p.value === undefined && p.ref === undefined && p.sub === undefined) valued.add(p.column ?? '');
+  });
+  for (const a of r.set ?? []) if (a.p !== undefined) valued.add(a.column);
+  const covered = (columns: readonly string[]) => columns.length > 0 && columns.every(c => valued.has(c));
+  // indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
+  const uniques = ent.uniques.map((columns, i) => ({ name: ent.indexes[i]!, columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const key = covered(ent.primaryKey) ? ent.primaryKey : uniques.find(u => covered(u.columns))?.columns
+    ?? fail('IR_INVALID', `restore of ${ent.name} gives no primary key or unique key a value in its set or in an eq condition of its where`);
+  const where: Item[] = [...items];
+  const set: Assignment[] = [];
+  for (const a of r.set ?? []) {
+    if (a.p !== undefined && key.includes(a.column)) {
+      where.push({ pred: { ...(where.length > 0 ? { conn: 'and' } : {}), column: a.column, op: 'eq', p: a.p } });
+      continue;
+    }
+    // The key and the soft delete column are the table's own: a restore clears the latter itself.
+    const c = columnOf(ent, a.column)!;
+    if (c.primary || c.identity || a.column === ent.softDelete) fail('IR_INVALID', `restore cannot assign ${a.column}`);
+    set.push(a);
+  }
+  return { key, where: { items: where }, set };
+}
+
+/** The connector that joins an item to the item before it. */
+function itemConn(item: Item): string {
+  return item.pred?.conn ?? item.group?.conn ?? item.joined?.conn ?? '';
 }

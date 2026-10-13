@@ -1921,67 +1921,65 @@ abstract class Model implements \JsonSerializable
     }
 
     /**
-     * Restores the soft-deleted row that the set values name by its primary key
-     * or one unique key and returns the restored row. It clears the soft delete
-     * column with an update that, on an audited table, writes the audit of the transaction
-     * like any other update. A row that is not deleted is returned unchanged
-     * and nothing is written; a missing row is NO_ROWS. Reads never return a
-     * soft-deleted row: restore names it explicitly.
+     * Restores the soft-deleted row that the set values name and returns the restored row. It sends the set
+     * values as the restore request's set; the planner picks the key after the request hook from the set values
+     * and the eq conditions of the where (docs/protocol.md 1.5): the primary key when they cover it, otherwise
+     * the first unique key in name order. A set value of a key column is a condition and every other set value is
+     * a new value written with the restore. It clears the soft delete column with an update that, on an audited
+     * table, writes the audit of the transaction like any other update, and then reads the row by the values of
+     * that key. A row that is not deleted is returned unchanged and nothing is written; a missing row is NO_ROWS.
+     * Reads never return a soft-deleted row: restore names it explicitly.
      */
     public function restore(): static
     {
         [$db, $frame] = $this->executor();
-        $meta = static::meta();
-        // key는 모든 column에 값이 있는 primary key, 아니면 이름 순서로 첫 unique key다.
-        $values = [];
+        $r = (new static())->build('restore', $db);
+        // $own maps the parameter of each value the model sets to its column; the hook adds parameters after them.
+        $own = [];
         foreach ($this->sets as $column => $spec) {
-            if (array_key_exists('value', $spec)) {
-                $values[$column] = $spec['value'];
+            $a = $this->assignIr($r, $column, $spec);
+            if (isset($a['p'])) {
+                $own[$a['p']] = $column;
             }
+            $r->ir['set'][] = $a;
         }
-        $covered = static function (array $columns) use ($values): bool {
-            foreach ($columns as $column) {
-                if (!array_key_exists($column, $values)) {
-                    return false;
-                }
-            }
-            return true;
-        };
-        $key = null;
-        if ($covered($meta['pk'])) {
-            $key = $meta['pk'];
-        } else {
-            $unique = $meta['unique'];
-            ksort($unique, SORT_STRING);
-            foreach ($unique as $columns) {
-                if ($covered($columns)) {
-                    $key = $columns;
-                    break;
-                }
-            }
-        }
-        if ($key === null) {
-            throw new OrmException(Code::CONFIG, "restore requires the set values of the primary key or a unique key of {$meta['entity']}");
-        }
-        // key 조건은 read와 같은 방법으로 만들므로 restore update와 그 뒤의 read가 같은 행을 같은
-        // 값 변환으로 찾는다. key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이다.
+        $db->writeOf($frame, $r);
+        // $r is the request as the hook left it, so its key is the key the planner picked.
+        $key = Validator::restoreKey(static::meta(), $r->ir)['key'];
         $keys = [];
         $args = [];
         foreach ($key as $column) {
             $keys[] = ['conn' => $keys === [] ? '' : 'and', 'op' => '', 'column' => $column, 'columns' => [], 'compare' => ''];
-            $args[] = $values[$column];
+            $args[] = $this->restoreKeyValue($r, $own, $column);
         }
         $q = new static();
         $q->conn = $this->conn;
         $q->whereChain('', $keys, $args);
-        $r = $q->build('restore', $db);
-        foreach ($this->sets as $column => $spec) {
-            if (!in_array($column, $key, true)) {
-                $r->ir['set'][] = $this->assignIr($r, $column, $spec);
+        return $q->get();
+    }
+
+    /**
+     * The value of a key column of the restore request $r as the hook left it. A set item whose parameter is one the
+     * model added for that same column ($own) takes the model's own value, which the read converts as any condition
+     * value; any other set item or eq condition of the where on the column takes its parameter, as the hook left it.
+     *
+     * @param array<int, string> $own the column of each parameter the model added for its set values
+     */
+    private function restoreKeyValue(Request $r, array $own, string $column): mixed
+    {
+        foreach ($r->ir['set'] ?? [] as $a) {
+            if ($a['column'] === $column && isset($a['p'])) {
+                return ($own[$a['p']] ?? null) === $column ? $this->sets[$column]['value'] : $r->params[$a['p']];
             }
         }
-        $db->writeOf($frame, $r);
-        return $q->get();
+        foreach ($r->ir['where']['items'] ?? [] as $item) {
+            $pr = $item['pred'] ?? null;
+            if ($pr !== null && ($pr['column'] ?? '') === $column && ($pr['op'] ?? '') === 'eq' && isset($pr['p'])
+                && !isset($pr['fn']) && !isset($pr['value']) && !isset($pr['ref']) && !isset($pr['sub'])) {
+                return $r->params[$pr['p']];
+            }
+        }
+        throw new OrmException(Code::INTERNAL, "restore key column $column has no value in the request");
     }
 
     /** @internal the connection of a loaded row */

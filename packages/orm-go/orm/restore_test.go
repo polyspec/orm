@@ -72,14 +72,14 @@ func restoreTextRows(t *testing.T, raw *sql.DB, query string) [][]string {
 //   - soft delete한 행의 unique key 값은 남으므로 같은 key의 insert는
 //     DUPLICATE_KEY다.
 //   - 기본 read는 지운 행을 읽지 않는다.
-//   - restore는 primary key나 unique key 하나의 set 값으로 지운 행을 찾아
-//     soft delete column을 NULL로 쓰는 update를 하고, 되돌린 행을 돌려준다.
-//     key 밖의 set 값은 그 update가 함께 쓰는 새 값이다.
+//   - restore는 set 값만 보내고, planner가 고른 primary key나 unique key 하나의
+//     set 값으로 지운 행을 찾아 soft delete column을 NULL로 쓰는 update를 하고,
+//     되돌린 행을 돌려준다. key 밖의 set 값은 그 update가 함께 쓰는 새 값이다.
 //     audit table이면 transaction의 audit 기록 key를 쓰고 trigger가 그
 //     update를 기록하며, audit이 없으면 CONFIG다.
 //   - 지워지지 않은 행의 restore는 새 값도 쓰지 않고 그 행을 돌려주며, 없는
 //     행의 restore는 NO_ROWS다.
-//   - key의 값이 없는 restore는 CONFIG다.
+//   - key의 값이 없는 restore는 statement 없이 IR_INVALID다.
 func restoreCase(t *testing.T, driver, dsn string) {
 	t.Helper()
 	s := fixtureSchema(t, "restore")
@@ -197,11 +197,11 @@ func restoreCase(t *testing.T, driver, dsn string) {
 	if _, err := core(labels, map[string]any{"name": "blue"}).Restore(); orm.ErrorCode(err) != orm.CodeNoRows {
 		t.Fatalf("restore of an absent row = %v, want NO_ROWS", err)
 	}
-	if _, err := core(labels, map[string]any{"color": "x"}).Restore(); orm.ErrorCode(err) != orm.CodeConfig {
-		t.Fatalf("restore without the values of a key = %v, want CONFIG", err)
+	if _, err := core(labels, map[string]any{"color": "x"}).Restore(); orm.ErrorCode(err) != orm.CodeIrInvalid {
+		t.Fatalf("restore without the values of a key = %v, want IR_INVALID", err)
 	}
-	if _, err := core(labels, nil).Restore(); orm.ErrorCode(err) != orm.CodeConfig {
-		t.Fatalf("restore without key values = %v, want CONFIG", err)
+	if _, err := core(labels, nil).Restore(); orm.ErrorCode(err) != orm.CodeIrInvalid {
+		t.Fatalf("restore without key values = %v, want IR_INVALID", err)
 	}
 
 	change := map[bool]string{true: "`change`", false: `"change"`}[driver == "mysql"]

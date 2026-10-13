@@ -8,6 +8,7 @@ from polyspec.orm.database import (Db, Executor, _ACTIVE, convert, key_of_values
                                    query, row_key, scalar, scalar_key, statement,
                                    write)
 from polyspec.orm.engine.model import Entity, Field, entity_of, field_of
+from polyspec.orm.engine.validate import restore_key
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import markdown_links
 from polyspec.orm.model import Collection, Model
@@ -558,44 +559,51 @@ def _delete_one(c: Core, recursive: bool) -> None:
 
 
 def restore(c: Core):
-    """soft delete 한 행을 되돌린다(soft delete column을 NULL로 쓰는 update)그리고
-    그 행을 읽어 돌려준다."""
+    """soft delete 한 행을 되돌리고(soft delete column을 NULL로 쓰는 update) 그 행을 읽어 돌려준다. set 값을 restore
+    request의 set으로 보내고, planner가 request hook 뒤에 set 값과 where의 eq 조건에서 key를 고른다(docs/protocol.md
+    1.5): 그것들이 덮으면 primary key, 아니면 이름 순서로 첫 unique key다. key column의 set 값은 조건이고 다른 set
+    값은 되돌리는 행에 update처럼 함께 쓰는 새 값이다. 그 뒤 그 key의 값으로 행을 읽는다. 지워지지 않은 행은 아무것도
+    쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS다."""
     ex = _terminal(c)
     schema = c.ent.entity
-    values: dict = {}
-    for s in c.sets:
-        if not s.null and not s.plus and not s.minus:
-            values[s.column] = s.value
-
-    def covered(columns) -> bool:
-        return all(column in values for column in columns)
-
-    # unique key는 이름 순서로 고른다.
-    uniques = sorted(({'name': schema.indexes[i], 'columns': list(columns)}
-                      for i, columns in enumerate(schema.uniques)),
-                     key=lambda u: u['name'])
-    key = list(schema.primary_key) if covered(schema.primary_key) \
-        else next((u['columns'] for u in uniques if covered(u['columns'])), None)
-    if key is None:
-        raise OrmError('CONFIG', f'restore requires the set values of the primary key or '
-                                 f'a unique key of {schema.name}')
+    request = _new_model(c.ent).build('restore')
+    if request.error is not None:
+        raise request.error
+    r = {'ir': request.ir, 'params': request.params}
+    set_list = [_assign(r, schema, s) for s in c.sets]
+    if set_list:
+        request.ir['set'] = set_list
+    # own은 model이 set 값마다 더한 parameter의 그 set 값이다. hook은 그 뒤에 parameter를 더한다.
+    own = {a['p']: s for a, s in zip(set_list, c.sets) if a.get('p') is not None}
+    request.finish()
+    written = write(ex, request.ir, request.params)
+    # written은 hook이 남긴 request이므로 그 key는 planner가 고른 key다.
+    key = restore_key(schema, written['request'])['key']
     q = _new_model(c.ent)
     q.conn = c.conn
     q.where_chain('', [type('Key', (), {'conn': '' if i == 0 else 'and', 'op': '',
                                         'column': column, 'columns': (),
                                         'compare': ''})()
                        for i, column in enumerate(key)],
-                  [values.get(column) for column in key])
-    request = q.build('restore')
-    if request.error is not None:
-        raise request.error
-    r = {'ir': request.ir, 'params': request.params}
-    set_list = [_assign(r, schema, s) for s in c.sets if s.column not in key]
-    if set_list:
-        request.ir['set'] = set_list
-    request.finish()
-    write(ex, request.ir, request.params)
+                  [_restore_key_value(own, written, column) for column in key])
     return q.self.get()
+
+
+def _restore_key_value(own: dict, written: dict, column: str):
+    """hook이 남긴 restore request에서 key column의 값이다. parameter가 model이 같은 column에 더한 것인 set item은
+    model 자신의 set 값(read가 다른 조건 값처럼 변환한다)을, 다른 set item과 where의 그 column eq 조건은 hook이 남긴
+    parameter를 쓴다."""
+    request, params = written['request'], written['params']
+    for a in request.get('set') or []:
+        if a['column'] == column and a.get('p') is not None:
+            s = own.get(a['p'])
+            return s.value if s is not None and s.column == column else params[a['p']]
+    for item in (request.get('where') or {}).get('items') or []:
+        p = item.get('pred')
+        if p is not None and p.get('column') == column and p.get('op') == 'eq' and p.get('p') is not None \
+                and not any(p.get(k) is not None for k in ('fn', 'value', 'ref', 'sub')):
+            return params[p['p']]
+    raise OrmError('INTERNAL', f'restore key column {column} has no value in the request')
 
 
 def _in_transaction(conn, fn):

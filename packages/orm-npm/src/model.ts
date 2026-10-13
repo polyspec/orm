@@ -1,7 +1,8 @@
 import { CORE, Core, RowState, configError, isModel, styledField, type EntityDef, type ModelLike, type SetSpec } from './core.js';
 import { encode, type CodecValue, type JsonValue } from './codec.js';
 import { Value as OrderedJsonValue, stringify as orderedJsonStringify } from '@polyspec/ordered-json';
-import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result } from './database.js';
+import { Db, keyOfValues, keyText, keyValue, paginate, query, readTime, resolve, rowKey, scalar, scalarKey, statement, write, type Executor, type Key, type Result, type Written } from './database.js';
+import { restoreKey } from './engine/validate.js';
 import { fieldOf, type Entity, type Field, type RuntimeModel } from './engine/model.js';
 import type { Assemble, Request } from './ir.js';
 import { markdownLinks } from './markdown.js';
@@ -747,32 +748,47 @@ async function deleteOne(c: Core, recursive: boolean): Promise<void> {
 }
 
 /**
- * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. key 는 모든 column 에
- * 값(null, plus, minus 가 아닌 set 값)이 있으면 primary key, 아니면 모든 column 에 값이 있는 첫 unique key(이름
- * 순서)다. key 밖의 set 값은 되돌리는 행에 update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼
- * transaction 의 audit 기록 key 를 쓴다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
+ * soft delete 한 행을 되돌리고(soft delete column 을 NULL 로 쓰는 update) 그 행을 읽어 돌려준다. set 값을 restore request 의
+ * set 으로 보내고, planner 가 request hook 뒤에 set 값과 where 의 eq 조건에서 key 를 고른다(docs/protocol.md 1.5): 그것들이
+ * 덮으면 primary key, 아니면 이름 순서로 첫 unique key 다. key column 의 set 값은 조건이고 다른 set 값은 되돌리는 행에
+ * update 처럼 함께 쓰는 새 값이다. audit table 의 update 는 다른 update 처럼 transaction 의 audit 기록 key 를 쓴다. 그 뒤
+ * 그 key 의 값으로 행을 읽는다. 지워지지 않은 행은 아무것도 쓰지 않고 그대로 돌려주며, 없는 행은 NO_ROWS 다. 기본 read 는
  * 지운 행을 읽지 않는다.
  */
 async function restore(c: Core): Promise<Model> {
   const ex = terminal(c);
   const schema = c.ent.entity;
-  const values = new Map<string, unknown>();
-  for (const s of c.sets) if (!s.null && !s.plus && !s.minus) values.set(s.column, s.value);
-  const covered = (columns: readonly string[]) => columns.every(column => values.has(column));
-  // unique key 는 이름 순서로 고른다. indexes 의 앞부분이 uniques 와 같은 순서의 unique key 이름이다.
-  const uniques = schema.uniques.map((columns, i) => ({ name: schema.indexes[i]!, columns })).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
-  const key = covered(schema.primaryKey) ? schema.primaryKey : uniques.find(u => covered(u.columns))?.columns;
-  if (key === undefined) throw configError(`restore requires the set values of the primary key or a unique key of ${schema.name}`);
-  // key 조건은 read 와 같은 방법으로 만들므로 restore update 와 그 뒤의 read 가 같은 행을 같은 값 변환으로 찾는다.
+  const r = newModel(c.ent).build('restore');
+  if (r.error) throw r.error;
+  const set = c.sets.map(s => assign(r, schema, s));
+  if (set.length > 0) r.ir.set = set;
+  // own 은 model 이 set 값마다 더한 parameter 의 그 set 값이다. hook 은 그 뒤에 parameter 를 더한다.
+  const own = new Map<number, SetSpec>();
+  set.forEach((a, i) => { if (a.p !== undefined) own.set(a.p, c.sets[i]!); });
+  const written = await write(ex, r.finish(), r.params);
+  // written 은 hook 이 남긴 request 이므로 그 key 는 planner 가 고른 key 다.
+  const key = restoreKey(schema, written.request).key;
   const q = newModel(c.ent);
   q.conn = c.conn;
-  q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), key.map(column => values.get(column)));
-  const r = q.build('restore');
-  if (r.error) throw r.error;
-  const set = c.sets.filter(s => !key.includes(s.column)).map(s => assign(r, schema, s));
-  if (set.length > 0) r.ir.set = set;
-  await write(ex, r.finish(), r.params);
+  q.whereChain('', key.map((column, i) => ({ conn: i > 0 ? 'and' : '', op: '', column, columns: [], compare: '' })), key.map(column => restoreKeyValue(own, written, column)));
   return (q.self as Model).get();
+}
+
+/**
+ * hook 이 남긴 restore request 에서 key column 의 값이다. parameter 가 model 이 같은 column 에 더한 것인 set item 은 model
+ * 자신의 set 값(read 가 다른 조건 값처럼 변환한다)을, 다른 set item 과 where 의 그 column eq 조건은 hook 이 남긴 parameter 를 쓴다.
+ */
+function restoreKeyValue(own: ReadonlyMap<number, SetSpec>, written: Written, column: string): unknown {
+  const a = written.request.set?.find(a => a.column === column && a.p !== undefined);
+  if (a !== undefined) {
+    const s = own.get(a.p!);
+    return s !== undefined && s.column === column ? s.value : written.params[a.p!];
+  }
+  for (const item of written.request.where?.items ?? []) {
+    const p = item.pred;
+    if (p !== undefined && p.column === column && p.op === 'eq' && p.p !== undefined && p.fn === undefined && p.value === undefined && p.ref === undefined && p.sub === undefined) return written.params[p.p];
+  }
+  throw new OrmError('INTERNAL', `restore key column ${column} has no value in the request`);
 }
 
 function arrayValue(value: unknown): unknown {

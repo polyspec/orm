@@ -12,12 +12,12 @@ import (
 )
 
 // request hook의 공유 case다(docs/usage.md "Request hook"). contracts/fixtures/request_hook.dbs를 SQLite
-// temp file에 설치하고 hook_item(id identity, part, label)에서 확인한다. hook은 request를 plan하기 직전에
-// 받으며, client는 hook이 하는 일을 알지 못한다.
+// temp file에 설치하고 hook_item(id identity, part, label)과 soft delete table hook_entry(unique key part,
+// label)에서 확인한다. hook은 request를 plan하기 직전에 받으며, client는 hook이 하는 일을 알지 못한다.
 
-// hookFixture는 dsn의 database에 request_hook.dbs를 설치한 연결과 hook_item entity다. 연결은 test가 끝나면
-// 닫힌다. database를 만들고 지우는 일은 호출자가 한다.
-func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity) {
+// hookFixture는 dsn의 database에 request_hook.dbs를 설치한 연결과 hook_item, hook_entry entity다. 연결은
+// test가 끝나면 닫힌다. database를 만들고 지우는 일은 호출자가 한다.
+func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity, *orm.Entity) {
 	t.Helper()
 	s := fixtureSchema(t, "request_hook")
 	db, err := orm.ConnectSchema(dsn, s, orm.Config{})
@@ -32,7 +32,62 @@ func hookFixture(t *testing.T, dsn string) (*orm.DB, *orm.Entity) {
 	if err := db.Utils().Schema().Install(s); err != nil {
 		t.Fatal(err)
 	}
-	return db, rowEntity("hook_item", s, "id", "part", "label")
+	return db, rowEntity("hook_item", s, "id", "part", "label"), rowEntity("hook_entry", s, "id", "part", "label", "note")
+}
+
+// hookEntry is a hook_entry model connected to db with values set.
+func hookEntry(entry *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
+	c := orm.NewCore(entry)
+	entry.New(c)
+	c.Connect(db)
+	for _, column := range []string{"id", "part", "label", "note"} {
+		if v, ok := values[column]; ok {
+			c.Set(column, v)
+		}
+	}
+	return c
+}
+
+// entryRows are the column values of the hook_entry rows that db reads, which are the rows not deleted.
+func entryRows(t *testing.T, entry *orm.Entity, db *orm.DB) []map[string]any {
+	t.Helper()
+	rows, err := orm.Gets[*keywordRow](hookEntry(entry, db, nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []map[string]any
+	for _, r := range rows.Slice() {
+		out = append(out, r.vals)
+	}
+	return out
+}
+
+// seedDeletedEntries creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0 through db, soft
+// deletes each and returns their ids by part and label.
+func seedDeletedEntries(t *testing.T, entry *orm.Entity, db *orm.DB) map[string]any {
+	t.Helper()
+	ids := map[string]any{}
+	for _, v := range [][2]string{{"a", "x"}, {"b", "x"}, {"a", "y"}} {
+		row, err := hookEntry(entry, db, map[string]any{"part": v[0], "label": v[1], "note": "n0"}).Create()
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[v[0]+v[1]] = row.(*keywordRow).vals["id"]
+		if err := row.Orm_().Delete(nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return ids
+}
+
+// partScope adds part = value to the where of every read and restore.
+func partScope(value string) orm.RequestHook {
+	return func(r *ir.Request, addParam func(any) int) error {
+		if r.Kind == "restore" || slices.Contains(hookReadKinds, r.Kind) {
+			andWhere(&r.Query, partIs(addParam, value))
+		}
+		return nil
+	}
 }
 
 // hookItem은 db에 연결한 hook_item model이고 values를 set한다. db가 nil이면 연결하지 않는다.
@@ -113,9 +168,9 @@ func partFilter(value string) orm.RequestHook {
 // requestHookCases는 공유 case ID마다 그 본문이다. 각 본문은 request_hook.dbs를 설치한 빈 database의 연결을 받는다.
 var requestHookCases = []struct {
 	id  string
-	run func(t *testing.T, db *orm.DB, e *orm.Entity)
+	run func(t *testing.T, db *orm.DB, e, entry *orm.Entity)
 }{
-	{"without_hook", func(t *testing.T, db *orm.DB, e *orm.Entity) {
+	{"without_hook", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		seedHookItems(t, e, db)
 		if n := len(hookRows(t, e, db)); n != 3 {
 			t.Fatalf("connection reads %d rows, want 3", n)
@@ -132,7 +187,7 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"read_filter", func(t *testing.T, db *orm.DB, e *orm.Entity) {
+	{"read_filter", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		seedHookItems(t, e, db)
 		hooked := db.WithRequestHook(partFilter("a"))
 		rows := hookRows(t, e, hooked)
@@ -162,7 +217,7 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"insert_assign", func(t *testing.T, db *orm.DB, e *orm.Entity) {
+	{"insert_assign", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
 			if r.Kind != "insert" {
 				return nil
@@ -195,7 +250,7 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"loaded_row_writes", func(t *testing.T, db *orm.DB, e *orm.Entity) {
+	{"loaded_row_writes", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		seedHookItems(t, e, db)
 		var kinds []string
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
@@ -245,7 +300,7 @@ var requestHookCases = []struct {
 		}
 	}},
 
-	{"invalid_param", func(t *testing.T, db *orm.DB, e *orm.Entity) {
+	{"invalid_param", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
 			p := r.NParams + 5
 			andWhere(&r.Query, ir.Pred{Column: "part", Op: "eq", P: &p})
@@ -271,6 +326,109 @@ var requestHookCases = []struct {
 			t.Fatalf("count with a failing hook = %v after %d statements, want the hook error and none", err, statements)
 		}
 	}},
+
+	{"restore_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		ids := seedDeletedEntries(t, entry, db)
+		// The set names label, the hook's condition names part: together they cover the unique key.
+		row, err := hookEntry(entry, db.WithRequestHook(partScope("a")), map[string]any{"label": "x", "note": "n1"}).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		vals := row.(*keywordRow).vals
+		if vals["id"] != ids["ax"] || vals["part"] != "a" || vals["label"] != "x" || vals["note"] != "n1" {
+			t.Fatalf("restore returned %v, want (a, x) with note n1", vals)
+		}
+		rows := entryRows(t, entry, db)
+		if len(rows) != 1 || rows[0]["id"] != ids["ax"] || rows[0]["note"] != "n1" {
+			t.Fatalf("connection reads %v, want only (a, x) with note n1", rows)
+		}
+	}},
+
+	{"restore_condition", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		ids := seedDeletedEntries(t, entry, db)
+		// The set names the primary key; the hook's condition part = b excludes the row of part a.
+		_, err := hookEntry(entry, db.WithRequestHook(partScope("b")), map[string]any{"id": ids["ay"], "note": "n2"}).Restore()
+		if orm.ErrorCode(err) != orm.CodeNoRows {
+			t.Fatalf("restore outside the hook condition = %v, want NO_ROWS", err)
+		}
+		if rows := entryRows(t, entry, db); len(rows) != 0 {
+			t.Fatalf("connection reads %v after the restore outside the hook condition, want no row", rows)
+		}
+		row, err := hookEntry(entry, db.WithRequestHook(partScope("a")), map[string]any{"id": ids["ay"], "note": "n2"}).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n2" {
+			t.Fatalf("restore returned %v, want (a, y) with note n2", vals)
+		}
+	}},
+
+	{"restore_no_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		seedDeletedEntries(t, entry, db)
+		statements := 0
+		unsubscribe, err := db.Subscribe(func(orm.StatementEvent) error { statements++; return nil })
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer unsubscribe()
+		// part from the hook and no label cover no key.
+		_, err = hookEntry(entry, db.WithRequestHook(partScope("a")), map[string]any{"note": "n3"}).Restore()
+		if orm.ErrorCode(err) != orm.CodeIrInvalid {
+			t.Fatalf("restore without a key = %v, want IR_INVALID", err)
+		}
+		if statements != 0 {
+			t.Fatalf("%d statements ran, want none", statements)
+		}
+	}},
+
+	{"restore_rewritten_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		ids := seedDeletedEntries(t, entry, db)
+		// The hook scopes the restore to part a and gives the model's label its own value y.
+		scope := partScope("a")
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+			if r.Kind == "restore" {
+				for i := range r.Set {
+					if r.Set[i].Column == "label" {
+						p := addParam("y")
+						r.Set[i].P = &p
+					}
+				}
+			}
+			return scope(r, addParam)
+		})
+		row, err := hookEntry(entry, hooked, map[string]any{"label": "x", "note": "n4"}).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if vals := row.(*keywordRow).vals; vals["id"] != ids["ay"] || vals["label"] != "y" || vals["note"] != "n4" {
+			t.Fatalf("restore returned %v, want (a, y) with note n4", vals)
+		}
+		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ay"] || rows[0]["note"] != "n4" {
+			t.Fatalf("connection reads %v, want only (a, y) with note n4", rows)
+		}
+	}},
+
+	{"restore_hook_set_key", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		ids := seedDeletedEntries(t, entry, db)
+		// The hook puts part a first in the set; the model's label completes the unique key.
+		hooked := db.WithRequestHook(func(r *ir.Request, addParam func(any) int) error {
+			if r.Kind == "restore" {
+				p := addParam("a")
+				r.Set = append([]ir.Assign{{Column: "part", P: &p}}, r.Set...)
+			}
+			return nil
+		})
+		row, err := hookEntry(entry, hooked, map[string]any{"label": "x", "note": "n5"}).Restore()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if vals := row.(*keywordRow).vals; vals["id"] != ids["ax"] || vals["part"] != "a" || vals["note"] != "n5" {
+			t.Fatalf("restore returned %v, want (a, x) with note n5", vals)
+		}
+		if rows := entryRows(t, entry, db); len(rows) != 1 || rows[0]["id"] != ids["ax"] || rows[0]["note"] != "n5" {
+			t.Fatalf("connection reads %v, want only (a, x) with note n5", rows)
+		}
+	}},
 }
 
 // TestRequestHook은 각 case를 SQLite temp file에서 실행한다. file은 test가 끝나면 지워진다.
@@ -278,8 +436,8 @@ func TestRequestHook(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for _, c := range requestHookCases {
 		t.Run(c.id, func(t *testing.T) {
-			db, e := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"))
-			c.run(t, db, e)
+			db, e, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"))
+			c.run(t, db, e, entry)
 		})
 	}
 }

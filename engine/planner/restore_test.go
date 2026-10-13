@@ -129,12 +129,21 @@ func TestRestorePlansGuardedUpdate(t *testing.T) {
 		{"without audit", dialect.MySQL{}, restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}),
 			"UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL",
 			[]string{"param 0"}},
-		{"new values", dialect.SQLite{}, withSet(restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}, ir.Pred{Conn: "and", Column: "member_id", Op: "eq"}), ir.Assign{Column: "team_id"}),
-			`UPDATE "link" SET "team_id" = ?, "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL`,
-			[]string{"param 2", "audit", "param 0", "param 1"}},
+		{"key from set and where", dialect.SQLite{}, withSet(restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}), ir.Assign{Column: "member_id"}),
+			`UPDATE "link" SET "deleted_at" = NULL, "audit_seq" = ? WHERE "link"."team_id" = ? AND "link"."member_id" = ? AND "link"."deleted_at" IS NOT NULL`,
+			[]string{"audit", "param 0", "param 1"}},
+		{"primary key of set before a unique key of where", dialect.Postgres{}, withSet(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), ir.Assign{Column: "id"}, ir.Assign{Column: "label"}),
+			`UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."id" = $3 AND "tag"."deleted_at" IS NOT NULL`,
+			[]string{"param 2", "param 0", "param 1"}},
 		{"new value and null", dialect.Postgres{}, withSet(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), ir.Assign{Column: "label"}),
 			`UPDATE "tag" SET "label" = $1, "deleted_at" = NULL WHERE "tag"."name" = $2 AND "tag"."deleted_at" IS NOT NULL`,
 			[]string{"param 1", "param 0"}},
+		{"a key and another condition", dialect.MySQL{}, restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}, ir.Pred{Conn: "and", Column: "label", Op: "gt"}),
+			"UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`label` > ? AND `tag`.`deleted_at` IS NOT NULL",
+			[]string{"param 0", "param 1"}},
+		{"a repeated column", dialect.MySQL{}, restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}, ir.Pred{Conn: "and", Column: "name", Op: "eq"}),
+			"UPDATE `tag` SET `deleted_at` = NULL WHERE `tag`.`name` = ? AND `tag`.`name` = ? AND `tag`.`deleted_at` IS NOT NULL",
+			[]string{"param 0", "param 1"}},
 	} {
 		p, err := compileRestore(m, tc.d, tc.request)
 		if err != nil {
@@ -157,29 +166,32 @@ func TestRestorePlansGuardedUpdate(t *testing.T) {
 	}
 }
 
-// TestRestoreRejectsOtherRequests는 key 하나를 eq 값으로 정확히 이름하지 않는
-// restore와 soft_delete가 없는 table의 restore가 IR_INVALID인지 확인한다.
+// TestRestoreRejectsOtherRequests는 set 값과 and로 이은 where의 eq 조건이 key를 덮지 않는
+// restore, or로 이은 where, key 밖의 key, soft delete, audit column assignment와 soft_delete가 없는
+// table의 restore가 IR_INVALID인지 확인한다.
 func TestRestoreRejectsOtherRequests(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := testModel(t, restoreDocument)
 	set := func(r *ir.Request, change func(*ir.Request)) *ir.Request { change(r); return r }
 	for name, r := range map[string]*ir.Request{
-		"part of a unique key":     restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}),
-		"a column that is no key":  restoreRequest(m, "tag", ir.Pred{Column: "label", Op: "eq"}),
-		"a key and another column": restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}, ir.Pred{Conn: "and", Column: "label", Op: "eq"}),
-		"a repeated column":        restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}, ir.Pred{Conn: "and", Column: "name", Op: "eq"}),
-		"another operator":         restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "gt"}),
-		"an or connector":          restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}, ir.Pred{Conn: "or", Column: "member_id", Op: "eq"}),
-		"a null test":              restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "is_null"}),
-		"no condition":             restoreRequest(m, "tag"),
+		"part of a unique key":              restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}),
+		"a column that is no key":           restoreRequest(m, "tag", ir.Pred{Column: "label", Op: "eq"}),
+		"part of a unique key in set":       withSet(restoreRequest(m, "link"), ir.Assign{Column: "member_id"}),
+		"an or connector with a key in set": withSet(restoreRequest(m, "tag", ir.Pred{Column: "label", Op: "eq"}, ir.Pred{Conn: "or", Column: "label", Op: "eq"}), ir.Assign{Column: "name"}),
+		"another operator":                  restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "gt"}),
+		"an or connector":                   restoreRequest(m, "link", ir.Pred{Column: "team_id", Op: "eq"}, ir.Pred{Conn: "or", Column: "member_id", Op: "eq"}),
+		"a null test":                       restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "is_null"}),
+		"no condition":                      restoreRequest(m, "tag"),
 		"a group": set(restoreRequest(m, "tag"), func(r *ir.Request) {
 			p := 0
 			r.NParams = 1
 			r.Where.Items = []ir.Item{{Group: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "name", Op: "eq", P: &p}}}}}}
 		}),
 		"an assignment of the soft delete column": withSet(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), ir.Assign{Column: "deleted_at"}),
-		"an assignment of the primary key":        withSet(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), ir.Assign{Column: "id"}),
-		"an assignment of the audit column":       withSet(restoreRequest(m, "link", ir.Pred{Column: "id", Op: "eq"}), ir.Assign{Column: "audit_seq"}),
+		"a null assignment of the primary key": set(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), func(r *ir.Request) {
+			r.Set = []ir.Assign{{Column: "id", Null: true}}
+		}),
+		"an assignment of the audit column": withSet(restoreRequest(m, "link", ir.Pred{Column: "id", Op: "eq"}), ir.Assign{Column: "audit_seq"}),
 		"an optimistic check": set(restoreRequest(m, "tag", ir.Pred{Column: "name", Op: "eq"}), func(r *ir.Request) {
 			r.Optimistic = &ir.Optimist{Column: "label", P: 0}
 		}),

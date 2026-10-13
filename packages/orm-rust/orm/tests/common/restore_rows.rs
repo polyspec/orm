@@ -130,7 +130,7 @@ fn cast_text(driver: &str, column: &str) -> String {
 ///     그 update를 기록하며, audit이 없으면 CONFIG다.
 ///   - 지워지지 않은 행의 restore는 아무것도 쓰지 않고 그 행을 돌려주며, 없는 행의 restore는 NO_ROWS다.
 ///   - key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이며, 지워지지 않은 행에는 쓰지 않는다.
-///   - key의 값이 없는 restore와 set 값이 없는 restore는 CONFIG다.
+///   - key의 값이 없는 restore와 set 값이 없는 restore는 statement 없이 IR_INVALID다.
 pub async fn restore_case(driver: &str, dsn: &str) {
     let source: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
     let db = Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() })
@@ -225,10 +225,10 @@ pub async fn restore_case(driver: &str, dsn: &str) {
     );
     assert_eq!(
         code(polyspec_orm::model::restore(&with::<Label>(&db, &[("color", text("x"))])).await),
-        polyspec_orm::codes::CONFIG,
+        polyspec_orm::codes::IR_INVALID,
         "{driver}: restore without the values of a key"
     );
-    assert_eq!(code(polyspec_orm::model::restore(&with::<Label>(&db, &[])).await), polyspec_orm::codes::CONFIG, "{driver}: restore without key values");
+    assert_eq!(code(polyspec_orm::model::restore(&with::<Label>(&db, &[])).await), polyspec_orm::codes::IR_INVALID, "{driver}: restore without key values");
 
     let change = if driver == "mysql" { "`change`" } else { "\"change\"" };
     let cast = |column: &str| cast_text(driver, column);

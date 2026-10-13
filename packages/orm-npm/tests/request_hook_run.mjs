@@ -13,6 +13,8 @@ const schema = { manifestText: manifest.manifestText, manifestHash: manifest.man
 const runtime = registerModel(manifest.manifestText, manifest.manifestHash);
 class Item extends Model {}
 Item.entity = { model: runtime, entity: runtime.entities.get('hook_item'), create: core => new Item(core) };
+class Entry extends Model {}
+Entry.entity = { model: runtime, entity: runtime.entities.get('hook_entry'), create: core => new Entry(core) };
 
 const READS = new Set(['one', 'all', 'count', 'group_count', 'sum', 'avg', 'paginate']);
 
@@ -31,6 +33,36 @@ function partFilter(value) {
     if (READS.has(request.kind)) andWhere(request, { column: 'part', op: 'eq', p: addParam(value) });
     return request;
   };
+}
+
+/** Adds part = value to the where of every read and restore. */
+function partScope(value) {
+  return (request, addParam) => {
+    if (request.kind === 'restore' || READS.has(request.kind)) andWhere(request, { column: 'part', op: 'eq', p: addParam(value) });
+    return request;
+  };
+}
+
+function entry(values) {
+  const m = new Entry();
+  for (const [column, value] of Object.entries(values)) m[CORE].setValue(column, value);
+  return m;
+}
+
+/** Creates the hook_entry rows (a, x), (b, x) and (a, y) with note n0 through db, soft deletes each and returns their ids by part and label. */
+async function seedDeletedEntries(db) {
+  const ids = {};
+  for (const [part, label] of [['a', 'x'], ['b', 'x'], ['a', 'y']]) {
+    const row = await entry({ part, label, note: 'n0' }).connect(db).create();
+    ids[part + label] = row.toArray().id;
+    await row.delete();
+  }
+  return ids;
+}
+
+/** The [id, note] of every hook_entry row that db reads, which are the rows not deleted. */
+async function entryRows(db) {
+  return (await new Entry().connect(db).gets()).values().map(row => [row.toArray().id, row.toArray().note]);
 }
 
 function item(values) {
@@ -139,5 +171,59 @@ export const cases = {
       assert.equal(await codeOf(new Item().connect(hooked).getCount()), 'IR_INVALID', 'a parameter index outside the parameters');
       assert.equal(events.length, 0, `no statement runs: ${events.map(e => e.sql)}`);
     } finally { unsubscribe(); }
+  },
+
+  /** The set names label and the hook's condition names part: together they cover the unique key. */
+  async restore_key(db) {
+    const ids = await seedDeletedEntries(db);
+    const row = await entry({ label: 'x', note: 'n1' }).connect(db.withRequestHook(partScope('a'))).restore();
+    const values = row.toArray();
+    assert.deepEqual([values.id, values.part, values.label, values.note], [ids.ax, 'a', 'x', 'n1'], 'the restore returns (a, x) with note n1');
+    assert.deepEqual(await entryRows(db), [[ids.ax, 'n1']], 'the connection reads only (a, x) with note n1');
+  },
+
+  /** The set names the primary key; the hook's condition narrows the restore to the rows of its part. */
+  async restore_condition(db) {
+    const ids = await seedDeletedEntries(db);
+    assert.equal(await codeOf(entry({ id: ids.ay, note: 'n2' }).connect(db.withRequestHook(partScope('b'))).restore()), 'NO_ROWS', 'the restore outside the hook condition');
+    assert.deepEqual(await entryRows(db), [], 'the restore outside the hook condition restores no row');
+    const values = (await entry({ id: ids.ay, note: 'n2' }).connect(db.withRequestHook(partScope('a'))).restore()).toArray();
+    assert.deepEqual([values.id, values.label, values.note], [ids.ay, 'y', 'n2'], 'the restore inside the hook condition returns (a, y) with note n2');
+  },
+
+  /** Part from the hook and no label cover no key: IR_INVALID before any statement. */
+  async restore_no_key(db) {
+    await seedDeletedEntries(db);
+    const events = [];
+    const unsubscribe = db.subscribe(event => events.push(event));
+    try {
+      assert.equal(await codeOf(entry({ note: 'n3' }).connect(db.withRequestHook(partScope('a'))).restore()), 'IR_INVALID', 'a restore without a key');
+      assert.equal(events.length, 0, `no statement runs: ${events.map(e => e.sql)}`);
+    } finally { unsubscribe(); }
+  },
+
+  /** The hook scopes the restore to part a and gives the model's label its own value y. */
+  async restore_rewritten_key(db) {
+    const ids = await seedDeletedEntries(db);
+    const scope = partScope('a');
+    const hooked = db.withRequestHook((request, addParam) => {
+      if (request.kind === 'restore') for (const a of request.set ?? []) if (a.column === 'label') a.p = addParam('y');
+      return scope(request, addParam);
+    });
+    const values = (await entry({ label: 'x', note: 'n4' }).connect(hooked).restore()).toArray();
+    assert.deepEqual([values.id, values.label, values.note], [ids.ay, 'y', 'n4'], 'the restore returns (a, y) with note n4');
+    assert.deepEqual(await entryRows(db), [[ids.ay, 'n4']], 'the connection reads only (a, y) with note n4');
+  },
+
+  /** The hook puts part a first in the set; the model's label completes the unique key. */
+  async restore_hook_set_key(db) {
+    const ids = await seedDeletedEntries(db);
+    const hooked = db.withRequestHook((request, addParam) => {
+      if (request.kind === 'restore') request.set = [{ column: 'part', p: addParam('a') }, ...(request.set ?? [])];
+      return request;
+    });
+    const values = (await entry({ label: 'x', note: 'n5' }).connect(hooked).restore()).toArray();
+    assert.deepEqual([values.id, values.part, values.note], [ids.ax, 'a', 'n5'], 'the restore returns (a, x) with note n5');
+    assert.deepEqual(await entryRows(db), [[ids.ax, 'n5']], 'the connection reads only (a, x) with note n5');
   },
 };

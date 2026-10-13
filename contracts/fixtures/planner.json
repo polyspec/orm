@@ -120,7 +120,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -191,7 +192,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -215,7 +217,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -286,7 +289,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -310,7 +314,397 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE `soft_record` SET `name` = ?, `deleted_at` = NULL WHERE `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"name\" = $1, \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = $2 AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"name\" = ?, \"deleted_at\" = NULL WHERE \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ]
+      },
+      "id": "planner_restore_key_from_set",
+      "input": {
+        "entity": "soft_record",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 2,
+        "set": [
+          {
+            "column": "name",
+            "p": 0
+          },
+          {
+            "column": "seq",
+            "p": 1
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE `soft_record` SET `deleted_at` = NULL WHERE `soft_record`.`name` = ? AND `soft_record`.`seq` = ? AND `soft_record`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"name\" = $1 AND \"soft_record\".\"seq\" = $2 AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 0,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"soft_record\" SET \"deleted_at\" = NULL WHERE \"soft_record\".\"name\" = ? AND \"soft_record\".\"seq\" = ? AND \"soft_record\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "soft_record"
+            ]
+          }
+        ]
+      },
+      "id": "planner_restore_extra_condition",
+      "input": {
+        "entity": "soft_record",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 2,
+        "set": [
+          {
+            "column": "seq",
+            "p": 0
+          }
+        ],
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "name",
+                "op": "eq",
+                "p": 1
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE `badge` SET `code` = ?, `note` = ?, `deleted_at` = NULL WHERE `badge`.`id` = ? AND `badge`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"badge\" SET \"code\" = $1, \"note\" = $2, \"deleted_at\" = NULL WHERE \"badge\".\"id\" = $3 AND \"badge\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "i64"
+              }
+            ],
+            "sql": "UPDATE \"badge\" SET \"code\" = ?, \"note\" = ?, \"deleted_at\" = NULL WHERE \"badge\".\"id\" = ? AND \"badge\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ]
+      },
+      "id": "planner_restore_primary_key_first",
+      "input": {
+        "entity": "badge",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 3,
+        "set": [
+          {
+            "column": "code",
+            "p": 0
+          },
+          {
+            "column": "id",
+            "p": 1
+          },
+          {
+            "column": "note",
+            "p": 2
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/restore_keys.dbs"
+    },
+    {
+      "expected": {
+        "mysql": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "UPDATE `badge` SET `slug` = ?, `note` = ?, `deleted_at` = NULL WHERE `badge`.`code` = ? AND `badge`.`deleted_at` IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ],
+        "postgres": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "UPDATE \"badge\" SET \"slug\" = $1, \"note\" = $2, \"deleted_at\" = NULL WHERE \"badge\".\"code\" = $3 AND \"badge\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ],
+        "sqlite": [
+          {
+            "role": "main",
+            "slots": [
+              {
+                "from": "param",
+                "param": 0,
+                "type": "varchar"
+              },
+              {
+                "from": "param",
+                "param": 2,
+                "type": "text"
+              },
+              {
+                "from": "param",
+                "param": 1,
+                "type": "varchar"
+              }
+            ],
+            "sql": "UPDATE \"badge\" SET \"slug\" = ?, \"note\" = ?, \"deleted_at\" = NULL WHERE \"badge\".\"code\" = ? AND \"badge\".\"deleted_at\" IS NOT NULL",
+            "tables": [
+              "badge"
+            ]
+          }
+        ]
+      },
+      "id": "planner_restore_first_unique_by_name",
+      "input": {
+        "entity": "badge",
+        "ir_version": 1,
+        "kind": "restore",
+        "n_params": 3,
+        "set": [
+          {
+            "column": "slug",
+            "p": 0
+          },
+          {
+            "column": "code",
+            "p": 1
+          },
+          {
+            "column": "note",
+            "p": 2
+          }
+        ]
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/restore_keys.dbs"
     },
     {
       "expected": {
@@ -445,7 +839,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -690,7 +1085,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -889,7 +1285,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1131,7 +1528,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1240,7 +1638,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1364,7 +1763,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1389,7 +1789,8 @@
           "not": true
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1414,7 +1815,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1439,7 +1841,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1536,7 +1939,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1578,7 +1982,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1620,7 +2025,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1662,7 +2068,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1717,7 +2124,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1762,7 +2170,8 @@
         "kind": "count",
         "n_params": 0
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1813,7 +2222,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1866,7 +2276,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1916,7 +2327,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1932,7 +2344,8 @@
         "kind": "all",
         "n_params": 0
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1949,7 +2362,8 @@
         "kind": "sum",
         "n_params": 0
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -1979,7 +2393,8 @@
         "kind": "count",
         "n_params": 0
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2012,7 +2427,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2033,7 +2449,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2062,7 +2479,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2147,7 +2565,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2170,7 +2589,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2193,7 +2613,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2248,7 +2669,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2274,7 +2696,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2300,7 +2723,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2326,7 +2750,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2381,7 +2806,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2407,7 +2833,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2436,7 +2863,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2460,7 +2888,8 @@
         "kind": "all",
         "n_params": 0
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2488,7 +2917,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2736,7 +3166,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2793,7 +3224,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2842,7 +3274,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2871,7 +3304,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2928,7 +3362,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -2985,7 +3420,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3041,7 +3477,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3092,7 +3529,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3200,7 +3638,8 @@
           }
         ]
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3281,7 +3720,8 @@
         "kind": "all",
         "n_params": 1
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3323,7 +3763,8 @@
         "kind": "all",
         "n_params": 1
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3369,7 +3810,8 @@
         "kind": "all",
         "n_params": 1
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     },
     {
       "expected": {
@@ -3407,7 +3849,8 @@
           ]
         }
       },
-      "operation": "compile"
+      "operation": "compile",
+      "schema": "schema/bench.dbs"
     }
   ],
   "feature": "planner"

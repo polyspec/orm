@@ -122,11 +122,11 @@ export async function auditCase(db, driver, dsn) {
  * exclude (note)를 가진 audit table 이고 label 은 unique key (name)를 가진 audit 없는 table 이다.
  * - soft delete 한 행의 unique key 값은 남으므로 같은 key 의 insert 는 DUPLICATE_KEY 다.
  * - 기본 read 는 지운 행을 읽지 않는다.
- * - restore 는 지운 행을 key 로 찾아 soft delete column 을 NULL 로 쓰는 update 를 하고 되돌린 행을 돌려준다.
+ * - restore 는 set 값만 보내고, planner 가 고른 key 로 지운 행을 찾아 soft delete column 을 NULL 로 쓰는 update 를 하고 되돌린 행을 돌려준다.
  *   audit table 이면 transaction 의 audit 기록 key 를 쓰고, audit 이 없으면 CONFIG 다.
  * - 지워지지 않은 행의 restore 는 아무것도 쓰지 않고 그 행을, 없는 행은 NO_ROWS 를 돌려준다.
  * - key 밖의 set 값은 되돌리는 행에 함께 쓰는 새 값이며, 지워지지 않은 행에는 쓰지 않는다.
- * - key 의 값이 없는 restore 는 CONFIG 다.
+ * - key 의 값이 없는 restore 는 statement 없이 IR_INVALID 다.
  * audit 기록의 key 는 실패한 transaction 이 쓴 번호를 database 마다 다르게 건너뛸 수 있으므로 actor 로 찾는다.
  */
 export async function restoreCase(db) {
@@ -165,8 +165,8 @@ export async function restoreCase(db) {
   const label = await make(Label, { name: 'red', color: 'y' }).restore();
   assert.deepEqual(columns(label, ['id', 'name', 'color', 'deleted_at']), { id, name: 'red', color: 'y', deleted_at: null }, 'restored label');
   assert.equal(await codeOf(make(Label, { name: 'blue' }).restore()), 'NO_ROWS', 'restore of an absent row');
-  assert.equal(await codeOf(make(Label, { color: 'x' }).restore()), 'CONFIG', 'restore without the values of a key');
-  assert.equal(await codeOf(make(Label, {}).restore()), 'CONFIG', 'restore without key values');
+  assert.equal(await codeOf(make(Label, { color: 'x' }).restore()), 'IR_INVALID', 'restore without the values of a key');
+  assert.equal(await codeOf(make(Label, {}).restore()), 'IR_INVALID', 'restore without key values');
 
   const [create, remove, restore] = [await auditSeq('create'), await auditSeq('delete'), await auditSeq('restore')];
   const history = await new MembershipHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
