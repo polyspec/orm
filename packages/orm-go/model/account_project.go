@@ -390,3 +390,24 @@ func (x *AccountProjectModel) ForceIndexIxAccountProjectProject() *AccountProjec
 	x.m.ForceIndex("ix_account_project_project")
 	return x
 }
+
+func (x *AccountProjectModel) AccountSeq[T0 argIntEq](v0 T0) *AccountProjectModel {
+	x.m.Where("", chainAccountProjectAccountSeq, v0)
+	return x
+}
+
+func (x *AccountProjectModel) ProjectSeq[T0 argIntEq](v0 T0) *AccountProjectModel {
+	x.m.Where("", chainAccountProjectProjectSeq, v0)
+	return x
+}
+
+func (x *AccountProjectModel) TupleAccountSeqWithProjectSeq(v0 []AccountProjectAccountSeqWithProjectSeq) *AccountProjectModel {
+	x.m.Where("", chainAccountProjectTupleAccountSeqWithProjectSeq, v0)
+	return x
+}
+
+var chainAccountProjectAccountSeq = []orm.ChainKey{{Column: "account_seq"}}
+
+var chainAccountProjectProjectSeq = []orm.ChainKey{{Column: "project_seq"}}
+
+var chainAccountProjectTupleAccountSeqWithProjectSeq = []orm.ChainKey{{Op: "tuple", Columns: []string{"account_seq", "project_seq"}}}

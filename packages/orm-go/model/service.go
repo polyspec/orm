@@ -316,11 +316,18 @@ func (x *ServiceModel) Name[T0 argStringEq](v0 T0) *ServiceModel {
 	return x
 }
 
+func (x *ServiceModel) Seq[T0 argIntEq](v0 T0) *ServiceModel {
+	x.m.Where("", chainServiceSeq, v0)
+	return x
+}
+
 var chainServiceGetBySeq = []orm.ChainKey{{Column: "seq"}}
 
 var chainServiceGtSeq = []orm.ChainKey{{Op: "gt", Column: "seq"}}
 
 var chainServiceName = []orm.ChainKey{{Column: "name"}}
+
+var chainServiceSeq = []orm.ChainKey{{Column: "seq"}}
 
 // GetServiceMemberModels returns the service_member relation result.
 func (x *ServiceModel) GetServiceMemberModels() (*orm.Collection[*ServiceMemberModel], error) {

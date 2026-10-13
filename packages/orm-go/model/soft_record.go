@@ -377,6 +377,13 @@ func (x *SoftRecordModel) Name[T0 argStringEq](v0 T0) *SoftRecordModel {
 	return x
 }
 
+func (x *SoftRecordModel) Seq[T0 argIntEq](v0 T0) *SoftRecordModel {
+	x.m.Where("", chainSoftRecordSeq, v0)
+	return x
+}
+
 var chainSoftRecordGetBySeq = []orm.ChainKey{{Column: "seq"}}
 
 var chainSoftRecordName = []orm.ChainKey{{Column: "name"}}
+
+var chainSoftRecordSeq = []orm.ChainKey{{Column: "seq"}}

@@ -294,3 +294,10 @@ func (x *ProjectModel) OrderByNameDesc(fn ...orm.Func) *ProjectModel {
 	x.m.OrderBy("name", true, fn)
 	return x
 }
+
+func (x *ProjectModel) Seq[T0 argIntEq](v0 T0) *ProjectModel {
+	x.m.Where("", chainProjectSeq, v0)
+	return x
+}
+
+var chainProjectSeq = []orm.ChainKey{{Column: "seq"}}

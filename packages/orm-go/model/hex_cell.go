@@ -342,4 +342,11 @@ func (x *HexCellModel) GetBySeq[T0 argIntEq](v0 T0) (*HexCellModel, error) {
 	return oneHexCell(x.m.By(chainHexCellGetBySeq, v0))
 }
 
+func (x *HexCellModel) Seq[T0 argIntEq](v0 T0) *HexCellModel {
+	x.m.Where("", chainHexCellSeq, v0)
+	return x
+}
+
 var chainHexCellGetBySeq = []orm.ChainKey{{Column: "seq"}}
+
+var chainHexCellSeq = []orm.ChainKey{{Column: "seq"}}

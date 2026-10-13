@@ -1957,6 +1957,11 @@ func (x *AuthorModel) BetweenReadCount[T0 argIntBetween](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) EmailBlindIndex[T0 argStringEqNull](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorEmailBlindIndex, v0)
+	return x
+}
+
 func (x *AuthorModel) GeReadCount[T0 argIntCmp](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorGeReadCount, v0)
 	return x
@@ -2065,6 +2070,11 @@ func (x *AuthorModel) OrderByReadCountDescAndSeqAsc() *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) PhoneBlindIndex[T0 argStringEqNull](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorPhoneBlindIndex, v0)
+	return x
+}
+
 func (x *AuthorModel) PhotoUrl[T0 argStringEqNull](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorPhotoUrl, v0)
 	return x
@@ -2085,6 +2095,16 @@ func (x *AuthorModel) Seq[T0 argIntEq](v0 T0) *AuthorModel {
 	return x
 }
 
+func (x *AuthorModel) ServiceMemberSeq[T0 argIntEq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorServiceMemberSeq, v0)
+	return x
+}
+
+func (x *AuthorModel) ServiceRegionSeq[T0 argIntEq](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorServiceRegionSeq, v0)
+	return x
+}
+
 func (x *AuthorModel) ServiceSeq[T0 argIntEq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorServiceSeq, v0)
 	return x
@@ -2097,6 +2117,11 @@ func (x *AuthorModel) UserSeq[T0 argIntEq](v0 T0) *AuthorModel {
 
 func (x *AuthorModel) UserSeqEqSeq[T0 hasSeq](v0 T0) *AuthorModel {
 	x.m.Where("", chainAuthorUserSeqEqSeq, v0)
+	return x
+}
+
+func (x *AuthorModel) Uuid[T0 argStringEqNull](v0 T0) *AuthorModel {
+	x.m.Where("", chainAuthorUuid, v0)
 	return x
 }
 
@@ -2148,6 +2173,8 @@ var chainAuthorAndUuid = []orm.ChainKey{{Column: "uuid"}}
 
 var chainAuthorBetweenReadCount = []orm.ChainKey{{Op: "between", Column: "read_count"}}
 
+var chainAuthorEmailBlindIndex = []orm.ChainKey{{Column: "email_blind_index"}}
+
 var chainAuthorGeReadCount = []orm.ChainKey{{Op: "ge", Column: "read_count"}}
 
 var chainAuthorGetByName = []orm.ChainKey{{Column: "name"}}
@@ -2180,6 +2207,8 @@ var chainAuthorOrGtReadCount = []orm.ChainKey{{Op: "gt", Column: "read_count"}}
 
 var chainAuthorOrIsClose = []orm.ChainKey{{Column: "is_close"}}
 
+var chainAuthorPhoneBlindIndex = []orm.ChainKey{{Column: "phone_blind_index"}}
+
 var chainAuthorPhotoUrl = []orm.ChainKey{{Column: "photo_url"}}
 
 var chainAuthorReadCount = []orm.ChainKey{{Column: "read_count"}}
@@ -2188,11 +2217,17 @@ var chainAuthorReadCountGtSeq = []orm.ChainKey{{Op: "gt", Column: "read_count", 
 
 var chainAuthorSeq = []orm.ChainKey{{Column: "seq"}}
 
+var chainAuthorServiceMemberSeq = []orm.ChainKey{{Column: "service_member_seq"}}
+
+var chainAuthorServiceRegionSeq = []orm.ChainKey{{Column: "service_region_seq"}}
+
 var chainAuthorServiceSeq = []orm.ChainKey{{Column: "service_seq"}}
 
 var chainAuthorUserSeq = []orm.ChainKey{{Column: "user_seq"}}
 
 var chainAuthorUserSeqEqSeq = []orm.ChainKey{{Column: "user_seq", Compare: "seq"}}
+
+var chainAuthorUuid = []orm.ChainKey{{Column: "uuid"}}
 
 // GetLabel returns the value attached with NewLabel.
 func (x *AuthorModel) GetLabel() any { return x.m.NewValue("label") }

@@ -410,3 +410,17 @@ func (x *ServiceRegionModel) PossibleIsClose(v any) *ServiceRegionModel {
 	x.m.Possible("is_close", v)
 	return x
 }
+
+func (x *ServiceRegionModel) Seq[T0 argIntEq](v0 T0) *ServiceRegionModel {
+	x.m.Where("", chainServiceRegionSeq, v0)
+	return x
+}
+
+func (x *ServiceRegionModel) ServiceSeq[T0 argIntEq](v0 T0) *ServiceRegionModel {
+	x.m.Where("", chainServiceRegionServiceSeq, v0)
+	return x
+}
+
+var chainServiceRegionSeq = []orm.ChainKey{{Column: "seq"}}
+
+var chainServiceRegionServiceSeq = []orm.ChainKey{{Column: "service_seq"}}

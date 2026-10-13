@@ -317,3 +317,10 @@ func (x *TaskModel) OrderByStateDesc(fn ...orm.Func) *TaskModel {
 	x.m.OrderBy("state", true, fn)
 	return x
 }
+
+func (x *TaskModel) Seq[T0 argIntEq](v0 T0) *TaskModel {
+	x.m.Where("", chainTaskSeq, v0)
+	return x
+}
+
+var chainTaskSeq = []orm.ChainKey{{Column: "seq"}}
