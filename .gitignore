@@ -1,6 +1,7 @@
 /bin/
 /dist/
 /packages/orm-npm/dist/
+/packages/dbspec-language/dist/
 /target/
 /bench/rust/target/
 /packages/orm-rust/target/

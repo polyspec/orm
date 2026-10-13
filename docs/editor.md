@@ -8,7 +8,7 @@ The editor tools read dbspec documents through the same parser as every other to
 ## Layers
 
 - **The parser entry.** `@polyspec/orm` exports a subpath that holds `parse`, `emit`, `analyze`, `format` and `readDbspecBytes`, and nothing else. Its modules import no `node:` module, read no Node global (`Buffer`, `process`, `__dirname`, `require`) and load no database driver, so it runs in a browser as in Node. `parseDbspec` and `emitDbspec` live outside `dbspec/index.ts`, which imports `node:crypto`, and `readDbspecBytes` decodes with `TextEncoder` and `TextDecoder`, not `Buffer`.
-- **The language service** (`packages/dbspec-language`). `openDocument(text, {set})` gives the diagnostics with their ranges, the tokens, the folding ranges (a table, a `settings` block, a diagram) and `format()`. It converts code points to UTF-16 offsets; no other layer does. It holds the `dbspec-fmt` command line.
+- **The language service** (`packages/dbspec-language`). `openDocument(text, {set})` gives the diagnostics with their ranges, the tokens, the folding ranges (the blocks) and `format()`. It converts code points to UTF-16 offsets; no other layer does. It holds the `dbspec-fmt` command line.
 - **The adapters**: the language server (`packages/dbspec-lsp`), the CodeMirror extensions (`packages/dbspec-codemirror`) and the VS Code extension (`packages/dbspec-vscode`). An adapter turns the language service's results into its host's form and adds no reading of its own.
 
 ## Import rules
@@ -25,7 +25,7 @@ The language service is node-free so that the CodeMirror host and the VS Code we
 
 - **Diagnostics.** A diagnostic's range runs from its position to the end of the token that starts there. Where no token starts there it is one code point; at the end of a line or of the text it is empty. The message and the rule are those of the parse.
 - **Tokens.** The classes of [syntax analysis](dbspec.md#syntax-analysis); the language server's semantic-token legend is these classes, in the order of that table.
-- **Folding.** A table block, a `settings` block and a diagram block each fold from their opening line to their closing line.
+- **Folding.** A folding range runs from the line of a `{` token to the line of its matching `}` token, when they differ. Only a block (a table, a `settings` block, a diagram) spans lines in dbspec, so the pairs of punctuation tokens are the blocks: folding reads no keyword and no line shape. An unmatched brace is a parse diagnostic and folds nothing.
 - **Formatting.** `format()` of the language service; a document with a diagnostic is refused, and a canonical document gives no edit.
 
 ## Ecosystem mechanisms

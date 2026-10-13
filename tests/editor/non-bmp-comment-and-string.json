@@ -1,0 +1,32 @@
+{
+  "diagnostics": [],
+  "tokens": [
+    { "class": "keyword", "range": [[0, 0], [0, 6]] },
+    { "class": "number", "range": [[0, 7], [0, 8]] },
+    { "class": "name", "range": [[0, 9], [0, 13]] },
+    { "class": "comment", "range": [[2, 0], [2, 9]] },
+    { "class": "keyword", "range": [[3, 0], [3, 5]] },
+    { "class": "name", "range": [[3, 6], [3, 11]] },
+    { "class": "punctuation", "range": [[3, 12], [3, 13]] },
+    { "class": "name", "range": [[4, 2], [4, 4]] },
+    { "class": "type", "range": [[4, 5], [4, 8]] },
+    { "class": "keyword", "range": [[4, 9], [4, 17]] },
+    { "class": "name", "range": [[5, 2], [5, 6]] },
+    { "class": "type", "range": [[5, 7], [5, 14]] },
+    { "class": "punctuation", "range": [[5, 14], [5, 15]] },
+    { "class": "number", "range": [[5, 15], [5, 17]] },
+    { "class": "punctuation", "range": [[5, 17], [5, 18]] },
+    { "class": "keyword", "range": [[5, 19], [5, 26]] },
+    { "class": "string", "range": [[5, 27], [5, 34]] },
+    { "class": "keyword", "range": [[6, 2], [6, 9]] },
+    { "class": "keyword", "range": [[6, 10], [6, 13]] },
+    { "class": "punctuation", "range": [[6, 14], [6, 15]] },
+    { "class": "name", "range": [[6, 15], [6, 17]] },
+    { "class": "punctuation", "range": [[6, 17], [6, 18]] },
+    { "class": "punctuation", "range": [[7, 0], [7, 1]] }
+  ],
+  "folding": [
+    { "startLine": 3, "endLine": 7 }
+  ],
+  "formatted": "dbspec 1 shop\n\n# 😀 café\ntable users {\n  id i64 identity\n  note varchar(64) default 'ok 😀'\n  primary key (id)\n}\n"
+}

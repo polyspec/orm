@@ -52,6 +52,7 @@
     "dbspec-plan-ts-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["packages/orm-npm/tests/dbspec-plan-physical.mjs"]},
     "dbspec-plan-rust-check": {"scope": "owner", "needs": ["go", "rust", "databases"], "inputs": ["packages/orm-rust/orm/tests/dbspec_plan_apply.rs"]},
     "ts-model-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/orm-npm/tests/models-scan.mjs", "packages/orm-npm/tsconfig.build.json"]},
+    "dbspec-language-check": {"scope": "owner", "needs": ["node-modules"], "inputs": ["packages/dbspec-language/**", "packages/orm-npm/src/dbspec/**", "packages/orm-npm/tsconfig.build.json", "tests/dbspec/cases.json", "tests/dbspec/syntax.json", "tests/editor/**", "scripts/typescript/build.mjs"]},
     "dbspec-plan-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/orm-php/tests/dbspec_plan_apply_test.php"]},
     "dbspec-apply-php-check": {"scope": "owner", "needs": ["go", "php", "composer", "databases"], "inputs": ["packages/orm-php/tests/dbspec_apply_test.php"]},
     "dbspec-apply-php-extension-check": {"scope": "owner", "needs": ["go", "php", "composer", "php-extension-tools", "databases"], "inputs": ["packages/orm-php-extension/tests/dbspec_apply_test.php", "packages/orm-php-extension/src/apply.c"]},

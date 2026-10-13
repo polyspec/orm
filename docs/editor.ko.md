@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: 07c2b928cf38c07fa5ec029ba0ff53d2bb492db4f15f53744ee624f00de4ade7 -->
+<!-- source-sha256: 80894551d853857b959ac65d7290ccdd77917665a8680edf64180695c8bd20c4 -->
 # dbspec editor 도구
 
 [English](editor.md)
@@ -9,7 +9,7 @@ editor 도구는 다른 모든 도구와 같은 parser로 dbspec 문서를 읽�
 ## 계층
 
 - **parser 진입점.** `@polyspec/orm`은 `parse`, `emit`, `analyze`, `format`, `readDbspecBytes`만 가진 subpath를 export한다. 그 module은 `node:` module을 import하지 않고, Node global(`Buffer`, `process`, `__dirname`, `require`)을 읽지 않으며, database driver를 load하지 않으므로 Node에서처럼 browser에서도 실행된다. `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖에 있고, `readDbspecBytes`는 `Buffer`가 아니라 `TextEncoder`와 `TextDecoder`로 decode한다.
-- **language service**(`packages/dbspec-language`). `openDocument(text, {set})`은 range를 가진 diagnostic, token, folding range(table, `settings` block, diagram), `format()`을 준다. code point를 UTF-16 offset으로 바꾸는 것은 이 계층뿐이다. `dbspec-fmt` command line을 가진다.
+- **language service**(`packages/dbspec-language`). `openDocument(text, {set})`은 range를 가진 diagnostic, token, folding range(block), `format()`을 준다. code point를 UTF-16 offset으로 바꾸는 것은 이 계층뿐이다. `dbspec-fmt` command line을 가진다.
 - **adapter**: language server(`packages/dbspec-lsp`), CodeMirror extension(`packages/dbspec-codemirror`), VS Code extension(`packages/dbspec-vscode`). adapter는 language service의 결과를 host의 형식으로 바꾸며 자기만의 읽기를 더하지 않는다.
 
 ## Import 규칙
@@ -26,7 +26,7 @@ CodeMirror host와 VS Code web host가 language service를 browser에서 실행�
 
 - **Diagnostic.** diagnostic의 range는 그 위치부터 거기서 시작하는 token의 끝까지다. 거기서 시작하는 token이 없으면 code point 하나이고, 줄이나 text의 끝에서는 비어 있다. message와 rule은 parse의 것이다.
 - **Token.** [구문 분석](dbspec.ko.md#syntax-analysis)의 class. language server의 semantic token legend는 그 표의 순서대로의 이 class들이다.
-- **Folding.** table block, `settings` block, diagram block은 각각 여는 줄부터 닫는 줄까지 접힌다.
+- **Folding.** folding range는 `{` token의 줄부터 그에 짝인 `}` token의 줄까지이며, 두 줄이 다를 때만 있다. dbspec에서 여러 줄에 걸치는 것은 block(table, `settings` block, diagram)뿐이므로 punctuation token의 짝이 곧 block이다: folding은 keyword도 줄 모양도 읽지 않는다. 짝이 없는 괄호는 parse diagnostic이며 아무것도 접지 않는다.
 - **Formatting.** language service의 `format()`. diagnostic이 있는 문서는 거부하고, canonical 문서는 edit을 주지 않는다.
 
 ## 생태계 방식
