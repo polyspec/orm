@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2e948595b402c5ef06752026fd19cf90e7de4b5be84bef551a9ca9dc6f1206e9 -->
+<!-- source-sha256: b23c4642e887be7c9c4d36f38ae344de0e0a26101a6d31eca9982d702a1c95cc -->
 # 변경 이력
 
 ## Unreleased
 
+- T147-3: interface manifest가 internal component를 표시하고, rule 검사는 공개 component를 덮는다.
 - T147-4: manifest 검사가 component에 없는 method의 rule을 거부하고, SchemaUtils가 addTablesAndColumns를 적는다.
 - T147-1: interface rule이 Db.close, Collection의 get, first, keys, connect, delete, toArray, Utils.setLocal과 local을 선언한다.
 - T140 (breaking): restore가 request hook 뒤에 set 값과 and로 이은 eq 조건에서 key를 고르므로 hook의 조건이 update를 좁히듯 restore를 좁힌다; model은 set만 보낸다(docs/protocol.md 1.5).
