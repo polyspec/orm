@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -119,12 +120,25 @@ func useCountingDriver(t *testing.T, name string) {
 // table을 쓰는 set이다. 외부 문서를 쓰므로 database를 읽는 등록이라면 introspection을 한다.
 func registerFixture(t *testing.T) *Schema {
 	t.Helper()
-	path := func(name string) string { return filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs") }
-	m, err := runtimemodel.LoadFileSet([]string{path("external/member")}, []string{path("external/core")})
-	if err != nil {
-		t.Fatal(err)
+	m, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "external/member"), registerTexts(t, "external/core"))
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	return &Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
+}
+
+// registerTexts reads the dbspec documents of contracts/fixtures by name.
+func registerTexts(t *testing.T, names ...string) []string {
+	t.Helper()
+	texts := make([]string, len(names))
+	for i, name := range names {
+		b, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", name+".dbs"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		texts[i] = string(b)
+	}
+	return texts
 }
 
 // TestRegisterSendsNoStatement는 등록이 database에 아무 statement도 보내지 않는지
@@ -134,9 +148,9 @@ func registerFixture(t *testing.T) *Schema {
 func TestRegisterSendsNoStatement(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	schema := registerFixture(t)
-	note, err := runtimemodel.LoadFileSet([]string{filepath.Join("..", "..", "..", "contracts", "fixtures", "install", "note.dbs")}, nil)
-	if err != nil {
-		t.Fatal(err)
+	note, diagnostics := runtimemodel.LoadDocumentSet(registerTexts(t, "install/note"), nil)
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
 	}
 	other := &Schema{Hash: note.ManifestHash, Text: note.ManifestText}
 	for _, name := range []string{"sqlite", "mysql", "postgres"} {

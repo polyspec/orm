@@ -360,41 +360,74 @@ func DiagnosticsError(diagnostics []dbspec.Diagnostic) string {
 	return strings.Join(parts, "; ")
 }
 
-// LoadFiles는 dbspec document 파일을 dbspec.ReadFile로 읽어 하나의 document set의
-// runtime model을 반환한다. signature가 없는 파일과 잘못된 set은 SCHEMA_INVALID와
-// 각 diagnostic을 담은 error다.
+// LoadFiles reads dbspec document files with dbspec.ReadFile and returns the
+// runtime model of the one document set they form, with no external document.
+// A file without the signature and an invalid set are an error that holds
+// SCHEMA_INVALID and each diagnostic.
 func LoadFiles(paths ...string) (*Model, error) {
-	return LoadFileSet(paths, nil)
+	texts := make([]string, len(paths))
+	for i, path := range paths {
+		text, diagnostics, err := dbspec.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		if len(diagnostics) > 0 {
+			return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+		}
+		texts[i] = text
+	}
+	m, diagnostics := LoadDocumentSet(texts, nil)
+	if len(diagnostics) > 0 {
+		return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+	}
+	return m, nil
 }
 
-// LoadFileSet은 소유한 문서 파일과 외부 문서 파일(use로 쓰는 다른 set의 문서)을
-// 읽어 document set의 runtime model을 반환한다.
-func LoadFileSet(owned, external []string) (*Model, error) {
-	read := func(paths []string) ([]string, error) {
-		texts := make([]string, len(paths))
-		for i, path := range paths {
-			text, diagnostics, err := dbspec.ReadFile(path)
-			if err != nil {
-				return nil, err
-			}
-			if len(diagnostics) > 0 {
-				return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+// SetLoadError is every problem of a set that LoadSetFile could not load: the errors
+// of the set file, or the diagnostics of its listed files, or those of the set.
+// Each problem is one line that names its file.
+type SetLoadError struct {
+	Problems []string
+}
+
+func (e *SetLoadError) Error() string { return "SCHEMA_INVALID: " + strings.Join(e.Problems, "; ") }
+
+// LoadSetFile reads the set file at path with dbspec.ReadSet (docs/dbspec.md
+// "Document sets"), gives the bytes of each listed file to dbspec.ReadBytes with
+// its joined path and loads the documents and the external documents as one
+// document set. Any error or diagnostic is a *SetLoadError that holds all of
+// them.
+func LoadSetFile(path string) (*Model, error) {
+	set, errs := dbspec.ReadSet(path)
+	if len(errs) > 0 {
+		problems := make([]string, len(errs))
+		for i, e := range errs {
+			problems[i] = e.Error()
+		}
+		return nil, &SetLoadError{Problems: problems}
+	}
+	var problems []string
+	read := func(files []dbspec.SetFile) []string {
+		texts := make([]string, len(files))
+		for i, f := range files {
+			text, diagnostics := dbspec.ReadBytes(f.Path, f.Bytes)
+			for _, d := range diagnostics {
+				problems = append(problems, fmt.Sprintf("%s:%d:%d %s: %s", f.Path, d.Line, d.Column, d.Rule, d.Message))
 			}
 			texts[i] = text
 		}
-		return texts, nil
+		return texts
 	}
-	texts, err := read(owned)
-	if err != nil {
-		return nil, err
-	}
-	externalTexts, err := read(external)
-	if err != nil {
-		return nil, err
+	texts, externalTexts := read(set.Documents), read(set.External)
+	if len(problems) > 0 {
+		return nil, &SetLoadError{Problems: problems}
 	}
 	m, diagnostics := LoadDocumentSet(texts, externalTexts)
 	if len(diagnostics) > 0 {
-		return nil, fmt.Errorf("SCHEMA_INVALID: %s", DiagnosticsError(diagnostics))
+		for _, d := range diagnostics {
+			problems = append(problems, fmt.Sprintf("%s: %d:%d %s: %s", path, d.Line, d.Column, d.Rule, d.Message))
+		}
+		return nil, &SetLoadError{Problems: problems}
 	}
 	return m, nil
 }
