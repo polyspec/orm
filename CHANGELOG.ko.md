@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 192197df810e8b73d401252234b768c97b87864a46ed81118a776f660bd0a484 -->
+<!-- source-sha256: 670d9ba1c9ed22fd3f2a97dfa8d2147119c612df0491ddb3a1031b270816cbaa -->
 # 변경 이력
 
 ## Unreleased
 
+- T134-1: checkout wrapper packages/orm-python/bin/orm-gen을 없앴다. 문서는 설치된 `orm-gen`을 적는다.
 - T142-6: `interface-check`가 PHP vendor를 먼저 확인한다.
 - T142-5: `codec-check`가 PHP vendor를 먼저 확인하고, 없으면 `make install-php`를 적는다.
 - T158-4: dbspec-vscode integration은 `--vscode`가 없으면 `make dbspec-vscode-integration`을 적는다.
