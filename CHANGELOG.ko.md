@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5eaeb12d02b92b253449c7de52688f7f0a47526233a08ba195ba5f1e96172782 -->
+<!-- source-sha256: 2e948595b402c5ef06752026fd19cf90e7de4b5be84bef551a9ca9dc6f1206e9 -->
 # 변경 이력
 
 ## Unreleased
 
+- T147-4: manifest 검사가 component에 없는 method의 rule을 거부하고, SchemaUtils가 addTablesAndColumns를 적는다.
 - T147-1: interface rule이 Db.close, Collection의 get, first, keys, connect, delete, toArray, Utils.setLocal과 local을 선언한다.
 - T140 (breaking): restore가 request hook 뒤에 set 값과 and로 이은 eq 조건에서 key를 고르므로 hook의 조건이 update를 좁히듯 restore를 좁힌다; model은 set만 보낸다(docs/protocol.md 1.5).
 - T133: 모든 runtime이 tests/dbspec/cases.json을 어느 section에서든 없거나 모르는 field를 거부하는 엄격한 reader 하나로 읽는다.
