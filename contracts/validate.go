@@ -75,6 +75,16 @@ var outputs = map[string]map[string]string{
 	// request hook handle은 같은 연결의 handle이며 database에 닿지 않는 동기 호출이다.
 	"RequestHookHandle": {"go": "*DB", "php": "Polyspec\\Orm\\Db", "rust": "Db", "typescript": "Db", "python": "Db"},
 	"Unsubscribe":       {"go": "(unsubscribefunc(),errerror)", "php": "Closure", "rust": "Result<Subscription>", "typescript": "()=>void", "python": "Callable[[],None]"},
+	// Rust closes its pool without a result; Go reports the first statement that failed to close.
+	"Closed": {"go": "error", "php": "void", "rust": "", "typescript": "Promise<void>", "python": "None"},
+	// A collection reads its own models; Go's key is any value, so its lookup reports a value that is no key.
+	"LookedUpModel":   {"go": "(T,error)", "php": "?Polyspec\\Orm\\Model", "rust": "Option<&M>", "typescript": "T|undefined", "python": "Model|None"},
+	"Optional<Model>": {"go": "T", "php": "?Polyspec\\Orm\\Model", "rust": "Option<&M>", "typescript": "T|undefined", "python": "Model|None"},
+	"Keys":            {"go": "[]Key", "php": "array", "rust": "&[Key]", "typescript": "Key[]", "python": "list"},
+	"CollectionChain": {"go": "*Collection[T]", "php": "Polyspec\\Orm\\Collection", "rust": "Self", "typescript": "this", "python": "Self"},
+	"RowMaps":         {"go": "[]map[string]any", "php": "array", "rust": "crate::Result<serde_json::Value>", "typescript": "Array<Record<string,unknown>>", "python": "list"},
+	// local reads the value that setLocal left in the transaction, not the database, so it is synchronous in Rust.
+	"LocalValue": {"go": "(string,error)", "php": "string", "rust": "Result<String>", "typescript": "Promise<string>", "python": "str"},
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -119,6 +129,10 @@ var inputs = map[string]map[string]string{
 	"CompiledStatement":      {"go": "st*plan.Step,params[]any", "php": "array$step,array$params", "rust": "step:&Step,params:&[Param]", "typescript": "step:PlanStep,params:readonlyunknown[]", "python": "step:dict,params:list"},
 	"RequestHook":            {"go": "hookRequestHook", "php": "Closure$hook", "rust": "hook:implFn(&mutcrate::ir::Request,&mutRequestParams)->Result<()>+Send+Sync+'static", "typescript": "hook:RequestHook", "python": "hook:RequestHook"},
 	"StatementSubscriber":    {"go": "fnSubscriber", "php": "Closure$subscriber", "rust": "subscriber:F", "typescript": "subscriber:(event:StatementEvent)=>void", "python": "subscriber:Callable[[StatementEvent],None]"},
+	"CollectionKey":          {"go": "keyany", "php": "string|int$key", "rust": "key:implInto<Key>", "typescript": "key:Key", "python": "key"},
+	"CollectionConnection":   {"go": "db*DB", "php": "Polyspec\\Orm\\Db$db", "rust": "db:&crate::Db", "typescript": "db:Db", "python": "db:Db"},
+	"LocalKey":               {"go": "keystring", "php": "string$key", "rust": "key:&str", "typescript": "key:string", "python": "key:str"},
+	"LocalKeyValue":          {"go": "key,valuestring", "php": "string$key,string$value", "rust": "key:&str,value:&str", "typescript": "key:string,value:string", "python": "key:str,value:str"},
 }
 
 // validateRules checks every native adapter against the common inputs and
@@ -174,7 +188,8 @@ func validateRules(d document) error {
 				// 오류가 있는 operation은 database에서 실행되므로 async다. transaction은 Transaction
 				// builder를, 등록은 database 없이 동기 결과를 돌려준다. 구독도 database에 닿지 않으며, 그 오류는
 				// statement를 보내지 않는 markdown 연결의 거절뿐이다.
-				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && !strings.Contains(sig, "asyncfn") {
+				// local reads the value that setLocal left in the transaction and never reaches the database.
+				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && r.Output != "LocalValue" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}
@@ -234,8 +249,8 @@ func validateExtensionRule(d document, r rule, want, args map[string]string) err
 	return nil
 }
 
-// receiverOf is the Rust receiver of a model method: chain methods take the
-// model by value, writes that store the result borrow it mutably, and every
+// receiverOf is the Rust receiver of a model method: chain methods, of a model
+// or of a collection, take it by value, writes that store the result borrow it mutably, and every
 // other execution borrows it.
 // pythonParts reads a Python native signature as the parameter list and the return type that the
 // other clients have: self is the receiver of a method and is no parameter, and "->" precedes the
@@ -250,6 +265,8 @@ func pythonParts(got, ret string) (string, string) {
 
 func receiverOf(r rule) string {
 	switch {
+	case r.Output == "CollectionChain":
+		return "mutself"
 	case r.For != "entity" || len(r.Errors) == 0 && r.Output != "Chain":
 		return "&self"
 	case r.Output == "Chain":
