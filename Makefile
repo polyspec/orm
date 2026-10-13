@@ -916,18 +916,18 @@ conformance-rust-group-check: lease-tool
 # case 앞에서 기한 없이 build한다: .runtime/bin에 publish하고 Go build cache가 그것을 가지므로 case의 go run은 build된 것을
 # 실행한다.
 BUILD_CONFORMANCE_STATE = $(RUN_LONG) go-build/conformance-state -- $(PUBLISH) $(abspath .runtime/bin/conformance-state) go build -o @OUT@ ./tests/conformance/check
-group-rows-physical-check:
+group-rows-physical-check: php-vendor-check
 	$(BUILD_CONFORMANCE_STATE)
 	$(WITH_TEST_ENV) node scripts/group-rows-physical-check.mjs
 
-unselected-column-physical-check:
+unselected-column-physical-check: php-vendor-check
 	$(BUILD_CONFORMANCE_STATE)
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mjs
 
 # case-database-check는 공유 test database 두 곳에 table 하나를 남겨 둔 채 네 client의 model
 # case를 실행하고, case가 통과하며 공유 database와 PostgreSQL schema를 바꾸지 않고 자기
 # `orm_case_` database와 `orm-case-` SQLite file을 남기지 않는지 확인한다(T25).
-case-database-check: lease-tool
+case-database-check: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd packages/orm-rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration
@@ -994,7 +994,7 @@ decimal-bench-sqlite: lease-tool
 # 쓰는 build(Rust test binary decimal_physical, Go decimalmodel test, Go state reader BUILD_CONFORMANCE_STATE)는 장기
 # 작업이므로 case 앞에서 기한 없이 RUN_LONG으로 먼저 하고(Go build는 .runtime/bin에 publish하며 build cache를 채운다), case는
 # build된 것을 실행한다.
-decimal-physical-check: cargo-downloads-check lease-tool
+decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/orm-rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
