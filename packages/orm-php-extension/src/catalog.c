@@ -259,7 +259,8 @@ document *catalog_document(catalog *c, str name, unsupportedv *out)
         str text = sb_str(&b);
         smap none = {0};
         diags found = {0};
-        document *d = dbs_parse(text, &none, &found);
+        dposv decls = {0};
+        document *d = dbs_parse(text, &none, &found, &decls);
         if (d != NULL) {
             unsupportedv sorted = {0};
             for (size_t i = 0; i < c->unsupported.n; i++) {

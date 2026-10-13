@@ -238,7 +238,8 @@ plan *plan_parse(str text, diags *out)
     str schema_text = sb_str(&b);
     smap none = {0};
     diags found = {0};
-    document *d = dbs_parse(schema_text, &none, &found);
+    dposv decls = {0};
+    document *d = dbs_parse(schema_text, &none, &found, &decls);
     if (d == NULL) {
         /* target diagnostic은 plan 안의 위치로 옮긴다. */
         for (size_t k = 0; k < found.n; k++) {

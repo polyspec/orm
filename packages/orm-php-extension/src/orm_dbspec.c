@@ -573,7 +573,85 @@ static void result_invalid(zval *return_value, zend_class_entry *ce, const char 
 #define Z_PARAM_NULLABLE_OBJ(ce) Z_PARAM_OBJECT_OF_CLASS_OR_NULL(value, ce)
 #define Z_PARAM_NULLABLE_ARRAY Z_PARAM_ARRAY_OR_NULL(value)
 
-RESULT_CLASS(ParseResult, "document", Z_PARAM_NULLABLE_OBJ(dbs_ce_Document), "parse")
+/* ParseResult: the document, its positions and no diagnostics, or the diagnostics with no document and no positions.
+ * The values it puts are owned: obj_put takes them, so a borrowed value is copied first. */
+static void parse_result(zval *out, zval *document, zval *diagnostics, zval *positions)
+{
+    obj_new(out, dbs_ce_ParseResult);
+    if (document == NULL) {
+        obj_put_null(out, "document");
+    } else {
+        obj_put(out, "document", document);
+    }
+    obj_put(out, "diagnostics", diagnostics);
+    if (positions == NULL) {
+        obj_put_null(out, "positions");
+    } else {
+        obj_put(out, "positions", positions);
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, __construct)
+{
+    zval *document, *diagnostics, *positions;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_OBJECT_OF_CLASS_OR_NULL(document, dbs_ce_Document)
+        Z_PARAM_ARRAY(diagnostics)
+        Z_PARAM_ARRAY_OR_NULL(positions)
+    ZEND_PARSE_PARAMETERS_END();
+    zval null_;
+    ZVAL_NULL(&null_);
+    init_prop(ZEND_THIS, "document", document != NULL ? document : &null_);
+    init_prop(ZEND_THIS, "diagnostics", diagnostics);
+    init_prop(ZEND_THIS, "positions", positions != NULL ? positions : &null_);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, valid)
+{
+    zval *document, *positions;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_OBJECT_OF_CLASS(document, dbs_ce_Document)
+        Z_PARAM_ARRAY(positions)
+    ZEND_PARSE_PARAMETERS_END();
+    zval doc_copy, pos_copy, empty;
+    ZVAL_COPY(&doc_copy, document);
+    ZVAL_COPY(&pos_copy, positions);
+    ZVAL_EMPTY_ARRAY(&empty);
+    parse_result(return_value, &doc_copy, &empty, &pos_copy);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ParseResult, invalid)
+{
+    zval *diagnostics;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(diagnostics)
+    ZEND_PARSE_PARAMETERS_END();
+    if (zend_hash_num_elements(Z_ARRVAL_P(diagnostics)) == 0) {
+        zend_throw_exception_ex(spl_ce_LogicException, 0, "An invalid parse result needs a diagnostic");
+        return;
+    }
+    zval list;
+    ZVAL_COPY(&list, diagnostics);
+    parse_result(return_value, NULL, &list, NULL);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct)
+{
+    zend_string *kind;
+    zval *path;
+    zend_long line, column;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_STR(kind)
+        Z_PARAM_ARRAY(path)
+        Z_PARAM_LONG(line)
+        Z_PARAM_LONG(column)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "kind", kind);
+    init_array(ZEND_THIS, "path", path);
+    init_long(ZEND_THIS, "line", line);
+    init_long(ZEND_THIS, "column", column);
+}
+
 RESULT_CLASS(ManifestResult, "manifest", Z_PARAM_NULLABLE_OBJ(dbs_ce_Manifest), "manifest")
 RESULT_CLASS(RenderResult, "statements", Z_PARAM_NULLABLE_ARRAY, "render")
 RESULT_CLASS(PlanParseResult, "plan", Z_PARAM_NULLABLE_OBJ(dbs_ce_Plan), "plan parse")
@@ -634,7 +712,6 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_ReadResult, invalid)
         result_valid(return_value, dbs_ce_##cls, first, value); \
     }
 
-VALID_OBJ(ParseResult, "document", dbs_ce_Document)
 VALID_OBJ(ManifestResult, "manifest", dbs_ce_Manifest)
 VALID_ARRAY(RenderResult, "statements")
 VALID_OBJ(PlanParseResult, "plan", dbs_ce_Plan)
@@ -1084,13 +1161,17 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Dbspec, parse)
         smap_set(&set, zs(key), t);
     } ZEND_HASH_FOREACH_END();
     diags found = {0};
-    document *d = dbs_parse(zs(text), &set, &found);
+    dposv decls = {0};
+    document *d = dbs_parse(zs(text), &set, &found, &decls);
+    zval dl;
+    zv_diags(&dl, &found);
     if (d != NULL) {
-        zval dz;
+        zval dz, pz;
         out_document(d, &dz);
-        zv_result(return_value, dbs_ce_ParseResult, "document", &dz, &found);
+        zv_positions(&pz, &decls);
+        parse_result(return_value, &dz, &dl, &pz);
     } else {
-        zv_result(return_value, dbs_ce_ParseResult, "document", NULL, &found);
+        parse_result(return_value, NULL, &dl, NULL);
     }
     LEAVE();
 }
@@ -1711,6 +1792,7 @@ static PHP_MINIT_FUNCTION(orm_dbspec)
     dbs_ce_Setting = register_class_Polyspec_Orm_Dbspec_Native_Setting();
     dbs_ce_Diagram = register_class_Polyspec_Orm_Dbspec_Native_Diagram();
     dbs_ce_Placement = register_class_Polyspec_Orm_Dbspec_Native_Placement();
+    dbs_ce_Position = register_class_Polyspec_Orm_Dbspec_Native_Position();
     dbs_ce_ReadResult = register_class_Polyspec_Orm_Dbspec_Native_ReadResult();
     dbs_ce_ParseResult = register_class_Polyspec_Orm_Dbspec_Native_ParseResult();
     dbs_ce_Manifest = register_class_Polyspec_Orm_Dbspec_Native_Manifest();

@@ -155,6 +155,15 @@ typedef struct {
 
 typedef VEC(diag) diags;
 
+/* 선언의 위치다(docs/dbspec.md "Declaration positions"): 종류, 이름의 경로, 줄과 칸(code point)이다. */
+typedef struct {
+    str kind;
+    strs path;
+    zend_long line, column;
+} dpos;
+
+typedef VEC(dpos) dposv;
+
 static inline diag mkdiag(str rule, zend_long line, zend_long column, str message)
 {
     diag d = {rule, line, column, message};
@@ -313,7 +322,7 @@ bool dbs_valid_name(str name);
 /* ------------------------------------------------------------------- parse */
 
 /* 문서 집합(이름 => text)으로 text를 parse한다. 문서가 없으면 diagnostics에 하나 이상이 있다. */
-document *dbs_parse(str text, const smap *documents, diags *out);
+document *dbs_parse(str text, const smap *documents, diags *out, dposv *pos);
 
 /* 확인 순서의 rule 표다. */
 zend_long dbs_rule_rank(str rule);
@@ -591,7 +600,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
 /* -------------------------------------------------------------- PHP objects */
 
 #define DBS_CLASSES(X) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
-    X(Index) X(IndexColumn) X(ForeignKey) X(Check) X(Settings) X(Setting) X(Diagram) X(Placement) X(ReadResult) \
+    X(Index) X(IndexColumn) X(ForeignKey) X(Check) X(Settings) X(Setting) X(Diagram) X(Placement) X(Position) X(ReadResult) \
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \
     X(ApplyCleanupError) X(PlanParseResult) X(PlanStepsResult) X(ChainResult) X(DiffResult) X(ComparisonResult) \
@@ -615,6 +624,7 @@ zval *obj_get(zval *obj, const char *name);
 
 void zv_strs(zval *out, const strs *l);
 void zv_diags(zval *out, const diags *d);
+void zv_positions(zval *out, const dposv *d);
 /* 결과 객체 둘: 첫 property와 diagnostics. first가 NULL이면 null이다. */
 void zv_result(zval *out, zend_class_entry *ce, const char *first, zval *value, const diags *d);
 
