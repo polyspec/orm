@@ -8,7 +8,7 @@ DSN URI.
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.codec import CodecError, blind_index, decode, encode, host_decode, \
     host_encode, ordered_json_value, php_serialize
-from polyspec.orm.database import Db, RequestHook, connect
+from polyspec.orm.database import Db, DbStats, RequestHook, connect
 from polyspec.orm.engine import Entity, Field, RuntimeModel, model_of_documents, \
     parse_document_set
 from polyspec.orm.errors import OrmError, joined_errors, rollback_failed
@@ -17,7 +17,7 @@ from polyspec.orm.schema import Schema
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, orm
 
-__all__ = ['AesKeyring', 'CodecError', 'Collection', 'ColumnFunction', 'Db', 'Entity',
+__all__ = ['AesKeyring', 'CodecError', 'Collection', 'ColumnFunction', 'Db', 'DbStats', 'Entity',
            'EntityDef', 'Field', 'Model', 'OrmError', 'RequestHook', 'RuntimeModel', 'Schema',
            'StyledValue', 'ValueFunction', 'blind_index', 'connect', 'decode',
            'encode', 'host_decode', 'host_encode', 'joined_errors',

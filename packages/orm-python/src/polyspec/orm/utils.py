@@ -5,12 +5,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from polyspec.orm.aes import AesKeyring
 from polyspec.orm.errors import OrmError
 from polyspec.orm.markdown import unsupported_on_markdown
 from polyspec.orm.model import Model
 from polyspec.orm.schema import Schema
+
+if TYPE_CHECKING:
+    from polyspec.orm.database import DbStats
 
 # PostgreSQL statements of the utilities, with the $n markers that the engine writes for PostgreSQL.
 POSTGRES_ADVISORY_LOCK = 'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))'
@@ -43,6 +47,26 @@ class Utils:
 
     def __init__(self, db):
         self.db = db
+
+    def stats(self) -> DbStats:
+        """The connection statistics of the connection, as Db.stats reports them."""
+        return self.db.stats()
+
+    def _run(self, body):
+        """Runs body in the active transaction of the connection, or in a new one when none is active."""
+        if _frame_of(self.db) is not None:
+            return body()
+        return self.db.transaction(body, {'retry': 0})
+
+    def _read(self, kind: str, tables: list, sql: str, values: list) -> list:
+        """The rows of a statement read through the active transaction of the connection, or through the
+        connection outside a transaction; kind and tables are those of its statement event."""
+        frame = _frame_of(self.db)
+        if frame is not None:
+            return frame.run(sql, values, kind, tables=tuple(tables))['rows']
+        db = self.db
+        return db.events.send(kind, tables, None, list(values), sql,
+                              lambda: db._sent(lambda: db._connection.execute(sql, list(values))['rows']))
 
     def lock(self, key: str) -> None:
         unsupported_on_markdown(self.db, 'lock')
@@ -83,6 +107,9 @@ class Utils:
 
     def schema(self) -> SchemaUtils:
         return SchemaUtils(self)
+
+    def privileges(self) -> PrivilegeUtils:
+        return PrivilegeUtils(self)
 
 
 class SchemaUtils:
@@ -179,6 +206,128 @@ class SchemaUtils:
         else:
             self.db.transaction(lambda: apply(_frame_runner(self.db)), {'retry': 0})
         self.register(schema)
+
+    def _check(self, sql: str, values: list | None = None) -> bool:
+        unsupported_on_markdown(self.db, 'schema inspection')
+        rows = self.utils._read('schema', [], sql, list(values or []))
+        value = rows[0][0] if rows else None
+        return value is True or (not isinstance(value, bool) and value == 1)
+
+    def exists(self, name: str) -> bool:
+        """Reports whether the schema exists: a PostgreSQL schema, a MySQL database, or on SQLite a table or
+        view whose name starts with the schema name and __."""
+        if not valid_key(name):
+            raise OrmError('CONFIG', f'schema name {name!r} is invalid')
+        driver = self.db.driver
+        if driver == 'postgres':
+            return self._check('SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)', [name])
+        if driver == 'mysql':
+            return self._check('SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)',
+                               [name])
+        return self._check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') "
+                           "AND name LIKE ? ESCAPE '\\')", [name.replace('_', '\\_') + '\\_\\_%'])
+
+    def installed(self, name: str, table: str) -> bool:
+        """Reports whether a table of the schema exists; on SQLite the table is named <schema>__<table>."""
+        if not valid_key(name) or not valid_key(table):
+            raise OrmError('CONFIG', 'schema and table names are required')
+        driver = self.db.driver
+        if driver == 'postgres':
+            return self._check('SELECT to_regclass($1) IS NOT NULL', [f'{name}.{table}'])
+        if driver == 'mysql':
+            return self._check('SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? '
+                               'AND TABLE_NAME = ?)', [name, table])
+        return self._check("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') "
+                           "AND name = ?)", [f'{name}__{table}'])
+
+    def empty(self) -> bool:
+        """Reports whether the database holds no user content. On PostgreSQL a schema other than public,
+        information_schema and the pg_ schemas is content even without objects, and so is a table,
+        partitioned table, view, materialized view or foreign table in public. On MySQL a table or view of
+        the connected database is content, and on SQLite a table or view other than the sqlite_ and orm__
+        tables is content."""
+        driver = self.db.driver
+        if driver == 'postgres':
+            return self._check("SELECT NOT EXISTS (SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE "
+                               "'pg\\_%' AND n.nspname <> 'information_schema' AND (n.nspname <> 'public' OR "
+                               "EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = n.oid AND c.relkind IN "
+                               "('r', 'p', 'v', 'm', 'f'))))")
+        if driver == 'mysql':
+            return self._check('SELECT NOT EXISTS(SELECT 1 FROM information_schema.TABLES '
+                               'WHERE TABLE_SCHEMA = DATABASE())')
+        return self._check("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') "
+                           "AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' "
+                           "ESCAPE '\\')")
+
+
+@dataclass(frozen=True)
+class TablePrivileges:
+    """The privileges of the current user on a table."""
+
+    insert: bool
+    select: bool
+    update: bool
+    delete: bool
+    truncate: bool
+
+
+# The table privileges that revoke_table takes.
+_TABLE_PRIVILEGES = ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')
+
+
+class PrivilegeUtils:
+    """Table privileges (PostgreSQL only); other dialects raise CAPABILITY_UNSUPPORTED."""
+
+    def __init__(self, utils: Utils):
+        self.utils = utils
+
+    def _table(self, table: str) -> str:
+        if self.utils.db.driver != 'postgres':
+            raise OrmError('CAPABILITY_UNSUPPORTED', 'table privileges are supported only by postgres')
+        parts = table.split('.')
+        if len(parts) != 2 or not all(valid_key(part) for part in parts):
+            raise OrmError('CONFIG', 'a qualified table name is required')
+        return '.'.join(_quote('postgres', part) for part in parts)
+
+    @staticmethod
+    def _role(name: str) -> str:
+        if not valid_key(name):
+            raise OrmError('CONFIG', f'role {name!r} is invalid')
+        return _quote('postgres', name)
+
+    def grant_table(self, table: str, role: str) -> None:
+        """Grants the role the usage of the table's schema and SELECT, INSERT, UPDATE and DELETE on it."""
+        qualified = self._table(table)
+        r = self._role(role)
+        schema = qualified[:qualified.index('.')]
+
+        def body() -> None:
+            frame = _frame_of(self.utils.db)
+            frame.run(f'GRANT USAGE ON SCHEMA {schema} TO {r}', [], 'utility', tables=(table,))
+            frame.run(f'GRANT SELECT, INSERT, UPDATE, DELETE ON {qualified} TO {r}', [], 'utility', tables=(table,))
+        self.utils._run(body)
+
+    def revoke_table(self, table: str, privilege: str, role: str) -> None:
+        """Revokes one table privilege of the role: SELECT, INSERT, UPDATE, DELETE or TRUNCATE."""
+        qualified = self._table(table)
+        r = self._role(role)
+        upper = privilege.strip().upper()
+        if upper not in _TABLE_PRIVILEGES:
+            raise OrmError('CONFIG', f'unsupported table privilege {privilege!r}')
+        self.utils._run(lambda: _frame_of(self.utils.db).run(f'REVOKE {upper} ON {qualified} FROM {r}', [],
+                                                               'utility', tables=(table,)))
+
+    def inspect_table(self, table: str) -> TablePrivileges:
+        """The privileges of the current user on the table, read with one statement."""
+        qualified = self._table(table)
+        row = self.utils._read('utility', [table],
+                               "SELECT has_table_privilege(current_user, $1, 'INSERT'), "
+                               "has_table_privilege(current_user, $1, 'SELECT'), "
+                               "has_table_privilege(current_user, $1, 'UPDATE'), "
+                               "has_table_privilege(current_user, $1, 'DELETE'), "
+                               "has_table_privilege(current_user, $1, 'TRUNCATE')", [qualified])[0]
+        return TablePrivileges(insert=row[0] is True, select=row[1] is True, update=row[2] is True,
+                               delete=row[3] is True, truncate=row[4] is True)
 
 
 @dataclass

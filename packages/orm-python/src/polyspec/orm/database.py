@@ -7,6 +7,7 @@ import json
 import re
 import sqlite3
 import time
+from dataclasses import dataclass
 from urllib.parse import urlsplit, parse_qsl
 
 from polyspec.orm.codec import blind_index, decode as codec_decode, host_encode
@@ -33,7 +34,7 @@ T = TypeVar('T')
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.utils import Utils
 
-__all__ = ['Db', 'RequestHook', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
+__all__ = ['Db', 'DbStats', 'RequestHook', 'connect', 'format_instant', 'key_of_values', 'key_text', 'key_value',
            'parse_dsn', 'read_time', 'row_key', 'scalar_key', 'time_value']
 
 # scheme마다 DSN이 받는 parameter다(docs/config.md). 다른 parameter는 CONFIG다.
@@ -678,6 +679,16 @@ class _Shared:
         self.statement_fault = None
 
 
+@dataclass(frozen=True)
+class DbStats:
+    """The connection statistics of a Db (docs/interfaces.md "Utilities", stats())."""
+
+    max_open_connections: int
+    open_connections: int
+    in_use: int
+    idle: int
+
+
 class Db:
     """plan cache와 statement cache를 가진 database 연결."""
 
@@ -715,6 +726,12 @@ class Db:
         """The transaction tools of this connection (lock, transaction-local values, AES status)."""
         from polyspec.orm.utils import Utils
         return Utils(self)
+
+    def stats(self) -> DbStats:
+        """The connection statistics. A Db holds one connection, as the PHP client does, so the pool size and
+        the open connections are 1, and the connection is in use while a transaction of it is active."""
+        busy = 1 if _active_for(self) is not None else 0
+        return DbStats(max_open_connections=1, open_connections=1, in_use=busy, idle=1 - busy)
 
     @staticmethod
     def connect(dsn: str, options: dict | None = None) -> Db:
