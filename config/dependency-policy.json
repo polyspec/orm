@@ -47,6 +47,16 @@
         "make typescript-build",
         "make ts-min-check"
       ]
+    },
+    {
+      "ecosystem": "npm",
+      "manifest": "packages/dbspec-language/package.json",
+      "package": "@types/node",
+      "reason": "The types of @types/node follow the Node.js major release, and packages/dbspec-language declares engines.node >=22.16.0, so the types of the lowest supported major release keep its command line (src/cli) from using an API that the minimum Node.js lacks.",
+      "removalCondition": "engines.node of packages/dbspec-language/package.json is raised to a release of the major release of the latest @types/node.",
+      "verification": [
+        "make dbspec-language-check"
+      ]
     }
   ],
   "pythonLocks": []
