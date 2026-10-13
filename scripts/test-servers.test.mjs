@@ -287,3 +287,22 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
     rmSync(socketDir, { recursive: true, force: true });
   }
 });
+
+// socket 경로 case(T135)는 test-servers.sh의 경로 선언부를 긴 checkout 경로로 평가한다. Unix socket 경로는
+// sun_path 한도(macOS 103 byte, Linux 107 byte, NUL 제외) 안에 있어야 하고, checkout 깊이와 무관해야 한다.
+caseTest('test server sockets stay within the Unix socket path limit for a long checkout', COMPUTE, () => {
+  const script = readFileSync(new URL('./test-servers.sh', import.meta.url), 'utf8');
+  const start = script.indexOf('\nDIR=');
+  const declarations = script.slice(start, script.indexOf('\nusage() {', start));
+  const root = `/Users/someone/Projects/polyspec/${'a-very-long-worktree-name-'.repeat(4)}T135`;
+  const run = spawnSync('sh', ['-c', `set -eu\nROOT='${root}'\n${declarations}\nfor s in "$MYSQL_SOCKET" "$MYSQL_REPLICA_SOCKET" "$PROXYSQL_ADMIN_SOCKET" "$PROXYSQL_ADMIN_PGSQL_SOCKET" "$PROXYSQL_PGSQL_SOCKET"; do echo "$s"; done`], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  const sockets = run.stdout.trim().split('\n');
+  assert.equal(sockets.length, 5);
+  for (const socket of sockets) assert.ok(Buffer.byteLength(socket) <= 103, `socket path ${socket} is ${Buffer.byteLength(socket)} bytes; macOS allows at most 103`);
+  // 같은 checkout은 같은 directory를, 다른 checkout은 다른 directory를 얻는다.
+  const again = spawnSync('sh', ['-c', `set -eu\nROOT='${root}'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });
+  assert.equal(again.stdout.trim(), sockets[0]);
+  const other = spawnSync('sh', ['-c', `set -eu\nROOT='${root}x'\n${declarations}\necho "$MYSQL_SOCKET"`], { encoding: 'utf8' });
+  assert.notEqual(other.stdout.trim(), sockets[0]);
+});

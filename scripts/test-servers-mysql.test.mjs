@@ -48,6 +48,8 @@ function fixture(mysqlPort, replicaPort) {
       { encoding: 'utf8', env: isolatedEnvironment({ LEASE: process.env.LEASE, LEASES: join(root, '.runtime/servers.leases') }) }),
     close: () => {
       spawnSync('sh', [join(root, 'scripts/test-servers.sh'), 'mysql-stop'], { stdio: 'ignore' });
+      // mysql-start가 만든 socket directory(test-servers.sh의 SOCKET_DIR)는 stop만 지우므로 여기서 지운다.
+      spawnSync('sh', ['-c', 'cd "$1" && rm -rf "/tmp/orm-servers-$(pwd | tr -d \'\\n\' | cksum | cut -d \' \' -f 1)"', 'sh', root], { stdio: 'ignore' });
       rmSync(root, { recursive: true, force: true });
     },
   };

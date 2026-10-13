@@ -1,5 +1,5 @@
 <!-- doc-id: contributing -->
-<!-- source-sha256: 66c4574fd33f21c812e830eb98d19efdb46f9f54a6c52f5509dd9050a084f93a -->
+<!-- source-sha256: 36a2df0decfb8640c73990dd6d18dbc12c404bf3600c5f09f54b923d738065d2 -->
 # 기여 안내
 
 ## 필수 작업 순서
@@ -34,7 +34,7 @@
 
 각 서버는 `make test-servers`가 이 checkout의 서버를 시작할 때 127.0.0.1에서 고른 빈 port에서 listen한다(`scripts/free-ports.mjs`). 그래서 두 checkout의 서버가 한 port를 두고 다투지 않는다. 환경 파일 `.runtime/servers/env`가 DSN에 그 port를 기록하고, `make test-servers-tls`와 이후의 `make test-servers`는 그것을 거기서 읽는다.
 
-테스트는 127.0.0.1의 TCP로 연결한다. `.runtime/servers`의 Unix 소켓은 서버 중지와 ProxySQL 관리 인터페이스에만 쓴다. ProxySQL은 Linux용 패키지를 배포하며, macOS에서는 소스 릴리스에서 빌드한다. 이 target은 다음을 수행한다.
+테스트는 127.0.0.1의 TCP로 연결한다. Unix 소켓은 서버 중지와 ProxySQL 관리 인터페이스에만 쓴다. 소켓은 `/tmp/orm-servers-<n>`에 있고 `<n>`은 checkout 경로의 POSIX `cksum`이다. 그래서 깊은 checkout에서도 Unix socket 경로 한도(macOS 103 byte, Linux 107 byte)를 지킨다. 그 folder의 file `checkout`이 소유 checkout을 적고, `make test-servers`는 다른 checkout이나 사용자의 folder를 거부하며 한도를 넘는 socket 경로를 말하며 실패하고, `make test-servers-stop`은 그 folder를 삭제한다. ProxySQL은 Linux용 패키지를 배포하며, macOS에서는 소스 릴리스에서 빌드한다. 이 target은 다음을 수행한다.
 
 1. primary와 replica를 초기화하고 각 서버가 연결을 받는다고 보고한 뒤 다음 단계로 진행한다.
 2. MySQL 시간대 테이블을 불러온다.
