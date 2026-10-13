@@ -4,7 +4,7 @@
 # replica, a ProxySQL pooler in front of the MySQL primary, and a PgBouncer
 # pooler in transaction mode in front of the PostgreSQL primary. The servers
 # listen on 127.0.0.1 over TCP; the other endpoints are Unix sockets in
-# .runtime/servers, which stop and the ProxySQL admin interface use.
+# SOCKET_DIR (below), which stop and the ProxySQL admin interface use.
 #
 #   test-servers.sh start
 #   test-servers.sh tls
@@ -33,6 +33,13 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 DIR="$ROOT/.runtime/servers"
 ENV_FILE="$DIR/env"
+# SOCKET_DIR holds the Unix sockets. A socket path must fit sun_path, and a
+# path under a deep checkout does not, so the sockets live in /tmp, the
+# directory POSIX defines for temporary files, in a folder named by the
+# POSIX cksum of the checkout path: unique to the checkout and the same on
+# every run. Its file "checkout" names the checkout that owns it; start
+# refuses a folder another checkout owns, and stop removes it.
+SOCKET_DIR="/tmp/orm-servers-$(printf %s "$ROOT" | cksum | cut -d ' ' -f 1)"
 # LEASES is the lease directory of the servers (tests/lease). A run that uses
 # the servers holds a shared lease there (WITH_TEST_ENV of the Makefile reads
 # the path from the environment file); stopping the servers, a fresh start and
@@ -53,11 +60,11 @@ POSTGRES_REPLICA_DATA="$DIR/postgres-replica"
 PROXYSQL_DATA="$DIR/proxysql"
 PROXYSQL_PID="$DIR/proxysql.pid"
 PGBOUNCER_PID="$DIR/pgbouncer.pid"
-MYSQL_SOCKET="$DIR/mysql.sock"
-MYSQL_REPLICA_SOCKET="$DIR/mysql-replica.sock"
-PROXYSQL_ADMIN_SOCKET="$DIR/proxysql-admin.sock"
-PROXYSQL_ADMIN_PGSQL_SOCKET="$DIR/proxysql-admin-pgsql.sock"
-PROXYSQL_PGSQL_SOCKET="$DIR/proxysql-pgsql.sock"
+MYSQL_SOCKET="$SOCKET_DIR/mysql.sock"
+MYSQL_REPLICA_SOCKET="$SOCKET_DIR/mysql-replica.sock"
+PROXYSQL_ADMIN_SOCKET="$SOCKET_DIR/proxysql-admin.sock"
+PROXYSQL_ADMIN_PGSQL_SOCKET="$SOCKET_DIR/proxysql-admin-pgsql.sock"
+PROXYSQL_PGSQL_SOCKET="$SOCKET_DIR/proxysql-pgsql.sock"
 
 usage() {
   echo "usage: test-servers.sh start | tls | stop; run it through make test-servers, make test-servers-tls or make test-servers-stop" >&2
@@ -66,7 +73,8 @@ usage() {
 
 # check_socket_paths는 서버를 시작하기 전에 Unix socket 경로마다 platform 한도를 확인한다. socket
 # 경로는 sockaddr_un의 sun_path에 NUL과 함께 들어가므로 Linux는 107 byte, macOS는 103 byte까지다.
-# 깊은 checkout(예: 긴 worktree 경로)은 서버 log 줄 대신 이 경로와 한도로 실패한다.
+# socket은 checkout 깊이와 무관한 SOCKET_DIR에 있으므로 이 확인은 그 선언이 한도를 지키는지를 지키고,
+# 넘으면 잘라 내지 않고 경로와 한도를 말하며 실패한다.
 check_socket_paths() {
   case "$(uname -s)" in
     Linux) system=Linux limit=107 ;;
@@ -80,6 +88,23 @@ check_socket_paths() {
       exit 1
     fi
   done
+}
+
+# socket_dir makes SOCKET_DIR, owned by this user and naming this checkout. A
+# folder left by this checkout is reused; one another checkout or user owns is
+# refused.
+socket_dir() {
+  if [ -e "$SOCKET_DIR" ]; then
+    owner=
+    if [ -f "$SOCKET_DIR/checkout" ]; then owner=$(cat "$SOCKET_DIR/checkout"); fi
+    if [ ! -O "$SOCKET_DIR" ] || [ "$owner" != "$ROOT" ]; then
+      echo "test-servers: socket directory $SOCKET_DIR belongs to ${owner:-another user or checkout}, not $ROOT; remove it if no servers use it" >&2
+      exit 1
+    fi
+  else
+    mkdir -m 700 "$SOCKET_DIR"
+    printf '%s\n' "$ROOT" > "$SOCKET_DIR/checkout"
+  fi
 }
 
 # env_ports reads the ports of the running servers from their environment file:
@@ -489,6 +514,7 @@ start() {
   choose_ports
   hold_exclusive
   mkdir -p "$DIR"
+  socket_dir
   trap 'status=$?; if [ "$status" -ne 0 ]; then echo "test-servers: start failed; logs are in $DIR" >&2; stop_servers; fi' EXIT
 
   start_mysql
@@ -539,6 +565,7 @@ case "$1" in
     port "$3"
     MYSQL_PORT=$2
     MYSQL_REPLICA_PORT=$3
+    socket_dir
     start_mysql
     tls
     mysql_timezones
@@ -551,6 +578,8 @@ case "$1" in
     fi
     hold_exclusive
     stop_servers
+    rm -rf "$SOCKET_DIR"
+    echo "test-servers: removed $SOCKET_DIR"
     rm -rf "$DIR"
     echo "test-servers: removed $DIR"
     ;;
