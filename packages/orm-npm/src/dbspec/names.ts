@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 
 const MAX_NAME_BYTES = 63;
-const HASH_DIGITS = 16;
+const HASH_DIGITS = 8;
 const PREFIX_BYTES = MAX_NAME_BYTES - 1 - HASH_DIGITS;
 
 /** The name that the renderer writes for the suffix (a column or an event) of table. */

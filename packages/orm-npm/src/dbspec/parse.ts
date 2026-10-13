@@ -15,6 +15,7 @@ import type {
 } from './model.js';
 import { typeText } from './emit.js';
 import { containsWordRune } from './unicode_word.js';
+import { rendererName } from './names.js';
 
 export interface RawDiagnostic {
   readonly rule: DbspecRule;
@@ -262,6 +263,28 @@ export const RESERVED: ReadonlySet<string> = new Set([
 ]);
 
 /** Whether a name matches the name rule; reserved words are not names. */
+/** A name that the renderer writes for a table, with the token that writes it (docs/dbspec.md "Names"). */
+interface IGeneratedName {
+  readonly name: string;
+  readonly at: Tk;
+}
+
+/** The renderer names of table: the type CHECK of each column that has one, and the triggers of immutable and audit. */
+function generatedNamesOf(table: ITable): IGeneratedName[] {
+  if (table.headerFailed || !wellFormed(table.name.t)) return [];
+  const out: IGeneratedName[] = [];
+  for (const c of table.columns) {
+    if (c.identity !== null || c.type === null || c.type.kind === 'text' || c.type.kind === 'bytes') continue;
+    if (!wellFormed(c.name.t)) continue;
+    out.push({ name: rendererName(table.name.t, c.name.t), at: c.name });
+  }
+  for (const s of table.settings?.entries ?? []) {
+    const events = s.kind === 'immutable' ? ['immutable_update', 'immutable_delete'] : s.kind === 'audit' ? ['audit_insert', 'audit_update', 'audit_delete'] : [];
+    for (const e of events) out.push({ name: rendererName(table.name.t, e), at: s.kw });
+  }
+  return out;
+}
+
 function wellFormed(name: string): boolean {
   return NAME.test(name) && !RESERVED.has(name);
 }
@@ -755,6 +778,26 @@ class DocumentParser {
     }
     if (utf8Length(tok.t) > MAX_NAME_BYTES) this.at('name.length', tok, `${tok.t} is longer than 63 bytes`);
     return formed;
+  }
+
+  /**
+   * Refuses a generated name of a table of the document that equals a generated
+   * name of a used table or of an earlier table of the document, with
+   * name.duplicate at the later name (docs/dbspec.md "Names").
+   */
+  private generatedNamesUnique(doc: IDocument, available: Map<string, ITable | null>): void {
+    const seen = new Set<string>();
+    const local = new Set<ITable>(doc.tables);
+    for (const t of available.values()) {
+      if (t !== null && !local.has(t)) for (const g of generatedNamesOf(t)) seen.add(g.name);
+    }
+    for (const t of doc.tables) {
+      if (!t.named || available.get(t.name.t) !== t) continue;
+      for (const g of generatedNamesOf(t)) {
+        if (seen.has(g.name)) this.at('name.duplicate', g.at, `generated name ${g.name} repeats in the schema`);
+        seen.add(g.name);
+      }
+    }
   }
 
   private constraintName(tok: Tk): void {
@@ -1772,6 +1815,7 @@ class DocumentParser {
       else if (usedConstraints.has(name) || usedTables.has(name)) this.at('name.duplicate', tok, `${name} repeats a name of a used document`);
     }
     for (const t of doc.tables) this.validateTable(t, available);
+    this.generatedNamesUnique(doc, available);
     for (const d of doc.diagrams) {
       const placed = new Set<string>();
       for (const p of d.entries) {
