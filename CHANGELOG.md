@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T147-5: Rust's AesKeyring lists its key versions, and the rule AESKeyring.versions is declared.
 - T147-2: Python has Db.stats, Utils.privileges, Utils.stats and SchemaUtils.exists, installed and empty, PHP has Db::stats, and their interface rules are declared.
 - T147-3: the interface manifest marks its internal components, and the rule check covers the public ones.
 - T147-4: the manifest check refuses a rule whose method its component lacks, and SchemaUtils lists addTablesAndColumns.
