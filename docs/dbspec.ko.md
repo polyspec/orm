@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: b58b583d9cb83b67c4b5bc335405c06fd2007b6f27da1b8eb44e1bafb0ce851b -->
+<!-- source-sha256: b344f54c820dbce0b297458df35a9a47864ac7cef08b4808bc92f359b0abe42e -->
 # dbspec
 
 [English](dbspec.md)
@@ -46,7 +46,7 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 ## 파일 {#files}
 
-dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <document>`가 파일 signature다. 문서 파일을 읽는 tool은 parse 전에 파일이 `dbspec ` bytes(`dbspec`과 공백 하나)로 시작하는지 확인한다. 그래서 같은 확장자를 쓰는 다른 형식의 파일(예: DbSchema project 파일(XML))과 빈 파일은 parse하지 않고 dbspec 문서와 구별된다. 이 bytes로 시작하지 않는 파일은 line 1, column 1의 `signature` error 하나이며, message는 그 파일을 `<path> is not a dbspec document`로 밝히고 그 파일에는 다른 error를 보고하지 않는다. header 앞에 byte order mark가 있는 파일도 `signature` error이고, byte order mark가 있는 text를 parser에 직접 주면 `encoding` error다. 이 bytes로 시작하는 파일은 parse하므로, 그 뒤에서 `dbspec 1 <document>`와 달라지는 header(예: `dbspec 2 shop`)는 `header` error다. 이 bytes로 시작하지만 UTF-8이 아닌 파일은 첫 잘못된 byte의 줄과 열에서 `encoding` error 하나(`<path> is not valid UTF-8`)이며 parse하지 않는다. 각 client에는 byte check가 하나 있다. 이것은 파일의 bytes와 message가 쓸 이름을 받아 이 diagnostic이나 text를 준다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`. 자기 규칙으로(예: symbolic link를 따라가지 않고) 파일을 읽어야 하는 tool은 bytes를 한 번 읽어 자기가 보여 주는 이름과 함께 넘긴다. 각 client에는 file reader도 하나 있다. 이것은 path의 파일을 읽어 그 bytes와 path를 byte check에 주며, 문서 파일을 읽는 나머지 모든 tool이 그것을 쓴다: Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`. 읽을 수 없는 파일은 diagnostic이 아니라 platform의 읽기 error다.
+dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <document>`가 파일 signature다. 문서 파일을 읽는 tool은 parse 전에 파일이 `dbspec ` bytes(`dbspec`과 공백 하나)로 시작하는지 확인한다. 그래서 같은 확장자를 쓰는 다른 형식의 파일(예: DbSchema project 파일(XML))과 빈 파일은 parse하지 않고 dbspec 문서와 구별된다. 이 bytes로 시작하지 않는 파일은 line 1, column 1의 `signature` error 하나이며, message는 그 파일을 `<path> is not a dbspec document`로 밝히고 그 파일에는 다른 error를 보고하지 않는다. header 앞에 byte order mark가 있는 파일도 `signature` error이고, byte order mark가 있는 text를 parser에 직접 주면 `encoding` error다. 이 bytes로 시작하는 파일은 parse하므로, 그 뒤에서 `dbspec 1 <document>`와 달라지는 header(예: `dbspec 2 shop`)는 `header` error다. 이 bytes로 시작하지만 UTF-8이 아닌 파일은 첫 잘못된 byte의 줄과 열에서 `encoding` error 하나(`<path> is not valid UTF-8`)이며 parse하지 않는다. 각 client에는 byte check가 하나 있다. 이것은 파일의 bytes와 message가 쓸 이름을 받아 이 diagnostic이나 text를 준다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Python `read_dbspec_bytes`, Rust `dbspec::read_bytes`. 자기 규칙으로(예: symbolic link를 따라가지 않고) 파일을 읽어야 하는 tool은 bytes를 한 번 읽어 자기가 보여 주는 이름과 함께 넘긴다. 각 client에는 file reader도 하나 있다. 이것은 path의 파일을 읽어 그 bytes와 path를 byte check에 주며, 문서 파일을 읽는 나머지 모든 tool이 그것을 쓴다: Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Python `read_dbspec_file`, Rust `dbspec::read_file`. 읽을 수 없는 파일은 diagnostic이 아니라 platform의 읽기 error다.
 
 ## 문서 집합 {#document-sets}
 
