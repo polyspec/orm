@@ -35,6 +35,10 @@ final class Parser
     private const STORAGE_KEYWORDS = ['markdown', 'store', 'key_prefix', 'title', 'body', 'order', 'checkbox', 'state_machine'];
     /** 표마다 한 번만 쓰는 저장 keyword다. 되풀이하면 keyword 위치에 setting 오류를 낸다. */
     private const ONCE_STORAGE = ['store', 'key_prefix', 'title', 'body', 'order'];
+    /** The codec stages, the fixed words after a codec column (docs/dbspec.md "Keep, move or remove"; R12). */
+    private const CODEC_STAGES = ['ordered_json', 'aes', 'hex', 'gz', 'base64', 'serialize', 'yaml', 'ip'];
+    /** A character of valid UTF-8, or one invalid byte (R15): the code points of a line. */
+    private const UTF8_CHAR = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}|[\s\S])';
 
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
     private array $diagnostics = [];
@@ -65,10 +69,20 @@ final class Parser
     // The current line.
     private int $line = 0;
     private string $text = '';
-    /** @var list<array{0:string,1:int}> [text, column] */
+    /** @var list<array{0:string,1:int,2:int,3:int}> [text, column, index in the line, line] */
     private array $tokens = [];
     /** @var list<string> */
     private array $comments = [];
+    /** @var array<int, array<int, string>> the class the readers gave a token: line => index in the line => class */
+    private array $marks = [];
+    /** @var array<int, true> lines whose classes are lexical: abandoned by a syntax diagnostic, or in a block whose opening line failed (R1, R20) */
+    private array $lexical = [];
+    /** Whether a line is being read: a syntax diagnostic raised then abandons its line. */
+    private bool $reading = false;
+    /** The body of a table or settings or diagram block whose opening line failed is read but keeps lexical classes (R20). */
+    private bool $tableFailed = false;
+    private bool $settingsFailed = false;
+    private bool $diagramFailed = false;
 
     // The open block.
     private string $state = 'top';
@@ -151,8 +165,11 @@ final class Parser
         $this->used ??= new \ArrayObject();
     }
 
-    /** @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>} */
-    public function run(string $source): array
+    /**
+     * @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>, 3: list<Token>} the tokens are read only when
+     *         $withTokens is set, and are empty after a limit stop (docs/dbspec.md "Syntax analysis")
+     */
+    public function run(string $source, bool $withTokens = false): array
     {
         $stop = null;
         try {
@@ -160,8 +177,9 @@ final class Parser
         } catch (ParseStop) {
             $stop = array_pop($this->diagnostics);
         }
+        $tokens = $withTokens && ($stop === null || $stop[0] !== 'limit') ? $this->syntaxTokens($source) : [];
         if ($this->diagnostics === [] && $stop === null) {
-            return [$this->document, [], $this->sortedPositions()];
+            return [$this->document, [], $this->sortedPositions(), $tokens];
         }
         $rank = array_flip(self::RULES);
         $order = array_keys($this->diagnostics);
@@ -170,7 +188,113 @@ final class Parser
         if ($stop !== null) {
             $diagnostics[] = new Diagnostic(...$stop);
         }
-        return [null, $diagnostics, null];
+        return [null, $diagnostics, null, $tokens];
+    }
+
+    /**
+     * The tokens of every line of the source in source order, each with its class: the class a reader set, unless the
+     * line is lexical, else the lexical class (docs/dbspec.md "Syntax analysis"). The lines are split and lexed as the
+     * parser reads them, so a line the parser did not read gets the same tokens.
+     *
+     * @return list<Token>
+     */
+    private function syntaxTokens(string $source): array
+    {
+        $raw = explode("\n", $source);
+        $last = count($raw) - 1;
+        $tokens = [];
+        foreach ($raw as $index => $text) {
+            $line = $index + 1;
+            // A CR before an LF is part of the line end; a bare CR is an offending character (R8, R22).
+            if ($index < $last && $text !== '' && $text[-1] === "\r") {
+                $text = substr($text, 0, -1);
+            }
+            $trimmed = ltrim($text, ' ');
+            if ($trimmed === '') {
+                continue;
+            }
+            if ($trimmed[0] === '#') {
+                $start = strlen($text) - strlen($trimmed);
+                $tokens[] = new Token($line, $start, $start + count(self::chars($trimmed)), 'comment');
+                continue;
+            }
+            [$lexed, $error] = self::lexLine($text);
+            $items = $error === null ? $lexed : self::lexRecover($text);
+            foreach (self::annotate($items, $line) as $token) {
+                $class = isset($this->lexical[$line]) ? null : ($this->marks[$line][$token[2]] ?? null);
+                $class ??= self::lexicalClass($token[0]);
+                $start = $token[1] - 1;
+                $tokens[] = new Token($line, $start, $start + count(self::chars($token[0])), $class);
+            }
+        }
+        return $tokens;
+    }
+
+    /** The lexical class of a token of a line (docs/dbspec.md "Syntax analysis"). */
+    private static function lexicalClass(string $text): string
+    {
+        return match (true) {
+            $text[0] === "'" => 'string',
+            in_array($text, ['(', ')', '{', '}', ','], true) => 'punctuation',
+            in_array($text, ['=', '<>', '<', '<=', '>', '>=', '+', '-', '*', '/'], true) => 'operator',
+            self::isNumber($text) => 'number',
+            default => 'word',
+        };
+    }
+
+    /**
+     * Gives each token its index in its line and its line, the keys of the marks.
+     *
+     * @param list<array{0:string,1:int}> $tokens
+     * @return list<array{0:string,1:int,2:int,3:int}>
+     */
+    private static function annotate(array $tokens, int $line): array
+    {
+        return array_map(static fn(array $t, int $i): array => [$t[0], $t[1], $i, $line], $tokens, array_keys($tokens));
+    }
+
+    /** The code points of a line; an invalid UTF-8 byte is one code point of its own (R15). @return list<string> */
+    private static function chars(string $text): array
+    {
+        if (preg_match('//u', $text) === 1) {
+            return preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        }
+        $chars = [];
+        $offset = 0;
+        $length = strlen($text);
+        while ($offset < $length) {
+            $size = preg_match('/\G' . self::UTF8_CHAR . '/', $text, $m, 0, $offset) === 1 ? strlen($m[0]) : 1;
+            $chars[] = substr($text, $offset, $size);
+            $offset += $size;
+        }
+        return $chars;
+    }
+
+    /**
+     * Sets the class of a token the reader consumed. A token the parser makes itself has no index and is not marked;
+     * the class of a line the parser abandons is dropped when the tokens are built.
+     */
+    private function mark(array $token, string $class): void
+    {
+        if (isset($token[2], $token[3])) {
+            $this->marks[$token[3]][$token[2]] = $class;
+        }
+    }
+
+    /** A value position gives keyword to true, false, null and now (R6, R18); other words and numbers keep their class. */
+    private function markValue(array $token): void
+    {
+        if (in_array($token[0], ['true', 'false', 'null', 'now'], true)) {
+            $this->mark($token, 'keyword');
+        }
+    }
+
+    /** Consumes the token at the cursor, giving it the class; returns it. @return array{0:string,1:int,2:int,3:int} */
+    private function take(string $class): array
+    {
+        $token = $this->tokens[$this->cursor++];
+        $this->mark($token, $class);
+        return $token;
     }
 
     /** The positions in source order, by line and then column; equal places keep the order they were read. @return list<Position> */
@@ -243,6 +367,7 @@ final class Parser
             }
             $this->line = $index + 1;
             $this->text = $text;
+            $this->reading = true;
             if ($index === 0) {
                 $this->tokenize();
                 $this->header();
@@ -256,11 +381,14 @@ final class Parser
                 $this->comments[] = $trimmed;
                 continue;
             }
+            if ($this->tableFailed || $this->settingsFailed || $this->diagramFailed) {
+                $this->lexical[$this->line] = true;
+            }
             $this->tokenize();
             if ($this->lexError !== null) {
                 $this->error('syntax', $this->line, $this->lexError[0], $this->lexError[1]);
                 // 오류 글자를 뺀 token으로 읽는다(Go의 lexRecover): 맨 위 줄의 table 머리줄도 표를 연다.
-                $this->tokens = self::lexRecover($text);
+                $this->tokens = self::annotate(self::lexRecover($text), $this->line);
                 if ($this->lexedLine()) {
                     continue;
                 }
@@ -272,6 +400,7 @@ final class Parser
                 'diagram' => $this->diagramLine(),
             };
         }
+        $this->reading = false;
         if ($encoding !== null) {
             $this->stop('encoding', ...$encoding);
         }
@@ -323,7 +452,8 @@ final class Parser
 
     private function tokenize(): void
     {
-        [$this->tokens, $this->lexError] = self::lexLine($this->text);
+        [$tokens, $this->lexError] = self::lexLine($this->text);
+        $this->tokens = self::annotate($tokens, $this->line);
     }
 
     /**
@@ -335,7 +465,7 @@ final class Parser
      */
     private static function lexLine(string $text): array
     {
-        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        $chars = self::chars($text);
         $n = count($chars);
         $tokens = [];
         $i = 0;
@@ -409,7 +539,7 @@ final class Parser
     /** Go's lexRecover: the line's tokens with each character that starts no token replaced by a space. */
     private static function lexRecover(string $text): array
     {
-        $chars = preg_split('//u', $text, -1, PREG_SPLIT_NO_EMPTY);
+        $chars = self::chars($text);
         for ($attempt = 0; $attempt <= count($chars); $attempt++) {
             [$tokens, $error] = self::lexLine(implode('', $chars));
             if ($error === null) {
@@ -423,6 +553,10 @@ final class Parser
     /** Go's isWordRune: `_` or `.`, or a code point of the table of UnicodeWord (a letter or digit of Go's unicode). */
     private static function wordRune(string $c): bool
     {
+        // A single byte from 0x80 is an invalid byte: a valid code point of that range has two bytes or more.
+        if (strlen($c) === 1 && ord($c) >= 0x80) {
+            return false;
+        }
         return $c === '_' || $c === '.' || UnicodeWord::contains(mb_ord($c, 'UTF-8'));
     }
 
@@ -522,6 +656,7 @@ final class Parser
             $this->stop('header', 1, $end + 1, 'the first line is exactly `dbspec 1 <document>`');
         }
         $t = $this->tokens;
+        $this->mark($t[0], 'keyword');
         $this->name($t[2]);
         $this->document = new Document($t[2][0]);
         $this->declare('document', [$t[2][0]], $t[2]);
@@ -532,12 +667,14 @@ final class Parser
         $first = $this->tokens[0];
         switch ($first[0]) {
             case 'use':
+                $this->mark($first, 'keyword');
                 if ($this->topPhase > 0) {
                     $this->error('order', $this->line, $first[1], '`use` lines come before tables and diagrams');
                 }
                 $this->useLine();
                 return;
             case 'table':
+                $this->mark($first, 'keyword');
                 if ($this->topPhase > 1) {
                     $this->error('order', $this->line, $first[1], 'tables come before diagrams');
                 }
@@ -545,6 +682,7 @@ final class Parser
                 $this->openTable();
                 return;
             case 'diagram':
+                $this->mark($first, 'keyword');
                 $this->topPhase = 2;
                 $this->openDiagram();
                 return;
@@ -559,6 +697,7 @@ final class Parser
         if ($document === null) {
             return;
         }
+        $this->mark($document, 'name');
         if (!$this->expectAt(2, '{')) {
             return;
         }
@@ -569,6 +708,7 @@ final class Parser
             if ($table === null) {
                 return;
             }
+            $this->mark($table, 'name');
             $tables[] = $table;
             $i++;
             if (($t[$i][0] ?? null) === ',') {
@@ -745,6 +885,7 @@ final class Parser
             }
         }
         $this->state = 'table';
+        $this->tableFailed = $headerFailed;
         $this->blockOpen = [$this->line, $t[2][1] ?? $t[0][1]];
         $this->table = $table;
         $this->tableName = [$this->line, $name[1]];
@@ -779,6 +920,7 @@ final class Parser
             case 'index':
             case 'foreign':
             case 'check':
+                $this->mark($first, 'keyword');
                 if ($this->tablePhase === 2) {
                     $this->error('order', $this->line, $first[1], 'key, index, foreign key and check lines come before the settings block');
                 } else {
@@ -792,6 +934,7 @@ final class Parser
                 };
                 return;
             case 'settings':
+                $this->mark($first, 'keyword');
                 // Go는 반복된 block의 키워드에 order를 줄이 올바른 형식(`settings {`만)일 때만 보고한다.
                 $wellFormed = ($this->tokens[1][0] ?? null) === '{' && !isset($this->tokens[2]);
                 if ($this->tablePhase === 2 && $wellFormed) {
@@ -841,16 +984,22 @@ final class Parser
         $identity = null;
         $default = null;
         if (($t[$i][0] ?? null) === 'null') {
+            $this->mark($t[$i], 'keyword');
             $nullable = true;
             $i++;
         }
         if (($t[$i][0] ?? null) === 'identity') {
+            $this->mark($t[$i], 'keyword');
             $identity = $t[$i];
             $i++;
         }
         if (($t[$i][0] ?? null) === 'default') {
             $keyword = $t[$i];
+            $this->mark($keyword, 'keyword');
             $value = $t[$i + 1] ?? null;
+            if ($value !== null) {
+                $this->markValue($value);
+            }
             if ($value === null) {
                 $this->error('syntax', $this->line, $this->endColumn(), 'expected a default value');
                 $i++;
@@ -921,6 +1070,7 @@ final class Parser
     {
         $t = $this->tokens;
         [$name, $column] = $t[$i];
+        $this->mark($t[$i], 'type');
         $parenthesis = ($t[$i + 1][0] ?? null) === '(';
         if (in_array($name, ColumnType::SIMPLE, true) && !$parenthesis) {
             return [$this->types[$name] ??= new ColumnType($name), $i + 1];
@@ -1131,10 +1281,15 @@ final class Parser
         $actionTokens = [];
         foreach (['delete', 'update'] as $event) {
             if (($t[$i][0] ?? null) === 'on' && ($t[$i + 1][0] ?? null) === $event) {
+                $this->mark($t[$i], 'keyword');
+                $this->mark($t[$i + 1], 'keyword');
                 $action = $t[$i + 2] ?? null;
                 if ($action === null || !self::isWord($action[0])) {
                     $this->error('syntax', $this->line, $action[1] ?? $this->endColumn(), 'expected an action');
                     return;
+                }
+                if (in_array($action[0], ForeignKey::ACTIONS, true)) {
+                    $this->mark($action, 'keyword');
                 }
                 $actions[$event] = $action[0];
                 $actionTokens[$event] = $action;
@@ -1221,6 +1376,7 @@ final class Parser
         $this->detachedBlock = $this->table->settings !== null;
         $this->table->settings ??= $settings;
         $this->settingsBlock = $this->detachedBlock ? $settings : $this->table->settings;
+        $this->settingsFailed = isset($this->syntaxLines[$this->line]);
     }
 
     private function settingsLine(): void
@@ -1231,8 +1387,10 @@ final class Parser
             $this->endAt(1);
             $this->settingsBlock->closingComments = $this->takeComments();
             $this->state = 'table';
+            $this->settingsFailed = false;
             return;
         }
+        $this->mark($t[0], 'setting');
         if (in_array($keyword, self::STORAGE_KEYWORDS, true)) {
             $this->storageLine($keyword, $at);
             return;
@@ -1271,6 +1429,26 @@ final class Parser
         if (count($arguments) < $arity[0]) {
             $this->error('syntax', $this->line, $this->endColumn(), "setting `$keyword` needs more arguments");
             return;
+        }
+        // The positions of the line the grammar takes (R3, R4, R11, R12): an argument is a name, except the stages of a
+        // codec, and the fixed words of select and audit are keywords.
+        foreach ($keyword === 'codec' ? [$arguments[0]] : $arguments as $argument) {
+            $this->mark($argument, 'name');
+        }
+        if ($keyword === 'codec') {
+            foreach (array_slice($arguments, 1) as $stage) {
+                if (in_array($stage[0], self::CODEC_STAGES, true)) {
+                    $this->mark($stage, 'keyword');
+                }
+            }
+        }
+        if ($keyword === 'select') {
+            $this->mark($arguments[0], 'keyword');
+        }
+        if ($keyword === 'audit') {
+            foreach ([0, 2, 4, 6, 8] as $i) {
+                $this->mark($arguments[$i], 'keyword');
+            }
         }
         $lists = [];
         $kind = $keyword;
@@ -1348,6 +1526,7 @@ final class Parser
                 $this->error('syntax', $this->line, $keyword[1], "expected `exclude`, `include` or the end of the line, not `{$keyword[0]}`");
                 return null;
             }
+            $this->mark($keyword, 'keyword');
             if (($tokens[$i + 1][0] ?? null) !== '(') {
                 $this->error('syntax', $this->line, $tokens[$i + 1][1] ?? $this->endColumn(), 'expected `(`');
                 return null;
@@ -1360,6 +1539,7 @@ final class Parser
                     $this->error('syntax', $this->line, $name[1] ?? $this->endColumn(), 'expected a column name');
                     return null;
                 }
+                $this->mark($name, 'name');
                 $columns[] = $name;
                 $next = $tokens[$i + 1] ?? null;
                 $i += 2;
@@ -1380,12 +1560,14 @@ final class Parser
     {
         $t = $this->tokens;
         $name = $this->wordAt(1);
+        $this->diagramFailed = false;
         $this->state = 'diagram';
         $this->blockOpen = [$this->line, $t[2][1] ?? $t[0][1]];
         $this->diagramTables = [];
         $this->diagram = new Diagram($name[0] ?? '', $this->takeComments());
         $this->document->diagrams[] = $this->diagram;
         if ($name === null) {
+            $this->diagramFailed = true;
             return;
         }
         $this->declare('diagram', [$name[0]], $name);
@@ -1397,6 +1579,7 @@ final class Parser
             $this->error('name.duplicate', $this->line, $name[1], "diagram `{$name[0]}` is already defined");
         }
         $this->diagramNames[$name[0]] = true;
+        $this->diagramFailed = isset($this->syntaxLines[$this->line]);
     }
 
     private function diagramLine(): void
@@ -1405,6 +1588,7 @@ final class Parser
         if ($t[0][0] === '}') {
             $this->endAt(1);
             $this->diagram->closingComments = $this->takeComments();
+            $this->diagramFailed = false;
             $this->state = 'top';
             return;
         }
@@ -1420,6 +1604,7 @@ final class Parser
                 $this->error('syntax', $this->line, $this->endColumn(), 'expected a coordinate');
                 return;
             }
+            $this->markValue($token);
             $text = $token[0];
             $i++;
             if ($text === '-' && isset($t[$i]) && $t[$i][1] === $token[1] + 1) {
@@ -1463,6 +1648,8 @@ final class Parser
 
     private function closeTable(): void
     {
+        $this->tableFailed = false;
+        $this->settingsFailed = false;
         $table = $this->table;
         $primary = $table->primaryKey;
         if ($this->columns === []) {
@@ -1515,7 +1702,10 @@ final class Parser
         }
         $checkColumns = [];
         foreach ($this->tableChecks as [$check, $line, $tokens, $end]) {
-            [$text, $errors, $refs] = Expression::parse($tokens, $line, $end, $this->columns, $actionColumns);
+            [$text, $errors, $refs, $marks] = Expression::parse($tokens, $line, $end, $this->columns, $actionColumns);
+            foreach ($marks as $index => $class) {
+                $this->marks[$line][$index] = $class;
+            }
             foreach ($errors as $error) {
                 $this->error(...$error);
             }
@@ -2041,7 +2231,7 @@ final class Parser
                 // shard 절은 block에서도 읽는다: block table의 shard는 setting error다. `shard` token은
                 // 위치를 위해 남기며 Setting의 인자에서는 뺀다.
                 if (($this->tokens[$this->cursor][0] ?? null) === 'shard') {
-                    $arguments[] = $this->tokens[$this->cursor++];
+                    $arguments[] = $this->take('keyword');
                     $arguments[] = $this->cursorWord('the shard column');
                     $arguments[] = $this->cursorOneOf('`year`, `month` or `day`', ['year', 'month', 'day']);
                 }
@@ -2069,13 +2259,13 @@ final class Parser
         $arguments = [$this->cursorWord('the state column')];
         foreach (['initial', 'terminal'] as $form) {
             if ($this->formAhead($form)) {
-                $this->cursor++;
+                $this->take('keyword');
                 $arguments[] = $this->cursorWord('a state name');
                 return [$arguments, $form, $form === 'terminal' ? $this->optionalRequire() : []];
             }
         }
         if ($this->formAhead('history')) {
-            $this->cursor++;
+            $this->take('keyword');
             $arguments[] = $this->cursorWord('the history table');
             $this->cursorKeyword('row');
             $arguments[] = $this->cursorWord('the foreign key column');
@@ -2088,7 +2278,7 @@ final class Parser
             return [$arguments, 'history', []];
         }
         if ($this->formAhead('limit')) {
-            $this->cursor++;
+            $this->take('keyword');
             $arguments[] = $this->cursorWord('a state name');
             $arguments[] = $this->cursorValue('a row count');
             return [$arguments, 'limit', []];
@@ -2110,7 +2300,7 @@ final class Parser
         if ($keyword === null || $keyword[0] !== 'require') {
             return [];
         }
-        $this->cursor++;
+        $this->take('keyword');
         if (($this->tokens[$this->cursor][0] ?? null) !== '(') {
             throw $this->cursorFail('`(`');
         }
@@ -2150,8 +2340,7 @@ final class Parser
         if ($token === null || !self::isWord($token[0])) {
             throw $this->cursorFail($what);
         }
-        $this->cursor++;
-        return $token;
+        return $this->take('name');
     }
 
     private function cursorKeyword(string $text): void
@@ -2159,7 +2348,7 @@ final class Parser
         if (($this->tokens[$this->cursor][0] ?? null) !== $text) {
             throw $this->cursorFail("`$text`");
         }
-        $this->cursor++;
+        $this->take('keyword');
     }
 
     /** @param list<string> $words @return array{0:string,1:int} 목록 가운데 하나인 token */
@@ -2169,8 +2358,7 @@ final class Parser
         if ($token === null || !in_array($token[0], $words, true)) {
             throw $this->cursorFail($what);
         }
-        $this->cursor++;
-        return $token;
+        return $this->take('keyword');
     }
 
     /** 문자열 literal이다. 값은 따옴표 사이 글이며, 겹따옴표는 한 글자로 읽는다. @return array{0:string,1:int} */
@@ -2200,6 +2388,7 @@ final class Parser
         if ($token === null || !(self::isWord($token[0]) || self::isNumber($token[0]))) {
             throw $this->cursorFail($what);
         }
+        $this->markValue($token);
         $this->cursor++;
         return $token;
     }
@@ -2598,6 +2787,7 @@ final class Parser
     /** Checks a name token's format and length; returns whether it is valid. */
     private function name(array $token, ?int $line = null): bool
     {
+        $this->mark($token, 'name');
         [$name, $column] = $token;
         $line ??= $this->line;
         if (!preg_match('/^[a-z][a-z0-9_]*$/D', $name) || in_array($name, self::RESERVED, true)) {
@@ -2646,6 +2836,10 @@ final class Parser
             $this->error('syntax', $this->line, $token[1] ?? $this->endColumn(), "expected `$expected`" . ($token === null ? '' : ", found `{$token[0]}`"));
             return false;
         }
+        // The expected words of the grammar are its fixed words (R12); punctuation keeps its lexical class.
+        if (ctype_alpha($expected[0])) {
+            $this->mark($token, 'keyword');
+        }
         return true;
     }
 
@@ -2675,10 +2869,12 @@ final class Parser
             if ($name === null) {
                 return null;
             }
+            $this->mark($name, 'name');
             $i++;
             $descending = false;
             $next = $this->tokens[$i][0] ?? null;
             if ($directions && ($next === 'asc' || $next === 'desc')) {
+                $this->mark($this->tokens[$i], 'keyword');
                 $descending = $next === 'desc';
                 $i++;
                 $next = $this->tokens[$i][0] ?? null;
@@ -2731,6 +2927,10 @@ final class Parser
     private function error(string $rule, int $line, int $column, string $message): void
     {
         if ($rule === 'syntax') {
+            // A syntax diagnostic that a reader raises abandons its line (R1); deferred checks do not.
+            if ($this->reading) {
+                $this->lexical[$line] = true;
+            }
             if (isset($this->syntaxLines[$line])) {
                 return;
             }

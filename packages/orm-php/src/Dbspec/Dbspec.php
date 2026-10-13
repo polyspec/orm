@@ -17,13 +17,49 @@ final class Dbspec
      */
     public static function parse(string $text, array $documents): ParseResult
     {
+        [$document, $diagnostics, $positions] = self::read($text, $documents, false);
+        return $document === null ? ParseResult::invalid($diagnostics) : ParseResult::valid($document, $positions);
+    }
+
+    /**
+     * Parses a document as parse does and returns that result unchanged, with the tokens of the text: each with its line,
+     * its start and end in code points and its class (docs/dbspec.md "Syntax analysis"). A limit error gives no tokens.
+     *
+     * @param array<string, string> $documents
+     */
+    public static function analyze(string $text, array $documents): Analysis
+    {
+        [$document, $diagnostics, $positions, $tokens] = self::read($text, $documents, true);
+        return new Analysis($document, $positions, $diagnostics, $tokens);
+    }
+
+    /**
+     * The canonical emission of the text when it has no diagnostic; otherwise every diagnostic and no text. A document
+     * with a diagnostic is never rewritten (docs/dbspec.md "Formatting").
+     *
+     * @param array<string, string> $documents
+     */
+    public static function format(string $text, array $documents): FormatResult
+    {
+        [$document, $diagnostics] = self::read($text, $documents, false);
+        if ($document === null) {
+            return new FormatResult(null, $diagnostics);
+        }
+        return new FormatResult(self::emit($document), []);
+    }
+
+    /**
+     * @param array<string, string> $documents
+     * @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>, 3: list<Token>}
+     */
+    private static function read(string $text, array $documents, bool $withTokens): array
+    {
         foreach ($documents as $name => $source) {
             if (!is_string($name) || !is_string($source)) {
                 throw new \InvalidArgumentException('The declared document set maps document names to texts');
             }
         }
-        [$document, $diagnostics, $positions] = (new Parser($documents))->run($text);
-        return $document === null ? ParseResult::invalid($diagnostics) : ParseResult::valid($document, $positions);
+        return (new Parser($documents))->run($text, $withTokens);
     }
 
     /** 모든 dbspec document 파일의 첫 byte다. header `dbspec 1 <document>`가 이것으로 시작한다. */

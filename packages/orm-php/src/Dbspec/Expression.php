@@ -25,6 +25,8 @@ final class Expression
     private const TEXT = ['varchar' => true, 'text' => true];
 
     private int $at = 0;
+    /** @var array<int, string> index in the line => class of the tokens the predicate read (docs/dbspec.md "Syntax analysis") */
+    private array $marks = [];
     /** @var list<string> literal 의 텍스트; 타입 검사가 정규 형태로 바꾼다. */
     private array $literals = [];
     /** @var list<array{0:string,1:int,2:int,3:string}> [rule, line, column, message] */
@@ -58,7 +60,7 @@ final class Expression
     }
 
     /**
-     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>} 표준 text 또는 null, 오류, 검사가 읽는 column 이름 (실패하면 빈 목록)
+     * @return array{0: ?string, 1: list<array{0:string,1:int,2:int,3:string}>, 2: list<string>, 3: array<int, string>} 표준 text 또는 null, 오류, 검사가 읽는 column 이름 (실패하면 빈 목록), 읽은 token의 class (줄 안의 index => class)
      */
     public static function parse(array $tokens, int $line, int $endColumn, array $columns, array $actionColumns): array
     {
@@ -70,13 +72,13 @@ final class Expression
                 $parser->fail('a check predicate ends with its closing parenthesis');
             }
         } catch (ExpressionFailure) {
-            return [null, $parser->errors, []];
+            return [null, $parser->errors, [], $parser->marks];
         }
         $parser->checkTypes();
         if ($parser->errors !== []) {
-            return [null, $parser->errors, []];
+            return [null, $parser->errors, [], $parser->marks];
         }
-        return [$parser->text($tree), [], array_values(array_unique($parser->refs))];
+        return [$parser->text($tree), [], array_values(array_unique($parser->refs)), $parser->marks];
     }
 
     private function peek(int $ahead = 0): ?string
@@ -90,11 +92,22 @@ final class Expression
         return $this->tokens[$this->at][1] ?? $this->endColumn;
     }
 
-    private function expect(string $token): void
+    private function expect(string $token, string $class = ''): void
     {
         if ($this->peek() !== $token) {
             $this->fail("expected `$token`");
         }
+        if ($class !== '') {
+            $this->take($class);
+        } else {
+            $this->at++;
+        }
+    }
+
+    /** Consumes the current token and records its class for its index in the line. */
+    private function take(string $class): void
+    {
+        $this->marks[$this->tokens[$this->at][2]] = $class;
         $this->at++;
     }
 
@@ -118,7 +131,7 @@ final class Expression
     {
         $left = $this->conjunction();
         while ($this->peek() === 'or') {
-            $this->at++;
+            $this->take('keyword');
             $left = ['or', $left, $this->conjunction()];
         }
         return $left;
@@ -128,7 +141,7 @@ final class Expression
     {
         $left = $this->group();
         while ($this->peek() === 'and') {
-            $this->at++;
+            $this->take('keyword');
             $left = ['and', $left, $this->group()];
         }
         return $left;
@@ -162,12 +175,12 @@ final class Expression
         $negated = $next === 'not' && $this->peek(1) === 'in';
         if ($negated) {
             $this->requireColumn($left, 'in');
-            $this->at++;
+            $this->take('keyword');
             $next = $this->peek();
         }
         if ($next === 'in') {
             $this->requireColumn($left, 'in');
-            $this->at++;
+            $this->take('keyword');
             $this->expect('(');
             $list = [$this->literal()];
             while ($this->peek() === ',') {
@@ -179,12 +192,12 @@ final class Expression
         }
         if ($next === 'is') {
             $this->requireColumn($left, 'is');
-            $this->at++;
+            $this->take('keyword');
             $isNot = $this->peek() === 'not';
             if ($isNot) {
-                $this->at++;
+                $this->take('keyword');
             }
-            $this->expect('null');
+            $this->expect('null', 'keyword');
             return $this->predicates[] = ['null', $left, $isNot];
         }
         // 비교, in, is 가 따르지 않는 피연산자: and, or, ) 나 끝이 따르면 피연산자에서,
@@ -214,7 +227,7 @@ final class Expression
             if (!isset(self::KEYWORDS[$token])) {
                 $operand = ['column', $token, $this->position(), $this->columns[$token] ?? null];
                 $this->refs[] = $token;
-                $this->at++;
+                $this->take('name');
                 return $operand;
             }
         }
@@ -232,7 +245,7 @@ final class Expression
         $text = null;
         if ($token === 'true' || $token === 'false') {
             $text = $token;
-            $this->at++;
+            $this->take('keyword');
         } elseif ($token === '-' && isset($this->tokens[$this->at + 1]) && $this->tokens[$this->at + 1][1] === $column + 1 && Literal::number('-' . $this->tokens[$this->at + 1][0]) !== null) {
             $text = '-' . $this->tokens[$this->at + 1][0];
             $this->at += 2;
