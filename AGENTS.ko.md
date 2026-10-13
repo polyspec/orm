@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 921031b6f50ec48e6c3f1a96d0eeb1daee5fb98cc786f1a98aaef53bcd52111a -->
+<!-- source-sha256: 230ea982dfe198fd16322056e86b175d9fc794b6882f577a53fe47f64895624c -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -181,7 +181,7 @@
 - 오류와 입력값을 보존한다. 조용한 fallback이나 호환 계층을 추가하지 않는다.
 - 모든 변환은 idempotent하다. parse한 canonical source를 emit하면 byte 단위로 같고, 같은 입력으로 operation을 반복하면 같은 결과와 상태가 된다.
 - 이름은 그것이 하는 일을 말하고, 한 개념은 모든 client에서 한 이름을 쓴다. 이름, prefix, suffix가 동작을 고르지 않는다. 동작은 명시적으로 선언한다.
-- 코드 주석은 한국어로 쓰고 기술 용어는 영어 그대로 쓴다. identifier, log, error message, test 이름은 영어로 쓴다.
+- code 주석, identifier, log, error message, test 이름은 영어로 쓴다(kit의 PRINCIPLES.md, K84). 남은 한국어 주석은 T131에서 번역하며, 새로 쓰거나 바꾸는 주석은 영어다.
 - Go 값 변환, host 인코딩, 생성 모델 대입은 잘못된 값에 오류를 반환한다. 행을 쓰기 전에 insert 필드 대입을 검증하고 행 조립 오류를 호출자에게 전파한다.
 - Go collection 식별자와 scalar 비교는 지원하는 값의 타입을 보존한다. 지원하지 않거나 손실되는 key는 실패하고 collection, relation, 분할 질의 호출자는 오류를 전파한다.
 - 값 스타일 컬럼의 setter와 getter는 SQL NULL, 인코딩된 null 값, 조회하지 않은 컬럼을 명시적 값 타입으로 구분한다. setter는 모델을 변경하기 전에 잘못된 입력을 거부하고, 명시적으로 요청한 미조회 컬럼은 `COLUMN_UNSELECTED`를 반환한다.
