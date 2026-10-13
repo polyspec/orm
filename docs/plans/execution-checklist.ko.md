@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: c1800ff256112764d78d78a9ac016412df57fb97ead9f34ffcb1f5798469764c -->
+<!-- source-sha256: 9619cf14753362541e993cfad331cbaafb445cc1432547c984c2e1b6358c95e6 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -934,7 +934,7 @@
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.
 - [ ] T131 code 주석을 영어로 번역한다. 원인: AGENTS가 code 주석은 한국어라고 적어, 주석은 영어라는 owner 규칙(kit PRINCIPLES, K84)과 어긋났다. 2026-10-13 기준 728개 파일에 한국어 주석 10,059줄이 남아 있다. 인수 조건: code 파일의 주석에 한글이 없으며, 이를 어기면 실패하는 검사가 check target에 들어 있다; AGENTS가 영어 규칙을 적는다.
-  - [ ] T131-1 주석 언어 검사: 모든 code 파일(Go, TypeScript와 JavaScript, PHP, C, Python, Rust, Makefile, shell)의 주석을 각 언어의 주석 문법으로 읽고 한글이 있으면 파일과 줄을 대며 실패하는 도구; 현재 tree에서 red다.
+  - [ ] T131-1 주석 언어 검사: 각 생태계 자신의 tokenizer(Go `go/scanner`, TypeScript scanner, Python `tokenize`, PHP `token_get_all`; tokenizer가 없는 언어는 먼저 S1의 rebuild 기록)로 모든 code 파일의 주석 token을 꺼내 한글이 있으면 파일과 줄을 대며 실패하는 얇은 도구; 현재 tree에서 red다.
   - [ ] T131-2 Go 주석을 영어로.
   - [ ] T131-3 TypeScript와 JavaScript 주석을 영어로.
   - [ ] T131-4 PHP와 PHP extension 주석을 영어로.

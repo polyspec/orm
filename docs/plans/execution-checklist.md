@@ -935,7 +935,7 @@
 - [ ] T128-9 Wire the editor packages into the checks and the release configuration. Acceptance: the kit import check with orm's rules, feature owners, check inputs, CI group, workspace build and test scripts, release manifests and consumer smokes, dependency review records, and the AGENTS.md (+ko) package layout.
 - [ ] T128-R Release the editor stack. Acceptance: a `chore(release)` bump commit after green CI, the maintainer's tag, the release workflow and `release-verify` of every npm package.
 - [ ] T131 Translate the code comments to English. Cause: AGENTS said code comments are Korean, against the owner's rule that comments are English (kit PRINCIPLES, K84); 10,059 Korean comment lines remain in 728 files (2026-10-13). Acceptance: no Hangul in a comment of a code file, held by a check that fails on one and runs among the check targets; AGENTS states the English rule.
-  - [ ] T131-1 The comment language check: a tool that reads the comments of every code file (Go, TypeScript and JavaScript, PHP, C, Python, Rust, Makefile, shell) through each language's comment syntax and fails on Hangul, naming file and line; red on the current tree.
+  - [ ] T131-1 The comment language check: a thin tool that takes the comment tokens of every code file from each ecosystem's own tokenizer (Go `go/scanner`, TypeScript's scanner, Python `tokenize`, PHP `token_get_all`; for a language without one, a rebuild record under S1 first) and fails on Hangul, naming file and line; red on the current tree.
   - [ ] T131-2 Go comments in English.
   - [ ] T131-3 TypeScript and JavaScript comments in English.
   - [ ] T131-4 PHP and PHP extension comments in English.
