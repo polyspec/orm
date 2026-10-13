@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 20ebf6fab6b9c74ccf78626ccd9ae90af61d7cce37d8caaec858d0536d65d86f -->
+<!-- source-sha256: 1d6fb3f561da6a74793228b23b86cb59d86b3822391c1948f19fb2fff6a0820d -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-6-1: Rust set vector test가 느린 실행을 실패시키지 않고 경고하며, `dbspec-rust-check/set`이 두 test를 별도 part로 실행한다.
 - T128-2a-6 (breaking): Rust build generator가 `Builder::set(path)`로 set 파일을 받는다; `Builder::new([..])`와 `uses`는 지웠고, `cargo:rerun-if-changed`가 set 파일과 나열된 모든 문서를 적는다. `dbspec::read_set`이 set 파일을 읽는다.
 - T128-2a-5-1: PHP set target가 자기 set test만 실행한다; show-create test는 자기 target에서 한 번 실행한다.
 - T128-3: 모든 client와 PHP extension이 같은 syntax token과 format을 주며, 이제 `make dbspec-compare-check`가 이를 비교하고 parity unit `dbspec-syntax`가 이를 선언한다.
