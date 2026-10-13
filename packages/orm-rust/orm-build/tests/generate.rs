@@ -399,3 +399,21 @@ fn a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own() {
     assert!(text.contains("pub mod polyspec_orm_model {"), "the model module of table polyspec_orm is polyspec_orm_model");
     assert!(!text.contains("pub mod polyspec_orm {"), "a model module named polyspec_orm shadows the runtime crate");
 }
+
+/// The text of the impl block of the model `name`, from its header to the next impl block.
+fn impl_of<'a>(text: &'a str, name: &str) -> &'a str {
+    let header = format!("impl {name} {{");
+    let start = text.find(&header).unwrap_or_else(|| panic!("no impl block of {name}"));
+    let rest = &text[start + header.len()..];
+    let end = rest.find("\nimpl ").unwrap_or(rest.len());
+    &rest[..end]
+}
+
+#[test]
+fn key_prefix_methods_come_from_the_schema_without_a_scan() {
+    // The source calls no method of a model, so every method of a key prefix comes from the schema (T156).
+    let schema = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit_columns.dbs");
+    let text = generate_with_schema(schema, "fn main() {}\n").unwrap();
+    assert!(impl_of(&text, "Card").contains("pub fn audit_seq<"), "Card lacks audit_seq, the prefix of ix_card_audit");
+    assert!(impl_of(&text, "CardHistory").contains("pub fn seq<"), "CardHistory lacks seq, the prefix of ix_card_history_row");
+}

@@ -94,6 +94,7 @@ func runGo(m *runtimemodel.Model, out, pkg string, scan []string, check bool, fi
 			err = errors.Join(err, removeErr)
 		}
 	}()
+	g.declareKeyPrefixes()
 	if err := g.write(); err != nil {
 		return unchanged(out, err)
 	}
@@ -1080,4 +1081,53 @@ func goStringLiteral(text string) string {
 		parts[i] = strconv.Quote(line)
 	}
 	return strings.Join(parts, " +\n\t")
+}
+
+// declareKeyPrefixes declares the method of every prefix of every key of each
+// model, whether or not a scanned call names it: the schema gives the methods
+// of a model (T156). A prefix of one column is its column method, and a prefix
+// of several columns is the tuple method of those columns.
+func (g *goGen) declareKeyPrefixes() {
+	names := make([]string, 0, len(g.models))
+	for name := range g.models {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		gm := g.models[name]
+		e := gm.e
+		keys := [][]string{e.PK}
+		for _, u := range e.Uniques {
+			keys = append(keys, u.Columns)
+		}
+		indexes := make([]string, 0, len(e.Indexes))
+		for index := range e.Indexes {
+			indexes = append(indexes, index)
+		}
+		sort.Strings(indexes)
+		for _, index := range indexes {
+			keys = append(keys, e.Indexes[index])
+		}
+		for _, columns := range keys {
+			for k := 1; k <= len(columns); k++ {
+				method := keyPrefixMethod(columns[:k])
+				if _, ok := gm.methods[method]; ok {
+					continue
+				}
+				g.method(e.Name, gm, method, make([]argInfo, k))
+			}
+		}
+	}
+}
+
+// keyPrefixMethod returns the method name of a prefix of a key.
+func keyPrefixMethod(columns []string) string {
+	if len(columns) == 1 {
+		return pascal(columns[0])
+	}
+	parts := make([]string, 0, len(columns))
+	for _, c := range columns {
+		parts = append(parts, pascal(c))
+	}
+	return "Tuple" + strings.Join(parts, "With")
 }
