@@ -16,7 +16,7 @@ class RowLockEventTest(unittest.TestCase):
     def setUpClass(cls):
         tmp = tempfile.TemporaryDirectory(prefix='orm-rowlock-')
         cls.addClassCleanup(tmp.cleanup)
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'bench.dbs')
+        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
         cls.db = cls.models.connect(f'sqlite://{tmp.name}/rowlock.sqlite3',
                                     aesKey='bench-salt', blindIndexKey='bench-blind-index')
         run_script(cls.db, DDL)

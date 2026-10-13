@@ -377,7 +377,7 @@ def main() -> int:
         if missing or extra:
             raise AssertionError(f'cases.json and the Python cases differ: missing in Python {missing}, '
                                  f'not in cases.json {extra}')
-        models = generate(str(workdir / 'models'), CONFORMANCE_DIR / 'corpus' / 'dbspec' / 'conformance.dbs')
+        models = generate(str(workdir / 'models'), CONFORMANCE_DIR / 'corpus' / 'dbspec' / 'dbspec-set.json')
         s = serve(binary, workdir, models, cleanups)
         passed = 0
         for case in cases:

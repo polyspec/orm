@@ -28,7 +28,7 @@ class SchemaInstallTest(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(prefix='orm-schema-install-')
         cls.addClassCleanup(tmp.cleanup)
         cls.dir = tmp.name
-        cls.models = generate(tmp.name, ROOT / 'schema' / 'bench.dbs')
+        cls.models = generate(tmp.name, ROOT / 'schema' / 'dbspec-set.json')
 
     def connect(self, name: str):
         path = os.path.join(self.dir, name)

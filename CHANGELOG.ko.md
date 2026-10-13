@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: edce8e2fcf7f10daa8b77d3788cf91343c027311e4aa0f7b2e85ce3906648e6a -->
+<!-- source-sha256: 48bac6a354476d1967ebe57df5d1f776aaf94debf8efe75c0867205881025b6e -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-4-1: Python test가 set 파일로 model을 생성하므로 set 파일 generator와 함께 python 검사가 통과한다.
 - T128-6: `@polyspec/dbspec-lsp`(`packages/dbspec-lsp`, 명령 `dbspec-lsp`)가 dbspec language server다: diagnostic, semantic token, folding, formatting을 주며, 각 문서의 집합은 가장 가까운 `dbspec-set.json`에서 온다.
 - T128-5-1: `dbspec-fmt`가 명령줄에서 dbspec 문서를 format한다(`--write`, `--check`, 표준 입력). 각 문서는 `resolveSet`이 가장 가까운 `dbspec-set.json`에서 찾은 집합 안에서 다룬다; `make install-cli`가 이를 설치한다.
 - T145: TypeScript client가 mysql2 3.24.6을 고정한다.
