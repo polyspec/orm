@@ -9,7 +9,7 @@ The [schema definitions](dialects.md#schema-definitions) record decides which da
 
 ## Document
 
-```text
+```dbs set=shop document=shop
 dbspec 1 shop
 
 use core { users }
@@ -36,6 +36,17 @@ table orders {
 diagram main {
   orders at 120 340
   users at 520 340
+}
+```
+
+The document `core` that it uses:
+
+```dbs set=shop document=core
+dbspec 1 core
+
+table users {
+  id i64 identity
+  primary key (id)
 }
 ```
 

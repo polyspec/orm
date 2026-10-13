@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: f66ce487fa508f054bc85cce2e549e0f4d763f2d7b1d97645f7c50283d2b17e4 -->
+<!-- source-sha256: 2be825a24f47a59c7e4d5cdcd29fedc561d55c9f22e2b0e7e470a92d136d79a7 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -950,7 +950,7 @@
 - [ ] T128-5-1 `dbspec-fmt` CLI와 `resolveSet`(T128-5에 이어, T128-2a 다음). 인수 조건: `resolveSet`이 주입된 host를 받는다; CLI가 template-fmt 규칙과 exit code 0, 1, 2를 따르고 `make install-cli`가 symlink 없이 설치한다; `sets/repeated-document-name` vector를 `resolveSet`으로 실행한다.
 - [o] T128-5-2 language service의 typescript를 밝힌 예외로 6.0.3에 둔다(T128-5에 이어). 원인: 2026-10-13 review가 typescript 7.0.2 release를 찾았고 packages/dbspec-language는 6.0.3을 고정한다; 그 module graph test는 typescript API로 syntax tree를 읽는데, native compiler인 typescript 7에는 그 API가 없다. 인수 조건: config/dependency-policy.json이 packages/orm-npm처럼 이유, 제거 조건, 검증을 가진 예외를 담는다. 증거: `make dependency-policy-check`가 이 package를 더는 보고하지 않는다; `make dbspec-language-check`가 통과한다.
 - [ ] T128-6 `packages/dbspec-lsp`. 인수 조건: utf-16 위치, 전체 동기화, 표준 class의 semantic token, folding, formatting, 감시 파일을 가진 set 파일 결정을 갖춘 `vscode-languageserver` 서버; fixture에 대한 stdio session test.
-- [ ] T128-7 docs fence가 language service로 `dbs` block을 highlight한다. 인수 조건: markdown-it fence hook이 밝고 어두운 색으로 token을 그리고, fence는 자기 묶음을 선언하며(`dbs set=…`), docs build는 fence 진단이 하나라도 있으면 실패한다.
+- [o] T128-7 docs fence가 language service로 `dbs` block을 highlight한다. 인수 조건: markdown-it fence hook이 밝고 어두운 색으로 token을 그리고, fence는 자기 묶음을 선언하며(`dbs set=…`), docs build는 fence 진단이 하나라도 있으면 실패한다. 증거: docs/dbspec.md(+ko)의 fence가 shop 문서를 그 집합의 `core` 문서와 함께 렌더한다; `npm run docs:check`가 class span을 가진 site를 build한다; `make docs-dbs-check`가 7 case를 통과한다: `use` diagnostic이 있는 fence가 `dbspec.md:24:5: use: …`로 실패하는 것, header와 다른 선언 이름이 `use` 규칙으로 실패하는 것, 잘못된 info string, escape; docs/editor.md(+ko)가 `document=` 속성을 적는다.
 - [ ] T128-8 `packages/dbspec-codemirror`와 `packages/dbspec-vscode`. 인수 조건: EditorState로 시험한 CodeMirror 6 mark, lint, fold, format 명령; semantic token scope를 가지고 문법 파일이 없으며 semantic highlighting을 기본으로 켜고 묶어 넣은 LSP client를 가진 VS Code 확장을 integration으로 시험한다; CI job은 kit 도구로 VS Code를 설치한다.
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.

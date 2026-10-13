@@ -34,7 +34,7 @@ The language service is node-free so that the CodeMirror host and the VS Code we
 - `dbspec-fmt` reads its arguments with `node:util` `parseArgs`.
 - The CodeMirror adapter is a set of CodeMirror 6 extensions: marks for the tokens, the lint source for the diagnostics, the fold service and a format command.
 - The VS Code extension contributes the language and colours it by semantic tokens through `semanticTokenScopes`, with no grammar file. `configurationDefaults` sets `"[dbspec]": {"editor.semanticHighlighting.enabled": true}`, since the default `configuredByTheme` leaves some themes uncoloured.
-- The documentation site renders a `dbs` fence through the markdown-it fence hook of VitePress `markdown.config`, as the Mermaid fence does, calling the language service; every standard class has a colour in the light and the dark theme. Shiki is not used: it accepts only TextMate grammars.
+- The documentation site renders a `dbs` fence through the markdown-it fence hook of VitePress `markdown.config`, as the Mermaid fence does, calling the language service; every standard class has a colour in the light and the dark theme. Shiki is not used: it accepts only TextMate grammars. A fence holds one document: ```` ```dbs ```` for a document alone, ```` ```dbs set=<set> document=<name> ```` for a document of a set, whose other documents are the fences of the same page with the same set, keyed by their declared names; the parser's `use` rule checks each name against its header, so the declaration cannot drift. Any diagnostic of a fence, and a malformed info string, fails the docs build with the page and line, so every published example is a verified document.
 
 ## Fixtures
 

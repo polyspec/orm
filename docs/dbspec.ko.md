@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: e43dccdf0c07db807f54156ef10465aff8c4db679636da2b6eb5168223ef7951 -->
+<!-- source-sha256: 674e64f41cd39779984263c8fb8a1c5771a7c2490ce816300adea7d4523d333e -->
 # dbspec
 
 [English](dbspec.md)
@@ -10,7 +10,7 @@ dbspec이 지원하는 database 기능은 [schema definitions](dialects.md#schem
 
 ## 문서
 
-```text
+```dbs set=shop document=shop
 dbspec 1 shop
 
 use core { users }
@@ -37,6 +37,17 @@ table orders {
 diagram main {
   orders at 120 340
   users at 520 340
+}
+```
+
+이 문서가 쓰는 문서 `core`:
+
+```dbs set=shop document=core
+dbspec 1 core
+
+table users {
+  id i64 identity
+  primary key (id)
 }
 ```
 

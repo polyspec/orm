@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { dbsFences, dbsInfo, renderDbs } from './dbs';
 
 const base = process.env.VITEPRESS_BASE || '/orm/';
 if (!/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(base)) throw new Error('Invalid VITEPRESS_BASE');
@@ -151,6 +152,12 @@ export default defineConfig({
       const fence = md.renderer.rules.fence!;
       md.renderer.rules.fence = (tokens, index, options, env, self) => {
         const token = tokens[index];
+        // A dbs fence is rendered from the language service's tokens (dbs.ts); a diagnostic fails the build.
+        if (dbsInfo(token.info) !== null) {
+          const fences = dbsFences(tokens);
+          const own = fences.find(f => f.text === token.content && f.line === token.map![0] + 1)!;
+          return renderDbs(own, fences, env.relativePath, md.utils.escapeHtml);
+        }
         if (token.info.trim() !== 'mermaid') return fence(tokens, index, options, env, self);
         return `<pre class="mermaid" v-pre>${md.utils.escapeHtml(token.content)}</pre>`;
       };

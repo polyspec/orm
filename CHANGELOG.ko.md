@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4640944ecf4178faa43378e2411fccb205cbedba63e673abbb2f52fe9b515c1f -->
+<!-- source-sha256: 04457cd8ba06331b97b9458e074fb9de4e3448fa5bd0926d7796b0ffde2012e3 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-7: 문서 site가 ```` ```dbs ```` fence를 dbspec language service로 렌더하며, light와 dark theme에서 token class마다 색을 가진다; 집합의 fence는 `set=`과 `document=`를 밝히고, fence의 diagnostic은 docs build를 실패시킨다.
 - T128-2a-4 (breaking): Python `orm-gen gen`이 argparse로 읽는 `--set <dbspec-set.json>`으로 set 파일을 받는다; `--schema`와 `--use`는 지웠다. `read_dbspec_set`이 docs/dbspec.md "Document sets"대로 set 파일을 읽는다.
 - T128-2a-1-2: set reader가 set 파일의 어느 object에서든 반복된 key를 거부하고 `schema`를 IEEE 754 double로 읽는다.
 - T139: Rust YAML codec이 yaml-rust2만으로 읽고 쓰며 YAML 1.2 core schema로 decode한다(`07`은 7, `0b101`과 `tRuE`는 문자열, i64를 넘는 정수와 `1e400`은 `CODEC_DECODE`); serde_yaml_ng와 유지보수가 끊긴 unsafe-libyaml이 두 Rust lock에서 빠진다. yaml-rust2가 그대로 되읽히게 쓸 수 없는 문자열은 `CODEC_ENCODE`다(T139-1).

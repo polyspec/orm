@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: 80894551d853857b959ac65d7290ccdd77917665a8680edf64180695c8bd20c4 -->
+<!-- source-sha256: 3ba775de1eba5203c1ae72eb92834c66473eceb919d413898ad4c817fc614c4f -->
 # dbspec editor 도구
 
 [English](editor.md)
@@ -35,7 +35,7 @@ CodeMirror host와 VS Code web host가 language service를 browser에서 실행�
 - `dbspec-fmt`은 `node:util` `parseArgs`로 인자를 읽는다.
 - CodeMirror adapter는 CodeMirror 6 extension의 묶음이다: token의 mark, diagnostic의 lint source, fold service, format command.
 - VS Code extension은 언어를 contribute하고, 문법 파일 없이 `semanticTokenScopes`를 통한 semantic token으로 색칠한다. 기본 `configuredByTheme`가 일부 theme를 색칠하지 않으므로 `configurationDefaults`가 `"[dbspec]": {"editor.semanticHighlighting.enabled": true}`를 정한다.
-- 문서 site는 Mermaid fence처럼 VitePress `markdown.config`의 markdown-it fence hook으로 `dbs` fence를 language service를 불러 렌더한다. 모든 표준 class는 light와 dark theme에서 색을 가진다. Shiki는 TextMate 문법만 받으므로 쓰지 않는다.
+- 문서 site는 Mermaid fence처럼 VitePress `markdown.config`의 markdown-it fence hook으로 `dbs` fence를 language service를 불러 렌더한다. 모든 표준 class는 light와 dark theme에서 색을 가진다. Shiki는 TextMate 문법만 받으므로 쓰지 않는다. fence 하나는 문서 하나를 담는다: 단독 문서는 ```` ```dbs ````, 집합의 문서는 ```` ```dbs set=<set> document=<name> ````이며, 그 다른 문서는 같은 page에서 같은 set을 가진 fence들이고 선언한 이름을 key로 한다; parser의 `use` 규칙이 각 이름을 header와 대조하므로 선언이 어긋날 수 없다. fence의 diagnostic과 잘못된 info string은 page와 줄을 적어 docs build를 실패시키므로, 게시되는 모든 예제는 검증된 문서다.
 
 ## Fixture
 
