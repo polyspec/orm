@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f1b96a8824bdb84f28b5aab9e89fa1a9a2e444cdf0f9ff9c10ff2cde0d8a404b -->
+<!-- source-sha256: b342e53d65ac2d19ecb28bd1351676ccb51bb67fd340b75228b97f55ab9f8cdb -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-4-1: `@polyspec/orm/dbspec`가 다시 browser-safe다: renderer 이름은 `node:crypto`와 `Buffer` 대신 `@noble/hashes`에서 SHA-256을, `TextEncoder`에서 byte 길이를 얻으며, browser entry test는 선언한 browser package의 module까지 따라간다.
 - T128-2-3: editor package를 폴더 표준 S5대로 둔다: S5가 거부하는 중첩 `packages/dbspec/<part>/` 대신 각자 독립 component인 `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror`, `packages/dbspec-vscode`다.
 - T132: Go generator scan은 build-tag나 platform 설정을 그 파일을 가진 패키지에만 읽으므로, Go의 model_generation coverage case가 부하에서 120초 기한을 넘지 않고 약 30초에 끝난다.
 - T129-1: renderer 이름의 interface symbol을 기록했다. contracts/symbols는 T129 snapshot을, contracts/interfaces.json은 그 hash를 가지므로 T129 tree에서 interfaces 검사가 통과한다.

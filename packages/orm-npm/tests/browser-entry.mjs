@@ -1,14 +1,14 @@
 // The browser-safe dbspec entry (docs/editor.md "Layers"): the module that the package's "./dbspec" subpath
-// exports must reach no `node:` module, no bare module name (a Node builtin or a package such as a driver),
+// exports must reach no `node:` module, no Node builtin, no package outside BROWSER_PACKAGES (such as a driver),
 // no Node global (Buffer, process, __dirname, require), and must export exactly the parser functions. The test
 // starts at the subpath's built module, read from package.json, and follows every static import, re-export and
-// literal dynamic import transitively. A dynamic import whose specifier is not a literal cannot be followed and
-// is a violation.
+// literal dynamic import transitively, into the modules of a BROWSER_PACKAGES package as well, which are checked by
+// the same rules. A dynamic import whose specifier is not a literal cannot be followed and is a violation.
 //
 // Usage: node --test packages/orm-npm/tests/browser-entry.mjs (after the build)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
@@ -22,6 +22,9 @@ const start = resolve(pkgRoot, subpath.import);
 // Node globals that the entry must not read. A use is an identifier in expression position; a property name such
 // as `x.process` or an object key is not a use.
 const FORBIDDEN_GLOBALS = new Set(['Buffer', 'process', '__dirname', 'require']);
+// The packages that the entry may import: each is written for browsers and Node alike, and its modules are followed
+// and checked like the entry's own. @noble/hashes gives the synchronous SHA-256 of the renderer names (names.ts).
+const BROWSER_PACKAGES = new Set(['@noble/hashes']);
 // Every Node builtin root name, with and without the node: prefix, so `fs/promises` is caught through `fs`.
 const BUILTIN_ROOTS = new Set(builtinModules.map(m => m.replace(/^node:/, '').split('/')[0]));
 
@@ -76,13 +79,19 @@ function graph() {
         violations.push(`${at} imports "${specifier}"`);
         continue;
       }
+      let target;
       if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
-        const root = specifier.split('/')[0];
-        const kind = BUILTIN_ROOTS.has(root) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
-        violations.push(`${at} imports "${specifier}", ${kind}`);
-        continue;
+        const parts = specifier.split('/');
+        const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+        if (!BROWSER_PACKAGES.has(name)) {
+          const kind = BUILTIN_ROOTS.has(parts[0]) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
+          violations.push(`${at} imports "${specifier}", ${kind}`);
+          continue;
+        }
+        target = createRequire(file).resolve(specifier);
+      } else {
+        target = resolve(dirname(file), specifier);
       }
-      const target = resolve(dirname(file), specifier);
       if (!target.endsWith('.js')) {
         violations.push(`${at} imports "${specifier}", which is not a built .js module`);
         continue;
@@ -93,7 +102,7 @@ function graph() {
   return { modules: seen, violations };
 }
 
-test('the subpath module reaches no Node module, bare module or Node global', () => {
+test('the subpath module reaches no Node module, undeclared package or Node global', () => {
   const { modules, violations } = graph();
   assert.ok(modules.size > 1, 'the graph follows the imports of the subpath module');
   assert.deepEqual(violations, [], `the browser entry reaches a Node or driver dependency:\n${violations.join('\n')}`);
