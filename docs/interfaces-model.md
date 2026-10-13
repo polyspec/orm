@@ -153,6 +153,7 @@ classDiagram
         Db db
         register()
         install()
+        addTablesAndColumns()
         exists()
         installed()
         empty()
@@ -252,7 +253,7 @@ classDiagram
 | Collection | Ordered models keyed by primary key, keyName, or fetchKey. |
 | Page | The rows and counts of getsPage. |
 | Utils | Connection utilities; lock and local values need an active transaction. |
-| SchemaUtils | Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set. |
+| SchemaUtils | Registers the set of a generated schema on the connection without reading the database; installs the set with the client DDL renderer, verifies the database and registers the set; upgrades an installed set by the tables and the null or defaulted columns that the database lacks, without registering it. |
 | AesUtils | Reports and rotates AES key versions of a model table. |
 | AESKeyring | Keys by version; the current version encrypts new values. |
 | AESRotationStatus | Row counts per key version. |

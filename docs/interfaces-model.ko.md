@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: ad0438cf59bc4a687888143872398c33224fdaeb29d007b8a53276792a803658 -->
+<!-- source-sha256: d5b4f3dceac312a1f4774ba21673f76e00b794a305e05f5332aa1ca06b429726 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -154,6 +154,7 @@ classDiagram
         Db db
         register()
         install()
+        addTablesAndColumns()
         exists()
         installed()
         empty()
@@ -253,7 +254,7 @@ classDiagram
 | Collection | primary key, keyName, fetchKey로 key를 정한 순서 있는 model 목록이다. |
 | Page | getsPage의 행과 개수다. |
 | Utils | 연결 유틸리티다. lock과 local 값은 진행 중인 transaction이 필요하다. |
-| SchemaUtils | generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다. |
+| SchemaUtils | generated schema의 set을 데이터베이스를 읽지 않고 연결에 등록한다. client DDL 렌더러로 set을 설치하고 데이터베이스를 확인한 뒤 set을 등록한다. 설치된 set을 데이터베이스에 없는 table과 null이거나 default가 있는 column만큼 upgrade하며, set을 등록하지 않는다. |
 | AesUtils | model 테이블의 AES key version을 조회하고 회전한다. |
 | AESKeyring | version별 key다. 현재 version으로 새 값을 암호화한다. |
 | AESRotationStatus | key version별 행 수다. |
