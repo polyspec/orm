@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a (breaking): a document set is declared once, in `dbspec-set.json`, which every client reads and every generator takes.
 - T128-2a-7 (breaking): every document names the set file as the only form of a generator's document set, the interface rule `Dbspec.readSet` declares the set reader of every client, and the parity unit `dbspec-set-files` declares its vectors.
 - T136: `make install-python` installs uv before the Python it installs, so a fresh checkout and CI build the Python venv.
 - T128-2a-4-1: the Python tests generate their models from set files, so the python check passes with the set-file generator.
