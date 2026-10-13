@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cf19c604c7fe26ff7fd163c4b90e79e22e3b105b2e4c603061e7a2e89da71524 -->
+<!-- source-sha256: 0f271d8f43327fb42e64061d03deea9257e2fdef8be3a5894fb91e9b23210af2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T133: 모든 runtime이 tests/dbspec/cases.json을 어느 section에서든 없거나 모르는 field를 거부하는 엄격한 reader 하나로 읽는다.
 - T154: Python Mermaid test가 선언된 PYTHONPATH로만 import한다.
 - T149: feature coverage가 Python owner를 실행하고, schema_definition이 case 일곱으로 Python을 덮는다.
 
