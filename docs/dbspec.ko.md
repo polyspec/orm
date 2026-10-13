@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: b7f7a1fc7c73c882bc2c832170d87b24212449aed7b4d58843afa32b256d7bef -->
+<!-- source-sha256: b58b583d9cb83b67c4b5bc335405c06fd2007b6f27da1b8eb44e1bafb0ce851b -->
 # dbspec
 
 [English](dbspec.md)
@@ -48,6 +48,48 @@ header 다음에는 `use` 줄, `table` block, `diagram` block이 이 순서로 �
 
 dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <document>`가 파일 signature다. 문서 파일을 읽는 tool은 parse 전에 파일이 `dbspec ` bytes(`dbspec`과 공백 하나)로 시작하는지 확인한다. 그래서 같은 확장자를 쓰는 다른 형식의 파일(예: DbSchema project 파일(XML))과 빈 파일은 parse하지 않고 dbspec 문서와 구별된다. 이 bytes로 시작하지 않는 파일은 line 1, column 1의 `signature` error 하나이며, message는 그 파일을 `<path> is not a dbspec document`로 밝히고 그 파일에는 다른 error를 보고하지 않는다. header 앞에 byte order mark가 있는 파일도 `signature` error이고, byte order mark가 있는 text를 parser에 직접 주면 `encoding` error다. 이 bytes로 시작하는 파일은 parse하므로, 그 뒤에서 `dbspec 1 <document>`와 달라지는 header(예: `dbspec 2 shop`)는 `header` error다. 이 bytes로 시작하지만 UTF-8이 아닌 파일은 첫 잘못된 byte의 줄과 열에서 `encoding` error 하나(`<path> is not valid UTF-8`)이며 parse하지 않는다. 각 client에는 byte check가 하나 있다. 이것은 파일의 bytes와 message가 쓸 이름을 받아 이 diagnostic이나 text를 준다: Go `dbspec.ReadBytes`, PHP `Dbspec::readBytes`, TypeScript `readDbspecBytes`, Rust `dbspec::read_bytes`. 자기 규칙으로(예: symbolic link를 따라가지 않고) 파일을 읽어야 하는 tool은 bytes를 한 번 읽어 자기가 보여 주는 이름과 함께 넘긴다. 각 client에는 file reader도 하나 있다. 이것은 path의 파일을 읽어 그 bytes와 path를 byte check에 주며, 문서 파일을 읽는 나머지 모든 tool이 그것을 쓴다: Go `dbspec.ReadFile`, PHP `Dbspec::readFile`, TypeScript `readDbspecFile`, Rust `dbspec::read_file`. 읽을 수 없는 파일은 diagnostic이 아니라 platform의 읽기 error다.
 
+## 문서 집합 {#document-sets}
+
+문서 집합은 `dbspec-set.json`이라는 set 파일에 한 번 선언하며, 집합을 받는 모든 tool이 그 파일을 읽는다: 모든 client의 generator와 editor 도구([editor](editor.ko.md)). 명령 인자나 코드 안의 목록으로 두 번째로 선언한 집합은 첫 선언과 어긋나므로, 어떤 tool도 집합의 문서를 다른 형태로 받지 않는다.
+
+```json
+{"schema": 1, "documents": ["shop.dbs", "billing/invoices.dbs"], "external": ["../core/core.dbs"]}
+```
+
+파일은 key `schema`, `documents`, `external`을 가진 JSON object 하나다. `schema`는 숫자 1이다. `documents`는 집합이 소유하는 문서 파일을 나열하며 비어 있지 않다. `external`은 집합의 [외부 문서](#external-documents)를 나열하며 생략할 수 있고, 생략은 빈 목록이다. 경로는 set 파일의 directory, 곧 집합의 root에 대한 상대 경로이며, process의 작업 directory에 대한 상대 경로가 아니다. 경로는 모든 platform이 같게 읽도록 하나의 정규형으로 적는다:
+
+- segment를 `/`로 잇고, 마지막 segment는 `.dbs`로 끝난다;
+- 각 segment는 `/`, `\`, `:`, `<`, `>`, `"`, `|`, `?`, `*`, NUL, U+0001부터 U+001F 밖의 문자로 된 비어 있지 않은 연속이며, `.`이 아니고, `.`이나 공백으로 끝나지 않으며, 첫 `.` 앞 부분에서 뒤쪽 공백을 지운 것이 ASCII 대소문자를 무시하고 `CON`, `PRN`, `AUX`, `NUL`, `COM0`부터 `COM9`, `LPT0`부터 `LPT9`, 또는 `COM`이나 `LPT` 뒤에 `¹`, `²`, `³`이 오는 것, 곧 Windows의 device 이름인 segment가 아니다;
+- `documents` 경로에는 `..` segment가 없으므로 소유 문서는 root 아래에 있다; `external` 경로는 `..` segment로 시작할 수 있고, 처음 나온 다른 segment 뒤에는 `..`이 없다.
+
+그러므로 절대 경로, drive, backslash, 빈 segment, 끝의 `/`에는 정규형이 없으며, Windows가 담을 수 없는 이름에도 없다.
+
+각 client에는 set reader가 하나 있다: Go `dbspec.ReadSet`, PHP `Dbspec::readSet`, TypeScript `readDbspecSet`, Python `read_dbspec_set`, Rust `dbspec::read_set`. TypeScript는 파일을 읽지 않는 규칙(단계 2, 정규형, `path`의 마지막 segment가 `dbspec-set.json`이라는 이름)을 `@polyspec/orm/dbspec`의 순수 함수 `parseSet(bytes, path)`로 적용한다. 이 함수는 byte를 `Uint8Array`로 받아 `TextDecoder('utf-8', {fatal: true, ignoreBOM: true})`로 decode하므로 잘못된 UTF-8과 byte order mark가 드러나며, `readDbspecSet`과 editor 도구가 이를 호출한다. reader는 set 파일의 경로를 받아 이 순서로 검사한다:
+
+1. set 파일. prefix는 주어진 경로에서 마지막 segment를 지운 것이며, segment는 `/`에서, Windows에서는 `/`나 `\`에서 끝난다; prefix는 비어 있거나 `/`, `a/`, `C:`일 수 있다. root는 prefix이며, prefix가 비어 있으면 `.`이다. 마지막 segment는 `dbspec-set.json`이고 root가 나열하는 이름과 같다(단계 3의 비교). root와 파일은 symbolic link를 따르지 않고(`lstat`) 조사한다: 둘 다 symbolic link가 아니고, root는 directory이며 파일은 일반 파일이다. reader는 파일을 한 번 열어 그 handle에서 읽는다. root 위의 directory는 호출자의 것이므로 조사하지 않는다; 그 사이의 symbolic link는 platform이 해석한다.
+2. JSON, 이 순서로: byte는 parse 전에 검사하여 byte order mark 없는 올바른 UTF-8이다; 그 byte는 JSON object 하나(RFC 8259)를 담으며, 그 object는 그 자신을 하나로 세어 깊이 64 단계까지 중첩되고, 어떤 문자열도 짝 없는 surrogate를 escape하지 않으며, 어떤 key도 두 번 나오지 않는다; object에는 세 key 밖의 key가 없으며, 그 오류는 모르는 key를 모두 code point 순서로 적는다; `schema`는 값이 1인 JSON 숫자이며(`1`, `1.0`, `1e0`은 모두 1), double 범위를 넘는 숫자를 포함해 다른 숫자는 1이 아니다; `documents`는 비어 있지 않은 문자열 배열이다; `external`은 있을 때 문자열 배열이며, `null`은 그렇지 않다.
+3. 각 경로를 `documents` 먼저, 그다음 `external`, 적은 순서로. 먼저 그 정규형. 그다음 결합 경로: 단계 1의 prefix 뒤에 적은 경로를 그대로 붙인 것이다. 결합 경로는 정리하지 않으므로 platform이 각 `..`을 root로부터 해석한다; root는 symbolic link가 아니므로 root로부터의 `..`은 platform이 물리적으로(POSIX) 해석하든 어휘적으로(Windows) 해석하든 같은 directory다. 결합 경로에서 적은 경로의 segment 뒤에서 끝나는 각 prefix를 `lstat`으로 조사한다: `../core/core.dbs`라면 `<root>/..`, `<root>/../core`, `<root>/../core/core.dbs`다. 마지막을 뺀 모든 prefix는 directory이고 마지막은 일반 파일이며, 어느 것도 symbolic link가 아니다. `..` 밖의 각 segment는 그 directory가 나열하는 이름과 같다: POSIX에서는 segment의 UTF-8 byte가 나열된 byte와 같고(Node는 `{encoding: 'buffer'}`로 나열한다), Windows에서는 UTF-16 code unit이 나열된 것과 같다; `..` segment는 directory로 조사하며 이름은 비교하지 않는다. 그러므로 대소문자를 접는 file system, short name, 이름 정규화만이 해석하는 철자는 모든 platform에서 오류다. Windows에서 symbolic link는 tag가 name surrogate(`IsReparseTagNameSurrogate`)인 모든 reparse point, 곧 symbolic link나 junction이다.
+4. 읽기와 파일 identity. reader는 단계 3을 통과한 각 파일을 한 번 열어 그 handle에서 byte를 읽고, 같은 handle에서 identity를 얻는다: POSIX `fstat`의 device와 inode, 또는 Windows에서 handle이 주는 volume serial number와 64-bit file index(Go `File.Stat`와 `os.SameFile`, Node `bigint`를 준 `fstat`, Python `os.fstat().st_ino`의 하위 64 bit, PHP `fstat`, Rust `same_file::Handle::from_file`). 64-bit file index가 유일하지 않은 file system, 예컨대 ReFS는 symbolic link 없는 file system처럼 지원하지 않는다. 한 목록 안에서든 두 목록에 걸쳐서든 파일의 identity가 같은 두 경로는 뒤 경로에서 `set.duplicate` 오류다.
+
+reader는 읽는 동안 바뀌지 않는 file tree를 읽는다. 각 component를 한 번 조사하며, 조사와 열기 사이에 바뀐 파일이나 directory는 감지하지 않으므로, 그 사이에 나타난 symbolic link를 열기가 따를 수 있다; 읽는 동안 다른 process가 바꾼 tree는 reader가 판정하는 범위 밖이며, 바뀌지 않은 tree를 다시 읽으면 결과가 나온다.
+
+처음 두 단계는 그 뒤를 읽을 수 없으므로 첫 오류에서 멈추고 오류 하나를 보고한다. 단계 3과 4는 어기는 모든 경로를 각각 그 첫 오류와 함께 보고한다; 단계 4는 단계 3을 통과한 경로만 판정한다. 오류는 단계 순, 그다음 경로 순으로 `documents` 먼저, 그다음 `external`, 적은 순서로 나열하며, `set.duplicate`의 뒤 경로는 그 순서에서 뒤의 것이다. 읽는 동안 바뀌지 않는 tree에서 symbolic link는 결코 따르지 않는다: set 파일, root, 조사한 어느 component에서든 찾은 symbolic link는 오류다.
+
+성공하면 reader는 `documents`와 `external`을 돌려주며, 각각은 적은 순서로 파일의 결합 경로와 byte를 담은 목록이다. reader는 byte를 검사하지 않는다: tool이 각 파일의 byte를 그 경로와 함께 [byte 검사](#files)에 넘기고, byte 검사가 그 파일의 `signature`와 `encoding`을 보고하며, 그다음 tool이 집합을 parse한다([문서와 `use`](#documents-and-use)). 실패하면 reader는 오류를 돌려주며, 각 오류는 rule, 해당 경로, 그리고 경로를, 읽기에 실패했으면 platform의 오류도 적는 message를 가진다. 경로는 단계 1과 2, 그리고 `set.path`에서는 set 파일의 경로이고(`set.path`의 message는 적은 경로를 JSON으로 인용한다), 그 밖에서는 항목의 결합 경로다.
+
+| Rule | 의미 |
+| --- | --- |
+| `set.file` | set 파일의 이름이 `dbspec-set.json`이 아니거나, set 파일이나 나열된 파일이 없거나 읽을 수 없거나 일반 파일이 아니다; root나 경로의 component가 directory가 아니다; 또는 segment가 그 directory가 나열하는 이름이 아니다 |
+| `set.symlink` | set 파일, root, 또는 경로에서 조사한 component가 symbolic link다 |
+| `set.json` | set 파일이 byte order mark 없는 UTF-8이 아니거나, 깊이 64 단계까지 중첩된 JSON object 하나가 아니거나, 짝 없는 surrogate를 escape한다 |
+| `set.schema` | `schema`가 없거나 값이 1인 숫자가 아니다 |
+| `set.key` | `schema`, `documents`, `external` 밖의 key; 두 번 나오는 key; `documents` 없음; 또는 문자열 배열이 아닌 `documents`나 `external` |
+| `set.empty` | `documents`가 비어 있다 |
+| `set.path` | 경로에 정규형이 없거나, `documents` 경로에 `..` segment가 있거나, `external` 경로에서 다른 segment 뒤에 `..`이 있다 |
+| `set.duplicate` | 경로의 파일이 앞의 경로의 파일과 같다 |
+
+오류가 있는 set 파일이나 diagnostic이 있는 나열된 파일을 받은 generator는 오류 상태로 끝나며, 모든 오류와 diagnostic을 출력하고, 아무것도 쓰지 않는다. 공유 vector `tests/dbspec/set-files.json`은 각 rule을 받아들이는 case와 거부하는 case로 file tree(일반 파일, directory, symbolic link, hard link) 형태로 담으며, 모든 client의 set reader가 이를 실행한다; TypeScript의 `parseSet`은 file tree가 필요 없는 case도 실행한다. file tree case에는 symbolic link와 hard link를 가진 file system이 필요하다: Windows에서는 NTFS와 symbolic link를 만들 권한.
+
 ## 이름
 
 문서, table, column, index, key, foreign key, check, setting 대상, diagram의 모든 이름은 `[a-z][a-z0-9_]*`이고 63 bytes 이하다. 더 긴 이름은 error이며 줄이지 않는다. 대문자는 error이므로 모든 database의 대소문자 접기가 같은 이름을 준다.
@@ -56,9 +98,9 @@ dbspec 문서 파일의 확장자는 `.dbs`다. 첫 줄인 header `dbspec 1 <doc
 
 index, unique key, foreign key, check 이름은 네 종류 전체에서, 모든 table 이름과 비교해, 그리고 이 문서와, 이 문서가 직접 쓰는 문서의 모든 table과 constraint 전체에서 하나뿐이어야 한다. MySQL, PostgreSQL, SQLite가 이 이름들의 범위를 서로 다르게 정하고, PostgreSQL은 index와 table 이름을 한 namespace에 두기 때문이다. `primary`는 쓸 수 없는 이름이다. 이름은 physical 이름이다. renderer는 이름을 그대로 쓰고 prefix나 suffix를 붙이지 않는다. renderer는 자기 이름도 쓴다([rendered statements](dialects.md#rendered-statements)). `text`, `bytes`, identity column이 아닌 모든 column의 type CHECK에 `<table>$<column>`, `immutable`에 `<table>$immutable_update`와 `<table>$immutable_delete`, `audit`에 `<table>$audit_insert`, `<table>$audit_update`, `<table>$audit_delete`다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. 이 생성 이름은 모두 한 규칙으로 쓰므로 항상 63 bytes에 들어간다. plain form은 한도 없이 renderer가 쓸 이름인 `<table>$<suffix>`이며, suffix는 column 이름이나 event 이름(`immutable_update`, `immutable_delete`, `audit_insert`, `audit_update`, `audit_delete`)이다. plain form이 63 bytes 이하이면 그것이 이름이다. 아니면 이름은 plain form의 처음 54 bytes, `$`, 그리고 plain form의 UTF-8 bytes에 대한 SHA-256의 소문자 16진수 8자리다: 54 + 1 + 8 = 63 bytes. 이름은 ASCII(`[a-z0-9_$]`)만 쓰므로 bytes가 곧 문자이며 code point가 잘리지 않는다. 데이터베이스에서 읽은 이름은 document set의 모든 table과 suffix의 이름을 다시 계산해 비교하여 table과 suffix로 되돌린다. `$`로 나누지 않는다. hash는 plain form 전체를 덮으며, 처음 54 bytes가 같은 plain form만 hash로 구별한다. 생성 이름은 선언된 이름과 함께 schema 전체에서 유일하다. 다른 생성 이름이나 선언된 이름과 같은 생성 이름은 뒤에 나온 이름에 `name.duplicate` 오류이며, 두 출처(각 table과 column 또는 setting)를 모두 적는다. 선언된 이름에는 `$`가 없으므로 생성 이름끼리만 겹칠 수 있다. plain form과 hash form, 또는 두 hash form이 겹치는 경우 모두 거부하며 조용히 하나로 합치지 않는다. renderer는 자기 이름만 이렇게 줄이며, 선언된 이름은 줄이지 않고 63 bytes보다 긴 선언 이름은 여전히 `name.length` error다.
 
-## 문서와 `use`
+## 문서와 `use` {#documents-and-use}
 
-`use <document> { <table>, ... }`는 다른 문서의 table을 foreign key 대상으로 쓸 수 있게 한다. 다른 문서는 도구가 받는 선언된 문서 집합에서 그 이름과 같은 문서를 찾는다(설정 파일이나 명령 인자가 집합의 문서 파일을 나열한다). 문서는 파일 경로를 적지 않는다. 쓰는 table은 이 문서가 렌더링하지 않으며 diagram에는 배치할 수 있다. 쓰는 문서 자신도 자기 `use` 줄과 함께 parse하고 검증한다. 지정한 문서가 정의하지 않은 table, 집합에 없는 문서, 문서 자신, header 이름이 쓰는 이름과 다른 문서를 쓰거나 use가 순환하면 `use` error다. 실패한 쓰는 문서는 그 이름에서 `use` error 하나를 보고하고 message에 첫 error를 담는다. `use` 줄에서 반복한 문서나 table, 그리고 쓰는 table과 이름이 같은 table은 `name.duplicate` error다. `use` 줄은 문서 이름 순으로 정렬하고, 한 줄 안의 table은 적힌 순서를 유지한다.
+`use <document> { <table>, ... }`는 다른 문서의 table을 foreign key 대상으로 쓸 수 있게 한다. 다른 문서는 도구가 [set 파일](#document-sets)에서 읽는 문서 집합에서 그 이름과 같은 문서를 찾는다. 문서는 파일 경로를 적지 않는다. 쓰는 table은 이 문서가 렌더링하지 않으며 diagram에는 배치할 수 있다. 쓰는 문서 자신도 자기 `use` 줄과 함께 parse하고 검증한다. 지정한 문서가 정의하지 않은 table, 집합에 없는 문서, 문서 자신, header 이름이 쓰는 이름과 다른 문서를 쓰거나 use가 순환하면 `use` error다. 실패한 쓰는 문서는 그 이름에서 `use` error 하나를 보고하고 message에 첫 error를 담는다. `use` 줄에서 반복한 문서나 table, 그리고 쓰는 table과 이름이 같은 table은 `name.duplicate` error다. `use` 줄은 문서 이름 순으로 정렬하고, 한 줄 안의 table은 적힌 순서를 유지한다.
 
 ## Table
 
@@ -243,7 +285,7 @@ manifest와 [rendered statements](dialects.md#rendered-statements)는 한 집합
 
 ## 외부 문서 {#external-documents}
 
-문서 집합은 그 tool이 자기 문서로 나열한 문서를 소유한다. 집합이 table을 쓰는 다른 집합의 문서는 그 집합의 **외부 문서**이며 따로 나열한다: Go `orm-gen gen --use <file.dbs>`, PHP `--use <file.dbs>`, TypeScript `--use <file.dbs>`, Rust `Builder::uses([<files.dbs>])`. 그러면 여러 집합이 database 하나를 나눠 쓸 수 있다. 각 집합은 자기 table만 만들고 바꾸며, table을 렌더링하는 것은 그 table을 소유한 집합뿐이다. 외부 문서는 집합과 함께 parse하고 검사하므로 소유한 table의 foreign key와 `audit` setting은 그곳에서 대상 table을 확인하지만, 외부 문서는 렌더링, 설치, 변경, 비교, 생성하지 않는다. 어느 소유 문서도 `use`로 닿지 않는 외부 문서는 그 header 이름에서 `use` 오류이고, 소유하지도 외부 문서도 아닌 쓰이는 문서도 그렇다.
+문서 집합은 그 tool이 자기 문서로 나열한 문서를 소유한다. 집합이 table을 쓰는 다른 집합의 문서는 그 집합의 **외부 문서**이며 [set 파일](#document-sets)의 `external` 목록에 나열한다. 그러면 여러 집합이 database 하나를 나눠 쓸 수 있다. 각 집합은 자기 table만 만들고 바꾸며, table을 렌더링하는 것은 그 table을 소유한 집합뿐이다. 외부 문서는 집합과 함께 parse하고 검사하므로 소유한 table의 foreign key와 `audit` setting은 그곳에서 대상 table을 확인하지만, 외부 문서는 렌더링, 설치, 변경, 비교, 생성하지 않는다. 어느 소유 문서도 `use`로 닿지 않는 외부 문서는 그 header 이름에서 `use` 오류이고, 소유하지도 외부 문서도 아닌 쓰이는 문서도 그렇다.
 
 - **Hash.** manifest text는 소유한 문서를, external text는 외부 문서에서 쓰는 table을 담으므로, `manifestHash`는 쓰는 table이 바뀌면 바뀌고 외부 문서의 다른 table이 바뀌면 그대로다. schema text는 소유한 table을 담고 쓰는 table을 `use` 줄에 적는다.
 - **확인.** 집합의 설치와 table과 column 추가는 database를 introspect하고([dialects](dialects.ko.md#introspection)) 쓰는 table마다 외부 정의의 모든 column이 같은 type과 `null`로 있고 primary key와 각 unique key가 있기를 요구한다. database에는 column이 더 있어도 된다. 차이는 어떤 statement보다 먼저 각 차이를 적은 `CONFIG`다: `table <t> does not exist`, `column <t>.<c> does not exist`, `column <t>.<c> is <type>, not <type>`, `column <t>.<c> is null, not not null`(또는 반대), `table <t> has the primary key (<columns>), not (<columns>)`, `table <t> has no unique key (<columns>)`. 집합의 등록은 connect helper로 하는 등록도 database를 읽지 않는다([schema](schema.ko.md#_6-schema-registration)).

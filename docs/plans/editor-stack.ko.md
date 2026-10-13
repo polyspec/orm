@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 81b25bb9a8cdc4093350e2feea555465e662ac11b546fe9547e12ce1d56c9fe4 -->
+<!-- source-sha256: 97f82e120a41ce61ba002104b979ff6852136442610b47c90bf186a4181453b9 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -85,9 +85,11 @@ owner 판정:
      경로를 따른 발견이며 disk 전체를 훑는 것이 아니다. 파일 감시는 이후의 변경만 다룬다: set 파일과
      나열된 파일의 생성, 변경, 삭제.
    - 규칙은 한 곳에만 있다. browser-safe subpath가 I/O 아닌 모든 규칙을 적용하는 순수 함수
-     `parseSet(text, path)`를 export한다. language service는 `lstat`과 byte 읽기용 host를 주입받는
-     `resolveSet(path, host)`를 가진다; LSP와 CLI는 `node:fs` host를 넘긴다. set vector는 TS에서는
-     `parseSet`로, 다른 runtime에서는 `readSet`로 실행된다.
+     `parseSet(bytes, path)`를 export한다. language service는 `lstat`, directory 나열, 파일을 한 번 열어 byte와
+     identity를 주는 host를 주입받는
+     `resolveSet(path, host)`를 가진다; LSP와 CLI는 `node:fs` host를 넘긴다. 모든 runtime의 set reader가
+     file tree set vector를 실행하고, TS `parseSet`은 file tree가 필요 없는 vector도 실행한다(T128-2a-1의
+     review가 정정: 순수 함수는 symbolic link와 hard link의 vector를 실행할 수 없다).
    - 두 set 파일의 `documents`에 든 문서는 진단이다. `external` 나열은 세지 않는다: 한 묶음의 외부
      문서는 정의상 다른 묶음의 소유다(docs/dbspec.md:245).
    - 어떤 set 파일도 나열하지 않은 문서는 그 자신만으로 된 묶음이 되며, 그 `use` 줄은 "is not in the

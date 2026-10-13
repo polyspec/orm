@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b3539f204488b1af0aa0ec092820bd30228c7aa337c097169c14e14ee5497b9a -->
+<!-- source-sha256: eff146ee24f4c398e8d2997abe1cd0802c8e91032c651d272804b0e7a92da4fe -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-1: docs/dbspec.md "Document sets"가 set 파일 `dbspec-set.json`과 그 reader를 명세하고, `tests/dbspec/set-files.json`이 file tree vector 61개를 담는다.
 - T129-2: PHP extension이 PHP client의 renderer 이름인 `render`, `ofTable`, `column`을 가진 `Native\Names`를 갖는다.
 - T128-3-1: 모든 runtime이 Go처럼 encoding 정지 앞의 완전한 줄을 parse하고 그 diagnostic을 encoding diagnostic보다 먼저 보고한다.
 - T128-5-2: 의존성 정책이 packages/dbspec-language가 typescript 6.0.3을 두는 이유를 밝힌다: 그 module graph test는 typescript 7에 없는 typescript API가 필요하다.
