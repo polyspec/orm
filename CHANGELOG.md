@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-3-1: every runtime parses the complete lines before an encoding stop and reports their diagnostics before the encoding diagnostic, as Go does.
 - T128-5-2: the dependency policy states why packages/dbspec-language keeps typescript 6.0.3: its module graph test needs the typescript API that typescript 7 lacks.
 - T138: the documentation site draws diagrams with mermaid 12.2.0.
 - T128-3-3: the Go, Rust and TypeScript tests of syntax analysis, declaration positions and the browser entry start their cases through the case harness, so each has its deadline and RUN line.

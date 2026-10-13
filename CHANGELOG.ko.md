@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 15c1ee47d18acf82474eddca2f90e1d119ec2d9ef3f57f676c413d1c7d3328fe -->
+<!-- source-sha256: b5b161461496edbc4f2bb5a663e2083ea612b3154172e144e7843277a230e70c -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-3-1: 모든 runtime이 Go처럼 encoding 정지 앞의 완전한 줄을 parse하고 그 diagnostic을 encoding diagnostic보다 먼저 보고한다.
 - T128-5-2: 의존성 정책이 packages/dbspec-language가 typescript 6.0.3을 두는 이유를 밝힌다: 그 module graph test는 typescript 7에 없는 typescript API가 필요하다.
 - T138: 문서 site가 mermaid 12.2.0으로 도표를 그린다.
 - T128-3-3: 구문 분석, 선언 위치, browser entry의 Go, Rust, TypeScript test가 case harness로 case를 시작하므로 각각 deadline과 RUN 줄을 가진다.
