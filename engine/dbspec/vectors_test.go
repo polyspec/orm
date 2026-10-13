@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,16 @@ type vectorFile struct {
 	Hashes    []hashCase
 	Sets      []setCase
 	Files     []fileCase
+	Positions []positionCase
+}
+
+// positionCase is a positions case of cases.json: the declaration positions that Parse returns for its main document
+// (docs/dbspec.md "Declaration positions").
+type positionCase struct {
+	ID        string
+	Documents map[string][]string
+	Main      string
+	Positions []Position
 }
 
 // fileCase는 cases.json의 files case다. path는 cases.json 기준 상대 경로다.
@@ -233,6 +244,47 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 	if err != nil {
 		return v, err
 	}
+	if v.Positions, err = vectorCases(r, object, "positions", func(c map[string]any, location, id string) (positionCase, error) {
+		pc := positionCase{ID: id}
+		var err error
+		if pc.Main, err = r.string(c, location, "main"); err != nil {
+			return pc, err
+		}
+		if pc.Documents, err = r.linesMap(c, location, "documents"); err != nil {
+			return pc, err
+		}
+		if _, ok := pc.Documents[pc.Main]; !ok {
+			return pc, r.fail(vectorAt(vectorAt(location, "documents"), pc.Main), "is missing")
+		}
+		items, err := r.arrayField(c, location, "positions")
+		if err != nil {
+			return pc, err
+		}
+		for i, item := range items {
+			at := fmt.Sprintf("%s[%d]", vectorAt(location, "positions"), i)
+			object, ok := item.(map[string]any)
+			if !ok {
+				return pc, r.fail(at, "is not an object")
+			}
+			var p Position
+			if p.Kind, err = r.string(object, at, "kind"); err != nil {
+				return pc, err
+			}
+			if p.Path, err = r.linesField(object, at, "path"); err != nil {
+				return pc, err
+			}
+			if p.Line, err = r.integerField(object, at, "line"); err != nil {
+				return pc, err
+			}
+			if p.Column, err = r.integerField(object, at, "column"); err != nil {
+				return pc, err
+			}
+			pc.Positions = append(pc.Positions, p)
+		}
+		return pc, nil
+	}); err != nil {
+		return v, err
+	}
 	v.Files, err = vectorCases(r, object, "files", func(c map[string]any, location, id string) (fileCase, error) {
 		f := fileCase{ID: id}
 		var err error
@@ -248,12 +300,12 @@ func decodeCaseVectors(r vectorReader, object map[string]any) (vectorFile, error
 // emitStable은 text를 parse해 emit하고, 그 emission을 다시 parse해 emit하면 byte까지 같은지
 // 확인한다.
 func emitStable(text string, set map[string]string) (string, error) {
-	document, diagnostics := Parse(text, set)
+	document, _, diagnostics := Parse(text, set)
 	if err := expectDocument(document, diagnostics); err != nil {
 		return "", err
 	}
 	first := Emit(document)
-	again, diagnostics := Parse(first, set)
+	again, _, diagnostics := Parse(first, set)
 	if err := expectDocument(again, diagnostics); err != nil {
 		return "", fmt.Errorf("parse of the emission: %w", err)
 	}
@@ -321,6 +373,32 @@ func TestSharedVectors(t *testing.T) {
 				}
 				return expectDiagnostics(text, set, c.Errors)
 			})
+		})
+	}
+}
+
+// TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
+// (docs/dbspec.md "Declaration positions").
+func TestPositionVectors(t *testing.T) {
+	vectors := loadVectors(t)
+	if len(vectors.Positions) == 0 {
+		t.Fatal("tests/dbspec/cases.json has no positions cases")
+	}
+	for _, c := range vectors.Positions {
+		t.Run("positions/"+c.ID, func(t *testing.T) {
+			set := map[string]string{}
+			for name, lines := range c.Documents {
+				if name != c.Main {
+					set[name] = joinLines(lines, false)
+				}
+			}
+			_, positions, diagnostics := Parse(joinLines(c.Documents[c.Main], false), set)
+			if len(diagnostics) != 0 {
+				t.Fatalf("diagnostics %+v", diagnostics)
+			}
+			if !reflect.DeepEqual(positions, c.Positions) {
+				t.Fatalf("positions =\n%+v\nwant\n%+v", positions, c.Positions)
+			}
 		})
 	}
 }
@@ -411,7 +489,7 @@ func expectFileRead(path, name, text string, diagnostics []Diagnostic, want []ve
 // expectDiagnostics는 text를 parse해 모든 diagnostic의 rule, 줄, 칸을 순서대로 want와
 // 비교한다.
 func expectDiagnostics(text string, set map[string]string, want []vectorError) error {
-	document, diagnostics := Parse(text, set)
+	document, _, diagnostics := Parse(text, set)
 	if document != nil {
 		return fmt.Errorf("Parse returned a document for an invalid source")
 	}

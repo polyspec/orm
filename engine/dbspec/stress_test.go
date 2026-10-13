@@ -47,7 +47,7 @@ func TestStressDocument(t *testing.T) {
 		parses := make([]time.Duration, parseRuns)
 		for i := range parses {
 			clock := startCaseClock(t)
-			document, diagnostics = Parse(text, nil)
+			document, _, diagnostics = Parse(text, nil)
 			cpu, wall := clock.elapsed(t)
 			runtime.UnlockOSThread()
 			t.Logf("stress parse cpu=%s wall=%s", cpu, wall)

@@ -130,7 +130,7 @@ func ParsePlan(text string) (*Plan, []Diagnostic) {
 		}
 	}
 	schemaText := strings.Join(lines[offset:], "\n") + "\n"
-	document, diagnostics := Parse(schemaText, nil)
+	document, _, diagnostics := Parse(schemaText, nil)
 	if len(diagnostics) > 0 {
 		for k := range diagnostics {
 			diagnostics[k].Line += offset

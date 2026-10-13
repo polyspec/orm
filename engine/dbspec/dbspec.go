@@ -52,11 +52,12 @@ type Diagnostic struct {
 
 // Parse parses and validates text. documents is the declared document set:
 // each document name that a `use` line may name, mapped to its text. Parse
-// returns the document and nil diagnostics, or nil and every diagnostic of
-// the document ordered by line, column and rule; never both. An encoding,
-// header or limit error stops parsing: it follows the diagnostics found
-// before it, and later lines are not diagnosed.
-func Parse(text string, documents map[string]string) (*Document, []Diagnostic) {
+// returns the document, the positions of its declarations in source order
+// (docs/dbspec.md "Declaration positions") and nil diagnostics, or nil, nil
+// and every diagnostic of the document ordered by line, column and rule;
+// never both. An encoding, header or limit error stops parsing: it follows
+// the diagnostics found before it, and later lines are not diagnosed.
+func Parse(text string, documents map[string]string) (*Document, []Position, []Diagnostic) {
 	s := &session{set: documents, parsed: map[string]*parsedDocument{}}
 	parsed := parseStructure(text)
 	diagnostics := parsed.diagnostics
@@ -65,9 +66,9 @@ func Parse(text string, documents map[string]string) (*Document, []Diagnostic) {
 	}
 	if len(diagnostics) > 0 {
 		sortDiagnostics(diagnostics)
-		return nil, diagnostics
+		return nil, nil, diagnostics
 	}
-	return parsed.document.model(), nil
+	return parsed.document.model(), parsed.document.positions(), nil
 }
 
 // ruleOrder is the order of the rule table, which breaks ties between

@@ -66,7 +66,7 @@ func parseDDLSet(c ddlCase) ([]*Document, error) {
 				set[other] = joinLines(lines, false)
 			}
 		}
-		document, diagnostics := Parse(joinLines(c.Documents[name], false), set)
+		document, _, diagnostics := Parse(joinLines(c.Documents[name], false), set)
 		if err := expectDocument(document, diagnostics); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}

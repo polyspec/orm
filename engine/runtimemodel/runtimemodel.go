@@ -228,7 +228,7 @@ func parseSet(texts map[string]string, names []string, externalTexts map[string]
 		if external {
 			text = externalTexts[name]
 		}
-		document, diagnostics := dbspec.Parse(text, others)
+		document, _, diagnostics := dbspec.Parse(text, others)
 		if len(diagnostics) > 0 {
 			for i := range diagnostics {
 				diagnostics[i].Message = "document " + name + ": " + diagnostics[i].Message

@@ -343,7 +343,7 @@ func TestParseReturnsModel(t *testing.T) {
 		text := joinLines(with(block("use core { accounts }", ""), block("table orders {", "  id i64 identity", "  account_id i64 null",
 			"  total decimal(13,2) default 1", "  primary key (id)", "  index ix_account (account_id desc)",
 			"  foreign key fk_account (account_id) references accounts (id) on delete set_null", "}")), false)
-		document, diagnostics := Parse(text, docSet(core))
+		document, _, diagnostics := Parse(text, docSet(core))
 		if err := expectDocument(document, diagnostics); err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ func TestStateMachineSetting(t *testing.T) {
 	}
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(cases[0].lines, false)
-	document, diagnostics := Parse(text, nil)
+	document, _, diagnostics := Parse(text, nil)
 	if document == nil || len(diagnostics) != 0 {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}
@@ -450,7 +450,7 @@ func TestMarkdownSetting(t *testing.T) {
 		"  }",
 		"}",
 	)), false)
-	document, diagnostics := Parse(text, nil)
+	document, _, diagnostics := Parse(text, nil)
 	if document == nil || len(diagnostics) != 0 {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}
@@ -465,7 +465,7 @@ func TestMarkdownSetting(t *testing.T) {
 		"table pages {", "  id i64 identity", "  n i32", "  primary key (id)",
 		"  settings {", "    markdown n", "  }", "}",
 	)), false)
-	if document, diagnostics := Parse(bad, nil); document != nil || len(diagnostics) == 0 {
+	if document, _, diagnostics := Parse(bad, nil); document != nil || len(diagnostics) == 0 {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}
 }
@@ -550,7 +550,7 @@ var (
 func TestMarkdownStorageSetting(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text := joinLines(markdownDoc(markdownColumns, pkID, standardHistory, markdownSettings...), false)
-	document, diagnostics := Parse(text, nil)
+	document, _, diagnostics := Parse(text, nil)
 	if document == nil || len(diagnostics) != 0 {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}
@@ -583,7 +583,7 @@ func TestMarkdownStorageManifest(t *testing.T) {
 	table := strings.Replace(list, "store document list", "store document table", 1)
 	manifests := make([]*Manifest, 0, 2)
 	for _, text := range []string{list, table} {
-		document, diagnostics := Parse(text, nil)
+		document, _, diagnostics := Parse(text, nil)
 		if document == nil || len(diagnostics) != 0 {
 			t.Fatalf("diagnostics: %+v", diagnostics)
 		}
@@ -612,7 +612,7 @@ func TestStateMachineKeywordStates(t *testing.T) {
 		"    state_machine status initial initial",
 		"  }", "}",
 	)), false)
-	document, diagnostics := Parse(text, nil)
+	document, _, diagnostics := Parse(text, nil)
 	if document == nil || len(diagnostics) != 0 {
 		t.Fatalf("diagnostics: %+v", diagnostics)
 	}

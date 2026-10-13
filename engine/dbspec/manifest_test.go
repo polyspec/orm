@@ -36,7 +36,7 @@ func (c hashCase) parseSet() ([]*Document, error) {
 				set[other] = joinLines(lines, false)
 			}
 		}
-		document, diagnostics := Parse(joinLines(c.Documents[name], false), set)
+		document, _, diagnostics := Parse(joinLines(c.Documents[name], false), set)
 		if err := expectDocument(document, diagnostics); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
@@ -90,11 +90,11 @@ func TestManifestRejectsRepeatedDocumentName(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	runTimed(t, "manifest/repeated-name", 5*time.Second, func() error {
 		text := strings.Join([]string{"dbspec 1 shop", "", "table users {", "  id i64 identity", "  primary key (id)", "}", ""}, "\n")
-		first, diagnostics := Parse(text, nil)
+		first, _, diagnostics := Parse(text, nil)
 		if err := expectDocument(first, diagnostics); err != nil {
 			return err
 		}
-		second, _ := Parse(text, nil)
+		second, _, _ := Parse(text, nil)
 		manifest, diagnostics := ManifestOf([]*Document{first, second})
 		if manifest != nil {
 			return fmt.Errorf("a set that repeats a document name has a manifest")
@@ -181,7 +181,7 @@ func TestDocumentSets(t *testing.T) {
 							set[name] = joinLines(other, false)
 						}
 					}
-					document, diagnostics := Parse(joinLines(lines, false), set)
+					document, _, diagnostics := Parse(joinLines(lines, false), set)
 					if err := expectDocument(document, diagnostics); err != nil {
 						return fmt.Errorf("document %d: %w", i+1, err)
 					}

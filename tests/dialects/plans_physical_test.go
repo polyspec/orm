@@ -84,7 +84,7 @@ func TestPlanApply(t *testing.T) {
 		var source []*dbspec.Document
 		sourceText := ""
 		if c.Source != nil {
-			d, diagnostics := dbspec.Parse(strings.Join(c.Source, "\n")+"\n", nil)
+			d, _, diagnostics := dbspec.Parse(strings.Join(c.Source, "\n")+"\n", nil)
 			if len(diagnostics) > 0 {
 				t.Fatalf("%s: %v", c.ID, diagnostics)
 			}

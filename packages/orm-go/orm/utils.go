@@ -406,7 +406,7 @@ func schemaTarget(m *runtimemodel.Model) (*dbspec.Document, error) {
 	if len(diagnostics) > 0 {
 		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}
-	target, diagnostics := dbspec.Parse(manifest.SchemaText, externalTexts(m))
+	target, _, diagnostics := dbspec.Parse(manifest.SchemaText, externalTexts(m))
 	if len(diagnostics) > 0 {
 		return nil, &ir.Error{Code: CodeSchemaInvalid, Msg: runtimemodel.DiagnosticsError(diagnostics)}
 	}

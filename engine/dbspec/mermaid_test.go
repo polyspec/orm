@@ -175,7 +175,7 @@ func checkMermaidExport(t *testing.T, c mermaidExportCase) {
 		for name, lines := range c.Documents {
 			set[name] = mermaidJoin(lines)
 		}
-		d, diagnostics := Parse(mermaidJoin(c.Document), set)
+		d, _, diagnostics := Parse(mermaidJoin(c.Document), set)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse: %v", diagnostics)
 		}
@@ -228,7 +228,7 @@ func checkMermaidRoundTrip(t *testing.T, c mermaidRoundTripCase) {
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("read %s: %v", c.Path, diagnostics)
 		}
-		d, diagnostics := Parse(source, nil)
+		d, _, diagnostics := Parse(source, nil)
 		if len(diagnostics) > 0 {
 			return fmt.Errorf("parse %s: %v", c.Path, diagnostics)
 		}

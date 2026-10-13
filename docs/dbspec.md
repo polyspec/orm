@@ -332,6 +332,36 @@ The vectors are `tests/dbspec/syntax.json`: the tokens of the canonical, normali
 
 `format(text, set)` is `emit(parse(text, set))` in every implementation. A document with a diagnostic is refused and never rewritten. Formatting holds three invariants: `emit(parse(format(x))) == emit(parse(x))`, the manifest and schema hashes of `format(x)` equal those of `x`, and `format(format(x)) == format(x)`. Model equality is not one of them, since emission sorts constraints and `use` lines ([Canonical form](#canonical-form)). The text of a canonical document is its own format, so an editor that formats it changes nothing. The vectors are those of `cases.json`: a canonical or normalize case formats to its canonical text, and an invalid case is refused.
 
+## Declaration positions
+
+A successful parse returns, beside the document, the positions of its declarations: a list in source order of `{kind, path, line, column}`, where `line` and `column` are 1-based and `column` counts Unicode code points, as a diagnostic's do. The positions are never part of the document model, because a document is also built without source text (by introspection and by Mermaid import) and the same model is compared, diffed, rendered, emitted and hashed; introspection, Mermaid import, emit, comparison, diff, render and the hashes neither take nor produce positions. A tool that needs the place of a declaration reads these positions, never the tokens of [syntax analysis](#syntax-analysis) or the text.
+
+| Kind | Path | Position |
+| --- | --- | --- |
+| `document` | `[<document>]` | the name of the header |
+| `use` | `[<used document>]` | the document name of the `use` line |
+| `use_table` | `[<used document>, <table>]` | each table name of the `use` line |
+| `table` | `[<table>]` | the table name |
+| `column` | `[<table>, <column>]` | the column name |
+| `constraint` | `[<table>, <name>]` | the name of a `unique`, `index`, `foreign key` or `check` line |
+| `constraint` | `[<table>, "primary key"]` | the `primary` keyword: the primary key is the one unnamed declaration |
+| `setting` | `[<table>, <keyword>, ...<identity>]` | the keyword of the setting line |
+| `diagram` | `[<diagram>]` | the diagram name |
+| `diagram_entry` | `[<diagram>, <table>]` | the table name of the entry |
+
+The identity of a setting is what the repeat rule of [Settings](#settings) makes unique, so every path is unique and a setting that repeats has one position per line:
+
+| Setting | Identity |
+| --- | --- |
+| `codec`, `markdown` | the column |
+| `navigation` | the foreign key |
+| `blind_index` | the AES column |
+| `checkbox` | the column and the state |
+| `state_machine` | `transition <from> <to>`, `terminal <state>`, `initial <state>`, `history` or `limit <state>`; the column is left out, since a table holds one machine |
+| every other setting | nothing: it appears at most once |
+
+A reference that a tool needs to place beyond these kinds (the target table of a foreign key, the columns of a key, the operands of a check) is added to this list first, in every implementation with its vectors. The vectors are the `positions` cases of `cases.json`.
+
 ## Limits and errors
 
 A document has at most 32 MiB, 4096 tables, 120000 columns and 20000 foreign keys; the check happens before allocation. An error is `SCHEMA_INVALID` with the 1-based line and column of the offending token, the rule below and a message. Columns count Unicode code points. A stopping error (`encoding`, `header`, `limit`) is reported after the diagnostics found before it. Diagnostics are ordered by line, then column, then the order of the rule table below. A header name that does not match the name rule is `name.format` and parsing continues. A rule about a whole table, constraint or setting points at its name or keyword token; any other rule points at the token that breaks it:

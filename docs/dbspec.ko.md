@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: a8d239636866010985a928788e3e32e6066c658b313b75f6269236bdb8595c46 -->
+<!-- source-sha256: b2948110fd5ec5296da14f08f52a8a8fcd12fba578f7bd8f1a2275909b7e11fd -->
 # dbspec
 
 [English](dbspec.md)
@@ -332,6 +332,36 @@ vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize
 ## Formatting
 
 `format(text, set)`은 모든 구현에서 `emit(parse(text, set))`이다. diagnostic이 있는 문서는 거부하며 결코 다시 쓰지 않는다. formatting은 불변식 셋을 지킨다: `emit(parse(format(x))) == emit(parse(x))`, `format(x)`의 manifest hash와 schema hash가 `x`의 것과 같음, `format(format(x)) == format(x)`. model 동등성은 그중 하나가 아니다. emit이 constraint와 `use` 줄을 정렬하기 때문이다([Canonical form](#canonical-form)). canonical 문서의 text는 그 자신의 format이므로, 그것을 format하는 editor는 아무것도 바꾸지 않는다. vector는 `cases.json`의 것이다: canonical과 normalize case는 canonical text로 format되고, invalid case는 거부된다.
+
+## Declaration positions
+
+성공한 parse는 문서와 함께 그 선언의 위치를 돌려준다: source 순서의 `{kind, path, line, column}` 목록이며, `line`과 `column`은 1부터 시작하고 `column`은 diagnostic처럼 Unicode code point 수다. 위치는 문서 model에 들지 않는다. 문서는 source text 없이도(introspection과 Mermaid import로) 만들어지며, 같은 model을 비교, diff, render, emit, hash하기 때문이다. introspection, Mermaid import, emit, 비교, diff, render, hash는 위치를 받지도 만들지도 않는다. 선언의 자리가 필요한 도구는 [구문 분석](#syntax-analysis)의 token이나 text가 아니라 이 위치를 읽는다.
+
+| Kind | Path | 위치 |
+| --- | --- | --- |
+| `document` | `[<document>]` | header의 이름 |
+| `use` | `[<used document>]` | `use` 줄의 문서 이름 |
+| `use_table` | `[<used document>, <table>]` | `use` 줄의 각 table 이름 |
+| `table` | `[<table>]` | table 이름 |
+| `column` | `[<table>, <column>]` | column 이름 |
+| `constraint` | `[<table>, <name>]` | `unique`, `index`, `foreign key`, `check` 줄의 이름 |
+| `constraint` | `[<table>, "primary key"]` | `primary` keyword: primary key는 이름 없는 유일한 선언이다 |
+| `setting` | `[<table>, <keyword>, ...<identity>]` | setting 줄의 keyword |
+| `diagram` | `[<diagram>]` | diagram 이름 |
+| `diagram_entry` | `[<diagram>, <table>]` | 항목의 table 이름 |
+
+setting의 identity는 [Settings](#settings)의 반복 규칙이 유일하게 만드는 것이다. 그래서 모든 path는 유일하고, 반복하는 setting은 줄마다 위치 하나를 가진다:
+
+| Setting | Identity |
+| --- | --- |
+| `codec`, `markdown` | column |
+| `navigation` | foreign key |
+| `blind_index` | AES column |
+| `checkbox` | column과 state |
+| `state_machine` | `transition <from> <to>`, `terminal <state>`, `initial <state>`, `history`, `limit <state>`. table마다 기계가 하나이므로 column은 빠진다 |
+| 그 밖의 모든 setting | 없음: 최대 한 번 나온다 |
+
+도구가 이 kind 너머의 참조(foreign key의 대상 table, key의 column, check의 피연산자)의 자리가 필요하면, 먼저 이 목록에 그 kind를 더하며 모든 구현과 vector에 함께 넣는다. vector는 `cases.json`의 `positions` case다.
 
 ## 한도와 error {#limits-and-errors}
 
