@@ -45,7 +45,9 @@ final class CatalogTriggers
     }
 
     /**
-     * trigger 집합이 같은 renderer 출력을 주는 setting 의 줄, 없으면 null.
+     * 각 setting 을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting 들의
+     * renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 null 이다
+     * (docs/dialects.md "Triggers"). 두 setting 을 함께 쓴 table 은 두 출력의 합이며 개수로 판단하지 않는다.
      *
      * @param list<array{name: string, statements: list<string>}> $list
      * @return ?list<string>
@@ -60,41 +62,49 @@ final class CatalogTriggers
         foreach ($t->columns as $column) {
             $model->columns[] = new Column($column['name'], $column['type'], false, false, null);
         }
-        $candidates = [];
-        if (count($list) === 2) {
-            $candidates[] = new Setting('immutable', []);
+        $settings = [];
+        foreach (['immutable_update', 'immutable_delete'] as $event) {
+            if (isset($names[Names::render($t->name, $event)])) {
+                $settings[] = new Setting('immutable', []);
+                break;
+            }
         }
         $insert = $names[Names::render($t->name, 'audit_insert')] ?? null;
-        if ($insert !== null && count($list) === 3) {
+        if ($insert !== null) {
             $update = $names[Names::render($t->name, 'audit_update')] ?? null;
             if (preg_match(self::AUDIT_INSERT, self::body($insert['statements']), $m)
                 && preg_match(self::AUDIT_UPDATE, self::body($update['statements'] ?? []), $u)) {
                 $audit = self::audit($t, $m[1], explode(', ', $m[2]), $u[1]);
                 if ($audit !== null) {
-                    $candidates[] = $audit;
+                    $settings[] = $audit;
                 }
             }
         }
-        foreach ($candidates as $setting) {
-            $model->settings = new Settings();
-            $model->settings->settings = [$setting];
-            $want = Renderer::tableTriggers($model, $dialect);
-            $got = [];
-            foreach (self::order($want) as $name) {
-                if (!isset($names[$name])) {
-                    $got = [];
-                    break;
-                }
-                array_push($got, ...$names[$name]['statements']);
-            }
-            if ($got === $want) {
-                if ($setting->kind === 'immutable') {
-                    return ['immutable'];
-                }
-                return [$setting->auditLine('exclude', $setting->exclude)];
-            }
+        if ($settings === []) {
+            return null;
         }
-        return null;
+        $model->settings = new Settings();
+        $model->settings->settings = $settings;
+        $want = Renderer::tableTriggers($model, $dialect);
+        $ordered = self::order($want);
+        if (count($ordered) !== count($list)) {
+            return null;
+        }
+        $got = [];
+        foreach ($ordered as $name) {
+            if (!isset($names[$name])) {
+                return null;
+            }
+            array_push($got, ...$names[$name]['statements']);
+        }
+        if ($got !== $want) {
+            return null;
+        }
+        return array_map(
+            static fn(Setting $setting): string => $setting->kind === 'immutable'
+                ? 'immutable' : $setting->auditLine('exclude', $setting->exclude),
+            $settings
+        );
     }
 
     /**
