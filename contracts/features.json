@@ -2776,7 +2776,11 @@
         "packages/orm-php-extension/tests/dbspec_plan_test.php",
         "packages/orm-php-extension/tests/dbspec_mermaid_test.php",
         "packages/orm-php-extension/tests/dbspec_apply_cleanup_test.php",
-        "packages/orm-php-extension/tests/dbspec_show_create_test.php"
+        "packages/orm-php-extension/tests/dbspec_show_create_test.php",
+        "cmd/orm-fmt/main_test.go",
+        "cmd/orm-lsp/main_test.go",
+        "cmd/orm-tokens/main_test.go",
+        "engine/dbspec/tokens_test.go"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2815,7 +2819,11 @@
             "packages/orm-php-extension/src/unicode_word.h",
             "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py",
             "packages/orm-php/src/Dbspec/UnicodeWord.php",
-            "packages/orm-npm/src/dbspec/unicode_word.ts"
+            "packages/orm-npm/src/dbspec/unicode_word.ts",
+            "cmd/orm-fmt/main_test.go",
+            "cmd/orm-lsp/main_test.go",
+            "cmd/orm-tokens/main_test.go",
+            "engine/dbspec/tokens_test.go"
           ]
         },
         {
