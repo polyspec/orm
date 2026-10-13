@@ -45,13 +45,13 @@ function command(language, database) {
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
-    return ['go', ['test', '-json', '-tags', 'decimalphysical', './packages/orm-go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0']];
+    return ['go', ['test', '-json', '-tags', 'decimalphysical', './packages/go/decimalmodel', '-run', `^TestDecimalPhysical${suffix}$`, '-count=1', '-timeout', '0']];
   }
-  if (language === 'php') return ['php', ['packages/orm-php/tests/decimal_model_db.php', '--dialect', database]];
+  if (language === 'php') return ['php', ['packages/php/tests/decimal_model_db.php', '--dialect', database]];
   if (language === 'rust') {
-    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/orm-rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
+    return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--bin', 'decimal_physical', id, '--', '--exact', '--include-ignored']];
   }
-  return ['node', ['packages/orm-npm/tests/decimal_model_db.mjs', '--dialect', database]];
+  return ['node', ['packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
 }
 
 function observed(language, database, output) {
@@ -79,8 +79,8 @@ async function state(database, dsn) {
   return match[1];
 }
 
-await step('decimal/models', timeoutMs, () => run('node', ['packages/orm-npm/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
-  '--out', 'packages/orm-npm/src/models/decimal_fixture', '--scan', 'packages/orm-npm/tests/decimal_model_db.mjs', '--check']));
+await step('decimal/models', timeoutMs, () => run('node', ['packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
+  '--out', 'packages/ts/src/models/decimal_fixture', '--scan', 'packages/ts/tests/decimal_model_db.mjs', '--check']));
 for (const database of databases) {
   const key = `DECIMAL_${database.toUpperCase()}_DSN`;
   const dsn = process.env[key];

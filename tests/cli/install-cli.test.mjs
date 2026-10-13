@@ -2,7 +2,7 @@
 // dbspec-fmt under a prefix without a symbolic link, the installed command formats a document and checks one, and the
 // uninstall removes what the install wrote. The install reads the registry, so the run is online.
 //
-// Usage: make install-cli-check (after the build of packages/orm-npm and packages/dbspec-language)
+// Usage: make install-cli-check (after the build of packages/ts and packages/dbspec-language)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';

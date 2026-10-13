@@ -42,10 +42,10 @@ Structure checks compare the common methods and stored fields first, then report
 
 | Client | Planner and generated model owner | Executable owner tests | Dependent-part and shared checks |
 |---|---|---|---|
-| Go | `engine/*` is called directly by `packages/orm-go/orm`; generated models are under `packages/orm-go/model` | `packages/orm-go/orm/*_test.go`, `packages/orm-go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
-| PHP | `packages/orm-php/src` plans and executes through PDO; generated models are under `packages/orm-php/gen` | `packages/orm-php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
-| Rust | `packages/orm-rust/orm` plans and executes through sqlx; `polyspec-orm-build` generates models | `packages/orm-rust/tests/src`, `packages/orm-rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
-| TypeScript | `packages/orm-npm/src` plans and executes through native drivers; generated models are under `packages/orm-npm/src/models` | `packages/orm-npm/tests` | `tests/conformance/runner_typescript.mjs`, `tests/interfaces/typescript.mjs` |
+| Go | `engine/*` is called directly by `packages/go/orm`; generated models are under `packages/go/model` | `packages/go/orm/*_test.go`, `packages/go/model/*_test.go` | `tests/conformance/runner.go`, `tests/interfaces/check` |
+| PHP | `packages/php/src` plans and executes through PDO; generated models are under `packages/php/gen` | `packages/php/tests/*.php` | `tests/conformance/runner.php`, `tests/interfaces/php.php` |
+| Rust | `packages/rust/orm` plans and executes through sqlx; `polyspec-orm-build` generates models | `packages/rust/tests/src`, `packages/rust/orm/src/*_test.rs` | `tests/conformance/runner_rust.rs`, `tests/interfaces/rust` |
+| TypeScript | `packages/ts/src` plans and executes through native drivers; generated models are under `packages/ts/src/models` | `packages/ts/tests` | `tests/conformance/runner_typescript.mjs`, `tests/interfaces/typescript.mjs` |
 
 Each owner test is kept in its client directory. Conformance compares the four outputs and does not replace owner tests; `tests/interfaces/check` verifies the shared declarations and generated artifacts.
 

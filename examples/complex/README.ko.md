@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-readme -->
-<!-- source-sha256: 3f3952f59b293f6d72d7ada997f204b1e7c9f84be5453b485fd13be2f7ed2453 -->
+<!-- source-sha256: 3a06bda57388550aa435294adce96f29a99416799d1f6db7063d9a1f210f6bb5 -->
 # 복합 문장 데모
 
 문법의 주요 부분을 한 문장에 담아 세 언어로 쓰고, **같은 compact JSON 바이트**를 출력한다.
@@ -14,7 +14,7 @@
 ```sh
 go run ./examples/complex/go > go.json
 php examples/complex/php/main.php > php.json
-(cd packages/orm-rust && cargo build -p polyspec-orm-tests) && packages/orm-rust/target/debug/complex > rust.json
+(cd packages/rust && cargo build -p polyspec-orm-tests) && packages/rust/target/debug/complex > rust.json
 diff go.json php.json && diff go.json rust.json                      # identical
 ```
 

@@ -1,6 +1,6 @@
 /bin/
 /dist/
-/packages/orm-npm/dist/
+/packages/ts/dist/
 /packages/dbspec-language/dist/
 /packages/dbspec-codemirror/dist/
 /packages/dbspec-lsp/dist/
@@ -8,7 +8,7 @@
 *.vsix
 /target/
 /bench/rust/target/
-/packages/orm-rust/target/
+/packages/rust/target/
 *.test
 /docs/perf-raw/
 /tests/interfaces/rust/target/
@@ -19,9 +19,9 @@
 /docs/.vitepress/cache/
 /docs/.vitepress/dist/
 /.runtime/
-/packages/orm-python/.venv/
+/packages/python/.venv/
 # The metadata that pip install --editable writes beside the source (make install-python).
-/packages/orm-python/src/*.egg-info/
+/packages/python/src/*.egg-info/
 __pycache__/
 *.pyc
 /var/

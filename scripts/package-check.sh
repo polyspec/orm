@@ -23,14 +23,14 @@ keep() {
 
 typescript_package() {
 (
-  cd "$ROOT/packages/orm-npm"
+  cd "$ROOT/packages/ts"
   npm pack --dry-run --json > "$PACK_JSON"
 )
 node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))[0]; if (p.name !== "@polyspec/orm" || p.version !== process.argv[2] || !p.files.some(f => f.path === "dist/index.js")) process.exit(1); console.log(`typescript package: ${p.name}@${p.version}, ${p.files.length} files`)' "$PACK_JSON" "$VERSION"
 }
 
 php_package() {
-composer validate --working-dir="$ROOT/packages/orm-php" --no-check-publish --no-check-lock
+composer validate --working-dir="$ROOT/packages/php" --no-check-publish --no-check-lock
 }
 
 rust_package() {
@@ -45,7 +45,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-polyspec-orm = { path = "$ROOT/packages/orm-rust/orm" }
+polyspec-orm = { path = "$ROOT/packages/rust/orm" }
 
 [workspace]
 EOF
@@ -71,7 +71,7 @@ package external_test
 import (
     "testing"
 
-    "github.com/polyspec/orm/packages/orm-go/orm"
+    "github.com/polyspec/orm/packages/go/orm"
 )
 
 func TestExternalModuleCanImportClient(t *testing.T) {

@@ -1,7 +1,7 @@
 // The dbs fence of the documentation site (docs/.vitepress/dbs.ts, docs/editor.md "Ecosystem mechanisms"): the info
 // string rules, the set of a page's fences keyed by declared name, the token spans, and a diagnostic failing the build.
 //
-// Usage: node --test tests/docs/dbs-fence.test.mjs (after the build of packages/orm-npm and packages/dbspec-language)
+// Usage: node --test tests/docs/dbs-fence.test.mjs (after the build of packages/ts and packages/dbspec-language)
 import assert from 'node:assert/strict';
 import { caseTest } from '../testcase.mjs';
 import { dbsFences, dbsInfo, renderDbs } from '../../docs/.vitepress/dbs.ts';

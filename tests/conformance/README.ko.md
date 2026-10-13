@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: b4487ef2de34602fe2bf2879b46933e8604be5a8abb888039eb481aa75d5a1f7 -->
+<!-- source-sha256: 404e47cdb7399f736370c97e97b312fa5517a036d2943791685d2a43d96aef2f -->
 # 적합성 벡터
 
 한 문서와 네 실행기를 사용한다. 각 벡터는 Go, PHP, Rust, TypeScript로 같은 체인을 작성한다. 각 실행기는 데이터베이스에서 체인을 실행하고 다음 JSON을 출력한다.
@@ -19,9 +19,9 @@
 |---|---|
 | `vectors.json` | 벡터 이름, 체인, MySQL 기대값 |
 | `vectors.postgres.json`, `vectors.sqlite.json` | PostgreSQL과 SQLite 기대값 |
-| `runner_go/main.go` | Go 실행기(`packages/orm-go/model`의 생성 모델) |
+| `runner_go/main.go` | Go 실행기(`packages/go/model`의 생성 모델) |
 | `runner.php` | PHP 실행기(PDO) |
-| `packages/orm-rust/tests/src/conformance.rs` | Rust 실행기(`polyspec-orm-build` 생성 모델, sqlx) |
+| `packages/rust/tests/src/conformance.rs` | Rust 실행기(`polyspec-orm-build` 생성 모델, sqlx) |
 | `runner_typescript.mjs` | TypeScript 실행기(네이티브 데이터베이스 드라이버) |
 | `check/main.go` | 실행 제어와 결과 비교 |
 

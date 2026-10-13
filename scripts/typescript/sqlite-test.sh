@@ -17,16 +17,16 @@ keep() {
   "$@" || FAILED="$FAILED
   $* (exit $?)"
 }
-keep node packages/orm-npm/tests/model.mjs
-keep node --test packages/orm-npm/tests/dbspec_runtime_db.mjs
-keep node packages/orm-npm/tests/sqlite-concurrency.mjs
-keep node packages/orm-npm/tests/schema-set.mjs
-keep node packages/orm-npm/tests/add-tables-and-columns.mjs
-keep node packages/orm-npm/tests/clock.mjs
-keep node packages/orm-npm/tests/driver-error.mjs
-keep node --conditions=orm-test packages/orm-npm/tests/rollback.mjs
-keep node --conditions=orm-test packages/orm-npm/tests/statement_fault.mjs
-keep node packages/orm-npm/tests/mysql_tls.mjs
+keep node packages/ts/tests/model.mjs
+keep node --test packages/ts/tests/dbspec_runtime_db.mjs
+keep node packages/ts/tests/sqlite-concurrency.mjs
+keep node packages/ts/tests/schema-set.mjs
+keep node packages/ts/tests/add-tables-and-columns.mjs
+keep node packages/ts/tests/clock.mjs
+keep node packages/ts/tests/driver-error.mjs
+keep node --conditions=orm-test packages/ts/tests/rollback.mjs
+keep node --conditions=orm-test packages/ts/tests/statement_fault.mjs
+keep node packages/ts/tests/mysql_tls.mjs
 if [ -n "$FAILED" ]; then
   printf 'sqlite-test: failed:%s\n' "$FAILED" >&2
   exit 1

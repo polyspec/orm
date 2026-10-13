@@ -1,5 +1,5 @@
 <!-- doc-id: tests-codec-readme -->
-<!-- source-sha256: 7842c7ae7943d3628327329bf5bfaef36ec1d2081a422be99d91ee8e75192d44 -->
+<!-- source-sha256: 00dee6ca8bcec4f0359f5bfa23ad687602c1cbfdc5b0e3e22d91356f33ccd480 -->
 # 코덱 vector
 
 `vectors.json`은 PHP가 생성한다(`php tests/codec/gen.php > tests/codec/vectors.json`). 각 style stack과 값의
@@ -7,9 +7,9 @@
 
 | runner | 검사하는 것 | 출력 |
 |---|---|---|
-| `go test ./packages/orm-go/orm -run TestCodecVectors` | 모든 vector를 값으로 decode한다. 결정적인 style은 바이트까지 같게 다시 encode한다. 왕복 | `$ORM_CODEC_OUT/go.json` |
-| `cargo test -p polyspec-orm --lib codec::tests::vectors` (`packages/orm-rust`에서) | 같음 | `$ORM_CODEC_OUT/rust.json` |
-| `node packages/orm-npm/tests/codec-vector.mjs` | 같음 | `$ORM_CODEC_OUT/typescript.json` |
+| `go test ./packages/go/orm -run TestCodecVectors` | 모든 vector를 값으로 decode한다. 결정적인 style은 바이트까지 같게 다시 encode한다. 왕복 | `$ORM_CODEC_OUT/go.json` |
+| `cargo test -p polyspec-orm --lib codec::tests::vectors` (`packages/rust`에서) | 같음 | `$ORM_CODEC_OUT/rust.json` |
+| `node packages/ts/tests/codec-vector.mjs` | 같음 | `$ORM_CODEC_OUT/typescript.json` |
 | `php tests/codec/check.php` | PHP에서 같은 검사를 한 뒤 `$ORM_CODEC_OUT`의 세 출력을 decode한다. Go, Rust, TypeScript가 쓴 것은 같은 값으로 다시 읽혀야 한다 | — |
 
 `make codec-check`는 그 순서로 네 개를 모두 실행하며, `ORM_CODEC_OUT`은 그 실행 자신의 directory로 둔다. 그래서 검사기는

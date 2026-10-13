@@ -29,13 +29,13 @@ Executor consequences: a `$n` renumbering step when expanding relation IN lists 
 PostgreSQL, host-side AES/inet codecs where the table says "client-side", one DSN/driver per database
 (Go: `pgx` stdlib / `modernc.org/sqlite`; Rust: sqlx features; PHP: `pdo_pgsql` / `pdo_sqlite`).
 
-**Go driver packages.** `packages/orm-go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
+**Go driver packages.** `packages/go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
 imports the matching package for its side effect, as it would a `database/sql` driver:
 
 ```go
 import (
-    _ "github.com/polyspec/orm/packages/orm-go/orm/pg"      // driver "postgres"
-    _ "github.com/polyspec/orm/packages/orm-go/orm/sqlite"  // driver "sqlite"
+    _ "github.com/polyspec/orm/packages/go/orm/pg"      // driver "postgres"
+    _ "github.com/polyspec/orm/packages/go/orm/sqlite"  // driver "sqlite"
 )
 ```
 
@@ -78,7 +78,7 @@ Notation: "renderer CHECK" is a CHECK constraint that the renderer writes for a 
 | SQLite, PHP client | `pdo_sqlite` of PHP 8.5.10: 3.53.4 from `select sqlite_version()` |
 | SQLite, TypeScript client | `node:sqlite` of Node 26.11.1: 3.53.4 from `select sqlite_version()`; `package.json` accepts Node 26.11.1 and later, whose later bundled versions were not measured |
 | SQLite file name | A file name that still carries the DSN query is opened literally by PHP PDO, `node:sqlite` and the `sqlite3` shell, which create `bench.sqlite?_pragma=…`; `modernc.org/sqlite` parses the query (`sqlite.filename.*` cases of `TestSQLiteFileNameWithQuery`). A client removes the query before it names the file |
-| SQLite, Rust client | sqlx 0.9 `sqlite` feature enables `sqlite-bundled`; `libsqlite3-sys` 0.37.0 (`packages/orm-rust/Cargo.lock`) bundles 3.51.3, read from `sqlite3_libversion()` of a build of that crate and feature. The probes did not run on 3.51.3 |
+| SQLite, Rust client | sqlx 0.9 `sqlite` feature enables `sqlite-bundled`; `libsqlite3-sys` 0.37.0 (`packages/rust/Cargo.lock`) bundles 3.51.3, read from `sqlite3_libversion()` of a build of that crate and feature. The probes did not run on 3.51.3 |
 
 ### Types
 
@@ -323,7 +323,7 @@ A generated trigger is named `<table>$<event>` (shortened by the same rule as th
 
 ## Introspection
 
-Introspection reads the current database (MySQL), the current schema (PostgreSQL) or the `main` database (SQLite) of a connection and returns one dbspec document, named by the caller, and the list of objects it cannot read. Every query reads all tables at once, so their number does not depend on the table count. `make dbspec-introspect-check` renders and applies every vector of `tests/dbspec/ddl.json` and every schema document, introspects the database, and requires the schema text of the result to equal the schema text of the source with its tables in name order and no unsupported object. It also runs `tests/dbspec/introspect.json`: each case renders its documents and runs its statements in an empty database of its dialect, with `{schema}` in a statement replaced by the name of that database or schema (a PostgreSQL case may create a second schema `{schema}_b`, which is dropped with it), then expects the introspected document in canonical form and the unsupported objects as `[kind, table, name]`; an entry may add a fourth element, a rule that the reason of that object must contain, which is compared when present, and otherwise reasons are not compared. `make dbspec-introspect-<client>-check` runs the same round trips and cases through the PHP, TypeScript, Rust and Python clients (`make dbspec-introspect-python-check` runs `packages/orm-python/tests/dbspec_introspect.py` with the venv interpreter and checks MySQL, PostgreSQL and SQLite cases). `make dbspec-introspect-compare-check` applies a 20-table document of the stress shape (`make dbspec-introspect-compare-bench`, part of `make bench`: the 2000-table stress document with the release Rust runner) to each dialect, runs the five runners on it (Go, PHP, TypeScript, Rust, the PHP extension of `tests/dbspec/introspect` and the Python runner `packages/orm-python/tests/dbspec_introspect_runner.py`), and requires equal outputs (the canonical document, then a line `! kind<TAB>table<TAB>name` per unsupported object), the source schema text, and no unsupported object; it prints the time of each introspection and a warning when one takes more than its reference of 5 seconds, and the time never fails it.
+Introspection reads the current database (MySQL), the current schema (PostgreSQL) or the `main` database (SQLite) of a connection and returns one dbspec document, named by the caller, and the list of objects it cannot read. Every query reads all tables at once, so their number does not depend on the table count. `make dbspec-introspect-check` renders and applies every vector of `tests/dbspec/ddl.json` and every schema document, introspects the database, and requires the schema text of the result to equal the schema text of the source with its tables in name order and no unsupported object. It also runs `tests/dbspec/introspect.json`: each case renders its documents and runs its statements in an empty database of its dialect, with `{schema}` in a statement replaced by the name of that database or schema (a PostgreSQL case may create a second schema `{schema}_b`, which is dropped with it), then expects the introspected document in canonical form and the unsupported objects as `[kind, table, name]`; an entry may add a fourth element, a rule that the reason of that object must contain, which is compared when present, and otherwise reasons are not compared. `make dbspec-introspect-<client>-check` runs the same round trips and cases through the PHP, TypeScript, Rust and Python clients (`make dbspec-introspect-python-check` runs `packages/python/tests/dbspec_introspect.py` with the venv interpreter and checks MySQL, PostgreSQL and SQLite cases). `make dbspec-introspect-compare-check` applies a 20-table document of the stress shape (`make dbspec-introspect-compare-bench`, part of `make bench`: the 2000-table stress document with the release Rust runner) to each dialect, runs the five runners on it (Go, PHP, TypeScript, Rust, the PHP extension of `tests/dbspec/introspect` and the Python runner `packages/python/tests/dbspec_introspect_runner.py`), and requires equal outputs (the canonical document, then a line `! kind<TAB>table<TAB>name` per unsupported object), the source schema text, and no unsupported object; it prints the time of each introspection and a warning when one takes more than its reference of 5 seconds, and the time never fails it.
 
 ### Document
 

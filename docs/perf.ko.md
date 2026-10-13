@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 708a3b48651b4faa89c08f383e09e20e7678f6fa919a633dc07b423863980bb9 -->
+<!-- source-sha256: f295b8f76b8aef4ba7ae54e0a4cc2bb64e3b49cb46df7a17972d379079cdf069 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -35,8 +35,8 @@
 
 | 클라이언트 | PK 한도 | 100행 한도 | 검사 |
 |---|---:|---:|---|
-| Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `packages/orm-go/bench` `TestHotPathGate` |
-| PHP | 1.35 | 1.25 | `packages/orm-php/tests/perf_gate.php` |
+| Go | 1.35 | 1.25 | `ORM_RUN_PERF_GATE=1`인 `packages/go/bench` `TestHotPathGate` |
+| PHP | 1.35 | 1.25 | `packages/php/tests/perf_gate.php` |
 
 두 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드된 벤치 데이터베이스를 읽는다. Go 검사는 `ORM_RUN_PERF_GATE=1`일 때 실행된다. `ORM_BENCH_MYSQL_DSN` 없이 실행한 검사는 그 변수 명칭을 출력하고 실패하며, 어떤 벤치 테스트도 로컬 서버로 대신하지 않는다.
 

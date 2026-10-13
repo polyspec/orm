@@ -13,7 +13,7 @@ The programs read the seeded MySQL bench database. Every program takes the DSN f
 ```sh
 go run ./examples/complex/go > go.json
 php examples/complex/php/main.php > php.json
-(cd packages/orm-rust && cargo build -p polyspec-orm-tests) && packages/orm-rust/target/debug/complex > rust.json
+(cd packages/rust && cargo build -p polyspec-orm-tests) && packages/rust/target/debug/complex > rust.json
 diff go.json php.json && diff go.json rust.json                      # identical
 ```
 

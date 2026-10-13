@@ -22,16 +22,18 @@
   `make kit-test`는 그 test를 실행한다. 이 저장소는 `config/*.json`과 자체 product code(`scripts/check`,
   `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다. kit에 없거나 잘못된
   도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 vendored file을 읽지 않는다.
-- package는 `packages/orm-<kind>`이고 kind는 `go`, `npm`(TypeScript client), `php`, `php-extension`, `python`, `rust`다.
-  다른 저장소는 `packages/<repository>-<kind>`를 쓴다. Go module `github.com/polyspec/orm`(`go.mod`, `engine/`,
-  `generator/`, `cmd/`, `internal/`, `contracts/`)은 저장소 root에 남으며, 이것이 그 배치의 유일한 예외다.
-  이유: 새 module path는 그 module의 모든 import를 깬다. 제거 조건: 새 module path를 받는 major release.
+- client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
+  `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
+  `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module `github.com/polyspec/orm`(`go.mod`, `engine/`,
+  `generator/`, `cmd/`, `internal/`, 그리고 `contracts/`, `tests/`, `examples/`, `bench/`의 Go file)은 저장소 root에
+  남으며 S5는 이를 거부한다: 그것을 `packages/` 아래로 옮기면 module path가 새로 바뀌고, engine, generator와
+  `tests/`의 Go program을 어디에 둘지 결정해야 한다(T137-1).
 - 브랜치는 `{type}/{shortname}-{체크리스트 ID}`, 워크트리는 `{프로젝트}-{shortname}-{체크리스트 ID}`로
   이름 짓는다. 브랜치를 `main`에 통합한 뒤 커밋이나 동등한 변경이 반영됐고 워크트리가 깨끗한지 확인한다.
   삭제할 워크트리에만 있는 `.gitignore` 제외 파일 중 계속 필요한 파일은 먼저 다른 곳에 보존한다.
   그런 다음 워크트리와 로컬 브랜치를 즉시 제거한다.
   미통합 작업이나 진행 중인 작업은 보존한다.
-- 각 checkout은 Rust를 자기 target directory(그 checkout의 `packages/orm-rust/target`)에 build하고, 어떤 checkout도
+- 각 checkout은 Rust를 자기 target directory(그 checkout의 `packages/rust/target`)에 build하고, 어떤 checkout도
   `CARGO_TARGET_DIR`을 다른 checkout의 target directory로 정하지 않는다. command line이 checkout 밖의 것을
   정하면 `make`가 멈춘다. cargo는 artifact가 fresh인지를 package 기준 source 경로와 그 수정 시각으로 판단하고
   어느 checkout이 build했는지는 기록하지 않으므로, source가 다른 checkout의 build보다 오래된 checkout은 그
@@ -169,11 +171,11 @@
 - Go, PHP, Rust, TypeScript는 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
 - Go, PHP, Rust, TypeScript 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
 - 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
-- 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/orm-<package>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
+- 공통 계획·방언·스키마·오류 동작은 `engine/*`, `cmd/orm-gen`, 계약 문서에서 정의한다. 클라이언트 동작은 소유하는 `packages/<runtime>/*` 폴더에 구현하고 공통 검증은 `tests/*`, `schema/*`, `scripts/*`에 둔다. 지원하는 모든 클라이언트에서 필요한 실행 사례가 통과하기 전에는 기능을 완료하지 않는다.
 - 기능 coverage 증거는 현재 검사에서 실행한 명령의 정확한 사례 ID와 결과·데이터베이스 상태가 같은 두 번의 실행에서 얻는다. 이름만 있는 테스트 파일이나 저장된 출력은 실행 증거가 아니다. coverage 검사기는 `make feature-coverage`에서, 그 변경 반례 테스트는 `make feature-unit-check`에서 실행한다. `make check`는 검증 명령을 각 명령이 선언한 `shard`(cargo로 Rust를 build하고 실행하는 명령은 `rust`)에 따라 `make feature-verify-rust`와 `make feature-verify-other`에서 실행하고, `make feature-check`는 그 셋을 실행한다.
 - coverage 검사기는 선언된 각 언어의 테스트 파일과 정확한 사례 필터를 직접 실행하고 종료 코드와 관찰한 테스트 이벤트에서 성공을 판단한다. 테스트 출력은 성공 보고서나 데이터베이스 상태 digest를 제공할 수 없다. 데이터베이스 사례에서는 검사기 자체 상태 판독기로 매 실행 전후의 선언된 데이터베이스 상태를 읽는다.
 - coverage 사례 ID는 언어에 공통인 동작을 가리킨다. Go와 Rust 명령은 해당 ID를 소유 파일의 정확한 실제 테스트 심볼에 연결하며, 검사기는 그 심볼의 통과를 확인한 뒤에만 ID를 수용한다. 데이터베이스 사례에서 검사기는 선택한 데이터베이스와 DSN을 실제 테스트 프로세스에 전달한다.
-- 소유 client는 `packages/orm-<package>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
+- 소유 client는 `packages/<runtime>` 아래에 있는 테스트로 자기 동작 사례를 실행한다. 선언된 각 사용 부분은 자기 디렉터리의 테스트로 별도의 통합 사례를 실행한다. 기능 계약은 두 부분, 테스트 경로, 명령을 지정하며 소유자·사용자 증거가 없거나 테스트가 해당 부분 밖에 있으면 coverage 검사가 실패한다. 중앙 conformance는 client 결과를 비교하며 소유자 테스트를 대신하지 않는다.
 - 관찰할 이벤트가 있으면 폴링이나 타이머 대신 그 이벤트를 사용한다. 선언된 기한에는 타이머를 사용할 수 있다. 이 저장소가 만드는 것에 심볼릭 링크를 쓰지 않고 대체 실행 경로를 쓰지 않는다. 다이어그램의 원본은 Mermaid 정의이며 생성물은 원본 정의와 분리해 보관한다.
 - 기존 외부 도구나 라이브러리가 이미 하는 일을 다시 만들지 않는다. 그 생태계의 표준 도구를 있는 그대로 사용하고(예: Python interpreter, 환경, lock은 uv, PHP 의존성은 Composer), 그 도구가 만드는 symbolic link처럼 자기 동작을 받아들인다. 이 저장소의 규칙은 이 저장소가 만드는 것을 다스린다.
 - 경로는 선언적으로(추적 파일에 이름을 적어) 또는 발견(discovery)으로(문서나 script가 밝힌 발견 규칙에 따라) 정하며, 상대 경로로 정하지 않는다.
@@ -207,7 +209,7 @@
   release이며, GitHub release 본문의 한도인 125000자를 넘는 section은 tag의 CHANGELOG.md에서 그 section을 가리키는 한 줄이
   된다)다. test는 다시 실행하지 않는다. `make release-coverage`는 checkout의 모든 manifest가 `config/release.json`에
   분류되어 있기를 요구한다.
-- Python client(`packages/orm-python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
-  `wheel`, 고정된 `buildBackend`와 함께). Rust crate `orm`, `orm-schema`, `orm-build`는 git tag로 소비되고
+- Python client(`packages/python/pyproject.toml`)는 wheel `polyspec_orm-X.Y.Z-py3-none-any.whl`로 release된다(`config/release.json`의
+  `wheel`, 고정된 `buildBackend`와 함께). Rust crate `polyspec-orm`, `polyspec-orm-schema`, `polyspec-orm-build`는 git tag로 소비되고
   release archive가 없다(`config/release.json`의 `git-tag`). version을 올리는 commit이 다른 manifest와 함께 그
   모든 `version`을 설정한다.

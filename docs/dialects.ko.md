@@ -27,12 +27,12 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
-**Go driver package.** `packages/orm-go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
+**Go driver package.** `packages/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
 
 ```go
 import (
-    _ "github.com/polyspec/orm/packages/orm-go/orm/pg"      // driver "postgres"
-    _ "github.com/polyspec/orm/packages/orm-go/orm/sqlite"  // driver "sqlite"
+    _ "github.com/polyspec/orm/packages/go/orm/pg"      // driver "postgres"
+    _ "github.com/polyspec/orm/packages/go/orm/sqlite"  // driver "sqlite"
 )
 ```
 
@@ -73,7 +73,7 @@ import하지 않으면 `orm.Open`은 필요한 import를 포함한 `CONFIG`를 �
 | SQLite, PHP client | PHP 8.5.10의 `pdo_sqlite`, `select sqlite_version()` 결과 3.53.4 |
 | SQLite, TypeScript client | Node 26.11.1의 `node:sqlite`, `select sqlite_version()` 결과 3.53.4. `package.json`은 Node 26.11.1 이상을 허용하며 그 뒤 release의 bundled version은 측정하지 않았다 |
 | SQLite 파일 이름 | DSN query가 남아 있는 파일 이름은 PHP PDO, `node:sqlite`, `sqlite3` shell이 그대로 열어 `bench.sqlite?_pragma=…`를 만든다. `modernc.org/sqlite`는 query를 해석한다(`TestSQLiteFileNameWithQuery`의 `sqlite.filename.*` case). 클라이언트는 파일 이름을 정하기 전에 query를 제거한다 |
-| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`packages/orm-rust/Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
+| SQLite, Rust client | sqlx 0.9 `sqlite` feature가 `sqlite-bundled`를 켠다. `libsqlite3-sys` 0.37.0(`packages/rust/Cargo.lock`)은 3.51.3을 포함하며, 같은 crate와 feature로 build한 프로그램의 `sqlite3_libversion()`으로 확인했다. Probe는 3.51.3에서 실행하지 않았다 |
 
 ### Types
 
@@ -318,7 +318,7 @@ SQLite `f64` CHECK는 위 schema definitions에 probe가 없다. REAL column은 
 
 ## Introspection
 
-introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust, Python client로 실행한다(`make dbspec-introspect-python-check`는 venv의 python으로 `packages/orm-python/tests/dbspec_introspect.py`를 실행하고 MySQL, PostgreSQL, SQLite case를 검사한다). `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(`tests/dbspec/introspect`의 Go, PHP, TypeScript, Rust, PHP 확장과 `packages/orm-python/tests/dbspec_introspect_runner.py`의 Python)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
+introspection은 connection의 현재 database(MySQL), 현재 schema(PostgreSQL), `main` database(SQLite)를 읽어 호출자가 이름을 준 dbspec 문서 하나와 읽지 못한 객체 목록을 돌려준다. 모든 query가 table 전체를 한 번에 읽으므로 query 수는 table 수와 무관하다. `make dbspec-introspect-check`는 `tests/dbspec/ddl.json`의 모든 vector와 모든 schema 문서를 렌더링해 적용하고 database를 introspect한 뒤, 결과의 schema text가 table을 이름 순으로 둔 원본의 schema text와 같고 미지원 객체가 없기를 요구한다. 또 `tests/dbspec/introspect.json`을 실행한다. 각 case는 그 dialect의 빈 database에 문서를 렌더링하고 statement를 실행한 뒤(statement의 `{schema}`는 그 database 또는 schema의 이름 문자열로 치환하며, PostgreSQL case는 함께 지우는 두 번째 schema `{schema}_b`를 만들 수 있다), introspect한 문서의 canonical form과 미지원 객체 `[kind, table, name]`를 기대한다. 네 번째 원소가 있으면 그 객체의 이유가 그 rule을 포함하는지 비교하고, 없으면 이유는 비교하지 않는다. `make dbspec-introspect-<client>-check`는 같은 round trip과 case를 PHP, TypeScript, Rust, Python client로 실행한다(`make dbspec-introspect-python-check`는 venv의 python으로 `packages/python/tests/dbspec_introspect.py`를 실행하고 MySQL, PostgreSQL, SQLite case를 검사한다). `make dbspec-introspect-compare-check`는 stress 모양의 20 table 문서(`make bench`의 `make dbspec-introspect-compare-bench`는 2000 table stress 문서와 release Rust runner)를 각 dialect에 적용하고 runner 다섯 개(`tests/dbspec/introspect`의 Go, PHP, TypeScript, Rust, PHP 확장과 `packages/python/tests/dbspec_introspect_runner.py`의 Python)를 실행해, 출력(canonical 문서, 그다음 미지원 객체마다 `! kind<TAB>table<TAB>name` 줄)이 같고, 원본 schema text를 가지며, 미지원 객체가 없기를 요구한다. 각 introspection의 시간을 출력하고 그것이 기준값 5초를 넘으면 경고하며, 시간은 검사를 실패시키지 않는다.
 
 ### 문서
 

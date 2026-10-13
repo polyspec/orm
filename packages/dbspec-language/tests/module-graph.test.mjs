@@ -2,11 +2,11 @@
 // than the parser entry, and no Node global (Buffer, process, __dirname, require). The test starts at the built
 // module of this package and follows every static import, re-export and literal dynamic import. The one bare name it
 // may import is "@polyspec/orm/dbspec", which must resolve through the workspace to the parser entry; the graph of that
-// entry belongs to its owner, and packages/orm-npm/tests/browser-entry.mjs checks it by the same rules (S7), so this
+// entry belongs to its owner, and packages/ts/tests/browser-entry.mjs checks it by the same rules (S7), so this
 // test does not read past it. A dynamic import whose specifier is not a literal cannot be followed and is a violation.
 //
 // Usage: node --test packages/dbspec-language/tests/module-graph.test.mjs (after the build of this package and of
-// packages/orm-npm)
+// packages/ts)
 import assert from 'node:assert/strict';
 import { caseTest } from '../../../tests/testcase.mjs';
 import { readFileSync } from 'node:fs';
@@ -21,7 +21,7 @@ const vector = (name, body) => caseTest(name, TIMEOUT, body);
 
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const start = resolve(pkgRoot, 'dist/index.js');
-const parserEntry = resolve(pkgRoot, '../orm-npm/dist/dbspec/entry.js');
+const parserEntry = resolve(pkgRoot, '../ts/dist/dbspec/entry.js');
 const ALLOWED_BARE = '@polyspec/orm/dbspec';
 
 const FORBIDDEN_GLOBALS = new Set(['Buffer', 'process', '__dirname', 'require']);

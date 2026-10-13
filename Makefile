@@ -27,7 +27,7 @@ export DECIMAL_ENV
 
 # 모든 cargo 명령(cargo +$(PHYSICAL_RUST_TOOLCHAIN), PATH의 cargo, feature coverage와 conformance
 # check가 실행하는 cargo)은 한 toolchain과 한 target directory를 쓴다. toolchain이나 target이
-# 둘이면 같은 crate를 다시 compile하고 target이 커진다(T27 측정: check 한 번에 packages/orm-rust/target
+# 둘이면 같은 crate를 다시 compile하고 target이 커진다(T27 측정: check 한 번에 packages/rust/target
 # 10.4 GiB와 bench/rust/target 1.4 GiB).
 # check는 한 번 build한 artifact를 실행하므로 incremental compile의 중간 결과(T27 측정: debug
 # target 7.9 GiB 가운데 1.6 GiB)를 남기지 않고, debug build의 debug 정보는 panic과 backtrace의
@@ -35,7 +35,7 @@ export DECIMAL_ENV
 # 그 toolchain은 rust-toolchain.toml의 channel 하나이고, CI도 그 file로 설치한다.
 PHYSICAL_RUST_TOOLCHAIN := $(shell sed -n 's/^channel = "\(.*\)"$$/\1/p' rust-toolchain.toml)
 export RUSTUP_TOOLCHAIN := $(PHYSICAL_RUST_TOOLCHAIN)
-export CARGO_TARGET_DIR := $(abspath packages/orm-rust/target)
+export CARGO_TARGET_DIR := $(abspath packages/rust/target)
 # target directory는 이 checkout 안에 있다(AGENTS.md). cargo는 artifact가 fresh인지를
 # source file의 경로(package root 기준)와 mtime으로만 판단하고 어느 checkout이 build했는지는 기록하지 않으므로,
 # 다른 checkout의 target directory를 쓰면 그 checkout이 build한 code를 이 checkout의 것으로 test한다. command
@@ -116,7 +116,7 @@ CARGO_TEST = node $(abspath tests/cargo-test.mjs)
 RUN_DIR = $(abspath .runtime/run)/$@-$$PPID
 RUN_TARGET = $(RUN_DIR)/target
 CARGO_COPY = $(CARGO_LEASED) sh $(abspath scripts/cargo-build-copy.sh) $(RUN_TARGET)
-# HOLD_TYPESCRIPT은 이 checkout의 TypeScript build 출력(packages/orm-npm의 dist와 생성한 model)을 make
+# HOLD_TYPESCRIPT은 이 checkout의 TypeScript build 출력(packages/ts의 dist와 생성한 model)을 make
 # process가 끝날 때까지 하나의 보유자로 가진다. 그 출력을 build하고 쓰는 target은 첫 줄에서 그것을 얻으므로,
 # 다른 실행의 build가 쓰는 도중의 출력을 바꾸지 않는다. 다른 실행이 가지면 directory 변경 알림을 기다린다. 조상
 # process(make feature-check)가 가지면 그 보유 안에서 얻으므로, 함께 실행되는 기능 단계의 build도 한 번에 하나다.
@@ -213,11 +213,11 @@ bench:
 	test -f $(abspath $(TEST_ENV)) || { echo "$(abspath $(TEST_ENV)) is missing; run make test-servers" >&2; exit 1; }
 	node scripts/check/run.mjs --job-summary $(abspath $(TEST_ENV)) $(BENCH_TARGETS)
 
-# go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/orm-go의
+# go-test-check는 다른 target이 실행하지 않는 Go package의 test를 실행한다. packages/go의
 # package는 client-db-check(scripts/client-db-test.sh), engine과 generator는 feature-check의
 # 검증 명령(engine package마다 planner-go-*, engine/dbspec은 schema-go의 dbspec-go-check,
 # generator는 generation-go), internal/testcase는 testcase-check가 같은 명령으로 실행한다.
-GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/packages/orm-go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
+GO_TEST_CHECK_PACKAGES = $$(go list ./... | grep -v -e '/packages/go/' -e '/engine$$' -e '/engine/' -e '/generator$$' -e '/internal/testcase$$')
 .PHONY: go-test-check
 go-test-check:
 	$(WITH_TEST_ENV) $(GO_TEST) $(GO_TEST_CHECK_PACKAGES)
@@ -236,7 +236,7 @@ testcase-check/runners:
 testcase-check/php:
 	php tests/testcase_test.php
 testcase-check/rust: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
+	cd packages/rust && $(CARGO_TEST) testcase-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-testcase
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
@@ -287,34 +287,34 @@ dbspec-introspect-check:
 dbspec-introspect-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) node --test packages/orm-npm/tests/dbspec-introspect.mjs
+	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-introspect.mjs
 
 # dbspec-introspect-php-check는 같은 round trip과 미지원 case를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::introspect로 실행한다.
 .PHONY: dbspec-introspect-php-check
 dbspec-introspect-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_introspect_test.php
+	$(WITH_TEST_ENV) php packages/php/tests/dbspec_introspect_test.php
 
 # dbspec-introspect-php-extension-check는 같은 round trip과 미지원 case를 PHP 확장 orm_dbspec의
 # Polyspec\Orm\Dbspec\Native\Dbspec::introspect로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-introspect-php-extension-check
 dbspec-introspect-php-extension-check: php-vendor-check
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_introspect_test.php
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_introspect_test.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-rust-check는 같은 round trip과 tests/dbspec/introspect.json의 case를 Rust
 # client의 polyspec_orm::dbspec::introspect로 실행하고, 모든 집합에서 catalog query 8, 7, 3개를 확인한다.
 .PHONY: dbspec-introspect-rust-check
 dbspec-introspect-rust-check: cargo-downloads-check
-	$(WITH_TEST_ENV) cd packages/orm-rust && $(CARGO_TEST) dbspec-introspect-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-introspect-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_introspect -- --nocapture
 
 # dbspec-introspect-python-check는 같은 round trip과 미지원 case를 Python client의
-# polyspec.orm.dbspec.introspect.introspect_dbspec로 MySQL과 PostgreSQL 서버에서 실행하고(packages/orm-python/tests/dbspec_introspect.py),
+# polyspec.orm.dbspec.introspect.introspect_dbspec로 MySQL과 PostgreSQL 서버에서 실행하고(packages/python/tests/dbspec_introspect.py),
 # 같은 case를 SQLite file에서도 실행한다. It imports the client installed into the venv, as python-unit-check does.
 .PHONY: dbspec-introspect-python-check
 dbspec-introspect-python-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_introspect.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/dbspec_introspect.py
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
 # 적용해 plan의 target을, rollback statement로 source를, 다시 적용해 target을, finalize 뒤 target과
@@ -353,8 +353,8 @@ dbspec-apply-stress-bench:
 dbspec-apply-pairs-check: cargo-downloads-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/orm-rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) DBSPEC_APPLY_RUST=$(RUN_TARGET)/debug/examples/dbspec_apply ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(GO_TEST) -tags physical ./tests/dialects -run '^TestApplyChainAcrossClients$$' -count=1
 	rm -rf $(RUN_DIR)
 
@@ -362,7 +362,7 @@ dbspec-apply-pairs-check: cargo-downloads-check lease-tool
 # polyspec_orm::dbspec::apply, recover, rollback, finalize로 실행한다.
 .PHONY: dbspec-apply-rust-check
 dbspec-apply-rust-check: cargo-downloads-check
-	$(WITH_TEST_ENV) cd packages/orm-rust && $(CARGO_TEST) dbspec-apply-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-apply-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply -- --nocapture
 
 # dbspec-plan-ts-check는 TypeScript client를 build하고 tests/dbspec/plans.json의 모든 case를
 # 그 renderDbspec, planSteps, introspectDbspec으로 MySQL, PostgreSQL, SQLite에 적용한다.
@@ -370,7 +370,7 @@ dbspec-apply-rust-check: cargo-downloads-check
 dbspec-plan-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) node --test packages/orm-npm/tests/dbspec-plan-physical.mjs
+	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-plan-physical.mjs
 
 # dbspec-apply-ts-check는 TypeScript client를 build하고 2000 table plan을 뺀 dbspec-apply-check의
 # scenario를 그 applyPlans, recoverPlans, rollbackPlans, finalizePlans로 실행한다.
@@ -378,32 +378,32 @@ dbspec-plan-ts-check: lease-tool
 dbspec-apply-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	$(WITH_TEST_ENV) node --test packages/orm-npm/tests/dbspec-apply-physical.mjs
+	$(WITH_TEST_ENV) node --test packages/ts/tests/dbspec-apply-physical.mjs
 
 # dbspec-plan-rust-check는 같은 case를 Rust client의 plan step, renderer,
 # polyspec_orm::dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-rust-check
 dbspec-plan-rust-check: cargo-downloads-check
-	$(WITH_TEST_ENV) cd packages/orm-rust && $(CARGO_TEST) dbspec-plan-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) dbspec-plan-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_plan_apply -- --nocapture
 
 # dbspec-plan-php-check는 같은 case를 PHP client의 Polyspec\Orm\Dbspec\Dbspec::planSteps와
 # Dbspec::introspect로 적용한다.
 .PHONY: dbspec-plan-php-check
 dbspec-plan-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_plan_apply_test.php
+	$(WITH_TEST_ENV) php packages/php/tests/dbspec_plan_apply_test.php
 
 # dbspec-apply-php-check는 2000 table plan을 뺀 dbspec-apply-check의 scenario를 PHP client의
 # Polyspec\Orm\Dbspec\Dbspec::apply, recover, rollback, finalize로 MySQL, PostgreSQL, SQLite에서 실행한다.
 .PHONY: dbspec-apply-php-check
 dbspec-apply-php-check: php-vendor-check
-	$(WITH_TEST_ENV) php packages/orm-php/tests/dbspec_apply_test.php
+	$(WITH_TEST_ENV) php packages/php/tests/dbspec_apply_test.php
 
 # dbspec-apply-php-extension-check는 같은 scenario를 PHP 확장 orm_dbspec의 Polyspec\Orm\Dbspec\Native\Dbspec::apply,
 # recover, rollback, finalize로 실행한다. 확장은 이 실행의 directory에 build한다.
 .PHONY: dbspec-apply-php-extension-check
 dbspec-apply-php-extension-check: php-vendor-check
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_test.php
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_apply_test.php
 	rm -rf $(RUN_DIR)
 
 # dbspec-introspect-compare-check는 stress 문서(DBSPEC_INTROSPECT_TABLES개 table)를 MySQL,
@@ -417,8 +417,8 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-ch
 	mkdir -p $(dir $(DBSPEC_INTROSPECT_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_INTROSPECT_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_INTROSPECT_TABLES)
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/orm-rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 	rm -rf $(RUN_DIR)
 
@@ -450,7 +450,7 @@ dbspec-compare-check/unit:
 # PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
 # with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, PyYAML); the checks
 # take this interpreter as ORM_PYTHON and import the installed package, never a source path.
-PYTHON_VENV = $(abspath packages/orm-python/.venv)
+PYTHON_VENV = $(abspath packages/python/.venv)
 # install-python은 config/toolchain.json의 pythonBuild를 var/tools/bin/python3에 설치하고(install-tools), kit의 python-venv로
 # 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다).
 # The client is installed with that pip as an editable package (pip install --editable), so the tests import the installed
@@ -482,32 +482,32 @@ php-vendor-check:
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -p 'test_*.py'
 python-interface-unit-check: python-venv-check
 	cd tests/interfaces && $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
 python-coverage-case-check: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/orm-python/tests/coverage_case_test.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/coverage_case_test.py
 # dbspec-python-check is the Python verification of schema_definition (contracts/features.json schema-python): the shared
 # vectors of tests/dbspec (cases.json and its files, ddl.json, plans.json, mermaid.json, syntax.json, show-create.json and
 # set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
-	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_cases.py
-	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_ddl.py
-	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_plans.py
-	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_mermaid.py
-	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_dbspec_*.py'
+	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_cases.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_ddl.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_plans.py
+	$(PYTHON_VENV)/bin/python packages/python/tests/dbspec_mermaid.py
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/python/tests -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
 	$(PUBLISH) $(DBSPEC_COMPARE_DOCUMENT) node tests/dbspec/stress.mjs $(DBSPEC_COMPARE_TABLES)
 	$(TSC_BUILD)
-	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/orm-rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
-	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/orm-rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(RUN_LONG) rust-build/dbspec_compare --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_compare debug/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm-schema --example dbspec_compare --example dbspec_stress
+	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
 	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
@@ -534,42 +534,42 @@ dbspec-stress-bench/go: dbspec-stress-bench/prepare
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 	$(GO_TEST) -tags bench ./engine/dbspec -run '^TestStressDocument$$' -count=1
 dbspec-stress-bench/php: php-vendor-check dbspec-stress-bench/prepare
-	php packages/orm-php/tests/dbspec_stress_test.php
-	php packages/orm-php/tests/dbspec_stress_test.php
+	php packages/php/tests/dbspec_stress_test.php
+	php packages/php/tests/dbspec_stress_test.php
 dbspec-stress-bench/php-introspect: php-vendor-check dbspec-stress-bench/prepare
-	php packages/orm-php/tests/dbspec_introspect_stress_test.php
+	php packages/php/tests/dbspec_introspect_stress_test.php
 dbspec-stress-bench/typescript: dbspec-stress-bench/prepare lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/dbspec-stress.mjs
-	node --test packages/orm-npm/tests/dbspec-stress.mjs
+	node --test packages/ts/tests/dbspec-stress.mjs
+	node --test packages/ts/tests/dbspec-stress.mjs
 dbspec-stress-bench/rust: dbspec-stress-bench/prepare cargo-downloads-check
-	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/orm-rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
+	$(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 	$(RUN_TARGET)/release/examples/dbspec_stress $(abspath $(DBSPEC_STRESS_DOCUMENT))
 
 .PHONY: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check: dbspec-rust-check/documents dbspec-rust-check/set dbspec-rust-check/apply-cleanup dbspec-rust-check/unicode dbspec-rust-check/show-create
 dbspec-rust-check/documents: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec --test dbspec_analyze --test dbspec_rules --test dbspec_manifest --test dbspec_render --test dbspec_runtime --test dbspec_plan --test dbspec_model --test dbspec_mermaid -- --nocapture
 # dbspec-rust-check/set runs every file tree case of tests/dbspec/set-files.json through the set reader
 # dbspec::read_set, and its unit cases of the normal form, the nested JSON and the schema value.
 dbspec-rust-check/set: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 .PHONY: dbspec-rust-check/set/vectors dbspec-rust-check/set/unit
 dbspec-rust-check/set/vectors: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --test dbspec_set -- --nocapture
 dbspec-rust-check/set/unit: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::set -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::set -- --nocapture
 # dbspec-rust-check/unicode는 Go가 쓴 Unicode word rune 표(unicode_word.rs)가 모든 code point에서 구간과 같은지 본다.
 dbspec-rust-check/unicode: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib dbspec::unicode_word -- --nocapture
 dbspec-rust-check/apply-cleanup: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 # dbspec-rust-check/show-create는 shown_checks(mysql.rs)가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
 dbspec-rust-check/show-create: cargo-downloads-check
-	cd packages/orm-rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --nocapture
+	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-schema --lib show_create_tests -- --nocapture
 
 .PHONY: rust-send-savepoint-check
 # 부분의 실행 directory는 top target의 것이다($@에 /가 있으면 directory가 한 단계 더 생긴다).
@@ -577,11 +577,11 @@ rust-send-savepoint-check/%: RUN_DIR = $(abspath .runtime/run)/rust-send-savepoi
 rust-send-savepoint-check: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
 .PHONY: rust-send-savepoint-check/clippy rust-send-savepoint-check/test
 rust-send-savepoint-check/clippy: cargo-downloads-check
-	$(RUN_LONG) rust-clippy/orm-lib --cwd packages/orm-rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p polyspec-orm --lib -- -D warnings
+	$(RUN_LONG) rust-clippy/orm-lib --cwd packages/rust -- $(CARGO_LEASED) cargo +$(PHYSICAL_RUST_TOOLCHAIN) clippy --locked --offline -p polyspec-orm --lib -- -D warnings
 rust-send-savepoint-check/test: cargo-downloads-check
 	mkdir -p $(RUN_DIR)
-	$(WITH_TEST_ENV) cd packages/orm-rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
-	$(WITH_TEST_ENV) cd packages/orm-rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
+	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
+	$(WITH_TEST_ENV) cd packages/rust && ORM_SEND_SQLITE_DSN=$(SEND_SQLITE_DSN) $(CARGO_TEST) rust-send-savepoint-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib tx::send_tests:: -- --nocapture
 	rm -rf $(RUN_DIR)
 
 .PHONY: dbspec-php-check
@@ -592,43 +592,43 @@ rust-send-savepoint-check/test: cargo-downloads-check
 dbspec-php-check: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
 .PHONY: dbspec-php-check/documents dbspec-php-check/rules dbspec-php-check/manifest dbspec-php-check/render dbspec-php-check/plan dbspec-php-check/mermaid dbspec-php-check/apply-cleanup dbspec-php-check/unicode dbspec-php-check/show-create dbspec-php-check/analyze dbspec-php-check/set
 dbspec-php-check/documents: php-vendor-check
-	php packages/orm-php/tests/dbspec_test.php
-	php packages/orm-php/tests/dbspec_test.php
+	php packages/php/tests/dbspec_test.php
+	php packages/php/tests/dbspec_test.php
 dbspec-php-check/rules: php-vendor-check
-	php packages/orm-php/tests/dbspec_rules_test.php
-	php packages/orm-php/tests/dbspec_rules_test.php
+	php packages/php/tests/dbspec_rules_test.php
+	php packages/php/tests/dbspec_rules_test.php
 dbspec-php-check/manifest: php-vendor-check
-	php packages/orm-php/tests/dbspec_manifest_test.php
-	php packages/orm-php/tests/dbspec_manifest_test.php
+	php packages/php/tests/dbspec_manifest_test.php
+	php packages/php/tests/dbspec_manifest_test.php
 dbspec-php-check/render: php-vendor-check
-	php packages/orm-php/tests/dbspec_render_test.php
-	php packages/orm-php/tests/dbspec_render_test.php
+	php packages/php/tests/dbspec_render_test.php
+	php packages/php/tests/dbspec_render_test.php
 dbspec-php-check/plan: php-vendor-check
-	php packages/orm-php/tests/dbspec_plan_test.php
-	php packages/orm-php/tests/dbspec_plan_test.php
+	php packages/php/tests/dbspec_plan_test.php
+	php packages/php/tests/dbspec_plan_test.php
 dbspec-php-check/mermaid: php-vendor-check
-	php packages/orm-php/tests/dbspec_mermaid_test.php
-	php packages/orm-php/tests/dbspec_mermaid_test.php
+	php packages/php/tests/dbspec_mermaid_test.php
+	php packages/php/tests/dbspec_mermaid_test.php
 dbspec-php-check/apply-cleanup: php-vendor-check
-	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
-	php packages/orm-php/tests/dbspec_apply_cleanup_test.php
+	php packages/php/tests/dbspec_apply_cleanup_test.php
+	php packages/php/tests/dbspec_apply_cleanup_test.php
 # dbspec-php-check/unicode는 PHP UnicodeWord의 표가 모든 code point에서 그 구간과 같은지 본다(표 자체는 dbspec-go-check/unicode가 Go와 맞춘다).
 dbspec-php-check/unicode: php-vendor-check
-	php packages/orm-php/tests/dbspec_unicode_test.php
-	php packages/orm-php/tests/dbspec_unicode_test.php
+	php packages/php/tests/dbspec_unicode_test.php
+	php packages/php/tests/dbspec_unicode_test.php
 # dbspec-php-check/show-create는 MysqlCatalog::createChecks가 tests/dbspec/show-create.json의 모든 case를 기대한 본문으로 읽는지 본다.
 # dbspec-php-check/analyze는 syntax analysis와 format을 focused case와 cases.json의 모든 case로 본다(docs/dbspec.md "Syntax analysis", "Formatting").
 dbspec-php-check/analyze: php-vendor-check
-	php packages/orm-php/tests/dbspec_analyze_test.php
+	php packages/php/tests/dbspec_analyze_test.php
 dbspec-php-check/show-create: php-vendor-check
-	php packages/orm-php/tests/dbspec_show_create_test.php
+	php packages/php/tests/dbspec_show_create_test.php
 # dbspec-php-check/set runs Dbspec::readSet on every case of tests/dbspec/set-files.json and the focused cases, each
 # a temporary file tree with real symbolic and hard links (docs/dbspec.md "Document sets").
 dbspec-php-check/set: php-vendor-check
-	php packages/orm-php/tests/dbspec_set_test.php
+	php packages/php/tests/dbspec_set_test.php
 
 .PHONY: dbspec-php-extension-check php-extension-arginfo
-# dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/orm-php-extension, PHP client의 dbspec 표면을 C로 구현한
+# dbspec-php-extension-check는 PHP 확장 orm_dbspec(packages/php-ext, PHP client의 dbspec 표면을 C로 구현한
 # Polyspec\Orm\Dbspec\Native)을 검사한다: src/orm_dbspec_arginfo.h가 stub에서 gen_stub.php로 만든 것과 같은지 확인하고, 확장을
 # phpize로 이 실행의 directory에 build해 load한 뒤 Reflection이 stubs/orm_dbspec.stub.php와 PHP client의 public dbspec
 # class와 같은지와, 공유 dbspec vector, statement vector, plan vector, Mermaid vector, apply 정리 error(PHP client의 plan,
@@ -643,42 +643,42 @@ dbspec-php-extension-check/%: RUN_DIR = $(abspath .runtime/run)/dbspec-php-exten
 dbspec-php-extension-check: dbspec-php-extension-check/arginfo dbspec-php-extension-check/declarations dbspec-php-extension-check/vectors dbspec-php-extension-check/analyze dbspec-php-extension-check/names dbspec-php-extension-check/plan dbspec-php-extension-check/mermaid dbspec-php-extension-check/apply-cleanup dbspec-php-extension-check/show-create dbspec-php-extension-check/set
 	rm -rf $(RUN_DIR)
 dbspec-php-extension-check/arginfo:
-	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) check
+	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) check
 dbspec-php-extension-check/prepare:
-	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-php-extension-check/declarations: dbspec-php-extension-check/prepare
-	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/orm-php-extension/tests/declarations_test.php
-	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/orm-php-extension/tests/declarations_test.php
+	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/php-ext/tests/declarations_test.php
+	ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) php packages/php-ext/tests/declarations_test.php
 dbspec-php-extension-check/vectors: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_test.php
 # dbspec-php-extension-check/analyze는 확장의 syntax analysis와 format이 PHP client와 같은 token, 위치, diagnostic, emission과
 # formatted text를 내는지 focused case, cases.json의 모든 case와 한도 error로 본다.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_analyze_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_analyze_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_analyze_test.php
 # dbspec-php-extension-check/names는 확장의 Names(render, ofTable, column)이 PHP client의 Names와 같은 결과와 예외를 내는지 본다.
 dbspec-php-extension-check/names: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_names_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_names_test.php
 dbspec-php-extension-check/plan: dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_plan_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_plan_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_plan_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_plan_test.php
 dbspec-php-extension-check/mermaid: dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_mermaid_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_mermaid_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_mermaid_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_mermaid_test.php
 dbspec-php-extension-check/apply-cleanup: dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_cleanup_test.php
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_apply_cleanup_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_apply_cleanup_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_apply_cleanup_test.php
 # dbspec-php-extension-check/show-create는 shown_check(introspect.c)가 canned MySQL catalog에서 tests/dbspec/show-create.json의
 # 모든 case를 Go의 introspection과 같은 check와 미지원 객체로 읽는지, 없는 CHECK를 Go와 같은 error로 거부하는지 본다.
 dbspec-php-extension-check/show-create: dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_show_create_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_show_create_test.php
 # dbspec-php-extension-check/set runs the extension's Dbspec::readSet on every case of tests/dbspec/set-files.json and
 # the focused cases and requires each result to equal the PHP client's, messages included.
 dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prepare
-	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/orm-php-extension/tests/dbspec_set_test.php
+	php -d extension=$(PHP_EXTENSION_LIBRARY) packages/php-ext/tests/dbspec_set_test.php
 php-extension-arginfo:
-	php packages/orm-php-extension/scripts/arginfo.php $(GEN_STUB) write
+	php packages/php-ext/scripts/arginfo.php $(GEN_STUB) write
 
 # repo-check는 root npm script가 쓰는 path가 tracked file이나
 # directory인지, CI workflow가 make test-servers로 서버를 시작하고 그 환경 파일의 모든 변수를
@@ -818,33 +818,33 @@ fuzz-check: fuzz-check/engine-ir fuzz-check/clients-go-orm
 fuzz-check/engine-ir:
 	$(RUN_LONG) fuzz/engine-ir -- go test -v -timeout 0 ./engine/ir -run '^$$' -fuzz FuzzDecodeRequest -fuzztime=1s
 fuzz-check/clients-go-orm:
-	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./packages/orm-go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
+	$(RUN_LONG) fuzz/clients-go-orm -- go test -v -timeout 0 ./packages/go/orm -run '^$$' -fuzz FuzzDecodeCiphertext -fuzztime=1s
 
 # PHP는 client-unit-check가 실행하는 PHP program이다. 검사는 .php-version의 PHP를 PATH의 php로
 # 쓰고, php-min-check는 composer.json이 지원하는 최저 release를 준다.
 PHP = php
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/hostcodec client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/perf-extensions
 client-unit-check/dsn: php-vendor-check
-	$(PHP) packages/orm-php/tests/dsn.php
+	$(PHP) packages/php/tests/dsn.php
 client-unit-check/markdown: php-vendor-check
-	$(PHP) packages/orm-php/tests/markdown_test.php
+	$(PHP) packages/php/tests/markdown_test.php
 client-unit-check/relation-keys: php-vendor-check
-	$(PHP) packages/orm-php/tests/relation_keys.php
+	$(PHP) packages/php/tests/relation_keys.php
 client-unit-check/hostcodec: php-vendor-check
-	$(PHP) packages/orm-php/tests/hostcodec.php
+	$(PHP) packages/php/tests/hostcodec.php
 client-unit-check/engine: php-vendor-check
-	$(PHP) packages/orm-php/tests/engine_test.php
+	$(PHP) packages/php/tests/engine_test.php
 client-unit-check/runtime-model: php-vendor-check
-	$(PHP) packages/orm-php/tests/runtime_model_test.php
+	$(PHP) packages/php/tests/runtime_model_test.php
 client-unit-check/orm-gen: php-vendor-check
-	$(PHP) packages/orm-php/tests/orm_gen_test.php
+	$(PHP) packages/php/tests/orm_gen_test.php
 client-unit-check/model-methods: php-vendor-check
-	$(PHP) packages/orm-php/tests/model_methods_test.php
+	$(PHP) packages/php/tests/model_methods_test.php
 client-unit-check/perf-extensions:
-	$(PHP) packages/orm-php/tests/perf_extensions_test.php
+	$(PHP) packages/php/tests/perf_extensions_test.php
 
 # php-min-check runs the PHP client unit tests on the lowest PHP release that
-# packages/orm-php/composer.json supports.
+# packages/php/composer.json supports.
 php-min-check:
 	PHP="$$(./scripts/php/php-min.sh)" && "$$PHP" --version && $(MAKE) --no-print-directory client-unit-check PHP="$$PHP"
 
@@ -864,21 +864,21 @@ client-db-check: lease-tool python-statement-fault-check python-identity-load-ch
 # needs the database variables of make test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/statement_fault.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/statement_fault.py
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/identity_load.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/identity_load.py
 
 # python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
 # of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-schema-inspection-check
 python-schema-inspection-check: python-venv-check
-	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/schema_inspection.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/python/tests/schema_inspection.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
@@ -932,7 +932,7 @@ unselected-column-physical-check: php-vendor-check
 case-database-check: php-vendor-check lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd packages/orm-rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/integration --cwd packages/rust -- $(CARGO_COPY) debug/integration -- cargo build --locked -p polyspec-orm-tests --bin integration
 	$(WITH_TEST_ENV) CARGO_TARGET_DIR=$(RUN_TARGET) node scripts/case-database-check.mjs
 	rm -rf $(RUN_DIR)
 
@@ -944,7 +944,7 @@ case-database-check: php-vendor-check lease-tool
 # 실행된다(make -k).
 # PYTHON_MODELS_DIR는 schema/bench.dbs에서 orm-gen이 쓰고 커밋하는 Python model directory다.
 # python-model-check는 orm-gen gen --check로 그 directory가 생성 결과와 같은지 확인한다(network 없음).
-PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
+PYTHON_MODELS_DIR = packages/python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
 	$(PYTHON_VENV)/bin/orm-gen gen --check --set schema/dbspec-set.json --out $(PYTHON_MODELS_DIR)
@@ -976,18 +976,18 @@ FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript install-flowmark
 markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
-	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/orm-go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
+	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php: php-vendor-check
-	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
+	FLOWMARK=$(FLOWMARK) $(PHP) packages/php/tests/markdown_conformance.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
-	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python packages/orm-python/tests/markdown_conformance.py
+	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python packages/python/tests/markdown_conformance.py
 markdown-conformance-check/rust: lease-tool cargo-downloads-check
-	cd packages/orm-rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
+	cd packages/rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
 markdown-conformance-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	FLOWMARK=$(FLOWMARK) node --conditions=orm-test packages/orm-npm/tests/markdown_conformance.mjs
+	FLOWMARK=$(FLOWMARK) node --conditions=orm-test packages/ts/tests/markdown_conformance.mjs
 
 decimal-bench-sqlite: lease-tool
 	./scripts/decimal-bench-sqlite.sh
@@ -999,8 +999,8 @@ decimal-bench-sqlite: lease-tool
 decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/orm-rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
-	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/orm-go/decimalmodel
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --bin decimal_physical
+	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
 	$(BUILD_CONFORMANCE_STATE)
 	. $(DECIMAL_ENV) && node scripts/decimal-physical-check.mjs
 
@@ -1008,7 +1008,7 @@ interface-check: php-vendor-check lease-tool
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --self-test
 
 go-model-check:
-	$(RUN_LONG) go-model -- sh -c 'cd packages/orm-go/model && go generate ./ && git diff --exit-code -- .'
+	$(RUN_LONG) go-model -- sh -c 'cd packages/go/model && go generate ./ && git diff --exit-code -- .'
 
 # ts-model-check builds the TypeScript client, then fails when the models
 # script scans a source that does not call models or misses one that does,
@@ -1016,7 +1016,7 @@ go-model-check:
 ts-model-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/models-scan.mjs
+	node --test packages/ts/tests/models-scan.mjs
 
 perf-check:
 	$(WITH_TEST_ENV) ./scripts/perf-test.sh
@@ -1042,7 +1042,7 @@ ts-min-check: lease-tool
 dbspec-ts-check: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
-	node --test packages/orm-npm/tests/browser-entry.mjs packages/orm-npm/tests/dbspec.mjs packages/orm-npm/tests/dbspec-set.mjs packages/orm-npm/tests/dbspec-analyze.mjs packages/orm-npm/tests/syntax-vectors.mjs packages/orm-npm/tests/dbspec-rules.mjs packages/orm-npm/tests/dbspec-render.mjs packages/orm-npm/tests/dbspec-plan.mjs packages/orm-npm/tests/dbspec-mermaid.mjs packages/orm-npm/tests/dbspec-apply-cleanup.mjs packages/orm-npm/tests/dbspec-unicode.mjs packages/orm-npm/tests/dbspec-show-create.mjs
+	node --test packages/ts/tests/browser-entry.mjs packages/ts/tests/dbspec.mjs packages/ts/tests/dbspec-set.mjs packages/ts/tests/dbspec-analyze.mjs packages/ts/tests/syntax-vectors.mjs packages/ts/tests/dbspec-rules.mjs packages/ts/tests/dbspec-render.mjs packages/ts/tests/dbspec-plan.mjs packages/ts/tests/dbspec-mermaid.mjs packages/ts/tests/dbspec-apply-cleanup.mjs packages/ts/tests/dbspec-unicode.mjs packages/ts/tests/dbspec-show-create.mjs
 
 # dbspec-language-check는 TypeScript client와 @polyspec/dbspec-language를 build하고, 언어 서비스의 module graph가
 # node module, Node global과 driver에 닿지 않는지, 공유 vector의 format과 hash, 토큰과 UTF-16 범위, tests/editor의
@@ -1186,26 +1186,26 @@ codec-check/python: python-venv-check
 	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/codec_vector.py
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
-	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/orm-go/orm -run '^TestCodecVectors$$' -count=1
+	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/go/orm -run '^TestCodecVectors$$' -count=1
 codec-check/rust: cargo-downloads-check lease-tool
 	mkdir -p $(CODEC_OUT)
-	cd packages/orm-rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib codec::tests::vectors -- --exact
+	cd packages/rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib codec::tests::vectors -- --exact
 codec-check/typescript: lease-tool
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(CODEC_OUT)
 	$(TSC_BUILD)
-	ORM_CODEC_OUT=$(CODEC_OUT) node packages/orm-npm/tests/codec-vector.mjs
+	ORM_CODEC_OUT=$(CODEC_OUT) node packages/ts/tests/codec-vector.mjs
 codec-check/compare: php-vendor-check codec-check/go codec-check/rust codec-check/typescript
 	ORM_CODEC_OUT=$(CODEC_OUT) php tests/codec/check.php
 	rm -rf $(CODEC_OUT)
 
 # rust-fmt-check fails when cargo fmt would change a source of the Rust
-# workspace (packages/orm-rust/rustfmt.toml).
-# rust-fmt-check는 저장소의 모든 Rust workspace(packages/orm-rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
+# workspace (packages/rust/rustfmt.toml).
+# rust-fmt-check는 저장소의 모든 Rust workspace(packages/rust, bench/rust, tests/interfaces/rust)가 cargo fmt로
 # 정리되어 있는지 확인한다.
 rust-fmt-check: rust-fmt-check/clients rust-fmt-check/bench rust-fmt-check/interfaces
 rust-fmt-check/clients:
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/orm-rust -- cargo fmt --all --check
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt --cwd packages/rust -- cargo fmt --all --check
 rust-fmt-check/bench:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-fmt/bench --cwd bench/rust -- cargo fmt --all --check
 rust-fmt-check/interfaces:
@@ -1216,13 +1216,13 @@ rust-150-check: lease-tool
 
 rust-check: rust-check/check rust-check/clippy rust-check/clippy-live-db rust-check/clippy-test-faults
 rust-check/check: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd packages/orm-rust -- $(CARGO_LEASED) cargo check --locked
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/check --cwd packages/rust -- $(CARGO_LEASED) cargo check --locked
 rust-check/clippy: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd packages/orm-rust -- $(CARGO_LEASED) cargo clippy --locked --workspace --all-targets -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked --workspace --all-targets -- -D warnings
 rust-check/clippy-live-db: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd packages/orm-rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-live-db --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm-build --all-targets --features live-db -- -D warnings
 rust-check/clippy-test-faults: lease-tool
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/orm-rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-check/clippy-test-faults --cwd packages/rust -- $(CARGO_LEASED) cargo clippy --locked -p polyspec-orm --all-targets --features test-faults -- -D warnings
 
 # install은 check가 읽는 것을 download한다: npm package(root와 TypeScript client), Composer package, Rust
 # toolchain과 Cargo.lock마다의 crate, Go module, ts-min-check의 가장 낮은 Node, PHP 확장의 gen_stub.php와 PHP-Parser.
@@ -1239,7 +1239,7 @@ install-php:
 install-rust:
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustup toolchain install
 	PATH="$(HOME)/.cargo/bin:$(PATH)" rustc --version
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/orm-rust/Cargo.toml
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path packages/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path bench/rust/Cargo.toml
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(ONLINE) cargo fetch --locked --manifest-path tests/interfaces/rust/Cargo.toml
 install-go:
@@ -1284,7 +1284,7 @@ rust-driver-check: cargo-downloads-check
 # example-check는 examples/complex와 examples/thin-slice의 Go, PHP, Rust 프로그램을 시드된
 # bench database에서 실행하고 README의 diff처럼 stdout이 byte 단위로 같은지 비교한다.
 example-check: cargo-downloads-check
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/orm-rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/examples --cwd packages/rust -- $(CARGO_COPY) debug/complex debug/demo -- cargo build --locked --offline -p polyspec-orm-tests --bin complex --bin demo
 	$(WITH_TEST_ENV) EXAMPLE_RUST_COMPLEX=$(RUN_TARGET)/debug/complex EXAMPLE_RUST_DEMO=$(RUN_TARGET)/debug/demo $(GO_TEST) -tags examples ./examples -run '^TestExampleOutputsAreIdentical$$' -count=1
 	rm -rf $(RUN_DIR)
 
@@ -1297,8 +1297,8 @@ timing-check: cargo-downloads-check lease-tool
 	mkdir -p $(dir $(DBSPEC_STRESS_DOCUMENT)) $(dir $(TIMING_GO_DBSPEC_TEST))
 	$(PUBLISH) $(DBSPEC_STRESS_DOCUMENT) node tests/dbspec/stress.mjs
 	$(RUN_LONG) go-build/dbspec-test -- $(PUBLISH) $(TIMING_GO_DBSPEC_TEST) go test -c -tags bench -o @OUT@ ./engine/dbspec
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/orm-rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
-	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/orm-rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/dbspec_stress --cwd packages/rust -- $(CARGO_COPY) release/examples/dbspec_stress -- cargo build --release --locked --offline -p polyspec-orm-schema --example dbspec_stress
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/orm-schema-tests --cwd packages/rust -- $(CARGO_LEASED) cargo test --locked --offline -p polyspec-orm-schema --no-run
 	$(RUN_LONG) typescript-build -- npm run typescript:build
 	PATH="$(HOME)/.cargo/bin:$(PATH)" DBSPEC_STRESS_DOCUMENT=$(abspath $(DBSPEC_STRESS_DOCUMENT)) TIMING_GO_DBSPEC_TEST=$(abspath $(TIMING_GO_DBSPEC_TEST)) TIMING_RUST_STRESS=$(RUN_TARGET)/release/examples/dbspec_stress node --test --test-concurrency=1 tests/timing/preempted.test.mjs
 	rm -rf $(RUN_DIR)

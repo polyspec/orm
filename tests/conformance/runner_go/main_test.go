@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/internal/testcase"
-	"github.com/polyspec/orm/packages/orm-go/model"
+	"github.com/polyspec/orm/packages/go/model"
 )
 
 func TestPickRejectsUnselectedField(t *testing.T) {

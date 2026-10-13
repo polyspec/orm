@@ -1,6 +1,6 @@
 {
     "name": "polyspec/orm-workspace",
-    "description": "Development root of the repository, not published: it installs packages/orm-php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
+    "description": "Development root of the repository, not published: it installs packages/php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
     "type": "project",
     "license": "MIT",
     "require": {
@@ -12,7 +12,7 @@
     "repositories": [
         {
             "type": "path",
-            "url": "packages/orm-php",
+            "url": "packages/php",
             "options": {
                 "symlink": true
             }

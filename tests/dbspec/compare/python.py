@@ -8,10 +8,10 @@ import os
 import sys
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..'))
-sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'src'))
+sys.path.insert(0, os.path.join(ROOT, 'packages', 'python', 'src'))
 # ordered-json의 Python 배포를 sibling checkout에서 import한다(docs/plans/execution-checklist.md T43.5-1).
 sys.path.insert(0, os.path.join(ROOT, '..', 'ordered-json', 'python', 'src'))
-sys.path.insert(0, os.path.join(ROOT, 'packages', 'orm-python', 'tests'))
+sys.path.insert(0, os.path.join(ROOT, 'packages', 'python', 'tests'))
 from dbspec_cases_reader import CasesError, check_cases as check_shared_cases  # noqa: E402
 
 try:
@@ -26,7 +26,7 @@ try:
     from polyspec.orm.dbspec.compare import compare_schemas  # noqa: E402
 except ImportError as error:
     print(f'{sys.executable}: {error}; the Python client needs cryptography and PyYAML, so run make install-python '
-          'and set ORM_PYTHON to the interpreter it creates (packages/orm-python/.venv/bin/python)', file=sys.stderr)
+          'and set ORM_PYTHON to the interpreter it creates (packages/python/.venv/bin/python)', file=sys.stderr)
     sys.exit(1)
 
 if len(sys.argv) != 7:
@@ -121,7 +121,7 @@ def cases(path, obj, key, check):
         check(c, at)
 
 
-# check_cases reads cases.json strictly (packages/orm-python/tests/dbspec_cases_reader.py) and checks that each
+# check_cases reads cases.json strictly (packages/python/tests/dbspec_cases_reader.py) and checks that each
 # document of a sets case names itself in its header.
 def check_cases(path, v):
     try:

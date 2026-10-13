@@ -26,12 +26,12 @@ caseTest('the repository declares one version', COMPUTE, async () => {
 caseTest('a declaration that differs from VERSION is reported with its file', COMPUTE, async () => {
   const dir = await copyDeclarations();
   try {
-    const file = join(dir, 'packages/orm-npm/package.json');
+    const file = join(dir, 'packages/ts/package.json');
     const text = await readFile(file, 'utf8');
     await writeFile(file, text.replace(/"version": "[^"]+"/, '"version": "9.9.9"'));
     const errors = await versionErrors(dir);
     assert.equal(errors.length, 1);
-    assert.match(errors[0], /packages\/orm-npm\/package\.json/);
+    assert.match(errors[0], /packages\/ts\/package\.json/);
     assert.match(errors[0], /9\.9\.9/);
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -52,17 +52,17 @@ caseTest('a declaration that disappears is reported', COMPUTE, async () => {
 caseTest('the version of each Rust package in a lockfile and each version pin of a manifest are read', COMPUTE, async () => {
   const dir = await copyDeclarations();
   try {
-    const lock = join(dir, 'packages/orm-rust/Cargo.lock');
+    const lock = join(dir, 'packages/rust/Cargo.lock');
     const lockText = await readFile(lock, 'utf8');
     for (const name of ['polyspec-orm', 'polyspec-orm-testcase']) {
-      assert.match(lockText, new RegExp(`^name = "${name}"\\nversion = "`, 'm'), `${name} is a package of packages/orm-rust/Cargo.lock`);
+      assert.match(lockText, new RegExp(`^name = "${name}"\\nversion = "`, 'm'), `${name} is a package of packages/rust/Cargo.lock`);
     }
     await writeFile(lock, lockText.replace(/^(name = "polyspec-orm-testcase"\nversion = ")[^"]+"/m, '$19.9.9"'));
-    const manifest = join(dir, 'packages/orm-rust/orm/Cargo.toml');
+    const manifest = join(dir, 'packages/rust/orm/Cargo.toml');
     await writeFile(manifest, (await readFile(manifest, 'utf8')).replace(/^(polyspec-orm-schema = \{ version = "=)[^"]+"/m, '$19.9.8"'));
     const errors = await versionErrors(dir);
-    assert.ok(errors.some(e => e.startsWith('packages/orm-rust/Cargo.lock: version 9.9.9')), errors.join('\n'));
-    assert.ok(errors.some(e => e.startsWith('packages/orm-rust/orm/Cargo.toml: version 9.9.8')), errors.join('\n'));
+    assert.ok(errors.some(e => e.startsWith('packages/rust/Cargo.lock: version 9.9.9')), errors.join('\n'));
+    assert.ok(errors.some(e => e.startsWith('packages/rust/orm/Cargo.toml: version 9.9.8')), errors.join('\n'));
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

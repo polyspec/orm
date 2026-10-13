@@ -18,8 +18,8 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 
-	"github.com/polyspec/orm/packages/orm-go/model"
-	"github.com/polyspec/orm/packages/orm-go/orm"
+	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/orm"
 )
 
 const iterations = 500

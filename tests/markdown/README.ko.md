@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: 64eb3a5bf0da3d494aa6e13984d41c7204e973b7f54bb2f5c085ee06e013dbec -->
+<!-- source-sha256: f6c32d153e90dd97fbb1994cf213426624e7fdc7328d61303d511b1638551e6f -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -11,11 +11,11 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
 | `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key) |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
-| `packages/orm-go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
-| `packages/orm-php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/orm-php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
-| `packages/orm-python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
-| `packages/orm-rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
-| `packages/orm-npm/src/models/markdown_fixture` | catalog에서 생성한 TypeScript model. TypeScript 실행기 `packages/orm-npm/tests/markdown_conformance.mjs`가 case보다 먼저 generator 출력과 비교하며, 실행기는 각 case를 `markdown-conformance/<id>`로 보고한다 |
+| `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
+| `packages/php/markdownmodel` | catalog에서 생성한 PHP model. PHP 실행기는 `packages/php/tests/markdown_conformance.php`이며 case마다 `markdown-conformance/<id>`로 보고한다 |
+| `packages/python/tests/markdown_conformance.py` | Python 실행기. catalog에서 Python model을 자기 임시 directory에 생성한다 |
+| `packages/rust/tests/tests/markdown_conformance.rs` | Rust 실행기 `markdown_conformance`. model은 그 crate의 `build.rs`가 catalog에서 생성한다 |
+| `packages/ts/src/models/markdown_fixture` | catalog에서 생성한 TypeScript model. TypeScript 실행기 `packages/ts/tests/markdown_conformance.mjs`가 case보다 먼저 generator 출력과 비교하며, 실행기는 각 case를 `markdown-conformance/<id>`로 보고한다 |
 
 ## 실행
 

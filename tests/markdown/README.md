@@ -10,11 +10,11 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
 | `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`) and `logs` (with an `identity` key) |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
-| `packages/orm-go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
-| `packages/orm-php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is `packages/orm-php/tests/markdown_conformance.php`, which reports each case as `markdown-conformance/<id>` |
-| `packages/orm-python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
-| `packages/orm-rust/tests/tests/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
-| `packages/orm-npm/src/models/markdown_fixture` | the TypeScript models generated from the catalog, which the TypeScript runner `packages/orm-npm/tests/markdown_conformance.mjs` checks against the generator before its cases and reports each case as `markdown-conformance/<id>` |
+| `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
+| `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is `packages/php/tests/markdown_conformance.php`, which reports each case as `markdown-conformance/<id>` |
+| `packages/python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
+| `packages/rust/tests/tests/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
+| `packages/ts/src/models/markdown_fixture` | the TypeScript models generated from the catalog, which the TypeScript runner `packages/ts/tests/markdown_conformance.mjs` checks against the generator before its cases and reports each case as `markdown-conformance/<id>` |
 
 ## Run
 
