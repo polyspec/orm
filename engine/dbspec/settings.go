@@ -756,3 +756,9 @@ func machineLine(s *settingNode) (string, string) {
 	}
 	return "transition " + s.args[1].text + " " + s.args[2].text, strconv.Quote(s.args[1].text) + " -> " + strconv.Quote(s.args[2].text)
 }
+
+// isCodecStage reports whether s is a codec stage of the codec setting.
+func isCodecStage(s string) bool {
+	_, ok := codecStages[s]
+	return ok
+}

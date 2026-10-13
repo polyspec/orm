@@ -20,7 +20,7 @@ func (s *session) document(name string) (*parsedDocument, bool) {
 	if !ok {
 		return nil, false
 	}
-	p := parseStructure(text)
+	p := parseStructure(text, nil)
 	s.parsed[name] = p
 	return p, true
 }

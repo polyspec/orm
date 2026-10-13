@@ -57,14 +57,23 @@ type expressionParser struct {
 	end    token
 	refs   []token
 	bad    *Diagnostic
+	// marks are the classes of tokens, parallel to tokens; nil unless analyzing.
+	marks []tokenClass
+}
+
+// mark sets the class of token i when the expression is traced.
+func (p *expressionParser) mark(i int, class tokenClass) {
+	if p.marks != nil {
+		p.marks[i] = class
+	}
 }
 
 // parseExpression parses the tokens of a check expression; end is the
 // closing parenthesis of the check. It returns the expression and its column
 // references, or the check diagnostic at the first token outside the neutral
-// set.
-func parseExpression(tokens []token, end token) (Expr, []token, *Diagnostic) {
-	p := &expressionParser{tokens: tokens, end: end}
+// set. marks, when not nil, receives the class of each token the reader reads.
+func parseExpression(tokens []token, end token, marks []tokenClass) (Expr, []token, *Diagnostic) {
+	p := &expressionParser{tokens: tokens, end: end, marks: marks}
 	e := p.or()
 	if p.bad == nil && p.i < len(p.tokens) {
 		p.fail("is not allowed here")
@@ -106,6 +115,7 @@ func (p *expressionParser) fail(reason string) Expr {
 
 func (p *expressionParser) word(text string) bool {
 	if p.i < len(p.tokens) && p.tokens[p.i].is(tokenWord, text) {
+		p.mark(p.i, classKeyword)
 		p.i++
 		return true
 	}
@@ -162,6 +172,7 @@ func (p *expressionParser) predicate() Expr {
 		(t.is(tokenWord, "not") && p.i+1 < len(p.tokens) && p.tokens[p.i+1].is(tokenWord, "in"))):
 		return p.literalAt(literal, "is not a column")
 	case t.is(tokenWord, "is"):
+		p.mark(p.i, classKeyword)
 		p.i++
 		negated := p.word("not")
 		if !p.word("null") {
@@ -171,6 +182,7 @@ func (p *expressionParser) predicate() Expr {
 	}
 	negated := false
 	if t.is(tokenWord, "not") && p.i+1 < len(p.tokens) && p.tokens[p.i+1].is(tokenWord, "in") {
+		p.mark(p.i, classKeyword)
 		p.i++
 		negated = true
 	}
@@ -243,6 +255,7 @@ func (p *expressionParser) operand() Expr {
 	if p.i+1 < len(p.tokens) && p.tokens[p.i+1].is(tokenPunct, "(") {
 		return p.fail("is a function; check predicates have no functions")
 	}
+	p.mark(p.i, className)
 	p.i++
 	p.refs = append(p.refs, t)
 	return ColumnRef{Name: t.text, at: t}
@@ -267,6 +280,7 @@ func (p *expressionParser) literal() (Literal, bool) {
 		p.i++
 		return Literal{Text: quote(t.text), at: t}, true
 	case t.is(tokenWord, "true"), t.is(tokenWord, "false"):
+		p.mark(p.i, classKeyword)
 		p.i++
 		return Literal{Text: t.text, at: t}, true
 	}
