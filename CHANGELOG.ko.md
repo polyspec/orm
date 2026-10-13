@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d016e87773b5469a9f70b4436c73b9644a7a29cd249ffec4313211877b86af05 -->
+<!-- source-sha256: eeac7411a08706237b97712d4ce24c326cdc4aae7fe8a4e21818320ae1becec3 -->
 # 변경 이력
 
 ## Unreleased
 
+- T142: Go와 Python이 plain YAML scalar를 YAML 1.2 core schema로 읽는다(`0b101`, `+0x1`, `1_000`, 날짜는 문자열로 남는다). 공유 `yaml_core` codec vector를 더했다. PHP(T142-1)와 U+0085(T142-2)는 고쳐질 때까지 이름으로 건너뛴다.
 - T128-8-2: `packages/dbspec-vscode`가 dbspec의 VS Code extension이다: 언어, 문법 없는 semantic token 색, 묶인 language server를 `.vsix`로 만든다.
 - T157: markdown conformance가 flowmark main의 8b5d16a를 고정한다.
 
