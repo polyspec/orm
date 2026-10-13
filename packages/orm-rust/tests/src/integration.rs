@@ -686,7 +686,8 @@ async fn main() {
         }
     };
     let text = polyspec_orm::dbspec::read_file(std::path::Path::new(&args[1])).unwrap_or_else(|e| panic!("{}: {e}", args[1]));
-    let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
+    let document =
+        polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", args[1]));
     assert_eq!(manifest.manifest_hash, model::MANIFEST_HASH, "the models were generated from another document set");
     const DRIVERS: [&str; 3] = ["sqlite", "mysql", "postgres"];

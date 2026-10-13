@@ -61,10 +61,32 @@ pub(crate) struct Diag {
     pub message: String,
 }
 
-/// The parsed document with the line errors, and for each table the names of
+/// One declaration that the parser read into the document, recorded where its name token is in hand
+/// (docs/dbspec.md "Declaration positions"). `path` is the enclosing names and the own name; a setting
+/// has the table alone in `path` and its keyword and identity words in `setting`.
+#[derive(Clone, Debug)]
+pub(crate) struct Declaration {
+    pub kind: &'static str,
+    pub path: Vec<String>,
+    pub pos: Pos,
+    pub setting: Option<SettingWords>,
+}
+
+/// The keyword of a setting line as written, and the words that its repeat identity is made of: the
+/// form of a state_machine line and its names, in the order of the line.
+#[derive(Clone, Debug)]
+pub(crate) struct SettingWords {
+    pub keyword: String,
+    pub form: String,
+    pub args: Vec<String>,
+}
+
+/// The syntax of a document with the line errors, and for each table the names of
 /// columns whose lines failed, so references to them report nothing more.
-pub(crate) struct Parsed {
+pub(crate) struct Syntax {
     pub document: Document,
+    /// The declarations of the document, in the order they were read; positions sorts them.
+    pub declarations: Vec<Declaration>,
     pub unresolved: Vec<Vec<String>>,
     /// 표마다, type이 잘못된 column 줄의 이름이다. Go는 그런 열을 남기므로 그 열을 가리키는 외래 key의 자식은 알려진 것으로 본다.
     pub typeless: Vec<Vec<(String, bool)>>,
@@ -75,6 +97,28 @@ pub(crate) struct Parsed {
     /// For each table, the `default` value tokens of its column lines that parsed.
     pub defaults: Vec<Vec<DefaultToken>>,
     pub diags: Vec<Diag>,
+}
+
+/// The form and the names of a setting that its repeat identity is made of (docs/dbspec.md "Settings"): the
+/// column of codec and markdown, the foreign key of navigation, the AES column and the column of blind_index,
+/// the column and state of checkbox, and the form, column and states of a state_machine line. Other settings
+/// have no identity and no words.
+fn setting_words(setting: &Setting) -> (String, Vec<String>) {
+    let text = |name: &Name| name.text.clone();
+    match setting {
+        Setting::Codec(column, _) | Setting::Markdown(column) => (String::new(), vec![text(column)]),
+        Setting::Navigation(key, child, parent) => (String::new(), vec![text(key), text(child), text(parent)]),
+        Setting::BlindIndex(aes, column) => (String::new(), vec![text(aes), text(column)]),
+        Setting::Checkbox { column, state, .. } => (String::new(), vec![text(column), text(state)]),
+        Setting::StateMachine { column, line } => match line {
+            StateLine::Initial(state) => ("initial".to_owned(), vec![text(column), text(state)]),
+            StateLine::Terminal(state, _) => ("terminal".to_owned(), vec![text(column), text(state)]),
+            StateLine::Transition { from, to, .. } => ("transition".to_owned(), vec![text(column), text(from), text(to)]),
+            StateLine::History(_) => ("history".to_owned(), vec![text(column)]),
+            StateLine::Limit { state, count } => ("limit".to_owned(), vec![text(column), text(state), text(count)]),
+        },
+        _ => (String::new(), Vec::new()),
+    }
 }
 
 /// The value token of a column `default`: its column, its position and its text, which is a string
@@ -140,6 +184,7 @@ enum Context {
 
 struct Parser {
     diags: Vec<Diag>,
+    declarations: Vec<Declaration>,
     pending: Vec<String>,
     document: Document,
     unresolved: Vec<Vec<String>>,
@@ -202,7 +247,7 @@ fn lines(text: &str) -> Result<Vec<Line<'_>>, Diag> {
     Ok(lines)
 }
 
-pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
+pub(crate) fn parse(text: &str) -> Result<Syntax, Stopped> {
     let lines = lines(text).map_err(|d| vec![d])?;
     if let Some((_, Some(column))) = lines.first() {
         return Err(vec![bare_cr(1, *column)]);
@@ -211,6 +256,7 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
     let name = header(lines.first().map_or("", |(l, _)| l), &header_tokens).map_err(|d| vec![d])?;
     let mut parser = Parser {
         diags: Vec::new(),
+        declarations: Vec::new(),
         pending: Vec::new(),
         document: Document {
             name: Name { text: String::new(), pos: Pos::default() },
@@ -245,7 +291,9 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         foreign_keys: 0,
         stopped: false,
     };
-    parser.document.name = parser.define(name);
+    let header = parser.define(name);
+    parser.declare("document", vec![header.text.clone()], header.pos);
+    parser.document.name = header;
     for (index, (line, cr)) in lines.iter().enumerate().skip(1) {
         if let Some(column) = cr {
             parser.report(bare_cr(index + 1, *column));
@@ -257,8 +305,9 @@ pub(crate) fn parse(text: &str) -> Result<Parsed, Stopped> {
         }
     }
     parser.finish();
-    Ok(Parsed {
+    Ok(Syntax {
         document: parser.document,
+        declarations: parser.declarations,
         unresolved: parser.unresolved,
         typeless: parser.typeless,
         failed_keys: parser.failed_keys,
@@ -342,6 +391,15 @@ impl Parser {
 
     fn comments(&mut self) -> Vec<String> {
         std::mem::take(&mut self.pending)
+    }
+
+    fn declare(&mut self, kind: &'static str, path: Vec<String>, pos: Pos) {
+        self.declarations.push(Declaration { kind, path, pos, setting: None });
+    }
+
+    /// The name of the open table, or an empty name when the table line had no name (then a diagnostic exists).
+    fn table_name(&self) -> String {
+        self.table.as_ref().map_or_else(String::new, |t| t.name.text.clone())
     }
 
     /// Checks a name, defined or referenced, and returns it.
@@ -517,6 +575,10 @@ impl Parser {
             }
             break;
         }
+        self.declare("use", vec![document.text.clone()], document.pos);
+        for table in &tables {
+            self.declare("use_table", vec![document.text.clone(), table.text.clone()], table.pos);
+        }
         self.document.uses.push(Use { comments, document, tables });
     }
 
@@ -543,6 +605,7 @@ impl Parser {
         }
         let comments = self.comments();
         let (name, brace) = self.block_header(cursor, keyword);
+        self.declare("table", vec![name.text.clone()], name.pos);
         self.table_header_failed = brace.is_none();
         self.table_brace = brace;
         self.settings_brace = None;
@@ -589,6 +652,7 @@ impl Parser {
         let keyword = cursor.next().map_or(Pos::default(), |t| t.pos);
         let comments = self.comments();
         let (name, brace) = self.block_header(cursor, keyword);
+        self.declare("diagram", vec![name.text.clone()], name.pos);
         self.diagram_brace = brace;
         self.diagram = Some(Diagram { comments, name, placements: Vec::new(), closing: Vec::new() });
         self.context = Context::Diagram;
@@ -700,7 +764,11 @@ impl Parser {
         }
         self.columns += 1;
         match self.column(cursor) {
-            Some(column) => self.table_mut().columns.push(column),
+            Some(column) => {
+                let table = self.table_name();
+                self.declare("column", vec![table, column.name.text.clone()], column.name.pos);
+                self.table_mut().columns.push(column)
+            }
             None => {
                 if matches!(first.kind, Kind::Word | Kind::Number) {
                     self.table_unresolved.push(first.text.to_owned());
@@ -948,6 +1016,8 @@ impl Parser {
         let columns = self.column_list(cursor, false)?;
         self.end(cursor)?;
         let columns = columns.into_iter().map(|(n, _)| n).collect();
+        let table = self.table_name();
+        self.declare("constraint", vec![table, "primary key".to_owned()], pos);
         self.table_mut().primary.push(PrimaryKey { comments, pos, columns });
         Some(())
     }
@@ -965,6 +1035,8 @@ impl Parser {
         let columns = self.column_list(cursor, false)?;
         self.end(cursor)?;
         let columns = columns.into_iter().map(|(n, _)| n).collect();
+        let table = self.table_name();
+        self.declare("constraint", vec![table, name.text.clone()], name.pos);
         self.table_mut().uniques.push(Unique { comments, name, columns });
         Some(())
     }
@@ -981,6 +1053,8 @@ impl Parser {
         let name = self.name(cursor)?;
         let columns = self.column_list(cursor, true)?;
         self.end(cursor)?;
+        let table = self.table_name();
+        self.declare("constraint", vec![table, name.text.clone()], name.pos);
         self.table_mut().indexes.push(Index { comments, name, columns });
         Some(())
     }
@@ -1028,6 +1102,8 @@ impl Parser {
                 }
                 let columns = columns.into_iter().map(|(n, _)| n).collect();
                 let references = references.into_iter().map(|(n, _)| n).collect();
+                let owner = self.table_name();
+                self.declare("constraint", vec![owner, name.text.clone()], name.pos);
                 self.table_mut().foreign_keys.push(ForeignKey { comments, name, columns, table, references, on_delete, on_update });
             }
             // A failed foreign key line fails its name: references to it report nothing more (Go's markFailed).
@@ -1090,7 +1166,11 @@ impl Parser {
             }
         });
         match result {
-            Ok(expr) => self.table_mut().checks.push(Check { comments, name, expr }),
+            Ok(expr) => {
+                let owner = self.table_name();
+                self.declare("constraint", vec![owner, name.text.clone()], name.pos);
+                self.table_mut().checks.push(Check { comments, name, expr })
+            }
             Err((pos, message)) => self.report(err(pos, "check", message)),
         }
     }
@@ -1221,6 +1301,14 @@ impl Parser {
         if self.end(&cursor).is_none() {
             return;
         }
+        let (form, args) = setting_words(&setting);
+        let table = self.table_name();
+        self.declarations.push(Declaration {
+            kind: "setting",
+            path: vec![table],
+            pos: keyword.pos,
+            setting: Some(SettingWords { keyword: keyword.text.to_owned(), form, args }),
+        });
         if let Some(settings) = self.settings_target() {
             settings.lines.push(SettingLine { comments, pos: keyword.pos, setting });
         }
@@ -1406,6 +1494,8 @@ impl Parser {
         if self.end(&cursor).is_none() {
             return;
         }
+        let diagram_name = self.diagram.as_ref().map_or_else(String::new, |d| d.name.text.clone());
+        self.declare("diagram_entry", vec![diagram_name, table.text.clone()], table.pos);
         if let Some(diagram) = self.diagram.as_mut() {
             diagram.placements.push(Placement { comments, table, x: coordinates[0], y: coordinates[1] });
         }

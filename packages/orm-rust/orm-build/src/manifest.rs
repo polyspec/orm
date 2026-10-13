@@ -40,7 +40,7 @@ pub fn load_set(paths: &[&Path], uses: &[&Path]) -> Result<DocumentSet, String> 
     let mut documents: Vec<Document> = Vec::with_capacity(texts.len());
     for (i, (path, name, text)) in texts.iter().enumerate() {
         let others: BTreeMap<String, String> = set.iter().filter(|(other, _)| *other != name).map(|(k, v)| (k.clone(), v.clone())).collect();
-        let mut document = dbspec::parse(text, &others).map_err(|errors| diagnostics(path, errors))?;
+        let mut document = dbspec::parse(text, &others).map(|parsed| parsed.document).map_err(|errors| diagnostics(path, errors))?;
         document.external = i >= paths.len();
         documents.push(document);
     }

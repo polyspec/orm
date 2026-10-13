@@ -756,7 +756,7 @@ fn schema_target(documents: &[Document]) -> Result<Document> {
     let refs: Vec<&Document> = documents.iter().collect();
     let manifest = dbspec::manifest(&refs).map_err(invalid)?;
     let externals: BTreeMap<String, String> = documents.iter().filter(|d| d.external).map(|d| (d.name.text.clone(), dbspec::emit(d))).collect();
-    dbspec::parse(&manifest.schema_text, &externals).map_err(invalid)
+    dbspec::parse(&manifest.schema_text, &externals).map(|parsed| parsed.document).map_err(invalid)
 }
 
 /// document set의 diagnostic은 SCHEMA_INVALID다.

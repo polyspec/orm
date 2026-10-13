@@ -10,7 +10,7 @@ const SOURCE: &str = "dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  prim
 #[test]
 fn model_is_read_changed_and_emitted() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let mut document = parse(SOURCE, &BTreeMap::new()).expect("valid document");
+    let mut document = parse(SOURCE, &BTreeMap::new()).expect("valid document").document;
     assert_eq!(document.name.text, "shop");
     let table = &mut document.tables[0];
     assert_eq!(table.name.text, "orders");

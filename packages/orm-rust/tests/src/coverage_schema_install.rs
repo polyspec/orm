@@ -54,7 +54,9 @@ async fn table_exists(db: &Db, table: &str) -> bool {
 async fn coverage_schema_install_partial() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("schema_install_partial", async {
-        let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default()).unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
+        let document = polyspec_orm::dbspec::parse(PARTIAL, &Default::default())
+            .map(|parsed| parsed.document)
+            .unwrap_or_else(|errors| panic!("partial document: {errors:?}"));
         let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("partial manifest: {errors:?}"));
         // Schema는 생성된 model처럼 'static text를 받는다.
         let schema = polyspec_orm::Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()));
@@ -96,9 +98,12 @@ table coverage_external_post {
 /// EXTERNAL_MEMBER가 `external`을 외부 문서로 쓰는 set의 schema 값. generated model처럼 'static text다.
 fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
     let set = |name: &str, text: &str| std::collections::BTreeMap::from([(name.to_owned(), text.to_owned())]);
-    let member = polyspec_orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external)).unwrap_or_else(|errors| panic!("member document: {errors:?}"));
-    let mut user =
-        polyspec_orm::dbspec::parse(external, &set("coverage_external", EXTERNAL_MEMBER)).unwrap_or_else(|errors| panic!("external document: {errors:?}"));
+    let member = polyspec_orm::dbspec::parse(EXTERNAL_MEMBER, &set("bench_user", external))
+        .map(|parsed| parsed.document)
+        .unwrap_or_else(|errors| panic!("member document: {errors:?}"));
+    let mut user = polyspec_orm::dbspec::parse(external, &set("coverage_external", EXTERNAL_MEMBER))
+        .map(|parsed| parsed.document)
+        .unwrap_or_else(|errors| panic!("external document: {errors:?}"));
     user.external = true;
     let manifest = polyspec_orm::dbspec::manifest(&[&member, &user]).unwrap_or_else(|errors| panic!("manifest: {errors:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };

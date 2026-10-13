@@ -29,7 +29,7 @@ async fn exec(db: &Db, statement: &str) {
 async fn install_case(driver: &str, dsn: &str, vector: &Value) {
     let path = format!("{}/contracts/fixtures/{}", root(), vector["document"].as_str().unwrap());
     let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
-    let document: Document = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|e| panic!("{e:?}"));
+    let document: Document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:?}"));
     let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{e:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
     let schema: &'static Schema = Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), "", leak(manifest.manifest_hash))));

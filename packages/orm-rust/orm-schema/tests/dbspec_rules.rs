@@ -38,7 +38,7 @@ fn run(case: &Case) {
         let name = lines[0].rsplit(' ').next().unwrap().to_owned();
         set.insert(name, text(lines));
     }
-    let result = dbspec::parse(&main, &set);
+    let result = dbspec::parse(&main, &set).map(|parsed| parsed.document);
     match (&case.expect, result) {
         (Expect::Errors(expected), Err(errors)) => {
             let got: Vec<(&str, usize, usize)> = errors.iter().map(|e| (e.rule.as_str(), e.line, e.column)).collect();
@@ -50,7 +50,7 @@ fn run(case: &Case) {
             let expected = text(lines);
             let emitted = dbspec::emit(&document);
             assert_eq!(emitted, expected, "{}: canonical emission", case.id);
-            let again = dbspec::parse(&emitted, &set).unwrap_or_else(|e| panic!("{}: canonical text is invalid {e:?}", case.id));
+            let again = dbspec::parse(&emitted, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{}: canonical text is invalid {e:?}", case.id));
             assert_eq!(dbspec::emit(&again), expected, "{}: canonical emission is a fixed point", case.id);
         }
         (Expect::Canonical(_), Err(errors)) => panic!("{}: unexpected errors {errors:#?}", case.id),
@@ -1183,9 +1183,9 @@ fn dbspec_comment_attachment() {
         "  # empty",
         "}",
     ]);
-    let document = dbspec::parse(&source, &set).unwrap_or_else(|e| panic!("{e:#?}"));
+    let document = dbspec::parse(&source, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:#?}"));
     assert_eq!(dbspec::emit(&document), expected);
-    let again = dbspec::parse(&expected, &set).unwrap_or_else(|e| panic!("{e:#?}"));
+    let again = dbspec::parse(&expected, &set).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:#?}"));
     assert_eq!(dbspec::emit(&again), expected);
     let (cpu, wall) = (clock.cpu(), clock.wall());
     if cpu >= CASE_DEADLINE {
@@ -1200,7 +1200,7 @@ fn dbspec_limits() {
     let clock = CaseClock::start();
     let none = BTreeMap::new();
     let rules = |text: &str| -> Vec<(String, usize, usize)> {
-        match dbspec::parse(text, &none) {
+        match dbspec::parse(text, &none).map(|parsed| parsed.document) {
             Ok(_) => panic!("parsed a document beyond a limit"),
             Err(errors) => errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect(),
         }

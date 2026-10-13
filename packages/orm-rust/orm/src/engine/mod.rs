@@ -47,7 +47,7 @@ mod tests {
     fn all_columns_select_the_aes_version_once() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
+        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
         let request = ir::Request {
@@ -71,7 +71,7 @@ mod tests {
     fn composite_relation_keys() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
+        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
         let request = |keys: &[(&str, &str)]| ir::Request {
@@ -117,7 +117,7 @@ mod tests {
     fn key_columns_are_not_written() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../schema/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).unwrap();
+        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
         let assign = |column: &str, p: usize| ir::Assign { column: column.into(), p: Some(p), ..Default::default() };
@@ -171,7 +171,7 @@ mod tests {
     fn sqlite_insert_binds_the_clock_for_default_now() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let text = include_str!("../../../../../contracts/fixtures/clock.dbs");
-        let document = crate::dbspec::parse(text, &Default::default()).unwrap();
+        let document = crate::dbspec::parse(text, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
         let insert = |rows: Vec<Vec<usize>>, n_params: usize| ir::Request {
@@ -206,7 +206,7 @@ mod tests {
     const RESTORE_DOCUMENT: &str = "dbspec 1 restore\n\ntable link {\n  id i64 identity\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_link_pair (team_id, member_id)\n  index ix_link_audit (audit_seq)\n  foreign key fk_link_audit (audit_seq) references audit (seq) on delete restrict on update restrict\n  settings {\n    soft_delete deleted_at\n    audit into link_history column audit_seq references audit action change previous previous_audit_seq\n  }\n}\n\ntable link_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  id i64\n  team_id i64\n  member_id i64\n  audit_seq i64\n  deleted_at datetime(6) null\n  primary key (history_id)\n}\n\ntable tag {\n  id i64 identity\n  name varchar(64)\n  label varchar(64)\n  deleted_at datetime(6) null\n  primary key (id)\n  unique uq_tag_name (name)\n  settings {\n    soft_delete deleted_at\n  }\n}\n\ntable plain {\n  id i64 identity\n  name varchar(64)\n  primary key (id)\n}\n\ntable audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n}\n";
 
     fn restore_manifest() -> Manifest {
-        let document = crate::dbspec::parse(RESTORE_DOCUMENT, &Default::default()).unwrap();
+        let document = crate::dbspec::parse(RESTORE_DOCUMENT, &Default::default()).map(|parsed| parsed.document).unwrap();
         let set = crate::dbspec::manifest(&[&document]).unwrap();
         Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
     }

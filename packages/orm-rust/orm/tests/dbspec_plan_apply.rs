@@ -175,8 +175,8 @@ async fn plan_apply() {
     for case in cases {
         let case_id = case["id"].as_str().expect("id");
         let plan = parse_plan(&lines(&case["plan"])).unwrap_or_else(|e| panic!("{case_id}: {e:?}"));
-        let source: Option<Document> =
-            (!case["source"].is_null()).then(|| dbspec::parse(&lines(&case["source"]), &BTreeMap::new()).unwrap_or_else(|e| panic!("{case_id}: {e:?}")));
+        let source: Option<Document> = (!case["source"].is_null())
+            .then(|| dbspec::parse(&lines(&case["source"]), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{case_id}: {e:?}")));
         for (db, dialect) in DIALECTS {
             let setup = match &source {
                 None => Vec::new(),

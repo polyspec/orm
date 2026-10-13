@@ -71,7 +71,7 @@ fn source(id: &str, value: &Value) -> Option<Document> {
     if value.is_null() {
         return None;
     }
-    Some(dbspec::parse(&lines(value), &BTreeMap::new()).unwrap_or_else(|e| panic!("{id}: source: {e:?}")))
+    Some(dbspec::parse(&lines(value), &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{id}: source: {e:?}")))
 }
 
 /// case 하나를 시작, 결과, 경과 시간 줄과 기한으로 감싼다.

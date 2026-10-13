@@ -353,7 +353,8 @@ async fn statement_timeout_through_a_pooler() {
     let table = CaseTable::reserve(&base);
     // zone document의 table 이름만 바꾼 schema와 그 entity다. Schema와 Entity는 'static 값을 받는다.
     let text = include_str!("../../../../contracts/fixtures/zone.dbs").replace("zone_event", table.name());
-    let document = polyspec_orm::dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
+    let document =
+        polyspec_orm::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
     let manifest = polyspec_orm::dbspec::manifest(&[&document]).unwrap_or_else(|errors| panic!("{}: {errors:?}", table.name()));
     let schema: &'static Schema =
         Box::leak(Box::new(Schema::new(Box::leak(manifest.manifest_text.into_boxed_str()), Box::leak(manifest.manifest_hash.into_boxed_str()))));

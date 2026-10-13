@@ -200,12 +200,14 @@ pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>> {
         }
     }
     let schema_text = format!("{}\n", lines[offset..].join("\n"));
-    let schema = parse(&schema_text, &BTreeMap::new()).map_err(|mut diagnostics| {
-        for d in &mut diagnostics {
-            d.line += offset;
-        }
-        diagnostics
-    })?;
+    let schema = parse(&schema_text, &BTreeMap::new())
+        .map_err(|mut diagnostics| {
+            for d in &mut diagnostics {
+                d.line += offset;
+            }
+            diagnostics
+        })?
+        .document;
     if !is_schema_text(&schema) || emit(&schema) != schema_text {
         return Err(plan_failure(
             offset + 1,

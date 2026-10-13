@@ -97,7 +97,7 @@ fn mermaid_vectors() {
         run(&id, &mut failures, || {
             let set: BTreeMap<String, String> =
                 case["documents"].as_object().expect("documents").iter().map(|(name, text)| (name.clone(), lines(text))).collect();
-            let document = dbspec::parse(&lines(&case["document"]), &set).map_err(|e| format!("document: {e:?}"))?;
+            let document = dbspec::parse(&lines(&case["document"]), &set).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);
             let want = lines(&case["mermaid"]);
             if text != want {
@@ -145,7 +145,7 @@ fn mermaid_vectors() {
         run(&id, &mut failures, || {
             let path = polyspec_orm_testcase::manifest_dir().join("../../..").join(case["path"].as_str().expect("path"));
             let source = dbspec::read_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let document = dbspec::parse(&source, &BTreeMap::new()).map_err(|e| format!("document: {e:?}"))?;
+            let document = dbspec::parse(&source, &BTreeMap::new()).map(|parsed| parsed.document).map_err(|e| format!("document: {e:?}"))?;
             let (text, dropped) = export_mermaid(&document);
             if drops(&dropped) != case["dropped"] {
                 return Err(format!("export dropped {}\nwant {}\ngot  {}", dropped.len(), case["dropped"], drops(&dropped)));
