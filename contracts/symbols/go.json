@@ -340,7 +340,7 @@
   "engine/dbspec/introspect_sqlite.go::unquoteList": "func(text string) []string",
   "engine/dbspec/introspect_trigger.go::auditOf": "func(t *itable, history string, quoted []string, column string) *AuditSetting",
   "engine/dbspec/introspect_trigger.go::catalog.recognizeTriggers": "receiver=*catalog func(dialect Dialect, triggers map[string][]itrigger)",
-  "engine/dbspec/introspect_trigger.go::catalog.triggerSetting": "receiver=*catalog func(dialect Dialect, t *itable, list []itrigger) (string, []string)",
+  "engine/dbspec/introspect_trigger.go::catalog.triggerSetting": "receiver=*catalog func(dialect Dialect, t *itable, list []itrigger) (bool, []string)",
   "engine/dbspec/introspect_trigger.go::itrigger": "type itrigger struct { name string statements []string }",
   "engine/dbspec/introspect_trigger.go::itrigger#field.name": "string",
   "engine/dbspec/introspect_trigger.go::itrigger#field.statements": "[]string",
