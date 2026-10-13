@@ -26,6 +26,18 @@ final readonly class Diagnostic
     public function __construct(string $rule, int $line, int $column, string $message) {}
 }
 
+/** One declaration of a parsed document: its kind, its path of enclosing names and its own name, and its line and column (docs/dbspec.md "Declaration positions"). */
+final readonly class Position
+{
+    public string $kind;
+    public array $path;
+    public int $line;
+    public int $column;
+
+    /** @param list<string> $path */
+    public function __construct(string $kind, array $path, int $line, int $column) {}
+}
+
 /** A parsed dbspec document. Comments are kept with the line that follows them. */
 final class Document
 {
@@ -228,15 +240,16 @@ final readonly class ReadResult
     public static function invalid(array $diagnostics): ReadResult {}
 }
 
-/** The outcome of Dbspec::parse: a document and no diagnostics, or every diagnostic in source order and no document. */
+/** The outcome of Dbspec::parse: a document, its declaration positions and no diagnostics, or every diagnostic in source order and no document and no positions. */
 final readonly class ParseResult
 {
     public ?Document $document;
     public array $diagnostics;
+    public ?array $positions;
 
-    private function __construct(?Document $document, array $diagnostics) {}
+    private function __construct(?Document $document, array $diagnostics, ?array $positions) {}
 
-    public static function valid(Document $document): ParseResult {}
+    public static function valid(Document $document, array $positions): ParseResult {}
 
     public static function invalid(array $diagnostics): ParseResult {}
 }

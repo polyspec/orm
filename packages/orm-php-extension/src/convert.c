@@ -98,6 +98,28 @@ void zv_strs(zval *out, const strs *l)
     }
 }
 
+void zv_positions(zval *out, const dposv *d)
+{
+    if (d->n == 0) {
+        ZVAL_EMPTY_ARRAY(out);
+        return;
+    }
+    array_init_size(out, (uint32_t)d->n);
+    for (size_t i = 0; i < d->n; i++) {
+        zval o, path;
+        obj_new(&o, dbs_ce_Position);
+        obj_put_str(&o, "kind", d->v[i].kind);
+        array_init_size(&path, (uint32_t)d->v[i].path.n);
+        for (size_t k = 0; k < d->v[i].path.n; k++) {
+            add_next_index_str(&path, str_zend(d->v[i].path.v[k]));
+        }
+        obj_put(&o, "path", &path);
+        obj_put_long(&o, "line", d->v[i].line);
+        obj_put_long(&o, "column", d->v[i].column);
+        add_next_index_zval(out, &o);
+    }
+}
+
 void zv_diags(zval *out, const diags *d)
 {
     if (d->n == 0) {

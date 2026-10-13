@@ -226,6 +226,8 @@ typedef struct parser {
     /* column 이름 => tdefault, 첫 column의 default 값이다. */
     smap defaults;
     VEC(dstate_rec) deferred_states;
+    /* 성공한 parse의 선언 위치다(run이 줄과 칸으로 정렬한다). */
+    dposv decls;
 
     jmp_buf stop_jump;
 } parser;
@@ -264,6 +266,53 @@ static strs take_comments(parser *p)
 static zend_long end_column(parser *p)
 {
     return (zend_long)utf8_length(p->text) + 1;
+}
+
+static strs path1(str a)
+{
+    strs s = {0};
+    PUSH(s, a);
+    return s;
+}
+
+static strs path2(str a, str b)
+{
+    strs s = {0};
+    PUSH(s, a);
+    PUSH(s, b);
+    return s;
+}
+
+/* 선언을 p->decls에 적는다: 줄과 칸은 이름 token(설정과 primary key는 keyword)의 것이다. 실패한 parse는 쓰지 않는다. */
+static void declare(parser *p, str kind, zend_long line, zend_long column, strs path)
+{
+    dpos d = {kind, path, line, column};
+    PUSH(p->decls, d);
+}
+
+/* 설정의 식별 인자다(docs/dbspec.md "Declaration positions"): codec, markdown, navigation, blind_index는 첫 인자,
+ * checkbox는 column과 state, state_machine은 form과 상태(column은 뺀다), 나머지는 없다. */
+static void declare_setting(parser *p, str keyword, zend_long column, str form, const strs *args)
+{
+    strs path = path2(p->table->name, keyword);
+    if (str_eqc(keyword, "codec") || str_eqc(keyword, "markdown") || str_eqc(keyword, "navigation") || str_eqc(keyword, "blind_index")) {
+        PUSH(path, args->v[0]);
+    } else if (str_eqc(keyword, "checkbox")) {
+        PUSH(path, args->v[0]);
+        PUSH(path, args->v[1]);
+    } else if (str_eqc(keyword, "state_machine")) {
+        if (str_eqc(form, "transition")) {
+            PUSH(path, SL("transition"));
+            PUSH(path, args->v[1]);
+            PUSH(path, args->v[2]);
+        } else if (str_eqc(form, "history")) {
+            PUSH(path, SL("history"));
+        } else {
+            PUSH(path, form);
+            PUSH(path, args->v[1]);
+        }
+    }
+    declare(p, SL("setting"), p->line, column, path);
 }
 
 static const token *tok(parser *p, size_t i)
@@ -724,6 +773,7 @@ static void header(parser *p)
     }
     name_tok(p, &p->t.v[2]);
     p->doc = document_new(p->t.v[2].text);
+    declare(p, SL("document"), p->line, p->t.v[2].column, path1(p->t.v[2].text));
 }
 
 static used_entry *used_document(parser *p, str name);
@@ -766,6 +816,10 @@ static void use_line(parser *p)
     }
     u->comments = take_comments(p);
     PUSH(p->doc->uses, u);
+    declare(p, SL("use"), p->line, docname->column, path1(name));
+    for (size_t k = 0; k < tables.n; k++) {
+        declare(p, SL("use_table"), p->line, tables.v[k].column, path2(name, tables.v[k].text));
+    }
 #define FAILED() for (size_t k = 0; k < tables.n; k++) smap_set(&p->failed_tables, tables.v[k].text, TRUEP)
     if (!name_tok(p, docname)) {
         FAILED();
@@ -891,6 +945,7 @@ static void open_table(parser *p)
     t->comments = take_comments(p);
     t->header_failed = header_failed;
     PUSH(p->doc->tables, t);
+    declare(p, SL("table"), p->line, name.column, path1(name.text));
     if (name.text.n > 0) {
         if (smap_has(&p->tables, name.text)) {
             /* Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table). */
@@ -1158,6 +1213,7 @@ static void column_line(parser *p)
         }
     }
     PUSH(p->table->columns, c);
+    declare(p, SL("column"), p->line, name->column, path2(p->table->name, name->text));
 }
 
 static void check_key_columns(parser *p, const lcols *columns, zend_long at, bool primary, str what)
@@ -1222,6 +1278,7 @@ static void primary_key_line(parser *p)
     k->columns = lcol_names(&list);
     k->comments = take_comments(p);
     p->table->pk = k;
+    declare(p, SL("constraint"), p->line, first.column, path2(p->table->name, SL("primary key")));
     check_key_columns(p, &list, first.column, true, SL("primary key"));
 }
 
@@ -1254,6 +1311,7 @@ static void key_line(parser *p, bool index)
         u->comments = take_comments(p);
         PUSH(p->table->uniques, u);
     }
+    declare(p, SL("constraint"), p->line, name->column, path2(p->table->name, name->text));
     check_key_columns(p, &list, name->column, false, fmt("%s `%S`", index ? "index" : "unique key", name->text));
 }
 
@@ -1332,6 +1390,7 @@ static void foreign_key_line(parser *p)
     f->on_update = actions[1];
     f->comments = take_comments(p);
     PUSH(p->table->fks, f);
+    declare(p, SL("constraint"), p->line, name->column, path2(p->table->name, name->text));
     bool known = true;
     bool children_known = true;
     smap seen = {0};
@@ -1385,6 +1444,7 @@ static void check_line(parser *p)
     k->expression = SL("");
     k->comments = take_comments(p);
     PUSH(p->table->checks, k);
+    declare(p, SL("constraint"), p->line, name->column, path2(p->table->name, name->text));
     tokens rest = {0};
     for (size_t i = 3; i < p->t.n; i++) {
         PUSH(rest, p->t.v[i]);
@@ -1836,6 +1896,7 @@ static void new_setting(parser *p, token keyword)
     }
     PUSH(p->settings_block->list, s);
     if (!p->detached_block) {
+        declare_setting(p, kind, keyword.column, s->form, &s->args);
         audit_lists none = {0};
         PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, keyword.column, none}));
     }
@@ -1974,6 +2035,7 @@ static void settings_line(parser *p)
     }
     PUSH(p->settings_block->list, s);
     if (!p->detached_block) {
+        declare_setting(p, keyword, at, SNULL, &s->args);
         PUSH(p->table_settings, ((tsetting_rec){kind, args, p->line, at, lists}));
     }
 }
@@ -1993,6 +2055,7 @@ static void open_diagram(parser *p)
     if (name == NULL) {
         return;
     }
+    declare(p, SL("diagram"), p->line, name->column, path1(name->text));
     name_tok(p, name);
     if (expect_at(p, 2, "{")) {
         end_at(p, 3);
@@ -2067,6 +2130,7 @@ static void diagram_line(parser *p)
         pl->y = values[1];
         pl->comments = take_comments(p);
         PUSH(p->diagram->placements, pl);
+        declare(p, SL("diagram_entry"), p->line, tname->column, path2(p->diagram->name, table_name));
     }
 }
 
@@ -3209,7 +3273,20 @@ static bool read_until_stop(parser *p, str source)
     return true;
 }
 
-static document *run(parser *p, str source, diags *out)
+static int cmp_decl(const void *a, const void *b, void *ctx)
+{
+    const dpos *x = a, *y = b;
+    (void)ctx;
+    if (x->line != y->line) {
+        return x->line < y->line ? -1 : 1;
+    }
+    if (x->column != y->column) {
+        return x->column < y->column ? -1 : 1;
+    }
+    return 0;
+}
+
+static document *run(parser *p, str source, diags *out, dposv *pos)
 {
     bool stopped = !read_until_stop(p, source);
     diag stopd;
@@ -3217,6 +3294,8 @@ static document *run(parser *p, str source, diags *out)
         stopd = p->diagnostics.v[--p->diagnostics.n];
     }
     if (p->diagnostics.n == 0 && !stopped) {
+        dbs_sort(p->decls.v, p->decls.n, sizeof(dpos), cmp_decl, NULL);
+        *pos = p->decls;
         return p->doc;
     }
     ranked *order = dbs_alloc(sizeof(ranked) * (p->diagnostics.n + 1));
@@ -3276,7 +3355,8 @@ static used_entry *used_document(parser *p, str name)
     parser *child = parser_new(p->documents, &using, p->used);
     diags found = {0};
     str *text = smap_get(p->documents, name);
-    document *d = run(child, *text, &found);
+    dposv unused = {0};
+    document *d = run(child, *text, &found, &unused);
     e = dbs_alloc(sizeof *e);
     if (d == NULL) {
         diag first = found.v[0];
@@ -3292,9 +3372,9 @@ static used_entry *used_document(parser *p, str name)
     return e;
 }
 
-document *dbs_parse(str text, const smap *documents, diags *out)
+document *dbs_parse(str text, const smap *documents, diags *out, dposv *pos)
 {
     smap *used = dbs_alloc(sizeof *used);
     parser *p = parser_new(documents, NULL, used);
-    return run(p, text, out);
+    return run(p, text, out, pos);
 }

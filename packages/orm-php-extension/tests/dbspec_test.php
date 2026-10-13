@@ -31,6 +31,12 @@ if (!extension_loaded('orm_dbspec')) {
     exit(1);
 }
 
+/** @return ?list<string> position마다 JSON의 [kind, path, line, column], null이면 null */
+function described_positions(?array $positions): ?array
+{
+    return $positions === null ? null : array_map(static fn(object $p): string => json_encode([$p->kind, $p->path, $p->line, $p->column], JSON_UNESCAPED_SLASHES), $positions);
+}
+
 /** @return list<string> diagnostic마다 "rule line column message" */
 function described(array $diagnostics): array
 {
@@ -105,6 +111,7 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
                 same("$id diagnostics", array_map(static fn(array $e): string => "{$e['rule']} {$e['line']} {$e['column']}", $case['errors']),
                     array_map(static fn(object $d): string => "{$d->rule} {$d->line} {$d->column}", $native->diagnostics));
                 same("$id document", null, $native->document);
+                same("$id positions", null, described_positions($native->positions));
                 continue;
             }
             $want = $kind === 'canonical' ? implode("\n", $case['documents'][$case['main']]) . "\n" : implode("\n", $case['canonical']) . "\n";
@@ -115,6 +122,18 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
         $step(count($cases[$kind]) . ' cases');
     });
 }
+
+$run('php-extension/positions', static function (callable $step) use ($cases): void {
+    foreach ($cases['positions'] as $case) {
+        $id = "positions/{$case['id']}";
+        $texts = dbspec_documents($case['documents'], false);
+        $native = NativeDbspec::parse($texts[$case['main']], $texts);
+        $php = Dbspec::parse($texts[$case['main']], $texts);
+        same("$id positions against the PHP client", described_positions($php->positions), described_positions($native->positions));
+        same("$id positions against the vector", array_map(static fn(array $p): string => json_encode([$p['kind'], $p['path'], $p['line'], $p['column']], JSON_UNESCAPED_SLASHES), $case['positions']), described_positions($native->positions));
+    }
+    $step(count($cases['positions']) . ' cases');
+});
 
 $run('php-extension/files', static function (callable $step) use ($cases, $root): void {
     foreach ($cases['files'] as $case) {
@@ -233,6 +252,12 @@ $run('php-extension/objects', static function (callable $step): void {
         $diagnostic->extra = 1;
     }));
     same('the properties in declaration order', ['rule', 'line', 'column', 'message'], array_keys(get_object_vars($diagnostic)));
+    $position = NativeDbspec::parse("dbspec 1 shop\n", [])->positions[0];
+    same('a position write', [Error::class, 'Cannot modify readonly property Polyspec\\Orm\\Dbspec\\Native\\Position::$line'], outcome(static function () use ($position): void {
+        $position->line = 2;
+    }));
+    same('a position properties in declaration order', ['kind', 'path', 'line', 'column'], array_keys(get_object_vars($position)));
+    same('the parse result properties in declaration order', ['document', 'diagnostics', 'positions'], array_keys(get_object_vars(NativeDbspec::parse("dbspec 1 shop\n", []))));
     same('the document properties in declaration order', array_keys(get_object_vars(new Polyspec\Orm\Dbspec\Document('d'))), array_keys(get_object_vars(new Polyspec\Orm\Dbspec\Native\Document('d'))));
     same_outcome('an invalid result without a diagnostic', static fn() => Polyspec\Orm\Dbspec\ParseResult::invalid([]), static fn() => Polyspec\Orm\Dbspec\Native\ParseResult::invalid([]));
     same_outcome('a repeated readonly construction', static function () {

@@ -1,11 +1,18 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: ed963a347a8db089fdd75ed8d47fbf80c80fbbd8 */
+ * Stub hash: bff4b6166e265ea832c00d5f09a1acc37e6bb8e8 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, line, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO(0, message, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Position___construct, 0, 0, 4)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, line, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_Document___construct, 0, 0, 1)
@@ -128,13 +135,15 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult___construct, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult___construct, 0, 0, 3)
 	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 1)
 	ZEND_ARG_TYPE_INFO(0, diagnostics, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 1)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_valid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_valid, 0, 2, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
 	ZEND_ARG_OBJ_INFO(0, document, Polyspec\\Orm\\Dbspec\\\116ative\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, positions, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native_ParseResult_invalid, 0, 1, Polyspec\\Orm\\Dbspec\\\116ative\\ParseResult, 0)
@@ -468,6 +477,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Native
 ZEND_END_ARG_INFO()
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct);
+ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Document, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_UseLine, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Native_Table, __construct);
@@ -564,6 +574,11 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Native_PlanApply, effectOn);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Native_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Diagnostic___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Dbspec_Native_Position_methods[] = {
+	ZEND_ME(Polyspec_Orm_Dbspec_Native_Position, __construct, arginfo_class_Polyspec_Orm_Dbspec_Native_Position___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -858,6 +873,36 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Diagnostic(vo
 	zval property_message_default_value;
 	ZVAL_UNDEF(&property_message_default_value);
 	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_MESSAGE), &property_message_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_Position(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm\\Dbspec\\Native", "Position", class_Polyspec_Orm_Dbspec_Native_Position_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+
+	zval property_kind_default_value;
+	ZVAL_UNDEF(&property_kind_default_value);
+	zend_string *property_kind_name = zend_string_init("kind", sizeof("kind") - 1, 1);
+	zend_declare_typed_property(class_entry, property_kind_name, &property_kind_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_kind_name);
+
+	zval property_path_default_value;
+	ZVAL_UNDEF(&property_path_default_value);
+	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_PATH), &property_path_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+
+	zval property_line_default_value;
+	ZVAL_UNDEF(&property_line_default_value);
+	zend_declare_typed_property(class_entry, ZSTR_KNOWN(ZEND_STR_LINE), &property_line_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+
+	zval property_column_default_value;
+	ZVAL_UNDEF(&property_column_default_value);
+	zend_string *property_column_name = zend_string_init("column", sizeof("column") - 1, 1);
+	zend_declare_typed_property(class_entry, property_column_name, &property_column_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_column_name);
 
 	return class_entry;
 }
@@ -1422,6 +1467,12 @@ static zend_class_entry *register_class_Polyspec_Orm_Dbspec_Native_ParseResult(v
 	zend_string *property_diagnostics_name = zend_string_init("diagnostics", sizeof("diagnostics") - 1, 1);
 	zend_declare_typed_property(class_entry, property_diagnostics_name, &property_diagnostics_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
 	zend_string_release(property_diagnostics_name);
+
+	zval property_positions_default_value;
+	ZVAL_UNDEF(&property_positions_default_value);
+	zend_string *property_positions_name = zend_string_init("positions", sizeof("positions") - 1, 1);
+	zend_declare_typed_property(class_entry, property_positions_name, &property_positions_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_positions_name);
 
 	return class_entry;
 }
