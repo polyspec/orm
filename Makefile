@@ -898,7 +898,7 @@ case-database-check: lease-tool
 PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --schema schema/bench.dbs --out $(PYTHON_MODELS_DIR)
+	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --set schema/dbspec-set.json --out $(PYTHON_MODELS_DIR)
 
 # CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
 # 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은
@@ -907,7 +907,7 @@ CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 .PHONY: conformance-python-models
 conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS).tmp
-	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --schema schema/bench.dbs --out $(CONFORMANCE_PY_MODELS).tmp
+	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID

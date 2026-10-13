@@ -43,7 +43,7 @@
     "php": "sha256:470f923eba8d836fe658ed003cdfc1e4a6bec7fe335991d124f211efbc07b518",
     "rust": "sha256:2a7cf45cae782c80190790de5c9dbdbf6cfd98b8cc617c042e0fc9ab9c789384",
     "typescript": "sha256:4719266d904671caa82fe587795fc93319646fd919bef39e9fdf8a29e431b3ed",
-    "python": "sha256:1905d6e960297907cc6c43bd6c4acf05075e83557e5f573fda40acc56d4ad7e3"
+    "python": "sha256:a0dacc4fd9be2f6cd30f191b92d19f648d9a48a7db643e8ed4ff4c511d9b0c81"
   },
   "extensions": {
     "php-extension": {
