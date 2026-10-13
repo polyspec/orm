@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T132: the Go generator scan loads a build-tag or platform configuration only for the packages that hold its files, so the model_generation coverage case of Go finishes in about 30 s instead of passing the 120 s deadline under load.
 - T129-1: the interface symbols of the renderer names are recorded: contracts/symbols holds the T129 snapshots, and contracts/interfaces.json holds their hashes, so the interfaces check passes on the T129 tree.
 - T130-3: docs/interfaces.md "Finder chains" states the finder rule per runtime, docs/usage.md points to it, and each T130 code commit records the five symbols that it changed, so the interfaces check passes at every commit of the branch.
 - T130-2: docs/usage.md states the finder rule exactly: PHP resolves a chain at call time, and a TypeScript chain works after model generation scans the code that calls it. The generators are unchanged.

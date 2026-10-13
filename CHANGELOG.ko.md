@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 718aa7168b62e07969b8267cc7567e0fcbd5bbc5deaa5f0d86fd720ff56e994d -->
+<!-- source-sha256: fe5c84afdc7777fa085441ac620f575a03f40b7875d74ce89a993df09f5c4762 -->
 # 변경 이력
 
 ## Unreleased
 
+- T132: Go generator scan은 build-tag나 platform 설정을 그 파일을 가진 패키지에만 읽으므로, Go의 model_generation coverage case가 부하에서 120초 기한을 넘지 않고 약 30초에 끝난다.
 - T129-1: renderer 이름의 interface symbol을 기록했다. contracts/symbols는 T129 snapshot을, contracts/interfaces.json은 그 hash를 가지므로 T129 tree에서 interfaces 검사가 통과한다.
 - T130-3: docs/interfaces.md의 "조회 체인"이 runtime별 finder 규칙을 정하고, docs/usage.md가 이 절을 연결한다. 각 T130 code commit이 자기가 바꾼 symbol 다섯 개를 기록해서 branch의 모든 commit에서 interfaces 검사가 통과한다.
 - T130-2: docs/usage.md는 finder 규칙을 정확히 밝힌다. PHP는 호출 시점에 체인을 해석하고, TypeScript의 체인은 모델 생성이 그 체인을 호출하는 코드를 scan한 뒤에 동작한다. generator는 바뀌지 않는다.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -249,4 +250,62 @@ func Named() *model.BrandModel { return model.Brand().GtMinPrice(2) }
 		}
 	}
 	buildScannedModule(t)
+}
+
+// TestScanLoadsTaggedConfigurationsOnlyForTheirPackages checks that the scan
+// loads every scanned package once with the default configuration and loads
+// a build-tag configuration only for the package whose ignored file needs it;
+// the type information of the other packages comes from the default load.
+func TestScanLoadsTaggedConfigurationsOnlyForTheirPackages(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("tagged/tagged.go", `package tagged
+
+import "example.com/ormexample/model"
+
+func Query() *model.ProductModel { return model.Product().GtPrice(1) }
+`)
+	write("tagged/tagged_test.go", `//go:build integration
+
+package tagged
+
+import "example.com/ormexample/model"
+
+func tagged() *model.ProductModel { return model.Product().LtPrice(1) }
+`)
+	write("plain/plain.go", `package plain
+
+import "example.com/ormexample/model"
+
+func Query() *model.ProductModel { return model.Product().GePrice(1) }
+`)
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	loads := map[string][]string{}
+	scanLoads = func(config scanConfig, patterns []string) {
+		key := config.tags + "/" + config.goos + "/" + config.goarch
+		loads[key] = append(loads[key], patterns...)
+	}
+	t.Cleanup(func() { scanLoads = nil })
+	m := namesManifest(t, namesDiagram)
+	if err := generateGo(m, "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	product, err := os.ReadFile("model/product.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, method := range []string{"GtPrice", "LtPrice", "GePrice"} {
+		if !strings.Contains(string(product), method) {
+			t.Fatalf("the scan did not generate %s", method)
+		}
+	}
+	tagged := loads["integration//"]
+	slices.Sort(tagged)
+	tagged = slices.Compact(tagged)
+	if want := []string{filepath.Join(dir, "tagged")}; !slices.Equal(tagged, want) {
+		t.Fatalf("the integration configuration loads %q, want only %q", tagged, want)
+	}
 }
