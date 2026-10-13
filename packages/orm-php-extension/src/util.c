@@ -310,6 +310,30 @@ uint32_t utf8_decode_at(str s, size_t i, size_t *width)
     return cp;
 }
 
+/* 위치 i의 code point의 byte 수다: 올바른 UTF-8 글자이면 그 길이, 아니면 byte 하나다(R15). */
+size_t utf8_char_width(str s, size_t i)
+{
+    unsigned char b = (unsigned char)s.s[i];
+    if (b < 0x80) {
+        return 1;
+    }
+    size_t n = utf8_width(b);
+    if (i + n > s.n) {
+        return 1;
+    }
+    return utf8_valid_prefix(str_sub(s, i, n)) == n ? n : 1;
+}
+
+/* code point 수다. 올바르지 않은 byte는 각각 하나로 센다(R15). */
+size_t utf8_count(str s)
+{
+    size_t n = 0;
+    for (size_t i = 0; i < s.n; i += utf8_char_width(s, i)) {
+        n++;
+    }
+    return n;
+}
+
 /* 위치 i에서 시작하는 글자가 Go의 isWordRune이면 그 byte 수를, 아니면 0을 돌려준다. ASCII는 [A-Za-z0-9_.]다. */
 size_t word_rune_width(str s, size_t i)
 {
@@ -317,6 +341,9 @@ size_t word_rune_width(str s, size_t i)
     if (c < 0x80) {
         bool ascii = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '.';
         return ascii ? 1 : 0;
+    }
+    if (utf8_char_width(s, i) == 1) {
+        return 0;
     }
     size_t width;
     return unicode_word_rune(utf8_decode_at(s, i, &width)) ? width : 0;

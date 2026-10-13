@@ -81,6 +81,8 @@ size_t word_rune_width(str s, size_t i); /* 위치 i가 Go의 isWordRune인 글�
 size_t word_run_end(str s, size_t i);  /* 위치 i에서 시작하는 word token이 끝나는 위치 */
 bool name_rule(str name, const char **rule, str *message); /* Go의 nameDiagnostics: 형식이나 길이가 틀린 이름의 규칙과 메시지 */
 size_t utf8_valid_prefix(str s);         /* 올바른 UTF-8인 앞부분의 byte 수 */
+size_t utf8_char_width(str s, size_t i); /* 위치 i의 code point의 byte 수: 올바른 UTF-8 글자, 아니면 1(R15) */
+size_t utf8_count(str s);                /* code point 수, 올바르지 않은 byte 하나도 하나로 센다(R15) */
 zend_string *str_zend(str s);
 
 /* 문자열 builder. */
@@ -163,6 +165,13 @@ typedef struct {
 } dpos;
 
 typedef VEC(dpos) dposv;
+
+/* 한 token과 그 줄, 칸(code point, 0부터), 끝 칸, class다(docs/dbspec.md "Syntax analysis"). */
+typedef struct {
+    zend_long line, start, end;
+    str class;
+} dtoken;
+typedef VEC(dtoken) dtokv;
 
 static inline diag mkdiag(str rule, zend_long line, zend_long column, str message)
 {
@@ -323,6 +332,8 @@ bool dbs_valid_name(str name);
 
 /* 문서 집합(이름 => text)으로 text를 parse한다. 문서가 없으면 diagnostics에 하나 이상이 있다. */
 document *dbs_parse(str text, const smap *documents, diags *out, dposv *pos);
+/* dbs_parse와 같고 token도 준다(한도 error이면 없다). */
+document *dbs_analyze(str text, const smap *documents, diags *out, dposv *pos, dtokv *tokens);
 
 /* 확인 순서의 rule 표다. */
 zend_long dbs_rule_rank(str rule);
@@ -347,6 +358,9 @@ str literal_shortest_decimal(double value);
 typedef struct {
     str text;
     zend_long column;
+    /* the line and the index in the line of a token the lexer made; a token the parser makes has line 0 */
+    zend_long line;
+    zend_long index;
 } token;
 
 typedef VEC(token) tokens;
@@ -358,7 +372,7 @@ typedef struct {
 } raw_error;
 
 /* columns: 이름 => column*, action: 이름 => foreign key 이름(str*) */
-bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors);
+bool expression_parse(const tokens *t, zend_long line, zend_long end, const smap *columns, const smap *action, str *text, diags *errors, smap *marks);
 
 /* ------------------------------------------------------------- emit, set */
 
@@ -600,7 +614,7 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out);
 
 /* -------------------------------------------------------------- PHP objects */
 
-#define DBS_CLASSES(X) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
+#define DBS_CLASSES(X) X(Analysis) X(Token) X(FormatResult) X(Diagnostic) X(Document) X(UseLine) X(Table) X(Column) X(ColumnType) X(PrimaryKey) X(UniqueKey) \
     X(Index) X(IndexColumn) X(ForeignKey) X(Check) X(Settings) X(Setting) X(Diagram) X(Placement) X(Position) X(ReadResult) \
     X(ParseResult) X(Manifest) X(ManifestResult) X(RenderResult) X(Plan) X(PlanStep) X(Effect) X(NullCheck) X(Change) \
     X(Difference) X(Unsupported) X(TableRename) X(ColumnRename) X(ColumnName) X(ApplyEvent) X(ApplyError) \
@@ -626,6 +640,7 @@ zval *obj_get(zval *obj, const char *name);
 void zv_strs(zval *out, const strs *l);
 void zv_diags(zval *out, const diags *d);
 void zv_positions(zval *out, const dposv *d);
+void zv_tokens(zval *out, const dtokv *t);
 /* 결과 객체 둘: 첫 property와 diagnostics. first가 NULL이면 null이다. */
 void zv_result(zval *out, zend_class_entry *ce, const char *first, zval *value, const diags *d);
 
