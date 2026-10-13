@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e7267e13a8cb1914b129629e327f786b6ae1664ec4ad8887da67c1901c2f6e07 -->
+<!-- source-sha256: df0ddbb20168d19bdb0db4421053275a63c7417cc9f8d28b19acefa3294b4da6 -->
 # 변경 이력
 
 ## Unreleased
 
+- T147: interface 검사가 rule이 선언하지 않은 공개 component method를 거부한다.
 - T147-5: Rust AesKeyring이 key version을 나열하고, rule AESKeyring.versions가 선언된다.
 - T147-2: Python이 Db.stats, Utils.privileges, Utils.stats, SchemaUtils.exists, installed, empty를, PHP가 Db::stats를 가지며, 그 interface rule이 선언된다.
 - T147-3: interface manifest가 internal component를 표시하고, rule 검사는 공개 component를 덮는다.
