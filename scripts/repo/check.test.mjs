@@ -1526,31 +1526,21 @@ caseTest('every workflow that runs on push cancels the run of the push before it
   assert.deepEqual(concurrencyErrors(ownWorkflows(Object.fromEntries(readdirSync(directory).filter(name => /\.ya?ml$/.test(name)).map(name => [name, readFileSync(join(directory, name), 'utf8')])), vendoredFiles)), []);
 });
 
-const goWorkflow = '    steps:\n      - uses: actions/setup-go@v6\n        with: { go-version-file: .go-version }\n      - run: make check\n';
-caseTest('the checks and every workflow run the Go of .go-version', COMPUTE, () => {
-  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.27\n', { 'ci.yml': goWorkflow }, '1.27.0'), []);
-  assert.deepEqual(goVersionErrors('1.27\n', 'module m\n\ngo 1.27\n', { 'ci.yml': goWorkflow.replace('go-version-file: .go-version', 'go-version: "1.27"') }, '1.27.1'), [
-    '.go-version must hold one exact Go release x.y.z and a newline, found "1.27\\n"; write the release that CI and the local checks run',
-    'ci.yml declares go-version itself; read go-version-file: .go-version in actions/setup-go',
-    'ci.yml does not read go-version-file .go-version in actions/setup-go; add go-version-file: .go-version',
+// The go line of go.mod is the one declaration of the Go release: kit's toolchain-check requires it to be the kit pin and
+// the running go to be that release, and every workflow sets up Go from go.mod.
+const goWorkflow = '    steps:\n      - uses: actions/setup-go@v6\n        with: { go-version-file: go.mod }\n      - run: make check\n';
+caseTest('every workflow runs the Go of the go line of go.mod', COMPUTE, () => {
+  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow }), []);
+  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('go-version-file: go.mod', 'go-version: "1.27"') }), [
+    'ci.yml declares go-version itself; read go-version-file: go.mod in actions/setup-go',
+    'ci.yml does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod',
   ]);
-  assert.deepEqual(goVersionErrors('1.27.0\n', 'module m\n\ngo 1.26\n', { 'ci.yml': '    steps:\n      - run: make check\n' }, '1.28.0'), [
-    'go.mod declares go 1.26, but .go-version declares 1.27.0; write go 1.27 in go.mod',
-    'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: .go-version',
-    'Go 1.28.0 runs the checks; .go-version declares 1.27.0, so its major and minor must be 1.27; install Go 1.27.0 or change .go-version together with the CI evidence of the new release',
+  assert.deepEqual(goVersionErrors({ 'ci.yml': goWorkflow.replace('go-version-file: go.mod', 'go-version-file: .go-version') }), [
+    'ci.yml does not read go-version-file go.mod in actions/setup-go; add go-version-file: go.mod',
   ]);
-});
-
-// T70: 실행 중인 Go는 선언한 release와 major.minor가 같으면 patch와 상관없이 받아들인다.
-caseTest('a running Go with the declared major and minor passes whatever its patch', COMPUTE, () => {
-  const goMod = 'module m\n\ngo 1.27\n';
-  for (const running of ['1.27.2', '1.27.0', '1.27.5'])
-    assert.deepEqual(goVersionErrors('1.27.2\n', goMod, { 'ci.yml': goWorkflow }, running), [], running);
-  for (const running of ['1.26.9', '1.28.0']) {
-    assert.deepEqual(goVersionErrors('1.27.2\n', goMod, { 'ci.yml': goWorkflow }, running), [
-      `Go ${running} runs the checks; .go-version declares 1.27.2, so its major and minor must be 1.27; install Go 1.27.2 or change .go-version together with the CI evidence of the new release`,
-    ], running);
-  }
+  assert.deepEqual(goVersionErrors({ 'ci.yml': '    steps:\n      - run: make check\n' }), [
+    'ci.yml runs Go without actions/setup-go; add a setup-go step with go-version-file: go.mod',
+  ]);
 });
 
 // Go module path case(G5.113-5)는 저장소의 모든 go.mod가 자기 directory의 module path를 선언하는지 보고, 최소 file에서 다른

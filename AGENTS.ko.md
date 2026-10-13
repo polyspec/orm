@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: f376557c72228388d87eab3bc77427644f419f3d25563f5639e55057e4d5e0d6 -->
+<!-- source-sha256: 6a13fa17e2d45a8f6c5f0f99844883631a2b42624ac46bf3ddd9596e18c6fd00 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -92,10 +92,10 @@
   registry와 advisory database에 묻고 `config/dependency-review.json`을 쓴다.
   `make dependency-policy-check`와 `make dependency-policy-mutation-check`는 그 기록과 manifest와 lock을 읽고
   registry에 묻지 않는다.
-- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `.go-version`,
+- 검사가 쓰는 모든 toolchain은 선언 하나로 고정하고 확인한다: `.node-version`, `go.mod`의 `go` 줄,
   `.composer-version`, `rust-toolchain.toml`은 정확한 release를, `.php-version`과 PostgreSQL major release는
   설치 도구가 허용하는 만큼 정확한 release를 적고, CI는 선언한 것을 설치하며, 실행 중인 도구가 다르면
-  `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
+  `make toolchain-check`와 `make repo-check`가 실패한다. 새 release는 그 release의 CI 증거와 함께 선언을 바꾸어 들인다.
 - 다른 실행이나 뒤의 단계가 읽는 build 출력은 원자적으로 publish한다: 옆의 임시 file이나 directory에
   build하고 rename으로 최종 경로에 놓으므로(`$(PUBLISH)`, scripts/typescript/build.mjs) 멈춘 build가 반쪽
   출력을 남기지 않는다.

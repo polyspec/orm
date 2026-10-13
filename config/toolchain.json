@@ -25,8 +25,7 @@
     "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
   },
   "go": {
-    "mod": "go.mod",
-    "versionFile": ".go-version"
+    "mod": "go.mod"
   },
   "cargoAudit": "0.22.2",
   "govulncheck": "1.8.0"

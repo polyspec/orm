@@ -4,11 +4,11 @@
 // any other receiver adds no method.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import ts from 'typescript';
+import { parseSync, visitorKeys } from 'oxc-parser';
+import type { ArrowFunctionExpression, Expression, Function as FunctionNode, ImportDeclaration, ModuleExportName, Node, ParamPattern, Statement, TSType, TSTypeName } from 'oxc-parser';
 
-const kinds: Readonly<Record<string, ts.ScriptKind>> = {
-  '.ts': ts.ScriptKind.TS, '.mts': ts.ScriptKind.TS, '.js': ts.ScriptKind.JS, '.mjs': ts.ScriptKind.JS,
-};
+/** The source files the scan reads; oxc-parser takes the language from the extension. */
+const extensions = new Set(['.ts', '.mts', '.js', '.mjs']);
 
 const skipped = new Set(['node_modules', 'dist']);
 
@@ -41,6 +41,41 @@ function callResult(receiver: Value, name: string): Value | undefined {
 /** A name bound to something other than a model hides an outer model binding. */
 const hidden: Value = { cls: '', shape: 'model' };
 
+/** A function node whose parameters and body the scan visits. */
+type FunctionLike = FunctionNode | ArrowFunctionExpression;
+
+/** The name of a static member access `a.name` or `a?.name`; undefined for a computed or private member. */
+function memberName(node: Node): string | undefined {
+  return node.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier' ? node.property.name : undefined;
+}
+
+const exportName = (name: ModuleExportName): string => (name.type === 'Identifier' ? name.name : name.value);
+
+/** The binding, declared type and default value of a parameter. */
+function parameter(param: ParamPattern): { name: Node; type: TSType | undefined; initializer: Expression | undefined } {
+  const pattern = param.type === 'TSParameterProperty' ? param.parameter : param;
+  if (pattern.type === 'AssignmentPattern')
+    return { name: pattern.left, type: typeOf(pattern.left), initializer: pattern.right };
+  return { name: pattern.type === 'RestElement' ? pattern.argument : pattern, type: typeOf(pattern), initializer: undefined };
+}
+
+/** The type annotation of a binding, when it has one. */
+function typeOf(node: Node): TSType | undefined {
+  return 'typeAnnotation' in node && node.typeAnnotation?.type === 'TSTypeAnnotation' ? node.typeAnnotation.typeAnnotation : undefined;
+}
+
+/** The child nodes of a node, in the order of the ESTree visitor keys of oxc-parser. */
+function children(node: Node): Node[] {
+  const out: Node[] = [];
+  for (const key of visitorKeys[node.type] ?? []) {
+    const value = (node as unknown as Record<string, unknown>)[key];
+    if (Array.isArray(value)) {
+      for (const item of value) if (item !== null) out.push(item as Node);
+    } else if (value !== null && value !== undefined) out.push(value as Node);
+  }
+  return out;
+}
+
 class Scanner {
   /** Local names of the generated model classes. */
   private readonly classes = new Map<string, string>();
@@ -62,35 +97,36 @@ class Scanner {
     return undefined;
   }
 
-  private bind(name: ts.BindingName, value: Value | undefined): void {
-    if (ts.isIdentifier(name)) this.scopes[this.scopes.length - 1]!.set(name.text, value ?? hidden);
+  private bind(name: Node, value: Value | undefined): void {
+    if (name.type === 'Identifier') this.scopes[this.scopes.length - 1]!.set(name.name, value ?? hidden);
   }
 
   /** The model class that the expression of a `new` or a type name refers to. */
-  private className(node: ts.Node): string | undefined {
-    if (ts.isIdentifier(node)) return this.lookup(node.text) === undefined ? this.classes.get(node.text) : undefined;
-    const [left, right] = ts.isPropertyAccessExpression(node) ? [node.expression, node.name] : ts.isQualifiedName(node) ? [node.left, node.right] : [undefined, undefined];
-    if (left !== undefined && ts.isIdentifier(left) && this.namespaces.has(left.text) && this.models.has(right!.text)) return right!.text;
+  private className(node: Expression | TSTypeName): string | undefined {
+    if (node.type === 'Identifier') return this.lookup(node.name) === undefined ? this.classes.get(node.name) : undefined;
+    const [left, right] = node.type === 'MemberExpression' ? [node.object, memberName(node)] : node.type === 'TSQualifiedName' ? [node.left, node.right.name] : [undefined, undefined];
+    if (left !== undefined && left.type === 'Identifier' && this.namespaces.has(left.name) && right !== undefined && this.models.has(right)) return right;
     return undefined;
   }
 
   /** The value a type declares: a model class, Promise, Collection or an array of models, or a union of one of them with other types. */
-  private typeValue(type: ts.TypeNode | undefined): Value | undefined {
+  private typeValue(type: TSType | undefined): Value | undefined {
     if (type === undefined) return undefined;
-    if (ts.isParenthesizedTypeNode(type)) return this.typeValue(type.type);
-    if (ts.isUnionTypeNode(type)) {
+    if (type.type === 'TSParenthesizedType') return this.typeValue(type.typeAnnotation);
+    if (type.type === 'TSUnionType') {
       const values = type.types.map(t => this.typeValue(t)).filter((v): v is Value => v !== undefined);
       return values.length === 1 ? values[0] : undefined;
     }
-    if (ts.isArrayTypeNode(type)) {
+    if (type.type === 'TSArrayType') {
       const element = this.typeValue(type.elementType);
       return element?.shape === 'model' ? { cls: element.cls, shape: 'collection' } : undefined;
     }
-    if (!ts.isTypeReferenceNode(type)) return undefined;
+    if (type.type !== 'TSTypeReference') return undefined;
     const cls = this.className(type.typeName);
     if (cls !== undefined) return { cls, shape: 'model' };
-    const name = ts.isIdentifier(type.typeName) ? type.typeName.text : '';
-    const inner = type.typeArguments?.length === 1 ? this.typeValue(type.typeArguments[0]) : undefined;
+    const name = type.typeName.type === 'Identifier' ? type.typeName.name : '';
+    const args = type.typeArguments?.params ?? [];
+    const inner = args.length === 1 ? this.typeValue(args[0]) : undefined;
     if (inner === undefined) return undefined;
     if (name === 'Promise') {
       if (inner.shape === 'model') return { cls: inner.cls, shape: 'promise' };
@@ -101,33 +137,34 @@ class Scanner {
   }
 
   /** The value of an expression, when it resolves to a model, a promise or a collection of models. */
-  private valueOf(e: ts.Expression): Value | undefined {
-    if (ts.isParenthesizedExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e)) return this.valueOf(e.expression);
-    if (ts.isAsExpression(e) || ts.isTypeAssertionExpression(e)) return this.typeValue(e.type) ?? this.valueOf(e.expression);
-    if (ts.isAwaitExpression(e)) {
-      const inner = this.valueOf(e.expression);
+  private valueOf(e: Expression): Value | undefined {
+    if (e.type === 'ParenthesizedExpression' || e.type === 'TSNonNullExpression' || e.type === 'TSSatisfiesExpression' || e.type === 'ChainExpression') return this.valueOf(e.expression as Expression);
+    if (e.type === 'TSAsExpression' || e.type === 'TSTypeAssertion') return this.typeValue(e.typeAnnotation) ?? this.valueOf(e.expression);
+    if (e.type === 'AwaitExpression') {
+      const inner = this.valueOf(e.argument);
       if (inner?.shape === 'promise') return { cls: inner.cls, shape: 'model' };
       if (inner?.shape === 'promiseCollection') return { cls: inner.cls, shape: 'collection' };
       return inner;
     }
-    if (ts.isNewExpression(e)) {
-      const cls = this.className(e.expression);
+    if (e.type === 'NewExpression') {
+      const cls = this.className(e.callee);
       return cls === undefined ? undefined : { cls, shape: 'model' };
     }
-    if (ts.isIdentifier(e)) return this.lookup(e.text);
-    if (ts.isArrayLiteralExpression(e) && e.elements.length === 1 && ts.isSpreadElement(e.elements[0]!)) {
-      const inner = this.valueOf(e.elements[0].expression);
+    if (e.type === 'Identifier') return this.lookup(e.name);
+    if (e.type === 'ArrayExpression' && e.elements.length === 1 && e.elements[0]?.type === 'SpreadElement') {
+      const inner = this.valueOf(e.elements[0].argument);
       return inner?.shape === 'collection' ? inner : undefined;
     }
-    if (ts.isCallExpression(e)) {
-      if (ts.isIdentifier(e.expression)) return this.lookup(e.expression.text) === undefined ? this.functions.get(e.expression.text) : undefined;
-      if (ts.isPropertyAccessExpression(e.expression)) {
-        const receiver = this.valueOf(e.expression.expression);
-        return receiver === undefined ? undefined : callResult(receiver, e.expression.name.text);
+    if (e.type === 'CallExpression') {
+      if (e.callee.type === 'Identifier') return this.lookup(e.callee.name) === undefined ? this.functions.get(e.callee.name) : undefined;
+      const name = memberName(e.callee);
+      if (e.callee.type === 'MemberExpression' && name !== undefined) {
+        const receiver = this.valueOf(e.callee.object);
+        return receiver === undefined ? undefined : callResult(receiver, name);
       }
     }
-    if (ts.isElementAccessExpression(e)) {
-      const receiver = this.valueOf(e.expression);
+    if (e.type === 'MemberExpression' && e.computed) {
+      const receiver = this.valueOf(e.object);
       return receiver?.shape === 'collection' ? { cls: receiver.cls, shape: 'model' } : undefined;
     }
     return undefined;
@@ -140,13 +177,14 @@ class Scanner {
   }
 
   /** Visits a function; an untyped first parameter takes the value the call site gives it. */
-  private visitFunction(fn: ts.SignatureDeclaration & { readonly body?: ts.Node }, given: Value | undefined): void {
+  private visitFunction(fn: FunctionLike, given: Value | undefined): void {
     this.scopes.push(new Map());
-    fn.parameters.forEach((p, i) => {
-      if (p.initializer !== undefined) this.visit(p.initializer);
-      this.bind(p.name, this.typeValue(p.type) ?? (i === 0 ? given : undefined));
+    fn.params.forEach((p, i) => {
+      const { name, type, initializer } = parameter(p);
+      if (initializer !== undefined) this.visit(initializer);
+      this.bind(name, this.typeValue(type) ?? (i === 0 ? given : undefined));
     });
-    if (fn.body !== undefined) this.visit(fn.body);
+    if (fn.body !== null) this.visit(fn.body);
     this.scopes.pop();
   }
 
@@ -155,31 +193,33 @@ class Scanner {
    * an arrow function's expression body or of the only statement of its body
    * when that statement returns.
    */
-  private returnValue(fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression): Value | undefined {
-    const declared = this.typeValue(fn.type);
-    if (declared !== undefined || fn.type !== undefined || fn.body === undefined) return declared;
-    if (!ts.isBlock(fn.body)) return this.valueOf(fn.body);
-    const only = fn.body.statements.length === 1 ? fn.body.statements[0]! : undefined;
-    return only !== undefined && ts.isReturnStatement(only) && only.expression !== undefined ? this.valueOf(only.expression) : undefined;
+  private returnValue(fn: FunctionLike): Value | undefined {
+    const type = fn.returnType?.typeAnnotation;
+    const declared = this.typeValue(type);
+    if (declared !== undefined || type !== undefined || fn.body === null) return declared;
+    if (fn.body.type !== 'BlockStatement') return this.valueOf(fn.body);
+    const only = fn.body.body.length === 1 ? fn.body.body[0]! : undefined;
+    return only !== undefined && only.type === 'ReturnStatement' && only.argument !== null ? this.valueOf(only.argument) : undefined;
   }
 
   /** Records the functions of a block that return a model before the block's statements run. */
-  private hoist(statements: ts.NodeArray<ts.Statement>): void {
-    for (const s of statements) if (ts.isImportDeclaration(s)) this.visitImport(s);
+  private hoist(statements: readonly Node[]): void {
+    for (const s of statements) if (s.type === 'ImportDeclaration') this.visitImport(s);
     for (const s of statements) {
-      if (ts.isFunctionDeclaration(s) && s.name !== undefined) {
-        const value = this.returnValue(s);
-        if (value !== undefined) this.functions.set(s.name.text, value);
+      const declaration = s.type === 'ExportNamedDeclaration' || s.type === 'ExportDefaultDeclaration' ? s.declaration : s;
+      if (declaration?.type === 'FunctionDeclaration' && declaration.id !== null) {
+        const value = this.returnValue(declaration);
+        if (value !== undefined) this.functions.set(declaration.id.name, value);
       }
     }
   }
 
-  private visitCall(call: ts.CallExpression): void {
-    this.visit(call.expression);
+  private visitCall(call: Extract<Expression, { type: 'CallExpression' }>): void {
+    this.visit(call.callee);
     let given: Value | undefined;
-    if (ts.isPropertyAccessExpression(call.expression)) {
-      const receiver = this.valueOf(call.expression.expression);
-      const name = call.expression.name.text;
+    const name = memberName(call.callee);
+    if (call.callee.type === 'MemberExpression' && name !== undefined) {
+      const receiver = this.valueOf(call.callee.object);
       if (receiver?.shape === 'model') {
         this.record(receiver.cls, name);
         if (modelCallbacks.has(name) || name.startsWith('addColumn')) given = receiver;
@@ -188,70 +228,69 @@ class Scanner {
       }
     }
     for (const arg of call.arguments) {
-      if (given !== undefined && (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg))) this.visitFunction(arg, given);
+      if (given !== undefined && (arg.type === 'ArrowFunctionExpression' || arg.type === 'FunctionExpression')) this.visitFunction(arg, given);
       else this.visit(arg);
     }
   }
 
-  private visitImport(node: ts.ImportDeclaration): void {
-    const bindings = node.importClause?.namedBindings;
-    if (bindings === undefined) return;
-    if (ts.isNamespaceImport(bindings)) {
-      this.namespaces.add(bindings.name.text);
-      return;
-    }
-    for (const element of bindings.elements) {
-      const imported = (element.propertyName ?? element.name).text;
-      if (this.models.has(imported)) this.classes.set(element.name.text, imported);
-      else this.classes.delete(element.name.text);
+  private visitImport(node: ImportDeclaration): void {
+    for (const specifier of node.specifiers) {
+      if (specifier.type === 'ImportNamespaceSpecifier') this.namespaces.add(specifier.local.name);
+      if (specifier.type !== 'ImportSpecifier') continue;
+      const imported = exportName(specifier.imported);
+      if (this.models.has(imported)) this.classes.set(specifier.local.name, imported);
+      else this.classes.delete(specifier.local.name);
     }
   }
 
-  public visit(node: ts.Node): void {
-    if (ts.isImportDeclaration(node)) return;
-    if (ts.isSourceFile(node) || ts.isBlock(node) || ts.isModuleBlock(node)) {
+  public visit(node: Node): void {
+    if (node.type === 'ImportDeclaration') return;
+    if (node.type === 'Program' || node.type === 'BlockStatement' || node.type === 'TSModuleBlock' || node.type === 'StaticBlock') {
+      const statements: readonly Node[] = node.body as readonly Statement[];
       this.scopes.push(new Map());
-      this.hoist(node.statements);
-      ts.forEachChild(node, child => this.visit(child));
+      this.hoist(statements);
+      for (const child of children(node)) this.visit(child);
       this.scopes.pop();
       return;
     }
-    if (ts.isFunctionLike(node) && !ts.isFunctionTypeNode(node) && !ts.isConstructorTypeNode(node) && !ts.isCallSignatureDeclaration(node)
-      && !ts.isMethodSignature(node) && !ts.isIndexSignatureDeclaration(node) && !ts.isConstructSignatureDeclaration(node)) {
-      return this.visitFunction(node as ts.SignatureDeclaration & { readonly body?: ts.Node }, undefined);
+    if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression'
+      || node.type === 'TSDeclareFunction' || node.type === 'TSEmptyBodyFunctionExpression') {
+      return this.visitFunction(node, undefined);
     }
-    if (ts.isVariableDeclaration(node)) {
-      const init = node.initializer;
-      if (init !== undefined) {
-        if ((ts.isArrowFunction(init) || ts.isFunctionExpression(init)) && ts.isIdentifier(node.name)) {
+    if (node.type === 'VariableDeclarator') {
+      const init = node.init;
+      if (init !== null) {
+        if ((init.type === 'ArrowFunctionExpression' || init.type === 'FunctionExpression') && node.id.type === 'Identifier') {
           const value = this.returnValue(init);
-          if (value !== undefined) this.functions.set(node.name.text, value);
+          if (value !== undefined) this.functions.set(node.id.name, value);
         }
         this.visit(init);
       }
-      this.bind(node.name, this.typeValue(node.type) ?? (init === undefined ? undefined : this.valueOf(init)));
+      this.bind(node.id, this.typeValue(typeOf(node.id)) ?? (init === null ? undefined : this.valueOf(init)));
       return;
     }
-    if (ts.isForOfStatement(node)) {
-      this.visit(node.expression);
-      const collection = this.valueOf(node.expression);
+    if (node.type === 'ForOfStatement') {
+      this.visit(node.right);
+      const collection = this.valueOf(node.right);
       const element: Value | undefined = collection?.shape === 'collection' ? { cls: collection.cls, shape: 'model' } : undefined;
       this.scopes.push(new Map());
-      if (ts.isVariableDeclarationList(node.initializer)) for (const d of node.initializer.declarations) this.bind(d.name, this.typeValue(d.type) ?? element);
-      this.visit(node.statement);
+      if (node.left.type === 'VariableDeclaration') for (const d of node.left.declarations) this.bind(d.id, this.typeValue(typeOf(d.id)) ?? element);
+      this.visit(node.body);
       this.scopes.pop();
       return;
     }
-    if (ts.isCallExpression(node)) return this.visitCall(node);
-    ts.forEachChild(node, child => this.visit(child));
+    if (node.type === 'CallExpression') return this.visitCall(node);
+    for (const child of children(node)) this.visit(child);
   }
 }
 
+/** Parses a source file; a syntax error fails the scan with the file and the errors, since an unparsed file would hide its calls. */
 function visitFile(path: string, models: ReadonlySet<string>, out: Map<string, Set<string>>): void {
-  const kind = kinds[extname(path)];
-  if (kind === undefined) return;
-  const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, false, kind);
-  new Scanner(models, out).visit(source);
+  if (!extensions.has(extname(path))) return;
+  const parsed = parseSync(path, readFileSync(path, 'utf8'));
+  const errors = parsed.errors.filter(error => error.severity === 'Error');
+  if (errors.length > 0) throw new Error(`orm-gen --scan: ${path} does not parse: ${errors.map(error => error.message).join('; ')}`);
+  new Scanner(models, out).visit(parsed.program);
 }
 
 function visitDir(dir: string, models: ReadonlySet<string>, out: Map<string, Set<string>>): void {

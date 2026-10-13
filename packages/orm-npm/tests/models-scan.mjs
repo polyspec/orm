@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
+import { parseSync } from 'oxc-parser';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const root = resolve(client, '../..');
@@ -37,18 +37,18 @@ function files(path) {
 
 /** source가 generated model module이나 model class를 import하면 true다. */
 function callsModels(path) {
-  const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.Latest, false);
-  return source.statements.some(statement => {
-    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return false;
-    const target = resolve(dirname(path), statement.moduleSpecifier.text);
+  const parsed = parseSync(path, readFileSync(path, 'utf8'));
+  assert.deepEqual(parsed.errors.map(error => error.message), [], `${relative(root, path)} parses`);
+  return parsed.program.body.some(statement => {
+    if (statement.type !== 'ImportDeclaration') return false;
+    const target = resolve(dirname(path), statement.source.value);
     if (modelModules.has(target)) return true;
-    const bindings = statement.importClause?.namedBindings;
-    return indexModules.has(target) && bindings !== undefined && ts.isNamedImports(bindings)
-      && bindings.elements.some(element => modelClasses.has((element.propertyName ?? element.name).text));
+    return indexModules.has(target) && statement.specifiers.some(specifier => specifier.type === 'ImportSpecifier'
+      && modelClasses.has(specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value));
   });
 }
 
-// 기한 10 s: test source를 TypeScript parser로 읽기만 한다.
+// 기한 10 s: test source를 oxc-parser로 읽기만 한다.
 caseTest('the models script scans exactly the sources that call models', 10000, () => {
   assert(modelClasses.size > 0, 'src/models/models.ts declares model classes');
   const args = modelsArgs();

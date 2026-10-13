@@ -116,10 +116,11 @@
   asks the registries and the advisory databases and writes `config/dependency-review.json`;
   `make dependency-policy-check` and `make dependency-policy-mutation-check` read that record and
   the manifests and locks and query no registry.
-- Every toolchain the checks use is pinned in one declaration and checked: `.node-version`,
-  `.go-version`, `.composer-version` and `rust-toolchain.toml` hold exact releases, `.php-version`
-  and the PostgreSQL major release are as exact as their installers allow, CI installs what they
-  declare, and `make repo-check` fails when a running tool differs. A new release is adopted by
+- Every toolchain the checks use is pinned in one declaration and checked: `.node-version`, the
+  `go` line of `go.mod`, `.composer-version` and `rust-toolchain.toml` hold exact releases,
+  `.php-version` and the PostgreSQL major release are as exact as their installers allow, CI
+  installs what they declare, and `make toolchain-check` and `make repo-check` fail when a running
+  tool differs. A new release is adopted by
   changing its declaration with the CI evidence of that release.
 - A build output that another run or a later step reads is published atomically: it is built into a
   temporary file or directory beside it and renamed into place (`$(PUBLISH)`,

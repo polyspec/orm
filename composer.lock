@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9ddce0d22f5e19e042816d63be6d5ba6",
+    "content-hash": "a612dfada8802bb90b0d7e0cbb6fb4ac",
     "packages": [
         {
             "name": "polyspec/ordered-json",
@@ -35,14 +35,14 @@
             "dist": {
                 "type": "path",
                 "url": "packages/orm-php",
-                "reference": "b54e9ea0a327e3d6057e33675ef3da659168bf1c"
+                "reference": "08d5f6b7a06430d07ae4bee19c3495b6a2af6050"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
                 "ext-json": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",
-                "php": ">=8.4",
+                "php": ">=8.5",
                 "polyspec/ordered-json": "0.0.8",
                 "symfony/yaml": "^7.4"
             },
@@ -379,7 +379,7 @@
     "platform": {},
     "platform-dev": {},
     "platform-overrides": {
-        "php": "8.4.0"
+        "php": "8.5.0"
     },
     "plugin-api-version": "2.9.0"
 }

@@ -2,6 +2,7 @@
 name = "polyspec-orm-build"
 version = "0.0.14"
 edition = "2021"
+rust-version = "1.99.0"
 publish = false
 description = "Build-time model generator for the Rust ORM: reads a dbspec document set and generates the models that the crate source calls"
 license = "MIT"

@@ -2,6 +2,6 @@
 # the make targets read its channel, and the CI workflow installs it with
 # rustup toolchain install. make repo-check fails on another toolchain.
 [toolchain]
-channel = "1.98.1"
+channel = "1.99.0"
 components = ["clippy", "rustfmt"]
 profile = "minimal"

@@ -186,9 +186,9 @@ const php = reported('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSI
 failures.push(...phpVersionErrors(text('.php-version'), composer.require?.php, workflows, php));
 const rustc = /^rustc (\S+)/.exec(reported('rustc', ['--version']))?.[1] ?? '';
 failures.push(...rustToolchainErrors(text('rust-toolchain.toml'), makefile, workflows, rustc));
-// Go와 Composer도 .go-version과 .composer-version이 선언한 정확한 release 하나다. 실행 중인 것은 그 major와 minor만 같으면 된다(patch는 상관없다).
-const goRelease = reported('go', ['env', 'GOVERSION']).replace(/^go/, '');
-failures.push(...goVersionErrors(text('.go-version'), text('go.mod'), workflows, goRelease));
+// Every workflow sets up the Go of the go line of go.mod, which kit's toolchain-check holds to the kit pin.
+failures.push(...goVersionErrors(workflows));
+// Composer는 .composer-version이 선언한 정확한 release 하나다. 실행 중인 것은 그 major와 minor만 같으면 된다(patch는 상관없다).
 // 추적된 go.mod는 모두 자기 directory의 module path를 선언한다.
 failures.push(...goModulePathErrors(Object.fromEntries(tracked.filter(path => /(?:^|\/)go\.mod$/.test(path)).map(path => [path, text(path)]))));
 const composerRelease = /Composer version (\S+)/.exec(reported('composer', ['--version', '--no-ansi']))?.[1] ?? '';

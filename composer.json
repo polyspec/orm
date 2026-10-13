@@ -48,7 +48,7 @@
         "vendor-dir": "vendor-php",
         "optimize-autoloader": true,
         "platform": {
-            "php": "8.4.0"
+            "php": "8.5.0"
         }
     }
 }

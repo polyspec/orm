@@ -5,7 +5,7 @@
   "version": "0.0.14",
   "license": "MIT",
   "require": {
-    "php": ">=8.4"
+    "php": ">=8.5"
   },
   "php-ext": {
     "extension-name": "orm_dbspec",

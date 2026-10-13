@@ -15,7 +15,7 @@
   ],
   "type": "module",
   "engines": {
-    "node": ">=22.16.0"
+    "node": ">=26.11.1"
   },
   "bin": {
     "orm-gen": "./dist/bin/orm-gen.js"
@@ -47,12 +47,13 @@
     "@noble/hashes": "2.4.0",
     "@polyspec/ordered-json": "0.0.8",
     "mysql2": "^3.24.6",
+    "oxc-parser": "0.154.0",
     "pg": "^8.23.1",
-    "typescript": "^6.0.3",
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
-    "@types/pg": "^8.23.1"
+    "@types/node": "26.6.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "7.0.2"
   }
 }
