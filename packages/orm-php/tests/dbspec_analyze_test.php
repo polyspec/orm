@@ -6,6 +6,7 @@ require __DIR__ . '/autoload.php';
 require_once __DIR__ . '/case_clock.php';
 require __DIR__ . '/dbspec_cases.php';
 require __DIR__ . '/dbspec_analysis_cases.php';
+require __DIR__ . '/dbspec_syntax_vectors.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Token;
@@ -97,3 +98,10 @@ foreach (['canonical', 'normalize', 'invalid'] as $kind) {
     }
 }
 
+// The shared syntax vectors: the tokens of every case of tests/dbspec/syntax.json, exactly.
+$syntaxCount = dbspec_syntax_check(
+    dbspec_syntax_load($root),
+    dbspec_syntax_inputs($cases),
+    static fn(string $text, array $documents): array => array_map(static fn(Token $t): array => [$t->line, $t->start, $t->end, $t->class], Dbspec::analyze($text, $documents)->tokens),
+);
+echo "syntax.json: $syntaxCount cases match\n";

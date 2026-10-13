@@ -15,6 +15,7 @@ require "$root/packages/orm-php/tests/autoload.php";
 require "$root/packages/orm-php/tests/case_clock.php";
 require "$root/packages/orm-php/tests/dbspec_cases.php";
 require "$root/packages/orm-php/tests/dbspec_analysis_cases.php";
+require "$root/packages/orm-php/tests/dbspec_syntax_vectors.php";
 
 if (!extension_loaded('orm_dbspec')) {
     fwrite(STDERR, "the extension orm_dbspec is not loaded; run make dbspec-php-extension-check, which builds and loads it\n");
@@ -95,3 +96,11 @@ foreach (['analyze', 'format'] as $method) {
 }
 
 echo json_encode($counts) . "\n";
+
+// The shared syntax vectors: the native tokens of every case of tests/dbspec/syntax.json, exactly.
+$syntaxCount = dbspec_syntax_check(
+    dbspec_syntax_load($root),
+    dbspec_syntax_inputs($cases),
+    static fn(string $text, array $documents): array => array_map(static fn(object $t): array => [$t->line, $t->start, $t->end, $t->class], NativeDbspec::analyze($text, $documents)->tokens),
+);
+echo "syntax.json: $syntaxCount cases match\n";
