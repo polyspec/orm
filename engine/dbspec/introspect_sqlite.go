@@ -102,7 +102,7 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			c.report("column", table, name, "the column definition %q has clauses that dbspec does not read", st.columns[name])
 			return nil
 		}
-		check, hasCheck := st.checks[rendererCheckName(table, name)]
+		check, hasCheck := st.checks[rendererName(table, name)]
 		if st.identity == name {
 			col.typ, col.identity = Type{Kind: TypeI64}, true
 		} else {
@@ -113,7 +113,7 @@ func readSQLite(ctx context.Context, q Querier) (*catalog, error) {
 			}
 			col.typ = typ
 		}
-		delete(st.checks, rendererCheckName(table, name))
+		delete(st.checks, rendererName(table, name))
 		if dflt.Valid {
 			value, ok := sqliteDefault(r, dflt.String, col.typ)
 			if !ok {

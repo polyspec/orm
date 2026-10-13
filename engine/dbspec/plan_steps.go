@@ -445,7 +445,7 @@ func (w *planWriter) rebuild(name string) {
 		hiddenAdded = append(hiddenAdded, col)
 	}
 	newCreate := func(as string) string {
-		return w.r.createTable(t, as, func(c string) string { return t.Name + "$" + c }, hiddenDropped)
+		return w.r.createTable(t, as, func(c string) string { return rendererName(t.Name, c) }, hiddenDropped)
 	}
 	// sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이 그대로다.
 	sourceColumn := func(c string) string {
@@ -454,7 +454,7 @@ func (w *planWriter) rebuild(name string) {
 		}
 		return c
 	}
-	oldCreate := w.r.createTable(old, name, func(c string) string { return src.Name + "$" + sourceColumn(c) }, hiddenAdded)
+	oldCreate := w.r.createTable(old, name, func(c string) string { return rendererName(src.Name, sourceColumn(c)) }, hiddenAdded)
 	newColumns := make([]string, 0, len(t.Columns)+len(hiddenDropped))
 	for _, c := range t.Columns {
 		newColumns = append(newColumns, c.Name)
@@ -849,7 +849,7 @@ func (w *planWriter) rendererChecks(t *Table) map[string]string {
 	out := map[string]string{}
 	for _, c := range t.Columns {
 		if check := w.r.typeCheck(c); check != "" {
-			out[t.Name+"$"+c.Name] = check
+			out[rendererName(t.Name, c.Name)] = check
 		}
 	}
 	return out

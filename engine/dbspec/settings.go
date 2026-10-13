@@ -120,10 +120,8 @@ func (v *validator) setting(t *tableNode, s *settingNode, aesColumns map[string]
 		if v.propagatedChild(t) {
 			v.add(RuleSetting, s.keyword, "immutable is rejected on a child of a cascade or set_null foreign key")
 		}
-		v.generatedName(s.keyword, t.name.text+"$immutable_update")
 	case "audit":
 		v.audit(t, s)
-		v.generatedName(s.keyword, t.name.text+"$audit_insert")
 	case "state_machine":
 		v.stateMachine(t, s)
 	case "markdown":

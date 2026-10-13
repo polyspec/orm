@@ -260,6 +260,3 @@ func actionName(rule string) (string, bool) {
 	}
 	return "", false
 }
-
-// rendererCheckName은 renderer CHECK의 이름 <table>$<column>이다.
-func rendererCheckName(table, column string) string { return table + "$" + column }
