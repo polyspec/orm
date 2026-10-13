@@ -3,13 +3,11 @@
 
 [Korean](AGENTS.ko.md)
 
+The working principles and standards of every polyspec repository are in [PRINCIPLES.md](PRINCIPLES.md), which kit
+vendors; this file states only the rules of orm.
+
 - The user's instructions take precedence. Develop locally; the GitHub remote receives a push only
   as the push rule below allows.
-- Do not keep backward compatibility: remove an old path instead of adding a compatibility layer,
-  a fallback or a migration. Choose the simplest implementation that fully meets the current
-  requirements, with no abstraction, setting or indirection for an uncertain future. Keep
-  components modular, each concern clearly separated, and decide architecture for the long term:
-  a stopgap that works now and must be replaced later is not accepted.
 - Work on `main` directly by default; use a branch and worktree when agents or parallel work need
   one. A branch or worktree left after its merge takes disk space, scatters folders and makes the
   merge state unclear.
@@ -50,10 +48,6 @@
   The leases of the target directory still order the builds of the runs of one checkout. A
   worktree's target directory goes with the worktree when it is removed; check free disk before a
   worktree build.
-- Before committing the related feature, cherry-pick useful commits from a test-only branch that
-  cannot be integrated into `main`, discard the remaining test-only changes, and remove its worktree
-  and branch. If removal is impossible, first add a numbered sub-item to the owning checklist with
-  the cause and exact removal condition.
 - `docs/plans/execution-checklist.md` is the only task list. Its Korean pair has the same item IDs and states. Run `make documents-check` before changing an item state. The checklist holds only items: a state marker appears only as the state at the start of an item or sub-item, never in a legend, a heading or item text, and `make documents-check` fails on any other with its file, line and column.
 - Use `[ ]` for waiting, `[~]` for work in progress, `[o]` only when implementation, tests, and records are committed together, `[!]` only when an unfinished item must be bypassed to advance, and `[-]` when the item is impossible: it can never complete, so nothing resumes and it is no bypass. An `[!]` item states `Cause:` and `Retry:`; resume it when the retry condition is met, for a bypass is not completion. A `[-]` item states `Cause:` and is terminal, as `[o]` is.
 - Marking an item `[o]` also writes its changelog entry under `## Unreleased` at the top of
@@ -206,7 +200,6 @@
   processes hold the processors; a timer that stops a stuck case, a limit on work that a database
   or another process does, and a test of timing behavior measure wall-clock time.
 - Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
-- Define a criterion. Reproduce an observed defect with a tracked RED test, or first write a deterministic RED case whose input and required result would expose a plausible defect. Confirm failure for the intended reason before implementation, correct the cause, and run the same case and relevant use-path tests to GREEN. Investigate a case that cannot expose the problem; do not weaken a correct criterion to pass a test.
 - Go, PHP, Rust, and TypeScript share one behavior contract. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
 - Record a conformance expectation only when the Go, PHP, Rust, and TypeScript outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
 - Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
@@ -221,10 +214,9 @@
 - Develop one `0.0.14` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
 - Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. The four clients execute the same accepted and rejected schema cases.
 - SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
-- Preserve errors and input values. Do not add silent fallbacks or compatibility layers.
 - Every transformation is idempotent: emitting a parsed canonical source reproduces it byte for byte, and repeating an operation with the same input yields the same result and state.
 - Names state what the thing does, and one concept has one name in every client. A name, prefix or suffix never selects behavior; behavior is declared explicitly.
-- Code comments, identifiers, logs, error messages and test names are written in English (PRINCIPLES.md of kit, K84). The Korean comments that remain are translated under T131; a new or changed comment is English.
+- The Korean code comments that remain are translated to English under T131; a new or changed comment is English (PRINCIPLES.md).
 - Go value conversion, host encoding, and generated model assignment return errors for invalid values. Validate insert field assignment before writing a row, and propagate row assembly errors to the caller.
 - Go collection identities and scalar comparisons preserve supported value types; unsupported or lossy keys fail, and collection, relation, and split-query callers propagate the error.
 - Styled column setters and getters distinguish SQL NULL, an encoded null value, and an unselected column with an explicit value type. A setter rejects invalid input before changing the model; a requested unselected column reports `COLUMN_UNSELECTED`.
