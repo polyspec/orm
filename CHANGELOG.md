@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-3: every client and the PHP extension give the same syntax tokens and formats, which `make dbspec-compare-check` now compares and the parity unit `dbspec-syntax` declares.
 - T128-3p: every client's parse result carries the declaration positions, compared across the clients by `make dbspec-compare-check`.
 - T128-2a-5 (breaking): the PHP `orm-gen gen` takes `--set <dbspec-set.json>`; the positional files and `--use` are removed. `Dbspec::readSet` and its native twin in the PHP extension read a set file.
 - T128-8-1: `@polyspec/dbspec-codemirror` (`packages/dbspec-codemirror`) is the CodeMirror 6 extension of dbspec: token colours, lint diagnostics, folding and formatting on Shift+Alt+F, from the language service.
