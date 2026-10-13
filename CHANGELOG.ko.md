@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6292f19ae73267706ac6ea4e1b59039f37cac509d4cbd2f1ea164aef3271a868 -->
+<!-- source-sha256: 01d29d37adbd658e58f5d00df516bd6ea4ffc18a3e2b2e344151a12fb74034f7 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2: dbspec 명세가 구문 분석(`analyze`와 그 token class, 모든 구현에서 하나의 parser로부터)과 formatting(`emit(parse(text))`인 `format`, diagnostic이 있는 문서의 거부, 불변식 셋)을 적고, docs/editor.md가 editor 도구를 적는다: browser에서 쓸 수 있는 parser 진입점, language service, adapter, 그 import 규칙, 결과, 생태계 방식, fixture.
 - T126-1: orm은 kit을 branch가 아닌 release tag v0.0.31에서 vendor하고, Python을 uv로 선언하며(config/toolchain.json의 `pythonBuild.version`과 `uv`), `release-assets`가 자신이 build하는 데 쓰는 설치(`install-go`, `install-node`)를 선언한다.
 - T128-1: 0.0.9 뒤에 더한 Go editor 도구(`cmd/orm-fmt`, `cmd/orm-lsp`, `cmd/orm-tokens`와 regex 분류기 `engine/dbspec/tokens.go`)를 어떤 release 전에 제거하며, Go binary를 build하던 docs 연결도 함께 제거한다; T128은 editor stack을 모든 runtime의 표준으로 다시 만든다.
 

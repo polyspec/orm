@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 9dc77ddfcce1d287159a6419f7c103e617ddb6882e89fd8c6aff64b38c8b0412 -->
+<!-- source-sha256: 1eca06e0b0a209a9ef35166c807dcbf6a5b276284d06acdb64ca72f3ecf7a6d1 -->
 # dbspec
 
 [English](dbspec.md)
@@ -297,7 +297,43 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - `f64` literal은 다시 읽으면 같은 값이 되는 가장 짧은 지수 없는 10진수로 쓰고, 정수 값이면 소수점 없이, 음의 0은 `0`으로 쓴다. check literal은 만나는 column의 canonical default 형식을 따르고, predicate는 `and` 안의 `or`가 필요로 하는 괄호만 남긴다
 - comment 줄은 바로 다음 줄에 붙고 그 줄의 들여쓰기를 따른다. 닫는 `}` 앞의 comment는 그 block 안 줄의 들여쓰기를 따른다. 마지막 block 뒤의 comment는 빈 줄 하나 뒤에 온다. comment는 `#`부터 줄 끝까지의 text를 바꾸지 않는다
 
-## 한도와 error
+## Syntax analysis
+
+각 구현은 dbspec lexer 하나와 parser 하나를 가지며, 구문 분석은 그 parser의 출력이다. editor 계층, 생성 파일, 정규 표현식 어느 것도 문법 규칙을 갖지 않는다. TextMate 같은 정규 표현식 문법은 parser 문맥이 없고, 이름이 keyword일 수 있으므로(`table`은 올바른 column 이름이다) parser와 다르게 token을 분류한다.
+
+`analyze(text, set)`은 parse 결과를 바꾸지 않고 그대로, 그리고 text의 token을 돌려준다. token은 `{line, start, end, class}`이다. `line`은 1부터 시작하고, `start`와 `end`는 줄 시작부터의 Unicode code point 수이며, `end`는 포함하지 않는다.
+
+lexer는 token 네 종류를 읽는다: 단어, 문자열, 구두점(`{`, `}`, `(`, `)`, `,`), operator(`=`, `<>`, `<`, `<=`, `>`, `>=`, `+`, `-`, `*`, `/`). 숫자는 단어이고, comment는 줄 전체다. parser가 각 token의 class를 정한다:
+
+| Class | Token |
+| --- | --- |
+| `keyword` | 그 줄의 문법이 그 위치에서 keyword로 읽는 단어, 예를 들어 `table`, `primary`, `references`, `null`, `and` |
+| `type` | column type의 단어 |
+| `name` | 문서, table, column, constraint, index, diagram의 이름. 선언과 참조 모두 |
+| `setting` | `settings` block 줄의 첫 단어. 그 줄의 다른 단어는 위의 class를 따른다 |
+| `number` | parser가 숫자로 읽는 단어 |
+| `string` | 문자열 |
+| `operator` | operator. `->`의 `-`와 `>`도 포함한다 |
+| `punctuation` | 구두점 |
+| `comment` | `#`부터 줄 끝까지의 comment 줄 |
+| `word` | parser가 분류하지 않는 단어 |
+
+parse가 끝나지 않는 경우는 다음과 같이 정한다:
+
+- `limit` error는 token을 만들지 않는다. 검사가 할당보다 먼저이기 때문이다([한도와 error](#limits-and-errors));
+- `encoding`이나 `header`로 중단되면 중단 줄과 그 뒤 모든 줄은 lexical token만 만든다: 단어는 숫자를 포함해 `word`이고, 문자열, operator, 구두점, comment 줄은 그 class를 유지한다. `encoding`에서 단독 CR은 줄 끝이 아니며 lex는 그 뒤에서 이어진다;
+- 올바르지 않은 문자는 token을 만들지 않는다;
+- parser가 `syntax` diagnostic으로 포기한 줄에서 단어는 `word`이다. 의미 diagnostic만 있는 줄은 parser가 정한 class를 유지한다.
+
+comment의 위치는 token에만 있고 문서 model에는 없다. token은 highlighting에 쓴다. 선언의 위치가 필요한 도구는 token이나 text가 아니라 parse 결과의 선언 위치를 읽는다.
+
+vector는 `tests/dbspec/syntax.json`이다: `cases.json`의 canonical, normalize, invalid, sets, hashes case의 token. `files` case는 파일 reader와 byte reader에 남는다. vector는 TypeScript 구현에서 한 번 생성하고 검토한 뒤 고정하며, 모든 구현이 정확히 일치한다.
+
+## Formatting
+
+`format(text, set)`은 모든 구현에서 `emit(parse(text, set))`이다. diagnostic이 있는 문서는 거부하며 결코 다시 쓰지 않는다. formatting은 불변식 셋을 지킨다: `emit(parse(format(x))) == emit(parse(x))`, `format(x)`의 manifest hash와 schema hash가 `x`의 것과 같음, `format(format(x)) == format(x)`. model 동등성은 그중 하나가 아니다. emit이 constraint와 `use` 줄을 정렬하기 때문이다([Canonical form](#canonical-form)). canonical 문서의 text는 그 자신의 format이므로, 그것을 format하는 editor는 아무것도 바꾸지 않는다. vector는 `cases.json`의 것이다: canonical과 normalize case는 canonical text로 format되고, invalid case는 거부된다.
+
+## 한도와 error {#limits-and-errors}
 
 문서는 최대 32 MiB, table 4096개, column 120000개, foreign key 20000개이며, 할당 전에 확인한다. error는 `SCHEMA_INVALID`이고, 문제 token의 1부터 세는 줄과 열, 아래 규칙, message를 갖는다. 열의 단위는 Unicode code point다. 멈추게 하는 error(`encoding`, `header`, `limit`)는 그 전에 찾은 diagnostic 뒤에 보고한다. diagnostic은 줄, 열, 아래 규칙 표의 순서로 정렬한다. 이름 규칙에 맞지 않는 header 이름은 `name.format`이며 parse는 계속한다. table, constraint, setting 전체에 대한 규칙의 위치는 그 이름이나 keyword token이고, 다른 규칙의 위치는 규칙을 어긴 token이다.
 
