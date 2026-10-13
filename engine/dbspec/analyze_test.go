@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // sampleDocument is the worked example of the T128-3 analysis rules.
@@ -18,6 +20,7 @@ var sampleDocument = []string{
 }
 
 func TestAnalyzeSampleTokens(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	text := joinLines(sampleDocument, false)
 	got := Analyze(text, nil).Tokens
 	want := []Token{
@@ -48,6 +51,7 @@ func describeTokens(text string, tokens []Token) []string {
 // TestAnalyzeClasses covers each class, each place where the parser sets one,
 // the abandoned, lexical and comment lines, and the stops.
 func TestAnalyzeClasses(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	header := "dbspec 1 shop\n"
 	cases := []struct {
 		name string
@@ -206,6 +210,7 @@ func TestAnalyzeClasses(t *testing.T) {
 
 // TestAnalyzeLimitHasNoTokens checks that a limit stop yields no tokens at all.
 func TestAnalyzeLimitHasNoTokens(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	var b strings.Builder
 	b.WriteString("dbspec 1 shop\n")
 	for i := 0; i <= maxTables; i++ {
@@ -222,6 +227,7 @@ func TestAnalyzeLimitHasNoTokens(t *testing.T) {
 
 // TestAnalyzeIsParse checks that Analyze returns the result of Parse unchanged.
 func TestAnalyzeIsParse(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, text := range []string{
 		joinLines(sampleDocument, false),
 		"dbspec 1 shop\ntable t {\n  id i64 identity foo\n}\n",
@@ -239,6 +245,7 @@ func TestAnalyzeIsParse(t *testing.T) {
 // canonical text, that the output formats to itself, and that a document with
 // a diagnostic is refused with the diagnostics of Parse.
 func TestFormat(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	text := joinLines(sampleDocument, false)
 	formatted, diagnostics := Format(text, nil)
 	if len(diagnostics) != 0 {

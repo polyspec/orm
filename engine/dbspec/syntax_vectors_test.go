@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/internal/testcase"
 )
 
 // syntaxVectorClasses are the classes of a token in tests/dbspec/syntax.json.
@@ -210,5 +212,6 @@ func checkSyntaxVectors(t *testing.T, analyze func(string, map[string]string) An
 
 // TestSharedSyntaxVectors matches the tokens of Analyze with tests/dbspec/syntax.json.
 func TestSharedSyntaxVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	checkSyntaxVectors(t, Analyze)
 }

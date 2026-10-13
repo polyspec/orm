@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-3-3: the Go, Rust and TypeScript tests of syntax analysis, declaration positions and the browser entry start their cases through the case harness, so each has its deadline and RUN line.
 - T128-5: `@polyspec/dbspec-language` (`packages/dbspec-language`) is the dbspec language service: `openDocument(text, {set})` gives the diagnostics with UTF-16 ranges, the tokens, the folding ranges of the blocks and `format()`, through the browser-safe parser entry only.
 - T128-3-2: `tests/dbspec/syntax.json` holds the tokens of the nine cases that T129 added and no longer names the three it removed.
 - T128-4-1: `@polyspec/orm/dbspec` is browser-safe again: the renderer names take SHA-256 from `@noble/hashes` and their byte length from `TextEncoder` instead of `node:crypto` and `Buffer`, and the browser entry test follows a declared browser package into its modules.

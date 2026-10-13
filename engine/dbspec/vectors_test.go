@@ -380,6 +380,7 @@ func TestSharedVectors(t *testing.T) {
 // TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
 // (docs/dbspec.md "Declaration positions").
 func TestPositionVectors(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)
 	if len(vectors.Positions) == 0 {
 		t.Fatal("tests/dbspec/cases.json has no positions cases")
