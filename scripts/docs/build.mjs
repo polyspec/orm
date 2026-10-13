@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { root } from './lib.mjs';
 import { runLong, stepLines } from '../../tests/testcase.mjs';
@@ -26,6 +26,14 @@ function command(args, step) {
 }
 
 const passed = await runLong('docs-build', async ({ step }) => {
+  // The dbs fences of the docs highlight by the grammar core: the tokenizer binary is built before
+  // the site, and dbs.ts calls it, so the site never re-states the grammar.
+  const tokens = path.join(root, '.runtime/bin/orm-tokens');
+  step(`go build -o ${path.relative(root, tokens)} ./cmd/orm-tokens/`);
+  const built = spawnSync('go', ['build', '-o', tokens, './cmd/orm-tokens/'], { cwd: root, encoding: 'utf8' });
+  if (built.error !== undefined || built.status !== 0) {
+    throw new Error(`go build ./cmd/orm-tokens/ exited with ${built.status}: ${built.stderr}`);
+  }
   const args = [path.join(root, 'node_modules/vitepress/bin/vitepress.js'), 'build', 'docs'];
   step(`node ${path.relative(root, args[0])} ${args.slice(1).join(' ')}`);
   await command(args, step);
