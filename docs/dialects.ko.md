@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 30876fe1684efb49daef37e29b2823ad7996314e40586bb85e6192bbe66630bd -->
+<!-- source-sha256: 6acf0c9dcae7d75f551f69a3605673b8fd54fda43c67fede443474dc1823394f -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -210,7 +210,7 @@ SQLite STRICT table은 storage class를 검사하지만 타입 이름은 `INT`, 
 | Trigger 본문 객체 | 본문이 trigger 안에 있다 | 본문은 `pg_proc`의 별도 함수이며 `DROP TABLE` 후에도 남는다 | 본문이 trigger 안에 있다. `DROP TABLE`은 trigger도 삭제한다 | `postgres.trigger.function_separate_object`, `sqlite.trigger.dropped_with_table` | **Decision:** renderer는 생성하는 PostgreSQL trigger마다 함수 하나를 소유한다. Diff와 apply는 trigger와 함께 함수를 만들고 삭제한다 | PostgreSQL `pg_proc` |
 | `NEW` 대입 | `BEFORE` trigger에서 허용 | `BEFORE` row trigger에서 허용 | 허용하지 않는다 | `mysql.trigger.new_assignable`, `postgres.trigger.update_fires_when_unchanged`, `sqlite.trigger.new_read_only` | 수정 시각 기록을 위한 사실 | 해당 없음 |
 | Catalog 텍스트 | `ACTION_STATEMENT`는 주석을 포함해 쓴 그대로의 본문이다 | `prosrc`는 쓴 그대로의 함수 본문이다. `pg_get_triggerdef`는 schema로 한정한 table을 포함한 정규화 텍스트를 반환한다 | `sqlite_master.sql`은 쓴 그대로의 `CREATE TRIGGER` 텍스트다 | `mysql.trigger.body_catalog_verbatim`, `postgres.trigger.catalog_text`, `sqlite.trigger.catalog_verbatim` | **Decision:** 생성한 trigger는 catalog 텍스트가 선언한 renderer version의 출력과 같을 때만 복원한다. MySQL은 timing, event, 본문, PostgreSQL은 `pg_get_triggerdef`와 `prosrc`, SQLite는 전체 텍스트다. 주석 표식은 쓰지 않는다 | 표에 적은 대로 |
-| 이름 | Database에서 고유하다(1359) | Table 범위다 | Database에서 고유하다 | `mysql.trigger.name_schema_scope`, `postgres.trigger.name_table_scope`, `sqlite.trigger.name_database_scope` | **Decision:** 생성 이름은 [dbspec 이름](dbspec.md#names)의 규칙으로 63바이트 이하다(plain form, 또는 처음 46 bytes, `$`, SHA-256 16진수 16자리). 생성 이름의 길이 때문에 table을 거부하지 않으며, 선언된 이름이 63바이트를 넘으면 여전히 거부한다 | 표에 적은 대로 |
+| 이름 | Database에서 고유하다(1359) | Table 범위다 | Database에서 고유하다 | `mysql.trigger.name_schema_scope`, `postgres.trigger.name_table_scope`, `sqlite.trigger.name_database_scope` | **Decision:** 생성 이름은 [dbspec 이름](dbspec.md#names)의 규칙으로 63바이트 이하다(plain form, 또는 처음 54 bytes, `$`, SHA-256 16진수 8자리). 생성 이름의 길이 때문에 table을 거부하지 않으며, 선언된 이름이 63바이트를 넘으면 여전히 거부한다 | 표에 적은 대로 |
 
 Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에서 설정한 작업 단위의 audit을 읽는다.
 
@@ -289,7 +289,7 @@ column은 이름, type, `NOT NULL`이나 `NULL`, 그다음 default 순으로 쓴
 
 ### Renderer CHECK
 
-renderer CHECK는 dialect가 강제하지 않는 type을 강제한다. 이름은 [dbspec 이름](dbspec.md#names)의 규칙으로 `<table>$<column>`이다: 63 bytes 이하이면 plain form이고, 아니면 처음 46 bytes, `$`, SHA-256의 16진수 16자리다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. column마다 CHECK 하나가 column type의 모든 조건을 담는다.
+renderer CHECK는 dialect가 강제하지 않는 type을 강제한다. 이름은 [dbspec 이름](dbspec.md#names)의 규칙으로 `<table>$<column>`이다: 63 bytes 이하이면 plain form이고, 아니면 처음 54 bytes, `$`, SHA-256의 16진수 8자리다. dbspec 이름에는 `$`가 없으므로 선언된 이름과 겹치지 않는다. column마다 CHECK 하나가 column type의 모든 조건을 담는다.
 
 | dbspec | MySQL | PostgreSQL | SQLite |
 | --- | --- | --- | --- |

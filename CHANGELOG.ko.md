@@ -1,10 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dcc03ab0da2ef79faa7938dd2adb7cbf38b8dbe0d1eb69fbb4512c3025ff1768 -->
+<!-- source-sha256: 434483e89869a1ddd20898ebf8317491a86d89afc05b2f6d246328f2cb7ce5bb -->
 # 변경 이력
 
 ## Unreleased
 
-- T129: renderer가 만드는 이름(CHECK `<table>$<column>`, trigger와 function `<table>$<event>`)은 63 bytes 이하이면 plain form이고, 아니면 처음 46 bytes, `$`, SHA-256 소문자 16진수 16자리다. 긴 history 이름을 가진 audit table을 선언할 수 있다. 선언된 이름은 여전히 거부하며 줄이지 않는다(docs/dbspec.md "이름").
+- T129: renderer가 만드는 이름(CHECK `<table>$<column>`, trigger와 function `<table>$<event>`)은 63 bytes 이하이면 plain form이고, 아니면 처음 54 bytes, `$`, SHA-256 소문자 16진수 8자리다. 긴 history 이름을 가진 audit table을 선언할 수 있다. 선언된 이름은 여전히 거부하며 줄이지 않는다(docs/dbspec.md "이름").
 - T125-8: Go request hook test가 공유 testcase package로 case를 시작하고, Python interface test가 15번째 연결 rule을 세며, `docs/features.md`가 기능 `request_hook`을 적는다.
 - T125-7: Python identity load test는 `identity_load.py`이므로 `make python-unit-check`가 그 server case를 더는 실행하지 않는다. `make python-identity-load-check`가 실행한다.
 - T125-4: request hook은 `contracts/features.json`의 기능 `request_hook`이며, 그 Go, PHP, Rust, TypeScript owner가 MySQL, PostgreSQL, SQLite에서 공유 case 다섯 개를 통과한다.
