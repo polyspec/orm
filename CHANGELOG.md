@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T157: the markdown conformance pins flowmark main at 8b5d16a.
 ## 0.0.11
 
 - T140-1: the Markdown IR executor table of docs/dialects.md mirrors the flowmark that the markdown conformance pins.

@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 02739e535bdfa3433a4bfda95dc57c31355470283bdb27416e8e8668f24aba55 -->
+<!-- source-sha256: b5c1a308d347bd51a52a7504c26ece00b35eeaf4ab4d6a8a0f76c4eddedd6947 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1006,4 +1006,5 @@
 - [o] T153 Python Collection이 쓰는 key_text를 import한다. 원인: packages/orm-python/src/polyspec/orm/model.py의 `Collection.get`과 `Collection.fetched`가 `put`과 `has`만 import하는 `key_text`를 불러 NameError로 실패한다(T147-1이 찾음). 인수 조건: 둘을 부르는 unit test가 red를 먼저 보이고, module이 `key_text`를 한 번 import한다. 증거: 변경 전 test_collection.py가 Collection.get에서 `NameError: name 'key_text' is not defined`로 실패했다; f55fa60a가 key_text와 scalar_key를 polyspec/orm/keys.py로 옮기고 model.py가 순환 없이 맨 위에서 이를 import하며, `make python-unit-check`가 167 test를 통과한다.
 - [o] T154 Python Mermaid test의 import fallback을 지운다. 원인: packages/orm-python/tests/dbspec_mermaid.py는 import에 실패하면 하드코딩한 형제 ordered-json 경로로 물러나는데, 이는 잘못된 환경을 그럴듯한 것으로 바꾸는 fallback이다(T149가 찾음). 인수 조건: test는 선언된 PYTHONPATH로만 import하고 없는 package는 그 이름과 함께 실패하며, red를 먼저 본다. 증거: 변경 전 test는 PYTHONPATH에 ordered-json이 없어도 추측한 형제 경로로 통과했다; 변경 후 같은 실행이 `ModuleNotFoundError: No module named 'polyspec.ordered_json'`으로 실패하며, 선언된 PYTHONPATH로는 13 case를 실행한다.
 - [o] T155 0.0.11을 release한다. 원인: hyper의 S-285가 기다리는 request hook 아래 restore(T140), component rule 검사와 그 rule(T147), 엄격한 vector reader(T133), Python schema coverage(T149), 0.0.10 이후의 수정이 main에 있다. 인수 조건: version-bump commit이 모든 manifest를 0.0.11로 두고 Unreleased를 0.0.11로 옮기며, 바뀐 lock의 의존성 review와 v0.0.11의 consumer lock을 기록한다; 그 CI가 성공한다; annotated tag v0.0.11을 push하고 release workflow가 게시한다. 증거: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
+- [o] T157 markdown conformance에서 merge된 flowmark를 고정한다. 원인: flowmark T14가 열려 있는 동안 T140은 branch의 flowmark commit 5e065f4를 고정했다; flowmark는 orm v0.0.11과 함께 T14를 main의 8b5d16a로 merge했다. 인수 조건: tests/markdown/flowmark.version이 flowmark main을 고정하고 dialects 표가 그것을 옮겨 둔다. 증거: 고정은 v0.0.0-20261013184618-8b5d16a81141이고, `node scripts/docs/markdown-table.mjs`가 두 표가 그것을 옮겨 둔다고 보고하며, `make markdown-conformance-check`가 모든 client에서 restore case를 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
