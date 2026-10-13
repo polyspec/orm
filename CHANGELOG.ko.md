@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77695cae35e669b7d6b57985f1fa4997cf232d1c22e82faae702f306dca62964 -->
+<!-- source-sha256: 411b7857319794e81204830533ee63501dbe388cde5e9798ca8d059e1afb438d -->
 # 변경 이력
 
 ## Unreleased
 
+- T158-1: Go symbol 기록이 T142의 YAML core 함수를 담는다.
 - T134: Python 테스트는 venv에 editable로 설치된 package를 import한다. 어떤 테스트도 `sys.path`나 `PYTHONPATH`를 바꾸지 않고, 검사가 이를 거부한다.
 - T142-3: `codec-check`가 Python codec vector를 실행한다.
 - T142-4: `codec-check/rust`가 실행하는 lease tool을 먼저 build한다.

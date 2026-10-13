@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 94a8ea22bf3a06550a36a2783283dec123ed864370b6a69ec4377000d1129cc0 -->
+<!-- source-sha256: 0ed6a7d822622aebe1111d293dc4519b823bb8f64d6d1b122a8c2d4066f60c59 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -1017,6 +1017,7 @@
 - [o] T155 0.0.11을 release한다. 원인: hyper의 S-285가 기다리는 request hook 아래 restore(T140), component rule 검사와 그 rule(T147), 엄격한 vector reader(T133), Python schema coverage(T149), 0.0.10 이후의 수정이 main에 있다. 인수 조건: version-bump commit이 모든 manifest를 0.0.11로 두고 Unreleased를 0.0.11로 옮기며, 바뀐 lock의 의존성 review와 v0.0.11의 consumer lock을 기록한다; 그 CI가 성공한다; annotated tag v0.0.11을 push하고 release workflow가 게시한다. 증거: 그 commit에서 `make version-check`와 `make dependency-policy-check`가 통과한다.
 - [o] T157 markdown conformance에서 merge된 flowmark를 고정한다. 원인: flowmark T14가 열려 있는 동안 T140은 branch의 flowmark commit 5e065f4를 고정했다; flowmark는 orm v0.0.11과 함께 T14를 main의 8b5d16a로 merge했다. 인수 조건: tests/markdown/flowmark.version이 flowmark main을 고정하고 dialects 표가 그것을 옮겨 둔다. 증거: 고정은 v0.0.0-20261013184618-8b5d16a81141이고, `node scripts/docs/markdown-table.mjs`가 두 표가 그것을 옮겨 둔다고 보고하며, `make markdown-conformance-check`가 모든 client에서 restore case를 통과한다.
 - [ ] T158 T134, T135, T142 뒤 orm main CI를 green으로 되돌린다. 원인: 85d84f2c의 CI run 38462697441에서 feature_coverage, static, feature_verify_rust, conformance가 실패했다. 완료 기준: 각 sub-item의 check가 local에서 통과한다.
-  - [ ] T158-1 T142의 Go codec symbol을 기록한다 (T158 후속). 원인: interface check가 feature_coverage(interface_contract/owner/go), conformance(interfaces/go), feature_verify_rust(interface_contract/interface-self-test)에서 `go: unexpected packages/orm-go/orm/codec.go::yamlCoreScalar`와 `::yamlPlainUntagged`로 실패한다. 완료 기준: Go record가 두 symbol을 담고 `go run ./tests/interfaces/check -language go`가 통과하며, red를 먼저 확인한다.
+  - [o] T158-1 T142의 Go codec symbol을 기록한다 (T158 후속). 원인: interface check가 feature_coverage(interface_contract/owner/go), conformance(interfaces/go), feature_verify_rust(interface_contract/interface-self-test)에서 `go: unexpected packages/orm-go/orm/codec.go::yamlCoreScalar`와 `::yamlPlainUntagged`로 실패한다. 완료 기준: Go record가 두 symbol을 담고 `go run ./tests/interfaces/check -language go`가 통과하며, red를 먼저 확인한다.
+  - [ ] T142-6 interface-check가 실행하는 PHP 의존성을 설치한다 (T142-5에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `interfaces/php`와 `interfaces/php-extension`이 `php declarations: exit status 255`로 실패한다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
   - [ ] T158-2 socket 길이 test가 T135의 socket folder를 따른다 (T158 후속). 원인: static repo-check의 "test-servers.sh refuses a socket path longer than the platform limit"가 `Cannot find module '/tmp/orm-sock-.../d/.../scripts/free-ports.mjs'`로 실패한다. T135가 socket을 checkout 밖으로 옮겼는데 test는 여전히 checkout 경로를 늘린다. 완료 기준: test가 T135의 선언된 socket 위치로 한도를 넘기고 `make repo-check`가 통과하며, red를 먼저 확인한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
