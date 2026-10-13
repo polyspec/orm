@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 771ebb9704dc342c39e9122fca8f0369645791f81fb2786e29df55b1a984e7ef -->
+<!-- source-sha256: 0f5673ce8a95313761346438f8ddf9845d6cb54c710ca9a62fb5f3c4ed4fa8da -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -926,7 +926,7 @@
 - [ ] T128-3p 모든 runtime parse 결과의 선언 위치. 원인: flowmark 같은 도구가 text를 다시 훑어 선언을 찾고, 1행 1열 fallback을 가진다. 인수 조건: 성공한 parse 결과가 [editor stack 계획](editor-stack.ko.md)에 정의한 `{kind, path, line, column}`의 source 순서 목록 `positions`(반복 규칙에서 온 setting identity, primary key, document 이름 포함)를 `DbspecDocument` 밖에 가진다; `docs/dbspec.md`(+ko)에 적고 모든 kind의 vector와 모든 runtime의 parity를 가진다.
 - [ ] T128-3 모든 runtime의 `analyze`와 `format`. 인수 조건: 여섯 구현이 [editor stack 계획](editor-stack.ko.md)의 불변식을 지키며 표준 token과 canonical format을 돌려준다; `tests/dbspec/syntax.json`이 모든 runtime 검사와 `dbspec-compare-check`에서 실행된다; interface 규칙, symbol, parity unit, feature, php-extension 규칙, `docs/interfaces-model.md`(+ko)가 그것을 기록한다.
 - [ ] T128-3-1 모든 runtime에서 encoding 중단 앞의 줄을 parse한다(T128-3에 이어). 원인: Python은 encoding 오류에서 어떤 줄도 parse하기 전에 멈추지만, Go는 그 앞의 완전한 줄을 parse해 그 diagnostic을 먼저 보고한다; 그런 경우를 담은 vector가 없었다. 인수 조건: cases.json의 `encoding-after-a-syntax-error`(4행 syntax 오류, 8행 단독 CR)가 모든 runtime에서 두 diagnostic을 보고한다.
-- [ ] T128-4 `@polyspec/orm`의 browser-safe parser subpath. 인수 조건: parse, emit, analyze, format, `readDbspecBytes`를 `node:` module, Node global, driver가 없는 module에서 export하며, module graph test로 검사하고, interface 규칙에 기록한다.
+- [o] T128-4 `@polyspec/orm`의 browser-safe parser subpath. 인수 조건: parse, emit, analyze, format, `readDbspecBytes`를 `node:` module, Node global, driver가 없는 module에서 export하며, module graph test로 검사하고, interface 규칙에 기록한다. 증거: `@polyspec/orm/dbspec`이 node 없는 module(document.ts, read_bytes.ts, entry.ts)에서 parseDbspec, emitDbspec, analyzeDbspec, formatDbspec, readDbspecBytes를 export한다; packages/orm-npm/tests/browser-entry.mjs가 subpath의 module graph를 따라가며 먼저 node:crypto, node:fs, Buffer, driver를 지목하며 실패했고 이후 통과한다; `make dbspec-ts-check` 1335 통과; 옮긴 symbol로 typescript interface 검사가 통과한다.
 - [ ] T128-5 `packages/dbspec/language`와 `dbspec-fmt` CLI. 인수 조건: `openDocument`가 범위를 가진 진단, token, folding, `format`을 준다; `resolveSet`은 주입된 host를 받는다; CLI는 종료 코드 0, 1, 2로 template-fmt의 규칙을 따른다; test는 cases.json, syntax.json, 불변식, 멱등성, editor fixture를 다룬다.
 - [ ] T128-6 `packages/dbspec/lsp`. 인수 조건: utf-16 위치, 전체 동기화, 표준 class의 semantic token, folding, formatting, 감시 파일을 가진 set 파일 결정을 갖춘 `vscode-languageserver` 서버; fixture에 대한 stdio session test.
 - [ ] T128-7 docs fence가 language service로 `dbs` block을 highlight한다. 인수 조건: markdown-it fence hook이 밝고 어두운 색으로 token을 그리고, fence는 자기 묶음을 선언하며(`dbs set=…`), docs build는 fence 진단이 하나라도 있으면 실패한다.
