@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T142-7: every make target whose PHP script loads vendor-php checks it first (31 targets).
 - T134-1: the checkout wrapper packages/orm-python/bin/orm-gen is removed; the docs name the installed `orm-gen`.
 - T142-6: `interface-check` checks the PHP vendor first.
 - T142-5: `codec-check` checks the PHP vendor first and names `make install-php` when it is missing.

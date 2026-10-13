@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 670d9ba1c9ed22fd3f2a97dfa8d2147119c612df0491ddb3a1031b270816cbaa -->
+<!-- source-sha256: e0d2c053dfa68f946986897668393ce4c6fa33b2dd807641ea7de5808eb99a54 -->
 # 변경 이력
 
 ## Unreleased
 
+- T142-7: PHP script가 vendor-php를 읽는 모든 make target이 이를 먼저 확인한다(31개 target).
 - T134-1: checkout wrapper packages/orm-python/bin/orm-gen을 없앴다. 문서는 설치된 `orm-gen`을 적는다.
 - T142-6: `interface-check`가 PHP vendor를 먼저 확인한다.
 - T142-5: `codec-check`가 PHP vendor를 먼저 확인하고, 없으면 `make install-php`를 적는다.

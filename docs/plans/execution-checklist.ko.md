@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 5dc21215b39fcd34e0555ffd2d6e261b9d923a23e5c876aa4b51fba4d1950aef -->
+<!-- source-sha256: a727bc1f6a550e207487544e68ca0f0e12f3410a78b6fcbb3d53eb770e864c53 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -997,7 +997,8 @@
   - [o] T142-3 codec-check가 Python codec vector를 실행한다 (T142에 이어). 원인: packages/orm-python/tests/codec_vector.py를 실행하는 make target이 없어(python-unit-check는 `test_*.py`만 맞춘다) Python의 YAML 결함이 드러나지 않았다. 완료 조건: codec-check가 이를 실행하고, 깨진 vector로 먼저 red를 확인한다.
   - [o] T142-4 codec-check가 lease tool을 준비한다 (T142에 이어). 원인: 새 checkout에서 `make lease-tool` 전에는 `make codec-check`가 `.runtime/bin/lease ENOENT`로 실패한다. codec-check/rust에 선행 조건이 없다. 완료 조건: codec-check가 lease-tool에 의존하고, 새 worktree에서 먼저 red를 확인한다.
   - [o] T142-5 codec-check가 실행하는 PHP 의존성을 설치한다 (T142-4에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `codec-check/compare`가 packages/orm-php/tests/autoload.php의 PHP fatal error로 멈춘다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
-  - [ ] T142-7 모든 PHP target이 PHP vendor를 확인한다 (T142-5에 이어). 원인: testcase-check/php, dbspec-*-php 검사, client-unit-check가 `php-vendor-check` 없이 vendor-php를 읽어, 새 checkout에서 이름 있는 단계 대신 PHP fatal error로 끝난다. 완료 조건: 각각 선행 조건을 갖고, 새 worktree에서 먼저 red를 확인한다.
+  - [o] T142-7 모든 PHP target이 PHP vendor를 확인한다 (T142-5에 이어). 원인: testcase-check/php, dbspec-*-php 검사, client-unit-check가 `php-vendor-check` 없이 vendor-php를 읽어, 새 checkout에서 이름 있는 단계 대신 PHP fatal error로 끝난다. 완료 조건: 각각 선행 조건을 갖고, 새 worktree에서 먼저 red를 확인한다.
+  - [ ] T142-8 PHP를 실행하는 node script의 PHP vendor를 확인한다 (T142-7에 이어). 원인: scripts/case-database-check.mjs(model_test.php), scripts/unselected-column-physical-check.mjs, scripts/decimal-physical-check.mjs가 vendor-php를 읽는 PHP를 실행하는데, 그 make target에 `php-vendor-check`가 없다. 완료 조건: 각 target이 선행 조건을 갖고, 새 worktree에서 먼저 red를 확인한다.
 - [ ] T143 TypeScript와 PHP set reader가 Windows의 모든 name surrogate를 감지한다(T128-2a-5에 이어). 원인: docs/dbspec.md 단계 3은 tag가 name surrogate인 모든 reparse point를 symbolic link로 보지만, Node와 PHP의 lstat은 symbolic link와 junction만 보고하므로 다른 name-surrogate tag(WSL symlink tag)를 따른다. Go, Rust, PHP extension은 `IsReparseTagNameSurrogate`를 검사한다. 인수 조건: TypeScript와 PHP reader가 선언된 방식으로 reparse tag에 닿거나, 명세가 근거와 함께 지원 tag를 적는다; 조용한 차이는 없다.
 - [o] T144 checkout에서 `packages/orm-php/bin/orm-gen`을 실행한다. 원인: `php packages/orm-php/bin/orm-gen`이 autoload 조회에서 `vendor-php`를 찾지 못해 `Class "Polyspec\Orm\OrmGen" not found`로 멈추므로 README의 명령이 실패한다; `vendor-php/bin/orm-gen`은 동작한다. 인수 조건: bin이 저장소가 설치하는 autoloader를 찾으며, red를 먼저 본다. 증거: Composer proxy 없이 실행한 bin은 autoloader를 찾지 못해 `Class "Polyspec\Orm\OrmGen" not found`로 죽었다; 이제 Composer의 문서화된 조회(`$_composer_autoload_path`, `composer-runtime-api ^2.2` 요구)로 autoloader를 얻고, 경로를 추측하지 않고 없는 autoloader를 적어 상태 2로 끝나며, 문서는 Composer가 설치하는 bin인 `vendor-php/bin/orm-gen`을 실행한다; `make client-unit-check/orm-gen`이 새 case 둘을 통과한다.
 - [o] T145 mysql2를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 packages/orm-npm이 3.24.5를 고정한 사이 mysql2 3.24.6이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mysql2를 3.24.6에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 없다; `make dependency-policy-check`와 `make typescript-build`가 통과한다.
