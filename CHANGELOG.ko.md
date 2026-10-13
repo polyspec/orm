@@ -1,11 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fa21003a24ab6abb2aec5a91010c043e9fd58e912979baf0f0dd3246209bcf3e -->
+<!-- source-sha256: 959645bfcecfdd19a8b150b2efbd97f7197c648a05fa0c0b51b8269974eca2d1 -->
 # 변경 이력
 
 ## Unreleased
 
 ## 0.0.11
 
+- T140-1: docs/dialects.md의 Markdown IR executor 표가 markdown conformance가 고정한 flowmark를 옮겨 둔다.
 - T153: Python Collection의 get과 fetched가 key_text를 import해 더는 NameError로 실패하지 않는다.
 - T147: interface 검사가 rule이 선언하지 않은 공개 component method를 거부한다.
 - T147-5: Rust AesKeyring이 key version을 나열하고, rule AESKeyring.versions가 선언된다.
