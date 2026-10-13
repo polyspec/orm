@@ -1,0 +1,8 @@
+dbspec 1 shop
+
+# 😀 café
+table users {
+  id i64 identity
+  note varchar(64) default 'ok 😀'
+  primary key (id)
+}

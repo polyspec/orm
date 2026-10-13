@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-5: `@polyspec/dbspec-language` (`packages/dbspec-language`) is the dbspec language service: `openDocument(text, {set})` gives the diagnostics with UTF-16 ranges, the tokens, the folding ranges of the blocks and `format()`, through the browser-safe parser entry only.
 - T128-3-2: `tests/dbspec/syntax.json` holds the tokens of the nine cases that T129 added and no longer names the three it removed.
 - T128-4-1: `@polyspec/orm/dbspec` is browser-safe again: the renderer names take SHA-256 from `@noble/hashes` and their byte length from `TextEncoder` instead of `node:crypto` and `Buffer`, and the browser entry test follows a declared browser package into its modules.
 - T128-2-3: the editor packages are placed by the folder standard S5: `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror` and `packages/dbspec-vscode`, each a component of its own, instead of the nested `packages/dbspec/<part>/` that S5 refuses.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f3d1af5aec1e7f79dcd6e835f10af8b0c72bf0a7884ab6ea256d983afa53dcbf -->
+<!-- source-sha256: d2d585e3599d022f40707126ca11013427e3e3d371d11638e435bc74e0d42628 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-5: `@polyspec/dbspec-language`(`packages/dbspec-language`)가 dbspec language service다: `openDocument(text, {set})`가 UTF-16 range를 가진 diagnostic, token, block의 folding range, `format()`을 browser-safe parser entry만으로 준다.
 - T128-3-2: `tests/dbspec/syntax.json`이 T129가 더한 case 아홉의 token을 담고, 지운 case 셋을 더는 적지 않는다.
 - T128-4-1: `@polyspec/orm/dbspec`가 다시 browser-safe다: renderer 이름은 `node:crypto`와 `Buffer` 대신 `@noble/hashes`에서 SHA-256을, `TextEncoder`에서 byte 길이를 얻으며, browser entry test는 선언한 browser package의 module까지 따라간다.
 - T128-2-3: editor package를 폴더 표준 S5대로 둔다: S5가 거부하는 중첩 `packages/dbspec/<part>/` 대신 각자 독립 component인 `packages/dbspec-language`, `packages/dbspec-lsp`, `packages/dbspec-codemirror`, `packages/dbspec-vscode`다.

@@ -1,0 +1,32 @@
+{
+  "name": "@polyspec/dbspec-language",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The dbspec language service: diagnostics with ranges, tokens, folding and formatting of one document",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@polyspec/orm": "0.0.9"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
