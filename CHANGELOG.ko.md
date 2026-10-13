@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4ad71e4b75c429afea6c9384fe42db57ad276efb554619ede09580d7e51c6209 -->
+<!-- source-sha256: 4640944ecf4178faa43378e2411fccb205cbedba63e673abbb2f52fe9b515c1f -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-2a-4 (breaking): Python `orm-gen gen`이 argparse로 읽는 `--set <dbspec-set.json>`으로 set 파일을 받는다; `--schema`와 `--use`는 지웠다. `read_dbspec_set`이 docs/dbspec.md "Document sets"대로 set 파일을 읽는다.
 - T128-2a-1-2: set reader가 set 파일의 어느 object에서든 반복된 key를 거부하고 `schema`를 IEEE 754 double로 읽는다.
 - T139: Rust YAML codec이 yaml-rust2만으로 읽고 쓰며 YAML 1.2 core schema로 decode한다(`07`은 7, `0b101`과 `tRuE`는 문자열, i64를 넘는 정수와 `1e400`은 `CODEC_DECODE`); serde_yaml_ng와 유지보수가 끊긴 unsafe-libyaml이 두 Rust lock에서 빠진다. yaml-rust2가 그대로 되읽히게 쓸 수 없는 문자열은 `CODEC_ENCODE`다(T139-1).
 - T128-2a-1-1: set reader가 root를 끝의 구분자 없이 조사하므로 root의 symbolic link를 따르지 않는다.
