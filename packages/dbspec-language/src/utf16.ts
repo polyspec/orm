@@ -45,3 +45,8 @@ export function rangeOf(lines: readonly string[], line: number, start: number, e
     end: { line: line - 1, character: utf16Offset(text, end) },
   };
 }
+
+/** The 1-based code point column of the parser at the UTF-16 offset `character` of `line`. */
+export function codePointColumn(line: string, character: number): number {
+  return [...line.slice(0, character)].length + 1;
+}
