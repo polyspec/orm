@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: d893c77651bf0a8fa366d25babb0e1adfbd9bbfea58a2ac0e55f8fbec5bbb618 -->
+<!-- source-sha256: 8a7f7054615718caf882a1ef745a40cbb4e8a48aeee851ef560a4f50fc6862b0 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -962,4 +962,5 @@
 - [ ] T135 test 서버 socket을 Unix socket 경로 한도 안에 둔다. 원인: scripts/test-servers.sh가 socket을 checkout 아래에 두어, 긴 worktree 경로에서 `proxysql-admin-pgsql.sock`이 104 byte로 macOS 한도 103을 넘어 database test가 시작되지 못했다(T128-3p Python agent가 찾음). 인수 조건: socket 경로는 길이를 검사하는 짧은 선언된 장소에서 오며 넘으면 이름을 댄 오류를 내고, 긴 경로로 red를 먼저 본다.
 - [ ] T136 새 worktree에서 `make install`을 재현하고 고친다. 원인: T128-3p agent가 새 worktree에서 `make install`이 Python 도구에서 실패하며 uv가 선언되지 않았다고 보고했다; uv는 선언되어 있으므로(config/toolchain.json) 보고된 원인은 틀렸고 진짜 원인은 모른다. 인수 조건: 새 worktree에서 실패를 정확한 출력과 함께 재현하고, 원인을 고치거나 보고가 틀렸음을 보이며, red를 먼저 본다.
 - [ ] T137 kit의 현재 release와 그 표준을 받아들인다. 원인: orm은 kit이 표준 S1–S9를 담은 PRINCIPLES.md와 TypeScript 도구를 갖기 전의 v0.0.31을 vendor한다; orm AGENTS.md:31은 아직 `packages/orm-<kind>`를 정하는데, 폴더 표준 S5는 이를 거부한다(repository prefix 없음, runtime port는 `packages/<runtime>/`). 인수 조건: kit 최신 release로 `make kit-sync`; AGENTS.md(+ko)가 vendor한 PRINCIPLES.md를 link하고 orm 고유 규칙만 남긴다; `config/layout.yml`이 kit 공통 규칙 위에 orm을 매핑하며 예외마다 이유를 단다; runtime package를 `packages/<runtime>/`(go, ts, php, php-ext, python, rust)로 옮기고 모든 경로, manifest, module path, workflow를 호환 경로 없이 갱신한다; `make layout-check`와 `make kit-check`가 통과한다.
+- [o] T138 mermaid를 최신 release로 고정한다. 원인: 2026-10-13 의존성 review가 root package가 12.1.0을 고정한 사이 mermaid 12.2.0이 나왔음을 찾았고, 의존성 정책은 이를 거부한다. 인수 조건: mermaid를 12.2.0에 고정하고 review가 이를 기록한다. 증거: 변경 전 `make dependency-review RECORD=1`이 이 finding을 보고했고 변경 후에는 보고하지 않는다; `npm run docs:check`가 Mermaid source 20개와 함께 통과한다.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
