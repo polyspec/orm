@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2e6c5641341651a17fdbe62277bc5c213afcdcc3474b2f0ffe522abd399131a9 -->
+<!-- source-sha256: d58e1bab04848383e1b9c710d48c4a246760e59b8f818287e7a0ca668bbabf54 -->
 # 변경 이력
 
 ## Unreleased
 
+- T158-3: `codec-check`가 python need를 선언해, 이를 실행하는 job이 venv를 준비한다.
 - T158: T134, T135, T142 이후 orm main CI가 다시 green이다.
 - T158-2: socket 거부 테스트는 T135가 둔 socket 폴더를 길게 만든다.
 - T158-1: Go symbol 기록이 T142의 YAML core 함수를 담는다.
