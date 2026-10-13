@@ -1176,7 +1176,7 @@ codec-check: codec-check/compare
 codec-check/go:
 	mkdir -p $(CODEC_OUT)
 	ORM_CODEC_OUT=$(CODEC_OUT) $(GO_TEST) ./packages/orm-go/orm -run '^TestCodecVectors$$' -count=1
-codec-check/rust: cargo-downloads-check
+codec-check/rust: cargo-downloads-check lease-tool
 	mkdir -p $(CODEC_OUT)
 	cd packages/orm-rust && ORM_CODEC_OUT=$(CODEC_OUT) $(CARGO_TEST) codec-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib codec::tests::vectors -- --exact
 codec-check/typescript: lease-tool
