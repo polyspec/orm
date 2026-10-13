@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 6728c4446720a76e6c8e8df2d62bfc6cf601aba6a41d587254e8bda38c2fb202 -->
+<!-- source-sha256: 302099ea9cb8af12929ea3990ca62e7e8c38e5894a47062fd003af3b65240172 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `schema/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -10,12 +10,13 @@
 
 | 언어 | 도구 |
 |---|---|
-| Go | `orm-gen gen --document <file.dbs>... --lang go --out <directory> --scan <package pattern>...` |
-| PHP | `vendor/bin/orm-gen gen --out <directory> --namespace <namespace> <files.dbs...>` |
-| TypeScript | `@polyspec/orm`의 `orm-gen gen --schema <file.dbs> --out <directory> --scan <path>` |
-| Rust | `build.rs`의 `polyspec_orm_build::Builder::new([<files.dbs>]).scan("src").generate()` |
+| Go | `orm-gen gen --set <dbspec-set.json> --lang go --out <directory> --scan <package pattern>...` |
+| PHP | `vendor/bin/orm-gen gen --set <dbspec-set.json> --out <directory> --namespace <namespace>` |
+| TypeScript | `@polyspec/orm`의 `orm-gen gen --set <dbspec-set.json> --out <directory> --scan <path>` |
+| Python | `packages/orm-python/bin/orm-gen`의 `orm-gen gen --set <dbspec-set.json> --out <directory> --scan <path>` |
+| Rust | `build.rs`의 `polyspec_orm_build::Builder::set("<dbspec-set.json>").scan("src").generate()` |
 
-각 도구는 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
+각 도구는 document set을 [set 파일](dbspec.ko.md#document-sets)로만 받고 자기 client의 set reader로 읽는다. set 파일에 error가 있으면 도구는 모든 error를 출력하고 아무것도 쓰지 않는다. 그다음 각 도구는 나열된 모든 문서 파일을 자기 client의 file reader로 읽는다. reader는 dbspec signature로 시작하지 않는 파일을 parse 전에 `signature` error로 거부하며([파일](dbspec.md#files)), 그러면 도구는 `SCHEMA_INVALID`로 실패하고 모델을 쓰지 않는다.
 
 `github.com/polyspec/orm/generator` 패키지는 다른 프로그램에 Go 생성을 제공한다. `generator.Generate`는 document set의 runtime model, 출력 디렉터리, `PackageName`(기본값은 디렉터리 이름), 호출을 생성할 패키지 패턴인 `Scan`을 받는다. 이름 규칙, 필드 대응, 출력은 ORM generator가 책임진다.
 

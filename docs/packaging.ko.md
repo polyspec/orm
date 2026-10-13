@@ -1,11 +1,11 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 7dc0cc9635b0780eded45314e780188ff22024bacff733cbeb96f9c0c0f9fae9 -->
+<!-- source-sha256: eac0e9d9f8c7a8125bd6e543227a931fa97f2446b2c44aaa82c0d48ae024c1f1 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
 |---|---|---|---|
 | 문장 계획 | 호출한 프로세스 안의 클라이언트 라이브러리. 실행기는 네이티브 드라이버를 사용한다 | ORM 도입에 라이브러리만 필요하며 배포하고 운영할 서비스나 데몬이 없다 | 없음 |
-| 모델 생성 | 언어마다 생성기 하나: Go `orm-gen gen --lang go`, PHP `vendor/bin/orm-gen`, TypeScript `orm-gen` npm bin, Rust `build.rs`의 `polyspec-orm-build` crate | 각 언어가 자기 빌드 도구로 빌드한다 | 없음 |
+| 모델 생성 | 언어마다 생성기 하나: Go `orm-gen gen --lang go`, PHP `vendor/bin/orm-gen`, TypeScript `orm-gen` npm bin, Rust `build.rs`의 `polyspec-orm-build` crate. 각 생성기는 document set을 set 파일 `dbspec-set.json`으로만 받는다([문서 집합](dbspec.ko.md#document-sets)) | 각 언어가 자기 빌드 도구로 빌드하고, set 파일 하나가 모두에게 set을 선언한다 | 없음 |
 | 언어 간 동일성 | MySQL, PostgreSQL, SQLite에서 `tests/conformance` 벡터 실행 | 네 플래너가 같은 SQL, bind, 결과를 만들어야 한다 | 없음 |
 | artifacts | `orm-gen-<version>-<os>-<arch>`, `SHA256SUMS` | Go `orm-gen`은 빌드 시점에 실행한다. 스키마 작업은 클라이언트 라이브러리 함수다 | version은 VERSION 파일에서 오며 `latest` symlink를 사용하지 않는다 |
 | distribution | Go: module path; PHP: `bin/orm-gen`을 포함한 composer package `polyspec/orm`; TypeScript: `orm-gen` bin을 포함한 npm package `@polyspec/orm`; Rust: `polyspec-orm`과 `polyspec-orm-build` crate | — | registry 게시가 필요하면 별도 결정으로 처리한다 |
