@@ -133,6 +133,8 @@ final class Parser
     private array $defaultValues = [];
     /** @var int 설정 줄을 읽는 커서가 다음에 읽을 token의 위치 */
     private int $cursor = 0;
+    /** @var list<Position> the declaration positions in the order they were read; run sorts them */
+    private array $positions = [];
 
     /**
      * @param array<string, string> $documents the declared document set
@@ -147,7 +149,7 @@ final class Parser
         $this->used ??= new \ArrayObject();
     }
 
-    /** @return array{0: ?Document, 1: list<Diagnostic>} */
+    /** @return array{0: ?Document, 1: list<Diagnostic>, 2: ?list<Position>} */
     public function run(string $source): array
     {
         $stop = null;
@@ -157,7 +159,7 @@ final class Parser
             $stop = array_pop($this->diagnostics);
         }
         if ($this->diagnostics === [] && $stop === null) {
-            return [$this->document, []];
+            return [$this->document, [], $this->sortedPositions()];
         }
         $rank = array_flip(self::RULES);
         $order = array_keys($this->diagnostics);
@@ -166,7 +168,51 @@ final class Parser
         if ($stop !== null) {
             $diagnostics[] = new Diagnostic(...$stop);
         }
-        return [null, $diagnostics];
+        return [null, $diagnostics, null];
+    }
+
+    /** The positions in source order, by line and then column; equal places keep the order they were read. @return list<Position> */
+    private function sortedPositions(): array
+    {
+        $order = array_keys($this->positions);
+        usort($order, fn(int $a, int $b): int => [$this->positions[$a]->line, $this->positions[$a]->column, $a] <=> [$this->positions[$b]->line, $this->positions[$b]->column, $b]);
+        return array_map(fn(int $i): Position => $this->positions[$i], $order);
+    }
+
+    /**
+     * Records the declaration at the line being read, at the token that names it (or, for a
+     * setting and the primary key, the keyword). Only a successful parse returns the records.
+     *
+     * @param list<string> $path
+     * @param array{0: string, 1: int} $token
+     */
+    private function declare(string $kind, array $path, array $token): void
+    {
+        $this->positions[] = new Position($kind, $path, $this->line, $token[1]);
+    }
+
+    /**
+     * The identity of a setting line that the repeat rule makes unique, as docs/dbspec.md
+     * "Declaration positions" states it: the column of codec, markdown, navigation and
+     * blind_index, the column and state of checkbox, and for state_machine the form and states
+     * (the column is left out). Every other setting has no identity.
+     *
+     * @param list<array{0: string, 1: int}> $arguments
+     * @return list<string>
+     */
+    private static function settingIdentity(string $keyword, ?string $form, array $arguments): array
+    {
+        $texts = array_map(static fn(array $a): string => $a[0], $arguments);
+        return match ($keyword) {
+            'codec', 'markdown', 'navigation', 'blind_index' => [$texts[0]],
+            'checkbox' => [$texts[0], $texts[1]],
+            'state_machine' => match ($form) {
+                'transition' => ['transition', $texts[1], $texts[2]],
+                'history' => ['history'],
+                default => [$form, $texts[1]],
+            },
+            default => [],
+        };
     }
 
     private function read(string $source): void
@@ -462,6 +508,7 @@ final class Parser
         $t = $this->tokens;
         $this->name($t[2]);
         $this->document = new Document($t[2][0]);
+        $this->declare('document', [$t[2][0]], $t[2]);
     }
 
     private function topLine(): void
@@ -522,6 +569,10 @@ final class Parser
         }
         $name = $document[0];
         $this->document->uses[] = new UseLine($name, array_map(static fn(array $table): string => $table[0], $tables), $this->takeComments());
+        $this->declare('use', [$name], $document);
+        foreach ($tables as $table) {
+            $this->declare('use_table', [$name, $table[0]], $table);
+        }
         $failed = function () use ($tables): void {
             foreach ($tables as [$table]) {
                 $this->failedTables[$table] = true;
@@ -643,6 +694,7 @@ final class Parser
         }
         $table = new Table($name[0], $this->takeComments());
         $this->document->tables[] = $table;
+        $this->declare('table', [$name[0]], $name);
         if ($name[0] !== '') {
             if (isset($this->tables[$name[0]])) {
                 // Go는 표 줄이 실패한 표의 이름 중복을 보고하지 않는다(validate.go의 failed table).
@@ -825,6 +877,7 @@ final class Parser
             }
         }
         $this->table->columns[] = $column;
+        $this->declare('column', [$this->table->name, $name[0]], $name);
     }
 
     /**
@@ -929,6 +982,7 @@ final class Parser
             return;
         }
         $this->table->primaryKey = new PrimaryKey(array_map(static fn(array $c): string => $c[0], $list[0]), $this->takeComments());
+        $this->declare('constraint', [$this->table->name, 'primary key'], $first);
         $this->checkKeyColumns($list[0], $first[1], true, 'primary key');
     }
 
@@ -951,6 +1005,7 @@ final class Parser
         } else {
             $this->table->uniqueKeys[] = new UniqueKey($name[0], $columns, $this->takeComments());
         }
+        $this->declare('constraint', [$this->table->name, $name[0]], $name);
         $this->checkKeyColumns($list[0], $name[1], false, ($index ? 'index' : 'unique key') . " `{$name[0]}`");
     }
 
@@ -1074,6 +1129,7 @@ final class Parser
             $this->takeComments(),
         );
         $this->table->foreignKeys[] = $foreignKey;
+        $this->declare('constraint', [$this->table->name, $name[0]], $name);
         $known = true;
         // Go의 known이다: 자식 열이 모두 알려지고 겹치지 않을 때만 색인 검사를 한다.
         $childrenKnown = true;
@@ -1121,6 +1177,7 @@ final class Parser
         $this->constraintName($name);
         $check = new Check($name[0], '', $this->takeComments());
         $this->table->checks[] = $check;
+        $this->declare('constraint', [$this->table->name, $name[0]], $name);
         $this->tableChecks[] = [$check, $this->line, array_slice($this->tokens, 3), $this->endColumn()];
     }
 
@@ -1237,6 +1294,7 @@ final class Parser
         }
         $this->settingsBlock->settings[] = new Setting($kind, array_map(static fn(array $a): string => $a[0], $arguments), $this->takeComments(), $listed['exclude'] ?? null, $listed['include'] ?? null);
         if (!$this->detachedBlock) {
+            $this->declare('setting', [$this->table->name, $keyword, ...self::settingIdentity($keyword, null, $arguments)], [$keyword, $at]);
             $this->tableSettings[] = [$kind, $arguments, $this->line, $at, $lists, null];
         }
     }
@@ -1298,6 +1356,7 @@ final class Parser
         if ($name === null) {
             return;
         }
+        $this->declare('diagram', [$name[0]], $name);
         $this->name($name);
         if ($this->expectAt(2, '{')) {
             $this->endAt(3);
@@ -1364,6 +1423,7 @@ final class Parser
         }
         if ($valid) {
             $this->diagram->placements[] = new Placement($table[0], $values[0], $values[1], $this->takeComments());
+            $this->declare('diagram_entry', [$this->diagram->name, $table[0]], $table);
         }
     }
 
@@ -1914,6 +1974,7 @@ final class Parser
             $requires,
         );
         if (!$this->detachedBlock) {
+            $this->declare('setting', [$this->table->name, $keyword, ...self::settingIdentity($keyword, $form, $arguments)], [$keyword, $at]);
             $this->tableSettings[] = [$keyword, $arguments, $this->line, $at, $lists, $form];
         }
     }

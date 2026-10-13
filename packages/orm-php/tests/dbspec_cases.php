@@ -45,6 +45,9 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
             if ($result->document !== null) {
                 throw new RuntimeException("$id: a document was returned with diagnostics expected");
             }
+            if ($result->positions !== null) {
+                throw new RuntimeException("$id: positions were returned for an invalid document");
+            }
             $got = array_map(static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule], $result->diagnostics);
             $want = array_map(static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']], $case['errors']);
             if ($got !== $want) {
@@ -68,6 +71,46 @@ function dbspec_run_cases(string $kind, array $cases, float $deadlineSeconds): i
             if ($again->document === null || Polyspec\Orm\Dbspec\Dbspec::emit($again->document) !== $emitted) {
                 throw new RuntimeException("$id: emission is not idempotent");
             }
+        }
+        cpuCaseEnd($id, $clock);
+        $passed++;
+    }
+    return $passed;
+}
+
+/**
+ * Runs the positions cases: each parses its main document and must return the
+ * listed positions, in order, with the listed kind, path, line and column.
+ * The section is read strictly: a case or position with an unknown or missing
+ * field is an error.
+ */
+function dbspec_run_position_cases(array $cases, float $deadlineSeconds): int
+{
+    $passed = 0;
+    foreach ($cases as $case) {
+        if (array_keys($case) !== ['id', 'documents', 'main', 'positions']) {
+            throw new RuntimeException('positions case has unexpected fields: ' . implode(',', array_keys($case)));
+        }
+        $id = 'positions/' . $case['id'];
+        $clock = cpuCaseBegin($id, $deadlineSeconds);
+        $texts = dbspec_documents($case['documents'], false);
+        $result = Polyspec\Orm\Dbspec\Dbspec::parse($texts[$case['main']], $texts);
+        if ($result->document === null || $result->diagnostics !== []) {
+            throw new RuntimeException("$id: parse failed");
+        }
+        $got = [];
+        foreach ($result->positions as $p) {
+            $got[] = ['kind' => $p->kind, 'path' => $p->path, 'line' => $p->line, 'column' => $p->column];
+        }
+        $want = [];
+        foreach ($case['positions'] as $p) {
+            if (array_keys($p) !== ['kind', 'path', 'line', 'column']) {
+                throw new RuntimeException("$id: position has unexpected fields");
+            }
+            $want[] = $p;
+        }
+        if ($got !== $want) {
+            throw new RuntimeException("$id: positions differ\nwant " . json_encode($want) . "\ngot  " . json_encode($got));
         }
         cpuCaseEnd($id, $clock);
         $passed++;
