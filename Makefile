@@ -848,7 +848,7 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- ./scripts/php-without-mysql.sh
 
-client-db-check: lease-tool python-statement-fault-check python-identity-load-check
+client-db-check: lease-tool python-statement-fault-check python-identity-load-check python-schema-inspection-check
 	$(HOLD_TYPESCRIPT)
 	$(WITH_TEST_ENV) ORM_CLIENT_DB_LANES=parallel ./scripts/client-db-test.sh
 
@@ -864,6 +864,13 @@ python-statement-fault-check: python-venv-check
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
 	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/identity_load.py
+
+# python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
+# of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
+# test-servers (WITH_TEST_ENV).
+.PHONY: python-schema-inspection-check
+python-schema-inspection-check: python-venv-check
+	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/schema_inspection.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
