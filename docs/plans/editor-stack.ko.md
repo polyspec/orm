@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 5f8080201b9b1848378700a95839600e69c6abca745a5e6856edde6190093196 -->
+<!-- source-sha256: fca3109ba01548bc0cb7882bff0ca2411736e64244b60d7189e464d120a630d7 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -264,7 +264,7 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
 - **T128-4 `@polyspec/orm`의 browser-safe subpath**(판정 8). interfaces/symbol 기록에 들어간다. test는
   그 module graph에 `node:` module, driver, Node global `Buffer`, `process`, `__dirname`, `require`가
   없음을 확인한다.
-- **T128-5 `packages/orm-dbspec-language`.**
+- **T128-5 `packages/dbspec/language`.**
   - `openDocument(text, {set})`: 범위를 가진 진단, token, folding(table, settings, diagram block),
     `format()`.
   - `dbspec-fmt` CLI는 template-fmt의 규칙을 따른다(editor-tools.md:105-126):
@@ -282,13 +282,13 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
     - 2: parse 진단, 읽을 수 없는 파일, 잘못된 인자.
   - test: cases.json과 syntax.json, 불변식, 멱등성, editor fixture(`tests/editor/*.dbs` + `.json`,
     `--write|--check` script 포함).
-- **T128-6 `vscode-languageserver` 위의 `packages/orm-dbspec-lsp`.**
+- **T128-6 `vscode-languageserver` 위의 `packages/dbspec/lsp`.**
   - utf-16, 전체 동기화, semantic token(legend는 표준 class), folding, formatting.
   - set 파일 결정(판정 4), 감시하는 set 파일과 나열 파일.
   - fixture에 대한 stdio session test.
 - **T128-7 docs fence.** fence hook과 language service를 통한다. 밝은 theme와 어두운 theme의 색;
   subprocess 없음.
-- **T128-8 `packages/orm-dbspec-codemirror`와 `packages/orm-dbspec-vscode`.**
+- **T128-8 `packages/dbspec/codemirror`와 `packages/dbspec/vscode`.**
   - CodeMirror 6: mark, lint, fold, format 명령.
   - VS Code: language 기여, `semanticTokenScopes`, 묶어 넣은 LSP client, `.vsix` build.
   - test: EditorState를 통한 CodeMirror fixture; `vscode.provideDocumentSemanticTokens`를 확인하는
@@ -310,8 +310,9 @@ Cause, Acceptance, 그리고 `docs/editor.md`에 있다.
     - vscode package는 template처럼 `version` manifest.
   - 최신 안정판의 dependency review 기록: `vscode-languageserver`,
     `vscode-languageserver-textdocument`, `vscode-languageclient`, `@codemirror/*`.
-  - AGENTS.md(+ko)의 package 배치에 kind `dbspec-language`, `dbspec-lsp`, `dbspec-codemirror`,
-    `dbspec-vscode`를 더한다.
+  - package는 `PRINCIPLES.md`의 폴더 표준 S5(kit K70)를 따른다: component의 부분은 repository prefix 없이
+    `packages/<component>/<part>/`에 있으므로 editor stack은 `packages/dbspec/language`, `lsp`, `codemirror`, `vscode`다.
+    AGENTS.md(+ko)가 이 배치를 적는다.
 - **T128-R editor stack의 release.** 자기 항목이며 T126의 선례와 orm AGENTS.md:233-240을 따른다.
   - green CI 뒤의 `chore(release)` bump commit.
   - maintainer의 tag.

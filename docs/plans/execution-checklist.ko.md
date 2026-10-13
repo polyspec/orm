@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: d5875e8a787a2ef1d713c0bbf6f5a88be14179a38aec35c58c1674c3fe8bda9a -->
+<!-- source-sha256: ff83a41bcf46d9dcf7be09c96d463ae491faa57f9198df6f7923a0045b5452f2 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -924,10 +924,10 @@
 - [ ] T128-3p 모든 runtime parse 결과의 선언 위치. 원인: flowmark 같은 도구가 text를 다시 훑어 선언을 찾고, 1행 1열 fallback을 가진다. 인수 조건: 성공한 parse 결과가 [editor stack 계획](editor-stack.ko.md)에 정의한 `{kind, path, line, column}`의 source 순서 목록 `positions`(반복 규칙에서 온 setting identity, primary key, document 이름 포함)를 `DbspecDocument` 밖에 가진다; `docs/dbspec.md`(+ko)에 적고 모든 kind의 vector와 모든 runtime의 parity를 가진다.
 - [ ] T128-3 모든 runtime의 `analyze`와 `format`. 인수 조건: 여섯 구현이 [editor stack 계획](editor-stack.ko.md)의 불변식을 지키며 표준 token과 canonical format을 돌려준다; `tests/dbspec/syntax.json`이 모든 runtime 검사와 `dbspec-compare-check`에서 실행된다; interface 규칙, symbol, parity unit, feature, php-extension 규칙, `docs/interfaces-model.md`(+ko)가 그것을 기록한다.
 - [ ] T128-4 `@polyspec/orm`의 browser-safe parser subpath. 인수 조건: parse, emit, analyze, format, `parseSet`, `readDbspecBytes`를 `node:` module, Node global, driver가 없는 module에서 export하며, module graph test로 검사하고, interface 규칙에 기록한다.
-- [ ] T128-5 `packages/orm-dbspec-language`와 `dbspec-fmt` CLI. 인수 조건: `openDocument`가 범위를 가진 진단, token, folding, `format`을 준다; `resolveSet`은 주입된 host를 받는다; CLI는 종료 코드 0, 1, 2로 template-fmt의 규칙을 따른다; test는 cases.json, syntax.json, 불변식, 멱등성, editor fixture를 다룬다.
-- [ ] T128-6 `packages/orm-dbspec-lsp`. 인수 조건: utf-16 위치, 전체 동기화, 표준 class의 semantic token, folding, formatting, 감시 파일을 가진 set 파일 결정을 갖춘 `vscode-languageserver` 서버; fixture에 대한 stdio session test.
+- [ ] T128-5 `packages/dbspec/language`와 `dbspec-fmt` CLI. 인수 조건: `openDocument`가 범위를 가진 진단, token, folding, `format`을 준다; `resolveSet`은 주입된 host를 받는다; CLI는 종료 코드 0, 1, 2로 template-fmt의 규칙을 따른다; test는 cases.json, syntax.json, 불변식, 멱등성, editor fixture를 다룬다.
+- [ ] T128-6 `packages/dbspec/lsp`. 인수 조건: utf-16 위치, 전체 동기화, 표준 class의 semantic token, folding, formatting, 감시 파일을 가진 set 파일 결정을 갖춘 `vscode-languageserver` 서버; fixture에 대한 stdio session test.
 - [ ] T128-7 docs fence가 language service로 `dbs` block을 highlight한다. 인수 조건: markdown-it fence hook이 밝고 어두운 색으로 token을 그리고, fence는 자기 묶음을 선언하며(`dbs set=…`), docs build는 fence 진단이 하나라도 있으면 실패한다.
-- [ ] T128-8 `packages/orm-dbspec-codemirror`와 `packages/orm-dbspec-vscode`. 인수 조건: EditorState로 시험한 CodeMirror 6 mark, lint, fold, format 명령; semantic token scope를 가지고 문법 파일이 없으며 semantic highlighting을 기본으로 켜고 묶어 넣은 LSP client를 가진 VS Code 확장을 integration으로 시험한다; CI job은 kit 도구로 VS Code를 설치한다.
+- [ ] T128-8 `packages/dbspec/codemirror`와 `packages/dbspec/vscode`. 인수 조건: EditorState로 시험한 CodeMirror 6 mark, lint, fold, format 명령; semantic token scope를 가지고 문법 파일이 없으며 semantic highlighting을 기본으로 켜고 묶어 넣은 LSP client를 가진 VS Code 확장을 integration으로 시험한다; CI job은 kit 도구로 VS Code를 설치한다.
 - [ ] T128-9 editor package를 검사와 release 설정에 연결한다. 인수 조건: orm 규칙을 가진 kit import 검사, feature owner, check input, CI group, workspace build와 test script, release manifest와 consumer smoke, dependency review 기록, AGENTS.md(+ko)의 package 배치.
 - [ ] T128-R editor stack release. 인수 조건: green CI 뒤의 `chore(release)` bump commit, maintainer의 tag, release workflow, 모든 npm package의 `release-verify`.
 - [ ] T69 Release 0.0.9. 원인: T61, T62와 markdown IR executor인 T62-1, T63부터 T67까지는 polyspec/flowmark가 요구하는 protocol section, markdown 저장 setting과 executor를 추가하며, flowmark는 pseudo-version 대신 released tag를 요구한다. 완료 기준: 0.0.9의 release 절차를 이전 release 항목(T52, T56)과 같이 밟고 tag로 끝난다. T62-1, T63, T64, T65, T66, T67이 필요하다.
