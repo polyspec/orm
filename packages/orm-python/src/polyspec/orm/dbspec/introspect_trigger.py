@@ -31,25 +31,28 @@ def recognize_triggers(c: Catalog, dialect: str, triggers: dict) -> None:
             for tr in listed:
                 c.report('trigger', table, tr['name'], 'the table is not read')
             continue
-        setting = _trigger_setting(dialect, t, listed)
-        if setting is None:
+        lines = _trigger_setting(dialect, t, listed)
+        if lines is None:
             for tr in listed:
                 c.report('trigger', table, tr['name'],
                          'the trigger is not the renderer output of immutable or '
                          'audit')
             continue
-        t['settings'].append(setting)
+        t['settings'].extend(lines)
 
 
 def _trigger_setting(dialect: str, t: dict, listed: list):
-    """trigger 집합이 같은 renderer 출력을 주는 setting 줄을 돌려준다. 없으면
-    None이다."""
+    """각 setting을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본
+    setting들의 renderer 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 None
+    이다 (docs/dialects.md "Triggers"). 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지
+    않는다."""
     names = {tr['name']: tr for tr in listed}
-    candidates: list = []
-    if len(listed) == 2:
-        candidates.append(DbspecSetting('immutable'))
+    settings: list = []
+    if any(renderer_name(t["name"], event) in names
+           for event in ('immutable_update', 'immutable_delete')):
+        settings.append(DbspecSetting('immutable'))
     insert = names.get(renderer_name(t["name"], 'audit_insert'))
-    if insert is not None and len(listed) == 3:
+    if insert is not None:
         update = names.get(renderer_name(t["name"], 'audit_update'))
         m = _AUDIT_INSERT_PATTERN.match(_statement_body(insert['statements']))
         u = _AUDIT_UPDATE_PATTERN.search(_statement_body(update['statements']
@@ -57,25 +60,24 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
         audit = _audit_of(t, m.group(1), m.group(2).split(', '), u.group(1)) \
             if m is not None and u is not None else None
         if audit is not None:
-            candidates.append(audit)
-    r = Renderer(dialect)
-    for setting in candidates:
-        want = r.triggers(_trigger_model(t, setting))
-        got: list = []
-        complete = True
-        for name in _trigger_order(want):
-            tr = names.get(name)
-            if tr is None:
-                complete = False
-                break
-            got.extend(tr['statements'])
-        if not complete or len(got) != len(want) \
-                or any(s != want[i] for i, s in enumerate(got)):
-            continue
-        if setting.kind == 'immutable':
-            return 'immutable'
-        return audit_line(setting, 'exclude', setting.exclude)
-    return None
+            settings.append(audit)
+    if not settings:
+        return None
+    want = Renderer(dialect).triggers(_trigger_model(t, settings))
+    ordered = _trigger_order(want)
+    if len(ordered) != len(listed):
+        return None
+    got: list = []
+    for name in ordered:
+        tr = names.get(name)
+        if tr is None:
+            return None
+        got.extend(tr['statements'])
+    if len(got) != len(want) or any(s != want[i] for i, s in enumerate(got)):
+        return None
+    return ['immutable' if setting.kind == 'immutable'
+            else audit_line(setting, 'exclude', setting.exclude)
+            for setting in settings]
 
 
 def _audit_of(t: dict, into: str, quoted: list, column: str):
@@ -106,13 +108,13 @@ def _audit_of(t: dict, into: str, quoted: list, column: str):
                          include=None)
 
 
-def _trigger_model(t: dict, setting: DbspecSetting) -> DbspecTable:
+def _trigger_model(t: dict, settings: list) -> DbspecTable:
     """renderer가 trigger를 쓰는 데 필요한 table: 이름, column 이름과 type,
-    setting 하나다."""
+    알아본 setting들이다."""
     columns = tuple(DbspecColumn((), c['name'], c['type'], False, False, None)
                     for c in t['columns'])
     return DbspecTable((), t['name'], columns, DbspecPrimaryKey((), ()), (), (), (),
-                       (), DbspecSettings((), (setting,), ()), ())
+                       (), DbspecSettings((), tuple(settings), ()), ())
 
 
 def _trigger_order(statements: list) -> list:
