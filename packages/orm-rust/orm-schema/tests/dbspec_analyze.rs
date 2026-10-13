@@ -32,6 +32,7 @@ fn got(text: &str) -> Vec<Row> {
 
 #[test]
 fn token_classes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     const HEADER: &[Row] = &[(1, 0, 6, "keyword"), (1, 7, 8, "number"), (1, 9, 13, "name")];
     const TABLE_T: &[Row] = &[(2, 0, 5, "keyword"), (2, 6, 7, "name"), (2, 8, 9, "punctuation")];
     const TABLE_USER: &[Row] = &[(2, 0, 5, "keyword"), (2, 6, 10, "name"), (2, 11, 12, "punctuation")];
@@ -239,6 +240,7 @@ fn token_classes() {
 
 #[test]
 fn limit_stop_gives_no_tokens() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut text = String::from("dbspec 1 shop\n");
     for index in 0..4097 {
         text.push_str(&format!("table t{index} {{\n}}\n"));

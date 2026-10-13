@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d2d585e3599d022f40707126ca11013427e3e3d371d11638e435bc74e0d42628 -->
+<!-- source-sha256: bf4f4ea1b4d0ea8e8f7523004b1f307036efe09df6106419ac27236e81bccc38 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-3-3: 구문 분석, 선언 위치, browser entry의 Go, Rust, TypeScript test가 case harness로 case를 시작하므로 각각 deadline과 RUN 줄을 가진다.
 - T128-5: `@polyspec/dbspec-language`(`packages/dbspec-language`)가 dbspec language service다: `openDocument(text, {set})`가 UTF-16 range를 가진 diagnostic, token, block의 folding range, `format()`을 browser-safe parser entry만으로 준다.
 - T128-3-2: `tests/dbspec/syntax.json`이 T129가 더한 case 아홉의 token을 담고, 지운 case 셋을 더는 적지 않는다.
 - T128-4-1: `@polyspec/orm/dbspec`가 다시 browser-safe다: renderer 이름은 `node:crypto`와 `Buffer` 대신 `@noble/hashes`에서 SHA-256을, `TextEncoder`에서 byte 길이를 얻으며, browser entry test는 선언한 browser package의 module까지 따라간다.

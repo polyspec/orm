@@ -11,8 +11,11 @@ import { readFileSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test } from 'node:test';
 import ts from 'typescript';
+import { caseTest } from '../../../tests/testcase.mjs';
+
+// The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
+const TIMEOUT = 15000;
 
 const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(pkgRoot, 'package.json'), 'utf8'));
@@ -102,13 +105,13 @@ function graph() {
   return { modules: seen, violations };
 }
 
-test('the subpath module reaches no Node module, undeclared package or Node global', () => {
+caseTest('the subpath module reaches no Node module, undeclared package or Node global', TIMEOUT, () => {
   const { modules, violations } = graph();
   assert.ok(modules.size > 1, 'the graph follows the imports of the subpath module');
   assert.deepEqual(violations, [], `the browser entry reaches a Node or driver dependency:\n${violations.join('\n')}`);
 });
 
-test('the subpath module exports exactly the parser functions', async () => {
+caseTest('the subpath module exports exactly the parser functions', TIMEOUT, async () => {
   const entry = await import(start);
   assert.deepEqual(
     Object.keys(entry).sort(),
