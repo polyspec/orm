@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: fc17744acb8a66b177beb809cfe536abeee2fc3c233e1545cba147ae75ba23bf -->
+<!-- source-sha256: 22cae45bcd2bd7e0a3111d7f2a16fde829d2bf13938a4e53ff8242139697561d -->
 # 변경 이력
 
 ## Unreleased
 
+- T136-1: install-python test가 uv를 Python보다 먼저 설치하기를 요구한다.
 - T128-2a-8: Go와 PHP의 model 생성 coverage가 set 파일로 생성한다.
 - T146: orm-schema dbspec의 module 목록이 format되어 `make rust-fmt-check`가 통과한다.
 - T151: editor package는 editor stack release 전까지 release하지 않는 것으로 분류되고, 새 파일은 모두 그것을 읽는 검사가 소유하며, syntax vector generator는 재생성 test를 가지고, `make install-cli-check`가 dbspec-fmt를 임시 prefix에 설치한다.

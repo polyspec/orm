@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T136-1: the install-python test asserts that uv is installed before Python.
 - T128-2a-8: the model generation coverage of Go and PHP generates through the set file.
 - T146: the module list of orm-schema's dbspec is formatted, so `make rust-fmt-check` passes.
 - T151: the editor packages are classified as not released until the editor stack release, every new file is owned by the check that reads it, the syntax vector generator has a regeneration test and `make install-cli-check` installs dbspec-fmt into a temporary prefix.
