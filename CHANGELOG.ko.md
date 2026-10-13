@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 67851c8b05370536055bcbe1f1fc7ae49738fb8e88142be364457e5398282e38 -->
+<!-- source-sha256: 6be4213a523c373c1ec3e3ec44852a894699edcd0246687b34124dad79467f98 -->
 # 변경 이력
 
 ## Unreleased
 
+- T128-3p: 모든 client의 parse 결과가 선언 위치를 담으며, `make dbspec-compare-check`가 client 사이에서 이를 비교한다.
 - T128-2a-5 (breaking): PHP `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; 위치 인자 파일과 `--use`는 지웠다. `Dbspec::readSet`과 PHP extension의 native 짝이 set 파일을 읽는다.
 - T128-8-1: `@polyspec/dbspec-codemirror`(`packages/dbspec-codemirror`)가 dbspec의 CodeMirror 6 extension이다: language service에서 온 token 색, lint diagnostic, folding, Shift+Alt+F format.
 - T128-2a-2 (breaking): Go `orm-gen gen`이 `--set <dbspec-set.json>`을 받는다; `--document`, `--use`, `runtimemodel.LoadFileSet`은 지웠다. `dbspec.ReadSet`이 set 파일을 읽고 `runtimemodel.LoadSetFile`이 그것을 load한다.
