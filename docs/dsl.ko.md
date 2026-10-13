@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 8fbb2de1ab641d4fb6795f30a3bafad12727e2d567d1fc5ebb90119f97f25d3c -->
+<!-- source-sha256: cbb4089522047901be4940e9aee04f4f52afce0ee7a90edf967cac7c4b5c6d6e -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -94,7 +94,7 @@ Key   = [Operator] Column
   - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --set schema/dbspec-set.json --out src/models --scan src`를 실행한다.
   - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\Model`를 실행한다.
-  - Python은 타입이 있는 getter·setter를 가진 모델 클래스를 작성하고, 읽은 source 중 어떤 규칙에도 맞지 않는 model method를 보고한다. `packages/orm-python/bin/orm-gen`의 `orm-gen gen --set schema/dbspec-set.json --out model --scan src`을 실행한다.
+  - Python은 타입이 있는 getter·setter를 가진 모델 클래스를 작성하고, 읽은 source 중 어떤 규칙에도 맞지 않는 model method를 보고한다. package가 설치하는 console script로 `orm-gen gen --set schema/dbspec-set.json --out model --scan src`을 실행한다.
 
 ### 2.3 값 형태
 

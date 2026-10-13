@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: f560fc6e09ab0b896ea6a768b7dcc27a1960545961287067b7f6c6c1f3780f67 -->
+<!-- source-sha256: 977c2cda939b6eda97eb0102f5a169539b40aa932d616134e55979451983921a -->
 # 사용법
 
 하나의 dbspec document set에서 Go·PHP·Rust·TypeScript 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
@@ -85,7 +85,7 @@ table authors {
 go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
 npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
-packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out model --scan src
+orm-gen gen --set schema/dbspec-set.json --out model --scan src
 ```
 
 ```rust
@@ -100,7 +100,7 @@ fn main() {
 | Go | `//go:generate` 줄의 `orm-gen gen --lang go` | `go build` 전에 `go generate` |
 | PHP | `vendor/bin/orm-gen gen` | 스키마 변경 후 Composer 스크립트 |
 | TypeScript | `@polyspec/orm`의 `orm-gen gen` | `tsc` 전에 `build` 스크립트 |
-| Python | `packages/orm-python/bin/orm-gen gen` | 스키마나 scan한 소스가 바뀐 뒤 |
+| Python | `orm-gen gen`(Python package) | 스키마나 scan한 소스가 바뀐 뒤 |
 | Rust | `polyspec-orm-build` crate | `cargo build` 때마다 `build.rs`에서 실행. `polyspec_orm::models!()`가 모델을 `model` 모듈로 포함한다 |
 
 - Go, Rust, TypeScript 생성기는 `--scan`(Rust는 `scan`)으로 지정한 소스를 읽어 소스가 호출하는 체인 메서드를 생성한다. 그래서 잘못된 메서드 이름은 빌드를 멈춘다. PHP는 호출 시점에 체인 이름을 해석한다.

@@ -84,7 +84,7 @@ Every generator takes the document set as its [set file](dbspec.md#document-sets
 go run github.com/polyspec/orm/cmd/orm-gen gen --set schema/dbspec-set.json --lang go --out model --scan ./...
 vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace 'Example\Model'
 npx orm-gen gen --set schema/dbspec-set.json --out src/models --scan src
-packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out model --scan src
+orm-gen gen --set schema/dbspec-set.json --out model --scan src
 ```
 
 ```rust
@@ -99,7 +99,7 @@ fn main() {
 | Go | `orm-gen gen --lang go` in a `//go:generate` line | `go generate` before `go build` |
 | PHP | `vendor/bin/orm-gen gen` | a Composer script after the schema changes |
 | TypeScript | `orm-gen gen` of `@polyspec/orm` | the `build` script before `tsc` |
-| Python | `packages/orm-python/bin/orm-gen gen` | after the schema or a scanned source changes |
+| Python | `orm-gen gen` (Python package) | after the schema or a scanned source changes |
 | Rust | the `polyspec-orm-build` crate | `build.rs` on every `cargo build`; `polyspec_orm::models!()` includes the models as the module `model` |
 
 - Go, Rust, and TypeScript generation reads the source named by `--scan` (Rust: `scan`) and generates the chain methods that the source calls, so a wrong method name stops the build. PHP resolves chain names at call time.

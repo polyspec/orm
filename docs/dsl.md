@@ -93,7 +93,7 @@ Key   = [Operator] Column
   - TypeScript scans the files named by `--scan` with the TypeScript compiler API and writes exact method signatures: `orm-gen gen --set schema/dbspec-set.json --out src/models --scan src` in the `build` script before `tsc`.
   - Rust scans the sources named by `scan` with `syn` in `build.rs`: `polyspec_orm_build::Builder::set("schema/dbspec-set.json").scan("src").generate()`, and `polyspec_orm::models!()` includes the result as the module `model`.
   - PHP writes the model classes with column metadata and typed getters and setters: `vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\Model`.
-  - Python writes the model classes with typed getters and setters and reports the model methods of the scanned sources that no rule matches: `orm-gen gen --set schema/dbspec-set.json --out model --scan src` of `packages/orm-python/bin/orm-gen`.
+  - Python writes the model classes with typed getters and setters and reports the model methods of the scanned sources that no rule matches: `orm-gen gen --set schema/dbspec-set.json --out model --scan src`, the console script the package installs.
 
 ### 2.3 Value shapes
 

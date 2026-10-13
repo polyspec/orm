@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: c0763f921294a274b224f5062fea71217b77ac3c338c66a0b42e0112d16c3b89 -->
+<!-- source-sha256: 45c12c0fad5cafb5f63d533379cf4929b09a617dc1dafcca96ad40d1b55e4a02 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/dsl.ko.md](docs/dsl.ko.md), 작업 순서는 [docs/plan.ko.md](docs/plan.ko.md)에 명시되어 있다.
@@ -52,7 +52,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 
 ## 동작 구조
 - **Schema**: 직접 작성한 dbspec document 집합(`schema/*.dbs`, `docs/dbspec.md`)이다. 생성된 모델이 그 manifest text와 `manifestHash`를 담는다.
-- **Models**: 각 언어는 자기 빌드 도구로 모델을 생성한다: `go generate`(Go), `vendor/bin/orm-gen`(PHP), `npm run build` 안의 `orm-gen` npm bin(TypeScript), `packages/orm-python/bin/orm-gen`(Python), `build.rs`의 `polyspec-orm-build` crate(Rust).
+- **Models**: 각 언어는 자기 빌드 도구로 모델을 생성한다: `go generate`(Go), `vendor/bin/orm-gen`(PHP), `npm run build` 안의 `orm-gen` npm bin(TypeScript), Python package의 `orm-gen` console script(Python), `build.rs`의 `polyspec-orm-build` crate(Rust).
 - **Runtime**: 클라이언트 라이브러리는 담긴 manifest로 만든 runtime model로 각 문장 구조를 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스나 데몬은 없다.
 - **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+는 같은 request와 result 규칙을 사용한다(`docs/dialects.md`).
 - **Python**: Python client는 CI가 test하는 Python 3.14(CPython)를 지원한다. 그 release는 `.python-version`이며 `requires-python`이 이를 적는다(`docs/packaging.ko.md`).
@@ -89,7 +89,7 @@ go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares t
 `docs/errors.yaml` 오류 코드 · `docs/perf.md` 측정과 성능 검사 · `docs/plans/execution-checklist.md` 작업 계획.
 
 ## 도구
-`orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), `packages/orm-python/bin/orm-gen gen`(Python), `polyspec-orm-build`(Rust),
+`orm-gen gen --lang go | errors --lang`(Go), `vendor/bin/orm-gen gen`(PHP), `orm-gen gen`(TypeScript), Python package의 `orm-gen gen`(Python), `polyspec-orm-build`(Rust),
 `tests/conformance/check run|compare|record`.
 
 ## License
