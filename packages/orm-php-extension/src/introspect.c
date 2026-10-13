@@ -1096,6 +1096,9 @@ static setting *audit_setting(const itable *t, str history, const strs *quoted, 
 }
 
 /* trigger 집합이 같은 renderer 출력을 주는 setting의 줄, 없으면 NULL이다. */
+/* 각 setting을 자기 trigger 이름(재계산한 renderer 이름)으로 알아보고, trigger 집합이 알아본 setting들의 renderer
+ * 출력과 이름과 내용이 모두 같을 때만 그 setting 줄들을 돌려준다. 아니면 NULL이다(docs/dialects.md "Triggers").
+ * 두 setting을 함께 쓴 table은 두 출력의 합이며 개수로 판단하지 않는다. */
 static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
 {
     smap names = {0};
@@ -1106,14 +1109,16 @@ static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
     for (size_t i = 0; i < t->columns.n; i++) {
         PUSH(model->columns, column_new(t->columns.v[i].name, t->columns.v[i].type, false, false, NULL));
     }
-    settingv candidates = {0};
-    if (list->n == 2) {
+    settingv found = {0};
+    strs lines = {0};
+    if (smap_has(&names, dbs_renderer_name(t->name, SL("immutable_update"))) || smap_has(&names, dbs_renderer_name(t->name, SL("immutable_delete")))) {
         setting *s = dbs_alloc(sizeof *s);
         s->kind = SL("immutable");
-        PUSH(candidates, s);
+        PUSH(found, s);
+        PUSH(lines, SL("immutable"));
     }
     itrigger *insert = smap_get(&names, dbs_renderer_name(t->name, SL("audit_insert")));
-    if (insert != NULL && list->n == 3) {
+    if (insert != NULL) {
         itrigger *update = smap_get(&names, dbs_renderer_name(t->name, SL("audit_update")));
         str history, columns, column;
         if (audit_insert(trigger_body(&insert->statements), &history, &columns) && audit_update(trigger_body(update != NULL ? &update->statements : NULL), &column)) {
@@ -1131,44 +1136,41 @@ static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
             }
             setting *a = audit_setting(t, history, &parts, column);
             if (a != NULL) {
-                PUSH(candidates, a);
+                PUSH(found, a);
+                PUSH(lines, setting_audit_line(a, "exclude", a->exclude));
             }
         }
+    }
+    if (found.n == 0) {
+        return NULL;
+    }
+    model->settings = dbs_alloc(sizeof(settings));
+    for (size_t i = 0; i < found.n; i++) {
+        PUSH(model->settings->list, found.v[i]);
     }
     renderer r = {0};
     r.d = d;
-    for (size_t i = 0; i < candidates.n; i++) {
-        setting *s = candidates.v[i];
-        model->settings = dbs_alloc(sizeof(settings));
-        PUSH(model->settings->list, s);
-        strs want = r_triggers(&r, model);
-        strs got = {0};
-        strs order = trigger_order(&want);
-        bool complete = true;
-        for (size_t k = 0; k < order.n; k++) {
-            itrigger *tr = smap_get(&names, order.v[k]);
-            if (tr == NULL) {
-                complete = false;
-                break;
-            }
-            for (size_t m = 0; m < tr->statements.n; m++) {
-                PUSH(got, tr->statements.v[m]);
-            }
+    strs want = r_triggers(&r, model);
+    strs order = trigger_order(&want);
+    if (order.n != list->n) {
+        return NULL;
+    }
+    strs got = {0};
+    for (size_t k = 0; k < order.n; k++) {
+        itrigger *tr = smap_get(&names, order.v[k]);
+        if (tr == NULL) {
+            return NULL;
         }
-        if (!complete) {
-            got = (strs){0};
-        }
-        if (strs_eq(&got, &want)) {
-            strs *line = dbs_alloc(sizeof *line);
-            if (str_eqc(s->kind, "immutable")) {
-                PUSH(*line, SL("immutable"));
-            } else {
-                PUSH(*line, setting_audit_line(s, "exclude", s->exclude));
-            }
-            return line;
+        for (size_t m = 0; m < tr->statements.n; m++) {
+            PUSH(got, tr->statements.v[m]);
         }
     }
-    return NULL;
+    if (!strs_eq(&got, &want)) {
+        return NULL;
+    }
+    strs *out = dbs_alloc(sizeof *out);
+    *out = lines;
+    return out;
 }
 
 /* table마다 trigger 집합이 immutable이나 audit의 renderer 출력과 같으면 그 setting을 더하고, 아니면 모든 trigger를 보고한다. */
