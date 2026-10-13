@@ -20,6 +20,8 @@
 /docs/.vitepress/dist/
 /.runtime/
 /packages/orm-python/.venv/
+# The metadata that pip install --editable writes beside the source (make install-python).
+/packages/orm-python/src/*.egg-info/
 __pycache__/
 *.pyc
 /var/

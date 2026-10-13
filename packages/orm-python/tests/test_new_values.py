@@ -9,7 +9,6 @@ from pathlib import Path
 from test_sqlite import DDL, generate, run_script
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 
 class NewValuesTest(unittest.TestCase):

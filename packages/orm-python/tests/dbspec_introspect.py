@@ -14,7 +14,6 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 import psycopg  # noqa: E402
 import pymysql  # noqa: E402

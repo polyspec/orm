@@ -37,7 +37,7 @@
       "roots": ["packages/orm-python"],
       "tests": ["packages/orm-python/tests/coverage_*.py"],
       "command": "packages/orm-python/.venv/bin/python",
-      "env": [{ "name": "PYTHONPATH", "value": "../ordered-json/packages/ordered-json-python/src:packages/orm-python/src" }]
+      "env": []
     },
     {
       "name": "rust",

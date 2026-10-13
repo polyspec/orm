@@ -249,8 +249,8 @@ async function nativeTest(item, command, root) {
     throw new Error('invalid native test file extension');
   if (command.runner === 'node' || command.runner === 'php')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
-  // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON with the PYTHONPATH of the client
-  // (Makefile PYTHON_VENV, PYTHON_PATH); a python of PATH is not that interpreter.
+  // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON and where the client is installed
+  // (Makefile PYTHON_VENV); a python of PATH is not that interpreter.
   if (command.runner === 'python') {
     if (!process.env.ORM_PYTHON) throw new Error('ORM_PYTHON is unset; run this through make, which exports it');
     return { format: 'case', program: process.env.ORM_PYTHON, args: [testPath, ...command.cases] };

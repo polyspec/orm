@@ -311,10 +311,10 @@ dbspec-introspect-rust-check: cargo-downloads-check
 
 # dbspec-introspect-python-check는 같은 round trip과 미지원 case를 Python client의
 # polyspec.orm.dbspec.introspect.introspect_dbspec로 MySQL과 PostgreSQL 서버에서 실행하고(packages/orm-python/tests/dbspec_introspect.py),
-# 같은 case를 SQLite file에서도 실행한다. PYTHONPATH는 python-unit-check와 같다.
+# 같은 case를 SQLite file에서도 실행한다. It imports the client installed into the venv, as python-unit-check does.
 .PHONY: dbspec-introspect-python-check
 dbspec-introspect-python-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_introspect.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_introspect.py
 
 # dbspec-plan-check는 tests/dbspec/plans.json의 모든 case의 step을 MySQL, PostgreSQL, SQLite에
 # 적용해 plan의 target을, rollback statement로 source를, 다시 적용해 target을, finalize 뒤 target과
@@ -419,7 +419,7 @@ dbspec-introspect-compare-check: cargo-downloads-check lease-tool python-venv-ch
 	$(TSC_BUILD)
 	$(RUN_LONG) rust-build/dbspec_introspect --cwd packages/orm-rust -- $(CARGO_COPY) $(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --profile $(DBSPEC_INTROSPECT_PROFILE) --locked --offline -p polyspec-orm --example dbspec_introspect
 	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
-	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python PYTHONPATH=$(PYTHON_PATH) $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
+	$(WITH_TEST_ENV) DBSPEC_STRESS_DOCUMENT=$(DBSPEC_INTROSPECT_DOCUMENT) DBSPEC_INTROSPECT_RUST=$(RUN_TARGET)/$(DBSPEC_INTROSPECT_DIR)/examples/dbspec_introspect ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) DBSPEC_INTROSPECT_PYTHON=$(PYTHON_VENV)/bin/python $(GO_TEST) -tags physical ./tests/dialects -run '^TestIntrospectCompare$$' -count=1
 	rm -rf $(RUN_DIR)
 
 dbspec-introspect-compare-bench:
@@ -447,19 +447,19 @@ dbspec-compare-check: dbspec-compare-check/unit dbspec-compare-check/runners dbs
 	rm -rf $(RUN_DIR)
 dbspec-compare-check/unit:
 	node --test tests/dbspec/compare/check.test.mjs
-# PYTHON_VENV는 install-python이 만드는 virtual environment다. Python client의 의존성(pyproject.toml의 cryptography,
-# PyMySQL, psycopg, PyYAML)을 고정 버전으로 설치하며, 검사는 이 interpreter를 ORM_PYTHON으로 받는다.
+# PYTHON_VENV is the virtual environment that install-python makes. It holds the Python client installed in editable mode,
+# with the pinned dependencies of its pyproject.toml (ordered-json, cryptography, PyMySQL, psycopg, PyYAML); the checks
+# take this interpreter as ORM_PYTHON and import the installed package, never a source path.
 PYTHON_VENV = $(abspath packages/orm-python/.venv)
-# ORDERED_JSON is the checkout of polyspec/ordered-json whose packages/ordered-json-python/src the Python client imports. The sibling
-# checkout serves local work; CI checks the release v0.0.8 out inside the workspace (ci.yml sets ORDERED_JSON).
-ORDERED_JSON ?= $(abspath ..)/ordered-json
 # install-python은 config/toolchain.json의 pythonBuild를 var/tools/bin/python3에 설치하고(install-tools), kit의 python-venv로
-# 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다). 패키지는 kit의 release-consumer처럼 그 pip로 venv에 설치한다.
+# 그 interpreter의 venv를 만든다(PATH의 python3은 쓰지 않는다).
+# The client is installed with that pip as an editable package (pip install --editable), so the tests import the installed
+# package and a source change needs no reinstall.
 .PHONY: install-python
 install-python:
 	$(MAKE) --no-print-directory install-tools TOOLS="uv python"
 	$(MAKE) --no-print-directory python-venv DIR=$(PYTHON_VENV)
-	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet "cryptography==50.0.2" "PyMySQL==1.2.3" "psycopg[binary]==3.3.6" "PyYAML==6.0.3"
+	$(ONLINE) $(abspath var/tools/bin/python3) -m pip --python $(PYTHON_VENV)/bin/python install --quiet --editable packages/orm-python
 # python-venv-check는 install-python이 만든 venv가 있고 그 interpreter의 minor가 .python-version과 같은지 확인한다. 없거나
 # 다른 minor이면 내려받지도 고치지도 않고 실패하며, 고칠 방법(venv를 지우고 make install)을 적는다. .python-version은 minor를
 # 선언하고(requires-python도 그 minor), 정확한 release는 pythonBuild가 정하며 python-venv가 venv를 만들 때 확인한다.
@@ -471,14 +471,13 @@ python-venv-check:
 	test "$$minor" = "$$want" || { echo "python-venv-check: $(PYTHON_VENV) runs Python $$got, but .python-version declares $$want; remove $(PYTHON_VENV) and run make install, which builds it from var/tools/bin/python3"; exit 1; }
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
-# the Python conformance result check. PYTHONPATH names the sibling ordered-json source that the client imports.
-PYTHON_PATH = $(ORDERED_JSON)/packages/ordered-json-python/src:$(abspath packages/orm-python/src)
+# the Python conformance result check. The tests import the client and ordered-json installed into the venv (install-python).
 .PHONY: python-check python-unit-check python-interface-unit-check
 python-check: python-unit-check python-interface-unit-check python-model-check conformance-result-check/python
 python-unit-check: python-venv-check
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_*.py'
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_*.py'
 python-interface-unit-check: python-venv-check
-	cd tests/interfaces && PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
+	cd tests/interfaces && $(PYTHON_VENV)/bin/python -m unittest discover -p 'test_*.py'
 # python-coverage-case-check is the check of the helper coverage-runner-python (contracts/features.json): the unit test of
 # the case runner that the Python coverage tests share.
 .PHONY: python-coverage-case-check
@@ -489,11 +488,11 @@ python-coverage-case-check: python-venv-check
 # set-files.json) and the unit tests of syntax analysis, formatting and the set reader.
 .PHONY: dbspec-python-check
 dbspec-python-check: python-venv-check
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_cases.py
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_ddl.py
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_plans.py
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_mermaid.py
-	PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_dbspec_*.py'
+	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_cases.py
+	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_ddl.py
+	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_plans.py
+	$(PYTHON_VENV)/bin/python packages/orm-python/tests/dbspec_mermaid.py
+	$(PYTHON_VENV)/bin/python -m unittest discover -s packages/orm-python/tests -p 'test_dbspec_*.py'
 dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(HOLD_TYPESCRIPT)
 	mkdir -p $(dir $(DBSPEC_COMPARE_DOCUMENT))
@@ -503,11 +502,11 @@ dbspec-compare-check/prepare: cargo-downloads-check lease-tool python-venv-check
 	$(RUN_LONG) rust-build/dbspec_apply --cwd packages/orm-rust -- $(CARGO_COPY) debug/examples/dbspec_apply -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) build --locked --offline -p polyspec-orm --example dbspec_apply
 	$(RUN_LONG) php-extension-build -- sh packages/orm-php-extension/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 dbspec-compare-check/runners: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/compare/runners.test.mjs
 dbspec-compare-check/inputs: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python DBSPEC_STRESS_DOCUMENT=$(DBSPEC_COMPARE_DOCUMENT) node --test tests/dbspec/inputs.test.mjs
 dbspec-compare-check/compare: dbspec-compare-check/prepare
-	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
+	CARGO_TARGET_DIR=$(RUN_TARGET) ORM_DBSPEC_EXTENSION=$(PHP_EXTENSION_LIBRARY) ORM_PYTHON=$(PYTHON_VENV)/bin/python node tests/dbspec/compare/check.mjs tests/dbspec/cases.json $(DBSPEC_COMPARE_DOCUMENT) tests/dbspec/ddl.json tests/dbspec/plans.json tests/dbspec/mermaid.json tests/dbspec/syntax.json
 
 dbspec-compare-bench:
 	$(MAKE) --no-print-directory dbspec-compare-check DBSPEC_COMPARE_TABLES=2000
@@ -752,7 +751,7 @@ test-servers-leases-clear:
 # pre-push hook의 설치를 확인한다.
 .PHONY: feature-owner-check
 feature-owner-check: hooks-check
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python PYTHONPATH=$(PYTHON_PATH) node scripts/features/owners.mjs $(PATHS)
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/owners.mjs $(PATHS)
 
 feature-unit-check: feature-unit-check/docs feature-unit-check/coverage feature-unit-check/owners feature-unit-check/select
 feature-unit-check/docs:
@@ -772,9 +771,9 @@ feature-check: feature-coverage feature-verify-rust feature-verify-other
 feature-check/build: lease-tool
 	$(HOLD_TYPESCRIPT)
 	$(RUN_LONG) typescript-build -- npm run typescript:build
-# The Python owners of the coverage run on the client's venv (ORM_PYTHON) with its PYTHONPATH (scripts/features/coverage.mjs).
+# The Python owners of the coverage run on the client's venv (ORM_PYTHON), which imports the installed client (scripts/features/coverage.mjs).
 feature-coverage: feature-check/build python-venv-check
-	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python PYTHONPATH=$(PYTHON_PATH) node scripts/features/coverage.mjs
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python node scripts/features/coverage.mjs
 feature-verify-rust: feature-check/build
 	$(WITH_TEST_ENV) node scripts/features/check.mjs --run --features --shard rust
 feature-verify-other: feature-check/build
@@ -856,21 +855,21 @@ client-db-check: lease-tool python-statement-fault-check python-identity-load-ch
 # needs the database variables of make test-servers (WITH_TEST_ENV).
 .PHONY: python-statement-fault-check
 python-statement-fault-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/statement_fault.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/statement_fault.py
 
 # python-identity-load-check runs the shared identity load cases (contracts/fixtures/identity_load.json)
 # with the Python client on SQLite, MySQL and PostgreSQL; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-identity-load-check
 python-identity-load-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/identity_load.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/identity_load.py
 
 # python-schema-inspection-check runs schema().empty(), exists and installed, the table privileges and stats
 # of the Python client on SQLite, MySQL and PostgreSQL case databases; it needs the database variables of make
 # test-servers (WITH_TEST_ENV).
 .PHONY: python-schema-inspection-check
 python-schema-inspection-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/schema_inspection.py
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python packages/orm-python/tests/schema_inspection.py
 
 # dialect-facts-check runs the schema dialect probes of tests/dialects against
 # the MySQL and PostgreSQL servers of TEST_ENV and a SQLite file per probe,
@@ -901,7 +900,7 @@ conformance-result-check/python: python-venv-check
 
 conformance-result-physical-check: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalResultRunners$$' -count=1
 
 conformance-rust-group-check: lease-tool
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./tests/conformance/check -run '^TestPhysicalRustGroupBoolean$$' -count=1
@@ -939,16 +938,15 @@ case-database-check: lease-tool
 PYTHON_MODELS_DIR = packages/orm-python/src/polyspec/orm/models
 .PHONY: python-model-check
 python-model-check: python-venv-check
-	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --check --set schema/dbspec-set.json --out $(PYTHON_MODELS_DIR)
+	$(PYTHON_VENV)/bin/orm-gen gen --check --set schema/dbspec-set.json --out $(PYTHON_MODELS_DIR)
 
-# CONFORMANCE_PY_MODELS는 Python conformance runner가 import하는 model directory다. orm-gen이 schema/bench.dbs에서 쓰며,
-# 임시 directory에 쓴 뒤 이름을 바꿔 놓는다(build output의 atomic publish). ordered-json은
-# sibling checkout의 packages/ordered-json-python/src에서 읽는다(docs/plans/execution-checklist.md T43.5-1).
+# CONFORMANCE_PY_MODELS is the model directory that the Python conformance runner imports. The venv orm-gen writes it from
+# schema/bench.dbs into a temporary directory and renames it into place (an atomic publish of build output).
 CONFORMANCE_PY_MODELS = $(abspath .runtime/run)/conformance-python-models
 .PHONY: conformance-python-models
 conformance-python-models: python-venv-check
 	rm -rf $(CONFORMANCE_PY_MODELS).tmp
-	PYTHONPATH=$(ORDERED_JSON)/packages/ordered-json-python/src $(PYTHON_VENV)/bin/python packages/orm-python/bin/orm-gen gen --set schema/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
+	$(PYTHON_VENV)/bin/orm-gen gen --set schema/dbspec-set.json --out $(CONFORMANCE_PY_MODELS).tmp
 	rm -rf $(CONFORMANCE_PY_MODELS) && mv $(CONFORMANCE_PY_MODELS).tmp $(CONFORMANCE_PY_MODELS)
 
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
@@ -957,7 +955,7 @@ conformance-check: conformance-counter-check conformance-result-check conformanc
 conformance-check/run: lease-tool conformance-python-models
 	$(HOLD_TYPESCRIPT)
 	rm -rf $(RUN_DIR)
-	$(WITH_TEST_ENV) PYTHONPATH=$(PYTHON_PATH) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
+	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_PYTHON_MODELS=$(CONFORMANCE_PY_MODELS) node tests/go-run.mjs conformance-check ./tests/conformance/check run -out $(RUN_DIR)/out -driver mysql -dsn "$$BENCH_MYSQL_DSN" -driver postgres -dsn "$$BENCH_POSTGRES_DSN" -driver sqlite -dsn "$$BENCH_SQLITE_DSN"
 	PATH="$(HOME)/.cargo/bin:$(PATH)" node tests/go-run.mjs interfaces-check ./tests/interfaces/check --results $(RUN_DIR)/out --results $(RUN_DIR)/out/postgres --results $(RUN_DIR)/out/sqlite
 	rm -rf $(RUN_DIR)
 
@@ -974,7 +972,7 @@ markdown-conformance-check/php:
 	FLOWMARK=$(FLOWMARK) $(PHP) packages/orm-php/tests/markdown_conformance.php
 # Python runner는 build 정보를 go version -m으로 읽는다.
 markdown-conformance-check/python: python-venv-check
-	FLOWMARK=$(FLOWMARK) PYTHONPATH=$(PYTHON_PATH) $(PYTHON_VENV)/bin/python packages/orm-python/tests/markdown_conformance.py
+	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python packages/orm-python/tests/markdown_conformance.py
 markdown-conformance-check/rust: lease-tool cargo-downloads-check
 	cd packages/orm-rust && FLOWMARK=$(FLOWMARK) PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) markdown-conformance-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test markdown_conformance -- --nocapture
 markdown-conformance-check/typescript: lease-tool

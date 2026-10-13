@@ -4,7 +4,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.placeholders import for_postgres  # noqa: E402
 from polyspec.orm.utils import POSTGRES_ADVISORY_LOCK, POSTGRES_SET_LOCAL  # noqa: E402

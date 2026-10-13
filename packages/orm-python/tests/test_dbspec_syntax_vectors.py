@@ -5,7 +5,6 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
 from polyspec.orm.dbspec import analyze_dbspec
 from dbspec_cases_reader import read_cases  # noqa: E402
