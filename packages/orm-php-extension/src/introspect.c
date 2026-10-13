@@ -64,6 +64,24 @@ str exception_message(zend_object *e)
 }
 
 /* 'Catalog query failed: SQLSTATE[<0>] <2>\n<query>' */
+
+/* The column of table whose renderer name is name, recomputed for each column, or false. Never splits name on $. */
+static bool rendered_column(str table, str name, const smap *columns, str *column)
+{
+    if (columns == NULL) {
+        return false;
+    }
+    strs keys = {0};
+    smap_keys_sorted(columns, &keys);
+    for (size_t i = 0; i < keys.n; i++) {
+        if (str_eq(dbs_renderer_name(table, keys.v[i]), name)) {
+            *column = keys.v[i];
+            return true;
+        }
+    }
+    return false;
+}
+
 static str failure_message(str query, zval *info)
 {
     str state = SL(""), text = SL("");
@@ -1094,9 +1112,9 @@ static strs *trigger_setting(dialect d, const itable *t, itriggerv *list)
         s->kind = SL("immutable");
         PUSH(candidates, s);
     }
-    itrigger *insert = smap_get(&names, fmt("%S$audit_insert", t->name));
+    itrigger *insert = smap_get(&names, dbs_renderer_name(t->name, SL("audit_insert")));
     if (insert != NULL && list->n == 3) {
-        itrigger *update = smap_get(&names, fmt("%S$audit_update", t->name));
+        itrigger *update = smap_get(&names, dbs_renderer_name(t->name, SL("audit_update")));
         str history, columns, column;
         if (audit_insert(trigger_body(&insert->statements), &history, &columns) && audit_update(trigger_body(update != NULL ? &update->statements : NULL), &column)) {
             strs parts = {0};
@@ -1749,10 +1767,10 @@ static catalog *mysql_read(zval *pdo)
             }
             ssize_t dollar = str_find(name, "$", 0);
             if (dollar >= 0) {
-                str owner = str_sub(name, 0, (size_t)dollar), column_name = str_sub(name, (size_t)dollar + 1, name.n - (size_t)dollar - 1);
+                str column_name = SL("");
                 smap *m = smap_get(&columns, table);
-                icolumn *known = m == NULL ? NULL : smap_get(m, column_name);
-                if (!str_eq(owner, table) || known == NULL || !str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(known)))) {
+                icolumn *known = rendered_column(table, name, m, &column_name) ? smap_get(m, column_name) : NULL;
+                if (known == NULL || !str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(known)))) {
                     catalog_report(c, SL("check"), table, name, fmt("the check %S is not the renderer CHECK", *clause));
                     continue;
                 }
@@ -2189,12 +2207,12 @@ static catalog *pg_read(zval *pdo)
             } else if (str_eqc(kind, "c")) {
                 ssize_t dollar = str_find(name, "$", 0);
                 if (dollar >= 0) {
-                    str owner = str_sub(name, 0, (size_t)dollar), column_name = str_sub(name, (size_t)dollar + 1, name.n - (size_t)dollar - 1);
+                    str column_name = SL("");
+                    bool found = rendered_column(table, name, smap_get(&pending, table), &column_name);
                     smap *qm = smap_get(&quoted, table);
-                    str *qn = qm == NULL ? NULL : smap_get(qm, column_name);
+                    str *qn = qm == NULL || !found ? NULL : smap_get(qm, column_name);
                     str want = fmt("CHECK ((%S < '24:00:00'::time without time zone))", qn != NULL ? *qn : SL(""));
-                    smap *pm = smap_get(&pending, table);
-                    if (!str_eq(owner, table) || pm == NULL || !smap_has(pm, column_name) || !str_eq(definition, want)) {
+                    if (!found || !str_eq(definition, want)) {
                         catalog_report(c, SL("check"), table, name, fmt("the check %S is not the renderer CHECK", definition));
                         continue;
                     }
@@ -2719,7 +2737,7 @@ static catalog *sqlite_read(zval *pdo)
                 continue;
             }
             icolumn col = {name, NULL, not_null == 0, false, SL("")};
-            str check_name = fmt("%S$%S", table, name);
+            str check_name = dbs_renderer_name(table, name);
             str *checkp = smap_get(&st->checks, check_name);
             bool has_check = checkp != NULL;
             str check = has_check ? *checkp : SL("");
