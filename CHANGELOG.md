@@ -3,8 +3,9 @@
 
 ## Unreleased
 
+- T125-8: the Go request hook tests start their cases with the shared testcase package, the Python interface test counts the fifteenth connection rule, and `docs/features.md` lists the feature `request_hook`.
 - T125-7: the Python identity load test is `identity_load.py`, so `make python-unit-check` no longer runs its server cases; `make python-identity-load-check` runs them.
-- T125-4: the request hook is the feature `request_hook` of `contracts/features.json`, whose Go, PHP, Rust and TypeScript owners pass the five shared cases on MySQL, PostgreSQL and SQLite; `contracts/fixtures/identity_load.json` names its feature `model_writes`.
+- T125-4: the request hook is the feature `request_hook` of `contracts/features.json`, whose Go, PHP, Rust and TypeScript owners pass the five shared cases on MySQL, PostgreSQL and SQLite.
 - T125-3: the development rules forbid symbolic links only in what this repository creates, take the standard tool of each ecosystem as it is with its own behavior, and resolve paths declaratively or by discovery.
 - T65: the Python client reaches a corpus through the markdown DSN, one server connection per `Db`, and passes the cases of `tests/markdown/cases.json` against the pinned flowmark build; its executor module, lost from main in a rebase, is tracked again.
 - T125: every client takes a request hook on a connection handle: `withRequestHook` (Go `WithRequestHook`, Rust and Python `with_request_hook`) returns a handle on the same connection whose hook receives each request of a read, count, page, insert, update, delete, restore and getQuery right before planning and may add predicates, assignments and parameters; the planner validates the changed request, the plan cache keys on it, and rows and transactions of the handle keep the hook.

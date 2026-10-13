@@ -2,6 +2,7 @@ package orm_test
 
 import (
 	"errors"
+	"github.com/polyspec/orm/internal/testcase"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -274,6 +275,7 @@ var requestHookCases = []struct {
 
 // TestRequestHook은 각 case를 SQLite temp file에서 실행한다. file은 test가 끝나면 지워진다.
 func TestRequestHook(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	for _, c := range requestHookCases {
 		t.Run(c.id, func(t *testing.T) {
 			db, e := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request_hook.sqlite"))

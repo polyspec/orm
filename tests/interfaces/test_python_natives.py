@@ -75,7 +75,7 @@ class ConnectionAndToolRuleNativesTest(unittest.TestCase):
 
     def test_every_connection_and_tool_rule_names_a_python_method_of_the_snapshot(self):
         rules = [r for r in self.manifest['rules'] if r['for'] == 'once' and r['id'].startswith(self.PREFIXES)]
-        self.assertEqual(len(rules), 14)
+        self.assertEqual(len(rules), 15)
         for rule in rules:
             native = rule['native'].get('python')
             self.assertIsNotNone(native, f"{rule['id']} has no python native")

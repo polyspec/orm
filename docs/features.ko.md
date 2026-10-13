@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 40d26a9b5638e22f1fe1fa2a2384df43363818788d92fc5531a4c4dbfb3c7ade -->
+<!-- source-sha256: ea516149c3a416842080c1e1d952b3284e74854c268ed3637d1d91375a653086 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, client 지원 상태, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -24,6 +24,7 @@
 | performance_gate | hot-path 성능 기준 | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned<br>python: planned |
 | conformance_verification | 적합성 검증 | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | catalog_connection | Rust catalog 연결 | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported<br>python: planned |
+| request_hook | Request hook | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 
 ## 현재 동작
 
@@ -45,5 +46,6 @@
 - `performance_gate`: Go와 PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
 - `catalog_connection`: live-db feature가 켜진 polyspec-orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.
+- `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

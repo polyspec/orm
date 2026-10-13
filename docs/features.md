@@ -23,6 +23,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | performance_gate | Hot-path performance standard | partial | go: pass<br>php: pass<br>rust: partial<br>typescript: planned<br>python: planned |
 | conformance_verification | Conformance verification | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 | catalog_connection | Rust catalog connection | partial | go: unsupported<br>php: unsupported<br>rust: pass<br>typescript: unsupported<br>python: planned |
+| request_hook | Request hook | implemented | go: pass<br>php: pass<br>rust: pass<br>typescript: pass<br>python: planned |
 
 ## Current behavior
 
@@ -44,5 +45,6 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `performance_gate`: The Go and PHP clients measure hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.
 - `conformance_verification`: Run the same model chains in Go, PHP, Rust, and TypeScript on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.
 - `catalog_connection`: With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.
+- `request_hook`: A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.
