@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dab429b00151d229ec913e33d5c268ac15e1e72315cd2c57b2e16a7dc40e451e -->
+<!-- source-sha256: e929d03655860cae83e2c2814f67616120a6c6dc625a64f92b0dab4f365a3489 -->
 # 변경 이력
 
 ## Unreleased
 
+- T150: docs/usage.md가 Python의 `orm-gen gen --check`를, docs/packaging.md가 Python client가 스키마를 받는 방식을 적는다.
 - T128-2a (breaking): 문서 집합은 `dbspec-set.json`에 한 번 선언하며, 모든 client가 그것을 읽고 모든 generator가 그것을 받는다.
 - T128-2a-7 (breaking): 모든 문서가 set 파일을 generator 문서 집합의 유일한 형태로 적고, interface rule `Dbspec.readSet`이 모든 client의 set reader를 선언하며, parity unit `dbspec-set-files`가 그 vector를 선언한다.
 - T136: `make install-python`이 Python보다 먼저 uv를 설치하므로 새 checkout과 CI가 Python venv를 만든다.
