@@ -11231,6 +11231,93 @@
           "rule": "type"
         }
       ]
+    },
+    {
+      "id": "state-machine-initial-repeated",
+      "documents": {
+        "wiki": [
+          "dbspec 1 wiki",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  state varchar(16)",
+          "  done_at datetime(6) null",
+          "  primary key (id)",
+          "  settings {",
+          "    state_machine state initial todo",
+          "    state_machine state todo -> done require (done_at)",
+          "    state_machine state terminal done",
+          "    state_machine state initial todo",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "wiki",
+      "errors": [
+        {
+          "line": 12,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "state-machine-terminal-repeated",
+      "documents": {
+        "wiki": [
+          "dbspec 1 wiki",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  state varchar(16)",
+          "  done_at datetime(6) null",
+          "  primary key (id)",
+          "  settings {",
+          "    state_machine state initial todo",
+          "    state_machine state todo -> done require (done_at)",
+          "    state_machine state terminal done",
+          "    state_machine state terminal done require (done_at)",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "wiki",
+      "errors": [
+        {
+          "line": 12,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
+    },
+    {
+      "id": "state-machine-transition-repeated",
+      "documents": {
+        "wiki": [
+          "dbspec 1 wiki",
+          "",
+          "table t {",
+          "  id i64 identity",
+          "  state varchar(16)",
+          "  done_at datetime(6) null",
+          "  primary key (id)",
+          "  settings {",
+          "    state_machine state initial todo",
+          "    state_machine state todo -> done require (done_at)",
+          "    state_machine state terminal done",
+          "    state_machine state todo -> done",
+          "  }",
+          "}"
+        ]
+      },
+      "main": "wiki",
+      "errors": [
+        {
+          "line": 12,
+          "column": 5,
+          "rule": "setting"
+        }
+      ]
     }
   ],
   "hashes": [

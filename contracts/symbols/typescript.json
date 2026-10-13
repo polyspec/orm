@@ -1020,6 +1020,7 @@
   "packages/orm-npm/src/dbspec/parse.ts::lexLine": "function lexLine(text: string, line: number): Lexed",
   "packages/orm-npm/src/dbspec/parse.ts::lexRecover": "function lexRecover(text: string, line: number): Tk[]",
   "packages/orm-npm/src/dbspec/parse.ts::listOf": "function listOf(s: Extract\u003cISetting, { kind: 'audit'; }\u003e, kind: 'exclude' | 'include'): readonly string[] | null",
+  "packages/orm-npm/src/dbspec/parse.ts::machineLine": "function machineLine(line: Extract\u003cIStateLine, { form: 'initial' | 'terminal' | 'transition'; }\u003e): [ string, string ]",
   "packages/orm-npm/src/dbspec/parse.ts::meetKind": "function meetKind(type: DbspecType): string",
   "packages/orm-npm/src/dbspec/parse.ts::numberText": "function numberText(text: string): string",
   "packages/orm-npm/src/dbspec/parse.ts::parseDocument": "export function parseDocument(text: string, documents: Readonly\u003cRecord\u003cstring, string\u003e\u003e): { document: DbspecDocument | null; diagnostics: RawDiagnostic[]; }",

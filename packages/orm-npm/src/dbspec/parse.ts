@@ -157,6 +157,15 @@ type IStateLine =
   | { readonly form: 'history'; readonly table: Tk; readonly row: Tk; readonly from: Tk; readonly to: Tk; readonly at: Tk }
   | { readonly form: 'limit'; readonly state: Tk; readonly count: Tk };
 
+/**
+ * The identity of an initial, terminal or transition line and its description: a line of the same identity adds no
+ * meaning, and one with another require list contradicts it, so a repeat is a `setting` error (docs/dbspec.md "Settings").
+ */
+function machineLine(line: Extract<IStateLine, { form: 'initial' | 'terminal' | 'transition' }>): [string, string] {
+  if (line.form === 'transition') return [`transition ${line.from.t} ${line.to.t}`, `${line.from.t} -> ${line.to.t}`];
+  return [`${line.form} ${line.state.t}`, `${line.form} ${line.state.t}`];
+}
+
 type IStateMachine = Extract<ISetting, { kind: 'state_machine' }>;
 type ICheckbox = Extract<ISetting, { kind: 'checkbox' }>;
 
@@ -2246,6 +2255,8 @@ class DocumentParser {
     let history: IStateMachine | null = null;
     const requires: Tk[] = [];
     const boxes: ICheckbox[] = [];
+    // The identity of an initial, terminal or transition line: its form and states, never its require list.
+    const seen = new Set<string>();
     for (const s of entries) {
       if (s.kind === 'checkbox') {
         boxes.push(s);
@@ -2268,6 +2279,15 @@ class DocumentParser {
       if (line.form === 'limit') {
         limits.push(s);
         continue;
+      }
+      // A line of another column already reports that a table holds one machine; it is no line of this one.
+      if (s.column.t === column) {
+        const [key, what] = machineLine(line);
+        if (seen.has(key)) {
+          this.at('setting', s.kw, `state_machine repeats ${what}`);
+          continue;
+        }
+        seen.add(key);
       }
       lines.push(s);
       if (line.form === 'transition' || line.form === 'terminal') requires.push(...(line.requires ?? []));

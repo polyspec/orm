@@ -2473,6 +2473,8 @@ static void state_machine_check(parser *p)
     bool has_column = false;
     str column_name = SL("");
     smap states = {0}, initials = {0}, terminals = {0};
+    /* The identity of each initial, terminal and transition line: its form and states, never its require list. */
+    smap seen = {0};
     tsettingv lines = {0}, limits = {0}, boxes = {0};
     tsetting_rec *history = NULL;
     tokens requires = {0};
@@ -2501,6 +2503,17 @@ static void state_machine_check(parser *p)
         } else if (str_eqc(a->v[1].text, "limit")) {
             PUSH(limits, s);
         } else {
+            /* A line of another column already reports that a table holds one machine; it is no line of this one. */
+            if (str_eq(a->v[0].text, column_name)) {
+                bool transition = str_eqc(a->v[1].text, "transition");
+                str key = transition ? fmt("transition %S %S", a->v[2].text, a->v[3].text) : fmt("%S %S", a->v[1].text, a->v[2].text);
+                if (smap_has(&seen, key)) {
+                    str what = transition ? fmt("%S -> %S", a->v[2].text, a->v[3].text) : key;
+                    error(p, "setting", s->line, s->at, fmt("state_machine repeats %S", what));
+                    continue;
+                }
+                smap_set(&seen, key, TRUEP);
+            }
             PUSH(lines, s);
             size_t fixed = str_eqc(a->v[1].text, "transition") ? 4 : 3;
             for (size_t k = fixed; k < a->n; k++) {

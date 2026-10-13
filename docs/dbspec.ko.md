@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: 1eca06e0b0a209a9ef35166c807dcbf6a5b276284d06acdb64ca72f3ecf7a6d1 -->
+<!-- source-sha256: a8d239636866010985a928788e3e32e6066c658b313b75f6269236bdb8595c46 -->
 # dbspec
 
 [English](dbspec.md)
@@ -148,7 +148,7 @@ operand는 같은 table의 column이나 literal이다. 세 database는 양쪽 �
 
 ## Settings
 
-`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다, `markdown`은 column마다, `checkbox`는 state마다 한 번씩 반복하고 `state_machine`은 여러 줄에 쓰며, 나머지 setting은 최대 한 번 나오며 반복은 `setting` error다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
+`settings { ... }`는 한 줄에 setting 하나를 둔다. setting은 자신이 적용되는 column의 이름을 적는다. column 이름이 동작을 고르는 일은 없다. `codec`은 column마다, `navigation`은 foreign key마다, `blind_index`는 AES column마다, `markdown`은 column마다, `checkbox`는 state마다 한 번씩 반복하고 `state_machine`은 줄의 identity마다 한 번 쓴다: state마다 `initial` 줄 하나, state마다 `terminal` 줄 하나, `require` 목록과 상관없이 `<from> -> <to>` 쌍마다 전환 줄 하나, `history` 줄 하나, state마다 `limit` 줄 하나다. 나머지 setting은 최대 한 번 나오며, 반복은 뒤 줄에서 `setting` error다. 반복한 줄은 의미를 더하지 않고, `require` 목록이 다른 전환이나 terminal 줄의 반복은 앞 줄과 모순된다. 빈 `settings {}` block은 의미가 없으며 canonical form은 이를 쓰지 않는다. 그 안의 comment는 table 줄의 들여쓰기로 table의 닫는 `}` 앞으로 옮긴다.
 
 codec stage는 쓸 때 적힌 순서로 실행한다. 저장 type은 마지막 stage를 따른다. `hex`, `base64`, `ordered_json`, `yaml`, `serialize`는 text를 만들므로 `varchar`나 `text` column이 필요하고, `aes`, `gz`, `ip`는 bytes를 만들므로 `bytes` column이 필요하다. `ordered_json`은 나올 때 첫 stage다. `aes_version`은 `aes`를 쓰는 column이 있으면 필요하고, 그런 column 없이 쓴 `aes_version`은 `setting` error다. `blind_index`의 index column은 n ≥ 64인 `varchar(n)`이고(`bytes` column은 index에 넣을 수 없다), AES column과 nullability가 같고, 자신은 AES로 encode되지 않으며, 선언된 index나 unique key의 유일한 column이다.
 

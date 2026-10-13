@@ -747,6 +747,8 @@ impl<'s, 'd> TableRules<'s, 'd> {
         let mut limits: Vec<(&Name, &Name)> = Vec::new();
         let mut requires: Vec<&Name> = Vec::new();
         let mut history: Option<&History> = None;
+        // The identity of each initial, terminal and transition line: its form and states, never its require list.
+        let mut seen: HashSet<(&str, &str, &str)> = HashSet::new();
         for line in &settings.lines {
             let Setting::StateMachine { column: name, line: state } = &line.setting else { continue };
             match column {
@@ -755,6 +757,23 @@ impl<'s, 'd> TableRules<'s, 'd> {
                     self.report(name.pos, "setting", format!("state_machine repeats for '{}'; a table holds one machine", name.text));
                 }
                 Some(_) => {}
+            }
+            // A line of another column already reports that a table holds one machine; it is no line of this one.
+            if column == Some(name.text.as_str()) {
+                let identity = match state {
+                    StateLine::Initial(s) => Some((("initial", s.text.as_str(), ""), format!("initial {}", s.text))),
+                    StateLine::Terminal(s, _) => Some((("terminal", s.text.as_str(), ""), format!("terminal {}", s.text))),
+                    StateLine::Transition { from, to, .. } => {
+                        Some((("transition", from.text.as_str(), to.text.as_str()), format!("{} -> {}", from.text, to.text)))
+                    }
+                    _ => None,
+                };
+                if let Some((key, what)) = identity {
+                    if !seen.insert(key) {
+                        self.report(line.pos, "setting", format!("state_machine repeats {what}"));
+                        continue;
+                    }
+                }
             }
             match state {
                 StateLine::History(h) => match history {

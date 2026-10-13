@@ -2292,6 +2292,8 @@ class DocumentParser:
         limits = []
         history = None
         requires = []
+        # The identity of each initial, terminal and transition line: its form and states, never its require list.
+        seen = set()
         for s in machine:
             if column is None:
                 column = s.args[0].t
@@ -2305,6 +2307,16 @@ class DocumentParser:
             elif s.form == 'limit':
                 limits.append(s)
             else:
+                # A line of another column already reports that a table holds one machine; it is no line of this one.
+                if s.args[0].t == column:
+                    if s.form == 'transition':
+                        key, what = ('transition', s.args[1].t, s.args[2].t), f'{s.args[1].t} -> {s.args[2].t}'
+                    else:
+                        key, what = (s.form, s.args[1].t), f'{s.form} {s.args[1].t}'
+                    if key in seen:
+                        self._at('setting', s.kw, f'state_machine repeats {what}')
+                        continue
+                    seen.add(key)
                 lines.append(s)
                 for _, columns in s.lists:
                     requires.extend(columns)
