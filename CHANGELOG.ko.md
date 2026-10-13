@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 959645bfcecfdd19a8b150b2efbd97f7197c648a05fa0c0b51b8269974eca2d1 -->
+<!-- source-sha256: b3eeaf2747c8e1954a6f9014a55a993d2118ae56d7e87bae1789813fd8198caa -->
 # 변경 이력
 
 ## Unreleased
 
+- T157: markdown conformance가 flowmark main의 8b5d16a를 고정한다.
 ## 0.0.11
 
 - T140-1: docs/dialects.md의 Markdown IR executor 표가 markdown conformance가 고정한 flowmark를 옮겨 둔다.
