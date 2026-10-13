@@ -173,7 +173,30 @@ $tests['gen is the only command'] = function (): void {
     }
 };
 
-// 각 case는 orm-gen을 같은 process에서 실행해 임시 directory에 models를 쓰고 읽는다.
+/** Runs $command in a new process from the repository root and returns its exit code, stdout and stderr. */
+function process(array $command): array
+{
+    $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, dirname(__DIR__, 3));
+    $out = (string) stream_get_contents($pipes[1]);
+    $err = (string) stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    return [proc_close($process), $out, $err];
+}
+
+$tests['the bin Composer installs loads the autoloader'] = function (): void {
+    [$code, $out, $err] = process([PHP_BINARY, 'vendor-php/bin/orm-gen']);
+    check($code === 2 && $out === '' && str_starts_with($err, 'usage: orm-gen gen '), "vendor-php/bin/orm-gen: $code $out $err");
+};
+
+$tests['the bin outside Composer names the missing autoloader'] = function (): void {
+    [$code, $out, $err] = process([PHP_BINARY, 'packages/orm-php/bin/orm-gen']);
+    $missing = dirname(__DIR__) . '/bin/../vendor/autoload.php';
+    check($code === 2 && $out === '' && $err === "orm-gen: no Composer autoloader at $missing; run the vendor/bin/orm-gen that Composer installs\n", "packages/orm-php/bin/orm-gen: $code $out $err");
+};
+
+// Each case runs orm-gen in this process and writes and reads models in a temporary directory,
+// except the bin cases, which run the bin in a new process.
 foreach ($tests as $current => $test) {
     $before = $failures;
     $passed = testcase_run("orm_gen/$current", TESTCASE_COMPUTE, static function () use ($test, $before): void {

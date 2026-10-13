@@ -35,9 +35,10 @@
             "dist": {
                 "type": "path",
                 "url": "packages/orm-php",
-                "reference": "0f7ca143dc4418ce10461fdedf1cdde93c2ac014"
+                "reference": "94dacd73edc07eb9ab2172f01133651e4b35df46"
             },
             "require": {
+                "composer-runtime-api": "^2.2",
                 "ext-json": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",

@@ -3,13 +3,16 @@
 // dbspec document set에서 model을 만든다:
 //
 //   vendor/bin/orm-gen gen --set schema/dbspec-set.json --out src/Model --namespace Example\\Model
+//
+// Composer's vendor/bin proxy names the autoloader in $_composer_autoload_path (composer-runtime-api ^2.2);
+// run without the proxy, the bin takes vendor/autoload.php of this package as the root, as Composer documents.
 declare(strict_types=1);
 
-foreach ([$GLOBALS['_composer_autoload_path'] ?? null, __DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
-    if ($autoload !== null && is_file($autoload)) {
-        require $autoload;
-        break;
-    }
+$autoload = $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+if (!is_file($autoload)) {
+    fwrite(STDERR, "orm-gen: no Composer autoloader at $autoload; run the vendor/bin/orm-gen that Composer installs\n");
+    exit(2);
 }
+require $autoload;
 
 exit(Polyspec\Orm\OrmGen::main(array_slice($argv, 1)));
