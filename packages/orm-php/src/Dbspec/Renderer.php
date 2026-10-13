@@ -160,7 +160,7 @@ final class Renderer
     /** @return list<string> */
     public function table(Table $t): array
     {
-        $create = $this->createTable($t, $t->name, static fn(string $column): string => $t->name . '$' . $column, []);
+        $create = $this->createTable($t, $t->name, static fn(string $column): string => Names::render($t->name, $column), []);
         $out = [$create];
         if ($this->dialect === 'sqlite') {
             foreach (self::byName($t->uniqueKeys) as $unique) {
@@ -622,7 +622,7 @@ final class Renderer
      */
     private function trigger(Table $t, string $event, string $timing, string $body, bool $rejects): array
     {
-        $name = $this->q($t->name . '$' . $event);
+        $name = $this->q(Names::render($t->name, $event));
         $on = " $timing ON " . $this->q($t->name) . ' FOR EACH ROW ';
         return match ($this->dialect) {
             'mysql' => ["CREATE TRIGGER $name$on$body"],

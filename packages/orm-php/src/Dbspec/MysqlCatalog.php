@@ -118,9 +118,9 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
                 continue;
             }
             if (str_contains($name, '$')) {
-                [$owner, $column] = explode('$', $name, 2);
-                $known = $columns[$table][$column] ?? null;
-                if ($owner !== $table || $known === null || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
+                $column = Names::column($table, $name, array_keys($columns[$table] ?? []));
+                $known = $column === null ? null : $columns[$table][$column];
+                if ($known === null || self::withoutIntroducers($clause) !== self::withoutIntroducers(self::rendererCheck($known))) {
                     $c->report('check', $table, $name, "the check $clause is not the renderer CHECK");
                     continue;
                 }
