@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T142-3: `codec-check` runs the Python codec vectors.
 - T142-4: `codec-check/rust` builds the lease tool it runs.
 - T135: the test server sockets live in `/tmp/orm-servers-<cksum of the checkout>`, owned by the checkout, so a long checkout path stays within the Unix socket path limit.
 - T142: Go and Python read plain YAML scalars by the YAML 1.2 core schema (`0b101`, `+0x1`, `1_000` and dates stay strings), with shared `yaml_core` codec vectors; PHP (T142-1) and U+0085 (T142-2) are skipped by name until fixed.

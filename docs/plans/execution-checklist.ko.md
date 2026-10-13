@@ -1,5 +1,5 @@
 <!-- doc-id: plans-execution-checklist -->
-<!-- source-sha256: 9d453fa4dfcd9a284fe725566173f43329f715ab3bb272b16f1da8599af5121d -->
+<!-- source-sha256: 5e6399ab9ba1ae19e9bcd989f6d258d153d1110f121234d6fbe0a1eb9a2982d5 -->
 # 프로젝트 체크리스트 (0.0.1 완료)
 
 ## dbspec schema language
@@ -993,7 +993,7 @@
 - [o] T142 Go와 PHP가 YAML을 core schema로 읽는다. 원인: T139 조사에서 Go yaml.v3가 `0b101`을 5로, `+0x1`을 1로, `1_000`을 1000으로, U+0085를 줄바꿈으로 읽고 `2014-12-31`을 거부하며, PHP도 `1_000`, timestamp, U+0085를 같이 읽음을 찾았다. docs/codec.md는 YAML 1.2 문서를 요구하므로, Rust나 TypeScript client가 따옴표 없이 쓴 문자열을 다른 값으로 되읽는다. 인수 조건: Go와 PHP가 YAML 1.2 core schema로 decode하며, 형태마다 공유 codec vector를 두고 red를 먼저 본다.
   - [ ] T142-1 PHP가 YAML을 core schema로 읽는다 (T142에 이어). 원인: symfony/yaml 7.4에는 schema flag도 scalar hook도 없고(`Inline::evaluateScalar`는 private), `Yaml::parse`가 `1_000`을 1000으로, `2014-12-31`을 1419984000으로, `2001-12-14t21:59:43.10-05:00`을 1008385183.1로(PARSE_DATETIME은 DateTime을 줄 뿐 text가 아니다), `0777`을 문자열 `0777`로(core: 777) 읽는다. tests/codec/check.php는 vector `yaml_core/underscore_int_like`, `date_like`, `timestamp_like`, `leading_zero_int`, `map`을 명시해 건너뛰고 각각 출력한다. 재시도: ecosystem에서 PHP YAML 1.2 core reader를 고르거나(ext-yaml callback과 다른 package 조사), parser event API로 scalar를 resolve하는 판정을 기록한다. 그 뒤 제외 목록을 지운다.
   - [ ] T142-2 Go와 Python이 U+0085를 내용으로 읽는다 (T142에 이어). 원인: yaml.v3와 PyYAML의 scanner가 U+0085를 줄바꿈으로 읽어(`a<U+0085>b`가 `a b`로 decode된다) Node API나 resolver hook보다 아래에 있다. packages/orm-go/orm/codec_test.go(`goCodecExclusions`), packages/orm-python/tests/codec_vector.py(`PYTHON_EXCLUSIONS`), tests/codec/check.php가 `yaml_core/next_line`을 명시해 건너뛰고 출력한다. 재시도: U+0085를 지키는 각 ecosystem의 scanner option이나 reader, 또는 기록한 판정; 그 뒤 제외를 지운다.
-  - [ ] T142-3 codec-check가 Python codec vector를 실행한다 (T142에 이어). 원인: packages/orm-python/tests/codec_vector.py를 실행하는 make target이 없어(python-unit-check는 `test_*.py`만 맞춘다) Python의 YAML 결함이 드러나지 않았다. 완료 조건: codec-check가 이를 실행하고, 깨진 vector로 먼저 red를 확인한다.
+  - [o] T142-3 codec-check가 Python codec vector를 실행한다 (T142에 이어). 원인: packages/orm-python/tests/codec_vector.py를 실행하는 make target이 없어(python-unit-check는 `test_*.py`만 맞춘다) Python의 YAML 결함이 드러나지 않았다. 완료 조건: codec-check가 이를 실행하고, 깨진 vector로 먼저 red를 확인한다.
   - [o] T142-4 codec-check가 lease tool을 준비한다 (T142에 이어). 원인: 새 checkout에서 `make lease-tool` 전에는 `make codec-check`가 `.runtime/bin/lease ENOENT`로 실패한다. codec-check/rust에 선행 조건이 없다. 완료 조건: codec-check가 lease-tool에 의존하고, 새 worktree에서 먼저 red를 확인한다.
   - [ ] T142-5 codec-check가 실행하는 PHP 의존성을 설치한다 (T142-4에 이어). 원인: 새 checkout에서 `make install-php` 전에는 `codec-check/compare`가 packages/orm-php/tests/autoload.php의 PHP fatal error로 멈춘다. 완료 조건: target에 선행 조건이 있고, 새 worktree에서 먼저 red를 확인한다.
 - [ ] T143 TypeScript와 PHP set reader가 Windows의 모든 name surrogate를 감지한다(T128-2a-5에 이어). 원인: docs/dbspec.md 단계 3은 tag가 name surrogate인 모든 reparse point를 symbolic link로 보지만, Node와 PHP의 lstat은 symbolic link와 junction만 보고하므로 다른 name-surrogate tag(WSL symlink tag)를 따른다. Go, Rust, PHP extension은 `IsReparseTagNameSurrogate`를 검사한다. 인수 조건: TypeScript와 PHP reader가 선언된 방식으로 reparse tag에 닿거나, 명세가 근거와 함께 지원 tag를 적는다; 조용한 차이는 없다.

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7b855bbf75cc7a4a09bffe941fba821494eb95fe991f494138965688e2cb2a64 -->
+<!-- source-sha256: c79fbd759124654249f3a49a1be3055a7bcd984485908ea8e8584bce7adf8de2 -->
 # 변경 이력
 
 ## Unreleased
 
+- T142-3: `codec-check`가 Python codec vector를 실행한다.
 - T142-4: `codec-check/rust`가 실행하는 lease tool을 먼저 build한다.
 - T135: 테스트 서버 socket은 checkout이 소유한 `/tmp/orm-servers-<checkout의 cksum>`에 있어, 긴 checkout 경로도 Unix socket 경로 제한 안에 든다.
 - T142: Go와 Python이 plain YAML scalar를 YAML 1.2 core schema로 읽는다(`0b101`, `+0x1`, `1_000`, 날짜는 문자열로 남는다). 공유 `yaml_core` codec vector를 더했다. PHP(T142-1)와 U+0085(T142-2)는 고쳐질 때까지 이름으로 건너뛴다.
