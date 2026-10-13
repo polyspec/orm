@@ -2,8 +2,9 @@
 # 모든 query는 현재 database 전체를 한 번에 읽는다.
 import re
 
-from polyspec.orm.dbspec.introspect_catalog import Catalog, action_name, cut, quote, \
+from polyspec.orm.dbspec.introspect_catalog import Catalog, action_name, quote, \
     table_types
+from polyspec.orm.dbspec.names import rendered_column
 from polyspec.orm.dbspec.introspect_check import CheckDecodeError, decode_check
 from polyspec.orm.dbspec.introspect_trigger import recognize_triggers
 from polyspec.orm.dbspec.model import DbspecType
@@ -118,10 +119,10 @@ def read_mysql(query) -> Catalog:
         if enforced != 'YES':
             c.report('check', table, name, 'the check is not enforced')
             continue
-        owner, column, generated = cut(name, '$')
-        if generated:
+        if '$' in name:
+            column = rendered_column(table, name, columns.get(table, {}))
             col = columns.get(table, {}).get(column)
-            if owner != table or col is None \
+            if column is None or col is None \
                     or _without_introducers(clause) != _without_introducers(
                         _renderer_check(col)):
                 c.report('check', table, name,

@@ -4,7 +4,8 @@ import json
 import re
 
 from polyspec.orm.dbspec.introspect_catalog import Catalog, CatalogRow, \
-    action_name, renderer_check_name, table_types
+    action_name, table_types
+from polyspec.orm.dbspec.names import renderer_name
 from polyspec.orm.dbspec.introspect_check import CheckDecodeError, decode_check, \
     unscaled_decimal
 from polyspec.orm.dbspec.introspect_trigger import recognize_triggers
@@ -110,7 +111,7 @@ def read_sqlite(query) -> Catalog:
                      f'the column definition {st.columns.get(name, "")!r} has '
                      f'clauses that dbspec does not read')
             continue
-        check_name = renderer_check_name(table, name)
+        check_name = renderer_name(table, name)
         check = st.checks.get(check_name)
         identity = False
         if st.identity == name:

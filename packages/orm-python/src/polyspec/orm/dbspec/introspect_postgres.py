@@ -2,7 +2,8 @@
 # 모든 query는 현재 schema 전체를 한 번에 읽는다.
 import re
 
-from polyspec.orm.dbspec.introspect_catalog import Catalog, cut, quote, table_types
+from polyspec.orm.dbspec.introspect_catalog import Catalog, quote, table_types
+from polyspec.orm.dbspec.names import rendered_column
 from polyspec.orm.dbspec.introspect_check import CheckDecodeError, decode_check
 from polyspec.orm.dbspec.introspect_trigger import recognize_triggers
 from polyspec.orm.dbspec.model import DbspecType
@@ -160,11 +161,11 @@ def read_postgres(query) -> Catalog:
                              'refs': refs.split(','), 'on_delete': delete,
                              'on_update': update})
         elif kind == 'c':
-            owner, column, generated = cut(name, '$')
-            if generated:
+            if '$' in name:
+                column = rendered_column(table, name, pending.get(table, ()))
                 want = (f"CHECK (({quoted.get(table, {}).get(column, '')} < "
                         f"'24:00:00'::time without time zone))")
-                if owner != table or column not in pending.get(table, ()) \
+                if column is None \
                         or definition != want:
                     c.report('check', table, name,
                              f'the check {definition} is not the renderer CHECK')

@@ -4,6 +4,7 @@ import re
 
 from polyspec.orm.dbspec.audit import audit_line
 from polyspec.orm.dbspec.introspect_catalog import Catalog
+from polyspec.orm.dbspec.names import renderer_name
 from polyspec.orm.dbspec.model import DbspecColumn, DbspecPrimaryKey, \
     DbspecSetting, DbspecSettings, DbspecTable
 from polyspec.orm.dbspec.render import Renderer
@@ -47,9 +48,9 @@ def _trigger_setting(dialect: str, t: dict, listed: list):
     candidates: list = []
     if len(listed) == 2:
         candidates.append(DbspecSetting('immutable'))
-    insert = names.get(f'{t["name"]}$audit_insert')
+    insert = names.get(renderer_name(t["name"], 'audit_insert'))
     if insert is not None and len(listed) == 3:
-        update = names.get(f'{t["name"]}$audit_update')
+        update = names.get(renderer_name(t["name"], 'audit_update'))
         m = _AUDIT_INSERT_PATTERN.match(_statement_body(insert['statements']))
         u = _AUDIT_UPDATE_PATTERN.search(_statement_body(update['statements']
                                                         if update else []))

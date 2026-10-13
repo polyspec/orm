@@ -7,6 +7,7 @@ import dataclasses
 from polyspec.orm.dbspec.check import read_check
 from polyspec.orm.dbspec.model import DbspecColumn, DbspecDocument, DbspecForeignKey, DbspecIndex, DbspecPlan, \
     DbspecPrimaryKey, DbspecUnique
+from polyspec.orm.dbspec.names import renderer_name
 from polyspec.orm.dbspec.plan import sorted_by
 from polyspec.orm.dbspec.plan_diff import column_of, plan_diff, same_default, \
     same_type, sorted_keys
@@ -356,7 +357,7 @@ class _PlanWriter:
                         for c in added]
 
         def new_create(as_: str) -> str:
-            return self.r.create_table(t, as_, lambda c: f'{t.name}${c}',
+            return self.r.create_table(t, as_, lambda c: renderer_name(t.name, c),
                                        hidden_dropped)
 
         # sourceColumn은 옛 정의 column의 source 이름이다. 지우는 column은 이름이
@@ -365,8 +366,7 @@ class _PlanWriter:
             return columns.get(c, c)
 
         old_create = self.r.create_table(old, name,
-                                         lambda c: f'{src.name}$'
-                                                   f'{source_column(c)}',
+                                         lambda c: renderer_name(src.name, source_column(c)),
                                          hidden_added)
         new_list = self.r.list([c.name for c in t.columns]
                                + [c.name for c in hidden_dropped])
@@ -707,5 +707,5 @@ class _PlanWriter:
         for c in t.columns:
             check = self.r.type_check(c)
             if check != '':
-                out[f'{t.name}${c.name}'] = check
+                out[renderer_name(t.name, c.name)] = check
         return out
