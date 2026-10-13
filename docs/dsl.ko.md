@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 53ba2040f9c9f1552ca3b2d3915cfcdee5601b4300579b6f44120228b95f509e -->
+<!-- source-sha256: 6623f285c73ce0d0ac34b641bc924cbe6af96dec89cfe497b12a8388b0fec113 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -90,7 +90,7 @@ Key   = [Operator] Column
 - `getsByServiceSeqAndIsClose(7, 0)`와 `serviceSeq(7)->andIsClose(0)->gets()`는 같은 조건을 만든다.
 - 체인은 모든 컬럼을 조합할 수 있다. PHP와 Python은 호출 시점에 체인을 해석한다. Go, Rust, TypeScript는 읽은 소스가 호출하는 체인 메서드를 생성하고, 알 수 없는 컬럼·연산자·인자 개수는 생성 단계에서 거부한다. Python의 scan은 어떤 규칙에도 맞지 않는 model method를 생성 단계에서 보고한다.
 - 각 언어는 자기 빌드 도구로 생성한다.
-  - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다.
+  - Go는 `--scan`으로 지정한 패키지를 읽고 호출이 타입 검사를 통과할 때까지 반복한다. `//go:generate` 줄에서 `go run github.com/polyspec/orm/cmd/orm-gen gen --document schema/example.dbs --lang go --out model --scan ./...`를 실행한다. 기본 빌드가 `//go:build` 제약으로 제외하는 파일은 그 제약에 필요한 태그, GOOS, GOARCH로 읽으므로 `GOFLAGS=-tags` 없이도 태그를 지정한 테스트를 포함한다. 기본 빌드는 읽을 모든 패키지를 한 번 읽고, 그런 설정은 그 파일을 가진 패키지만 읽으며 다른 모든 패키지의 타입 정보는 기본 빌드에서 가져온다.
   - TypeScript는 `--scan`으로 지정한 파일을 TypeScript 컴파일러 API로 읽고 정확한 메서드 시그니처를 작성한다. `tsc` 전에 `build` 스크립트에서 `orm-gen gen --schema schema/example.dbs --out src/models --scan src`를 실행한다.
   - Rust는 `build.rs`에서 `scan`으로 지정한 소스를 `syn`으로 읽는다. `polyspec_orm_build::Builder::new(["schema/example.dbs"]).scan("src").generate()`를 실행하고, `polyspec_orm::models!()`가 결과를 `model` 모듈로 포함한다.
   - PHP는 컬럼 메타데이터와 타입이 있는 getter·setter를 가진 모델 클래스를 작성한다. `vendor/bin/orm-gen gen --out src/Model --namespace Example\Model schema/example.dbs`를 실행한다.

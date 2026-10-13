@@ -18,6 +18,10 @@ import (
 // scanRounds limits the rounds of a scan.
 var scanRounds = 64
 
+// scanLoads, when set, observes each package load of a scan: its build
+// configuration and its patterns. Only the tests set it.
+var scanLoads func(config scanConfig, patterns []string)
+
 // scan loads the scanned packages, generates the model methods their calls
 // need, and repeats until the calls type-check against the models. A call is
 // resolved when its receiver type is known; a chain of missing methods is
@@ -36,23 +40,30 @@ func (g *goGen) scan(patterns []string) error {
 	if err != nil {
 		return err
 	}
-	// Files that the default build ignores are loaded with the build tags and
-	// platform their constraints need, so a tagged test is scanned as well.
-	configs := []scanConfig{{}}
+	// The default configuration loads every scanned package once. A file that
+	// the default build ignores is loaded with the build tags and platform its
+	// constraint needs, and that configuration loads only the packages that
+	// hold such files: the type information of every other package comes from
+	// the default load, so a tagged test is scanned without loading the whole
+	// scan again.
+	loads := []scanLoad{{patterns: patterns}}
 	for round := 0; round < scanRounds; round++ {
 		g.pending = false
 		g.errors = nil
 		visited := map[string]bool{}
 		var pkgs []*packages.Package
-		for i := 0; i < len(configs); i++ {
+		for i := 0; i < len(loads); i++ {
+			if scanLoads != nil {
+				scanLoads(loads[i].config, loads[i].patterns)
+			}
 			loaded, err := packages.Load(&packages.Config{
 				Mode:       packages.NeedName | packages.NeedFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedImports,
 				Dir:        dir,
 				Tests:      true,
-				BuildFlags: configs[i].buildFlags(),
-				Env:        configs[i].env(),
+				BuildFlags: loads[i].config.buildFlags(),
+				Env:        loads[i].config.env(),
 				Overlay:    overlay,
-			}, patterns...)
+			}, loads[i].patterns...)
 			if err != nil {
 				return err
 			}
@@ -72,8 +83,8 @@ func (g *goGen) scan(patterns []string) error {
 				}
 				if round == 0 {
 					for _, ignored := range p.IgnoredFiles {
-						if config, ok := configFor(ignored); ok && !slices.Contains(configs, config) {
-							configs = append(configs, config)
+						if config, ok := configFor(ignored); ok {
+							loads = addLoad(loads, config, filepath.Dir(ignored))
 						}
 					}
 				}
@@ -96,6 +107,27 @@ func (g *goGen) scan(patterns []string) error {
 		}
 	}
 	return fmt.Errorf("model calls did not converge in %d scan rounds", scanRounds)
+}
+
+// scanLoad is one package load of a scan: a build configuration and the
+// patterns it loads.
+type scanLoad struct {
+	config   scanConfig
+	patterns []string
+}
+
+// addLoad adds the package directory dir to the load of config, and adds that
+// load when the scan has none for config yet.
+func addLoad(loads []scanLoad, config scanConfig, dir string) []scanLoad {
+	for i := range loads {
+		if loads[i].config == config {
+			if !slices.Contains(loads[i].patterns, dir) {
+				loads[i].patterns = append(loads[i].patterns, dir)
+			}
+			return loads
+		}
+	}
+	return append(loads, scanLoad{config: config, patterns: []string{dir}})
 }
 
 // modelPath returns the import path of the output directory, which may exist
