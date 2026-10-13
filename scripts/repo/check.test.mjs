@@ -566,7 +566,8 @@ caseTest('every variable a helper make command reads is exported by the Makefile
 const vendoredFiles = JSON.parse(text('kit.json')).vendoredFiles;
 
 caseTest('the workflow rules skip the workflows that kit.json vendors', COMPUTE, () => {
-  assert.deepEqual(Object.keys(vendoredFiles), ['.github/workflows/release.yml']);
+  // kit vendors one workflow, release.yml; its other vendored files (PRINCIPLES.md and its twin) are no workflows.
+  assert.deepEqual(Object.keys(vendoredFiles).filter(file => file.startsWith('.github/workflows/')), ['.github/workflows/release.yml']);
   const all = { '.github/workflows/ci.yml': 'a', '.github/workflows/release.yml': 'b' };
   assert.deepEqual(ownWorkflows(all, vendoredFiles), { '.github/workflows/ci.yml': 'a' });
   assert.deepEqual(ownWorkflows({ 'ci.yml': 'a', 'release.yml': 'b' }, vendoredFiles), { 'ci.yml': 'a' });

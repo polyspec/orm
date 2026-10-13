@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T126-2-1: the workflow test judges the workflows among the vendored files only.
 - T136-1: the install-python test asserts that uv is installed before Python.
 - T128-2a-8: the model generation coverage of Go and PHP generates through the set file.
 - T146: the module list of orm-schema's dbspec is formatted, so `make rust-fmt-check` passes.
