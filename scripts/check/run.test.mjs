@@ -1,6 +1,6 @@
 // runner(scripts/check/run.mjs)와 그 실행 기록(scripts/check/record.mjs)을 stub 단계로 검사한다. 각 case는 임시 git
 // checkout에서, database 만들기와 지우기, make target 대신 자기 이름을 log에 적는 stub 명령으로 runChecks를 별도
-// process에서 실행한다. 실제 target과 database는 실행하지 않는다. 전체 suite의 guard는 scripts/kit의 도구다.
+// process에서 실행한다. 실제 target과 database는 실행하지 않는다. 전체 suite의 guard는 @polyspec/kit의 도구다.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -157,13 +157,13 @@ function recipe(target) {
   return body;
 }
 
-// check case는 make check가 kit의 guard(scripts/kit/full-run.mjs)를 거쳐 target check-run을 실행하고, make check-run이 runner를
+// check case는 make check가 kit의 guard(the full-run tool of @polyspec/kit)를 거쳐 target check-run을 실행하고, make check-run이 runner를
 // 실행하는지 본다. check-run의 첫 두 줄은 GROUP을 확인하는 make 함수이고 명령이 없다: GROUP이 없으면 빈 줄로 펼쳐지고, 맞지
 // 않는 GROUP과 GitHub Actions 밖의 GROUP은 명령 전에 make를 멈춘다(G5.111). `make -n check-run`은 case가 주는 변수만 가진
 // 환경으로 실행하므로(tests/environment.mjs) CI group의 job이 이 case를 실행해도 그 GROUP과 GITHUB_ACTIONS는 닿지 않는다
 // (G5.119).
 caseTest('make check starts the kit guard and make check-run starts the runner', COMPUTE, () => {
-  assert.deepEqual(recipe('check'), ['node scripts/kit/full-run.mjs run check-run']);
+  assert.deepEqual(recipe('check'), ['node $(KIT)/full-run.$(KIT_EXT) run check-run']);
   const run = recipe('check-run');
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
   assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && node scripts/check/run.mjs $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);

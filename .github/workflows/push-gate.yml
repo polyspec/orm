@@ -29,6 +29,17 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           node-version-file: .node-version
+      # make reads the kit.mk of @polyspec/kit, so the package is installed
+      # before any other make target runs: the npm of packageManager into
+      # var/tools, then package-lock.json with that npm.
+      - name: npm of packageManager
+        id: npm
+        if: ${{ !cancelled() }}
+        run: make install-tools TOOLS=npm
+      - name: install Node dependencies
+        id: node-modules
+        if: ${{ !cancelled() }}
+        run: make install-packages
       - name: push gate
         id: gate
         if: ${{ !cancelled() }}

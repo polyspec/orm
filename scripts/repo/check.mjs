@@ -9,6 +9,7 @@ import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './ta
 import { connectProbeErrors, runtimeSource } from './probes.mjs';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mjs';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mjs';
+import { kitCopies } from './kit-copies.mts';
 import { callerPathErrors, deferredExitErrors, detachedGroupErrors, timeFailureErrors } from './gosource.mjs';
 import { callerEnvironmentErrors, goCargoErrors, goRunErrors, goTestCaseErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, rustTestCaseErrors, segments, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mjs';
 import { checkInputErrors } from '../features/owners.mjs';
@@ -20,11 +21,11 @@ const log = sections();
 log.begin('repo', COMPUTE);
 
 const root = new URL('../../', import.meta.url).pathname;
-// The files of polyspec/kit (kit.json lists the vendored directories) are checked by make kit-check and make kit-test, and they are
-// never edited here, so the rules of this repository do not read them.
-const vendored = JSON.parse(readFileSync(join(root, 'kit.json'), 'utf8')).vendored.map(directory => `${directory}/`);
+// The copies of @polyspec/kit are checked by make kit-check and never edited here, so the rules of this repository do not
+// read them.
+const copies = kitCopies(root);
 const trackedAll = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
-const tracked = trackedAll.filter(file => !vendored.some(directory => file.startsWith(directory)));
+const tracked = trackedAll.filter(file => !Object.hasOwn(copies, file));
 const failures = [];
 
 const makefile = readFileSync(join(root, 'Makefile'), 'utf8');
@@ -58,11 +59,12 @@ failures.push(...toolingLanguageErrors(tracked));
 // 검사를 실행하는 Node는 .node-version이 선언한 version 하나이고, 모든 workflow가 그 file을 읽는다.
 const nodeVersionPath = join(root, '.node-version');
 const workflowDirectory = join(root, '.github/workflows');
-// allWorkflows는 .github/workflows의 모든 workflow다. kit.json의 vendoredFiles가 나열한 workflow는 kit가 소유하고 make kit-check가
-// byte 단위로 지키므로, workflow를 쓰는 방식의 규칙(workflows)에서 뺀다. 어떤 trigger의 workflow가 있어야 하는지는 모든 workflow로 판정한다(T115).
+// allWorkflows holds every workflow of .github/workflows. A workflow among the copies of @polyspec/kit is kit's and make
+// kit-check holds it byte for byte, so the rules of how a workflow is written (workflows) skip it; which triggers need a
+// workflow is judged over every workflow (T115).
 const allWorkflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
-const workflows = ownWorkflows(allWorkflows, JSON.parse(readFileSync(join(root, 'kit.json'), 'utf8')).vendoredFiles);
+const workflows = ownWorkflows(allWorkflows, copies);
 // CI의 모든 step은 make target을 실행한다(summary만 예외다).
 failures.push(...ciMakeErrors(workflows));
 // push로 실행하는 workflow는 새 push가 앞 실행을 끝내도록 concurrency를 선언한다.

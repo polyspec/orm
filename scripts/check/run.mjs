@@ -16,7 +16,7 @@
 //
 // 실행은 database 만들기와 지우기, 각 target의 시작과 결과를 .runtime/check/<id>/record.json에
 // 기록한다(scripts/check/record.mjs). 전체 suite의 guard(진행 중 항목, commit하지 않은 변경, tree마다 한 번)는
-// scripts/kit의 `make check`가 이 runner 앞에서 맡는다.
+// @polyspec/kit의 guard(`make check`)가 이 runner 앞에서 맡는다.
 //
 // Usage: [ORM_CHECK_RUN_ID=<id>] node scripts/check/run.mjs [--job-summary] <servers env | -> <target>...
 import { spawnSync } from 'node:child_process';

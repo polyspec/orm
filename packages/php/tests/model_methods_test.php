@@ -2,7 +2,7 @@
 // Query methods of the generated PHP models: orm-gen declares the condition method of every column, the tuple
 // method of every key prefix, the column methods and the orders, and forceIndex of every index, so that PHPStan at
 // level 9 finds each method on the model, and each method builds the query that the chain of its name builds.
-// Usage: php packages/orm-php/tests/model_methods_test.php
+// Usage: php packages/php/tests/model_methods_test.php
 declare(strict_types=1);
 
 require __DIR__ . '/autoload.php';
@@ -47,7 +47,7 @@ if ($generated !== 0) {
     exit(1);
 }
 file_put_contents("$work/calls.php", CALLS);
-file_put_contents("$work/autoload.php", "<?php\nrequire " . var_export("$root/packages/orm-php/tests/autoload.php", true) . ";\n"
+file_put_contents("$work/autoload.php", "<?php\nrequire " . var_export("$root/packages/php/tests/autoload.php", true) . ";\n"
     . "spl_autoload_register(static function (string \$class): void {\n"
     . "    \$prefix = 'Polyspec\\\\Orm\\\\Tests\\\\Methods\\\\';\n"
     . "    if (str_starts_with(\$class, \$prefix)) {\n        require " . var_export("$work/model/", true) . " . substr(\$class, strlen(\$prefix)) . '.php';\n    }\n});\n");

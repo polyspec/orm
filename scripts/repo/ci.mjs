@@ -376,11 +376,12 @@ export function helperRunErrors(manifest, makefile, setupScript) {
   return errors;
 }
 
-// ownWorkflows는 workflows({path: text}, path는 `.github/workflows/<name>` 또는 `<name>`)에서 kit.json의 vendoredFiles가 나열한
-// file을 뺀다. 그 file은 kit가 소유하고 make kit-check가 byte 단위로 지키므로, 이 저장소의 workflow 규칙은 그 file에 적용하지 않는다.
-export function ownWorkflows(workflows, vendoredFiles) {
-  if (vendoredFiles === null || typeof vendoredFiles !== 'object') throw new Error('kit.json declares no vendoredFiles; make kit-sync writes it');
-  const vendored = new Set(Object.keys(vendoredFiles));
+// ownWorkflows drops from workflows ({path: text}, the path `.github/workflows/<name>` or `<name>`) the copies of @polyspec/kit
+// (copies, { copy path: package path }, from kitCopies). A copy is kit's and make kit-check holds it byte for byte, so the
+// workflow rules of this repository do not apply to it.
+export function ownWorkflows(workflows, copies) {
+  if (copies === null || typeof copies !== 'object') throw new Error('no copies of @polyspec/kit were given; read them with kitCopies of scripts/repo/kit-copies.mts');
+  const vendored = new Set(Object.keys(copies));
   return Object.fromEntries(Object.entries(workflows).filter(([path]) => !vendored.has(path) && !vendored.has(`.github/workflows/${path}`)));
 }
 
@@ -826,12 +827,15 @@ export function concurrencyErrors(workflows) {
 
 // CI_PASSED_STEPS는 ci.yml의 마지막 job ci-passed의 step이다. release의 verify 단계가 요구하는 ci.yml의 check는 이 job 하나다: `if: always()`로
 // 다른 job이 실패하거나 취소되어도 실행되고, needs가 다른 모든 job이므로 그 모든 job이 success일 때만 make ci-passed가
-// 통과한다. make ci-passed는 저장소의 Makefile과 scripts/kit/ci-passed.mjs를 node로 실행하므로, 그 앞에 checkout과
-// .node-version의 node 설치가 있다.
+// 통과한다. make ci-passed runs the Makefile of the repository and the ci-passed tool of @polyspec/kit with node, so the
+// checkout, the node of .node-version and the install of the package come before it.
 export const CI_PASSED_STEP = ['- name: every job passed', 'if: ${{ !cancelled() }}', 'env:', 'RESULTS: ${{ toJSON(needs) }}', 'run: make ci-passed'];
 export const CI_PASSED_STEPS = [
   ['- uses: actions/checkout@v5'],
   ['- uses: actions/setup-node@v7', 'with:', 'node-version-file: .node-version'],
+  // make reads the kit.mk of @polyspec/kit, which these two steps install before make ci-passed runs.
+  ['- name: npm of packageManager', 'id: npm', 'if: ${{ !cancelled() }}', 'run: make install-tools TOOLS=npm'],
+  ['- name: install Node dependencies', 'id: node-modules', 'if: ${{ !cancelled() }}', 'run: make install-packages'],
   CI_PASSED_STEP,
 ];
 

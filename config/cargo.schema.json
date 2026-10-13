@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "The kit policy of a Cargo.toml",
+  "description": "make layout-check (config/layout.kit.yml, lint-cargo-lints) checks every Cargo.toml against it. A workspace denies unsafe code and an allow attribute without its reason: unsafe code is allowed only where an FFI site says #[allow(unsafe_code, reason = \"...\")] (S8). A package takes the lints of its workspace; Cargo applies them to a member only when it says lints.workspace = true, so a package outside a workspace fails too.",
+  "type": "object",
+  "allOf": [
+    {
+      "if": { "required": ["workspace"] },
+      "then": {
+        "properties": {
+          "workspace": {
+            "required": ["lints"],
+            "properties": {
+              "lints": {
+                "required": ["rust", "clippy"],
+                "properties": {
+                  "rust": {
+                    "required": ["unsafe_code"],
+                    "properties": { "unsafe_code": { "const": "deny" } }
+                  },
+                  "clippy": {
+                    "required": ["allow_attributes_without_reason"],
+                    "properties": { "allow_attributes_without_reason": { "const": "deny" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "required": ["package"] },
+      "then": {
+        "required": ["lints"],
+        "properties": {
+          "lints": {
+            "type": "object",
+            "required": ["workspace"],
+            "additionalProperties": false,
+            "properties": { "workspace": { "const": true } }
+          }
+        }
+      }
+    }
+  ]
+}

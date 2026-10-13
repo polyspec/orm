@@ -87,7 +87,7 @@ func DiagramKO() ([]byte, error) {
 	return diagram(true)
 }
 
-// documentID is the doc-id of the component document pair (scripts/kit/check-documents.mjs); the Korean document also holds the
+// documentID is the doc-id of the component document pair (make documents-check of @polyspec/kit); the Korean document also holds the
 // sha256 of the English one.
 const documentID = "interfaces-model"
 

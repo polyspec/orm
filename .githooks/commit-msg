@@ -1,4 +1,5 @@
 #!/bin/sh
-# commit-msg hook: refuses a commit whose message breaks config/commits.json, with the rule and the reason. make sets
-# core.hooksPath to .githooks at parse time (scripts/kit/kit.mk), so git runs this file on every commit of the checkout.
-exec node "$(dirname "$0")/../scripts/kit/check-commits.mjs" --message "$1"
+# The commit-msg hook. Git starts it from the top level of the working tree with the file of the message being committed.
+# It runs make commit-msg-check, which checks the message against config/commits.json with the check-commits tool of
+# @polyspec/kit and refuses a commit that breaks it.
+exec make --no-print-directory commit-msg-check MESSAGE="$1"

@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: dc643530e04536dfd2737837cc0ca517ae3af418958e097555c57153fca27df4 -->
+<!-- source-sha256: ed7929f4a07f4732ac1f4aa50784def62443ee7d0dcfec0d927e53ba5744daf3 -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -36,6 +36,8 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   `{type}/{shortname}-{체크리스트 id}`와 `{프로젝트}-{shortname}-{체크리스트 id}`로 이름 짓고, main에 merge되는 즉시
   지웁니다. merge될 수 없는 test나 실험 code는 남길 가치가 있으면 cherry-pick하고 아니면 폐기하며, 항상 commit 전에
   합니다; 바로 지울 수 없으면 checklist 하위 항목에 제거 조건을 적습니다.
+- code 주석, identifier, log, error message, test 이름, commit message는 영어로 씁니다. 문서는 영어이며, 각각 기술 용어를
+  영어로 쓰는 한국어 쌍을 가집니다.
 
 ## 설계
 
@@ -48,13 +50,16 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
   다른 문제를 만들어 해결하지 않습니다.
 - 복구, 적용, 변환은 멱등입니다; 변경은 polling으로 찾지 않고 event로 게시합니다; 경로는 선언된 root에서 선언적으로
   결정합니다; multi-platform은 필수 요구이며 platform 꼼수 없이 채웁니다.
+- 끝이 정해지지 않은 loop로 주기적으로 살피는 script는 쓰지 않습니다: sleep을 넣은 `until`이나 `while`, `gh run list`를
+  감싼 loop, watchdog 모두 쓰지 않습니다. 기다림은 자기 일이 끝을 정하는 명령 하나입니다: `gh run watch <id> --exit-status`,
+  완료가 알려지는 background 명령, 또는 그 일을 하는 세션의 메시지.
 
 ## 검증
 
 - 결함은 그것을 재현하고 의도한 이유로 실패하는 test에서 시작합니다; 그다음 고치고; 같은 test가 통과합니다. 실패할 수 없는
   test는 아무것도 증명하지 않으며, 실행되지 않고 통과하는 test는 결함입니다.
-- 항목을 개발하는 동안에는 바뀐 것의 소유 검사만 돌립니다. 전체 모음은 활성 checklist의 모든 항목이 완료되었을 때 정확히
-  한 번 돌립니다. 수정마다, 개별 항목마다 돌리지 않습니다.
+- 항목은 자기 단위 test의 red, 구현, green으로 완료합니다. 바뀐 것의 소유 검사만 돌리며, 전체 모음은 수정마다, 항목마다,
+  마지막에도 돌리지 않습니다.
 - 어려운 판단이나 새로운 추론은 한 round가 아무것도 찾지 못할 때까지 round마다 적대적으로 검증합니다. 검증의 범위는 첫
   round 전에 정하며, 그 옆의 질문은 자기 항목이 됩니다. 검증에는 반론뿐 아니라 해법도 요구하며, finding은 명제가 틀렸음을
   보이거나, 다른 문서와 모순됨을 보이거나, 명제가 다룬다고 주장하는 case가 빠졌음을 보일 때만 인정합니다.
@@ -81,19 +86,22 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   PHPUnit에서 돕니다.
 - S3 test는 생태계 표준 runner(`node --test` 또는 vitest, PHPUnit, `go test`, `cargo test` 또는 nextest, unittest)로만
   돌며, 자체 runner protocol, `check()` helper, 파일 chain을 쓰지 않고, 설치된 package를 대상으로 돕니다: `PYTHONPATH`,
-  `sys.path` 변경, repository를 벗어나는 경로를 쓰지 않습니다.
+  `sys.path` 변경, repository를 벗어나는 경로를 쓰지 않습니다. kit은 runner마다 test 파일을 고정합니다
+  (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest의 `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/`와 `#[test]`, `test_*.py`).
+  repository는 파일을 더할 수만 있고 좁힐 수 없으며, test처럼 이름 붙은 파일은 binding이 실행합니다.
 - S4 버전: lock의 모든 의존성이 동작함을 보인 뒤에만 정합니다. 생태계에 LTS가 있으면 최신 LTS, 없으면 의존성이 지원하는
   최신 stable, 또는 LTS에 근접한 더 새 non-LTS를 씁니다. 선언 하한은 pin 정밀도로 pin과 같고, 모든 repository가 같은
   pin을 쓰며, 예외는 범위, 이유, 재시도 조건과 함께 선언하고, source build로 조용히 fallback하지 않습니다.
 - S5 폴더: 모든 monorepo는 같은 root 폴더(`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`, `examples/`,
   `benchmarks/`, `config/`)를 가집니다. 주 spec의 runtime port는 `packages/<runtime>/`, 다른 component는
   `packages/<component>/`, 그 port는 `packages/<component>/<runtime>/`에 두며, 폴더 이름에 repository prefix를 붙이지
-  않습니다.
+  않습니다. `make layout-check`가 alint로 `config/layout.yml`(kit 공통 rule 위에 레포의 map을 더한 설정)에 맞춰 검사하며,
+  그 안의 예외는 모두 이유를 가집니다.
 - S6 언어 parity: repository의 모든 구현은 같은 feature unit, vector, API를 같은 수준으로 test합니다. 영구 차이는 이유가
   spec anchor를 인용하는 선언된 profile이며, exclusion은 제거될 때까지 실패하는 부채입니다.
 - S7 test 위치: 기본 기능의 test는 그 기능을 소유한 package와 repository에 둡니다. 소비자는 소비자 관점의 test만 둡니다.
 - S8 이상한 점의 보고는 "책임"의 두 번째 항목이며, 어떤 tool도 이를 강제할 수 없습니다. S8이 더하는 것: 모든 예외,
-  profile, rebuild 기록은 이유와 owner의 필수 review를 가집니다.
+  profile, rebuild 기록은 선언된 자리에 이유를 가집니다.
 - S9 kit을 포함한 언어 간 orchestration과 check는 TypeScript로 쓰고, `tsc`가 `erasableSyntaxOnly`로 검사합니다. 예외: 한
   언어의 구현을 구동하는 harness는 그 언어의 test이고, 언어별 정적 check는 그 생태계 analyzer의 plugin이며, symbol
   추출기는 그 생태계의 tool을 돌립니다.

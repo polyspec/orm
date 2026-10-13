@@ -28,5 +28,14 @@
     "mod": "go.mod"
   },
   "cargoAudit": "0.22.2",
-  "govulncheck": "1.8.0"
+  "govulncheck": "1.8.0",
+  "alint": {
+    "version": "0.18.2",
+    "sha256": {
+      "darwin-arm64": "ccfb4d13c6001b6ee5d31f2e139ce3e9710df54ba75c5601ef2a96be9ad8d4b2",
+      "darwin-x64": "23dc62149aacc8168f922e35e067a244d3c715725182322dcc3564129968dd8c",
+      "linux-arm64": "133ae54580b1c84d6aa1641d72448267241064ee9c5be119bb649f6acad9e005",
+      "linux-x64": "ce1f182bf3205aceab62fad40dbdd7502de638ed89cbb4fef10320803384ff9b"
+    }
+  }
 }

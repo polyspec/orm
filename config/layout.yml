@@ -1,0 +1,109 @@
+# The folder layout of orm (S5, S7, S9), checked by make layout-check: the common rules of config/layout.kit.yml and the map
+# of this repository. An entry below is a permanent part of orm's layout with its reason; a folder or file that S5 refuses
+# and that has to move is no exception here, so layout-check reports it until it moves (the T137 rows of the checklist).
+version: 1
+extends:
+  - layout.kit.yml
+
+rules:
+  - extends_template: no-repository-prefix
+    id: layout-no-repository-prefix
+    vars: { repo: orm }
+
+  - extends_template: go-module-path
+    id: layout-go-module-path
+    vars: { repo: orm }
+
+  # packages/ holds the runtime ports of orm and the three components of the dbspec editor stack, each a TypeScript package
+  # with no ports in other runtimes (docs/editor.md): the language service, the language server and the CodeMirror extension.
+  - id: layout-packages
+    paths:
+      - "packages/*"
+      - "!packages/go"
+      - "!packages/php"
+      - "!packages/php-ext"
+      - "!packages/python"
+      - "!packages/rust"
+      - "!packages/ts"
+      - "!packages/js"
+      - "!packages/dbspec-language"
+      - "!packages/dbspec-lsp"
+      - "!packages/dbspec-codemirror"
+
+  - id: layout-root-files
+    paths:
+      - "*"
+      - "!README.md"
+      - "!README.ko.md"
+      - "!AGENTS.md"
+      - "!AGENTS.ko.md"
+      - "!PRINCIPLES.md"
+      - "!PRINCIPLES.ko.md"
+      - "!CHANGELOG.md"
+      - "!CHANGELOG.ko.md"
+      - "!LICENSE"
+      - "!Makefile"
+      - "!kit.json"
+      - "!package.json"
+      - "!package-lock.json"
+      - "!tsconfig.json"
+      - "!.gitignore"
+      - "!.gitattributes"
+      - "!.node-version"
+      - "!.python-version"
+      - "!.php-version"
+      - "!rust-toolchain.toml"
+      - "!ruff.toml"
+      - "!phpcs.xml.dist"
+      - "!phpstan.dist.neon"
+      - "!Cargo.toml"
+      - "!Cargo.lock"
+      - "!go.work"
+      - "!go.work.sum"
+      - "!.golangci.yml"
+      - "!.oxlintrc.json"
+      - "!knip.json"
+      - "!.editorconfig"
+      # The one version of the repository, which config/release.json names and the version-bump commit sets.
+      - "!VERSION"
+      # The private Composer root that installs packages/php as a path repository for the PHP checks, as package.json is
+      # the npm root of the workspace.
+      - "!composer.json"
+      - "!composer.lock"
+      # The community health files, which GitHub reads only from the root, .github/ or docs/; each has its Korean twin.
+      - "!CODE_OF_CONDUCT.md"
+      - "!CODE_OF_CONDUCT.ko.md"
+      - "!CONTRIBUTING.md"
+      - "!CONTRIBUTING.ko.md"
+      - "!SECURITY.md"
+      - "!SECURITY.ko.md"
+
+  # S7: the root tests/ holds what every client runs or is compared by, and the tests of the repository's own tools.
+  - id: layout-root-tests
+    paths:
+      - "tests/*"
+      - "!tests/kit"
+      # Shared vectors and the cross-language runners that compare the clients' results.
+      - "!tests/codec"
+      - "!tests/conformance"
+      - "!tests/dbspec"
+      - "!tests/dialects"
+      - "!tests/dsn"
+      - "!tests/editor"
+      - "!tests/events"
+      - "!tests/interfaces"
+      - "!tests/ir"
+      - "!tests/markdown"
+      # The CPU-time measurements of every client under a preempted process group (make timing-check).
+      - "!tests/timing"
+      # The time zone that WITH_TEST_ENV gives the PHP of every database client.
+      - "!tests/timezone"
+      # The consumer projects in which the release installs its archives (config/release.json consumers).
+      - "!tests/release-consumer"
+      # The tests of the repository's tools: the CLI install, the dbs fence of the documentation site, and the lease,
+      # session and process programs of the check runner.
+      - "!tests/cli"
+      - "!tests/docs"
+      - "!tests/lease"
+      - "!tests/new-session"
+      - "!tests/stop-process"

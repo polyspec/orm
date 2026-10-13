@@ -1,0 +1,8 @@
+// The knip configuration of every polyspec repository, copied by kit; change it in kit, never in a copy. make lint-ts runs
+// knip from the root. A repository runs its node:test files through make, not an npm script that knip reads, so the test
+// files of the fixed convention of S3 are named as entries here; every other entry comes from the plugins of the manifests.
+{
+  "node": {
+    "entry": ["**/*.test.{ts,mts,mjs}"]
+  }
+}

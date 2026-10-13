@@ -36,6 +36,8 @@ in kit, with its grounding.
   `{type}/{shortname}-{checklist id}` and `{project}-{shortname}-{checklist id}`, and is deleted as soon as it is merged
   into main. Test or experiment code that cannot merge is cherry-picked when it is worth keeping and otherwise discarded,
   always before the commit; when it cannot be removed at once, a checklist sub-item states the condition of its removal.
+- Code comments, identifiers, logs, error messages, test names and commit messages are written in English. Documents are
+  English, each with a Korean twin that writes technical terms in English.
 
 ## Design
 
@@ -49,13 +51,16 @@ in kit, with its grounding.
   problem is never solved by creating another problem.
 - Recovery, apply and transformation are idempotent; a change is published as an event, never found by polling; paths are
   resolved declaratively from a declared root; and multi-platform is a hard requirement, met without platform tricks.
+- No script polls in a loop with no known end: no `until` or `while` with a sleep, no loop around `gh run list`, no
+  watchdog. A wait is one command that its own work bounds, such as `gh run watch <id> --exit-status`, a background
+  command whose completion is notified, or a message from the session that does the work.
 
 ## Verification
 
 - A defect starts as a test that reproduces it and fails for the intended reason; the fix follows; the same test passes.
   A test that cannot fail proves nothing, and a test that passes without running is a defect.
-- While an item is developed, only the checks that own what changed run. The full suite runs exactly once, when every
-  item of the active checklist is complete: never per fix and never per item.
+- An item is completed by its own unit tests: red, implementation, green. Only the checks that own what changed run; the
+  full suite is not run, neither per fix, per item nor at the end.
 - A hard judgement or a new line of reasoning is verified adversarially, in rounds, until a round finds nothing. The scope
   of the review is fixed before the first round; a question beside it becomes its own item. The review is asked for
   solutions as well as objections, and a finding counts only when it shows a proposition wrong, shows it contradicted by
@@ -86,7 +91,9 @@ tool lands, a standard binds the work as written here.
   follows PSR-1 and PSR-4; tests run on PHPUnit.
 - S3 Tests run only on the ecosystem's standard runner (`node --test` or vitest, PHPUnit, `go test`, `cargo test` or
   nextest, unittest), with no runner protocol, `check()` helper or file chain of our own, and against installed packages:
-  no `PYTHONPATH`, no `sys.path` change, no path that leaves the repository.
+  no `PYTHONPATH`, no `sys.path` change, no path that leaves the repository. kit fixes the test files of each runner
+  (`*.test.{ts,mts,cts,mjs,cjs,js}`, vitest's `*.{test,spec}.*`, `*Test.php`, `*_test.go`, `tests/` and `#[test]`,
+  `test_*.py`); a repository may add files but never narrow the set, and a file named like a test is run by a binding.
 - S4 Versions: a version is chosen only after every locked dependency is shown to work with it; the latest LTS where the
   ecosystem has one, otherwise the latest stable release the dependencies support, or a newer non-LTS close to the LTS.
   The declared floor equals the pinned toolchain at the pin's precision, every repository uses the same pins, an exception
@@ -94,13 +101,15 @@ tool lands, a standard binds the work as written here.
 - S5 Folders: every monorepo has the same root folders (`packages/`, `contracts/`, `docs/`, `scripts/`, `tests/`,
   `examples/`, `benchmarks/`, `config/`). Runtime ports of the main spec live in `packages/<runtime>/`, other components in
   `packages/<component>/` and their ports in `packages/<component>/<runtime>/`; folder names carry no repository prefix.
+  `make layout-check` checks it with alint against `config/layout.yml`, the map of the repository over kit's common rules;
+  each exception there carries its reason.
 - S6 Language parity: every implementation of a repository tests the same feature units, vectors and API at the same
   level. A permanent difference is a declared profile whose reason cites a spec anchor; an exclusion is debt that fails
   until removed.
 - S7 Test placement: a test of a basic feature lives in the package and repository that own the feature; a consumer keeps
   only tests from the consumer's point of view.
 - S8 Reporting oddities is the second bullet of "Responsibility"; no tool can enforce it. What S8 adds: every exception,
-  profile and rebuild record carries its reason and the owner's required review.
+  profile and rebuild record carries its reason, in the place where it is declared.
 - S9 Cross-language orchestration and checks, kit included, are written in TypeScript, checked by `tsc` with
   `erasableSyntaxOnly`. Exceptions: a harness that drives one language's implementation is a test of that language; a
   language-specific static check is a plugin of that ecosystem's analyzer; a symbol extractor runs that ecosystem's tool.

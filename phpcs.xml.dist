@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!--
+  The phpcs rules of every polyspec repository, copied by kit; change them in kit, never in a copy. make lint-php runs phpcs
+  with this file on the PHP files of the checkout. PSR-12 includes PSR-1, whose MultipleClasses sniff enforces one class per
+  file (S2): composer dump-autoload strict-psr does not, since it accepts a file whose first class matches its name and
+  drops the others in silence.
+-->
+<ruleset name="polyspec">
+    <description>PSR-12 for the PHP of a polyspec repository (S2)</description>
+    <arg name="extensions" value="php"/>
+    <rule ref="PSR12"/>
+    <!-- The stubs of a PHP extension are the input of php-src's gen_stub.php, which declares every class of the extension in one file by its design. -->
+    <exclude-pattern>*.stub.php</exclude-pattern>
+</ruleset>

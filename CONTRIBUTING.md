@@ -14,7 +14,7 @@
    description when needed. End-to-end runs, `make owner-check` and the full suite run in CI after
    the push; no local check is required before a push.
 6. The full suite runs in CI after a push to `main` (`make check-run GROUP=<group>`). A local
-   `make check` first runs the guard of `scripts/kit/full-run.mjs`: it refuses, with the reasons and
+   `make check` first runs the guard of the full-run tool of `@polyspec/kit`: it refuses, with the reasons and
    exit status 1, while an item of `docs/plans/execution-checklist.md` is `[~]` (each is named with its ID and title),
    while tracked files have uncommitted changes, while the Git hooks are not installed, and when
    `var/full-run.json` records a full run of the same tree (`git rev-parse HEAD^{tree}`). The guard

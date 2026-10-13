@@ -1,0 +1,253 @@
+# The common layout rules of kit (S5, S7, S9), vendored into every repository; make layout-check runs them through the
+# config/layout.yml of the repository, which extends this file and adds its map. This file lies in config/ because alint
+# reads an extends: target only from the folder of the config that names it. Change it in kit, never in a copy.
+#
+# A repository overrides a rule by its id: a field it names replaces the field of this file, so an override of paths
+# repeats the list below and adds its own entries, each S9 exception with its reason in a comment right above it.
+version: 1
+
+templates:
+  # S5: folder names carry no repository prefix; published names do, and are no folders.
+  - id: no-repository-prefix
+    kind: dir_absent
+    level: error
+    paths: ["packages/{{vars.repo}}-*", "packages/*/{{vars.repo}}-*"]
+    message: "S5: a folder under packages/ carries no repository prefix; name it by its runtime or component"
+  # S5: the module path of a go.mod is the repository path followed by its folder, with the major version suffix of Go.
+  - id: go-module-path
+    kind: for_each_file
+    level: error
+    select: "packages/**/go.mod"
+    require:
+      - kind: file_content_matches
+        paths: "{path}"
+        pattern: '(?m)^module github\.com/polyspec/{{vars.repo}}/{dir}(/v[2-9][0-9]*)?$'
+    message: "S5: the module path of a go.mod is github.com/polyspec/<repository>/<folder>"
+  # S5: a component with ports holds one folder per runtime.
+  - id: component-ports
+    kind: dir_absent
+    level: error
+    paths:
+      - "packages/{{vars.component}}/*"
+      - "!packages/{{vars.component}}/go"
+      - "!packages/{{vars.component}}/php"
+      - "!packages/{{vars.component}}/php-ext"
+      - "!packages/{{vars.component}}/python"
+      - "!packages/{{vars.component}}/rust"
+      - "!packages/{{vars.component}}/ts"
+      - "!packages/{{vars.component}}/js"
+    message: "S5: a component with ports holds packages/<component>/<runtime>/, the runtime one of go, php, php-ext, python, rust, ts, js"
+
+rules:
+  # S5: the root folders of every monorepo, and the dot folders of Git, GitHub and kit.
+  - id: layout-root-folders
+    kind: dir_absent
+    level: error
+    root_only: true
+    paths: ["*", "!packages", "!contracts", "!docs", "!scripts", "!tests", "!examples", "!benchmarks", "!config", "!.github", "!.githooks", "!.kit"]
+    message: "S5: the root holds only packages/, contracts/, docs/, scripts/, tests/, examples/, benchmarks/ and config/"
+
+  # S5: the root files that kit defines or reads: the documents, the manifests of the TypeScript infrastructure and the
+  # toolchain files of toolchain-declared.mts.
+  - id: layout-root-files
+    kind: file_absent
+    level: error
+    root_only: true
+    paths:
+      - "*"
+      - "!README.md"
+      - "!README.ko.md"
+      - "!AGENTS.md"
+      - "!AGENTS.ko.md"
+      - "!PRINCIPLES.md"
+      - "!PRINCIPLES.ko.md"
+      - "!CHANGELOG.md"
+      - "!CHANGELOG.ko.md"
+      - "!LICENSE"
+      - "!Makefile"
+      - "!kit.json"
+      - "!package.json"
+      - "!package-lock.json"
+      - "!tsconfig.json"
+      - "!.gitignore"
+      - "!.gitattributes"
+      - "!.node-version"
+      - "!.python-version"
+      - "!.php-version"
+      - "!rust-toolchain.toml"
+      - "!ruff.toml"
+      - "!phpcs.xml.dist"
+      - "!phpstan.dist.neon"
+      - "!Cargo.toml"
+      - "!Cargo.lock"
+      - "!go.work"
+      - "!go.work.sum"
+      - "!.golangci.yml"
+      - "!.oxlintrc.json"
+      - "!knip.json"
+      - "!.editorconfig"
+    message: "S5: a file at the root that the layout does not declare; move it into a root folder or declare it in config/layout.yml"
+
+  # S5: packages/ holds the runtime ports of the main spec; a repository adds its components to the list.
+  - id: layout-packages
+    kind: dir_absent
+    level: error
+    paths: ["packages/*", "!packages/go", "!packages/php", "!packages/php-ext", "!packages/python", "!packages/rust", "!packages/ts", "!packages/js"]
+    message: "S5: packages/ holds packages/<runtime>/ and the components that config/layout.yml declares"
+
+  - id: layout-packages-files
+    kind: file_absent
+    level: error
+    paths: "packages/*"
+    message: "S5: packages/ holds folders only"
+
+  # S7: the root tests/ holds the cross-language runners and the tool tests that the repository declares.
+  - id: layout-root-tests
+    kind: dir_absent
+    level: error
+    paths: ["tests/*", "!tests/kit"]
+    message: "S7: the root tests/ holds only the declared cross-language runners and tool tests; a test of a package lives in its package"
+
+  # S5: no PYTHONPATH; a Python package resolves through its environment.
+  - id: layout-no-pythonpath
+    kind: file_content_forbidden
+    level: error
+    paths:
+      - "config/**"
+      - "scripts/**"
+      - "tests/**"
+      - "Makefile"
+      - ".github/**"
+      - "packages/**/Makefile"
+      - "packages/**/*.toml"
+      - "packages/**/*.json"
+      - "packages/**/*.cfg"
+      - "packages/**/*.ini"
+      # The layout rules name PYTHONPATH to forbid it.
+      - "!config/layout.kit.yml"
+      - "!config/layout.yml"
+      # The parity tests of kit hold the text PYTHONPATH as data of the declarations they check.
+      - "!tests/kit/parity.test.mts"
+    pattern: "PYTHONPATH"
+    message: "S5: no PYTHONPATH; a Python package resolves through its environment"
+
+  # S5: a path of the configuration is relative to the root and never leaves the repository.
+  - id: layout-config-paths
+    kind: json_path_absent
+    level: error
+    paths: "config/*.json"
+    path: "$..[?search(@, '(^|[=:/ ])[.][.]/')]"
+    message: "S5: a path of config/ names ../, which leaves the repository; name the path from the root"
+
+  # S5: a path dependency of a manifest resolves to a file or folder inside the repository. A path that leaves the
+  # repository or names nothing does not resolve.
+  - id: layout-go-replace
+    kind: for_each_file
+    level: error
+    select: ["**/go.mod", "!tests/kit/fixture/**"]
+    require:
+      - kind: cross_file
+        relation: resolves
+        source: { file: "{path}", extract: { regex: '=>\s*(\.\.?/\S*)' } }
+    message: "S5: a replace directive of a go.mod names a folder inside the repository"
+
+  - id: layout-npm-file
+    kind: for_each_file
+    level: error
+    select: ["**/package.json", "!tests/kit/fixture/**"]
+    require:
+      - kind: cross_file
+        relation: resolves
+        source: { file: "{path}", extract: { regex: '"file:([^"]+)"' } }
+    message: "S5: a file: dependency of a package.json names a folder inside the repository"
+
+  - id: layout-python-path
+    kind: for_each_file
+    level: error
+    select: ["**/pyproject.toml", "!tests/kit/fixture/**"]
+    require:
+      - kind: cross_file
+        relation: resolves
+        source: { file: "{path}", extract: { regex: '\bpath\s*=\s*"([^"]+)"' } }
+    message: "S5: a path source of a pyproject.toml names a folder inside the repository"
+
+  - id: layout-cargo-path
+    kind: for_each_file
+    level: error
+    select: ["**/Cargo.toml", "!tests/kit/fixture/**"]
+    require:
+      - kind: cross_file
+        relation: resolves
+        source: { file: "{path}", extract: { regex: '\bpath\s*=\s*"([^"]+)"' } }
+    message: "S5: a path of a Cargo.toml names a file or folder inside the repository"
+
+  - id: layout-composer-path
+    kind: for_each_file
+    level: error
+    select: ["**/composer.json", "!tests/kit/fixture/**"]
+    require:
+      - kind: cross_file
+        relation: resolves
+        source: { file: "{path}", extract: { json: "$.repositories[?@.type == 'path'].url" } }
+    message: "S5: a path repository of a composer.json names a folder inside the repository"
+
+  # S9: the infrastructure under scripts/ and tests/ is TypeScript. A harness that drives one language is a test of that
+  # language, an analyzer plugin and a symbol extractor are of their ecosystem: a repository declares each as an exception.
+  - id: layout-infrastructure-typescript
+    kind: file_absent
+    level: error
+    paths:
+      - "scripts/**/*.{js,mjs,cjs,py,sh,bash,zsh,rb,pl,php,go,rs,ps1,bat,cmd}"
+      - "tests/**/*.{js,mjs,cjs,py,sh,bash,zsh,rb,pl,php,go,rs,ps1,bat,cmd}"
+      # The fixture checkouts of kit hold the packages of a consumer repository as test data, not infrastructure.
+      - "!tests/kit/fixture/**"
+    message: "S9: cross-language infrastructure is TypeScript; port the script, or declare its S9 exception with the reason in config/layout.yml"
+
+  - id: layout-infrastructure-shebang
+    kind: file_content_forbidden
+    level: error
+    paths: ["scripts/**", "tests/**", "!tests/kit/fixture/**"]
+    pattern: '\A#![^\n]*\b(sh|bash|zsh|python[0-9.]*|perl|ruby|php)\b'
+    message: "S9: a script of another interpreter is no infrastructure; port it to TypeScript or declare its S9 exception"
+
+  # S2: no manifest maps classes by classmap or PSR-0, and a library, the default type of Composer, loads its classes by PSR-4
+  # and its tests by autoload-dev PSR-4 (config/composer.schema.json).
+  - id: lint-composer-policy
+    kind: json_schema_passes
+    level: error
+    paths: ["**/composer.json", "!tests/kit/fixture/**"]
+    schema_path: config/composer.schema.json
+    message: "S2: a composer.json maps no classmap or PSR-0, and a library maps autoload and autoload-dev by PSR-4"
+
+  # The Rust lint (make lint-rust): a workspace denies unsafe code and an allow attribute without its reason, and every
+  # package takes the lints of its workspace (config/cargo.schema.json).
+  - id: lint-cargo-lints
+    kind: json_schema_passes
+    level: error
+    paths: ["**/Cargo.toml", "!tests/kit/fixture/**"]
+    schema_path: config/cargo.schema.json
+    message: "a workspace denies unsafe_code and clippy::allow_attributes_without_reason, and a package says lints.workspace = true"
+
+  # The Python lint (make lint-python) runs ruff with the root ruff.toml. A nested ruff configuration would escape it in an
+  # editor or a plain ruff run, where the nearest configuration applies.
+  - id: lint-ruff-nested
+    kind: toml_path_absent
+    level: error
+    paths: ["**/pyproject.toml", "!tests/kit/fixture/**"]
+    path: "$.tool.ruff"
+    message: "S3: the ruff configuration is the root ruff.toml of kit; remove [tool.ruff] from this pyproject.toml"
+
+  - id: lint-ruff-files
+    kind: file_absent
+    level: error
+    paths: ["**/ruff.toml", "**/.ruff.toml", "!ruff.toml", "!tests/kit/fixture/**"]
+    message: "S3: the ruff configuration is the root ruff.toml of kit; remove this nested configuration"
+
+  # vulture runs with the confidence of kit; a package keeps code that only consumers use by an entry of its
+  # vulture_whitelist.py with the reason, and excludes generated code only (config/pyproject.schema.json).
+  - id: lint-vulture-config
+    kind: json_schema_passes
+    level: error
+    paths: ["**/pyproject.toml", "!tests/kit/fixture/**"]
+    schema_path: config/pyproject.schema.json
+    message: "[tool.vulture] of a package holds only exclude, the generated code with its reason; keep other code by an entry of vulture_whitelist.py"

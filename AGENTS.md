@@ -19,13 +19,17 @@ vendors; this file states only the rules of orm.
   workflow. A release asset is named `<package>-<language>-<version>.<ext>`, for example
   `polyspec-orm-npm-X.Y.Z.tgz`; the Python wheel keeps its PEP 427 name,
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
-- The shared tools are the vendored copy of `polyspec/kit`: `scripts/kit`, `tests/kit`, `kit.json`
-  and `.kit/kit.lock.json` are changed only in kit and reach this repository with
-  `make kit-sync KIT_TAG=<tag>`; `make kit-check` compares them with the lock and `make kit-test`
-  runs their tests. This repository differs from the other repositories only in `config/*.json` and
-  in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and the
-  checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
-  copied or edited here. The rules of this repository do not read the vendored files.
+- The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
+  the asset of its release with its integrity. A checkout installs it with `make install-tools
+  TOOLS=npm` (the npm of `packageManager`) and `make install-packages`, and the Makefile includes
+  `scripts/kit/kit-bootstrap.mk`, which includes the `kit.mk` of the installed package. The files of
+  `kit.copies` of its `package.json` (the bootstrap under `scripts/kit/`, PRINCIPLES.md (+ko),
+  `.github/workflows/release.yml`, `config/layout.kit.yml` and the lint configurations) are copies
+  that `make kit-sync` writes from the installed package and `make kit-check` compares with it; they
+  change only in kit. This repository differs from the other repositories only in `config/*.json`
+  and in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and
+  the checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
+  copied or edited here. The rules of this repository do not read the copies.
 - The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
   `php`, `php-ext` (the PHP extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
@@ -135,7 +139,7 @@ vendors; this file states only the rules of orm.
   `make owner-check` and the full suite run in CI after the push, and no local check is required
   before a push; read each CI report and fix what it finds. A push happens only when no checklist
   item is `[~]`: the pre-push hook
-  `.githooks/pre-push` runs the push gate (scripts/kit/push-gate.mjs), which refuses a push while
+  `.githooks/pre-push` runs the push gate of kit through `make push-gate-hook`, which refuses a push while
   an item is `[~]` in a pushed commit or the working tree, and the CI workflow `push-gate` checks
   the commit again on every push (`make push-gate-commit`). `make hooks` sets `core.hooksPath`, and
   `make hooks-check` and the full suite's guard refuse a checkout without the hook. A CI failure is
@@ -145,7 +149,7 @@ vendors; this file states only the rules of orm.
   also after a failed one, and passes only when every one of them succeeded (`make ci-passed`).
   `.github/workflows/push-gate.yml` runs the push gate on every push, and
   `.github/workflows/docs-pages.yml` only builds and deploys the site of `main`.
-- `make check` runs the guard of `scripts/kit/full-run.mjs` before any step: it refuses while a
+- `make check` runs the guard of kit (`full-run`) before any step: it refuses while a
   checklist item, sub-items included, is `[~]`, while tracked files have uncommitted changes, while the
   Git hooks are not installed, and when `var/full-run.json` records a full run of the same tree; it
   then runs the target `check-run` and records the result. `make rerun-failed` reruns, on the same
@@ -157,8 +161,8 @@ vendors; this file states only the rules of orm.
   near 72 characters explaining what changed and why; an optional footer for references. The
   type is one of feat, fix, docs, style, refactor, test or chore. A merge commit keeps the
   subject git writes. The tracked `commit-msg` hook (`.githooks/commit-msg`, installed by `make`
-  through `core.hooksPath`) refuses a commit whose subject breaks this rule, because a pushed
-  commit cannot be changed. `make commits-check` (`scripts/kit/check-commits.mjs`, `config/commits.json`)
+  through `core.hooksPath`) runs `make commit-msg-check` and refuses a commit whose subject breaks this rule, because a pushed
+  commit cannot be changed. `make commits-check` (kit's `check-commits`, `config/commits.json`)
   checks the messages of `RANGE` (`<base>..<head>`) and the message of HEAD without it; the types
   and the limits are the data of `config/commits.json`. No tracked file records a commit id.
 - Owner checks: `make owner-check` (or `make owner-check PATHS="<paths>"`) is a tool that runs the

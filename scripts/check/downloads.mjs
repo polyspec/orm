@@ -8,7 +8,6 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { cargoDownloads } from '../kit/check-cargo-downloads.mjs';
 
 // NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/ts를 workspace로 함께 설치한다.
 export const NPM_ROOTS = ['.'];
@@ -52,7 +51,7 @@ export function composerMissing(root, directory) {
 }
 
 // missingDownloads는 빠진 download를 need마다 적는다. run은 spawnSync와 같은 모양이다(test가 바꾼다).
-export function missingDownloads(root, { run = spawnSync, env = process.env, cargo = 'cargo' } = {}) {
+export function missingDownloads(root, { run = spawnSync, env = process.env } = {}) {
   const out = [];
   const tool = (need, what, program, args, cwd = root) => {
     const result = run(program, args, { cwd, encoding: 'utf8', env: { ...env, ...offline, PATH: `${join(homedir(), '.cargo', 'bin')}:${env.PATH ?? ''}` } });
@@ -61,9 +60,8 @@ export function missingDownloads(root, { run = spawnSync, env = process.env, car
       out.push({ need, message: `${what} are not downloaded (${reason.trim()}); ${fix}` });
     }
   };
-  // 모든 Cargo.lock의 crate는 kit의 확인이 본다(scripts/kit/check-cargo-downloads.mjs).
-  for (const failure of cargoDownloads({ root, cargo, env: { ...env, ...offline, PATH: `${join(homedir(), '.cargo', 'bin')}:${env.PATH ?? ''}` } }).failures)
-    out.push({ need: 'rust', message: `the crates are not downloaded (${failure}); ${fix}` });
+  // The crates of every Cargo.lock are checked by make cargo-downloads-check, a target of the kit.mk of @polyspec/kit.
+  tool('rust', 'the crates of every Cargo.lock', 'make', ['--no-print-directory', 'cargo-downloads-check']);
   if (existsSync(join(root, 'go.mod'))) tool('go', 'the Go modules of go.mod', 'go', ['mod', 'download']);
   for (const directory of NPM_ROOTS) {
     const missing = npmMissing(root, directory);

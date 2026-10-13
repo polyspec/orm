@@ -16,11 +16,14 @@ orm 자신의 규칙만 적는다.
   만든다. tag를 만들고 옮기고 push하는 것은 maintainer뿐이며, tag의 push가 release workflow를 실행한다. release
   asset의 이름은 `<package>-<language>-<version>.<ext>`이다(예: `polyspec-orm-npm-X.Y.Z.tgz`). Python wheel은 PEP 427 이름
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
-- 공유 도구는 `polyspec/kit`의 vendored 사본이다: `scripts/kit`, `tests/kit`, `kit.json`, `.kit/kit.lock.json`은 kit에서만
-  바꾸고 `make kit-sync KIT_TAG=<tag>`로 이 저장소에 들어온다. `make kit-check`는 그것을 lock과 비교하고
-  `make kit-test`는 그 test를 실행한다. 이 저장소는 `config/*.json`과 자체 product code(`scripts/check`,
-  `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다. kit에 없거나 잘못된
-  도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 vendored file을 읽지 않는다.
+- 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
+  고정한다. checkout은 그것을 `make install-tools TOOLS=npm`(`packageManager`의 npm)과 `make install-packages`로
+  설치하고, Makefile은 설치된 package의 `kit.mk`를 include하는 `scripts/kit/kit-bootstrap.mk`를 include한다. 그
+  `package.json`의 `kit.copies`가 나열한 file(`scripts/kit/` 아래의 bootstrap, PRINCIPLES.md(+ko),
+  `.github/workflows/release.yml`, `config/layout.kit.yml`, lint 설정)은 `make kit-sync`가 설치된 package에서 쓰고
+  `make kit-check`가 그것과 비교하는 사본이며, kit에서만 바뀐다. 이 저장소는 `config/*.json`과 자체 product
+  code(`scripts/check`, `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다.
+  kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
 - client package는 `packages/<runtime>`이고 runtime은 `go`, `ts`(TypeScript client), `php`, `php-ext`(PHP 확장),
   `python`, `rust`다(PRINCIPLES.md의 S5): folder 이름은 저장소 prefix를 갖지 않고, 배포 이름(`@polyspec/orm`,
   `polyspec/orm`, `polyspec-orm`)은 그것을 유지한다. Go module `github.com/polyspec/orm`(`go.mod`, `engine/`,
@@ -109,7 +112,7 @@ orm 자신의 규칙만 적는다.
 - 개발하는 동안에는 unit test만 실행한다: 바뀐 것의 Red/Green unit case다. end-to-end 실행(실제 database
   server, 언어 사이의 conformance, container, 전체 build), `make owner-check`, 전체 묶음은 push 뒤
   CI에서 실행하며, push 전에 필요한 로컬 검사는 없다. CI 보고서를 하나씩 읽고 찾은 것을 고친다. push는 `[~]`인 체크리스트 항목이 없을
-  때만 한다. pre-push hook `.githooks/pre-push`는 push gate(scripts/kit/push-gate.mjs)를 실행하고, gate는 push하는
+  때만 한다. pre-push hook `.githooks/pre-push`는 `make push-gate-hook`으로 kit의 push gate를 실행하고, gate는 push하는
   commit이나 working tree에 `[~]` 항목이 있으면 push를 거부하며, CI workflow `push-gate`가 모든 push에서 그 commit을
   다시 검사한다(`make push-gate-commit`). `make hooks`는 `core.hooksPath`를 두고, `make hooks-check`와 전체 묶음의 guard는
   hook이 없는 checkout을 거부한다. CI 실패는 체크리스트 항목으로 고친다. CI 실행이 진행 중일 때 그것에 대응하려고 다시 push하지 않는다.
@@ -117,7 +120,7 @@ orm 자신의 규칙만 적는다.
   `ci-passed`는 job `test`(CI group마다 job 하나)와 `docs`가 실패해도 그 뒤에 실행되고 그 모두가 성공했을 때만
   통과한다(`make ci-passed`). `.github/workflows/push-gate.yml`은 모든 push에서 push gate를 실행하고,
   `.github/workflows/docs-pages.yml`은 `main`의 site를 build하고 deploy만 한다.
-- `make check`는 어떤 단계보다 먼저 `scripts/kit/full-run.mjs`의 guard를 실행한다: 체크리스트 항목(하위 항목 포함)이
+- `make check`는 어떤 단계보다 먼저 kit의 guard(`full-run`)를 실행한다: 체크리스트 항목(하위 항목 포함)이
   `[~]`인 동안, 추적하는 file에 commit하지 않은 변경이 있는 동안, Git hook이 설치되지 않은 동안, 그리고
   `var/full-run.json`이 같은 tree의 전체 실행을 기록하고 있을 때 거부하며, 그렇지 않으면 target `check-run`을 실행하고
   결과를 기록한다. `make rerun-failed`는 같은 tree에서 그 기록의 통과하지 못한 target을 다시 실행한다: 원인이 tree
@@ -126,8 +129,8 @@ orm 자신의 규칙만 적는다.
 - 커밋 로그는 영문으로 `type(scope): subject (#issue)` 형식으로 쓴다: 50자 이내 명령조 대문자 시작
   제목(끝 마침표 없음), 빈 줄, 72자 부근 개행한 본문(무엇을·왜 변경했는지), 선택적 꼬리말. 타입은
   feat, fix, docs, style, refactor, test, chore 중 하나다. merge commit은 git이 쓰는 제목을 그대로 둔다.
-  추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 이 규칙을 어긴 제목의
-  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. `make commits-check`(`scripts/kit/check-commits.mjs`, `config/commits.json`)는
+  추적하는 `commit-msg` hook(`.githooks/commit-msg`, `make`가 `core.hooksPath`로 설치)은 `make commit-msg-check`를 실행해 이 규칙을 어긴 제목의
+  커밋을 거부한다. push된 커밋은 바꿀 수 없기 때문이다. `make commits-check`(kit의 `check-commits`, `config/commits.json`)는
   `RANGE`(`<base>..<head>`)의 message를, 없으면 HEAD의 message를 검사한다. type과 한도는 `config/commits.json`의 data다.
   추적하는 file은 commit id를 기록하지 않는다.
 - 소유 검사: `make owner-check`(또는 `make owner-check PATHS="<paths>"`)는 바뀐 file을 소유한 검사를 실행하는
