@@ -5,6 +5,7 @@ package orm_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -106,6 +107,129 @@ func TestCoverageDbspecRenderDdl(t *testing.T) {
 		}
 		if len(want) == 0 || !slices.Equal(got, want) {
 			t.Fatalf("%s statements:\n got %q\nwant %q", dialect, got, want)
+		}
+	}
+}
+
+// fixtureText reads the input of a format case: the lines of one document, joined with LF and a final line end.
+func fixtureText(t *testing.T, c fixtureCase) string {
+	t.Helper()
+	var input struct {
+		Text []string `json:"text"`
+	}
+	decodeFixture(t, c.Input, &input)
+	if len(input.Text) == 0 {
+		t.Fatalf("case %s has no text", c.ID)
+	}
+	return strings.Join(input.Text, "\n") + "\n"
+}
+
+// TestCoverageDbspecAnalyzeTokens checks that the analysis of each document holds the
+// result of Parse unchanged and the tokens of the fixture.
+func TestCoverageDbspecAnalyzeTokens(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	c := featureFixture(t, "schema_definition", "dbspec_analyze_tokens", "analyze")
+	var expected struct {
+		Tokens [][4]any `json:"tokens"`
+	}
+	decodeFixture(t, c.Expected, &expected)
+	texts, documents := schemaDocuments(t, c)
+	for i, text := range texts {
+		analysis := dbspec.Analyze(text, nil)
+		_, positions, _ := dbspec.Parse(text, nil)
+		if len(analysis.Diagnostics) > 0 {
+			t.Fatal(runtimemodel.DiagnosticsError(analysis.Diagnostics))
+		}
+		if dbspec.Emit(analysis.Document) != dbspec.Emit(documents[i]) || !reflect.DeepEqual(analysis.Positions, positions) {
+			t.Fatalf("document %s: the analysis differs from the parse", documents[i].Name)
+		}
+		got := make([][4]any, len(analysis.Tokens))
+		for j, token := range analysis.Tokens {
+			got[j] = [4]any{float64(token.Line), float64(token.Start), float64(token.End), token.Class}
+		}
+		if len(expected.Tokens) == 0 || !reflect.DeepEqual(got, expected.Tokens) {
+			t.Fatalf("document %s tokens:\n got %v\nwant %v", documents[i].Name, got, expected.Tokens)
+		}
+	}
+}
+
+// TestCoverageDbspecFormat checks that the text formats to the fixture text and that
+// the formatted text is its own format.
+func TestCoverageDbspecFormat(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	c := featureFixture(t, "schema_definition", "dbspec_format", "format")
+	var expected struct {
+		Text []string `json:"text"`
+	}
+	decodeFixture(t, c.Expected, &expected)
+	formatted, diagnostics := dbspec.Format(fixtureText(t, c), nil)
+	if len(diagnostics) > 0 {
+		t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+	}
+	if want := strings.Join(expected.Text, "\n") + "\n"; formatted != want {
+		t.Fatalf("formatted text:\n%s\nwant\n%s", formatted, want)
+	}
+	if again, _ := dbspec.Format(formatted, nil); again != formatted {
+		t.Fatalf("the format of the formatted text differs:\n%s", again)
+	}
+}
+
+// TestCoverageDbspecFormatRefusal checks that a text with a diagnostic is refused with
+// the fixture diagnostics and no text.
+func TestCoverageDbspecFormatRefusal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	c := featureFixture(t, "schema_definition", "dbspec_format_refusal", "format")
+	var expected struct {
+		Diagnostics []struct {
+			Rule   string `json:"rule"`
+			Line   int    `json:"line"`
+			Column int    `json:"column"`
+		} `json:"diagnostics"`
+	}
+	decodeFixture(t, c.Expected, &expected)
+	formatted, diagnostics := dbspec.Format(fixtureText(t, c), nil)
+	if formatted != "" {
+		t.Fatalf("a document with a diagnostic was rewritten:\n%s", formatted)
+	}
+	if len(diagnostics) != len(expected.Diagnostics) || len(diagnostics) == 0 {
+		t.Fatalf("diagnostics = %+v, want %+v", diagnostics, expected.Diagnostics)
+	}
+	for i, d := range diagnostics {
+		want := expected.Diagnostics[i]
+		if string(d.Rule) != want.Rule || d.Line != want.Line || d.Column != want.Column {
+			t.Fatalf("diagnostic %d = %s %d %d, want %+v", i, d.Rule, d.Line, d.Column, want)
+		}
+	}
+}
+
+// TestCoverageDbspecParsePositions checks that Parse returns the declaration positions
+// of the fixture for each document.
+func TestCoverageDbspecParsePositions(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	c := featureFixture(t, "schema_definition", "dbspec_parse_positions", "parse_positions")
+	var expected struct {
+		Positions []struct {
+			Kind   string   `json:"kind"`
+			Path   []string `json:"path"`
+			Line   int      `json:"line"`
+			Column int      `json:"column"`
+		} `json:"positions"`
+	}
+	decodeFixture(t, c.Expected, &expected)
+	texts, documents := schemaDocuments(t, c)
+	for i, text := range texts {
+		_, positions, diagnostics := dbspec.Parse(text, nil)
+		if len(diagnostics) > 0 {
+			t.Fatal(runtimemodel.DiagnosticsError(diagnostics))
+		}
+		if len(positions) != len(expected.Positions) || len(positions) == 0 {
+			t.Fatalf("document %s: %d positions, want %d", documents[i].Name, len(positions), len(expected.Positions))
+		}
+		for j, p := range positions {
+			want := expected.Positions[j]
+			if p.Kind != want.Kind || !slices.Equal(p.Path, want.Path) || p.Line != want.Line || p.Column != want.Column {
+				t.Fatalf("document %s position %d = %+v, want %+v", documents[i].Name, j, p, want)
+			}
 		}
 	}
 }

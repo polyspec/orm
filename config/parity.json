@@ -300,6 +300,29 @@
       ]
     },
     {
+      "id": "dbspec-positions", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/cases.json", "cases": "$.positions[*].id",
+      "bindings": [
+        { "implementation": "go", "test": "engine/dbspec/vectors_test.go", "symbol": "TestPositionVectors" },
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/dbspec_cases.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_vectors" }
+      ]
+    },
+    {
+      "id": "dbspec-syntax", "kind": "suite", "profile": "dbspec",
+      "file": "tests/dbspec/syntax.json", "cases": "$.cases[*].id",
+      "bindings": [
+        { "implementation": "php", "test": "packages/orm-php/tests/dbspec_analyze_test.php" },
+        { "implementation": "php-extension", "test": "packages/orm-php-extension/tests/dbspec_analyze_test.php" },
+        { "implementation": "typescript", "test": "packages/orm-npm/tests/dbspec-analyze.mjs" },
+        { "implementation": "python", "test": "packages/orm-python/tests/test_dbspec_syntax_vectors.py" },
+        { "implementation": "rust", "test": "packages/orm-rust/orm-schema/tests/dbspec.rs", "symbol": "shared_dbspec_syntax" }
+      ]
+    },
+    {
       "id": "dbspec-ddl", "kind": "suite", "profile": "dbspec",
       "file": "tests/dbspec/ddl.json", "cases": "$.cases[*].id",
       "bindings": [

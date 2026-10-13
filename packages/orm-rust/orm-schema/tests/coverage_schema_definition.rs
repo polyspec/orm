@@ -100,3 +100,73 @@ fn coverage_dbspec_render_ddl() {
         }
     });
 }
+
+/// The text of a format case: its lines joined with LF and a final line end.
+fn text(input: &Value) -> String {
+    let lines: Vec<&str> = input["text"].as_array().expect("input text").iter().map(|line| line.as_str().expect("text line")).collect();
+    assert!(!lines.is_empty(), "input has no text");
+    format!("{}\n", lines.join("\n"))
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_dbspec_analyze_tokens() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("dbspec_analyze_tokens", || {
+        let (input, expected) = case("dbspec_analyze_tokens", "analyze");
+        let want = expected["tokens"].as_array().expect("expected.tokens");
+        assert!(!want.is_empty(), "the fixture lists tokens");
+        for (path, text) in sources(&input) {
+            let analysis = dbspec::analyze(&text, &Default::default());
+            let parsed = dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{path}: {errors:?}"));
+            assert!(analysis.diagnostics.is_empty(), "{path}: {:?}", analysis.diagnostics);
+            assert_eq!(analysis.document.as_ref().map(dbspec::emit), Some(dbspec::emit(&parsed.document)), "{path}: the analysis holds the parsed document");
+            assert_eq!(analysis.positions, Some(parsed.positions), "{path}: the analysis holds the positions of the parse");
+            let got: Vec<Value> = analysis.tokens.iter().map(|t| serde_json::json!([t.line, t.start, t.end, t.class])).collect();
+            assert_eq!(&got, want, "{path} tokens");
+        }
+    });
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_dbspec_format() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("dbspec_format", || {
+        let (input, expected) = case("dbspec_format", "format");
+        let formatted = dbspec::format(&text(&input), &Default::default()).unwrap_or_else(|errors| panic!("format: {errors:?}"));
+        assert_eq!(formatted, text(&expected), "formatted text");
+        assert_eq!(dbspec::format(&formatted, &Default::default()), Ok(formatted.clone()), "a formatted text is its own format");
+    });
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_dbspec_format_refusal() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("dbspec_format_refusal", || {
+        let (input, expected) = case("dbspec_format_refusal", "format");
+        let want = expected["diagnostics"].as_array().expect("expected.diagnostics");
+        assert!(!want.is_empty(), "the fixture lists diagnostics");
+        let diagnostics = dbspec::format(&text(&input), &Default::default()).expect_err("a document with a diagnostic is not rewritten");
+        let got: Vec<Value> = diagnostics.iter().map(|d| serde_json::json!({"rule": d.rule.to_string(), "line": d.line, "column": d.column})).collect();
+        assert_eq!(&got, want, "diagnostics");
+    });
+}
+
+#[test]
+#[ignore = "run by feature-check"]
+fn coverage_dbspec_parse_positions() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    run("dbspec_parse_positions", || {
+        let (input, expected) = case("dbspec_parse_positions", "parse_positions");
+        let want = expected["positions"].as_array().expect("expected.positions");
+        assert!(!want.is_empty(), "the fixture lists positions");
+        for (path, text) in sources(&input) {
+            let parsed = dbspec::parse(&text, &Default::default()).unwrap_or_else(|errors| panic!("{path}: {errors:?}"));
+            let got: Vec<Value> =
+                parsed.positions.iter().map(|p| serde_json::json!({"kind": p.kind, "path": p.path, "line": p.line, "column": p.column})).collect();
+            assert_eq!(&got, want, "{path} positions");
+        }
+    });
+}

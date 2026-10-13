@@ -2649,8 +2649,8 @@
       "title": "Schema definition and migration",
       "title_ko": "스키마 정의와 마이그레이션",
       "status": "implemented",
-      "description": "Parse and emit dbspec documents, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so code that calls them type-checks without the pg, mysql2 or node:sqlite types.",
-      "description_ko": "dbspec document를 parse하고 emit하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
+      "description": "Parse and emit dbspec documents with the positions of their declarations, analyze a document into the tokens of its syntax, format a document canonically and refuse one with a diagnostic, compute the manifest and schema hashes of a document set, render the DDL of each dialect, introspect a database into a document, diff two schemas into plans and apply them with verification and recovery, and export and import Mermaid diagrams. The TypeScript declarations of apply and introspection name their connections with types of their own, so code that calls them type-checks without the pg, mysql2 or node:sqlite types.",
+      "description_ko": "dbspec document를 선언의 position과 함께 parse하고 emit하며, document를 syntax의 token으로 analyze하고, document를 canonical form으로 format하되 diagnostic이 있는 document는 거부하며, document set의 manifest와 schema hash를 계산하고, dialect별 DDL을 렌더링하고, 데이터베이스를 document로 introspect하며, 두 schema의 차이를 plan으로 만들어 검증과 복구를 갖춰 적용하고, Mermaid 다이어그램을 export하고 import한다. apply와 introspection의 TypeScript 선언은 connection을 자체 type으로 적으므로, 그것을 부르는 code는 pg, mysql2, node:sqlite type 없이 type 검사를 통과한다.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -2671,6 +2671,9 @@
       },
       "state": [
         "parse documents with located diagnostics",
+        "return the positions of the declarations of a parsed document",
+        "analyze a text into the parse result and the tokens of its syntax",
+        "format a text canonically, or refuse it with its diagnostics",
         "validate names, keys, foreign keys, checks and settings",
         "compute the manifest and schema hashes",
         "render statements, plans or Mermaid diagrams",
@@ -2700,6 +2703,7 @@
         "tests/dbspec/plans.json",
         "tests/dbspec/mermaid.json",
         "tests/dbspec/show-create.json",
+        "tests/dbspec/syntax.json",
         "engine/dbspec/case_clock_test.go",
         "packages/orm-php/tests/case_clock.php",
         "contracts/fixtures/schema_definition.json",
@@ -2779,7 +2783,15 @@
         "packages/orm-php-extension/tests/dbspec_show_create_test.php",
         "packages/orm-php/tests/dbspec_set_cases.php",
         "packages/orm-php/tests/dbspec_set_test.php",
-        "packages/orm-php-extension/tests/dbspec_set_test.php"
+        "packages/orm-php-extension/tests/dbspec_set_test.php",
+        "engine/dbspec/analyze_test.go",
+        "engine/dbspec/syntax_vectors_test.go",
+        "packages/orm-php/tests/dbspec_analyze_test.php",
+        "packages/orm-php/tests/dbspec_analysis_cases.php",
+        "packages/orm-php/tests/dbspec_syntax_vectors.php",
+        "packages/orm-php-extension/tests/dbspec_analyze_test.php",
+        "packages/orm-rust/orm-schema/tests/dbspec_analyze.rs",
+        "packages/orm-npm/tests/dbspec-analyze.mjs"
       ],
       "docs": [
         "docs/dbspec.md",
@@ -2814,6 +2826,9 @@
             "tests/dbspec/unicode/main_test.go",
             "engine/dbspec/show_create_test.go",
             "engine/dbspec/show_create_introspect_test.go",
+            "engine/dbspec/analyze_test.go",
+            "engine/dbspec/syntax_vectors_test.go",
+            "tests/dbspec/syntax.json",
             "tests/dbspec/show-create.json",
             "packages/orm-php-extension/src/unicode_word.h",
             "packages/orm-python/src/polyspec/orm/dbspec/unicode_word.py",
@@ -2841,6 +2856,10 @@
             "packages/orm-php/tests/dbspec_set_cases.php",
             "packages/orm-php/tests/dbspec_set_test.php",
             "tests/dbspec/set-files.json",
+            "packages/orm-php/tests/dbspec_analyze_test.php",
+            "packages/orm-php/tests/dbspec_analysis_cases.php",
+            "packages/orm-php/tests/dbspec_syntax_vectors.php",
+            "tests/dbspec/syntax.json",
             "tests/dbspec/show-create.json",
             "tests/dbspec/cases.json",
             "tests/dbspec/ddl.json",
@@ -2861,6 +2880,8 @@
             "packages/orm-rust/orm-schema/tests/dbspec_plan.rs",
             "packages/orm-rust/orm-schema/tests/dbspec_model.rs",
             "packages/orm-rust/orm-schema/tests/dbspec_mermaid.rs",
+            "packages/orm-rust/orm-schema/tests/dbspec_analyze.rs",
+            "tests/dbspec/syntax.json",
             "packages/orm-rust/orm/tests/dbspec_apply_cleanup.rs",
             "schema/bench.dbs",
             "tests/dbspec/cases.json",
@@ -2878,6 +2899,8 @@
           "shard": "other",
           "inputs": [
             "packages/orm-npm/tests/dbspec.mjs",
+            "packages/orm-npm/tests/dbspec-analyze.mjs",
+            "tests/dbspec/syntax.json",
             "packages/orm-npm/tests/dbspec-rules.mjs",
             "packages/orm-npm/tests/dbspec-render.mjs",
             "packages/orm-npm/tests/dbspec-plan.mjs",
@@ -2917,6 +2940,10 @@
             "packages/orm-php-extension/tests/dbspec_set_test.php",
             "packages/orm-php/tests/dbspec_set_cases.php",
             "tests/dbspec/set-files.json",
+            "packages/orm-php-extension/tests/dbspec_analyze_test.php",
+            "packages/orm-php/tests/dbspec_analysis_cases.php",
+            "packages/orm-php/tests/dbspec_syntax_vectors.php",
+            "tests/dbspec/syntax.json",
             "tests/dbspec/show-create.json",
             "packages/orm-php/tests/dbspec_cases.php",
             "tests/dbspec/cases.json",
@@ -2964,7 +2991,11 @@
         "cases": [
           "dbspec_emit_round_trip",
           "dbspec_manifest_hash",
-          "dbspec_render_ddl"
+          "dbspec_render_ddl",
+          "dbspec_analyze_tokens",
+          "dbspec_format",
+          "dbspec_format_refusal",
+          "dbspec_parse_positions"
         ],
         "owners": {
           "go": {
@@ -2983,12 +3014,20 @@
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
-                    "dbspec_render_ddl"
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
                   ],
                   "symbols": {
                     "dbspec_emit_round_trip": "TestCoverageDbspecEmitRoundTrip",
                     "dbspec_manifest_hash": "TestCoverageDbspecManifestHash",
-                    "dbspec_render_ddl": "TestCoverageDbspecRenderDdl"
+                    "dbspec_render_ddl": "TestCoverageDbspecRenderDdl",
+                    "dbspec_analyze_tokens": "TestCoverageDbspecAnalyzeTokens",
+                    "dbspec_format": "TestCoverageDbspecFormat",
+                    "dbspec_format_refusal": "TestCoverageDbspecFormatRefusal",
+                    "dbspec_parse_positions": "TestCoverageDbspecParsePositions"
                   }
                 }
               ]
@@ -3010,7 +3049,11 @@
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
-                    "dbspec_render_ddl"
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
                   ]
                 }
               ]
@@ -3032,12 +3075,20 @@
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
-                    "dbspec_render_ddl"
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
                   ],
                   "symbols": {
                     "dbspec_emit_round_trip": "coverage_dbspec_emit_round_trip",
                     "dbspec_manifest_hash": "coverage_dbspec_manifest_hash",
-                    "dbspec_render_ddl": "coverage_dbspec_render_ddl"
+                    "dbspec_render_ddl": "coverage_dbspec_render_ddl",
+                    "dbspec_analyze_tokens": "coverage_dbspec_analyze_tokens",
+                    "dbspec_format": "coverage_dbspec_format",
+                    "dbspec_format_refusal": "coverage_dbspec_format_refusal",
+                    "dbspec_parse_positions": "coverage_dbspec_parse_positions"
                   }
                 }
               ]
@@ -3059,7 +3110,11 @@
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",
-                    "dbspec_render_ddl"
+                    "dbspec_render_ddl",
+                    "dbspec_analyze_tokens",
+                    "dbspec_format",
+                    "dbspec_format_refusal",
+                    "dbspec_parse_positions"
                   ]
                 }
               ]
