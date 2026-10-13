@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T142-8: the targets whose node scripts run PHP check vendor-php first.
 - T142-7: every make target whose PHP script loads vendor-php checks it first (31 targets).
 - T134-1: the checkout wrapper packages/orm-python/bin/orm-gen is removed; the docs name the installed `orm-gen`.
 - T142-6: `interface-check` checks the PHP vendor first.

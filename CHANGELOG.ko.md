@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e0d2c053dfa68f946986897668393ce4c6fa33b2dd807641ea7de5808eb99a54 -->
+<!-- source-sha256: 2d4dfaa38a425bae6aee8f3d988b8d224f3e169dd49c8bead70b51b62cd1db3b -->
 # 변경 이력
 
 ## Unreleased
 
+- T142-8: node script가 PHP를 실행하는 target이 vendor-php를 먼저 확인한다.
 - T142-7: PHP script가 vendor-php를 읽는 모든 make target이 이를 먼저 확인한다(31개 target).
 - T134-1: checkout wrapper packages/orm-python/bin/orm-gen을 없앴다. 문서는 설치된 `orm-gen`을 적는다.
 - T142-6: `interface-check`가 PHP vendor를 먼저 확인한다.
