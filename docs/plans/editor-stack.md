@@ -127,10 +127,11 @@ Owner rulings:
    - Failures:
      - a listed file that fails the signature or encoding check is published on its own URI,
        with the `readBytes` diagnostic;
-     - a missing or unreadable file is a `window/showMessage` error naming the path and the OS
-       error;
-     - that file is not in the set, so dependent `use` lines report their diagnostic. Both stay
-       visible.
+     - a missing or unreadable file is a set error of docs/dbspec.md "Document sets", shown by
+       `window/showMessage` with the path and the OS error; the reader returns no file of a set
+       that fails, so the set is not resolved and the document is analyzed alone, its `use`
+       lines reporting their diagnostic. Both stay visible (corrected by T128-5-1: an earlier
+       text kept the other files as a partial set, which the reader specification refuses).
    - The LSP reads bytes with `node:fs` and passes them to the language service, which checks
      them with `readDbspecBytes` from the subpath of ruling 8.
    - Changes are events, not polling:

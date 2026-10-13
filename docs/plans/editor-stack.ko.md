@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 97f82e120a41ce61ba002104b979ff6852136442610b47c90bf186a4181453b9 -->
+<!-- source-sha256: 454e3baba3842df1d0ef7c817a3f13563dba08f172746d335e69ba7c1308b723 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -116,8 +116,10 @@ owner 판정:
    - 실패:
      - signature나 encoding 검사에 실패한 나열 파일은 `readBytes` 진단과 함께 그 파일의 URI에
        게시한다;
-     - 없거나 읽을 수 없는 파일은 경로와 OS 오류를 밝힌 `window/showMessage` 오류다;
-     - 그 파일은 묶음에 없으므로, 그것에 기대는 `use` 줄은 자기 진단을 보고한다. 둘 다 보인다.
+     - 없거나 읽을 수 없는 파일은 docs/dbspec.md "Document sets"의 set 오류이며, 경로와 OS 오류를
+       담은 `window/showMessage`로 보인다; reader는 실패한 집합의 파일을 하나도 돌려주지 않으므로
+       집합은 해석되지 않고 문서는 단독으로 분석되며, 그 `use` 줄이 자기 진단을 보고한다. 둘 다
+       보인다(T128-5-1이 정정: 이전 글은 나머지 파일을 부분 집합으로 두었는데 reader 명세가 이를 거부한다).
    - LSP는 `node:fs`로 byte를 읽어 language service에 넘기고, language service는 판정 8의 subpath에
      있는 `readDbspecBytes`로 그것을 검사한다.
    - 변경은 polling이 아니라 event다:
