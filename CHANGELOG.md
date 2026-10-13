@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T139: the Rust YAML codec reads and writes with yaml-rust2 alone and decodes by the YAML 1.2 core schema (`07` is 7, `0b101` and `tRuE` are strings, integers beyond i64 and `1e400` are `CODEC_DECODE`); serde_yaml_ng and the unmaintained unsafe-libyaml leave both Rust locks. A string that yaml-rust2 cannot write so that it reads back unchanged is `CODEC_ENCODE` (T139-1).
 - T128-2a-1-1: the set reader examines the root without its trailing separator, so a symbolic link at the root is never followed.
 - T141: docs/dbspec.md "Files" names the Python byte check `read_dbspec_bytes` and file reader `read_dbspec_file`.
 - T128-2a-1: docs/dbspec.md "Document sets" specifies the set file `dbspec-set.json` and its reader, and `tests/dbspec/set-files.json` holds its 61 file-tree vectors.
