@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T128-2a-6-1: the Rust set vector test warns on a slow run instead of failing it, and `dbspec-rust-check/set` runs its two tests as separate parts.
 - T128-2a-6 (breaking): the Rust build generator takes the set file with `Builder::set(path)`; `Builder::new([..])` and `uses` are removed, and `cargo:rerun-if-changed` names the set file and every listed document. `dbspec::read_set` reads a set file.
 - T128-2a-5-1: the PHP set targets run only their set tests; the show-create test runs once, in its own target.
 - T128-3: every client and the PHP extension give the same syntax tokens and formats, which `make dbspec-compare-check` now compares and the parity unit `dbspec-syntax` declares.
