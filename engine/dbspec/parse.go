@@ -226,6 +226,10 @@ type parser struct {
 	tables      int
 	columns     int
 	foreignKeys int
+	// trace records the lines and their token classes for Analyze; nil for Parse.
+	trace *trace
+	// settingsFailed is set while a settings block whose opening line failed is open.
+	settingsFailed bool
 }
 
 func (p *parser) add(d Diagnostic) { p.out.diagnostics = append(p.out.diagnostics, d) }
@@ -252,8 +256,8 @@ func (p *parser) takeComments() []string {
 // parseStructure tokenizes and parses text into a parse tree. It reports
 // encoding, header, limit, syntax, order and type errors, and errors of check
 // expressions and unknown settings; validate reports the rest.
-func parseStructure(text string) *parsedDocument {
-	p := &parser{out: &parsedDocument{document: &documentNode{}}}
+func parseStructure(text string, tr *trace) *parsedDocument {
+	p := &parser{out: &parsedDocument{document: &documentNode{}}, trace: tr}
 	p.doc = p.out.document
 	lines, bad := splitSource(text)
 	if bad != nil && len(lines) == 0 {
@@ -276,6 +280,7 @@ func parseStructure(text string) *parsedDocument {
 		}
 		if trimmed[0] == '#' {
 			p.pending = append(p.pending, trimmed)
+			p.trace.addComment(i+1, raw)
 			continue
 		}
 		tokens, end, lexErr := lexLine(raw, i+1)
@@ -283,6 +288,7 @@ func parseStructure(text string) *parsedDocument {
 			tokens = lexRecover(raw, i+1)
 		}
 		c := &cursor{p: p, tokens: tokens, line: i + 1, end: end, lexErr: lexErr}
+		c.marks = p.trace.addLine(i+1, tokens, p.marked())
 		if len(tokens) == 0 {
 			c.fail("a statement")
 			continue
@@ -296,6 +302,10 @@ func parseStructure(text string) *parsedDocument {
 			p.settingsLine(c)
 		case stateDiagram:
 			p.diagramLine(c)
+		}
+		// A line that the parser abandons keeps only its lexical classes.
+		if c.failed {
+			clear(c.marks)
 		}
 	}
 	if p.out.stopped {
@@ -344,6 +354,9 @@ func (p *parser) header(lines []string) bool {
 		return fail(1, col, expected)
 	}
 	tokens, _, _ := lexLine(lines[0], 1)
+	if marks := p.trace.addLine(1, tokens, true); marks != nil {
+		marks[0], marks[2] = classKeyword, className
+	}
 	p.doc.name = tokens[2]
 	for _, d := range nameDiagnostics(tokens[2]) {
 		p.add(d)
@@ -361,6 +374,30 @@ type cursor struct {
 	end    int
 	lexErr *Diagnostic
 	failed bool
+	// marks holds the class of each token the parser set, parallel to tokens;
+	// nil unless analyzing, and a zero class is the lexical class.
+	marks []tokenClass
+}
+
+// mark sets the class of token i when the line is traced.
+func (c *cursor) mark(i int, class tokenClass) {
+	if c.marks != nil {
+		c.marks[i] = class
+	}
+}
+
+// take consumes the next token and sets its class.
+func (c *cursor) take(class tokenClass) token {
+	c.mark(c.i, class)
+	return c.next()
+}
+
+// marksBetween returns the classes of tokens from to, or nil when not traced.
+func (c *cursor) marksBetween(from, to int) []tokenClass {
+	if c.marks == nil {
+		return nil
+	}
+	return c.marks[from:to]
 }
 
 func (c *cursor) more() bool { return c.i < len(c.tokens) }
@@ -391,6 +428,7 @@ func (c *cursor) next() token {
 
 func (c *cursor) keyword(text string) bool {
 	if c.peekIs(tokenWord, text) {
+		c.mark(c.i, classKeyword)
 		c.i++
 		return true
 	}
@@ -424,10 +462,15 @@ func (c *cursor) formAhead(text string) bool {
 	return next >= len(c.tokens) || !c.tokens[next].is(tokenOperator, "-")
 }
 
+// action reads a foreign key action; restrict, cascade and set_null are keywords.
+func (c *cursor) action(what string) (token, bool) {
+	return c.member(what, func(s string) bool { return s == "restrict" || s == "cascade" || s == "set_null" })
+}
+
 // oneOf는 주어진 word 가운데 하나인 word를 소비하고, 아니면 what으로 실패한다.
 func (c *cursor) oneOf(what string, words ...string) (token, bool) {
 	if c.more() && c.tokens[c.i].kind == tokenWord && slices.Contains(words, c.tokens[c.i].text) {
-		return c.next(), true
+		return c.take(classKeyword), true
 	}
 	return token{}, c.fail(what)
 }
@@ -443,7 +486,7 @@ func (c *cursor) quoted(what string) (token, bool) {
 // optional consumes the keyword text when it comes next.
 func (c *cursor) optional(text string) *token {
 	if c.peekIs(tokenWord, text) {
-		t := c.next()
+		t := c.take(classKeyword)
 		return &t
 	}
 	return nil
@@ -453,13 +496,43 @@ func (c *cursor) optional(text string) *token {
 // report it.
 func (c *cursor) name(what string) (token, bool) {
 	if c.more() && (c.tokens[c.i].kind == tokenWord || c.tokens[c.i].kind == tokenNumber) {
-		return c.next(), true
+		return c.take(className), true
 	}
 	return token{}, c.fail(what)
 }
 
-// value reads one literal token; a '-' before a number makes it negative.
+// member reads a word or a number at a position whose words are a known set:
+// a word of the set is a keyword, any other word is word, so the parser
+// accepts it and validation reports it.
+func (c *cursor) member(what string, isMember func(string) bool) (token, bool) {
+	if c.more() && (c.tokens[c.i].kind == tokenWord || c.tokens[c.i].kind == tokenNumber) {
+		i := c.i
+		t := c.next()
+		if t.kind == tokenWord && isMember(t.text) {
+			c.mark(i, classKeyword)
+		}
+		return t, true
+	}
+	return token{}, c.fail(what)
+}
+
+// valueKeywords are the words that a value position gives keyword.
+var valueKeywords = map[string]bool{"true": true, "false": true, "null": true, "now": true}
+
+// value reads one literal of a value position: a default, a check literal, a
+// diagram coordinate or a count (docs/dbspec.md "Syntax analysis").
 func (c *cursor) value(what string, allowString bool) (token, bool) {
+	i := c.i
+	t, ok := c.readValue(what, allowString)
+	if ok && t.kind == tokenWord && valueKeywords[t.text] {
+		c.mark(i, classKeyword)
+	}
+	return t, ok
+}
+
+// readValue reads one literal token without setting its class; a '-' before a
+// number makes it negative.
+func (c *cursor) readValue(what string, allowString bool) (token, bool) {
 	if c.peekIs(tokenOperator, "-") {
 		minus := c.tokens[c.i]
 		if c.i+1 < len(c.tokens) && c.tokens[c.i+1].kind == tokenNumber {
@@ -535,7 +608,7 @@ func (p *parser) topLine(c *cursor) {
 }
 
 func (p *parser) useLine(c *cursor) {
-	keyword := c.next()
+	keyword := c.take(classKeyword)
 	u := &useNode{keyword: keyword}
 	var ok bool
 	if u.document, ok = c.name("a document name"); !ok || !c.punct("{") {
@@ -568,7 +641,7 @@ func (p *parser) useLine(c *cursor) {
 }
 
 func (p *parser) openTable(c *cursor) {
-	keyword := c.next()
+	keyword := c.take(classKeyword)
 	p.tables++
 	if p.tables > maxTables {
 		p.stop(diagnosticAt(RuleLimit, keyword, "document has more than %d tables", maxTables))
@@ -600,7 +673,7 @@ func (p *parser) openTable(c *cursor) {
 }
 
 func (p *parser) openDiagram(c *cursor) {
-	keyword := c.next()
+	keyword := c.take(classKeyword)
 	d := &diagramNode{comments: p.takeComments(), keyword: keyword}
 	p.doc.diagrams = append(p.doc.diagrams, d)
 	p.state, p.diagram, p.open = stateDiagram, d, keyword
@@ -631,7 +704,7 @@ func (p *parser) tableLine(c *cursor) {
 		p.state, p.table = stateTop, nil
 		c.done()
 	case first.is(tokenWord, "settings"):
-		keyword := c.next()
+		keyword := c.take(classKeyword)
 		s := &settingsNode{comments: p.takeComments(), keyword: keyword}
 		duplicate := t.settings != nil
 		if !duplicate {
@@ -644,6 +717,7 @@ func (p *parser) tableLine(c *cursor) {
 		if !c.failed && c.done() && duplicate {
 			p.add(diagnosticAt(RuleOrder, keyword, "a table has at most one settings block, after its other lines"))
 		}
+		p.settingsFailed = c.failed
 	case first.is(tokenWord, "primary"), first.is(tokenWord, "unique"), first.is(tokenWord, "index"),
 		first.is(tokenWord, "foreign"), first.is(tokenWord, "check"):
 		p.constraintLine(c)
@@ -662,7 +736,7 @@ func (p *parser) constraintOrder(t *tableNode, keyword token) {
 
 func (p *parser) constraintLine(c *cursor) {
 	t := p.table
-	keyword := c.next()
+	keyword := c.take(classKeyword)
 	var name token
 	defer func() {
 		if !c.failed {
@@ -732,8 +806,10 @@ func (p *parser) constraintLine(c *cursor) {
 			return
 		}
 		if c.peekIs(tokenWord, "on") && c.i+1 < len(c.tokens) && c.tokens[c.i+1].is(tokenWord, "delete") {
+			c.mark(c.i, classKeyword)
+			c.mark(c.i+1, classKeyword)
 			c.i += 2
-			a, ok := c.name("an action")
+			a, ok := c.action("an action")
 			if !ok {
 				return
 			}
@@ -743,7 +819,7 @@ func (p *parser) constraintLine(c *cursor) {
 			if !c.keyword("update") {
 				return
 			}
-			a, ok := c.name("an action")
+			a, ok := c.action("an action")
 			if !ok {
 				return
 			}
@@ -777,7 +853,7 @@ func (p *parser) constraintLine(c *cursor) {
 		p.constraintOrder(t, keyword)
 		p.names(name)
 		k := &checkNode{comments: p.takeComments(), keyword: keyword, name: name}
-		expr, refs, bad := parseExpression(rest[:len(rest)-1], rest[len(rest)-1])
+		expr, refs, bad := parseExpression(rest[:len(rest)-1], rest[len(rest)-1], c.marksBetween(c.i, len(c.tokens)-1))
 		if bad != nil {
 			p.add(*bad)
 		} else {
@@ -816,12 +892,12 @@ func (p *parser) columnLine(c *cursor) {
 		c.fail("a type")
 		return
 	}
-	col.typ.word = c.next()
+	col.typ.word = c.take(classType)
 	var params []token
 	if c.peekIs(tokenPunct, "(") {
 		c.i++
 		for {
-			v, ok := c.value("a type parameter", false)
+			v, ok := c.readValue("a type parameter", false)
 			if !ok {
 				return
 			}
@@ -920,6 +996,7 @@ func (p *parser) settingsLine(c *cursor) {
 	if first.is(tokenPunct, "}") {
 		c.i++
 		s.closing = p.takeComments()
+		p.settingsFailed = false
 		p.state, p.settings, p.open = stateTable, nil, p.table.brace
 		if p.table.brace.line == 0 {
 			p.open = p.table.keyword
@@ -932,7 +1009,7 @@ func (p *parser) settingsLine(c *cursor) {
 		c.fail("a setting or '}'")
 		return
 	}
-	keyword := c.next()
+	keyword := c.take(classSetting)
 	line := &settingNode{keyword: keyword}
 	arg := func(what string) bool {
 		t, ok := c.name(what)
@@ -952,6 +1029,13 @@ func (p *parser) settingsLine(c *cursor) {
 		}
 		return true
 	}
+	stage := func() bool {
+		t, ok := c.member("a codec stage", isCodecStage)
+		if ok {
+			line.args = append(line.args, t)
+		}
+		return ok
+	}
 	ok := true
 	switch keyword.text {
 	case "entity":
@@ -961,7 +1045,10 @@ func (p *parser) settingsLine(c *cursor) {
 	case "select":
 		ok = c.keyword("explicit") && rest("a column name")
 	case "codec":
-		ok = arg("a column name") && rest("a codec stage")
+		ok = arg("a column name") && stage()
+		for ok && c.more() {
+			ok = stage()
+		}
 	case "blind_index":
 		ok = arg("the AES column") && arg("the index column")
 	case "navigation":
@@ -987,7 +1074,7 @@ func (p *parser) settingsLine(c *cursor) {
 		}
 		// shard 절은 kind 뒤에 오며 block에서도 읽는다: block table의 shard는 validator의 setting error다.
 		if ok && c.peekIs(tokenWord, "shard") {
-			line.args = append(line.args, c.next())
+			line.args = append(line.args, c.take(classKeyword))
 			ok = arg("the shard column")
 			if ok {
 				var period token
@@ -1019,21 +1106,21 @@ func (p *parser) settingsLine(c *cursor) {
 		switch {
 		case !ok:
 		case c.formAhead("initial"):
-			c.next()
+			c.take(classKeyword)
 			line.form = "initial"
 			ok = arg("a state name")
 		case c.formAhead("terminal"):
-			c.next()
+			c.take(classKeyword)
 			line.form = "terminal"
 			ok = arg("a state name")
 		case c.formAhead("history"):
-			c.next()
+			c.take(classKeyword)
 			line.form = "history"
 			ok = arg("the history table") && c.keyword("row") && arg("the foreign key column") &&
 				c.keyword("from") && arg("the from column") && c.keyword("to") && arg("the to column") &&
 				c.keyword("at") && arg("the at column")
 		case c.formAhead("limit"):
-			c.next()
+			c.take(classKeyword)
 			line.form = "limit"
 			ok = arg("a state name")
 			if ok {
@@ -1048,7 +1135,7 @@ func (p *parser) settingsLine(c *cursor) {
 			ok = arg("the from state") && c.arrow() && arg("the to state")
 		}
 		if ok && (line.form == "transition" || line.form == "terminal") && c.peekIs(tokenWord, "require") {
-			require := c.next()
+			require := c.take(classKeyword)
 			list := columnList{keyword: require}
 			list.columns, _, ok = c.names(false)
 			line.lists = append(line.lists, list)
@@ -1063,7 +1150,7 @@ func (p *parser) settingsLine(c *cursor) {
 			c.keyword("action") && arg("the action column") &&
 			c.keyword("previous") && arg("the previous column")
 		for ok && (c.peekIs(tokenWord, "exclude") || c.peekIs(tokenWord, "include")) {
-			list := columnList{keyword: c.next()}
+			list := columnList{keyword: c.take(classKeyword)}
 			list.columns, _, ok = c.names(false)
 			line.lists = append(line.lists, list)
 		}

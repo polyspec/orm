@@ -58,8 +58,14 @@ type Diagnostic struct {
 // never both. An encoding, header or limit error stops parsing: it follows
 // the diagnostics found before it, and later lines are not diagnosed.
 func Parse(text string, documents map[string]string) (*Document, []Position, []Diagnostic) {
+	return parse(text, documents, nil)
+}
+
+// parse is Parse; a non-nil trace also records the token classes that Analyze
+// reads, and nothing else changes.
+func parse(text string, documents map[string]string, tr *trace) (*Document, []Position, []Diagnostic) {
 	s := &session{set: documents, parsed: map[string]*parsedDocument{}}
-	parsed := parseStructure(text)
+	parsed := parseStructure(text, tr)
 	diagnostics := parsed.diagnostics
 	if !parsed.stopped {
 		diagnostics = append(diagnostics, s.validate(parsed.document, []string{parsed.document.name.text})...)
