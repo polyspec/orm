@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a612dfada8802bb90b0d7e0cbb6fb4ac",
+    "content-hash": "349d02945a4858ad54d7e714608ccc39",
     "packages": [
         {
             "name": "polyspec/ordered-json",
@@ -34,8 +34,8 @@
             "version": "0.0.14",
             "dist": {
                 "type": "path",
-                "url": "packages/orm-php",
-                "reference": "08d5f6b7a06430d07ae4bee19c3495b6a2af6050"
+                "url": "packages/php",
+                "reference": "81900316daa8115c282156031886dfd05d09fe9b"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
@@ -48,7 +48,7 @@
             },
             "suggest": {
                 "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
-                "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/orm-php-extension)",
+                "ext-orm_dbspec": "Polyspec\\Orm\\Dbspec\\Native\\Dbspec, the dbspec surface of this client implemented in C (packages/php-ext)",
                 "ext-pdo_mysql": "mysql:// DSNs",
                 "ext-pdo_pgsql": "postgres:// DSNs",
                 "ext-pdo_sqlite": "sqlite:// DSNs"

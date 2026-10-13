@@ -17,22 +17,22 @@ const cargoToml = text => [
 ];
 const cargoLock = text => [...text.matchAll(/^name = "([^"]+)"\nversion = "([^"]+)"$/gm)]
   .filter(m => RUST_PACKAGES.includes(m[1])).map(m => m[2]);
-// 저장소 root의 package-lock.json에서 orm version은 workspace packages/orm-npm의 항목이다(root는 version이 없는 private
+// 저장소 root의 package-lock.json에서 orm version은 workspace packages/ts의 항목이다(root는 version이 없는 private
 // workspace다).
-const packageLock = text => [JSON.parse(text).packages?.['packages/orm-npm']?.version].filter(Boolean);
+const packageLock = text => [JSON.parse(text).packages?.['packages/ts']?.version].filter(Boolean);
 
 // 각 선언의 파일과 그 파일에서 orm version을 읽는 방법.
 export const DECLARATIONS = [
-  ...['packages/orm-rust/orm', 'packages/orm-rust/orm-schema', 'packages/orm-rust/orm-build', 'packages/orm-rust/case-clock', 'packages/orm-rust/case-database',
-    'packages/orm-rust/testcase', 'packages/orm-rust/tests', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
-  ...['packages/orm-rust', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
-  { file: 'packages/orm-php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'packages/orm-php-extension/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'packages/orm-npm/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
-  { file: 'packages/orm-python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
+  ...['packages/rust/orm', 'packages/rust/schema', 'packages/rust/build', 'packages/rust/case-clock', 'packages/rust/case-database',
+    'packages/rust/testcase', 'packages/rust/tests', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.toml`, read: cargoToml })),
+  ...['packages/rust', 'bench/rust', 'tests/interfaces/rust'].map(dir => ({ file: `${dir}/Cargo.lock`, read: cargoLock })),
+  { file: 'packages/php/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/php-ext/composer.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/ts/package.json', read: text => [JSON.parse(text).version].filter(Boolean) },
+  { file: 'packages/python/pyproject.toml', read: text => [/^version = "([^"]+)"/m.exec(text)?.[1]].filter(Boolean) },
   { file: 'package-lock.json', read: packageLock },
   { file: 'contracts/features.json', read: text => [JSON.parse(text).contract_version].filter(Boolean) },
-  { file: 'packages/orm-php/README.md', read: first(/Version (\d+\.\d+\.\d+)\./g) },
+  { file: 'packages/php/README.md', read: first(/Version (\d+\.\d+\.\d+)\./g) },
   { file: 'SECURITY.md', read: first(/development version is `([^`]+)`/g) },
   { file: 'SECURITY.ko.md', read: first(/개발 version은 `([^`]+)`/g) },
   { file: 'AGENTS.md', read: first(/Develop one `([^`]+)` version/g) },

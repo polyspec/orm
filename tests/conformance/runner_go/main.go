@@ -21,10 +21,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/polyspec/orm/packages/orm-go/model"
-	"github.com/polyspec/orm/packages/orm-go/orm"
-	_ "github.com/polyspec/orm/packages/orm-go/orm/pg"
-	_ "github.com/polyspec/orm/packages/orm-go/orm/sqlite"
+	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/orm"
+	_ "github.com/polyspec/orm/packages/go/orm/pg"
+	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 )
 
 // stmt는 statement event 하나다(docs/usage.md "Statement events"). transaction은

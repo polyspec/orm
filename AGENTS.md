@@ -28,19 +28,20 @@
   in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and the
   checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
   copied or edited here. The rules of this repository do not read the vendored files.
-- The packages are `packages/orm-<kind>` with the kind `go`, `npm` (the TypeScript client), `php`,
-  `php-extension`, `python` and `rust`, as the other repositories use `packages/<repository>-<kind>`.
-  The Go module `github.com/polyspec/orm` (`go.mod`, `engine/`, `generator/`, `cmd/`, `internal/`
-  and `contracts/`) stays at the repository root: this is the single exception to that layout.
-  Reason: a new module path breaks every import of the module. Removal condition: a major release
-  that accepts a new module path.
+- The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
+  `php`, `php-ext` (the PHP extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
+  carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
+  `polyspec-orm`) keep it. The Go module `github.com/polyspec/orm` (`go.mod`, `engine/`, `generator/`,
+  `cmd/`, `internal/` and the Go files of `contracts/`, `tests/`, `examples/` and `bench/`) stays at
+  the repository root, which S5 refuses: moving it under `packages/` gives it a new module path and
+  needs a decision on where the engine, the generator and the Go programs of `tests/` live (T137-1).
 - Name branches `{type}/{shortname}-{checklist ID}` and worktrees
   `{project}-{shortname}-{checklist ID}`. After integrating a branch into `main`, verify its commits
   or equivalent changes are present and its worktree is clean. Before removal, preserve any files
   excluded by `.gitignore` that exist only in that worktree and are still needed. Then remove the
   worktree and local branch immediately.
   Preserve unintegrated or active work.
-- Each checkout builds Rust into its own target directory, `packages/orm-rust/target` of that checkout,
+- Each checkout builds Rust into its own target directory, `packages/rust/target` of that checkout,
   and no checkout points `CARGO_TARGET_DIR` at the target directory of another; `make` stops when a
   command line names one outside the checkout. Cargo decides that an artifact is fresh from the
   paths of its sources relative to the package and their modification times, and records no
@@ -209,11 +210,11 @@
 - Go, PHP, Rust, and TypeScript share one behavior contract. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
 - Record a conformance expectation only when the Go, PHP, Rust, and TypeScript outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
 - Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
-- Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/orm-<package>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
+- Define common planner, dialect, schema, and error behavior in `engine/*`, `cmd/orm-gen`, and the protocol documents. Implement client behavior in its owning `packages/<runtime>/*` directory; shared verification belongs in `tests/*`, `schema/*`, and `scripts/*`. A feature remains incomplete until every supported client has its required executable cases.
 - Feature coverage evidence comes from commands executed in the current check, with exact case IDs and two equal result and database-state runs. A named test file or saved output is not execution evidence. The coverage checker runs in `make feature-coverage`, and its mutation tests run in `make feature-unit-check`. `make check` runs the verification commands in `make feature-verify-rust` and `make feature-verify-other`, as the `shard` of each command declares (`rust` for a command that builds and runs Rust with cargo), and `make feature-check` runs the three.
 - The coverage checker invokes declared native test files and exact case filters itself, and derives success from process exit and observed test events. Test output cannot supply a success report or database-state digest. For database cases the checker reads the declared database state before and after each run with its own state reader.
 - A coverage case ID names shared behavior. Go and Rust commands map that ID to the exact native test symbol in their owning file; the checker accepts the ID only after that symbol passes. The checker supplies the selected database and DSN to the native process for database cases.
-- An owning client executes its own behavior cases from tests located under `packages/orm-<package>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
+- An owning client executes its own behavior cases from tests located under `packages/<runtime>`. Each declared dependent part executes separate integration cases from tests in its own directory. The feature contract names both parts, test paths, and commands; missing owner or dependent-part evidence or a test path outside its part fails the coverage check. Central conformance compares client results and does not replace owner tests.
 - Use an event instead of polling or a timer to observe it. A declared deadline may use a timer. Do not use symbolic links in what this repository creates, and do not use alternate execution paths. Mermaid definitions are the source for diagrams; store generated artifacts separately from their source definitions.
 - Do not rebuild what an existing outside tool or library already does. Use the standard tool of its ecosystem as it is (for example uv for Python interpreters, environments and locks, Composer for PHP dependencies), and accept its own behavior, such as the symbolic links that it creates; our rules govern what we create.
 - A path is resolved declaratively, by a name in a tracked file, or by discovery, by a discovery rule that a document or a script states, never as a relative path.
@@ -252,8 +253,8 @@
   body, becomes one line that links the section of CHANGELOG.md at the tag). The tests do not run
   again; `make release-coverage` requires every manifest of the checkout to be classified in
   `config/release.json`.
-- The Python client (`packages/orm-python/pyproject.toml`) is released as the wheel
+- The Python client (`packages/python/pyproject.toml`) is released as the wheel
   `polyspec_orm-X.Y.Z-py3-none-any.whl` (`wheel` in `config/release.json`, with the pinned `buildBackend`).
-  The Rust crates `orm`, `orm-schema` and `orm-build` are consumed by their git tag and have no release
+  The Rust crates `polyspec-orm`, `polyspec-orm-schema` and `polyspec-orm-build` are consumed by their git tag and have no release
   archive (`git-tag` in `config/release.json`); the version-bump commit sets the `version` of all of them
   with the other manifests.

@@ -8,47 +8,47 @@
   "packages": [
     {
       "kind": "npm",
-      "directory": "packages/orm-npm",
+      "directory": "packages/ts",
       "name": "@polyspec/orm"
     },
     {
       "kind": "composer",
-      "directory": "packages/orm-php",
+      "directory": "packages/php",
       "name": "polyspec/orm"
     },
     {
       "kind": "composer",
-      "directory": "packages/orm-php-extension",
+      "directory": "packages/php-ext",
       "name": "polyspec/orm-dbspec"
     },
     {
       "kind": "wheel",
-      "directory": "packages/orm-python",
+      "directory": "packages/python",
       "name": "polyspec-orm"
     }
   ],
   "manifests": {
     "VERSION": "version",
-    "packages/orm-npm/package.json": "archive",
-    "packages/orm-php/composer.json": "archive",
-    "packages/orm-php-extension/composer.json": "archive",
-    "packages/orm-python/pyproject.toml": "archive",
-    "packages/orm-rust/orm-schema/Cargo.toml": "git-tag",
-    "packages/orm-rust/orm/Cargo.toml": "git-tag",
-    "packages/orm-rust/orm-build/Cargo.toml": "git-tag"
+    "packages/ts/package.json": "archive",
+    "packages/php/composer.json": "archive",
+    "packages/php-ext/composer.json": "archive",
+    "packages/python/pyproject.toml": "archive",
+    "packages/rust/schema/Cargo.toml": "git-tag",
+    "packages/rust/orm/Cargo.toml": "git-tag",
+    "packages/rust/build/Cargo.toml": "git-tag"
   },
   "buildBackend": {
     "requirement": "setuptools==84.0.0",
     "sha256": "51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670"
   },
   "notReleased": {
-    "package.json": "the private npm workspace root: it installs packages/orm-npm as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
-    "composer.json": "the private Composer root: it installs packages/orm-php as a path repository and takes polyspec/ordered-json from its GitHub release zip",
-    "packages/orm-rust/Cargo.toml": "the Cargo workspace of the Rust crates, no package of its own",
-    "packages/orm-rust/case-clock/Cargo.toml": "a test support crate of the Rust client (publish = false)",
-    "packages/orm-rust/case-database/Cargo.toml": "a test support crate of the Rust client (publish = false)",
-    "packages/orm-rust/testcase/Cargo.toml": "a test support crate of the Rust client (publish = false)",
-    "packages/orm-rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
+    "package.json": "the private npm workspace root: it installs packages/ts as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
+    "composer.json": "the private Composer root: it installs packages/php as a path repository and takes polyspec/ordered-json from its GitHub release zip",
+    "packages/rust/Cargo.toml": "the Cargo workspace of the Rust crates, no package of its own",
+    "packages/rust/case-clock/Cargo.toml": "a test support crate of the Rust client (publish = false)",
+    "packages/rust/case-database/Cargo.toml": "a test support crate of the Rust client (publish = false)",
+    "packages/rust/testcase/Cargo.toml": "a test support crate of the Rust client (publish = false)",
+    "packages/rust/tests/Cargo.toml": "the integration tests of the Rust client (publish = false)",
     "bench/rust/Cargo.toml": "the benchmark crate of the Rust client",
     "tests/interfaces/rust/Cargo.toml": "the interface check crate of the Rust client",
     "tests/release-consumer/npm/package.json": "the npm consumer project of the release archives",
@@ -92,7 +92,7 @@
         ]
       },
       "lock": {
-        "polyspec-orm": "packages/orm-python/pylock.toml"
+        "polyspec-orm": "packages/python/pylock.toml"
       },
       "polyspec": {
         "polyspec-ordered-json": "https://github.com/polyspec/ordered-json"
@@ -101,7 +101,7 @@
   },
   "proof": {
     "gitTag": {
-      "packages/orm-rust/orm-schema/Cargo.toml": {
+      "packages/rust/schema/Cargo.toml": {
         "kind": "rust",
         "name": "polyspec-orm-schema",
         "smoke": [
@@ -109,7 +109,7 @@
           "check"
         ]
       },
-      "packages/orm-rust/orm/Cargo.toml": {
+      "packages/rust/orm/Cargo.toml": {
         "kind": "rust",
         "name": "polyspec-orm",
         "smoke": [
@@ -117,7 +117,7 @@
           "check"
         ]
       },
-      "packages/orm-rust/orm-build/Cargo.toml": {
+      "packages/rust/build/Cargo.toml": {
         "kind": "rust",
         "name": "polyspec-orm-build",
         "smoke": [

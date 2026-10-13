@@ -9,7 +9,7 @@ import { readCases } from '../../tests/dbspec/cases.mjs';
 
 const root = new URL('../../', import.meta.url);
 const outPath = new URL('tests/dbspec/syntax.json', root);
-const distPath = new URL('packages/orm-npm/dist/dbspec/index.js', root);
+const distPath = new URL('packages/ts/dist/dbspec/index.js', root);
 
 const SECTIONS = ['canonical', 'normalize', 'invalid'];
 const NOTE =

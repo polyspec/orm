@@ -61,14 +61,14 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 ```sh
 make test-servers                                                   # servers, databases, bench schema + 100k rows
 . .runtime/servers/env                                              # the DSN variables of the tests
-(cd packages/orm-go/model && go generate)                                # Go models
-vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/orm-php/gen --namespace 'Polyspec\Orm\Tests\Model'
-(cd packages/orm-npm && npm run build)                            # TypeScript models and library
-(cd packages/orm-rust && cargo build --release)                          # build.rs generates the Rust models
+(cd packages/go/model && go generate)                                # Go models
+vendor-php/bin/orm-gen gen --set schema/dbspec-set.json --out packages/php/gen --namespace 'Polyspec\Orm\Tests\Model'
+(cd packages/ts && npm run build)                            # TypeScript models and library
+(cd packages/rust && cargo build --release)                          # build.rs generates the Rust models
 make python-check                                                     # Python client: unit, interfaces, models
 go test ./...
 npm run typescript:test
-(cd packages/orm-rust && cargo test --workspace)
+(cd packages/rust && cargo test --workspace)
 go run ./tests/conformance/check run -dsn "$BENCH_MYSQL_DSN"        # compares the five clients
 ```
 

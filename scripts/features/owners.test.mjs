@@ -17,9 +17,9 @@ const helperIds = async paths => (await selectHelpers(manifest, root, paths)).ma
 
 // 각 case는 repository file만 읽으므로 기한은 5 s다.
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/orm-go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/orm-go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/orm-php/tests/coverage_dsn.php'])), ['dsn_connection/coverage/owner/php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/coverage_dsn.php'])), ['dsn_connection/coverage/owner/php']);
 });
 
 // transaction 끝 case(G5.45-1)는 test가 들어 있는 file이 그 test를 실행하는 명령을 고르는지 본다. Rust의 tx.rs는 자기
@@ -27,29 +27,29 @@ caseTest('a changed test selects only the commands that run it', 5000, async () 
 // cancelled_session_test.go는 transaction 끝의 정리를 test한다. 그 test가 쓰는 failing_driver_test.go는 helper이므로 자기
 // 검사(go-test-helpers)만 고른다.
 caseTest('a changed file selects the transaction end tests that it holds or that test it', 5000, async () => {
-  for (const path of ['packages/orm-rust/orm/src/tx.rs', 'packages/orm-rust/orm/src/tx_send_tests.rs'])
+  for (const path of ['packages/rust/orm/src/tx.rs', 'packages/rust/orm/src/tx_send_tests.rs'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])).filter(id => id.startsWith('transactions/')), ['transactions/transaction-end-rust'], path);
-  for (const path of ['packages/orm-go/orm/transaction_end_test.go', 'packages/orm-go/orm/context_reset_test.go', 'packages/orm-go/orm/cancelled_session_test.go'])
+  for (const path of ['packages/go/orm/transaction_end_test.go', 'packages/go/orm/context_reset_test.go', 'packages/go/orm/cancelled_session_test.go'])
     assert.deepEqual(selected(await selectOwners(manifest, root, [path])), ['transactions/transaction-end-go'], path);
 });
 
 caseTest('a whole-suite command is split by package', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['engine/ir/operators_test.go'])), ['planner/planner-go-ir']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/orm-php/tests/dbspec_render_test.php'])), ['schema_definition/schema-php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/dbspec_render_test.php'])), ['schema_definition/schema-php']);
 });
 
 caseTest('a shared helper selects its own check and no feature', 5000, async () => {
   for (const [path, helper] of [
-    ['packages/orm-php/tests/coverage_cases.php', 'coverage-runner-php'],
-    ['packages/orm-npm/tests/coverage_case.mjs', 'coverage-runner-typescript'],
-    ['packages/orm-php/tests/autoload.php', 'php-test-autoload'],
-    ['packages/orm-go/orm/test_helpers_test.go', 'go-test-helpers'],
-    ['packages/orm-rust/tests/src/coverage_env.rs', 'rust-test-helpers'],
+    ['packages/php/tests/coverage_cases.php', 'coverage-runner-php'],
+    ['packages/ts/tests/coverage_case.mjs', 'coverage-runner-typescript'],
+    ['packages/php/tests/autoload.php', 'php-test-autoload'],
+    ['packages/go/orm/test_helpers_test.go', 'go-test-helpers'],
+    ['packages/rust/tests/src/coverage_env.rs', 'rust-test-helpers'],
   ]) {
     assert.deepEqual(await selectOwners(manifest, root, [path]), [], path);
     assert.deepEqual(await helperIds([path]), [helper], path);
   }
-  assert.deepEqual(await helperIds(['packages/orm-go/orm/mysql_tls_test.go']), []);
+  assert.deepEqual(await helperIds(['packages/go/orm/mysql_tls_test.go']), []);
 });
 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
@@ -59,7 +59,7 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   assert.deepEqual(owners[0].parts[0].reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
   // contracts/symbols/rust.json은 Rust source의 symbol을 적으므로 그 source는 Rust coverage 단위를 고르고, 그 file이
   // 담은 test의 명령(transaction-end-rust)도 고른다.
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/orm-rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
 });
 
 caseTest('a path that no unit declares selects nothing', 5000, async () => {
@@ -100,11 +100,11 @@ caseTest('a changed document selects the documentation checks', 5000, async () =
 
 caseTest('a declared pattern matches by path segment', 5000, async () => {
   const owner = inputs => ({ scope: 'owner', inputs });
-  const declared = { one: owner(['docs/*.md']), deep: owner(['docs/**']), rust: owner(['packages/orm-rust/**/*.rs']), any: owner(['**']) };
+  const declared = { one: owner(['docs/*.md']), deep: owner(['docs/**']), rust: owner(['packages/rust/**/*.rs']), any: owner(['**']) };
   assert.deepEqual(targets(selectTargets(declared, ['docs/a/b.md'])), ['deep', 'any']);
   assert.deepEqual(targets(selectTargets(declared, ['docs/a.md'])), ['one', 'deep', 'any']);
-  assert.deepEqual(targets(selectTargets(declared, ['packages/orm-rust/orm/src/lib.rs'])), ['rust', 'any']);
-  assert.deepEqual(targets(selectTargets(declared, ['packages/orm-rust/Cargo.toml'])), ['any']);
+  assert.deepEqual(targets(selectTargets(declared, ['packages/rust/orm/src/lib.rs'])), ['rust', 'any']);
+  assert.deepEqual(targets(selectTargets(declared, ['packages/rust/Cargo.toml'])), ['any']);
 });
 
 caseTest('every target of CHECK_TARGETS declares inputs that match tracked files', 5000, async () => {
@@ -130,10 +130,10 @@ caseTest('a selected make target runs with the environments of owner-check and t
 // T42은 네 client에 걸친 변경이었다. 그 모양의 변경은 바뀐 기능의 검사와 file 단위의 owner target만
 // 고르고, 전체 suite target(scope suite)은 make check만 실행한다.
 const t42 = [
-  'packages/orm-go/orm/statement_events_test.go', 'packages/orm-go/orm/events.go',
-  'packages/orm-php/src/StatementEvent.php', 'packages/orm-php/tests/statement_events_test.php',
-  'packages/orm-rust/orm/src/events.rs', 'packages/orm-rust/orm/tests/statement_events.rs',
-  'packages/orm-npm/src/events.ts', 'packages/orm-npm/tests/statement-events.mjs',
+  'packages/go/orm/statement_events_test.go', 'packages/go/orm/events.go',
+  'packages/php/src/StatementEvent.php', 'packages/php/tests/statement_events_test.php',
+  'packages/rust/orm/src/events.rs', 'packages/rust/orm/tests/statement_events.rs',
+  'packages/ts/src/events.ts', 'packages/ts/tests/statement-events.mjs',
   'contracts/fixtures/statement_events.dbs',
 ];
 

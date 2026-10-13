@@ -84,7 +84,7 @@ func TestIntrospectCompare(t *testing.T) {
 		{"typescript", []string{"node", "tests/dbspec/introspect/typescript.mjs"}},
 		{"rust", []string{rustRunner}},
 		{"php-extension", []string{"php", "-d", "extension=" + extension, "tests/dbspec/introspect/php-extension.php"}},
-		{"python", []string{pythonRunner, "packages/orm-python/tests/dbspec_introspect_runner.py"}},
+		{"python", []string{pythonRunner, "packages/python/tests/dbspec_introspect_runner.py"}},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {

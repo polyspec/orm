@@ -16,9 +16,9 @@
     "docs:check": "npm run docs:build && node scripts/docs/check.mjs",
     "docs:verify-idempotent": "node scripts/docs/idempotent.mjs",
     "docs:rules-check": "node scripts/docs/rules.mjs",
-    "typescript:check": "npm exec --workspace packages/orm-npm -- tsc -p tsconfig.json --noEmit",
-    "typescript:build": "npm --prefix packages/orm-npm run build",
-    "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/orm-npm/tests/dsn.mjs && node packages/orm-npm/tests/idle-connection-end.mjs && node packages/orm-npm/tests/engine.mjs && node packages/orm-npm/tests/generate.mjs && node packages/orm-npm/tests/generate-scan.mjs && node packages/orm-npm/tests/codec-vector.mjs && node packages/orm-npm/tests/styled-value.mjs && node packages/orm-npm/tests/dbspec.mjs && node packages/orm-npm/tests/dbspec-rules.mjs && node packages/orm-npm/tests/package-declarations.mjs && node packages/orm-npm/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
+    "typescript:check": "npm exec --workspace packages/ts -- tsc -p tsconfig.json --noEmit",
+    "typescript:build": "npm --prefix packages/ts run build",
+    "typescript:test": "node tests/run-long.mjs typescript-build -- npm run typescript:build && node packages/ts/tests/dsn.mjs && node packages/ts/tests/idle-connection-end.mjs && node packages/ts/tests/engine.mjs && node packages/ts/tests/generate.mjs && node packages/ts/tests/generate-scan.mjs && node packages/ts/tests/codec-vector.mjs && node packages/ts/tests/styled-value.mjs && node packages/ts/tests/dbspec.mjs && node packages/ts/tests/dbspec-rules.mjs && node packages/ts/tests/package-declarations.mjs && node packages/ts/tests/request_hook.mjs && ./scripts/typescript/sqlite-test.sh"
   },
   "devDependencies": {
     "mermaid": "12.2.0",

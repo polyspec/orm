@@ -1,0 +1,57 @@
+[package]
+name = "polyspec-orm-tests"
+version = "0.0.14"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "integration"
+path = "src/integration.rs"
+
+[[bin]]
+name = "client_bench"
+path = "src/client_bench.rs"
+
+[[bin]]
+name = "conformance"
+path = "src/conformance.rs"
+
+[[bin]]
+name = "decimal_physical"
+path = "src/decimal_physical.rs"
+
+[[bin]]
+name = "complex"
+path = "../../../examples/complex/rust/main.rs"
+
+[[bin]]
+name = "demo"
+path = "../../../examples/thin-slice/rust/main.rs"
+
+# markdown_conformance는 flowmark server가 필요하므로 workspace의 모든 test에서 빠지고, make
+# markdown-conformance-check/rust가 FLOWMARK와 함께 --test markdown_conformance로 실행한다.
+[[test]]
+name = "markdown_conformance"
+path = "tests/markdown_conformance.rs"
+test = false
+
+[dependencies]
+# integration program이 case마다 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+polyspec-orm-testcase = { path = "../testcase" }
+polyspec-orm = { path = "../orm" }
+# integration program의 database case가 자기만의 database를 만들고 끝날 때 지운다.
+polyspec-orm-case-database = { path = "../case-database" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite"] }
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# coverage test는 build.rs와 같은 generator와 live-db catalog를 실행한다.
+[dev-dependencies]
+polyspec-orm-build = { path = "../build", features = ["live-db"] }
+
+[build-dependencies]
+polyspec-orm-build = { path = "../build" }

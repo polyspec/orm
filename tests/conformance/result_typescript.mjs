@@ -1,4 +1,4 @@
-import { StyledValue } from '../../packages/orm-npm/dist/index.js';
+import { StyledValue } from '../../packages/ts/dist/index.js';
 import { Value as JsonValue, parse } from '@polyspec/ordered-json';
 
 export function derivedInteger(value) {

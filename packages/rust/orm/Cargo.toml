@@ -1,0 +1,59 @@
+[package]
+name = "polyspec-orm"
+version = "0.0.14"
+edition = "2021"
+rust-version = "1.99.0"
+publish = false
+description = "Rust ORM: model runtime, SQL planner, and sqlx executor"
+license = "MIT"
+repository = "https://github.com/polyspec/orm"
+readme = "../README.md"
+keywords = ["orm", "mysql", "postgres", "sqlite", "sqlx"]
+categories = ["database"]
+
+[features]
+# test entry point polyspec_orm::testing이다. build는 이 feature를 켤 때만 그것을 가지며,
+# 어떤 default feature도 켜지 않는다.
+test-faults = []
+
+[dependencies]
+polyspec-orm-schema = { version = "=0.0.14", path = "../schema" }
+ordered-json = { package = "polyspec-ordered-json", version = "=0.0.8", git = "https://github.com/polyspec/ordered-json.git", tag = "v0.0.8" }
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql", "postgres", "sqlite", "tls-rustls-ring-native-roots", "chrono", "rust_decimal", "json", "ipnet"] }
+# sqlx의 bundled SQLite library다. 연결은 그 version을 SQL로 묻지 않고 이 crate에서 읽는다.
+libsqlite3-sys = "0.37"
+rust_decimal = "1"
+regex = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+indexmap = "2"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+url = "2"
+# sqlx-postgres uses whoami without its std feature, which reports the OS user
+# as "anonymous"; a DSN without a user must connect as the OS user.
+whoami = "2"
+rand = "0.10"
+flate2 = "1"
+futures-util = "0.3"
+base64 = "0.22"
+aes-gcm = "0.10"
+sha2 = "0.10"
+hmac = "0.12"
+saphyr-parser = "0.2.1"
+serde-saphyr = "2.0.0"
+
+[dev-dependencies]
+# The fault entry point exists only with the feature test-faults. The integration tests of this crate
+# enable it through their own crate, so a test target runs with the feature and the normal build does not.
+polyspec-orm = { path = ".", features = ["test-faults"] }
+# test case가 시작, 결과, 경과 시간과 자기 기한을 보고한다.
+polyspec-orm-testcase = { path = "../testcase" }
+# SQLite authorizer로 transaction 끝의 statement를 거부하는 test에 쓴다. sqlx-sqlite와 같은 version이다.
+libsqlite3-sys = { version = "0.37", default-features = false }
+# coverage test가 자기 계산의 CPU 시간을 잰다.
+polyspec-orm-case-clock = { path = "../case-clock" }
+# database case가 자기만의 database를 만들고 끝날 때 지운다.
+polyspec-orm-case-database = { path = "../case-database" }
+# 등록 test가 sqlx의 statement log record를 세는 logger를 설치한다. sqlx가 쓰는 version이다.
+log = "0.4"

@@ -4,36 +4,36 @@
   "languages": {
     "go": {
       "roots": [
-        "packages/orm-go/orm",
-        "packages/orm-go/model",
+        "packages/go/orm",
+        "packages/go/model",
         "engine"
       ],
       "symbols": "contracts/symbols/go.json"
     },
     "php": {
       "roots": [
-        "packages/orm-php/src",
-        "packages/orm-php/gen"
+        "packages/php/src",
+        "packages/php/gen"
       ],
       "symbols": "contracts/symbols/php.json"
     },
     "rust": {
       "roots": [
-        "packages/orm-rust/orm/src",
-        "packages/orm-rust/orm-build/src",
-        "packages/orm-rust/orm-schema/src"
+        "packages/rust/orm/src",
+        "packages/rust/build/src",
+        "packages/rust/schema/src"
       ],
       "symbols": "contracts/symbols/rust.json"
     },
     "typescript": {
       "roots": [
-        "packages/orm-npm/src"
+        "packages/ts/src"
       ],
       "symbols": "contracts/symbols/typescript.json"
     },
     "python": {
       "roots": [
-        "packages/orm-python/src"
+        "packages/python/src"
       ],
       "symbols": "contracts/symbols/python.json"
     }
@@ -47,13 +47,13 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension orm_dbspec (packages/orm-php-extension) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension orm_dbspec (packages/php-ext) implements the dbspec surface of the PHP client in C as Polyspec\\Orm\\Dbspec\\Native\\Dbspec, with the same classes, properties and methods as Polyspec\\Orm\\Dbspec. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
-        "packages/orm-php-extension/stubs"
+        "packages/php-ext/stubs"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:265a5383ae4e79ab49690c55cc340d04805fad6411e9fa8ed7f1d82a49a2c3eb",
+      "symbol_hash": "sha256:835c026968f6b45d8b65d7d47b75a28b8552efdbda54e272e3cf5522e6b09c6a",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",
@@ -484,23 +484,23 @@
       "state": "Sets the connection of the model; join and relation children without one use the parent connection",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Connect",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Connect",
           "signature": "receiver=*{Entity}Model func(db *orm.DB) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::connect",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::connect",
           "signature": "public function connect(Polyspec\\Orm\\Db $db): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::connect",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::connect",
           "signature": "pub fn connect(mut self, db: &polyspec_orm::Db) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.connect",
+          "symbol": "packages/ts/src/model.ts::Model.connect",
           "signature": "public connect(db: Db): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.connect",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.connect",
           "signature": "def connect(self, db: Db) -> Self"
         }
       }
@@ -516,23 +516,23 @@
       "state": "Adds an AND connector, an AND group, or the placement of a joined model",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.And",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.And",
           "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::and",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::and",
           "signature": "public function and(mixed ...$args): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::and",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::and",
           "signature": "pub fn and<A: polyspec_orm::GroupArg<Self>>(mut self, arg: A) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.and",
+          "symbol": "packages/ts/src/model.ts::Model.and",
           "signature": "public and(arg?: ((q: this) => unknown) | Model): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.and_",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.and_",
           "signature": "def and_(self, *args) -> Self"
         }
       }
@@ -548,23 +548,23 @@
       "state": "Adds an OR connector, an OR group, or the placement of a joined model",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Or",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Or",
           "signature": "receiver=*{Entity}Model func(args ...any) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::or",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::or",
           "signature": "public function or(mixed ...$args): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::or",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::or",
           "signature": "pub fn or<A: polyspec_orm::GroupArg<Self>>(mut self, arg: A) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.or",
+          "symbol": "packages/ts/src/model.ts::Model.or",
           "signature": "public or(arg?: ((q: this) => unknown) | Model): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.or_",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.or_",
           "signature": "def or_(self, *args) -> Self"
         }
       }
@@ -580,23 +580,23 @@
       "state": "Loads one child row per model with a separate statement",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Relation",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Relation",
           "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::relation",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::relation",
           "signature": "public function relation(Polyspec\\Orm\\Model $child): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::relation",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::relation",
           "signature": "pub fn relation(mut self, child: impl polyspec_orm::Model) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.relation",
+          "symbol": "packages/ts/src/model.ts::Model.relation",
           "signature": "public relation(child: Model): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.relation",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.relation",
           "signature": "def relation(self, child: Model) -> Self"
         }
       }
@@ -612,23 +612,23 @@
       "state": "Loads a child collection per model with a separate statement",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Relations",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Relations",
           "signature": "receiver=*{Entity}Model func(child orm.Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::relations",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::relations",
           "signature": "public function relations(Polyspec\\Orm\\Model $child): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::relations",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::relations",
           "signature": "pub fn relations(mut self, child: impl polyspec_orm::Model) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.relations",
+          "symbol": "packages/ts/src/model.ts::Model.relations",
           "signature": "public relations(child: Model): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.relations",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.relations",
           "signature": "def relations(self, child: Model) -> Self"
         }
       }
@@ -644,23 +644,23 @@
       "state": "Returns the same model with the added state",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Limit",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Limit",
           "signature": "receiver=*{Entity}Model func(offset, count int) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::limit",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::limit",
           "signature": "public function limit(int $offset, int $count): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::limit",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::limit",
           "signature": "pub fn limit(mut self, offset: u32, count: u32) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.limit",
+          "symbol": "packages/ts/src/model.ts::Model.limit",
           "signature": "public limit(offset: number, count: number): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.limit",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.limit",
           "signature": "def limit(self, offset: int, count: int) -> Self"
         }
       }
@@ -676,23 +676,23 @@
       "state": "Stores the assignments applied when an insert meets an existing unique key",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Duplication",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Duplication",
           "signature": "receiver=*{Entity}Model func(m *{Entity}Model) *{Entity}Model"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::duplication",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::duplication",
           "signature": "public function duplication(Polyspec\\Orm\\Model $model): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::duplication",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::duplication",
           "signature": "pub fn duplication(mut self, m: Self) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.duplication",
+          "symbol": "packages/ts/src/model.ts::Model.duplication",
           "signature": "public duplication(model: this): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.duplication",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.duplication",
           "signature": "def duplication(self, model: Self) -> Self"
         }
       }
@@ -711,23 +711,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Get",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Get",
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::get",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::get",
           "signature": "public function get(): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::get",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get",
           "signature": "pub async fn get(&self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.get",
+          "symbol": "packages/ts/src/model.ts::Model.get",
           "signature": "public async get(): Promise<this>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.get",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get",
           "signature": "def get(self) -> Self"
         }
       }
@@ -745,23 +745,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Gets",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Gets",
           "signature": "receiver=*{Entity}Model func() (*orm.Collection[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::gets",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::gets",
           "signature": "public function gets(): Polyspec\\Orm\\Collection"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::gets",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::gets",
           "signature": "pub async fn gets(&self) -> polyspec_orm::Result<polyspec_orm::Collection<Self>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.gets",
+          "symbol": "packages/ts/src/model.ts::Model.gets",
           "signature": "public async gets(): Promise<Collection<this>>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.gets",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets",
           "signature": "def gets(self) -> Collection[Self]"
         }
       }
@@ -779,23 +779,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetsCount",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetsCount",
           "signature": "receiver=*{Entity}Model func() (*orm.GroupRows, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getsCount",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getsCount",
           "signature": "public function getsCount(): Polyspec\\Orm\\GroupRows"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::gets_count",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::gets_count",
           "signature": "pub async fn gets_count(&self) -> polyspec_orm::Result<polyspec_orm::GroupRows>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getsCount",
+          "symbol": "packages/ts/src/model.ts::Model.getsCount",
           "signature": "public async getsCount(): Promise<GroupRows>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.gets_count",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_count",
           "signature": "def gets_count(self) -> GroupRows"
         }
       }
@@ -813,23 +813,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetCount",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetCount",
           "signature": "receiver=*{Entity}Model func() (int64, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getCount",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getCount",
           "signature": "public function getCount(): int"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::get_count",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_count",
           "signature": "pub async fn get_count(&self) -> polyspec_orm::Result<i64>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getCount",
+          "symbol": "packages/ts/src/model.ts::Model.getCount",
           "signature": "public async getCount(): Promise<number>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.get_count",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_count",
           "signature": "def get_count(self) -> int"
         }
       }
@@ -847,23 +847,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetSum",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetSum",
           "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getSum",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getSum",
           "signature": "public function getSum(): float"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::get_sum",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_sum",
           "signature": "pub async fn get_sum(&self) -> polyspec_orm::Result<f64>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getSum",
+          "symbol": "packages/ts/src/model.ts::Model.getSum",
           "signature": "public async getSum(): Promise<number>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.get_sum",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_sum",
           "signature": "def get_sum(self) -> float"
         }
       }
@@ -881,23 +881,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetAvg",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetAvg",
           "signature": "receiver=*{Entity}Model func() (float64, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getAvg",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getAvg",
           "signature": "public function getAvg(): float"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::get_avg",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_avg",
           "signature": "pub async fn get_avg(&self) -> polyspec_orm::Result<f64>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getAvg",
+          "symbol": "packages/ts/src/model.ts::Model.getAvg",
           "signature": "public async getAvg(): Promise<number>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.get_avg",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_avg",
           "signature": "def get_avg(self) -> float"
         }
       }
@@ -917,23 +917,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetsPage",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetsPage",
           "signature": "receiver=*{Entity}Model func(page, perPage int) (*orm.Page[*{Entity}Model], error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getsPage",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getsPage",
           "signature": "public function getsPage(int $page, int $perPage): Polyspec\\Orm\\Page"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::gets_page",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::gets_page",
           "signature": "pub async fn gets_page(&self, page: u32, per_page: u32) -> polyspec_orm::Result<polyspec_orm::Page<Self>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getsPage",
+          "symbol": "packages/ts/src/model.ts::Model.getsPage",
           "signature": "public async getsPage(page: number, perPage: number): Promise<Page<this>>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.gets_page",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_page",
           "signature": "def gets_page(self, page: int, per_page: int) -> Page[Self]"
         }
       }
@@ -951,23 +951,23 @@
       "state": "The model is not changed; the same model can run again",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.GetQuery",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.GetQuery",
           "signature": "receiver=*{Entity}Model func() (*orm.Statement, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::getQuery",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::getQuery",
           "signature": "public function getQuery(): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::get_query",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::get_query",
           "signature": "pub async fn get_query(&self) -> polyspec_orm::Result<polyspec_orm::Statement>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.getQuery",
+          "symbol": "packages/ts/src/model.ts::Model.getQuery",
           "signature": "public async getQuery(): Promise<{ sql: string; binds: unknown[]; }>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.get_query",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_query",
           "signature": "def get_query(self) -> dict"
         }
       }
@@ -987,23 +987,23 @@
       "state": "Inserts the model and returns the stored row",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Create",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Create",
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::create",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::create",
           "signature": "public function create(): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::create",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::create",
           "signature": "pub async fn create(&mut self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.create",
+          "symbol": "packages/ts/src/model.ts::Model.create",
           "signature": "public async create(): Promise<this>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.create",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.create",
           "signature": "def create(self) -> Self"
         }
       }
@@ -1025,23 +1025,23 @@
       "state": "Inserts the rows in one statement per bind limit",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Creates",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Creates",
           "signature": "receiver=*{Entity}Model func(rows []*{Entity}Model) (int64, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::creates",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::creates",
           "signature": "public function creates(array $rows): int"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::creates",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::creates",
           "signature": "pub async fn creates(&self, rows: Vec<Self>) -> polyspec_orm::Result<u64>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.creates",
+          "symbol": "packages/ts/src/model.ts::Model.creates",
           "signature": "public async creates(rows: readonly this[]): Promise<number>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.creates",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.creates",
           "signature": "def creates(self, rows: list[Self]) -> int"
         }
       }
@@ -1062,23 +1062,23 @@
       "state": "Writes the changed columns of a loaded model by its primary key",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Update",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Update",
           "signature": "receiver=*{Entity}Model func(optimistic ...bool) (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::update",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::update",
           "signature": "public function update(bool $optimistic = false): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::update",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::update",
           "signature": "pub async fn update(&mut self, optimistic: bool) -> polyspec_orm::Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.update",
+          "symbol": "packages/ts/src/model.ts::Model.update",
           "signature": "public async update(optimistic = false): Promise<this>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.update",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.update",
           "signature": "def update(self, optimistic: bool=False) -> Self"
         }
       }
@@ -1098,23 +1098,23 @@
       "state": "Inserts a new model or updates a loaded one",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Save",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Save",
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::save",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::save",
           "signature": "public function save(): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::save",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::save",
           "signature": "pub async fn save(&mut self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.save",
+          "symbol": "packages/ts/src/model.ts::Model.save",
           "signature": "public async save(): Promise<this>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.save",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.save",
           "signature": "def save(self) -> Self"
         }
       }
@@ -1135,23 +1135,23 @@
       "state": "Deletes a loaded model, and its relation rows when recursive",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Delete",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Delete",
           "signature": "receiver=*{Entity}Model func(recursive ...bool) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::delete",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::delete",
           "signature": "public function delete(bool $recursive = false): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::delete",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::delete",
           "signature": "pub async fn delete(&self, recursive: bool) -> polyspec_orm::Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.delete",
+          "symbol": "packages/ts/src/model.ts::Model.delete",
           "signature": "public async delete(recursive = false): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.delete",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.delete",
           "signature": "def delete(self, recursive: bool=False) -> None"
         }
       }
@@ -1170,23 +1170,23 @@
       "state": "Clears the soft delete column of the deleted row that the set values of its primary key or one unique key name, writes the other set values with it, and returns the row; a row that is not deleted is returned unchanged",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.Restore",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.Restore",
           "signature": "receiver=*{Entity}Model func() (*{Entity}Model, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::restore",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::restore",
           "signature": "public function restore(): static"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::restore",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::restore",
           "signature": "pub async fn restore(&self) -> polyspec_orm::Result<Self>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.restore",
+          "symbol": "packages/ts/src/model.ts::Model.restore",
           "signature": "public async restore(): Promise<this>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.restore",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.restore",
           "signature": "def restore(self) -> Self"
         }
       }
@@ -1200,23 +1200,23 @@
       "state": "Exports the loaded columns and relations",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/model/{entity}.go::{Entity}Model.ToArray",
+          "symbol": "packages/go/model/{entity}.go::{Entity}Model.ToArray",
           "signature": "receiver=*{Entity}Model func() map[string]any"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Model.php::Polyspec\\Orm\\Model::toArray",
+          "symbol": "packages/php/src/Model.php::Polyspec\\Orm\\Model::toArray",
           "signature": "public function toArray(): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-build/src/fixed.rs.txt::T::to_array",
+          "symbol": "packages/rust/build/src/fixed.rs.txt::T::to_array",
           "signature": "pub fn to_array(&self) -> polyspec_orm::Result<polyspec_orm::serde_json::Value>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Model.toArray",
+          "symbol": "packages/ts/src/model.ts::Model.toArray",
           "signature": "public toArray(): Record<string, unknown>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Model.to_array",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Model.to_array",
           "signature": "def to_array(self) -> dict"
         }
       }
@@ -1232,23 +1232,23 @@
       "state": "Returns the model of the key, or none when the collection has no such key; the collection is not changed",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.Get",
+          "symbol": "packages/go/orm/collection.go::Collection.Get",
           "signature": "receiver=*Collection[T] func(key any) (T, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::get",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::get",
           "signature": "public function get(string|int $key): ?Polyspec\\Orm\\Model"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::get",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::get",
           "signature": "pub fn get (& self , key : impl Into < Key >) -> Option < & M >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.get",
+          "symbol": "packages/ts/src/model.ts::Collection.get",
           "signature": "public get(key: Key): T | undefined"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.get",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.get",
           "signature": "def get(self, key) -> Model | None"
         }
       }
@@ -1262,23 +1262,23 @@
       "state": "Returns the first model in order, or none when the collection is empty",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.First",
+          "symbol": "packages/go/orm/collection.go::Collection.First",
           "signature": "receiver=*Collection[T] func() T"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::first",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::first",
           "signature": "public function first(): ?Polyspec\\Orm\\Model"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::first",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::first",
           "signature": "pub fn first (& self) -> Option < & M >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.first",
+          "symbol": "packages/ts/src/model.ts::Collection.first",
           "signature": "public first(): T | undefined"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.first",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.first",
           "signature": "def first(self) -> Model | None"
         }
       }
@@ -1292,23 +1292,23 @@
       "state": "Returns the keys of the models in order",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.Keys",
+          "symbol": "packages/go/orm/collection.go::Collection.Keys",
           "signature": "receiver=*Collection[T] func() []Key"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::keys",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::keys",
           "signature": "public function keys(): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::keys",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::keys",
           "signature": "pub fn keys (& self) -> & [Key]"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.keys",
+          "symbol": "packages/ts/src/model.ts::Collection.keys",
           "signature": "public keys(): Key[]"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.keys",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.keys",
           "signature": "def keys(self) -> list"
         }
       }
@@ -1324,23 +1324,23 @@
       "state": "Sets the connection of every model of the collection",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.Connect",
+          "symbol": "packages/go/orm/collection.go::Collection.Connect",
           "signature": "receiver=*Collection[T] func(db *DB) *Collection[T]"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::connect",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::connect",
           "signature": "public function connect(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::connect",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::connect",
           "signature": "pub fn connect (mut self , db : & crate :: Db) -> Self"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.connect",
+          "symbol": "packages/ts/src/model.ts::Collection.connect",
           "signature": "public connect(db: Db): this"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.connect",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.connect",
           "signature": "def connect(self, db: Db) -> Self"
         }
       }
@@ -1361,23 +1361,23 @@
       "state": "Deletes every model of the collection in one transaction, and their loaded relation rows first when recursive; an empty collection deletes nothing",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.Delete",
+          "symbol": "packages/go/orm/collection.go::Collection.Delete",
           "signature": "receiver=*Collection[T] func(recursive ...bool) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::delete",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::delete",
           "signature": "public function delete(bool $recursive=false): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::delete",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::delete",
           "signature": "pub async fn delete (& self , recursive : bool) -> Result < () >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.delete",
+          "symbol": "packages/ts/src/model.ts::Collection.delete",
           "signature": "public async delete(recursive = false): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.delete",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.delete",
           "signature": "def delete(self, recursive: bool=False) -> None"
         }
       }
@@ -1391,23 +1391,23 @@
       "state": "Exports the loaded columns and relations of every model in order",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Collection.ToArray",
+          "symbol": "packages/go/orm/collection.go::Collection.ToArray",
           "signature": "receiver=*Collection[T] func() []map[string]any"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::toArray",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::toArray",
           "signature": "public function toArray(): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::to_array",
+          "symbol": "packages/rust/orm/src/collection.rs::Collection < M >::to_array",
           "signature": "pub fn to_array (& self) -> crate :: Result < serde_json :: Value >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Collection.toArray",
+          "symbol": "packages/ts/src/model.ts::Collection.toArray",
           "signature": "public toArray(): Array<Record<string, unknown>>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.to_array",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Collection.to_array",
           "signature": "def to_array(self) -> list"
         }
       }
@@ -1427,23 +1427,23 @@
       "state": "Opens the pool selected by the DSN URI scheme without any registered schema set",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/db.go::Connect",
+          "symbol": "packages/go/orm/db.go::Connect",
           "signature": "func(dsn string, cfg Config) (*DB, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Orm.php::Polyspec\\Orm\\Orm::connect",
+          "symbol": "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::connect",
           "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::connect",
+          "symbol": "packages/rust/orm/src/db.rs::Db::connect",
           "signature": "pub async fn connect(dsn: &str, pool_size: u32, mut cfg: Config) -> Result<Db>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.connect",
+          "symbol": "packages/ts/src/database.ts::Db.connect",
           "signature": "public static async connect(dsn: string, options: ConnectOptions = {}): Promise<Db>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.connect",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.connect",
           "signature": "@staticmethod def connect(dsn: str, options: dict | None=None) -> Db"
         }
       }
@@ -1462,23 +1462,23 @@
       "state": "Opens the pool selected by the DSN URI scheme and registers the set of a generated schema on it as SchemaUtils.register does, without reading the database; the connect helper of generated code calls it, and a manifest text that does not hash to its manifestHash returns CONFIG before the connection opens",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/db.go::ConnectSchema",
+          "symbol": "packages/go/orm/db.go::ConnectSchema",
           "signature": "func(dsn string, s *Schema, cfg Config) (*DB, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Orm.php::Polyspec\\Orm\\Orm::connectSchema",
+          "symbol": "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::connectSchema",
           "signature": "public static function connectSchema(string $dsn, Polyspec\\Orm\\Schema $schema, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::connect_schema",
+          "symbol": "packages/rust/orm/src/db.rs::Db::connect_schema",
           "signature": "pub async fn connect_schema(dsn: &str, schema: &Schema, pool_size: u32, cfg: Config) -> Result<Db>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.connectSchema",
+          "symbol": "packages/ts/src/database.ts::Db.connectSchema",
           "signature": "public static async connectSchema(dsn: string, schema: Schema, options: ConnectOptions = {}): Promise<Db>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.connect_schema",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.connect_schema",
           "signature": "@staticmethod def connect_schema(dsn: str, schema: Schema, options: dict | None=None) -> Db"
         }
       }
@@ -1498,23 +1498,23 @@
       "state": "Runs the callback in the transaction of the current execution flow; a nested call uses a savepoint",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/tx.go::DB.Transaction",
+          "symbol": "packages/go/orm/tx.go::DB.Transaction",
           "signature": "receiver=*DB func(fn func() error, options ...TransactionOption) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::transaction",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::transaction",
           "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/tx.rs::Db::transaction",
+          "symbol": "packages/rust/orm/src/tx.rs::Db::transaction",
           "signature": "pub fn transaction<F>(&self, f: F) -> Transaction<'_, F>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.transaction",
+          "symbol": "packages/ts/src/database.ts::Db.transaction",
           "signature": "public async transaction<T>(callback: () => Promise<T> | T, options: TransactionOptions = {}): Promise<T>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.transaction",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.transaction",
           "signature": "def transaction(self, callback: Callable[[], T], options: dict | None=None) -> T"
         }
       }
@@ -1528,23 +1528,23 @@
       "state": "Returns the utilities of the connection",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::DB.Utils",
+          "symbol": "packages/go/orm/utils.go::DB.Utils",
           "signature": "receiver=*DB func() *Utils"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::utils",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::utils",
           "signature": "public function utils(): Polyspec\\Orm\\Utils"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Db::utils",
+          "symbol": "packages/rust/orm/src/utils.rs::Db::utils",
           "signature": "pub fn utils(&self) -> Utils<'_>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.utils",
+          "symbol": "packages/ts/src/database.ts::Db.utils",
           "signature": "public utils(): Utils"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.utils",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.utils",
           "signature": "def utils(self) -> Utils"
         }
       }
@@ -1562,23 +1562,23 @@
       "state": "Registers a subscriber that receives the event of every statement the connection sends, after the statement and before the operation continues; the returned value removes it (docs/usage.md \"Statement events\"); a markdown connection sends no statement and refuses it (docs/dialects.md \"Markdown IR executor\")",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/events.go::DB.Subscribe",
+          "symbol": "packages/go/orm/events.go::DB.Subscribe",
           "signature": "receiver=*DB func(fn Subscriber) (unsubscribe func(), err error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::subscribe",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::subscribe",
           "signature": "public function subscribe(Closure $subscriber): Closure"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/events.rs::Db::subscribe",
+          "symbol": "packages/rust/orm/src/events.rs::Db::subscribe",
           "signature": "pub fn subscribe<F: StatementSubscriber>(&self, subscriber: F) -> Result<Subscription>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.subscribe",
+          "symbol": "packages/ts/src/database.ts::Db.subscribe",
           "signature": "public subscribe(subscriber: (event: StatementEvent) => void): () => void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.subscribe",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.subscribe",
           "signature": "def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]"
         }
       }
@@ -1598,23 +1598,23 @@
       "state": "Runs one compiled plan step with its request parameters on the active transaction of the connection or on the connection, binding its slots as a model statement does; a read step or a param slot past the parameters fails before any statement (docs/usage.md \"Execute a compiled statement\")",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/exec.go::DB.Execute",
+          "symbol": "packages/go/orm/exec.go::DB.Execute",
           "signature": "receiver=*DB func(st *plan.Step, params []any) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::execute",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::execute",
           "signature": "public function execute(array $step, array $params): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::execute",
+          "symbol": "packages/rust/orm/src/db.rs::Db::execute",
           "signature": "pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.execute",
+          "symbol": "packages/ts/src/database.ts::Db.execute",
           "signature": "public async execute(step: PlanStep, params: readonly unknown[]): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.execute",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.execute",
           "signature": "def execute(self, step: dict, params: list) -> None"
         }
       }
@@ -1630,23 +1630,23 @@
       "state": "Returns a handle on the same connection whose hook receives each request of the handle right before planning and may add predicates, assignments and parameters; the client plans the changed request as any other, so the planner validates it, and rows and transactions of the handle keep the hook (docs/usage.md \"Request hook\")",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/db.go::DB.WithRequestHook",
+          "symbol": "packages/go/orm/db.go::DB.WithRequestHook",
           "signature": "receiver=*DB func(hook RequestHook) *DB"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::withRequestHook",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::withRequestHook",
           "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::with_request_hook",
+          "symbol": "packages/rust/orm/src/db.rs::Db::with_request_hook",
           "signature": "pub fn with_request_hook(&self, hook: impl Fn(&mut crate::ir::Request, &mut RequestParams) -> Result<()> + Send + Sync + 'static) -> Db"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.withRequestHook",
+          "symbol": "packages/ts/src/database.ts::Db.withRequestHook",
           "signature": "public withRequestHook(hook: RequestHook): Db"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.with_request_hook",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.with_request_hook",
           "signature": "def with_request_hook(self, hook: RequestHook) -> Db"
         }
       }
@@ -1660,23 +1660,23 @@
       "state": "Closes the pool and drops the plan and statement caches; a closed connection refuses every later operation",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/db.go::DB.Close",
+          "symbol": "packages/go/orm/db.go::DB.Close",
           "signature": "receiver=*DB func() error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::close",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::close",
           "signature": "public function close(): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::close",
+          "symbol": "packages/rust/orm/src/db.rs::Db::close",
           "signature": "pub async fn close (& self)"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.close",
+          "symbol": "packages/ts/src/database.ts::Db.close",
           "signature": "public async close(): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.close",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.close",
           "signature": "def close(self) -> None"
         }
       }
@@ -1690,23 +1690,23 @@
       "state": "Reports the pool statistics of the connection: the open, in-use and idle connections and the pool limit; a PHP or Python Db holds one connection",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/db.go::DB.Stats",
+          "symbol": "packages/go/orm/db.go::DB.Stats",
           "signature": "receiver=*DB func() DBStats"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::stats",
+          "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::stats",
           "signature": "public function stats(): Polyspec\\Orm\\Stats"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/db.rs::Db::stats",
+          "symbol": "packages/rust/orm/src/db.rs::Db::stats",
           "signature": "pub fn stats (& self) -> DbStats"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/database.ts::Db.stats",
+          "symbol": "packages/ts/src/database.ts::Db.stats",
           "signature": "public stats(): PoolStats"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.stats",
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.stats",
           "signature": "def stats(self) -> DbStats"
         }
       }
@@ -1725,23 +1725,23 @@
       "state": "Takes a named lock released when the transaction ends",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Lock",
+          "symbol": "packages/go/orm/utils.go::Utils.Lock",
           "signature": "receiver=*Utils func(key string) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::lock",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::lock",
           "signature": "public function lock(string $key): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::lock",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::lock",
           "signature": "pub async fn lock(&self, key: &str) -> Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.lock",
+          "symbol": "packages/ts/src/utils.ts::Utils.lock",
           "signature": "public async lock(key: string): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.lock",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.lock",
           "signature": "def lock(self, key: str) -> None"
         }
       }
@@ -1761,23 +1761,23 @@
       "state": "Sets a value local to the active transaction, which ends with it",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.SetLocal",
+          "symbol": "packages/go/orm/utils.go::Utils.SetLocal",
           "signature": "receiver=*Utils func(key, value string) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::setLocal",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::setLocal",
           "signature": "public function setLocal(string $key, string $value): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::set_local",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::set_local",
           "signature": "pub async fn set_local (& self , key : & str , value : & str) -> Result < () >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.setLocal",
+          "symbol": "packages/ts/src/utils.ts::Utils.setLocal",
           "signature": "public async setLocal(key: string, value: string): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.set_local",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.set_local",
           "signature": "def set_local(self, key: str, value: str) -> None"
         }
       }
@@ -1797,23 +1797,23 @@
       "state": "Returns the value that setLocal set in the active transaction; a key without one returns NO_ROWS",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Local",
+          "symbol": "packages/go/orm/utils.go::Utils.Local",
           "signature": "receiver=*Utils func(key string) (string, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::local",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::local",
           "signature": "public function local(string $key): string"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::local",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::local",
           "signature": "pub fn local (& self , key : & str) -> Result < String >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.local",
+          "symbol": "packages/ts/src/utils.ts::Utils.local",
           "signature": "public async local(key: string): Promise<string>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.local",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.local",
           "signature": "def local(self, key: str) -> str"
         }
       }
@@ -1827,23 +1827,23 @@
       "state": "Returns the schema utilities",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Schema",
+          "symbol": "packages/go/orm/utils.go::Utils.Schema",
           "signature": "receiver=*Utils func() *SchemaUtils"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::schema",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::schema",
           "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::schema",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::schema",
           "signature": "pub fn schema(&self) -> SchemaUtils<'_>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.schema",
+          "symbol": "packages/ts/src/utils.ts::Utils.schema",
           "signature": "public schema(): SchemaUtils"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.schema",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.schema",
           "signature": "def schema(self) -> SchemaUtils"
         }
       }
@@ -1862,23 +1862,23 @@
       "state": "Registers the set of a generated schema on the connection without reading or writing the database; registering a registered set again changes nothing, and a manifest text that does not hash to its manifestHash returns CONFIG",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Register",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.Register",
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::register",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::register",
           "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::register",
           "signature": "pub fn register(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.register",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.register",
           "signature": "public register(schema: Schema): void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.register",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.register",
           "signature": "def register(self, schema: Schema) -> None"
         }
       }
@@ -1898,23 +1898,23 @@
       "state": "Creates the tables of the document set of a generated schema when none of them exists, changes nothing when all exist, then compares the tables of the set in the database with the set and returns CONFIG naming each difference, and registers the set on the connection; a manifest text that does not hash to its manifestHash returns CONFIG before any statement",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Install",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.Install",
           "signature": "receiver=*SchemaUtils func(schema *Schema) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::install",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::install",
           "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::install",
           "signature": "pub async fn install(&self, schema: &Schema) -> Result<()>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.install",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.install",
           "signature": "public async install(schema: Schema): Promise<void>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.install",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.install",
           "signature": "def install(self, schema: Schema) -> None"
         }
       }
@@ -1935,23 +1935,23 @@
       "state": "Upgrades the installed document set of a generated schema by the tables the database lacks and the missing null or defaulted columns of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; leaves the tables of other sets unchanged and registers nothing; every other difference returns SCHEMA_DIFFERS before any statement, and tables of the set that differ from the set after the steps return CONFIG naming each difference",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.AddTablesAndColumns",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.AddTablesAndColumns",
           "signature": "receiver=*SchemaUtils func(schema *Schema) ([]string, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
           "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::add_tables_and_columns",
           "signature": "pub async fn add_tables_and_columns(&self, schema: &Schema) -> Result<Vec<String>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.addTablesAndColumns",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.addTablesAndColumns",
           "signature": "public async addTablesAndColumns(schema: Schema): Promise<string[]>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.add_tables_and_columns",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.add_tables_and_columns",
           "signature": "def add_tables_and_columns(self, schema: Schema) -> list[str]"
         }
       }
@@ -1971,23 +1971,23 @@
       "state": "Reports whether a schema exists, reading through the active transaction or the connection; an invalid name returns CONFIG and a markdown connection CAPABILITY_UNSUPPORTED",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Exists",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.Exists",
           "signature": "receiver=*SchemaUtils func(name string) (bool, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::exists",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::exists",
           "signature": "public function exists(string $schema): bool"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::exists",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::exists",
           "signature": "pub async fn exists (& self , name : & str) -> Result < bool >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.exists",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.exists",
           "signature": "public async exists(name: string): Promise<boolean>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.exists",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.exists",
           "signature": "def exists(self, name: str) -> bool"
         }
       }
@@ -2007,23 +2007,23 @@
       "state": "Reports whether a table of a schema exists, reading through the active transaction or the connection; an invalid name returns CONFIG and a markdown connection CAPABILITY_UNSUPPORTED",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Installed",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.Installed",
           "signature": "receiver=*SchemaUtils func(name, table string) (bool, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::installed",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::installed",
           "signature": "public function installed(string $schema, string $table): bool"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::installed",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::installed",
           "signature": "pub async fn installed (& self , name : & str , table : & str) -> Result < bool >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.installed",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.installed",
           "signature": "public async installed(name: string, table: string): Promise<boolean>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.installed",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.installed",
           "signature": "def installed(self, name: str, table: str) -> bool"
         }
       }
@@ -2040,23 +2040,23 @@
       "state": "Reports whether the database holds no user content as docs/interfaces.md defines it per dialect, reading through the active transaction or the connection; a markdown connection returns CAPABILITY_UNSUPPORTED",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::SchemaUtils.Empty",
+          "symbol": "packages/go/orm/utils.go::SchemaUtils.Empty",
           "signature": "receiver=*SchemaUtils func() (bool, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::empty",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\SchemaUtils::empty",
           "signature": "public function empty(): bool"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::SchemaUtils < '_ >::empty",
+          "symbol": "packages/rust/orm/src/utils.rs::SchemaUtils < '_ >::empty",
           "signature": "pub async fn empty (& self) -> Result < bool >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::SchemaUtils.empty",
+          "symbol": "packages/ts/src/utils.ts::SchemaUtils.empty",
           "signature": "public async empty(): Promise<boolean>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::SchemaUtils.empty",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.empty",
           "signature": "def empty(self) -> bool"
         }
       }
@@ -2070,23 +2070,23 @@
       "state": "Returns the AES key rotation utilities",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Aes",
+          "symbol": "packages/go/orm/utils.go::Utils.Aes",
           "signature": "receiver=*Utils func() *AESUtils"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::aes",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::aes",
           "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::aes",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::aes",
           "signature": "pub fn aes(&self) -> AesUtils<'_>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.aes",
+          "symbol": "packages/ts/src/utils.ts::Utils.aes",
           "signature": "public aes(): AesUtils"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.aes",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.aes",
           "signature": "def aes(self) -> AesUtils"
         }
       }
@@ -2100,23 +2100,23 @@
       "state": "Returns the table privilege utilities, which PostgreSQL implements and every other dialect refuses with CAPABILITY_UNSUPPORTED",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Privileges",
+          "symbol": "packages/go/orm/utils.go::Utils.Privileges",
           "signature": "receiver=*Utils func() *PrivilegeUtils"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::privileges",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::privileges",
           "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::privileges",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::privileges",
           "signature": "pub fn privileges (& self) -> PrivilegeUtils < '_ >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.privileges",
+          "symbol": "packages/ts/src/utils.ts::Utils.privileges",
           "signature": "public privileges(): PrivilegeUtils"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.privileges",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.privileges",
           "signature": "def privileges(self) -> PrivilegeUtils"
         }
       }
@@ -2130,23 +2130,23 @@
       "state": "Returns the pool statistics of the connection, as Db.stats does",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::Utils.Stats",
+          "symbol": "packages/go/orm/utils.go::Utils.Stats",
           "signature": "receiver=*Utils func() DBStats"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::stats",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\Utils::stats",
           "signature": "public function stats(): Polyspec\\Orm\\Stats"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::stats",
+          "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::stats",
           "signature": "pub fn stats (& self) -> DbStats"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::Utils.stats",
+          "symbol": "packages/ts/src/utils.ts::Utils.stats",
           "signature": "public stats(): PoolStats"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.stats",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.stats",
           "signature": "def stats(self) -> DbStats"
         }
       }
@@ -2165,23 +2165,23 @@
       "state": "Counts rows per stored key version",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::AESUtils.Status",
+          "symbol": "packages/go/orm/utils.go::AESUtils.Status",
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (AESRotationStatus, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\AesUtils::status",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\AesUtils::status",
           "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::AesUtils < '_ >::status",
+          "symbol": "packages/rust/orm/src/utils.rs::AesUtils < '_ >::status",
           "signature": "pub async fn status<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<AesRotationStatus>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::AesUtils.status",
+          "symbol": "packages/ts/src/utils.ts::AesUtils.status",
           "signature": "public async status(model: unknown, keyring: AesKeyring): Promise<AesRotationStatus>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::AesUtils.status",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::AesUtils.status",
           "signature": "def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus"
         }
       }
@@ -2200,23 +2200,23 @@
       "state": "Rewrites every AES column and the key version of stale rows in batches",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::AESUtils.Rotate",
+          "symbol": "packages/go/orm/utils.go::AESUtils.Rotate",
           "signature": "receiver=*AESUtils func(m Model, keyring AESKeyring) (int, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\AesUtils::rotate",
+          "symbol": "packages/php/src/Utils.php::Polyspec\\Orm\\AesUtils::rotate",
           "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::AesUtils < '_ >::rotate",
+          "symbol": "packages/rust/orm/src/utils.rs::AesUtils < '_ >::rotate",
           "signature": "pub async fn rotate<M: Model>(&self, m: &M, keyring: &AesKeyring) -> Result<u64>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::AesUtils.rotate",
+          "symbol": "packages/ts/src/utils.ts::AesUtils.rotate",
           "signature": "public async rotate(model: unknown, keyring: AesKeyring): Promise<number>"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::AesUtils.rotate",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::AesUtils.rotate",
           "signature": "def rotate(self, model: Model, keyring: AesKeyring) -> int"
         }
       }
@@ -2230,23 +2230,23 @@
       "state": "Returns the declared key versions in ascending order",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/aes_rotation.go::AESKeyring.AESVersions",
+          "symbol": "packages/go/orm/aes_rotation.go::AESKeyring.AESVersions",
           "signature": "receiver=AESKeyring func() []int32"
         },
         "php": {
-          "symbol": "packages/orm-php/src/AesKeyring.php::Polyspec\\Orm\\AesKeyring::versions",
+          "symbol": "packages/php/src/AesKeyring.php::Polyspec\\Orm\\AesKeyring::versions",
           "signature": "public function versions(): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::AesKeyring::versions",
+          "symbol": "packages/rust/orm/src/utils.rs::AesKeyring::versions",
           "signature": "pub fn versions (& self) -> Vec < i32 >"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/aes.ts::AesKeyring.versions",
+          "symbol": "packages/ts/src/aes.ts::AesKeyring.versions",
           "signature": "public versions(): number[]"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/aes.py::AesKeyring.versions",
+          "symbol": "packages/python/src/polyspec/orm/aes.py::AesKeyring.versions",
           "signature": "def versions(self) -> list"
         }
       }
@@ -2266,23 +2266,23 @@
           "signature": "func(path string) (string, []Diagnostic, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readFile",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readFile",
           "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/file.rs::read_file",
+          "symbol": "packages/rust/schema/src/dbspec/file.rs::read_file",
           "signature": "pub fn read_file(path: &Path) -> Result<String, ReadError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/file.ts::readDbspecFile",
+          "symbol": "packages/ts/src/dbspec/file.ts::readDbspecFile",
           "signature": "export function readDbspecFile(path: string): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readFile",
           "signature": "public static function readFile(string $path): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/file.py::read_dbspec_file",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/file.py::read_dbspec_file",
           "signature": "def read_dbspec_file(path: str) -> tuple[str | None, list[DbspecDiagnostic]]"
         }
       }
@@ -2302,23 +2302,23 @@
           "signature": "func(name string, b []byte) (string, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readBytes",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readBytes",
           "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\ReadResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/file.rs::read_bytes",
+          "symbol": "packages/rust/schema/src/dbspec/file.rs::read_bytes",
           "signature": "pub fn read_bytes(name: &str, bytes: Vec<u8>) -> Result<String, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/read_bytes.ts::readDbspecBytes",
+          "symbol": "packages/ts/src/dbspec/read_bytes.ts::readDbspecBytes",
           "signature": "export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readBytes",
           "signature": "public static function readBytes(string $name, string $bytes): Polyspec\\Orm\\Dbspec\\Native\\ReadResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/file.py::read_dbspec_bytes",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/file.py::read_dbspec_bytes",
           "signature": "def read_dbspec_bytes(name: str, data: bytes) -> tuple[str | None, list[DbspecDiagnostic]]"
         }
       }
@@ -2338,23 +2338,23 @@
           "signature": "func(path string) (Set, []SetError)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readSet",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::readSet",
           "signature": "public static function readSet(string $path): Polyspec\\Orm\\Dbspec\\SetResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/set.rs::read_set",
+          "symbol": "packages/rust/schema/src/dbspec/set.rs::read_set",
           "signature": "pub fn read_set(path: &Path) -> Result<Set, Vec<SetError>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/set_read.ts::readDbspecSet",
+          "symbol": "packages/ts/src/dbspec/set_read.ts::readDbspecSet",
           "signature": "export function readDbspecSet(path: string): DbspecSetResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readSet",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::readSet",
           "signature": "public static function readSet(string $path): Polyspec\\Orm\\Dbspec\\Native\\SetResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/set_file.py::read_dbspec_set",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/set_file.py::read_dbspec_set",
           "signature": "def read_dbspec_set(path: str) -> tuple[DbspecSet | None, tuple[DbspecSetError, ...]]"
         }
       }
@@ -2374,23 +2374,23 @@
           "signature": "func(text string, documents map[string]string) (*Document, []Position, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parse",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parse",
           "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\ParseResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::parse",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::parse",
           "signature": "pub fn parse(text: &str, documents: &BTreeMap<String, String>) -> Result<Parsed, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/document.ts::parseDbspec",
+          "symbol": "packages/ts/src/dbspec/document.ts::parseDbspec",
           "signature": "export function parseDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecParseResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parse",
           "signature": "public static function parse(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\ParseResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/parse.py::parse_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::parse_dbspec",
           "signature": "def parse_dbspec(text: str, documents: Mapping[str, str]) -> tuple[DbspecDocument | None, list[DbspecPosition] | None, list[DbspecDiagnostic]]"
         }
       }
@@ -2410,23 +2410,23 @@
           "signature": "func(text string, documents map[string]string) Analysis"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::analyze",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::analyze",
           "signature": "public static function analyze(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Analysis"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::analyze",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::analyze",
           "signature": "pub fn analyze(text: &str, documents: &BTreeMap<String, String>) -> Analysis"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/document.ts::analyzeDbspec",
+          "symbol": "packages/ts/src/dbspec/document.ts::analyzeDbspec",
           "signature": "export function analyzeDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecAnalysis"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::analyze",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::analyze",
           "signature": "public static function analyze(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\Analysis"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/parse.py::analyze_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::analyze_dbspec",
           "signature": "def analyze_dbspec(text: str, documents: Mapping[str, str]) -> DbspecAnalysis"
         }
       }
@@ -2446,23 +2446,23 @@
           "signature": "func(text string, documents map[string]string) (string, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::format",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::format",
           "signature": "public static function format(string $text, array $documents): Polyspec\\Orm\\Dbspec\\FormatResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::format",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::format",
           "signature": "pub fn format(text: &str, documents: &BTreeMap<String, String>) -> Result<String, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/document.ts::formatDbspec",
+          "symbol": "packages/ts/src/dbspec/document.ts::formatDbspec",
           "signature": "export function formatDbspec(text: string, documents: Readonly<Record<string, string>>): DbspecFormatResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::format",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::format",
           "signature": "public static function format(string $text, array $documents): Polyspec\\Orm\\Dbspec\\Native\\FormatResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/parse.py::format_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/parse.py::format_dbspec",
           "signature": "def format_dbspec(text: str, documents: Mapping[str, str]) -> tuple[str | None, list[DbspecDiagnostic]]"
         }
       }
@@ -2482,23 +2482,23 @@
           "signature": "func(document *Document) string"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emit",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emit",
           "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Document $document): string"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::emit",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::emit",
           "signature": "pub fn emit(document: &Document) -> String"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/document.ts::emitDbspec",
+          "symbol": "packages/ts/src/dbspec/document.ts::emitDbspec",
           "signature": "export function emitDbspec(document: DbspecDocument): string"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emit",
           "signature": "public static function emit(Polyspec\\Orm\\Dbspec\\Native\\Document $document): string"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/__init__.py::emit_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/__init__.py::emit_dbspec",
           "signature": "def emit_dbspec(document: DbspecDocument) -> str"
         }
       }
@@ -2518,23 +2518,23 @@
           "signature": "func(documents []*Document) (*Manifest, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::manifest",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::manifest",
           "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\ManifestResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::manifest",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::manifest",
           "signature": "pub fn manifest(documents: &[&Document]) -> Result<Manifest, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::dbspecManifest",
+          "symbol": "packages/ts/src/dbspec/index.ts::dbspecManifest",
           "signature": "export function dbspecManifest(documents: readonly DbspecDocument[]): DbspecManifestResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::manifest",
           "signature": "public static function manifest(array $documents): Polyspec\\Orm\\Dbspec\\Native\\ManifestResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/manifest.py::dbspec_manifest",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/manifest.py::dbspec_manifest",
           "signature": "def dbspec_manifest(documents: list[DbspecDocument]) -> tuple[DbspecManifestResult, tuple]"
         }
       }
@@ -2554,23 +2554,23 @@
           "signature": "func(documents []*Document, dialect Dialect) ([]string, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::render",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::render",
           "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\RenderResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/render.rs::render",
+          "symbol": "packages/rust/schema/src/dbspec/render.rs::render",
           "signature": "pub fn render(documents: &[&Document], dialect: Dialect) -> Result<Vec<String>, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/render.ts::renderDbspec",
+          "symbol": "packages/ts/src/dbspec/render.ts::renderDbspec",
           "signature": "export function renderDbspec(documents: readonly DbspecDocument[], dialect: DbspecDialect): DbspecRenderResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::render",
           "signature": "public static function render(array $documents, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\RenderResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/render.py::render_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/render.py::render_dbspec",
           "signature": "def render_dbspec(documents: list[DbspecDocument], dialect: str) -> dict"
         }
       }
@@ -2590,23 +2590,23 @@
           "signature": "func(ctx context.Context, q Querier, dialect Dialect, name string) (*Document, []Unsupported, error)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::introspect",
           "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\IntrospectResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec.rs::introspect",
+          "symbol": "packages/rust/orm/src/dbspec.rs::introspect",
           "signature": "pub async fn introspect<Q: CatalogQuerier + ?Sized>(connection: &mut Q, dialect: Dialect, name: &str) -> Result<Introspection, IntrospectError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/introspect.ts::introspectDbspec",
+          "symbol": "packages/ts/src/dbspec/introspect.ts::introspectDbspec",
           "signature": "export async function introspectDbspec(connection: DbspecMySqlConnection | DbspecPostgresConnection | DbspecSqliteConnection, dialect: DbspecDialect, name: string): Promise<DbspecIntrospection>"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::introspect",
           "signature": "public static function introspect(PDO $connection, string $dialect, string $name): Polyspec\\Orm\\Dbspec\\Native\\IntrospectResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/introspect.py::introspect_dbspec",
           "signature": "def introspect_dbspec(connection: Connection, dialect: str, name: str) -> dict"
         }
       }
@@ -2626,23 +2626,23 @@
           "signature": "func(live *Document, documents []*Document) []string"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::externalDifferences",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::externalDifferences",
           "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $documents): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::external_differences",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::external_differences",
           "signature": "pub fn external_differences(live: &Document, documents: &[&Document]) -> Vec<String>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::externalDifferences",
+          "symbol": "packages/ts/src/dbspec/index.ts::externalDifferences",
           "signature": "export function externalDifferences(live: DbspecDocument, documents: readonly DbspecDocument[]): string[]"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::externalDifferences",
           "signature": "public static function externalDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $documents): array"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/manifest.py::external_differences",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/manifest.py::external_differences",
           "signature": "def external_differences(live: DbspecDocument, documents: list[DbspecDocument]) -> list[str]"
         }
       }
@@ -2662,23 +2662,23 @@
           "signature": "func(text string) (*Plan, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parsePlan",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::parsePlan",
           "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\PlanParseResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::parse_plan",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::parse_plan",
           "signature": "pub fn parse_plan(text: &str) -> Result<Plan, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::parsePlan",
+          "symbol": "packages/ts/src/dbspec/plan.ts::parsePlan",
           "signature": "export function parsePlan(text: string): DbspecPlanResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::parsePlan",
           "signature": "public static function parsePlan(string $text): Polyspec\\Orm\\Dbspec\\Native\\PlanParseResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/plan.py::parse_plan",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::parse_plan",
           "signature": "def parse_plan(text: str) -> dict"
         }
       }
@@ -2698,23 +2698,23 @@
           "signature": "func(p *Plan) string"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emitPlan",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::emitPlan",
           "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Plan $plan): string"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::emit_plan",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::emit_plan",
           "signature": "pub fn emit_plan(plan: &Plan) -> String"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::emitPlan",
+          "symbol": "packages/ts/src/dbspec/plan.ts::emitPlan",
           "signature": "export function emitPlan(plan: DbspecPlan): string"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::emitPlan",
           "signature": "public static function emitPlan(Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): string"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/plan.py::emit_plan",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::emit_plan",
           "signature": "def emit_plan(plan: DbspecPlan) -> str"
         }
       }
@@ -2734,23 +2734,23 @@
           "signature": "func(plans []*Plan) ([]*Plan, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::chain",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::chain",
           "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\ChainResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::chain",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::chain",
           "signature": "pub fn chain(plans: &[Plan]) -> Result<Vec<&Plan>, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::chainPlans",
+          "symbol": "packages/ts/src/dbspec/plan.ts::chainPlans",
           "signature": "export function chainPlans(plans: readonly DbspecPlan[]): DbspecChainResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::chain",
           "signature": "public static function chain(array $plans): Polyspec\\Orm\\Dbspec\\Native\\ChainResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/plan.py::chain_plans",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/plan.py::chain_plans",
           "signature": "def chain_plans(plans: list[DbspecPlan]) -> dict"
         }
       }
@@ -2770,23 +2770,23 @@
           "signature": "func(source *Document, p *Plan) ([]Change, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::diff",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::diff",
           "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan): Polyspec\\Orm\\Dbspec\\DiffResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_diff.rs::diff",
+          "symbol": "packages/rust/schema/src/dbspec/plan_diff.rs::diff",
           "signature": "pub fn diff(source: Option<&Document>, plan: &Plan) -> Result<Vec<Change>, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_diff.ts::diffPlan",
+          "symbol": "packages/ts/src/dbspec/plan_diff.ts::diffPlan",
           "signature": "export function diffPlan(source: DbspecDocument | null, plan: DbspecPlan): DbspecDiffResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::diff",
           "signature": "public static function diff(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan): Polyspec\\Orm\\Dbspec\\Native\\DiffResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/plan_diff.py::diff_plan",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/plan_diff.py::diff_plan",
           "signature": "def diff_plan(source: DbspecDocument | None, plan: DbspecPlan) -> dict"
         }
       }
@@ -2806,23 +2806,23 @@
           "signature": "func(source, target *Document) ([]Difference, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::compareSchemas",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::compareSchemas",
           "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Document $target): Polyspec\\Orm\\Dbspec\\ComparisonResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/compare.rs::compare_schemas",
+          "symbol": "packages/rust/schema/src/dbspec/compare.rs::compare_schemas",
           "signature": "pub fn compare_schemas(source: &Document, target: &Document) -> Result<Vec<Difference>, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/compare.ts::compareSchemas",
+          "symbol": "packages/ts/src/dbspec/compare.ts::compareSchemas",
           "signature": "export function compareSchemas(source: DbspecDocument, target: DbspecDocument): DbspecComparisonResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::compareSchemas",
           "signature": "public static function compareSchemas(Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Document $target): Polyspec\\Orm\\Dbspec\\Native\\ComparisonResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/compare.py::compare_schemas",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/compare.py::compare_schemas",
           "signature": "def compare_schemas(source: DbspecDocument, target: DbspecDocument) -> dict"
         }
       }
@@ -2842,23 +2842,23 @@
           "signature": "func(live *Document, unsupported []Unsupported, target *Document) []string"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::installedDifferences",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::installedDifferences",
           "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/add_tables_and_columns.rs::installed_differences",
+          "symbol": "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::installed_differences",
           "signature": "pub fn installed_differences(live: &Document, unsupported: &[Unsupported], target: &Document) -> Vec<String>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/add_tables_and_columns.ts::installedDifferences",
+          "symbol": "packages/ts/src/dbspec/add_tables_and_columns.ts::installedDifferences",
           "signature": "export function installedDifferences(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument): readonly string[]"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::installedDifferences",
           "signature": "public static function installedDifferences(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target): array"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/installed.py::installed_differences",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/installed.py::installed_differences",
           "signature": "def installed_differences(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument) -> list[str]"
         }
       }
@@ -2878,23 +2878,23 @@
           "signature": "func(live *Document, unsupported []Unsupported, target *Document, dialect Dialect) (added []string, steps []PlanStep, differences []string)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::addTablesAndColumnsSteps",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::addTablesAndColumnsSteps",
           "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Document $target, string $dialect): array"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/add_tables_and_columns.rs::add_tables_and_columns_steps",
+          "symbol": "packages/rust/schema/src/dbspec/add_tables_and_columns.rs::add_tables_and_columns_steps",
           "signature": "pub fn add_tables_and_columns_steps(live: &Document, unsupported: &[Unsupported], target: &Document, dialect: Dialect) -> AddTablesAndColumnsSteps"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/add_tables_and_columns.ts::addTablesAndColumnsSteps",
+          "symbol": "packages/ts/src/dbspec/add_tables_and_columns.ts::addTablesAndColumnsSteps",
           "signature": "export function addTablesAndColumnsSteps(live: DbspecDocument, unsupported: readonly DbspecUnsupported[], target: DbspecDocument, dialect: DbspecDialect): DbspecAddTablesAndColumnsSteps"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::addTablesAndColumnsSteps",
           "signature": "public static function addTablesAndColumnsSteps(Polyspec\\Orm\\Dbspec\\Native\\Document $live, array $unsupported, Polyspec\\Orm\\Dbspec\\Native\\Document $target, string $dialect): array"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/add_tables.py::add_tables_and_columns_steps",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/add_tables.py::add_tables_and_columns_steps",
           "signature": "def add_tables_and_columns_steps(live: DbspecDocument, unsupported: list[Unsupported], target: DbspecDocument, dialect: str) -> dict"
         }
       }
@@ -2914,23 +2914,23 @@
           "signature": "func(source *Document, p *Plan, dialect Dialect) ([]PlanStep, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::planSteps",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::planSteps",
           "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Document $source, Polyspec\\Orm\\Dbspec\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\PlanStepsResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_steps.rs::plan_steps",
+          "symbol": "packages/rust/schema/src/dbspec/plan_steps.rs::plan_steps",
           "signature": "pub fn plan_steps(source: Option<&Document>, plan: &Plan, dialect: Dialect) -> Result<Vec<PlanStep>, Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_steps.ts::planSteps",
+          "symbol": "packages/ts/src/dbspec/plan_steps.ts::planSteps",
           "signature": "export function planSteps(source: DbspecDocument | null, plan: DbspecPlan, dialect: DbspecDialect): DbspecPlanStepsResult"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::planSteps",
           "signature": "public static function planSteps(?Polyspec\\Orm\\Dbspec\\Native\\Document $source, Polyspec\\Orm\\Dbspec\\Native\\Plan $plan, string $dialect): Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/plan_steps.py::plan_steps",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/plan_steps.py::plan_steps",
           "signature": "def plan_steps(source: DbspecDocument | None, plan: DbspecPlan, dialect: str) -> dict"
         }
       }
@@ -2950,23 +2950,23 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::apply",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::apply",
           "signature": "pub async fn apply<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::applyPlans",
+          "symbol": "packages/ts/src/dbspec/apply.ts::applyPlans",
           "signature": "export async function applyPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::apply",
           "signature": "public static function apply(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/apply.py::apply_plans",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::apply_plans",
           "signature": "def apply_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
@@ -2986,23 +2986,23 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::recover",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::recover",
           "signature": "pub async fn recover<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::recoverPlans",
+          "symbol": "packages/ts/src/dbspec/apply.ts::recoverPlans",
           "signature": "export async function recoverPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::recover",
           "signature": "public static function recover(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/apply.py::recover_plans",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::recover_plans",
           "signature": "def recover_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
@@ -3022,23 +3022,23 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::rollback",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::rollback",
           "signature": "pub async fn rollback<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::rollbackPlans",
+          "symbol": "packages/ts/src/dbspec/apply.ts::rollbackPlans",
           "signature": "export async function rollbackPlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::rollback",
           "signature": "public static function rollback(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/apply.py::rollback_plans",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::rollback_plans",
           "signature": "def rollback_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
@@ -3058,23 +3058,23 @@
           "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) error"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::finalize",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::finalize",
           "signature": "pub async fn finalize<C: ApplyConnection + ?Sized>(connection: &mut C, dialect: Dialect, plans: &[Plan], now: &ApplyClock<'_>, events: &mut ApplyEvents<'_>,) -> Result<(), ApplyError>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::finalizePlans",
+          "symbol": "packages/ts/src/dbspec/apply.ts::finalizePlans",
           "signature": "export async function finalizePlans(connection: Connection, dialect: DbspecDialect, plans: readonly DbspecPlan[], now: () => number, events?: DbspecApplyHandler | null): Promise<void>"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::finalize",
           "signature": "public static function finalize(PDO $connection, string $dialect, array $plans, Closure $now, ?Closure $events): void"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/apply.py::finalize_plans",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::finalize_plans",
           "signature": "def finalize_plans(connection: Connection, dialect: str, plans: list[DbspecPlan], now: Callable[[], int], events: DbspecApplyHandler | None=None) -> None"
         }
       }
@@ -3094,23 +3094,23 @@
           "signature": "func(d *Document) (string, []Unsupported)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::exportMermaid",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::exportMermaid",
           "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Document $document): Polyspec\\Orm\\Dbspec\\MermaidExportResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mermaid.rs::export_mermaid",
+          "symbol": "packages/rust/schema/src/dbspec/mermaid.rs::export_mermaid",
           "signature": "pub fn export_mermaid(document: &Document) -> (String, Vec<Unsupported>)"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/mermaid.ts::exportMermaid",
+          "symbol": "packages/ts/src/dbspec/mermaid.ts::exportMermaid",
           "signature": "export function exportMermaid(document: DbspecDocument): DbspecMermaidExport"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::exportMermaid",
           "signature": "public static function exportMermaid(Polyspec\\Orm\\Dbspec\\Native\\Document $document): Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/mermaid.py::export_mermaid",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/mermaid.py::export_mermaid",
           "signature": "def export_mermaid(document: DbspecDocument) -> dict"
         }
       }
@@ -3130,23 +3130,23 @@
           "signature": "func(text, name string) (*Document, []Unsupported, []Diagnostic)"
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::importMermaid",
+          "symbol": "packages/php/src/Dbspec/Dbspec.php::Polyspec\\Orm\\Dbspec\\Dbspec::importMermaid",
           "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\MermaidImportResult"
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mermaid.rs::import_mermaid",
+          "symbol": "packages/rust/schema/src/dbspec/mermaid.rs::import_mermaid",
           "signature": "pub fn import_mermaid(text: &str, name: &str) -> Result<(Document, Vec<Unsupported>), Vec<Diagnostic>>"
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/mermaid.ts::importMermaid",
+          "symbol": "packages/ts/src/dbspec/mermaid.ts::importMermaid",
           "signature": "export function importMermaid(text: string, name: string): DbspecMermaidImport"
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Dbspec::importMermaid",
           "signature": "public static function importMermaid(string $text, string $name): Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult"
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/mermaid.py::import_mermaid",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/mermaid.py::import_mermaid",
           "signature": "def import_mermaid(text: str, name: str) -> dict"
         }
       }
@@ -3499,10 +3499,10 @@
       "id": "IRRequest",
       "native": {
         "go": "engine/ir/ir.go::Request",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Request",
-        "typescript": "packages/orm-npm/src/ir.ts::Request",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRRequest"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Request",
+        "rust": "packages/rust/orm/src/ir.rs::Request",
+        "typescript": "packages/ts/src/ir.ts::Request",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRRequest"
       },
       "fields": {
         "ir_version": "integer",
@@ -3530,10 +3530,10 @@
       "id": "IRQuery",
       "native": {
         "go": "engine/ir/ir.go::Query",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Query",
-        "typescript": "packages/orm-npm/src/ir.ts::RequestQuery",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRQuery"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Query",
+        "rust": "packages/rust/orm/src/ir.rs::Query",
+        "typescript": "packages/ts/src/ir.ts::RequestQuery",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRQuery"
       },
       "fields": {
         "entity": "text",
@@ -3575,10 +3575,10 @@
       "id": "IRColumns",
       "native": {
         "go": "engine/ir/ir.go::Columns",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Columns",
-        "typescript": "packages/orm-npm/src/ir.ts::Projection",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRColumns"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Columns",
+        "rust": "packages/rust/orm/src/ir.rs::Columns",
+        "typescript": "packages/ts/src/ir.ts::Projection",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRColumns"
       },
       "fields": {
         "mode": "text",
@@ -3599,10 +3599,10 @@
       "id": "IRJoin",
       "native": {
         "go": "engine/ir/ir.go::Join",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Join",
-        "typescript": "packages/orm-npm/src/ir.ts::Join",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRJoin"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Join",
+        "rust": "packages/rust/orm/src/ir.rs::Join",
+        "typescript": "packages/ts/src/ir.ts::Join",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRJoin"
       },
       "fields": {
         "rel": "text",
@@ -3620,10 +3620,10 @@
       "id": "IRRelation",
       "native": {
         "go": "engine/ir/ir.go::Relation",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Relation",
-        "typescript": "packages/orm-npm/src/ir.ts::Relation",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRRelation"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Relation",
+        "rust": "packages/rust/orm/src/ir.rs::Relation",
+        "typescript": "packages/ts/src/ir.ts::Relation",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRRelation"
       },
       "fields": {
         "rel": "text",
@@ -3639,10 +3639,10 @@
       "id": "IRKeyPair",
       "native": {
         "go": "engine/ir/ir.go::KeyPair",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
-        "rust": "packages/orm-rust/orm/src/ir.rs::KeyPair",
-        "typescript": "packages/orm-npm/src/ir.ts::KeyPair",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRKeyPair"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::KeyPair",
+        "rust": "packages/rust/orm/src/ir.rs::KeyPair",
+        "typescript": "packages/ts/src/ir.ts::KeyPair",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRKeyPair"
       },
       "fields": {
         "left": "text",
@@ -3653,10 +3653,10 @@
       "id": "IRGroup",
       "native": {
         "go": "engine/ir/ir.go::Group",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Group",
-        "typescript": "packages/orm-npm/src/ir.ts::Group",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRGroup"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Group",
+        "rust": "packages/rust/orm/src/ir.rs::Group",
+        "typescript": "packages/ts/src/ir.ts::Group",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRGroup"
       },
       "fields": {
         "conn": "text",
@@ -3672,10 +3672,10 @@
       "id": "IRItem",
       "native": {
         "go": "engine/ir/ir.go::Item",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Item",
-        "typescript": "packages/orm-npm/src/ir.ts::Item",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRItem"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Item",
+        "rust": "packages/rust/orm/src/ir.rs::Item",
+        "typescript": "packages/ts/src/ir.ts::Item",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRItem"
       },
       "fields": {
         "pred": "IRPred",
@@ -3693,10 +3693,10 @@
       "id": "IRPred",
       "native": {
         "go": "engine/ir/ir.go::Pred",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Pred",
-        "typescript": "packages/orm-npm/src/ir.ts::Predicate",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRPred"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Pred",
+        "rust": "packages/rust/orm/src/ir.rs::Pred",
+        "typescript": "packages/ts/src/ir.ts::Predicate",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRPred"
       },
       "fields": {
         "conn": "text",
@@ -3727,10 +3727,10 @@
       "id": "IRColRef",
       "native": {
         "go": "engine/ir/ir.go::ColRef",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
-        "rust": "packages/orm-rust/orm/src/ir.rs::ColRef",
-        "typescript": "packages/orm-npm/src/ir.ts::ColumnReferenceIR",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRColRef"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColRef",
+        "rust": "packages/rust/orm/src/ir.rs::ColRef",
+        "typescript": "packages/ts/src/ir.ts::ColumnReferenceIR",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRColRef"
       },
       "fields": {
         "path": "text",
@@ -3744,10 +3744,10 @@
       "id": "IRFunc",
       "native": {
         "go": "engine/ir/ir.go::Func",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Func",
-        "typescript": "packages/orm-npm/src/ir.ts::OrmFunction",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRFunc"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Func",
+        "rust": "packages/rust/orm/src/ir.rs::Func",
+        "typescript": "packages/ts/src/ir.ts::OrmFunction",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRFunc"
       },
       "fields": {
         "name": "text",
@@ -3761,10 +3761,10 @@
       "id": "IRColFunc",
       "native": {
         "go": "engine/ir/ir.go::ColFunc",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
-        "rust": "packages/orm-rust/orm/src/ir.rs::ColFunc",
-        "typescript": "packages/orm-npm/src/ir.ts::ColumnFunction",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRColFunc"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::ColFunc",
+        "rust": "packages/rust/orm/src/ir.rs::ColFunc",
+        "typescript": "packages/ts/src/ir.ts::ColumnFunction",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRColFunc"
       },
       "fields": {
         "column": "text",
@@ -3776,10 +3776,10 @@
       "id": "IRSub",
       "native": {
         "go": "engine/ir/ir.go::Sub",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Sub",
-        "typescript": "packages/orm-npm/src/ir.ts::Subquery",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRSub"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Sub",
+        "rust": "packages/rust/orm/src/ir.rs::Sub",
+        "typescript": "packages/ts/src/ir.ts::Subquery",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRSub"
       },
       "fields": {
         "query": "IRQuery",
@@ -3794,10 +3794,10 @@
       "id": "IRJoinedRef",
       "native": {
         "go": "engine/ir/ir.go::JoinedRef",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
-        "rust": "packages/orm-rust/orm/src/ir.rs::JoinedRef",
-        "typescript": "packages/orm-npm/src/ir.ts::JoinedReference",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRJoinedRef"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::JoinedRef",
+        "rust": "packages/rust/orm/src/ir.rs::JoinedRef",
+        "typescript": "packages/ts/src/ir.ts::JoinedReference",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRJoinedRef"
       },
       "fields": {
         "conn": "text",
@@ -3811,10 +3811,10 @@
       "id": "IROrder",
       "native": {
         "go": "engine/ir/ir.go::Order",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Order",
-        "typescript": "packages/orm-npm/src/ir.ts::Order",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IROrder"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Order",
+        "rust": "packages/rust/orm/src/ir.rs::Order",
+        "typescript": "packages/ts/src/ir.ts::Order",
+        "python": "packages/python/src/polyspec/orm/ir.py::IROrder"
       },
       "fields": {
         "column": "text",
@@ -3833,10 +3833,10 @@
       "id": "IRLimit",
       "native": {
         "go": "engine/ir/ir.go::Limit",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Limit",
-        "typescript": "packages/orm-npm/src/ir.ts::Limit",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRLimit"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Limit",
+        "rust": "packages/rust/orm/src/ir.rs::Limit",
+        "typescript": "packages/ts/src/ir.ts::Limit",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRLimit"
       },
       "fields": {
         "offset": "integer",
@@ -3848,10 +3848,10 @@
       "id": "IRIfParent",
       "native": {
         "go": "engine/ir/ir.go::IfParent",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
-        "rust": "packages/orm-rust/orm/src/ir.rs::IfParent",
-        "typescript": "packages/orm-npm/src/ir.ts::IfParent",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRIfParent"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::IfParent",
+        "rust": "packages/rust/orm/src/ir.rs::IfParent",
+        "typescript": "packages/ts/src/ir.ts::IfParent",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRIfParent"
       },
       "fields": {
         "column": "text",
@@ -3863,10 +3863,10 @@
       "id": "IRAssign",
       "native": {
         "go": "engine/ir/ir.go::Assign",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Assign",
-        "typescript": "packages/orm-npm/src/ir.ts::Assignment",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IRAssign"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Assign",
+        "rust": "packages/rust/orm/src/ir.rs::Assign",
+        "typescript": "packages/ts/src/ir.ts::Assignment",
+        "python": "packages/python/src/polyspec/orm/ir.py::IRAssign"
       },
       "fields": {
         "column": "text",
@@ -3886,10 +3886,10 @@
       "id": "IROptimist",
       "native": {
         "go": "engine/ir/ir.go::Optimist",
-        "php": "packages/orm-php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
-        "rust": "packages/orm-rust/orm/src/ir.rs::Optimist",
-        "typescript": "packages/orm-npm/src/ir.ts::Optimistic",
-        "python": "packages/orm-python/src/polyspec/orm/ir.py::IROptimist"
+        "php": "packages/php/src/Validator.php::Polyspec\\Orm\\Validator::Optimist",
+        "rust": "packages/rust/orm/src/ir.rs::Optimist",
+        "typescript": "packages/ts/src/ir.ts::Optimistic",
+        "python": "packages/python/src/polyspec/orm/ir.py::IROptimist"
       },
       "fields": {
         "column": "text",
@@ -3905,7 +3905,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/collection.go::Page",
+          "symbol": "packages/go/orm/collection.go::Page",
           "fields": [
             "Items",
             "TotalCount",
@@ -3915,7 +3915,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Page",
+          "symbol": "packages/php/src/Collection.php::Polyspec\\Orm\\Page",
           "fields": [
             "items",
             "totalCount",
@@ -3925,7 +3925,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/collection.rs::Page",
+          "symbol": "packages/rust/orm/src/collection.rs::Page",
           "fields": [
             "items",
             "total_count",
@@ -3935,7 +3935,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/model.ts::Page",
+          "symbol": "packages/ts/src/model.ts::Page",
           "fields": [
             "items",
             "totalCount",
@@ -3945,7 +3945,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Page",
+          "symbol": "packages/python/src/polyspec/orm/model.py::Page",
           "fields": [
             "items",
             "totalCount",
@@ -3961,7 +3961,7 @@
       "for": "once",
       "native": {
         "go": {
-          "symbol": "packages/orm-go/orm/utils.go::AESRotationStatus",
+          "symbol": "packages/go/orm/utils.go::AESRotationStatus",
           "fields": [
             "Current",
             "Total",
@@ -3970,7 +3970,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/AesKeyring.php::Polyspec\\Orm\\AesRotationStatus",
+          "symbol": "packages/php/src/AesKeyring.php::Polyspec\\Orm\\AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -3979,7 +3979,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/utils.rs::AesRotationStatus",
+          "symbol": "packages/rust/orm/src/utils.rs::AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -3988,7 +3988,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/utils.ts::AesRotationStatus",
+          "symbol": "packages/ts/src/utils.ts::AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -3997,7 +3997,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::AesRotationStatus",
+          "symbol": "packages/python/src/polyspec/orm/utils.py::AesRotationStatus",
           "fields": [
             "current",
             "total",
@@ -4021,7 +4021,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Diagnostic.php::Polyspec\\Orm\\Dbspec\\Diagnostic",
+          "symbol": "packages/php/src/Dbspec/Diagnostic.php::Polyspec\\Orm\\Dbspec\\Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -4030,7 +4030,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::Diagnostic",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -4039,7 +4039,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/model.ts::DbspecDiagnostic",
+          "symbol": "packages/ts/src/dbspec/model.ts::DbspecDiagnostic",
           "fields": [
             "rule",
             "line",
@@ -4048,7 +4048,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Diagnostic",
           "fields": [
             "rule",
             "line",
@@ -4057,7 +4057,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecDiagnostic",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecDiagnostic",
           "fields": [
             "rule",
             "line",
@@ -4082,7 +4082,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Manifest.php::Polyspec\\Orm\\Dbspec\\Manifest",
+          "symbol": "packages/php/src/Dbspec/Manifest.php::Polyspec\\Orm\\Dbspec\\Manifest",
           "fields": [
             "manifestText",
             "schemaText",
@@ -4092,7 +4092,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/mod.rs::Manifest",
+          "symbol": "packages/rust/schema/src/dbspec/mod.rs::Manifest",
           "fields": [
             "manifest_text",
             "external_text",
@@ -4102,7 +4102,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/index.ts::DbspecManifest",
+          "symbol": "packages/ts/src/dbspec/index.ts::DbspecManifest",
           "fields": [
             "manifestText",
             "externalText",
@@ -4112,7 +4112,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Manifest",
           "fields": [
             "manifestText",
             "schemaText",
@@ -4122,7 +4122,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/manifest.py::DbspecManifestResult",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/manifest.py::DbspecManifestResult",
           "fields": [
             "manifest_text",
             "external_text",
@@ -4152,7 +4152,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Plan.php::Polyspec\\Orm\\Dbspec\\Plan",
+          "symbol": "packages/php/src/Dbspec/Plan.php::Polyspec\\Orm\\Dbspec\\Plan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -4165,7 +4165,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::Plan",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::Plan",
           "fields": [
             "drop_columns",
             "drop_tables",
@@ -4179,7 +4179,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::DbspecPlan",
+          "symbol": "packages/ts/src/dbspec/plan.ts::DbspecPlan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -4192,7 +4192,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Plan",
           "fields": [
             "dropColumns",
             "dropTables",
@@ -4205,7 +4205,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecPlan",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecPlan",
           "fields": [
             "drop_columns",
             "drop_tables",
@@ -4238,7 +4238,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/PlanStep.php::Polyspec\\Orm\\Dbspec\\PlanStep",
+          "symbol": "packages/php/src/Dbspec/PlanStep.php::Polyspec\\Orm\\Dbspec\\PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4252,7 +4252,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_steps.rs::PlanStep",
+          "symbol": "packages/rust/schema/src/dbspec/plan_steps.rs::PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4266,7 +4266,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_steps.ts::DbspecPlanStep",
+          "symbol": "packages/ts/src/dbspec/plan_steps.ts::DbspecPlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4280,7 +4280,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\PlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4294,7 +4294,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecPlanStep",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecPlanStep",
           "fields": [
             "effect",
             "finalize",
@@ -4323,7 +4323,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Effect.php::Polyspec\\Orm\\Dbspec\\Effect",
+          "symbol": "packages/php/src/Dbspec/Effect.php::Polyspec\\Orm\\Dbspec\\Effect",
           "fields": [
             "kind",
             "name",
@@ -4332,7 +4332,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_steps.rs::Effect",
+          "symbol": "packages/rust/schema/src/dbspec/plan_steps.rs::Effect",
           "fields": [
             "kind",
             "name",
@@ -4341,7 +4341,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_steps.ts::DbspecEffect",
+          "symbol": "packages/ts/src/dbspec/plan_steps.ts::DbspecEffect",
           "fields": [
             "kind",
             "name",
@@ -4350,7 +4350,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Effect",
           "fields": [
             "kind",
             "name",
@@ -4359,7 +4359,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecEffect",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecEffect",
           "fields": [
             "kind",
             "name",
@@ -4383,7 +4383,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/NullCheck.php::Polyspec\\Orm\\Dbspec\\NullCheck",
+          "symbol": "packages/php/src/Dbspec/NullCheck.php::Polyspec\\Orm\\Dbspec\\NullCheck",
           "fields": [
             "column",
             "default",
@@ -4391,7 +4391,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_steps.rs::NullCheck",
+          "symbol": "packages/rust/schema/src/dbspec/plan_steps.rs::NullCheck",
           "fields": [
             "column",
             "default",
@@ -4399,7 +4399,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_steps.ts::DbspecNullCheck",
+          "symbol": "packages/ts/src/dbspec/plan_steps.ts::DbspecNullCheck",
           "fields": [
             "column",
             "default",
@@ -4407,7 +4407,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\NullCheck",
           "fields": [
             "column",
             "default",
@@ -4415,7 +4415,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecNullCheck",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecNullCheck",
           "fields": [
             "column",
             "default",
@@ -4437,7 +4437,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Change.php::Polyspec\\Orm\\Dbspec\\Change",
+          "symbol": "packages/php/src/Dbspec/Change.php::Polyspec\\Orm\\Dbspec\\Change",
           "fields": [
             "kind",
             "name",
@@ -4445,7 +4445,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan_diff.rs::Change",
+          "symbol": "packages/rust/schema/src/dbspec/plan_diff.rs::Change",
           "fields": [
             "kind",
             "name",
@@ -4453,7 +4453,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan_diff.ts::DbspecChange",
+          "symbol": "packages/ts/src/dbspec/plan_diff.ts::DbspecChange",
           "fields": [
             "kind",
             "name",
@@ -4461,7 +4461,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Change",
           "fields": [
             "kind",
             "name",
@@ -4469,7 +4469,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecChange",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecChange",
           "fields": [
             "kind",
             "name",
@@ -4491,7 +4491,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Difference.php::Polyspec\\Orm\\Dbspec\\Difference",
+          "symbol": "packages/php/src/Dbspec/Difference.php::Polyspec\\Orm\\Dbspec\\Difference",
           "fields": [
             "kind",
             "name",
@@ -4499,7 +4499,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/compare.rs::Difference",
+          "symbol": "packages/rust/schema/src/dbspec/compare.rs::Difference",
           "fields": [
             "kind",
             "name",
@@ -4507,7 +4507,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/compare.ts::DbspecDifference",
+          "symbol": "packages/ts/src/dbspec/compare.ts::DbspecDifference",
           "fields": [
             "kind",
             "name",
@@ -4515,7 +4515,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Difference",
           "fields": [
             "kind",
             "name",
@@ -4523,7 +4523,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecDifference",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecDifference",
           "fields": [
             "kind",
             "name",
@@ -4546,7 +4546,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/Unsupported.php::Polyspec\\Orm\\Dbspec\\Unsupported",
+          "symbol": "packages/php/src/Dbspec/Unsupported.php::Polyspec\\Orm\\Dbspec\\Unsupported",
           "fields": [
             "kind",
             "name",
@@ -4555,7 +4555,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/introspect/mod.rs::Unsupported",
+          "symbol": "packages/rust/schema/src/dbspec/introspect/mod.rs::Unsupported",
           "fields": [
             "kind",
             "name",
@@ -4564,7 +4564,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/introspect_catalog.ts::DbspecUnsupported",
+          "symbol": "packages/ts/src/dbspec/introspect_catalog.ts::DbspecUnsupported",
           "fields": [
             "kind",
             "name",
@@ -4573,7 +4573,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\Unsupported",
           "fields": [
             "kind",
             "name",
@@ -4582,7 +4582,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecUnsupported",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecUnsupported",
           "fields": [
             "kind",
             "name",
@@ -4604,35 +4604,35 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/TableRename.php::Polyspec\\Orm\\Dbspec\\TableRename",
+          "symbol": "packages/php/src/Dbspec/TableRename.php::Polyspec\\Orm\\Dbspec\\TableRename",
           "fields": [
             "new",
             "old"
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::TableRename",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::TableRename",
           "fields": [
             "new",
             "old"
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::DbspecTableRename",
+          "symbol": "packages/ts/src/dbspec/plan.ts::DbspecTableRename",
           "fields": [
             "new",
             "old"
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\TableRename",
           "fields": [
             "new",
             "old"
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecTableRename",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecTableRename",
           "fields": [
             "new",
             "old"
@@ -4653,7 +4653,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/ColumnRename.php::Polyspec\\Orm\\Dbspec\\ColumnRename",
+          "symbol": "packages/php/src/Dbspec/ColumnRename.php::Polyspec\\Orm\\Dbspec\\ColumnRename",
           "fields": [
             "new",
             "old",
@@ -4661,7 +4661,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::ColumnRename",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::ColumnRename",
           "fields": [
             "new",
             "old",
@@ -4669,7 +4669,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::DbspecColumnRename",
+          "symbol": "packages/ts/src/dbspec/plan.ts::DbspecColumnRename",
           "fields": [
             "new",
             "old",
@@ -4677,7 +4677,7 @@
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnRename",
           "fields": [
             "new",
             "old",
@@ -4685,7 +4685,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecColumnRename",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecColumnRename",
           "fields": [
             "table",
             "old",
@@ -4706,35 +4706,35 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/ColumnName.php::Polyspec\\Orm\\Dbspec\\ColumnName",
+          "symbol": "packages/php/src/Dbspec/ColumnName.php::Polyspec\\Orm\\Dbspec\\ColumnName",
           "fields": [
             "name",
             "table"
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm-schema/src/dbspec/plan.rs::ColumnName",
+          "symbol": "packages/rust/schema/src/dbspec/plan.rs::ColumnName",
           "fields": [
             "name",
             "table"
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/plan.ts::DbspecColumnName",
+          "symbol": "packages/ts/src/dbspec/plan.ts::DbspecColumnName",
           "fields": [
             "name",
             "table"
           ]
         },
         "php-extension": {
-          "symbol": "packages/orm-php-extension/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName",
+          "symbol": "packages/php-ext/stubs/orm_dbspec.stub.php::Polyspec\\Orm\\Dbspec\\Native\\ColumnName",
           "fields": [
             "name",
             "table"
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecColumnName",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecColumnName",
           "fields": [
             "table",
             "name"
@@ -4757,7 +4757,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/ApplyEvent.php::Polyspec\\Orm\\Dbspec\\ApplyEvent",
+          "symbol": "packages/php/src/Dbspec/ApplyEvent.php::Polyspec\\Orm\\Dbspec\\ApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -4767,7 +4767,7 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::ApplyEvent",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::ApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -4777,7 +4777,7 @@
           ]
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::DbspecApplyEvent",
+          "symbol": "packages/ts/src/dbspec/apply.ts::DbspecApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -4787,7 +4787,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/model.py::DbspecApplyEvent",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/model.py::DbspecApplyEvent",
           "fields": [
             "kind",
             "plan",
@@ -4813,7 +4813,7 @@
           ]
         },
         "php": {
-          "symbol": "packages/orm-php/src/Dbspec/ApplyError.php::Polyspec\\Orm\\Dbspec\\ApplyError",
+          "symbol": "packages/php/src/Dbspec/ApplyError.php::Polyspec\\Orm\\Dbspec\\ApplyError",
           "fields": [
             "code_",
             "detail",
@@ -4822,11 +4822,11 @@
           ]
         },
         "rust": {
-          "symbol": "packages/orm-rust/orm/src/dbspec/apply.rs::ApplyError",
+          "symbol": "packages/rust/orm/src/dbspec/apply.rs::ApplyError",
           "fields": []
         },
         "typescript": {
-          "symbol": "packages/orm-npm/src/dbspec/apply.ts::DbspecApplyError",
+          "symbol": "packages/ts/src/dbspec/apply.ts::DbspecApplyError",
           "fields": [
             "code",
             "detail",
@@ -4835,7 +4835,7 @@
           ]
         },
         "python": {
-          "symbol": "packages/orm-python/src/polyspec/orm/dbspec/apply.py::DbspecApplyError",
+          "symbol": "packages/python/src/polyspec/orm/dbspec/apply.py::DbspecApplyError",
           "fields": [
             "code",
             "detail",

@@ -451,7 +451,7 @@ export function runnerIdentity(segment) {
   if (/^cargo\s+(?:\+\S+\s+)?test\b/.test(command)) return 'cargo test';
   const php = /^php\s+(?:-\S+\s+)*([\w./-]+\.php)\b/.exec(command);
   if (php) return `php ${php[1]}`;
-  if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:packages\/orm-[a-z-]+|tests)\/)/.test(command)) return 'node test';
+  if (/^node\s+(?:-\S+\s+)*(?:--test\b|(?:packages\/(?:go|ts|php|php-ext|python|rust)|tests)\/)/.test(command)) return 'node test';
   return undefined;
 }
 

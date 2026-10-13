@@ -10,9 +10,9 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { cargoDownloads } from '../kit/check-cargo-downloads.mjs';
 
-// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/orm-npm를 workspace로 함께 설치한다.
+// NPM_ROOTS는 npm ci로 설치하는 package directory다. 저장소 root는 packages/ts를 workspace로 함께 설치한다.
 export const NPM_ROOTS = ['.'];
-// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 packages/orm-php를 path
+// COMPOSER_ROOTS는 composer install로 설치하는 package directory다. 저장소 root의 composer.json이 packages/php를 path
 // repository로 설치한다.
 export const COMPOSER_ROOTS = ['.'];
 

@@ -1,5 +1,5 @@
 <!-- doc-id: examples-thin-slice-readme -->
-<!-- source-sha256: 50fc79dcb42d247c0a9e447311c3ff324154badf0ef4e557022468382ae1ab3b -->
+<!-- source-sha256: 176a867527c4b1b99fe835b53cfae0cb9b081a6276e297f70593347382491bb7 -->
 # Thin-slice 데모
 
 같은 문장을 파일 세 개로 쓰고, stdout에 같은 JSON을 출력한다.
@@ -7,7 +7,7 @@
 ```
 go run ./examples/thin-slice/go
 php examples/thin-slice/php/main.php
-(cd packages/orm-rust && cargo build -p polyspec-orm-tests) && packages/orm-rust/target/debug/demo
+(cd packages/rust && cargo build -p polyspec-orm-tests) && packages/rust/target/debug/demo
 ```
 
 각 프로그램은 stderr에 timing 줄 하나를 출력한다: 생성된 client의 p50과, 같은 process에서 plan의 SQL을

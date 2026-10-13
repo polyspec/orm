@@ -70,7 +70,7 @@ func TestCTableAgreesWithGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	binary := filepath.Join(dir, "driver")
-	include := filepath.Join(repoRoot, "packages", "orm-php-extension", "src")
+	include := filepath.Join(repoRoot, "packages", "php-ext", "src")
 	build := exec.Command("cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", include, driver, "-o", binary)
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("cc failed: %v\n%s; the C compiler cc must be installed", err, out)
@@ -90,7 +90,7 @@ func TestPythonTableAgreesWithGo(t *testing.T) {
 	if python == "" {
 		python = "python3"
 	}
-	module := filepath.Join(repoRoot, "packages", "orm-python", "src", "polyspec", "orm", "dbspec", "unicode_word.py")
+	module := filepath.Join(repoRoot, "packages", "python", "src", "polyspec", "orm", "dbspec", "unicode_word.py")
 	script := "import importlib.util, sys\n" +
 		"spec = importlib.util.spec_from_file_location('unicode_word', sys.argv[1])\n" +
 		"module = importlib.util.module_from_spec(spec)\n" +

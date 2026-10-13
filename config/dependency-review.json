@@ -24,7 +24,7 @@
       "advisories": []
     },
     {
-      "lock": "packages/orm-rust/Cargo.lock",
+      "lock": "packages/rust/Cargo.lock",
       "sha256": "f849326218ec885d75a49c70b00683f68d6b659107465e5b61f447877360f15b",
       "advisories": []
     },
@@ -184,49 +184,49 @@
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "@noble/hashes",
       "version": "2.4.0",
       "latest": "2.4.0"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "mysql2",
       "version": "3.24.6",
       "latest": "3.24.6"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "pg",
       "version": "8.23.1",
       "latest": "8.23.1"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "typescript",
       "version": "6.0.3",
       "latest": "7.0.2"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "yaml",
       "version": "2.9.1",
       "latest": "2.9.1"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "@types/node",
       "version": "22.20.5",
       "latest": "26.6.5"
     },
     {
       "ecosystem": "npm",
-      "manifest": "packages/orm-npm/package.json",
+      "manifest": "packages/ts/package.json",
       "package": "@types/pg",
       "version": "8.23.1",
       "latest": "8.23.1"
@@ -240,7 +240,7 @@
     },
     {
       "ecosystem": "pypi",
-      "manifest": "packages/orm-python/pyproject.toml",
+      "manifest": "packages/python/pyproject.toml",
       "package": "setuptools",
       "version": "84.0.0",
       "latest": "84.0.0"

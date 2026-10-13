@@ -7,7 +7,7 @@
     }
   ],
   "pythonManifests": [
-    "packages/orm-python/pyproject.toml"
+    "packages/python/pyproject.toml"
   ],
   "npmLocks": [
     "package-lock.json"
