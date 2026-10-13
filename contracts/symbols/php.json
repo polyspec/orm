@@ -738,6 +738,7 @@
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$lexError": "private ?array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$lexical": "private array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$line": "private int",
+  "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$marking": "private bool",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$marks": "private array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$parsedTitleBody": "private array",
   "packages/orm-php/src/Dbspec/Parser.php::Polyspec\\Orm\\Dbspec\\Parser::$positions": "private array",
