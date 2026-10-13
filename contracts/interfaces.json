@@ -43,7 +43,7 @@
     "php": "sha256:a888b6009225a99c728db44e2ba1731850cf515758811954902b8eab913b80ab",
     "rust": "sha256:6b61cddc711a7b26bafffddfd9d15a0aa12cfd3039efab7075e1aeb30130a9e3",
     "typescript": "sha256:c27361412694d5574215161739c8480914b2fe1f34f1d0177dbf8a01dd31d8f6",
-    "python": "sha256:0e1526ae8a0834f7ec2782c93f636b694b16ea84eee91b733657fd2164efd046"
+    "python": "sha256:a36c3409eaae4141bcef86c23ba3658fa409b013b66ca0741f3c828d0da7bec0"
   },
   "extensions": {
     "php-extension": {
@@ -1211,6 +1211,197 @@
       }
     },
     {
+      "id": "Collection.get",
+      "for": "once",
+      "inputs": [
+        "CollectionKey"
+      ],
+      "output": "LookedUpModel",
+      "errors": [],
+      "state": "Returns the model of the key, or none when the collection has no such key; the collection is not changed",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.Get",
+          "signature": "receiver=*Collection[T] func(key any) (T, error)"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::get",
+          "signature": "public function get(string|int $key): ?Polyspec\\Orm\\Model"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::get",
+          "signature": "pub fn get (& self , key : impl Into < Key >) -> Option < & M >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.get",
+          "signature": "public get(key: Key): T | undefined"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.get",
+          "signature": "def get(self, key) -> Model | None"
+        }
+      }
+    },
+    {
+      "id": "Collection.first",
+      "for": "once",
+      "inputs": [],
+      "output": "Optional<Model>",
+      "errors": [],
+      "state": "Returns the first model in order, or none when the collection is empty",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.First",
+          "signature": "receiver=*Collection[T] func() T"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::first",
+          "signature": "public function first(): ?Polyspec\\Orm\\Model"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::first",
+          "signature": "pub fn first (& self) -> Option < & M >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.first",
+          "signature": "public first(): T | undefined"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.first",
+          "signature": "def first(self) -> Model | None"
+        }
+      }
+    },
+    {
+      "id": "Collection.keys",
+      "for": "once",
+      "inputs": [],
+      "output": "Keys",
+      "errors": [],
+      "state": "Returns the keys of the models in order",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.Keys",
+          "signature": "receiver=*Collection[T] func() []Key"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::keys",
+          "signature": "public function keys(): array"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::keys",
+          "signature": "pub fn keys (& self) -> & [Key]"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.keys",
+          "signature": "public keys(): Key[]"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.keys",
+          "signature": "def keys(self) -> list"
+        }
+      }
+    },
+    {
+      "id": "Collection.connect",
+      "for": "once",
+      "inputs": [
+        "CollectionConnection"
+      ],
+      "output": "CollectionChain",
+      "errors": [],
+      "state": "Sets the connection of every model of the collection",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.Connect",
+          "signature": "receiver=*Collection[T] func(db *DB) *Collection[T]"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::connect",
+          "signature": "public function connect(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::connect",
+          "signature": "pub fn connect (mut self , db : & crate :: Db) -> Self"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.connect",
+          "signature": "public connect(db: Db): this"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.connect",
+          "signature": "def connect(self, db: Db) -> Self"
+        }
+      }
+    },
+    {
+      "id": "Collection.delete",
+      "for": "once",
+      "inputs": [
+        "Recursive"
+      ],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "IR_INVALID",
+        "driver or codec error",
+        "FOREIGN_KEY"
+      ],
+      "state": "Deletes every model of the collection in one transaction, and their loaded relation rows first when recursive; an empty collection deletes nothing",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.Delete",
+          "signature": "receiver=*Collection[T] func(recursive ...bool) error"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::delete",
+          "signature": "public function delete(bool $recursive=false): void"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::delete",
+          "signature": "pub async fn delete (& self , recursive : bool) -> Result < () >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.delete",
+          "signature": "public async delete(recursive = false): Promise<void>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.delete",
+          "signature": "def delete(self, recursive: bool=False) -> None"
+        }
+      }
+    },
+    {
+      "id": "Collection.toArray",
+      "for": "once",
+      "inputs": [],
+      "output": "RowMaps",
+      "errors": [],
+      "state": "Exports the loaded columns and relations of every model in order",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/collection.go::Collection.ToArray",
+          "signature": "receiver=*Collection[T] func() []map[string]any"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Collection.php::Polyspec\\Orm\\Collection::toArray",
+          "signature": "public function toArray(): array"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/collection.rs::Collection < M >::to_array",
+          "signature": "pub fn to_array (& self) -> crate :: Result < serde_json :: Value >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/model.ts::Collection.toArray",
+          "signature": "public toArray(): Array<Record<string, unknown>>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/model.py::Collection.to_array",
+          "signature": "def to_array(self) -> list"
+        }
+      }
+    },
+    {
       "id": "Db.connect",
       "for": "once",
       "inputs": [
@@ -1450,6 +1641,36 @@
       }
     },
     {
+      "id": "Db.close",
+      "for": "once",
+      "inputs": [],
+      "output": "Closed",
+      "errors": [],
+      "state": "Closes the pool and drops the plan and statement caches; a closed connection refuses every later operation",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/db.go::DB.Close",
+          "signature": "receiver=*DB func() error"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Db.php::Polyspec\\Orm\\Db::close",
+          "signature": "public function close(): void"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/db.rs::Db::close",
+          "signature": "pub async fn close (& self)"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/database.ts::Db.close",
+          "signature": "public async close(): Promise<void>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/database.py::Db.close",
+          "signature": "def close(self) -> None"
+        }
+      }
+    },
+    {
       "id": "Utils.lock",
       "for": "once",
       "inputs": [
@@ -1481,6 +1702,78 @@
         "python": {
           "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.lock",
           "signature": "def lock(self, key: str) -> None"
+        }
+      }
+    },
+    {
+      "id": "Utils.setLocal",
+      "for": "once",
+      "inputs": [
+        "LocalKeyValue"
+      ],
+      "output": "Success",
+      "errors": [
+        "CONFIG",
+        "CAPABILITY_UNSUPPORTED",
+        "driver error"
+      ],
+      "state": "Sets a value local to the active transaction, which ends with it",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::Utils.SetLocal",
+          "signature": "receiver=*Utils func(key, value string) error"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::setLocal",
+          "signature": "public function setLocal(string $key, string $value): void"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::set_local",
+          "signature": "pub async fn set_local (& self , key : & str , value : & str) -> Result < () >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::Utils.setLocal",
+          "signature": "public async setLocal(key: string, value: string): Promise<void>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.set_local",
+          "signature": "def set_local(self, key: str, value: str) -> None"
+        }
+      }
+    },
+    {
+      "id": "Utils.local",
+      "for": "once",
+      "inputs": [
+        "LocalKey"
+      ],
+      "output": "LocalValue",
+      "errors": [
+        "CONFIG",
+        "CAPABILITY_UNSUPPORTED",
+        "NO_ROWS"
+      ],
+      "state": "Returns the value that setLocal set in the active transaction; a key without one returns NO_ROWS",
+      "native": {
+        "go": {
+          "symbol": "packages/orm-go/orm/utils.go::Utils.Local",
+          "signature": "receiver=*Utils func(key string) (string, error)"
+        },
+        "php": {
+          "symbol": "packages/orm-php/src/Utils.php::Polyspec\\Orm\\Utils::local",
+          "signature": "public function local(string $key): string"
+        },
+        "rust": {
+          "symbol": "packages/orm-rust/orm/src/utils.rs::Utils < 'a >::local",
+          "signature": "pub fn local (& self , key : & str) -> Result < String >"
+        },
+        "typescript": {
+          "symbol": "packages/orm-npm/src/utils.ts::Utils.local",
+          "signature": "public async local(key: string): Promise<string>"
+        },
+        "python": {
+          "symbol": "packages/orm-python/src/polyspec/orm/utils.py::Utils.local",
+          "signature": "def local(self, key: str) -> str"
         }
       }
     },

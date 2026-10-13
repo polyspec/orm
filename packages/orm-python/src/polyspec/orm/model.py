@@ -80,14 +80,14 @@ class Collection:
         from polyspec.orm.database import key_text
         self._items[key_text(key)] = {'key': key, 'value': value, 'fetched': fetched}
 
-    def get(self, key):
+    def get(self, key) -> Model | None:
         return self._items.get(key_text(key), {}).get('value')
 
     def has(self, key) -> bool:
         from polyspec.orm.database import key_text
         return key_text(key) in self._items
 
-    def first(self):
+    def first(self) -> Model | None:
         for item in self._items.values():
             return item['value']
         return None
