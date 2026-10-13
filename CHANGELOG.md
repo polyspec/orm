@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T144: the PHP `orm-gen` takes its autoloader by Composer's lookup and names a missing one; the documents run `vendor-php/bin/orm-gen`.
 - T126-2-1: the workflow test judges the workflows among the vendored files only.
 - T136-1: the install-python test asserts that uv is installed before Python.
 - T128-2a-8: the model generation coverage of Go and PHP generates through the set file.
