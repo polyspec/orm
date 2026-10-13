@@ -487,6 +487,119 @@
           "}"
         ]
       }
+    },
+    {
+      "id": "generated-check-name-hashed",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
+          "  id i64 identity",
+          "  ccccccccccccccccccccccc i32",
+          "  primary key (id)",
+          "}"
+        ]
+      }
+    },
+    {
+      "id": "generated-immutable-name-hashed",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {",
+          "  id i64 identity",
+          "  primary key (id)",
+          "  settings {",
+          "    immutable",
+          "  }",
+          "}"
+        ]
+      }
+    },
+    {
+      "id": "generated-audit-name-hashed",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table ddddddddddddddddddddddddddddddddddddddddddddddddddd {",
+          "  id i64 identity",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (id)",
+          "  index ix_op (op)",
+          "  foreign key fk_ddddddddddddddddddddddddddddddddddddddddddddddddddd_audit (op) references audit (seq) on delete restrict on update restrict",
+          "  settings {",
+          "    soft_delete gone",
+          "    audit into h column op references audit action change previous before",
+          "  }",
+          "}",
+          "",
+          "table h {",
+          "  hid i64 identity",
+          "  change varchar(8)",
+          "  before i64 null",
+          "  id i64",
+          "  op i64",
+          "  gone datetime(6) null",
+          "  primary key (hid)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  actor varchar(64)",
+          "  primary key (seq)",
+          "}"
+        ]
+      }
+    },
+    {
+      "id": "generated-history-check-name-hashed",
+      "main": "shop",
+      "documents": {
+        "shop": [
+          "dbspec 1 shop",
+          "",
+          "table service_module_board_post {",
+          "  service_module_board_post_seq i64 identity",
+          "  primary key (service_module_board_post_seq)",
+          "}",
+          "",
+          "table audit {",
+          "  seq i64 identity",
+          "  primary key (seq)",
+          "}",
+          "",
+          "table service_module_board_comment {",
+          "  comment_seq i64 identity",
+          "  service_module_board_post_seq i64",
+          "  audit_seq i64",
+          "  primary key (comment_seq)",
+          "  index ix_comment_audit (audit_seq)",
+          "  index ix_comment_post (service_module_board_post_seq)",
+          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
+          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
+          "  settings {",
+          "    audit into service_module_board_comment_history column audit_seq references audit action change previous previous_audit_seq",
+          "  }",
+          "}",
+          "",
+          "table service_module_board_comment_history {",
+          "  history_id i64 identity",
+          "  change varchar(8)",
+          "  previous_audit_seq i64 null",
+          "  comment_seq i64 null",
+          "  service_module_board_post_seq i64 null",
+          "  audit_seq i64 null",
+          "  primary key (history_id)",
+          "}"
+        ]
+      }
     }
   ],
   "normalize": [
@@ -4589,97 +4702,6 @@
           "line": 20,
           "column": 19,
           "rule": "check"
-        }
-      ]
-    },
-    {
-      "id": "generated-check-name-too-long",
-      "main": "shop",
-      "documents": {
-        "shop": [
-          "dbspec 1 shop",
-          "",
-          "table aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {",
-          "  id i64 identity",
-          "  ccccccccccccccccccccccc i32",
-          "  primary key (id)",
-          "}"
-        ]
-      },
-      "errors": [
-        {
-          "line": 5,
-          "column": 3,
-          "rule": "name.length"
-        }
-      ]
-    },
-    {
-      "id": "generated-immutable-name-too-long",
-      "main": "shop",
-      "documents": {
-        "shop": [
-          "dbspec 1 shop",
-          "",
-          "table bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {",
-          "  id i64 identity",
-          "  primary key (id)",
-          "  settings {",
-          "    immutable",
-          "  }",
-          "}"
-        ]
-      },
-      "errors": [
-        {
-          "line": 7,
-          "column": 5,
-          "rule": "name.length"
-        }
-      ]
-    },
-    {
-      "id": "generated-audit-name-too-long",
-      "main": "shop",
-      "documents": {
-        "shop": [
-          "dbspec 1 shop",
-          "",
-          "table ddddddddddddddddddddddddddddddddddddddddddddddddddd {",
-          "  id i64 identity",
-          "  op i64",
-          "  gone datetime(6) null",
-          "  primary key (id)",
-          "  index ix_op (op)",
-          "  foreign key fk_ddddddddddddddddddddddddddddddddddddddddddddddddddd_audit (op) references audit (seq) on delete restrict on update restrict",
-          "  settings {",
-          "    soft_delete gone",
-          "    audit into h column op references audit action change previous before",
-          "  }",
-          "}",
-          "",
-          "table h {",
-          "  hid i64 identity",
-          "  change varchar(8)",
-          "  before i64 null",
-          "  id i64",
-          "  op i64",
-          "  gone datetime(6) null",
-          "  primary key (hid)",
-          "}",
-          "",
-          "table audit {",
-          "  seq i64 identity",
-          "  actor varchar(64)",
-          "  primary key (seq)",
-          "}"
-        ]
-      },
-      "errors": [
-        {
-          "line": 12,
-          "column": 5,
-          "rule": "name.length"
         }
       ]
     },
@@ -11391,101 +11413,22 @@
       ]
     },
     {
-      "id": "generated-history-check-name-too-long",
+      "id": "user-table-name-64-bytes",
       "main": "shop",
       "documents": {
         "shop": [
           "dbspec 1 shop",
           "",
-          "table service_module_board_post {",
-          "  service_module_board_post_seq i64 identity",
-          "  primary key (service_module_board_post_seq)",
-          "}",
-          "",
-          "table audit {",
-          "  seq i64 identity",
-          "  primary key (seq)",
-          "}",
-          "",
-          "table service_module_board_comment {",
-          "  comment_seq i64 identity",
-          "  service_module_board_post_seq i64",
-          "  audit_seq i64",
-          "  primary key (comment_seq)",
-          "  index ix_comment_post (service_module_board_post_seq)",
-          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
-          "  index ix_comment_audit (audit_seq)",
-          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
-          "  settings {",
-          "    audit into service_module_board_comment_history column audit_seq references audit action change previous previous_audit_seq",
-          "  }",
-          "}",
-          "",
-          "table service_module_board_comment_history {",
-          "  history_id i64 identity",
-          "  change varchar(8)",
-          "  previous_audit_seq i64 null",
-          "  comment_seq i64 null",
-          "  service_module_board_post_seq i64 null",
-          "  audit_seq i64 null",
-          "  primary key (history_id)",
+          "table service_module_board_comment_history_archive_row_xxxxxxxxxxxxxxx {",
+          "  id i64 identity",
+          "  primary key (id)",
           "}"
         ]
       },
       "errors": [
         {
-          "line": 32,
-          "column": 3,
-          "rule": "name.length"
-        }
-      ]
-    },
-    {
-      "id": "generated-history-check-name-one-byte-over",
-      "main": "shop",
-      "documents": {
-        "shop": [
-          "dbspec 1 shop",
-          "",
-          "table service_module_board_post {",
-          "  service_module_board_post_seq i64 identity",
-          "  primary key (service_module_board_post_seq)",
-          "}",
-          "",
-          "table audit {",
-          "  seq i64 identity",
-          "  primary key (seq)",
-          "}",
-          "",
-          "table service_module_board_comment {",
-          "  comment_seq i64 identity",
-          "  service_module_board_post_seq i64",
-          "  audit_seq i64",
-          "  primary key (comment_seq)",
-          "  index ix_comment_post (service_module_board_post_seq)",
-          "  foreign key fk_comment_post (service_module_board_post_seq) references service_module_board_post (service_module_board_post_seq) on delete restrict on update restrict",
-          "  index ix_comment_audit (audit_seq)",
-          "  foreign key fk_comment_audit (audit_seq) references audit (seq) on delete restrict on update restrict",
-          "  settings {",
-          "    audit into service_module_board_comment_histo column audit_seq references audit action change previous previous_audit_seq",
-          "  }",
-          "}",
-          "",
-          "table service_module_board_comment_histo {",
-          "  history_id i64 identity",
-          "  change varchar(8)",
-          "  previous_audit_seq i64 null",
-          "  comment_seq i64 null",
-          "  service_module_board_post_seq i64 null",
-          "  audit_seq i64 null",
-          "  primary key (history_id)",
-          "}"
-        ]
-      },
-      "errors": [
-        {
-          "line": 32,
-          "column": 3,
+          "line": 3,
+          "column": 7,
           "rule": "name.length"
         }
       ]
