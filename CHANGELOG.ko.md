@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b3eeaf2747c8e1954a6f9014a55a993d2118ae56d7e87bae1789813fd8198caa -->
+<!-- source-sha256: de8a21d125dc3bfbe188131c125ec6b505bc3a0a97dddb9a4c8cc152633778f2 -->
 # 변경 이력
 
 ## Unreleased
 
 - T157: markdown conformance가 flowmark main의 8b5d16a를 고정한다.
+
 ## 0.0.11
 
 - T140-1: docs/dialects.md의 Markdown IR executor 표가 markdown conformance가 고정한 flowmark를 옮겨 둔다.
@@ -153,6 +154,7 @@
 - T57-1: version check가 root README의 version 선언을 읽지 않는다. 제목은 version을 적지 않는다. README 변경의 CI가 그로 인해 실패했다.
 - `make release-consumer TAG=v0.0.7`이 npm 12.2.0과 PHP 8.5, Composer 2.10.3이 있는 machine에서 통과했다. release를 만든 machine이 설치하지 못한 Composer project도 통과했다. Makefile이 `release-consumer`와 `release-proof`에 `npm_config_allow_remote=root`를 export한다. npm 12은 기본으로 URL 의존성을 설치하지 않기 때문이다(T56).
 - README가 Python client를 밝힌다. 제목은 version을 적지 않고, 소개·예·models 항목·quick start·도구 줄이 다섯 client를 적는다(T57).
+
 ## 0.0.7
 
 - T56: 0.0.7 릴리스: manifest, lock, `VERSION`, `contracts/features.json`의 contract version, PHP extension의 version, 문서가 0.0.7을 밝히고, dependency review를 다시 기록했으며, `tests/release-consumer`가 0.0.7 archive의 lock을 가진다.
