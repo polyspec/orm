@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- T140 (breaking): a restore picks its key after the request hook from the set values and the and-joined eq conditions, so a hook's condition narrows a restore as it narrows an update; the model sends its set only (docs/protocol.md 1.5).
 - T133: every runtime reads tests/dbspec/cases.json with one strict reader that refuses a missing or unknown field in any section.
 - T154: the Python Mermaid test imports only through the declared PYTHONPATH.
 - T149: the feature coverage runs Python owners, and schema_definition covers Python with its seven cases.
